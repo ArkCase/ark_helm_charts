@@ -1,0 +1,124 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "ark-activemq.fullname" . }}
+  labels:
+    {{- include "ark-activemq.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "ark-activemq.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+        {{- if .Values.ports.metrics }}
+          # NB: Both these annotation values must be of type "string"
+          prometheus.io/scrape: "true"
+          prometheus.io/port: {{ .Values.ports.metrics | quote }}
+        {{- end }}
+      {{- end }}
+      labels:
+        {{- include "ark-activemq.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "ark-activemq.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            {{- if .Values.ports.metrics }}
+            - name: ACTIVEMQ_SUNJMX_START
+              value: "-javaagent:/app/jmx_prometheus_javaagent.jar={{ .Values.ports.metrics }}:/app/jmx-prometheus-config.yaml"
+            {{- end }}
+          ports:
+            {{- if .Values.ports.console }}
+            - name: console
+              protocol: TCP
+              containerPort: {{ .Values.ports.console }}
+            {{- end }}
+            {{- if .Values.ports.amqp }}
+            - name: amqp
+              protocol: TCP
+              containerPort: {{ .Values.ports.amqp }}
+            {{- end }}
+            {{- if .Values.ports.mqtt }}
+            - name: mqtt
+              protocol: TCP
+              containerPort: {{ .Values.ports.mqtt }}
+            {{- end }}
+            {{- if .Values.ports.openwire }}
+            - name: openwire
+              protocol: TCP
+              containerPort: {{ .Values.ports.openwire }}
+            {{- end }}
+            {{- if .Values.ports.websocket }}
+            - name: websocket
+              protocol: TCP
+              containerPort: {{ .Values.ports.websocket }}
+            {{- end }}
+            {{- if .Values.ports.stomp }}
+            - name: stomp
+              protocol: TCP
+              containerPort: {{ .Values.ports.stomp }}
+            {{- end }}
+          {{- $first_open_port := or .Values.ports.amqp .Values.ports.mqtt .Values.ports.openwire .Values.ports.websocket .Values.ports.stomp }}
+          {{- if not $first_open_port }}
+            {{- fail "At least one of the AMQP, MQTT, Openwire, Websocket or STOMP port must be specified" }}
+          {{- end }}
+          readinessProbe:
+            tcpSocket:
+              port: {{ $first_open_port }}
+            initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+            failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
+            timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
+          livenessProbe:
+            tcpSocket:
+              port: {{ $first_open_port }}
+            initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+            failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
+            timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.persistence.mountPath }}
+              {{- if .Values.persistence.subPath }}
+              subPath: {{ .Values.persistence.subPath }}
+              {{- end }}
+            - name: secrets
+              mountPath: /app/conf
+              readOnly: true
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ .Values.persistence.existingClaim }}
+        - name: secrets
+          secret:
+            secretName: {{ include "ark-activemq.fullname" . }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
