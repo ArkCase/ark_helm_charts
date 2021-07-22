@@ -5,9 +5,7 @@ metadata:
   labels:
     {{- include "ark-activemq.labels" . | nindent 4 }}
 spec:
-  {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
-  {{- end }}
   selector:
     matchLabels:
       {{- include "ark-activemq.selectorLabels" . | nindent 6 }}
@@ -42,6 +40,9 @@ spec:
             {{- if .Values.ports.metrics }}
             - name: ACTIVEMQ_SUNJMX_START
               value: "-javaagent:/app/jmx_prometheus_javaagent.jar={{ .Values.ports.metrics }}:/app/jmx-prometheus-config.yaml"
+            {{- else }}
+            - name: ACTIVEMQ_SUNJMX_START
+              value: ""
             {{- end }}
           ports:
             {{- if .Values.ports.console }}
