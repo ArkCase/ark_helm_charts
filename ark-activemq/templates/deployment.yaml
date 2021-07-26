@@ -21,7 +21,7 @@ spec:
         {{- end }}
       {{- end }}
       labels:
-        {{- include "ark-activemq.selectorLabels" . | nindent 8 }}
+        {{- include "ark-activemq.labels" . | nindent 8 }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
