@@ -1,0 +1,47 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "ark-activemq.fullname" . }}
+  labels:
+    {{- include "ark-activemq.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.serviceType }}
+  ports:
+    {{- if .Values.ports.console }}
+    - port: {{ .Values.ports.console }}
+      targetPort: {{ .Values.ports.console }}
+      protocol: TCP
+      name: console
+    {{- end }}
+    {{- if .Values.ports.amqp }}
+    - port: {{ .Values.ports.amqp }}
+      targetPort: {{ .Values.ports.amqp }}
+      protocol: TCP
+      name: amqp
+    {{- end }}
+    {{- if .Values.ports.mqtt }}
+    - port: {{ .Values.ports.mqtt }}
+      targetPort: {{ .Values.ports.mqtt }}
+      protocol: TCP
+      name: mqtt
+    {{- end }}
+    {{- if .Values.ports.openwire }}
+    - port: {{ .Values.ports.openwire }}
+      targetPort: {{ .Values.ports.openwire }}
+      protocol: TCP
+      name: openwire
+    {{- end }}
+    {{- if .Values.ports.websocket }}
+    - port: {{ .Values.ports.websocket }}
+      targetPort: {{ .Values.ports.websocket }}
+      protocol: TCP
+      name: websocket
+    {{- end }}
+    {{- if .Values.ports.stomp }}
+    - port: {{ .Values.ports.stomp }}
+      targetPort: {{ .Values.ports.stomp }}
+      protocol: TCP
+      name: stomp
+    {{- end }}
+  selector:
+    {{- include "ark-activemq.selectorLabels" . | nindent 4 }}
