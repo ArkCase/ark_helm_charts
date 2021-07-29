@@ -1,2 +1,4 @@
-# ark_helm_charts
+ark_helm_charts
+===============
+
 Collection of Helm charts for ArkCase
