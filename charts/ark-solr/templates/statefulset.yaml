@@ -18,10 +18,6 @@ spec:
         {{- include "solr-helm-charts.labels" . | nindent 8 }}
     spec:
       initContainers:
-      # - name: busybox
-      #   image: busybox:1.28
-      #   command: ['sh','c','echo 1234 > /data/123.txt']
-       
       containers:
       - name: solr
         image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
