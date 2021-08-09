@@ -43,7 +43,7 @@ Selector labels
 */}}
 {{- define "solr-helm-charts.selectorLabels" -}}
 app-name: ark-solr
-app-version: 7.7.2
+app-version: {{ .Chart.appVersion }}
 {{- end }}
 
 {{/*
