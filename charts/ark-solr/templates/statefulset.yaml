@@ -26,8 +26,17 @@ spec:
           name: solr-port
           protocol: TCP
         command:
+        {{- if .Values.livenessProbe.enabled }}
         livenessProbe:
-        readinessProbe: 
+          httpGet:
+            path: {{ .Values.livenessProbe.path }}
+            port: http
+          initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+          successThreshold: {{ .Values.livenessProbe.successThreshold }}
+          failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
+        {{- end }}
         resources:
         volumeMounts:
         - name: solr-data
@@ -46,7 +55,7 @@ spec:
         - name: solr-data
           emptyDir: {}
         {{- end -}}
-  {{- if and .Values.persistence.enabled (not .Values.persistence.existingClaim) }}
+  {{- if and .Values.persistence.enabled (not .Values.persistence.existingClaim) (eq .Values.platform "eks" )}}
   volumeClaimTemplates:
     - metadata:
         name: solr-data
