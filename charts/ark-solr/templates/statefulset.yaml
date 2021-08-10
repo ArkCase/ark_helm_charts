@@ -55,7 +55,7 @@ spec:
         - name: solr-data
           emptyDir: {}
         {{- end -}}
-  {{- if and .Values.persistence.enabled (not .Values.persistence.existingClaim) (eq .Values.platform "eks" )}}
+  {{- if and .Values.persistence.enabled (not .Values.persistence.existingClaim) }}
   volumeClaimTemplates:
     - metadata:
         name: solr-data
@@ -67,6 +67,5 @@ spec:
         resources:
           requests:
             storage: {{ .Values.persistence.size | quote }}
-        storageClassName: {{ .Values.persistence.storageClassName | default "gp2"}}
   {{- end }}
        
