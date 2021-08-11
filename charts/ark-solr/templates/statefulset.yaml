@@ -22,7 +22,7 @@ spec:
       - name: solr
         image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
         ports:
-        - containerPort: 8983
+        - containerPort: {{ .Values.port }}
           name: solr-port
           protocol: TCP
         command:
@@ -30,7 +30,7 @@ spec:
         livenessProbe:
           httpGet:
             path: {{ .Values.livenessProbe.path }}
-            port: http
+            port: {{ .Values.livenessProbe.port }}
           initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
           periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
           timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}

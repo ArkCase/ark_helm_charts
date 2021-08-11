@@ -13,6 +13,6 @@ spec:
   clusterIP: None
   ports:
     - name: solr-client
-      port: {{ .Values.service.port }}
+      port: {{ .Values.port }}
       protocol: TCP
   selector: {{- include "solr-helm-charts.selectorLabels" . | nindent 4 }}
