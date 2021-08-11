@@ -13,7 +13,7 @@ spec:
   serviceName: {{ include "solr.fullname" . }}-headless
   template:
     metadata:
-      name: ark-solr
+      name:  {{ .Chart.Name | quote }}
       labels:
         {{- include "solr-helm-charts.labels" . | nindent 8 }}
     spec:
