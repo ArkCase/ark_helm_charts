@@ -1,0 +1,82 @@
+# Default values for solr-helm-charts.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+imagePullSecrets: []
+
+#Common Parameters
+nameOverride: ""
+
+fullnameOverride: ""
+
+#Comman Labels to add to all solr resources
+commonLabels: {}
+port: 8983
+## deployment options
+# general: Minikube 
+# eks: Amazon Elastic Kubernetes Service
+platform: ""
+image:
+  repository: 345280441424.dkr.ecr.ap-south-1.amazonaws.com/arkcase-solr
+  pullPolicy: IfNotPresent 
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "1.0.1"
+podAnnotations: {}
+
+podSecurityContext: 
+  fsGroup: 2000
+
+persistence:
+## persistence.enabled Enable persistence for Solr application using a PersistenceVolumeClaim
+  enabled: true
+  name: ""
+  storageClass: ""
+  fsHandlerId: ""
+  #example 20G
+  size: 8Gi
+  existingClaim: ""
+  accessModes:
+    - ReadWriteOnce
+## Solr Service parameters
+service:
+  type: ClusterIP
+  nodePort: ""
+## Configure extra options for containers' liveness and readiness probes
+## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/#configure-probes
+## @param livenessProbe.enabled Enable liveness probe
+## @param livenessProbe.path Path to access on the HTTP server
+## @param livenessProbe.port Port for livenessProbe
+## @param livenessProbe.initialDelaySeconds Initial delay seconds for livenessProbe
+## @param livenessProbe.periodSeconds Period seconds for livenessProbe
+## @param livenessProbe.timeoutSeconds Timeout seconds for livenessProbe
+## @param livenessProbe.failureThreshold Failure threshold for livenessProbe
+## @param livenessProbe.successThreshold Success threshold for livenessProbe
+##
+livenessProbe:
+  enabled: true
+  path: "/solr"
+  port: 8983
+  initialDelaySeconds: 180
+  periodSeconds: 20
+  timeoutSeconds: 5
+  failureThreshold: 6
+  successThreshold: 1
+resources: 
+  ## Example
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  limit: {}
+  ## Example
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+  requests: {}
+# autoscaling:
+#   enabled: false
+#   minReplicas: 1
+#   maxReplicas: 100
+#   targetCPUUtilizationPercentage: 80
+#   # targetMemoryUtilizationPercentage: 80
+replicaCount: 1
+
