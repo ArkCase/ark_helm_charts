@@ -80,21 +80,20 @@ spec:
           {{- if not $first_open_port }}
             {{- fail "At least one of the AMQP, MQTT, Openwire, Websocket or STOMP port must be specified" }}
           {{- end }}
-#XXX
-#          readinessProbe:
-#            tcpSocket:
-#              port: {{ $first_open_port }}
-#            initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
-#            periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
-#            failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
-#            timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
-#          livenessProbe:
-#            tcpSocket:
-#              port: {{ $first_open_port }}
-#            initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
-#            periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
-#            failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
-#            timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+          readinessProbe:
+            tcpSocket:
+              port: {{ $first_open_port }}
+            initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+            failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
+            timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
+          livenessProbe:
+            tcpSocket:
+              port: {{ $first_open_port }}
+            initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+            failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
+            timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           volumeMounts:
