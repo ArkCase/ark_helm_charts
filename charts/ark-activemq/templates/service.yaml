@@ -6,6 +6,7 @@ metadata:
     {{- include "ark-activemq.labels" . | nindent 4 }}
 spec:
   type: {{ .Values.serviceType }}
+  clusterIP: None
   ports:
     {{- if .Values.ports.console }}
     - port: {{ .Values.ports.console }}
