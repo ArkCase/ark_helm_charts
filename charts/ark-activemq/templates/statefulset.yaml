@@ -1,5 +1,5 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: {{ include "ark-activemq.fullname" . }}
   labels:
@@ -9,17 +9,18 @@ spec:
   selector:
     matchLabels:
       {{- include "ark-activemq.selectorLabels" . | nindent 6 }}
+  serviceName: {{ include "ark-activemq.fullname" . }}
   template:
     metadata:
-      {{- with .Values.podAnnotations }}
       annotations:
-        {{- toYaml . | nindent 8 }}
         {{- if .Values.ports.metrics }}
-          # NB: Both these annotation values must be of type "string"
-          prometheus.io/scrape: "true"
-          prometheus.io/port: {{ .Values.ports.metrics | quote }}
+        # NB: Both these annotation values must be of type "string"
+        prometheus.io/scrape: "true"
+        prometheus.io/port: {{ .Values.ports.metrics | quote }}
         {{- end }}
-      {{- end }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
       labels:
         {{- include "ark-activemq.labels" . | nindent 8 }}
     spec:
@@ -79,20 +80,21 @@ spec:
           {{- if not $first_open_port }}
             {{- fail "At least one of the AMQP, MQTT, Openwire, Websocket or STOMP port must be specified" }}
           {{- end }}
-          readinessProbe:
-            tcpSocket:
-              port: {{ $first_open_port }}
-            initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
-            periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
-            failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
-            timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
-          livenessProbe:
-            tcpSocket:
-              port: {{ $first_open_port }}
-            initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
-            periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
-            failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
-            timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+#XXX
+#          readinessProbe:
+#            tcpSocket:
+#              port: {{ $first_open_port }}
+#            initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
+#            periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+#            failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
+#            timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
+#          livenessProbe:
+#            tcpSocket:
+#              port: {{ $first_open_port }}
+#            initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+#            periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+#            failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
+#            timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           volumeMounts:
@@ -123,3 +125,17 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+  {{- if and .Values.persistence.enabled (not .Values.persistence.existingClaim) }}
+  volumeClaimTemplates:
+    - metadata:
+        name: {{ include "ark-activemq.fullname" . }}
+      spec:
+        accessModes:
+          {{- range .Values.persistence.accessModes }}
+          - {{ . | quote }}
+          {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.persistence.size | quote }}
+        storageClassName: {{ .Values.persistence.storageClassName | default "standard" }}
+  {{- end }}
