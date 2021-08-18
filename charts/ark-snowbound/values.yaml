@@ -1,0 +1,78 @@
+# Default values for ark-snowbound
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Please leave the `replicaCount` to 1 for the time being. Clustering is not
+# supported yet.
+replicaCount: 1
+
+image:
+  repository: 345280441424.dkr.ecr.ap-south-1.amazonaws.com/ark_snowbound
+  pullPolicy: IfNotPresent
+  tag: 20210817-49a66fe
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext:
+  # You must specify an `fsGroup` to allow Snowbound write access to mounted
+  # volumes (as long as Snowbound runs as a non-root user, which should be the
+  # case). Any random number will do.
+  fsGroup: 23949
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+
+serviceType: ClusterIP
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+readinessProbe:
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  timeoutSeconds: 2
+  failureThreshold: 2
+
+livenessProbe:
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  timeoutSeconds: 2
+  failureThreshold: 2
+
+# The persistent volume claim is managed outside this Helm chart. Please set
+# `existingClaim` to the correct value for your deployment.
+persistence:
+  existingClaim: snowbound
+  mountPath: /app/snowbound-docs
+  subPath:
