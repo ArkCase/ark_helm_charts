@@ -25,7 +25,7 @@ spec:
         image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
         ports:
         - containerPort: 2002
-          name: pentaho-ce-port
+          name: http
           protocol: TCP
         command:
         {{- if .Values.livenessProbe.enabled }}
@@ -39,12 +39,14 @@ spec:
           successThreshold: {{ .Values.livenessProbe.successThreshold }}
           failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
         {{- end }}
+        {{- if .Values.startupProbe.enabled }}
         startupProbe:
           httpGet:
             path: {{ .Values.startupProbe.httpGet.path }}
             port: {{ .Values.startupProbe.httpGet.port | default 2002}}
           failureThreshold: {{ .Values.startupProbe.failureThreshold }}
           periodSeconds: {{ .Values.startupProbe.periodSeconds }}
+        {{- end }}
         readinessProbe: 
         resources:
         env: 
@@ -71,9 +73,6 @@ spec:
         - name: gettingstarteddb-properties
           mountPath: "/home/pentaho/app/pentaho/pentaho-server/pentaho-solutions/system/GettingStartedDB.properties"
           subPath: GettingStartedDB.properties
-        - name: setenv-sh
-          mountPath: "/home/pentaho/app/pentaho/pentaho-server/tomcat/bin/setenv.sh"
-          subPath: setenv.sh
         - name: server-xml
           mountPath: "/home/pentaho/app/pentaho/pentaho-server/tomcat/conf/server.xml"
           subPath: server.xml
@@ -155,13 +154,6 @@ spec:
             items:
               - key: repository.spring.properties
                 path: repository.spring.properties
-            defaultMode: 0777
-        - name: setenv-sh
-          configMap: 
-            name: {{ include "pentaho-ce.fullname" . }}-configmap
-            items:
-              - key: setenv.sh
-                path: setenv.sh
             defaultMode: 0777
         - name: server-xml
           configMap: 

@@ -12,7 +12,7 @@ spec:
   ports:
     - port: {{ .Values.service.port }}
       protocol: TCP
-      name: pentaho-ce
+      name: http
   selector:
     {{- include "ark-pentaho.labels" . | nindent 4 }}
   

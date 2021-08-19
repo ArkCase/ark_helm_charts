@@ -21,8 +21,6 @@ data:
     {{- .Files.Get "files/server.properties" | nindent 8 }}
   quartz.properties: |-
     {{- .Files.Get "files/quartz.properties" | nindent 8 }}
-  hibernate-settings.xml: |-
-    {{- .Files.Get "files/qhibernate-settings.xml" | nindent 8 -}}
   audit_sql.xml: |-
     {{- .Files.Get "files/audit_sql.xml" | nindent 8 }}
   quartz-create-db.sql: |-
