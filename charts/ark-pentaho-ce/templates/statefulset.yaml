@@ -27,6 +27,8 @@ spec:
         - containerPort: 2002
           name: http
           protocol: TCP
+        securityContext:
+        {{- toYaml .Values.securityContext | nindent 12 }}
         command:
         {{- if .Values.livenessProbe.enabled }}
         livenessProbe:
@@ -92,7 +94,7 @@ spec:
           mountPath: "/home/pentaho/app/pentaho/pentaho-server/pentaho-solutions/system/quartz/quartz.properties"
           subPath: quartz.properties
         - name: hibernate-settings-xml 
-          mountPath: "/home/pentaho/app/pentaho/pentaho-server/pentaho-solutions/system/hibernate/hibernate-settings.xml "
+          mountPath: "/home/pentaho/app/pentaho/pentaho-server/pentaho-solutions/system/hibernate/hibernate-settings.xml"
           subPath: hibernate-settings.xml 
         - name: audit-sql-xml
           mountPath: "/home/pentaho/app/pentaho/pentaho-server/pentaho-solutions/system/audit_sql.xml"
@@ -122,7 +124,7 @@ spec:
             defaultMode: 0777
         - name: mysql5-hibernate-cfg-xml
           configMap: 
-            name: {{ include "pentaho-ce.fullname" . }}-configmap
+            name: {{ include "pentaho-ce.fullname" . }}-mysql-conf
             items:
               - key: mysql5.hibernate.cfg.xml
                 path: mysql5.hibernate.cfg.xml

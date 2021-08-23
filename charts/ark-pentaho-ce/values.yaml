@@ -19,7 +19,10 @@ ldap:
     ldap_src: ""
     ldap_port: ""
     config: ""
-
+securityContext: 
+  runAsUser: 1000
+  runAsGroup: 3000
+  runAsNonRoot: true
 
 #Common Parameters
 nameOverride: ""
@@ -31,7 +34,7 @@ commonLabels: {}
 port: 2002
 image:
   repository: 345280441424.dkr.ecr.ap-south-1.amazonaws.com/arkcase_pentaho_ce
-  pullPolicy: Always 
+  pullPolicy: IfNotPresent 
   # Overrides the image tag whose default is the chart appVersion.
   tag: "latest"
 persistence:
@@ -60,7 +63,7 @@ livenessProbe:
   failureThreshold: 6
   successThreshold: 1
 startupProbe:
-  enabled: true
+  enabled: false
   httpGet:
     path: "/"
     port: 2002

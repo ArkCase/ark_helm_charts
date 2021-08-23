@@ -9,8 +9,6 @@ metadata:
 data:
   Context.xml: |-
     {{- .Files.Get "files/context.xml" | nindent 8 }}
-  mysql5.hibernate.cfg.xml: |-
-    {{- .Files.Get "files/mysql5.hibernate.cfg.xml" | nindent 8 }}
   GettingStartedDB.properties: |-
     {{- .Files.Get "files/GettingStartedDB.properties" | nindent 8 }}
   server.xml: |-
