@@ -8,8 +8,7 @@ spec:
     {{- range .Values.arkcaseExtention.persistence.accessModes }}
       - {{ . | quote }}
     {{- end }}
-  storageClassName: efs-sc
+  storageClassName: {{ .Values.arkcaseExtention.persistence.storageClassName | quote | default "efs-sc"}}
   resources:
     requests:
       storage: {{ .Values.arkcaseExtention.persistence.size}}
-  
