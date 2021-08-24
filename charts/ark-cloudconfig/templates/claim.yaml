@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ required "A valid claim name required to provision  pvc" .Values.arkcaseExtention.persistence.claimName }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  accessModes:
+    {{- range .Values.arkcaseExtention.persistence.accessModes }}
+      - {{ . | quote }}
+    {{- end }}
+  storageClassName: efs-sc
+  resources:
+    requests:
+      storage: {{ .Values.arkcaseExtention.persistence.size}}
+  

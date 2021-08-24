@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "ark-cloudconfig.fullname" . }}
+  annotations:
+    timestamp: "{{ date "20060102150405" .Release.Time }}"
+  namespace: {{ .Release.Namespace }}
+data:
+  application.yml: |-
+    server.port: 9999
+    spring:
+      profiles.active: native
+      cloud.config.server:
+        native.searchLocations: file://${ark_extension_path}/acm/acm-config-server-repo, file://${ark_extension_path}/acm/acm-config-server-repo/rules, file://${ark_extension_path}/acm/acm-config-server-repo/lookups, file://${ark_extension_path}/acm/acm-config-server-repo/ldap, file://${ark_extension_path}/acm/acm-config-server-repo/labels
+      jms:
+        pub-sub-domain: true
+    properties.folder.path: /app
+    branding.files.folder.path: /app
+    logging:
+      file: /dev/stdout
+      level:
+        com.armedia.acm.configserver: debug
+        org.springframework.cloud.config: debug
+      pattern:
+        file: "%d{yyyy-MM-dd HH:mm:ss,SSS} [%thread] %-5level %logger.%M - %msg%n"
+    jms.message.buffer.window: 1
+    acm.activemq:
+      broker-url: tcp://${ACTIVE_MQ_URL}:${ACTIVE_MQ_PORT}
+      user: ${ACTIVE_MQ_USERNAME}
+      password: ${ACTIVE_MQ_PASSWORD}
+      default-destination: configuration.changed
+      labels-destination: labels.changed
+      ldap-destination: ldap.changed
+      lookups-destination: lookups.changed
+      rules-destination: rules.changed
+      timeout: 10 #seconds
+    arkcase.languages: "-de,-en,-en-in,-es,-fr,-hi,-ja,-pt,-ru,-zh-cn,-zh-tw"

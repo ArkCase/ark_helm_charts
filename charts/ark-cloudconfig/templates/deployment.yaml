@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "ark-cloudconfig.fullname" . }}
+  labels:
+    {{- include "ark-cloudconfig.labels" . | nindent 4 }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "ark-cloudconfig.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+     labels:
+        {{- include "ark-cloudconfig.selectorLabels" . | nindent 8 }}
+     annotations:
+        timestamp: "{{ date "20060102150405" .Release.Time }}"
+    spec:
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      initContainers:
+        - name: arkcase-extention
+          image: alpine/git
+          volumeMounts:
+            - name: git
+              mountPath: /data
+          command:
+            - git
+            - clone 
+            - https://github.com/ArkCase/.arkcase.git
+            -  /data
+      containers:
+        - name: {{ include "ark-cloudconfig.fullname" . | quote}}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          ports:
+          - containerPort: {{ .Values.port }}
+            name: http
+            protocol: TCP
+          {{- if .Values.livenessProbe.enabled }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.livenessProbe.path }}
+              port: {{ .Values.port }}
+            initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+            successThreshold: {{ .Values.livenessProbe.successThreshold }}
+            failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
+          {{- end }}
+          env:
+          - name: ark_extension_path
+            value: "/data/.arkcase"
+          envFrom:
+            - secretRef:
+                name: {{ include "ark-cloudconfig.fullname" . }}-secrets
+          volumeMounts:
+            - name: application-config
+              mountPath: "/app/application.yml"
+              subPath: application.yml
+              readOnly: true
+            - name: persistent-data
+              mountPath: "/data"
+            - name: git
+              mountPath: "/data/.arkcase"
+      volumes:
+        - name: git
+          emptyDir: {}
+        - name: application-config
+          configMap:
+            name: {{ include "ark-cloudconfig.fullname" . }}
+            items:
+              - key: application.yml
+                path: application.yml
+        - name: persistent-data
+          persistentVolumeClaim:
+            claimName: {{ .Values.arkcaseExtention.persistence.claimName }}
+
+      
