@@ -35,11 +35,16 @@ spec:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          #env:
+          env:
+            - name: CATALINA_OPTS
+              value: >-
+                -Dsnowbound_host_port=http://{{ include "ark-snowbound.fullname" . }}:{{ default 8080 .Values.snowbound_port }}
+                -Darkcase_host_port=http://{{ required "You must provide a value for arkcase_host" .Values.arkcase_host }}:{{ required "You must provide a value for `arkcase_port`" .Values.arkcase_port }}
           ports:
             - name: http
               protocol: TCP
               containerPort: 8080
+#TODO
 #          readinessProbe:
 #            tcpSocket:
 #              port: 8080
@@ -57,15 +62,19 @@ spec:
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           volumeMounts:
-            - name: docs
+            - name: data
               mountPath: {{ .Values.persistence.mountPath }}
-              {{- if .Values.persistence.subPath }}
+              {{- if and .Values.persistence.enabled .Values.persistence.subPath }}
               subPath: {{ .Values.persistence.subPath }}
               {{- end }}
       volumes:
-        - name: docs
+        - name: data
+          {{- if and .Values.persistence.enabled .Values.persistence.existingClaim }}
           persistentVolumeClaim:
             claimName: {{ .Values.persistence.existingClaim }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -81,7 +90,11 @@ spec:
   {{- if and .Values.persistence.enabled (not .Values.persistence.existingClaim) }}
   volumeClaimTemplates:
     - metadata:
-        name: {{ include "ark-snowbound.fullname" . }}
+        name: data
+        annotations:
+          {{- range $key, $value := .Values.persistence.annotations }}
+            {{ $key }}: {{ $value | quote }}
+          {{- end }}
       spec:
         accessModes:
           {{- range .Values.persistence.accessModes }}

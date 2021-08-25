@@ -9,11 +9,33 @@ replicaCount: 1
 image:
   repository: 345280441424.dkr.ecr.ap-south-1.amazonaws.com/ark_snowbound
   pullPolicy: IfNotPresent
-  tag: 20210817-49a66fe
+  tag: 20210825-230fae0
 
 imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
+
+# `snowbound_port` is the port for the Snowbound service
+#
+# This is port number that external apps will need to connect to in order to
+# access Snowbound. The default is 8080, which is what is used if you leave
+# this variable empty.
+snowbound_port:
+
+# `snowbound_pod_port` is the port exposes by Snowbound pods
+#
+# The default is 8080, which is what is used if you leave this variable empty.
+snowbound_pod_port:
+
+# `arkcase_host` is the ArkCase hostname
+#
+# You must define this variable.
+arkcase_host:
+
+# `arkcase_port` is the port to connect to ArkCase
+#
+# You must define this variable.
+arkcase_port:
 
 serviceAccount:
   # Specifies whether a service account should be created
@@ -38,7 +60,8 @@ securityContext: {}
   #   - ALL
   # readOnlyRootFilesystem: true
 
-serviceType: ClusterIP
+# XXX Move back to `None` after debugging
+serviceType: NodePort
 
 resources: {}
   # We usually recommend not to specify default resources and to leave this as a conscious
@@ -70,9 +93,48 @@ livenessProbe:
   timeoutSeconds: 2
   failureThreshold: 2
 
-# The persistent volume claim is managed outside this Helm chart. Please set
-# `existingClaim` to the correct value for your deployment.
 persistence:
-  existingClaim: snowbound
-  mountPath: /app/snowbound-docs
+  # `persistence.enabled` enables persistence for Snowbound
+  #
+  # This is done using a persistent volume claim. If set to `false`, an
+  # `emptyDir` will be used instead and all the other `persistence.*`
+  # parameters are ignored.
+  enabled: true
+
+  # `persistence.existingClaim` uses an external PVC
+  #
+  # If set, the specified persistent volume claim will be used and this Helm
+  # chart won't create a PVC.
+  existingClaim:
+
+  # `persistence.subPath` is the directory of the volume to mount from
+  #
+  # Leave empty to mount the root of the volume.
   subPath:
+
+  # `persistence.storageClass` is the storage class for the new PVC
+  #
+  # If set to an empty string, the default provisionner will be used. If
+  # `persistence.existingClaim` is set, this parameter is ignored.
+  storageClass: standard
+
+  # `persistence.annotations` are the annotations for the new PVC
+  #
+  # If `persistence.existingClaim` is set, this parameter is ignored.
+  annotations: {}
+
+  # `persistence.accessModes` are the access modes for the new PVC
+  #
+  # If `persistence.existingClaim` is set, this parameter is ignored.
+  accessModes: [ReadWriteOnce]
+
+  # `persistence.size` is the size of the new PVC
+  #
+  # Use the standard Kubernetes notations to express the units; eg: "8Gi". If
+  # `persistence.existingClaim` is set, this parameter is ignored.
+  size: 8Gi
+
+  # `persistence.mountPath` is the directory where to mount the persistent volume
+  #
+  # You should not modify this value unless you know what you are doing.
+  mountPath: /app/home/.snowbound-docs
