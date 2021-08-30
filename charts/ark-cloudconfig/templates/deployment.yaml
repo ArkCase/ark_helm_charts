@@ -20,7 +20,7 @@ spec:
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       initContainers:
-        - name: arkcase-extention
+        - name: arkcase-Extension
           image: alpine/git
           volumeMounts:
             - name: git
@@ -76,6 +76,6 @@ spec:
                 path: application.yml
         - name: persistent-data
           persistentVolumeClaim:
-            claimName: {{ .Values.arkcaseExtention.persistence.claimName }}
+            claimName: {{ .Values.arkcaseExtension.persistence.claimName }}
 
       
