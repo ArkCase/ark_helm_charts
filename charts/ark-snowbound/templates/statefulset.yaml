@@ -39,7 +39,7 @@ spec:
             - name: CATALINA_OPTS
               value: >-
                 -Dsnowbound_host_port=http://{{ include "ark-snowbound.fullname" . }}:{{ default 8080 .Values.snowbound_port }}
-                -Darkcase_host_port=http://{{ required "You must provide a value for arkcase_host" .Values.arkcase_host }}:{{ required "You must provide a value for `arkcase_port`" .Values.arkcase_port }}
+                -Darkcase_host_port={{ default "http" .Values.arkcase_protocol }}://{{ required "You must provide a value for arkcase_host" .Values.arkcase_host }}:{{ required "You must provide a value for `arkcase_port`" .Values.arkcase_port }}
           ports:
             - name: http
               protocol: TCP
@@ -103,5 +103,5 @@ spec:
         resources:
           requests:
             storage: {{ .Values.persistence.size | quote }}
-        storageClassName: {{ .Values.persistence.storageClassName | default "standard" }}
+        storageClassName: {{ .Values.persistence.storageClass | default "standard" }}
   {{- end }}
