@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "ark-cloudconfig.fullname" . }}
+  labels:
+    {{- include "ark-cloudconfig.labels" . | nindent 4 }}
+  annotations:
+    timestamp: "{{ date "20060102150405" .Release.Time }}"
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "ark-cloudconfig.selectorLabels" . | nindent 4 }}

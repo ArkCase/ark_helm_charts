@@ -1,0 +1,11 @@
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  name: {{ .Values.arkcaseExtension.persistence.storageClassName | quote | default "efs-sc"}}
+  namespace: {{ .Release.Namespace }}
+provisioner: efs.csi.aws.com
+parameters:
+  provisioningMode: efs-ap
+  fileSystemId: {{ required "A valid EFS fsHandler requied " .Values.arkcaseExtension.persistence.fsHandlerId }}
+  directoryPerms: "700"
+  reclaimPolicy: RETAIN
