@@ -1,0 +1,81 @@
+# dependency chart variables required
+mysql:
+  nameOverride:
+  persistence:
+    storageClass: ""
+    annotations:
+  commonLabels:
+  externalHost:
+    # True if using any external Mysql database system
+    enabled:
+      dbAddress: "" 
+      dbPort: ""
+      dbUserName: ""
+      dbPassword: ""
+    
+ldap:
+  externalHost:
+    enabled: true
+    ldap_src: ""
+    ldap_port: ""
+    config: ""
+
+
+#Common Parameters
+nameOverride: ""
+
+
+fullnameOverride: ""
+#Comman Labels to add to all pentaho-ee resources
+commonLabels: {}
+port: 2002
+image:
+  repository: 345280441424.dkr.ecr.ap-south-1.amazonaws.com/pentaho-ee
+  pullPolicy: Always 
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "latest"
+persistence:
+  ## persistence.enabled Enable persistence for Pentaho EE application using a PersistenceVolumeClaim
+  enabled: true
+  name: ""
+  storageClass: ""
+  fsHandlerId: ""
+  #example 20Gi
+  size: "20Gi"
+  existingClaim: ""
+  accessModes: []
+## Pentaho EE Service parameters
+service:
+  type: ClusterIP
+  port: 2002
+  nodePort: ""
+
+livenessProbe:
+  enabled: true
+  path: "/"
+  port: 2002
+  initialDelaySeconds: 180
+  periodSeconds: 20
+  timeoutSeconds: 5
+  failureThreshold: 6
+  successThreshold: 1
+startupProbe:
+  enabled: true
+  httpGet:
+    path: "/"
+    port: 2002
+  failureThreshold: 15
+  periodSeconds: 10
+
+resources: 
+  ## Example
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  limit: {}
+  ## Example
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+  requests: {}
+replicaCount: 1
