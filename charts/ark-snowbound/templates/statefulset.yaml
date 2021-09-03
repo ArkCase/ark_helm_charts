@@ -30,7 +30,7 @@ spec:
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
-        - name: {{ .Chart.Name }}
+        - name: snowbound
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
@@ -38,8 +38,8 @@ spec:
           env:
             - name: CATALINA_OPTS
               value: >-
-                -Dsnowbound_host_port=http://{{ include "ark-snowbound.fullname" . }}:{{ default 8080 .Values.snowbound_port }}
-                -Darkcase_host_port={{ default "http" .Values.arkcase_protocol }}://{{ required "You must provide a value for arkcase_host" .Values.arkcase_host }}:{{ required "You must provide a value for `arkcase_port`" .Values.arkcase_port }}
+                -Dsnowbound_host_port={{ required "You must provide a value for `snowbound_host_port`" .Values.snowbound_host_port }}
+                -Darkcase_host_port={{ required "You must provide a value for `arkcase_host_port`" .Values.arkcase_host_port }}
           ports:
             - name: http
               protocol: TCP

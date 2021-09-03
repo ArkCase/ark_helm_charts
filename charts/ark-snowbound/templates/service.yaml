@@ -6,8 +6,7 @@ metadata:
     {{- include "ark-snowbound.labels" . | nindent 4 }}
 spec:
   type: {{ .Values.serviceType }}
-#XXX Restore the following line as soon as the testing is done
-#   ClusterIP: None
+  clusterIP: None
   ports:
     - port: {{ default 8080 .Values.snowbound_port }}
       targetPort: {{ default 8080 .Values.snowbound_pod_port }}

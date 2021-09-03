@@ -17,7 +17,7 @@ fullnameOverride: ""
 
 # `snowbound_port` is the port for the Snowbound service
 #
-# This is port number that external apps will need to connect to in order to
+# This is port number that other pods will need to connect to in order to
 # access Snowbound. The default is 8080, which is what is used if you leave
 # this variable empty.
 snowbound_port:
@@ -27,21 +27,15 @@ snowbound_port:
 # The default is 8080, which is what is used if you leave this variable empty.
 snowbound_pod_port:
 
-# `arkcase_host` is the ArkCase hostname
+# `snowbound_host_port` is the value to set in VirtualViewerJavaHTML5.xml
 #
-# You must define this variable.
-arkcase_host:
+# You must provide a value for this variable.
+snowbound_host_port:
 
-# `arkcase_port` is the port to connect to ArkCase
+# `arkcase_host_port` is the value to set in VirtualViewerJavaHTML5.xml
 #
-# You must define this variable.
-arkcase_port:
-
-# `arkcase_protocol` is the protocol to connect to ArkCase
-#
-# Valid values are `http` and `https`. The default is `http`, which is what is
-# used if you leave this variable empty.
-arkcase_protocol:
+# You must provide a value for this variable.
+arkcase_host_port:
 
 serviceAccount:
   # Specifies whether a service account should be created
@@ -66,8 +60,8 @@ securityContext: {}
   #   - ALL
   # readOnlyRootFilesystem: true
 
-# XXX Move back to `None` after debugging
-serviceType: NodePort
+# `serviceType` is the type of the Snowbound service
+serviceType: ClusterIP
 
 resources: {}
   # We usually recommend not to specify default resources and to leave this as a conscious
