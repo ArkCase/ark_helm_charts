@@ -86,12 +86,51 @@ livenessProbe:
   timeoutSeconds: 2
   failureThreshold: 2
 
-# The persistent volume claim is managed outside this Helm chart. Please set
-# `existingClaim` to the correct value for your deployment.
 persistence:
-  existingClaim: activemq-pvc
-  mountPath: /app/data
+  # `persistence.enabled` enabled persistence for ActiveMQ
+  #
+  # This is done using a persistent volume claim. If set to `false`, an
+  # `emptyDir` will be used instead and all other `persistence.*` parameters
+  # are ignored.
+  enabled: true
+
+  # `persistence.existingClaim` uses an external PVC
+  #
+  # If set, the specified persistent volume claim will be used and this Helm
+  # chart won't create a PVC.
+  existingClaim:
+
+  # `persistence.subPath` is the directory of the volume to mount from
+  #
+  # Leave empty to mount the root of the volume.
   subPath:
+
+  # `persistence.storageClass` is the storage class for the new PVC
+  #
+  # If set to an empty string, the default provisionner will be used. If
+  # `persistence.existingClaim is set, this parameter is ignored.
+  storageClass: standard
+
+  # `persistence.annotations` are the annotations for the new PVC
+  #
+  # If `persistence.existingClaim` is set, this parameter is ignored.
+  annotations: {}
+
+  # `persistence.accessModes` are the access modes for the new PVC
+  #
+  # If `persistence.existingClaim` is set, this parameter is ignored.
+  accessModes: [ReadWriteOnce]
+
+  # `persistence.size` is the size of the new PVC
+  #
+  # Use the standard Kubernetes notations to express the units; eg: "8Gi". If
+  # `persistence.existingClaim` is set, this parameter is ignored.
+  size: 8Gi
+
+  # `persistence.mountPath` is the directory where the mount the persistent volume
+  #
+  # You should not modify this value unless you know what you are doing.
+  mountPath: /app/data
 
 # Limit, in GiB, of how big the KahaDB store can grow
 maxStoreUsageGb: 50

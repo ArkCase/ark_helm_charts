@@ -32,7 +32,7 @@ spec:
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
-        - name: {{ .Chart.Name }}
+        - name: activemq
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
@@ -99,7 +99,7 @@ spec:
           volumeMounts:
             - name: data
               mountPath: {{ .Values.persistence.mountPath }}
-              {{- if .Values.persistence.subPath }}
+              {{- if and .Values.persistence.enabled .Values.persistence.subPath }}
               subPath: {{ .Values.persistence.subPath }}
               {{- end }}
             - name: secrets
@@ -107,8 +107,12 @@ spec:
               readOnly: true
       volumes:
         - name: data
+          {{- if and .Values.persistence.enabled .Values.persistence.existingClaim }}
           persistentVolumeClaim:
             claimName: {{ .Values.persistence.existingClaim }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
         - name: secrets
           secret:
             secretName: {{ include "ark-activemq.fullname" . }}
@@ -127,7 +131,11 @@ spec:
   {{- if and .Values.persistence.enabled (not .Values.persistence.existingClaim) }}
   volumeClaimTemplates:
     - metadata:
-        name: {{ include "ark-activemq.fullname" . }}
+        name: data
+        annotations:
+          {{- range $key, $value := .Values.persistence.annotations }}
+            {{ $key }}: {{ $value | quote }}
+          {{- end }}
       spec:
         accessModes:
           {{- range .Values.persistence.accessModes }}
@@ -136,5 +144,5 @@ spec:
         resources:
           requests:
             storage: {{ .Values.persistence.size | quote }}
-        storageClassName: {{ .Values.persistence.storageClassName | default "standard" }}
+        storageClassName: {{ .Values.persistence.storageClass | default "standard" }}
   {{- end }}
