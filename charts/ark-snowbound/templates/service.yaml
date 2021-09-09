@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "ark-snowbound.fullname" . }}
+  labels:
+    {{- include "ark-snowbound.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.serviceType }}
+  clusterIP: None
+  ports:
+    - port: {{ default 8080 .Values.snowbound_port }}
+      targetPort: {{ default 8080 .Values.snowbound_pod_port }}
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "ark-snowbound.selectorLabels" . | nindent 4 }}

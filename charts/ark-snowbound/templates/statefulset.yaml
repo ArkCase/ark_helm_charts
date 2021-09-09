@@ -1,0 +1,107 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "ark-snowbound.fullname" . }}
+  labels:
+    {{- include "ark-snowbound.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "ark-snowbound.selectorLabels" . | nindent 6 }}
+  serviceName: {{ include "ark-snowbound.fullname" . }}
+  template:
+    metadata:
+      annotations:
+        # NB: Both these annotation values must be of type "string"
+        prometheus.io/scrape: "false"
+        prometheus.io/port: "TODO"
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "ark-snowbound.labels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "ark-snowbound.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: snowbound
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: CATALINA_OPTS
+              value: >-
+                -Dsnowbound_host_port={{ required "You must provide a value for `snowbound_host_port`" .Values.snowbound_host_port }}
+                -Darkcase_host_port={{ required "You must provide a value for `arkcase_host_port`" .Values.arkcase_host_port }}
+          ports:
+            - name: http
+              protocol: TCP
+              containerPort: 8080
+#TODO
+#          readinessProbe:
+#            tcpSocket:
+#              port: 8080
+#            initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
+#            periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+#            failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
+#            timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
+#          livenessProbe:
+#            tcpSocket:
+#              port: 8080
+#            initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+#            periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+#            failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
+#            timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.persistence.mountPath }}
+              {{- if and .Values.persistence.enabled .Values.persistence.subPath }}
+              subPath: {{ .Values.persistence.subPath }}
+              {{- end }}
+      volumes:
+        - name: data
+          {{- if and .Values.persistence.enabled .Values.persistence.existingClaim }}
+          persistentVolumeClaim:
+            claimName: {{ .Values.persistence.existingClaim }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  {{- if and .Values.persistence.enabled (not .Values.persistence.existingClaim) }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        annotations:
+          {{- range $key, $value := .Values.persistence.annotations }}
+            {{ $key }}: {{ $value | quote }}
+          {{- end }}
+      spec:
+        accessModes:
+          {{- range .Values.persistence.accessModes }}
+          - {{ . | quote }}
+          {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.persistence.size | quote }}
+        storageClassName: {{ .Values.persistence.storageClass | default "standard" }}
+  {{- end }}
