@@ -1,0 +1,39 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "pentaho-ee.fullname" . }}-configmap
+  labels: {{- include "ark-pentaho.selectorLabels" . | nindent 4 }}
+  annotations:
+    timestamp: "{{ date "20060102150405" now }}"
+  namespace: {{ .Release.Namespace | quote }}
+data:
+  Context.xml: |-
+    {{- .Files.Get "files/context.xml" | nindent 8 }}
+  mysql5.hibernate.cfg.xml: |-
+    {{- .Files.Get "files/mysql5.hibernate.cfg.xml" | nindent 8 }}
+  GettingStartedDB.properties: |-
+    {{- .Files.Get "files/GettingStartedDB.properties" | nindent 8 }}
+  server.xml: |-
+    {{- .Files.Get "files/server.xml" | nindent 8}}
+  repository.spring.properties: |-
+    {{- .Files.Get "files/repository.spring.properties" | nindent 8 }}
+  server.properties: |-
+    {{- .Files.Get "files/server.properties" | nindent 8 }}
+  quartz.properties: |-
+    {{- .Files.Get "files/quartz.properties" | nindent 8 }}
+  hibernate-settings.xml: |-
+    {{- .Files.Get "files/hibernate-settings.xml" | nindent 8 }}
+  audit_sql.xml: |-
+    {{- .Files.Get "files/audit_sql.xml" | nindent 8 }}
+  quartz-create-db.sql: |-
+    {{- .Files.Get "files/quartz-create-db.sql" | nindent 8 }}
+  setenv.sh: |-
+    {{- .Files.Get "files/setenv.sh" | nindent 8 }}
+  start-pentaho.sh: |-
+    {{- .Files.Get "files/start-pentaho.sh" | nindent 8 }}
+  
+
+  
+  
+  
+
