@@ -1,15 +1,16 @@
+{{- if or .Values.enabled (not (hasKey .Values "enabled")) }}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ include "ark-snowbound.fullname" . }}
+  name: {{ include "common.fullname" . }}
   labels:
-    {{- include "ark-snowbound.labels" . | nindent 4 }}
+    {{- include "common.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      {{- include "ark-snowbound.selectorLabels" . | nindent 6 }}
-  serviceName: {{ include "ark-snowbound.fullname" . }}
+      {{- include "common.selectorLabels" . | nindent 6 }}
+  serviceName: {{ include "common.fullname" . }}
   template:
     metadata:
       annotations:
@@ -20,13 +21,13 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
       labels:
-        {{- include "ark-snowbound.labels" . | nindent 8 }}
+        {{- include "common.labels" . | nindent 8 }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "ark-snowbound.serviceAccountName" . }}
+      serviceAccountName: {{ include "common.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
@@ -63,18 +64,20 @@ spec:
             {{- toYaml .Values.resources | nindent 12 }}
           volumeMounts:
             - name: data
-              mountPath: {{ .Values.persistence.mountPath }}
-              {{- if and .Values.persistence.enabled .Values.persistence.subPath }}
-              subPath: {{ .Values.persistence.subPath }}
-              {{- end }}
+              mountPath: "/app/home/.snowbound-docs"
       volumes:
-        - name: data
-          {{- if and .Values.persistence.enabled .Values.persistence.existingClaim }}
+        - name: "data"
+          {{- if (include "common.persistence.isEnabled" .) }}
           persistentVolumeClaim:
-            claimName: {{ .Values.persistence.existingClaim }}
+            {{- if (((.Values.persistence).data).claim).name }}
+            claimName: {{ .Values.persistence.data.claim.name | quote }}
+            {{- else }}
+            claimName: {{ template "common.fullname" . }}-data
+            {{- end }}
           {{- else }}
           emptyDir: {}
           {{- end }}
+
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -105,3 +108,62 @@ spec:
             storage: {{ .Values.persistence.size | quote }}
         storageClassName: {{ .Values.persistence.storageClass | default "standard" }}
   {{- end }}
+
+{{- if (include "common.persistence.isEnabled" .) }}
+
+{{ include "common.persistence.validateVolumeConfig" ( dict "vol" ((.Values.persistence).data) "ctx" $ "name" "data" ) }}
+{{- if not (((.Values.persistence).data).claim).name }}
+{{- if not (((.Values.persistence).data).claim).spec }}
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ template "common.fullname" . }}-data
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "common.labels" . | nindent 4 }}
+{{- if (((.Values.persistence).data).annotations) }}
+{{- with .Values.persistence.data.annotations  }}
+  annotations:
+{{ toYaml . | indent 4 }}
+{{- end }}
+{{- end }}
+{{- if not (((.Values.persistence).data).volume) }}
+spec:
+  storageClassName: "manual"
+  persistentVolumeReclaimPolicy: Retain
+  accessModes:
+    - "ReadWriteOnce"
+  capacity:
+    storage: "8Gi"
+  hostPath:
+    path: "{{ coalesce (.Values.persistence).localPath ((.Values.global).persistence).localPath "/opt/app/arkcase" }}/data/snowbound"
+{{- else }}
+spec: {{- include "common.tplvalues.render" (dict "value" (((.Values.persistence).data).volume) "context" $) | nindent 2 }}
+{{- end }}
+{{- end }}
+
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: {{ template "common.fullname" . }}-data
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "common.labels" . | nindent 4 }}
+{{- if (((.Values.persistence).data).claim).spec }}
+spec: {{- include "common.tplvalues.render" (dict "value" (((.Values.persistence).data).claim.spec) "context" $) | nindent 2 }}
+{{- else }}
+spec:
+  storageClassName: "manual"
+  volumeName: {{ template "common.fullname" . }}-data
+  accessModes:
+    - "ReadWriteOnce"
+  resources:
+    requests:
+      storage: "8Gi"
+{{- end }}
+{{- end }}
+
+{{- end }}
+{{- end }}

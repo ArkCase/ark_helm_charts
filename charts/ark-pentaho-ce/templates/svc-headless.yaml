@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "pentaho-ce.fullname" . }}-headless
+  name: {{ include "common.fullname" . }}
   labels:
     {{- if .Values.commonLabels }}
     {{- include "common.tplvalues.render" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
@@ -14,5 +14,4 @@ spec:
       protocol: TCP
       name: http
   selector:
-    {{- include "ark-pentaho.labels" . | nindent 4 }}
-  
+    {{- include "common.labels" . | nindent 4 }}

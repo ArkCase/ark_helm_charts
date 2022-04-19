@@ -1,3 +1,4 @@
+{{- if or .Values.enabled (not (hasKey .Values "enabled")) }}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -98,24 +99,25 @@ spec:
             {{- toYaml .Values.resources | nindent 12 }}
           volumeMounts:
             - name: data
-              mountPath: {{ .Values.persistence.mountPath }}
-              {{- if and .Values.persistence.enabled .Values.persistence.subPath }}
-              subPath: {{ .Values.persistence.subPath }}
-              {{- end }}
+              mountPath: /app/data
             - name: secrets
               mountPath: /app/conf
               readOnly: true
       volumes:
-        - name: data
-          {{- if and .Values.persistence.enabled .Values.persistence.existingClaim }}
-          persistentVolumeClaim:
-            claimName: {{ .Values.persistence.existingClaim }}
-          {{- else }}
-          emptyDir: {}
-          {{- end }}
         - name: secrets
           secret:
             secretName: {{ include "ark-activemq.fullname" . }}
+        - name: data
+          {{- if (include "common.persistence.isEnabled" .) }}
+          persistentVolumeClaim:
+            {{- if (((.Values.persistence).data).claim).name }}
+            claimName: {{ .Values.persistence.data.claim.name | quote }}
+            {{- else }}
+            claimName: {{ template "common.fullname" . }}-data
+            {{- end }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -128,21 +130,41 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-  {{- if and .Values.persistence.enabled (not .Values.persistence.existingClaim) }}
-  volumeClaimTemplates:
-    - metadata:
-        name: data
+
+{{- if (include "common.persistence.isEnabled" .) }}
+
+{{ include "common.persistence.validateVolumeConfig" ( dict "vol" ((.Values.persistence).data) "ctx" $ "name" "data" ) }}
+{{- if not (((.Values.persistence).data).claim).name }}
+{{- if not (((.Values.persistence).data).claim).spec }}
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata: 
+  name: {{ template "common.fullname" . }}-data
+  namespace: {{ .Release.Namespace }}
+  labels: 
+    {{- include "common.labels" . | nindent 4 }}
+{{- if (((.Values.persistence).data).annotations) }}
+{{- with .Values.persistence.data.annotations  }}
         annotations:
-          {{- range $key, $value := .Values.persistence.annotations }}
-            {{ $key }}: {{ $value | quote }}
-          {{- end }}
-      spec:
+{{ toYaml . | indent 4 }}
+{{- end }}
+{{- end }}
+{{- if not (((.Values.persistence).data).volume) }}
+spec:
+  storageClassName: "manual"
+  persistentVolumeReclaimPolicy: Retain
         accessModes:
-          {{- range .Values.persistence.accessModes }}
-          - {{ . | quote }}
-          {{- end }}
-        resources:
-          requests:
-            storage: {{ .Values.persistence.size | quote }}
-        storageClassName: {{ .Values.persistence.storageClass | default "standard" }}
-  {{- end }}
+    - "ReadWriteOnce"
+  capacity:
+    storage: "8Gi"
+  hostPath:
+    path: "{{ coalesce (.Values.persistence).localPath ((.Values.global).persistence).localPath "/opt/app/arkcase" }}/data/activemq"
+{{- else }}
+spec: {{- include "common.tplvalues.render" (dict "value" (((.Values.persistence).data).volume) "context" $) | nindent 2 }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{- end }}

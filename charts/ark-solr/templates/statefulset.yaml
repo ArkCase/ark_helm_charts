@@ -18,9 +18,22 @@ spec:
         {{- include "solr-helm-charts.labels" . | nindent 8 }}
     spec:
       initContainers:
+      - name: solr-home
+        image: busybox:latest
+        command: ['sh','-c','cp /tmp/solr.xml /tmp-config/solr.xml']
+        volumeMounts: 
+        - name: solr-xml
+          mountPath: "/tmp"
+        - name: solr-home
+          mountPath: "/tmp-config"
       containers:
       - name: solr
         image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        env: 
+        - name: "SOLR_HOME"
+          value: "/data/conf/"
+        - name: SOLR_OPTS
+          value: "-Dsolr.autoSoftCommit.maxTime=1000"
         ports:
         - containerPort: {{ .Values.port }}
           name: solr-port
@@ -41,12 +54,37 @@ spec:
         volumeMounts:
         - name: solr-data
           mountPath: /data
-        - name: solr-conf
-          mountPath: /opt/solr/server/solr/configsets/_default/conf
+        - name: solr-schema-xml
+          mountPath: /opt/solr/server/solr/configsets/_default/conf/schema.xml
+          subPath: schema.xml
+        - name: solr-config-xml
+          mountPath: /opt/solr/server/solr/configsets/_default/conf/solrconfig.xml
+          subPath: solrconfig.xml
+        - name: solr-home
+          mountPath: /data/conf/
+      securityContext:
+        {{- toYaml  .Values.podSecurityContext | nindent 8 }}
       volumes:
-        - name: solr-conf
+        - name: solr-home
+          emptyDir: {}
+        - name: solr-xml
+          configMap:
+            name: solr-xml
+            items:
+            - key: solr.xml
+              path: solr.xml
+        - name: solr-schema-xml
+          configMap: 
+            name: {{ include "solr.configmap-name" . }} 
+            items:
+             - key: schema.xml
+               path: schema.xml
+        - name: solr-config-xml
           configMap: 
             name: {{ include "solr.configmap-name" . }}
+            items:
+             - key: solrconfig.xml
+               path: solrconfig.xml
         {{- if and .Values.persistence.enabled .Values.persistence.existingClaim }}
         - name: solr-data
           persistentVolumeClaim:
@@ -64,6 +102,7 @@ spec:
           {{- range .Values.persistence.accessModes }}
             - {{ . | quote }}
           {{- end }}
+        storageClassName: {{ .Values.persistence.storageClass | default "gp2" }}
         resources:
           requests:
             storage: {{ .Values.persistence.size | quote }}
