@@ -1,0 +1,79 @@
+{{- if .Values.libreoffice.enabled }}
+# Defines the deployment for the libreoffice transformer app
+# Details: https://git.alfresco.com/Repository/alfresco-docker-transformers
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "content-services.shortname" . }}-libreoffice
+  labels:
+    {{- include "libreoffice.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.libreoffice.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "libreoffice.selectorLabels" . | nindent 6 }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+{{ toYaml .Values.global.strategy.rollingUpdate | indent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/config-libreoffice.yaml") . | sha256sum }}
+      labels:
+        {{- include "libreoffice.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- if .Values.global.alfrescoRegistryPullSecrets }}
+      # only set this secret if a private docker registry variable is defined
+      imagePullSecrets:
+        - name: {{ .Values.global.alfrescoRegistryPullSecrets }}
+      {{- end }}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 10
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - {{ template "content-services.shortname" . }}-libreoffice
+              topologyKey: failure-domain.beta.kubernetes.io/zone
+          - weight: 5
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - {{ template "content-services.shortname" . }}-libreoffice
+              topologyKey: kubernetes.io/hostname
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.libreoffice.image.repository }}:{{ .Values.libreoffice.image.tag }}"
+          imagePullPolicy: {{ .Values.libreoffice.image.pullPolicy }}
+          envFrom:
+          - configMapRef:
+              # config map to use, defined in config-libreoffice.yaml
+              name: {{ template "content-services.shortname" . }}-libreoffice-configmap
+          ports:
+            - containerPort: {{ .Values.libreoffice.image.internalPort }}
+          resources:
+{{ toYaml .Values.libreoffice.resources | indent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: {{ .Values.libreoffice.image.internalPort }}
+            initialDelaySeconds: {{ .Values.libreoffice.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.libreoffice.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.libreoffice.readinessProbe.timeoutSeconds }}
+          livenessProbe:
+            httpGet:
+              path: /live
+              port: {{ .Values.libreoffice.image.internalPort }}
+            initialDelaySeconds: {{ .Values.libreoffice.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.libreoffice.livenessProbe.periodSeconds }}
+            failureThreshold: 1
+            timeoutSeconds: {{ .Values.libreoffice.livenessProbe.timeoutSeconds }}
+{{- end }}

@@ -1,0 +1,150 @@
+{{- if .Values.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "common.fullname" . }}
+  labels:
+    app: {{ template "common.fullname" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ template "common.fullname" . }}
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "common.fullname" . }}
+        release: {{ .Release.Name }}
+    spec:
+      containers:
+      - name: activemq
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        env:
+        - name: ACTIVEMQ_CONFIG_MINMEMORY
+          value: "{{ .Values.resources.requests.memory | replace "Mi" "" }}"
+        - name: ACTIVEMQ_CONFIG_MAXMEMORY
+          value: "{{ .Values.resources.limits.memory | replace "Mi" "" }}"
+        - name: ACTIVEMQ_BROKER_NAME
+          value: "{{ template "common.fullname" . }}"
+        - name: ACTIVEMQ_ADMIN_LOGIN
+          value: "{{ .Values.adminUser.username }}"
+        - name: ACTIVEMQ_ADMIN_PASSWORD
+          value: "{{ .Values.adminUser.password }}"
+        ports:
+        - name: stomp
+          containerPort: {{ .Values.services.broker.ports.internal.stomp | default 61613 }}
+        - name: openwire
+          containerPort: {{ .Values.services.broker.ports.internal.openwire | default 61616 }}
+        - name: amqp
+          containerPort: {{ .Values.services.broker.ports.internal.amqp | default 5672 }}
+        - name: web-console
+          containerPort: {{ .Values.services.webConsole.ports.internal.webConsole | default 8161 }}
+        readinessProbe:
+          tcpSocket:
+            port: {{ .Values.services.broker.ports.internal.openwire | default 61616 }}
+          initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+          failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
+          timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
+        livenessProbe:
+          tcpSocket:
+            port: {{ .Values.services.broker.ports.internal.openwire | default 61616 }}
+          initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+          failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
+          timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+        resources:
+{{ toYaml .Values.resources | indent 12 }}
+        volumeMounts:
+        - name: data
+          mountPath: "/opt/activemq/data/alfresco-infrastructure/activemq-data"
+      {{- if .Values.persistence.chownWithDynamicProvisioning }}
+      initContainers:
+        - name: init-fs
+          image: "{{ .Values.initContainer.image.repository }}:{{ .Values.initContainer.image.tag }}"
+          imagePullPolicy: {{ .Values.initContainer.image.pullPolicy }}
+          resources:
+{{ toYaml .Values.initContainer.resources | indent 12 }}
+          # command to allow repository to write to EFS volume.
+          command: ["sh", "-c", "chown -R 33031:1000 {{ .Values.persistence.activemq.mountPath }}"]
+          volumeMounts:
+            - name: data
+              mountPath: "/opt/activemq/data/alfresco-infrastructure/activemq-data"
+      {{- end }}
+      volumes:
+        - name: data
+          {{- if (include "common.persistence.isEnabled" .) }}
+          persistentVolumeClaim:
+            {{- if (((.Values.persistence).activemq).claim).name }}
+            claimName: {{ .Values.persistence.activemq.claim.name | quote }}
+            {{- else }}
+            claimName: {{ template "common.fullname" . }}-data
+            {{- end }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+
+{{- if (include "common.persistence.isEnabled" .) }}
+
+{{ include "common.persistence.validateVolumeConfig" ( dict "vol" ((.Values.persistence).activemq) "ctx" $ "name" "activemq" ) }}
+{{- if not (((.Values.persistence).activemq).claim).name }}
+{{- if not (((.Values.persistence).activemq).claim).spec }}
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ template "common.fullname" . }}-data
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "common.labels" . | nindent 4 }}
+{{- if (((.Values.persistence).activemq).annotations) }}
+{{- with .Values.persistence.activemq.annotations  }}
+  annotations:
+{{ toYaml . | indent 4 }}
+{{- end }}
+{{- end }}
+{{- if not (((.Values.persistence).activemq).volume) }}
+spec:
+  storageClassName: "manual"
+  persistentVolumeReclaimPolicy: Retain
+  accessModes:
+    - "ReadWriteOnce"
+  capacity:
+    storage: "5Gi"
+  hostPath:
+    path: "{{ coalesce (.Values.persistence).localPath ((.Values.global).persistence).localPath "/opt/app/arkcase" }}/data/alfresco-activemq"
+{{- else }}
+spec: {{- include "common.tplvalues.render" (dict "value" (((.Values.persistence).activemq).volume) "context" $) | nindent 2 }}
+{{- end }}
+{{- end }}
+
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: {{ template "common.fullname" . }}-data
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "common.labels" . | nindent 4 }}
+{{- if (((.Values.persistence).activemq).claim).spec }}
+spec: {{- include "common.tplvalues.render" (dict "value" (((.Values.persistence).activemq).claim.spec) "context" $) | nindent 2 }}
+{{- else }}
+spec:
+  storageClassName: "manual"
+  volumeName: {{ template "common.fullname" . }}-data
+  accessModes:
+    - "ReadWriteOnce"
+  resources:
+    requests:
+      storage: "5Gi"
+{{- end }}
+{{- end }}
+
+{{- end }}
+
+{{- end }}

@@ -1,0 +1,109 @@
+# Defines the deployment for the shared file store
+# Details: https://git.alfresco.com/Repository/alfresco-shared file store
+{{- if eq .Values.repository.edition "Enterprise" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "alfresco.shortname" . }}-filestore
+  labels:
+    {{- include "filestore.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.filestore.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "filestore.selectorLabels" . | nindent 6 }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+{{ toYaml .Values.global.strategy.rollingUpdate | indent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/config-filestore.yaml") . | sha256sum }}
+      labels:
+        {{- include "filestore.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- if .Values.global.alfrescoRegistryPullSecrets }}
+      # only set this secret if a private docker registry variable is defined
+      imagePullSecrets:
+        - name: {{ .Values.global.alfrescoRegistryPullSecrets }}
+      {{- end }}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 10
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - {{ template "alfresco.shortname" . }}-filestore
+              topologyKey: failure-domain.beta.kubernetes.io/zone
+          - weight: 5
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - {{ template "alfresco.shortname" . }}-filestore
+              topologyKey: kubernetes.io/hostname
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.filestore.image.repository }}:{{ .Values.filestore.image.tag }}"
+          imagePullPolicy: {{ .Values.filestore.image.pullPolicy }}
+          envFrom:
+          - configMapRef:
+              # config map to use, defined in config-filestore.yaml
+              name: {{ template "alfresco.shortname" . }}-filestore-configmap
+          ports:
+            - containerPort: {{ .Values.filestore.image.internalPort }}
+          resources:
+{{ toYaml .Values.filestore.resources | indent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: {{ .Values.filestore.image.internalPort }}
+            initialDelaySeconds: {{ .Values.filestore.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.filestore.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.filestore.readinessProbe.timeoutSeconds }}
+          livenessProbe:
+            httpGet:
+              path: /live
+              port: {{ .Values.filestore.image.internalPort }}
+            initialDelaySeconds: {{ .Values.filestore.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.filestore.livenessProbe.periodSeconds }}
+            failureThreshold: 1
+            timeoutSeconds: {{ .Values.filestore.livenessProbe.timeoutSeconds }}
+          volumeMounts:
+          - name: filestore
+            mountPath: "/tmp/Alfresco"
+            subPath: "alfresco-content-services/filestore-data"
+      {{- if and .Values.persistence.filestore.enabled .Values.persistence.chownWithDynamicProvisioning }}
+      initContainers:
+        - name: init-fs
+          image: "{{ .Values.filestore.initContainer.image.repository }}:{{ .Values.filestore.initContainer.image.tag }}"
+          imagePullPolicy: {{ .Values.filestore.initContainer.image.pullPolicy }}
+          resources:
+{{ toYaml .Values.filestore.initContainer.resources | indent 14 }}
+          # command to allow sfs to write to EFS volume.
+          command: ["sh", "-c", "chown -R 33030:1000 /tmp/Alfresco"]
+          volumeMounts:
+          - name: filestore
+            mountPath: "/tmp/Alfresco"
+            subPath: "alfresco-content-services/filestore-data"
+      {{- end }}
+      volumes:
+        - name: filestore
+          {{- if (include "common.persistence.isEnabled" .) }}
+          persistentVolumeClaim:
+            {{- if (((.Values.persistence).filestore).claim).name }}
+            claimName: {{ .Values.persistence.filestore.claim.name | quote }}
+            {{- else }}
+            claimName: {{ template "common.fullname" . }}-filestore
+            {{- end }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+{{- end }}

@@ -1,10 +1,14 @@
 apiVersion: v2
 name: ark-activemq
 description: Helm chart for ActiveMQ as used by ArkCase
-version: 0.1.2
+version: 0.1.3
 appVersion: "5.16.2"
 keywords:
   - activemq
   - message broker
 sources:
   - https://github.com/ArkCase/ark_helm_charts
+dependencies:
+  - name: ark-common
+    version: 0.1.0
+    repository: "https://arkcase.github.io/ark_helm_charts"
