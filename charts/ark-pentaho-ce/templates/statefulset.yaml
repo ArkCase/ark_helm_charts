@@ -296,7 +296,7 @@ metadata:
 spec:
   storageClassName: "manual"
   persistentVolumeReclaimPolicy: Retain
-        accessModes:
+  accessModes:
     - "ReadWriteOnce"
   capacity:
     storage: "1Gi"
@@ -323,8 +323,8 @@ spec:
   volumeName: {{ template "common.fullname" . }}-data
   accessModes:
     - "ReadWriteOnce"
-        resources:
-          requests:
+  resources:
+    requests:
       storage: "1Gi"
 {{- end }}
 {{- end }}

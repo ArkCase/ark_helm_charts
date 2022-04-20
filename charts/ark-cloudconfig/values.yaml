@@ -2,14 +2,15 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
+# Please keep the replicaCount to only 1 for time being.
 replicaCount: 1
 
 port: 9999
 image:
   repository: 345280441424.dkr.ecr.ap-south-1.amazonaws.com/ark_cloudconfig
-  pullPolicy: IfNotPresent
+  pullPolicy: Always
   # Overrides the image tag whose default is the chart appVersion.
-  tag: "20210809-d69903c"
+  tag: "latest"
 
 imagePullSecrets: []
 nameOverride: ""
@@ -21,8 +22,8 @@ podAnnotations: {}
 podSecurityContext: {}
 
 livenessProbe:
-  enabled: true
-  path: "/"
+  enabled: false
+  path: "/actuator/health"
   initialDelaySeconds: 180
   periodSeconds: 20
   timeoutSeconds: 5

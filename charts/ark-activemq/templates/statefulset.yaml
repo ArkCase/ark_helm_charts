@@ -146,7 +146,7 @@ metadata:
     {{- include "common.labels" . | nindent 4 }}
 {{- if (((.Values.persistence).data).annotations) }}
 {{- with .Values.persistence.data.annotations  }}
-        annotations:
+  annotations:
 {{ toYaml . | indent 4 }}
 {{- end }}
 {{- end }}
@@ -154,7 +154,7 @@ metadata:
 spec:
   storageClassName: "manual"
   persistentVolumeReclaimPolicy: Retain
-        accessModes:
+  accessModes:
     - "ReadWriteOnce"
   capacity:
     storage: "8Gi"

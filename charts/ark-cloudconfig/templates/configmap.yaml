@@ -25,7 +25,7 @@ data:
         file: "%d{yyyy-MM-dd HH:mm:ss,SSS} [%thread] %-5level %logger.%M - %msg%n"
     jms.message.buffer.window: 1
     acm.activemq:
-      broker-url: tcp://${ACTIVE_MQ_URL}:${ACTIVE_MQ_PORT}
+      broker-url: ssl://${ACTIVE_MQ_URL}:${ACTIVE_MQ_PORT}
       user: ${ACTIVE_MQ_USERNAME}
       password: ${ACTIVE_MQ_PASSWORD}
       default-destination: configuration.changed

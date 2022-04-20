@@ -8,4 +8,4 @@ metadata:
   namespace: {{ .Release.Namespace | quote }}
 data:
     applicationContext-security-ldap.properties: |
-      {{ .Values.ldap.externalHost.config | nindent 8 }}
+       {{ .Values.ldap.externalHost.config | nindent 8 }}

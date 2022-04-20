@@ -17,19 +17,42 @@ spec:
      annotations:
         timestamp: "{{ date "20060102150405" .Release.Time }}"
     spec:
+      hostAliases: 
+      - ip: "3.108.193.246"
+        hostnames:
+        - "arkcase-ce.local"  
+      serviceAccountName: "s3-sa" #Name of the SA we ‘re using
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       initContainers:
-        - name: arkcase-Extension
-          image: alpine/git
+        # - name: arkcase-extension
+        #   image: alpine/git
+        #   volumeMounts:
+        #     - name: persistent-data
+        #       mountPath: /data
+        #   command:
+        #     - git
+        #     - clone 
+        #     - https://github.com/ArkCase/.arkcase.git
+        #     -  /data
+        - name: arkcase-extension
+          image: amazon/aws-cli
           volumeMounts:
-            - name: git
+            - name: persistent-data
               mountPath: /data
           command:
-            - git
-            - clone 
-            - https://github.com/ArkCase/.arkcase.git
-            -  /data
+            - aws
+            - s3 
+            - sync
+            - "s3://arkcase-config/latest/"
+            - "/data"
+        # - name: config-checkout
+        #   image: bitnami/git
+        #   volumeMounts:
+        #     - name: persistent-data
+        #       mountPath: /data/.arkcase
+        #   command: ["/bin/sh","-c"]
+        #   args: ["cd /data/.arkcase && git checkout main"]
       containers:
         - name: {{ include "ark-cloudconfig.fullname" . | quote}}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
@@ -39,17 +62,17 @@ spec:
           - containerPort: {{ .Values.port }}
             name: http
             protocol: TCP
-          {{- if .Values.livenessProbe.enabled }}
-          livenessProbe:
-            httpGet:
-              path: {{ .Values.livenessProbe.path }}
-              port: {{ .Values.port }}
-            initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
-            periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
-            timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
-            successThreshold: {{ .Values.livenessProbe.successThreshold }}
-            failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
-          {{- end }}
+          # {{- if .Values.livenessProbe.enabled }}
+          # livenessProbe:
+          #   httpGet:
+          #     path: {{ .Values.livenessProbe.path }}
+          #     port: {{ .Values.port }}
+          #   initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+          #   periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+          #   timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+          #   successThreshold: {{ .Values.livenessProbe.successThreshold }}
+          #   failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
+          # {{- end }}
           env:
           - name: ark_extension_path
             value: "/data/.arkcase"
@@ -62,20 +85,26 @@ spec:
               subPath: application.yml
               readOnly: true
             - name: persistent-data
-              mountPath: "/data"
-            - name: git
               mountPath: "/data/.arkcase"
+            - name: server-config
+              mountPath: "/data/.arkcase/acm/acm-config-server-repo/arkcase-server.yaml"
+              subPath: arkcase-server.yaml
       volumes:
-        - name: git
-          emptyDir: {}
         - name: application-config
           configMap:
             name: {{ include "ark-cloudconfig.fullname" . }}
             items:
               - key: application.yml
                 path: application.yml
+        - name: server-config
+          configMap:
+            name: arkcase-server-config
+            items:
+              - key: arkcase-server.yaml
+                path: arkcase-server.yaml
+            defaultMode: 0777
         - name: persistent-data
           persistentVolumeClaim:
-            claimName: {{ .Values.arkcaseExtension.persistence.claimName }}
+            claimName: {{ .Values.global.arkcaseExtension.persistence.claimName }}
 
       

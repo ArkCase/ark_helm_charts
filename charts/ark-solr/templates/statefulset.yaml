@@ -81,7 +81,7 @@ spec:
                path: schema.xml
         - name: solr-config-xml
           configMap: 
-            name: {{ include "solr.configmap-name" . }}
+            name: {{ include "solr.configmap-name" . }} 
             items:
              - key: solrconfig.xml
                path: solrconfig.xml
