@@ -1,9 +1,10 @@
+{{- if or .Values.enabled (not (hasKey .Values "enabled")) }}
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "ark-activemq.fullname" . }}
+  name: {{ include "common.fullname" . }}
   labels:
-    {{- include "ark-activemq.labels" . | nindent 4 }}
+    {{- include "common.labels" . | nindent 4 }}
 spec:
   type: {{ .Values.serviceType }}
   clusterIP: None
@@ -45,4 +46,5 @@ spec:
       name: stomp
     {{- end }}
   selector:
-    {{- include "ark-activemq.selectorLabels" . | nindent 4 }}
+    {{- include "common.selectorLabels" . | nindent 4 }}
+{{- end }}

@@ -1,16 +1,18 @@
+{{- if or .Values.enabled (not (hasKey .Values "enabled")) }}
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "ark-snowbound.fullname" . }}
+  name: {{ include "common.fullname" . }}
   labels:
-    {{- include "ark-snowbound.labels" . | nindent 4 }}
+    {{- include "common.labels" . | nindent 4 }}
 spec:
   type: {{ .Values.serviceType }}
   clusterIP: None
   ports:
-    - port: {{ default 8080 .Values.snowbound_port }}
-      targetPort: {{ default 8080 .Values.snowbound_pod_port }}
+    - name: http
       protocol: TCP
-      name: http
+      port: {{ default 8080 .Values.snowbound_port }}
+      targetPort: {{ default 8080 .Values.snowbound_pod_port }}
   selector:
-    {{- include "ark-snowbound.selectorLabels" . | nindent 4 }}
+    {{- include "common.selectorLabels" . | nindent 4 }}
+{{- end }}
