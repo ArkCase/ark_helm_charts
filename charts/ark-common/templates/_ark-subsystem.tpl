@@ -100,23 +100,31 @@ Parameter: either the root context (i.e. "." or "$"), or
   {{- $map := (include "ark-subsys.subsystem" . | fromYaml) -}}
   {{- $ctx := $map.ctx -}}
   {{- $subsysName := $map.name -}}
-  {{- $enabled := (eq 1 0) -}}
-  {{- if (hasKey $ctx.Values.global.subsystem $subsysName) -}}
-    {{- $map := get $ctx.Values.global.subsystem $subsysName -}}
-    {{- if (hasKey $map "external") -}}
-      {{- $external := get $map "external" -}}
-      {{- if (hasKey $external "enabled") -}}
-        {{- $enabled = get $external "enabled" -}}
-        {{- if not (kindIs "bool" $enabled) -}}
-          {{- if (eq "true" (toString $enabled | lower)) -}}
-            {{- $enabled = true -}}
+  {{- if (hasKey $map "value") -}}
+    {{- $value := $map.value -}}
+    {{- if eq "." $value -}}
+      {{- fail "The value '.' is forbidden. Please use a full value name" -}}
+    {{- end -}}
+    {{- include "ark-subsys.subsystem.value" (dict "ctx" $ctx "subsystem" $subsysName "value" (printf "external.%s" $value)) -}}
+  {{- else -}}
+    {{- $enabled := (eq 1 0) -}}
+    {{- if (hasKey $ctx.Values.global.subsystem $subsysName) -}}
+      {{- $map := get $ctx.Values.global.subsystem $subsysName -}}
+      {{- if (hasKey $map "external") -}}
+        {{- $external := get $map "external" -}}
+        {{- if (hasKey $external "enabled") -}}
+          {{- $enabled = get $external "enabled" -}}
+          {{- if not (kindIs "bool" $enabled) -}}
+            {{- if (eq "true" (toString $enabled | lower)) -}}
+              {{- $enabled = true -}}
+            {{- end -}}
           {{- end -}}
         {{- end -}}
       {{- end -}}
     {{- end -}}
-  {{- end -}}
-  {{- if $enabled -}}
-    true
+    {{- if $enabled -}}
+      true
+    {{- end -}}
   {{- end -}}
 {{- end -}}
 
