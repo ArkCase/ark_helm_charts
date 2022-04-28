@@ -1,7 +1,7 @@
 {{- /*
 Return a map which contains the "ctx", "subsystem" and "value" keys as required by other API calls
 */ -}}
-{{- define "ark-subsys.subsystem" -}}
+{{- define "arkcase.subsystem" -}}
   {{- $ctx := . -}}
   {{- $subsysName := "" -}}
   {{- $param := "" -}}
@@ -84,8 +84,8 @@ Identify the subsystem being used
 
 Parameter: "optional" (not used)
 */ -}}
-{{- define "ark-subsys.subsystem.name" -}}
-  {{- get (include "ark-subsys.subsystem" . | fromYaml) "name" -}}
+{{- define "arkcase.subsystem.name" -}}
+  {{- get (include "arkcase.subsystem" . | fromYaml) "name" -}}
 {{- end -}}
 
 {{- /*
@@ -96,8 +96,8 @@ Parameter: either the root context (i.e. "." or "$"), or
              - ctx = the root context (either "." or "$")
              - subsystem = a string with the name of the subsystem to query
 */ -}}
-{{- define "ark-subsys.subsystem.external" -}}
-  {{- $map := (include "ark-subsys.subsystem" . | fromYaml) -}}
+{{- define "arkcase.subsystem.external" -}}
+  {{- $map := (include "arkcase.subsystem" . | fromYaml) -}}
   {{- $ctx := $map.ctx -}}
   {{- $subsysName := $map.name -}}
   {{- $enabled := (eq 1 0) -}}
@@ -121,7 +121,7 @@ Parameter: either the root context (i.e. "." or "$"), or
       {{- if eq "." $value -}}
         {{- fail "The value '.' is forbidden. Please use a full value name" -}}
       {{- end -}}
-      {{- include "ark-subsys.subsystem.value" (dict "ctx" $ctx "subsystem" $subsysName "value" (printf "external.%s" $value)) -}}
+      {{- include "arkcase.subsystem.value" (dict "ctx" $ctx "subsystem" $subsysName "value" (printf "external.%s" $value)) -}}
     {{- else -}}
       true
     {{- end -}}
@@ -137,8 +137,8 @@ Parameter: either the root context (i.e. "." or "$"), or
              - subsystem = a string with the name of the subsystem to query
              - value = a string with the name/path of the value to query
 */ -}}
-{{- define "ark-subsys.subsystem.value" -}}
-  {{- $map := (include "ark-subsys.subsystem" . | fromYaml) -}}
+{{- define "arkcase.subsystem.value" -}}
+  {{- $map := (include "arkcase.subsystem" . | fromYaml) -}}
   {{- $ctx := $map.ctx -}}
   {{- $subsysName := $map.name -}}
   {{- if not (hasKey $map "value") -}}
