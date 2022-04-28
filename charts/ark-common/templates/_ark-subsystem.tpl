@@ -1,13 +1,18 @@
 {{- /*
-Return a map which contains the "subsys", "param" and "ctx" keys as required by other API calls
+Return a map which contains the "ctx", "subsys" and "value" keys as required by other API calls
 */ -}}
 {{- define "ark-subsys.subsystem" -}}
   {{- $ctx := . -}}
   {{- $subsys := "" -}}
+  {{- $param := "" -}}
   {{- if hasKey $ctx "Values" -}}
     {{- /* we're fine, we're auto-detecting */ -}}
   {{- else if and (hasKey $ctx "subsys") (hasKey $ctx "ctx") -}}
     {{- $subsys = (toString $ctx.subsys) -}}
+    {{- /* Does it also have a value specification? */ -}}
+    {{- if (hasKey $ctx "value") -}}
+      {{- $param = (toString $ctx.value | required "The 'value' parameter may not be the empty string") -}}
+    {{- end -}}
     {{- $ctx = $ctx.ctx -}}
   {{- else -}}
     {{- fail "The provided dictionary must either have 'Values', or both 'subsys' and 'ctx' parameters" -}}
@@ -49,9 +54,9 @@ Return a map which contains the "subsys", "param" and "ctx" keys as required by 
   {{- end -}}
   {{- $map = (set $map "data" $data) -}}
 
-  {{- /* Does it also have a parameter specification? */ -}}
-  {{- if hasKey $ctx "param" -}}
-    {{- $param := (set $map "param" (toString (get $ctx "param"))) -}}
+  {{- /* Set the parameter specification, if any */ -}}
+  {{- if (not (empty $param)) -}}
+    {{- $param = (set $map "value" $param) -}}
   {{- end -}}
 
   {{- $map | toYaml | nindent 0 -}}
@@ -71,51 +76,50 @@ Identify whether the subsystem's external endpoint is to be used or not
 
 Parameter: either the root context (i.e. "." or "$"), or
            a dict with two keys:
-             - subsys = a string with the name of the subsystem to query
              - ctx = the root context (either "." or "$")
+             - subsys = a string with the name of the subsystem to query
+             - value = (optional) a string with the name/path of the value to query (will be evaled with tpl)
 */ -}}
 {{- define "ark-subsys.subsystem.external" -}}
   {{- $map := (include "ark-subsys.subsystem" . | fromYaml) -}}
   {{- $ctx := $map.ctx -}}
   {{- $subsys := $map.subsys -}}
-  {{- $enabled := (eq 1 0) -}}
-  {{- if (hasKey $ctx.Values.global.subsystem $subsys) -}}
-    {{- $map := get $ctx.Values.global.subsystem $subsys -}}
-    {{- if (hasKey $map "external") -}}
-      {{- $external := get $map "external" -}}
-      {{- if (hasKey $external "enabled") -}}
-        {{- $enabled = get $external "enabled" -}}
-        {{- if not (kindIs "bool" $enabled) -}}
-          {{- if (eq "true" (toString $enabled | lower)) -}}
-            {{- $enabled = true -}}
+  {{- if (hasKey $map "value") -}}
+    {{- $key := (printf "SubSystemData%s" (camelcase $map.subsys)) -}}
+    {{- if not (hasKey $ctx $key) -}}
+      {{- $crap := (set $ctx $key $map.data) -}}
+    {{- end -}}
+    {{- $value := $map.value -}}
+    {{- if (eq "." $value) -}}
+      {{- $value = "" -}}
+    {{- end -}}
+    {{- /* TODO: This will always return a string ... how do we get the actual object? */ -}}
+    {{- $value = (tpl (printf "{{ .%s%s }}" $key $value) $ctx) -}}
+    {{- /* If the value is a scalar, then just spit it out, otherwise toYaml it for consumption on the other end */ -}}
+    {{- $type := (typeOf $value) -}}
+    {{- if or (eq "string" $type) (eq "bool" $type) (eq "int" $type) (eq "float64" $type) -}}
+      {{- $value -}}
+    {{- else -}}
+      {{- $value | toYaml | nindent 0 -}}
+    {{- end -}}
+  {{- else -}}
+    {{- $enabled := (eq 1 0) -}}
+    {{- if (hasKey $ctx.Values.global.subsystem $subsys) -}}
+      {{- $map := get $ctx.Values.global.subsystem $subsys -}}
+      {{- if (hasKey $map "external") -}}
+        {{- $external := get $map "external" -}}
+        {{- if (hasKey $external "enabled") -}}
+          {{- $enabled = get $external "enabled" -}}
+          {{- if not (kindIs "bool" $enabled) -}}
+            {{- if (eq "true" (toString $enabled | lower)) -}}
+              {{- $enabled = true -}}
+            {{- end -}}
           {{- end -}}
         {{- end -}}
       {{- end -}}
     {{- end -}}
+    {{- if $enabled -}}
+      true
+    {{- end -}}
   {{- end -}}
-  {{- if $enabled -}}
-    true
-  {{- end -}}
-{{- end -}}
-
-{{- /*
-Retrieve a parameter for the external subsystem.
-
-Parameter: a dict with either two or three keys:
-             - subsys = (optional) a string with the name of the subsystem to query
-             - value = a string with the name/path of the value to query (will be evaled with tpl)
-             - ctx = the root context (either "." or "$")
-*/ -}}
-{{- define "ark-subsys.subsystem.external.get" -}}
-  {{- $map := (include "ark-subsys.subsystem" . | fromYaml) -}}
-  {{- $ctx := $map.ctx -}}
-  {{- $subsys := $map.subsys -}}
-  {{- if not (hasKey $map "param") -}}
-    {{- fail "Must provide the name of the parameter to fetch in the parameter dict" -}}
-  {{- else if empty $map.param -}}
-    {{- fail "The name of the parameter to fetch may not be empty in the parameter dict" -}}
-  {{- end -}}
-  {{- $value := (tpl $map.param $map.data) -}}
-  {{- /* TODO: If the value is a scalar, then just spit it out, otherwise toYaml it for consumption on the other end */ -}}
-  {{- $value -}}
 {{- end -}}
