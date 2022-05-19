@@ -92,11 +92,18 @@ Render the PersistentVolume and PersistentVolumeClaim objects for a given volume
     {{- end -}}
     {{- include "arkcase.persistence.validateVolumeConfig" ( dict "vol" $volumeData "ctx" $ctx "name" $volumeName ) -}}
 
-    {{- $defaults := (include "arkcase.tools.get" (dict "ctx" $ctx "name" ".Values.persistence.defaults") | fromYaml | default dict) -}}
+    {{- $globalDefaults := (include "arkcase.tools.get" (dict "ctx" $ctx "name" ".Values.global.persistence.defaults") | fromYaml | default dict) -}}
+    {{- $localDefaults := (include "arkcase.tools.get" (dict "ctx" $ctx "name" ".Values.persistence.defaults") | fromYaml | default dict) -}}
+
+    {{- /* Overlay localDefaults on top of globalDefaults */ -}}
+    {{- $defaults := mergeOverwrite $globalDefaults $localDefaults -}}
     {{- $defaultSize := (include "arkcase.tools.get" (dict "ctx" $defaults "name" "size") | default "1Gi") -}}
     {{- $defaultReclaimPolicy := (include "arkcase.tools.get" (dict "ctx" $defaults "name" "persistentVolumeReclaimPolicy") | default "Retain") -}}
     {{- $defaultStorageClassName := (include "arkcase.tools.get" (dict "ctx" $defaults "name" "storageClassName") | default "manual") -}}
     {{- $defaultAccessModes := (include "arkcase.tools.get" (dict "ctx" $defaults "name" "accessModes")) -}}
+    {{- if not $defaultAccessModes -}}
+      {{- $defaultAccessModes = "- ReadWriteOnce" -}}
+    {{- end -}}
 
     {{- $claimName := (($volumeData.claim).name) -}}
     {{- $claimSpec := (($volumeData.claim).spec) -}}
