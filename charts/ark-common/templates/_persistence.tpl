@@ -35,6 +35,5 @@ Check if persistence is enabled, assuming a missing setting defaults to true
 {{- define "common.persistence.isEnabled" -}}
 {{- if (and (or ((.Values.global).persistence).enabled (not (hasKey ((.Values.global).persistence | default dict) "enabled"))) (or (.Values.persistence).enabled (not (hasKey (.Values.persistence | default dict) "enabled")))) }}
 {{- true -}}
-{{- else -}}
 {{- end -}}
 {{- end -}}
