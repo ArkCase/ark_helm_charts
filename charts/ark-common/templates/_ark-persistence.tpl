@@ -19,8 +19,8 @@ Verify that the persistence configuration is good
          {{- fail $message -}}
       {{- end -}}
     {{- end -}}
-    {{- if (.volume) -}}
-      {{- $hasVolumeSpec = (lt 0 (len (.volume))) -}}
+    {{- if (.spec) -}}
+      {{- $hasVolumeSpec = (lt 0 (len (.spec))) -}}
     {{- end -}}
     {{- if and (or $hasClaimSpec $hasClaimName) $hasVolumeSpec -}}
        {{- $message := printf "The persistence definition for [%s] has both a claim definition and volume specifictions, choose only one" $name -}}
@@ -68,4 +68,93 @@ name: {{ $volumeName | quote }}
   {{- else }}
   emptyDir: {}
   {{- end }}
+{{- end -}}
+
+{{- /*
+Render the PersistentVolume and PersistentVolumeClaim objects for a given volume, per configurations
+*/ -}}
+{{- define "arkcase.persistence.declareVolume" -}}
+  {{- $ctx := .ctx -}}
+  {{- if not $ctx -}}
+    {{- fail "Must provide the 'ctx' context to find the configuration data" -}}
+  {{- end -}}
+  {{- $volumeName := .name -}}
+  {{- if not $volumeName -}}
+    {{- fail "Must provide the 'name' of the volume objects to declare" -}}
+  {{- end -}}
+
+  {{- if (include "arkcase.persistence.enabled" $ctx) -}}
+
+    {{- $objectName := (printf "%s-%s" (include "common.fullname" $ctx) $volumeName) -}}
+    {{- $volumeData := dict -}}
+    {{- if (include "arkcase.tools.check" (dict "ctx" $ctx "name" (printf ".Values.persistence.%s" $volumeName))) -}}
+      {{- $volumeData = (include "arkcase.tools.get" (dict "ctx" $ctx "name" (printf ".Values.persistence.%s" $volumeName)) | fromYaml) -}}
+    {{- end -}}
+    {{- include "arkcase.persistence.validateVolumeConfig" ( dict "vol" $volumeData "ctx" $ctx "name" $volumeName ) -}}
+
+    {{- $defaults := (include "arkcase.tools.get" (dict "ctx" $ctx "name" ".Values.persistence.defaults") | fromYaml | default dict) -}}
+    {{- $defaultSize := (include "arkcase.tools.get" (dict "ctx" $defaults "name" "size") | default "1Gi") -}}
+    {{- $defaultReclaimPolicy := (include "arkcase.tools.get" (dict "ctx" $defaults "name" "persistentVolumeReclaimPolicy") | default "Retain") -}}
+    {{- $defaultStorageClassName := (include "arkcase.tools.get" (dict "ctx" $defaults "name" "storageClassName") | default "manual") -}}
+    {{- $defaultAccessModes := (include "arkcase.tools.get" (dict "ctx" $defaults "name" "accessModes")) -}}
+
+    {{- $claimName := (($volumeData.claim).name) -}}
+    {{- $claimSpec := (($volumeData.claim).spec) -}}
+
+    {{- if not $claimName -}}
+    {{- if not $claimSpec -}}
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ $objectName | quote }}
+  namespace: {{ $ctx.Release.Namespace | quote }}
+  labels:
+    {{- include "common.labels" $ctx | nindent 4 }}
+{{- if ($volumeData.annotations) }}
+{{- with $volumeData.annotations  }}
+  annotations:
+{{ toYaml . | indent 4 }}
+{{- end }}
+{{- end }}
+spec:
+{{- if ($volumeData.spec) -}}
+  {{- $volumeData.spec | toYaml | nindent 2 -}}
+{{- else }}
+  storageClassName: {{ $defaultStorageClassName | quote }}
+  persistentVolumeReclaimPolicy: {{ $defaultReclaimPolicy | quote }}
+  accessModes: {{- $defaultAccessModes | nindent 4 }}
+  capacity:
+    storage: {{ $defaultSize | quote }}
+  hostPath:
+    {{- $hostPath := coalesce ($ctx.Values.persistence).localPath (($ctx.Values.global).persistence).localPath "/opt/app/arkcase" -}}
+    {{- $hostPath = (printf "%s/%s/%s" $hostPath (include "arkcase.subsystem.name" $ctx) $volumeName) }}
+    path: {{ $hostPath | quote }}
+{{- end }}
+
+    {{- end }}
+
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: {{ $objectName | quote }}
+  namespace: {{ $ctx.Release.Namespace | quote }}
+  labels:
+    {{- include "common.labels" $ctx | nindent 4 }}
+spec:
+{{- if ($claimSpec) -}}
+  {{- $claimSpec | toYaml | nindent 2 }}
+{{- else }}
+  storageClassName: {{ $defaultStorageClassName | quote }}
+  volumeName: {{ $objectName | quote }}
+  accessModes: {{- $defaultAccessModes | nindent 4 }}
+  resources:
+    requests:
+      storage: {{ $defaultSize | quote }}
+{{- end }}
+    {{- end -}}
+
+  {{- end -}}
+
 {{- end -}}
