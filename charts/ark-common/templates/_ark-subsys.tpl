@@ -116,7 +116,7 @@ spec:
   ports:
     {{- range $service.ports }}
     - name: {{ .name | required  "No port name given" | quote }}
-      protocol: {{ .protocol | required "No port protocol given" | quote }}
+      protocol: {{ .protocol | default "TCP" | quote }}
       port: {{ (int .port) | required "Port number must not be 0" }}
       targetPort: {{ (int .targetPort) | default (int .port) }}
     {{- end }}
@@ -145,7 +145,7 @@ subsets:
   ports:
     {{- range $service.ports }}
     - name: {{ .name | required  "No port name given" | quote }}
-      protocol: {{ .protocol | required "No port protocol given" | quote }}
+      protocol: {{ .protocol | default "TCP" | quote }}
       port: {{ (int .port) | required "Port number must not be 0" }}
       targetPort: {{ (int .targetPort) | default (int .port) }}
     {{- end }}
