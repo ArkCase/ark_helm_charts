@@ -90,3 +90,65 @@ Parameter: either the root context (i.e. "." or "$"), or
     true
   {{- end -}}
 {{- end -}}
+
+{{- /*
+Render subsystem service declarations based on whether an external host declaration is provided or not
+*/ -}}
+{{- define "arkcase.subsystem.service" -}}
+  {{- $service := (include "arkcase.tools.get" (dict "ctx" . "name" ".Values.service") | fromYaml | default dict) -}}
+  {{- $serviceName := (include "arkcase.subsystem.name" .) -}}
+  {{- /* Check to see if there are any ports defined ... there must be at least one */ -}}
+  {{- if not (empty $service.ports) }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $serviceName | quote }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+	{{- include "common.labels" . | nindent 4 }}
+spec:
+  {{- if ($service.host) -}}
+    {{- if not (include "arkcase.tools.isIp" $service.host) }}
+  type: "ExternalName"
+  externalName: {{ $service.host | quote }}
+    {{- else }}
+  ports:
+    {{- range $service.ports }}
+    - name: {{ .name | required  "No port name given" | quote }}
+      protocol: {{ .protocol | required "No port protocol given" | quote }}
+      port: {{ (int .port) | required "Port number must not be 0" }}
+      targetPort: {{ (int .targetPort) | default (int .port) }}
+    {{- end }}
+---
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: {{ $serviceName | quote }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+	{{- include "common.labels" . | nindent 4 }}
+subsets:
+  - addresses:
+      - ip: {{ $service.host | quote }}
+    ports:
+    {{- range $service.ports }}
+      - name: {{ .name | required  "No port name given" | quote }}
+        port: {{ (int .port) | required "Port number must not be 0" }}
+    {{- end }}
+    {{- end -}}
+  {{- else }}
+  type: {{ $service.type | default "NodePort" | quote }}
+  selector:
+    # Is this correct?
+    {{- include "common.labels" . | nindent 4 }}
+  ports:
+    {{- range $service.ports }}
+    - name: {{ .name | required  "No port name given" | quote }}
+      protocol: {{ .protocol | required "No port protocol given" | quote }}
+      port: {{ (int .port) | required "Port number must not be 0" }}
+      targetPort: {{ (int .targetPort) | default (int .port) }}
+    {{- end }}
+  {{- end -}}
+  {{- end -}}
+{{- end -}}
