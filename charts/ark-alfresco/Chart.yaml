@@ -1,7 +1,7 @@
-#
 apiVersion: v2
 name: ark-alfresco
-version: 5.1.0-M2-ark
+version: 0.1.1
+appVersion: "5.1.0-M2"
 description: A Helm chart for deploying Alfresco Content Services
 keywords:
   - content
@@ -26,15 +26,15 @@ dependencies:
     repository: https://activiti.github.io/activiti-cloud-helm-charts
     version: 7.1.0-M12
     condition: alfresco-content-services.alfresco-digital-workspace.enabled,alfresco-digital-workspace.enabled
-  - name: activemq
-    version: 2.0.0-ark
-  - name: alfresco-search
-    version: 1.0.4-ark
+  - name: ark-alfresco-activemq
+    version: 0.1.1
+  - name: ark-alfresco-search
+    version: 0.1.1
     condition: alfresco-search.enabled
-  - name: alfresco-sync-service
-    version: 3.0.8-ark
+  - name: ark-alfresco-sync-service
+    version: 0.1.1
     condition: alfresco-sync-service.syncservice.enabled
   - name: ark-common
-    version: 0.1.0
+    version: 0.1.2
     repository: "https://arkcase.github.io/ark_helm_charts"
 icon: https://avatars0.githubusercontent.com/u/391127?s=200&v=4
