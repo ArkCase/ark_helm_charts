@@ -1,4 +1,4 @@
-{{- if or .Values.enabled (not (hasKey .Values "enabled")) }}
+{{- if (include "arkcase.tools.enabled" .) }}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -119,6 +119,9 @@ spec:
               mountPath: "/app/conf"
               readOnly: true
       volumes:
+        {{- include "arkcase.persistence.volume" (dict "name" "data" "ctx" $) | nindent 8 }}
+        {{- include "arkcase.persistence.volume" (dict "name" "conf" "ctx" $) | nindent 8 }}
+        {{- include "arkcase.persistence.volume" (dict "name" "logs" "ctx" $) | nindent 8 }}
         - name: secrets
           secret:
             secretName: {{ include "common.fullname" . }}

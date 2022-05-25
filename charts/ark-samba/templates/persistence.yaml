@@ -1,7 +1,7 @@
 {{- if (and (include "arkcase.tools.enabled" .) (include "arkcase.persistence.enabled" .)) }}
 
-{{ include "arkcase.persistence.declareVolume" (dict "ctx" $ "name" "data") | nindent 0 }}
-{{ include "arkcase.persistence.declareVolume" (dict "ctx" $ "name" "conf") | nindent 0 }}
-{{ include "arkcase.persistence.declareVolume" (dict "ctx" $ "name" "logs") | nindent 0 }}
+{{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "data") | nindent 0 }}
+{{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "conf") | nindent 0 }}
+{{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "logs") | nindent 0 }}
 
 {{- end -}}
