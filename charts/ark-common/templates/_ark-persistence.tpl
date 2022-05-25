@@ -63,10 +63,10 @@ Render a volumes: entry for a given volume, as per the persistence model
     {{- if $explicitClaimName -}}
       {{- $claimName = $explicitClaimName -}}
     {{- end }}
-    persistentVolumeClaim:
-      claimName: {{ $claimName | quote }}
+  persistentVolumeClaim:
+    claimName: {{ $claimName | quote }}
   {{- else }}
-    emptyDir: {}
+  emptyDir: {}
   {{- end }}
 {{- end -}}
 
