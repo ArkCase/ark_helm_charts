@@ -177,3 +177,12 @@ usage: ( include "arkcase.tools.check" (dict "ctx" $ "name" "some.name.to.find")
   {{- $crap = set . "test" "true" -}}
   {{- include "arkcase.tools.get" . -}}
 {{- end -}}
+
+{{- /*
+Check to see if the "enabled" value is set to "true", or is not set (which causes it to default to "true")
+*/ -}}
+{{- define "arkcase.tools.enabled" -}}
+  {{- if or .Values.enabled (not (hasKey .Values "enabled")) -}}
+    {{- true -}}
+  {{- end -}}
+{{- end -}}

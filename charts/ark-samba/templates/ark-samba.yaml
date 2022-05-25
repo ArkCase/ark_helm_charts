@@ -119,39 +119,9 @@ spec:
               mountPath: "/app/conf"
               readOnly: true
       volumes:
-        - name: "data"
-          {{- if (include "common.persistence.isEnabled" .) }}
-          persistentVolumeClaim:
-            {{- if (((.Values.persistence).data).claim).name }}
-            claimName: {{ .Values.persistence.data.claim.name | quote }}
-            {{- else }}
-            claimName: {{ template "common.fullname" . }}-data
-            {{- end }}
-          {{- else }}
-          emptyDir: {}
-          {{- end }}
-        - name: "conf"
-          {{- if (include "common.persistence.isEnabled" .) }}
-          persistentVolumeClaim:
-            {{- if (((.Values.persistence).conf).claim).name }}
-            claimName: {{ .Values.persistence.conf.claim.name | quote }}
-            {{- else }}
-            claimName: {{ template "common.fullname" . }}-conf
-            {{- end }}
-          {{- else }}
-          emptyDir: {}
-          {{- end }}
-        - name: "logs"
-          {{- if (include "common.persistence.isEnabled" .) }}
-          persistentVolumeClaim:
-            {{- if (((.Values.persistence).logs).claim).name }}
-            claimName: {{ .Values.persistence.logs.claim.name | quote }}
-            {{- else }}
-            claimName: {{ template "common.fullname" . }}-logs
-            {{- end }}
-          {{- else }}
-          emptyDir: {}
-          {{- end }}
+        - {{ include "arkcase.persistence.volumeMount" (dict "name" "data" "ctx" $) }}
+        - {{ include "arkcase.persistence.volumeMount" (dict "name" "conf" "ctx" $) }}
+        - {{ include "arkcase.persistence.volumeMount" (dict "name" "logs" "ctx" $) }}
         - name: secrets
           secret:
             secretName: {{ include "common.fullname" . }}
