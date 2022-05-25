@@ -52,28 +52,28 @@ Check if persistence is enabled, assuming a missing setting defaults to true
 {{- end -}}
 
 {{- /*
-Render a volumeMount entry for a given volume, as per the persistence model
+Render a volumes: entry for a given volume, as per the persistence model
 */ -}}
-{{- define "arkcase.persistence.volumeMount" -}}
+{{- define "arkcase.persistence.volume" -}}
   {{- $volumeName := .name -}}
-name: {{ $volumeName | quote }}
+- name: {{ $volumeName | quote }}
   {{- if (include "arkcase.persistence.enabled" .ctx) -}}
     {{- $claimName := (printf "%s-%s" (include "common.fullname" .ctx) $volumeName ) -}}
     {{- $explicitClaimName := (include "arkcase.tools.get" (dict "ctx" .ctx "name" (printf ".Values.persistence.%s.claim.name" $volumeName) )) -}}
     {{- if $explicitClaimName -}}
       {{- $claimName = $explicitClaimName -}}
     {{- end }}
-  persistentVolumeClaim:
-    claimName: {{ $claimName | quote }}
+    persistentVolumeClaim:
+      claimName: {{ $claimName | quote }}
   {{- else }}
-  emptyDir: {}
+    emptyDir: {}
   {{- end }}
 {{- end -}}
 
 {{- /*
 Render the PersistentVolume and PersistentVolumeClaim objects for a given volume, per configurations
 */ -}}
-{{- define "arkcase.persistence.declareVolume" -}}
+{{- define "arkcase.persistence.declareObjects" -}}
   {{- $ctx := .ctx -}}
   {{- if not $ctx -}}
     {{- fail "Must provide the 'ctx' context to find the configuration data" -}}

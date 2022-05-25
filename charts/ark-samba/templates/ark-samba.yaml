@@ -119,9 +119,6 @@ spec:
               mountPath: "/app/conf"
               readOnly: true
       volumes:
-        - {{ include "arkcase.persistence.volumeMount" (dict "name" "data" "ctx" $) }}
-        - {{ include "arkcase.persistence.volumeMount" (dict "name" "conf" "ctx" $) }}
-        - {{ include "arkcase.persistence.volumeMount" (dict "name" "logs" "ctx" $) }}
         - name: secrets
           secret:
             secretName: {{ include "common.fullname" . }}
