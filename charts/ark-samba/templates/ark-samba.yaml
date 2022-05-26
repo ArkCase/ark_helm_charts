@@ -2,8 +2,8 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ include "common.fullname" . }}
-  namespace: {{ .Release.Namespace }}
+  name: {{ include "common.fullname" . | quote }}
+  namespace: {{ .Release.Namespace | quote }}
   labels:
     {{- include "common.labels" . | nindent 4 }}
 spec:
@@ -13,7 +13,7 @@ spec:
   selector:
     matchLabels:
       {{- include "common.selectorLabels" . | nindent 6 }}
-  serviceName: {{ include "common.fullname" . }}
+  serviceName: {{ include "common.fullname" . | quote }}
   updateStrategy:
     type: {{ .Values.updateStrategy }}
     {{- if (eq "Recreate" .Values.updateStrategy) }}

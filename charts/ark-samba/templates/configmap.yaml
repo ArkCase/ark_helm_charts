@@ -2,8 +2,8 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "common.fullname" . }}
-  namespace: {{ .Release.Namespace }}
+  name: {{ include "common.fullname" . | quote }}
+  namespace: {{ .Release.Namespace | quote }}
   labels: {{- include "common.labels.standard" . | nindent 4 }}
     {{- if .Values.commonLabels }}
     {{- include "common.tplvalues.render" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
@@ -13,5 +13,5 @@ metadata:
   {{- end }}
 data:
   my.cnf: |-
-{{ .Values.configuration | indent 4 }}
+    {{ .Values.configuration | indent 4 }}
 {{- end }}
