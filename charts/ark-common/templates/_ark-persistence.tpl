@@ -116,14 +116,20 @@ kind: PersistentVolume
 metadata:
   name: {{ $objectName | quote }}
   namespace: {{ $ctx.Release.Namespace | quote }}
-  labels:
-    {{- include "common.labels" $ctx | nindent 4 }}
-{{- if ($volumeData.annotations) }}
-{{- with $volumeData.annotations  }}
+  labels: {{- include "common.labels" $ctx | nindent 4 }}
+    {{- with $ctx.Values.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- with $volumeData.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
   annotations:
-{{ toYaml . | indent 4 }}
-{{- end }}
-{{- end }}
+  {{- with $ctx.Values.annotations  }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with $volumeData.annotations  }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
 {{- if ($volumeData.spec) -}}
   {{- $volumeData.spec | toYaml | nindent 2 -}}
@@ -147,8 +153,20 @@ apiVersion: v1
 metadata:
   name: {{ $objectName | quote }}
   namespace: {{ $ctx.Release.Namespace | quote }}
-  labels:
-    {{- include "common.labels" $ctx | nindent 4 }}
+  labels: {{- include "common.labels" $ctx | nindent 4 }}
+    {{- with $ctx.Values.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- with $volumeData.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  annotations:
+  {{- with $ctx.Values.annotations  }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with $volumeData.annotations  }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
 {{- if ($claimSpec) -}}
   {{- $claimSpec | toYaml | nindent 2 }}
