@@ -10,8 +10,9 @@ nameOverride: ""
 fullnameOverride: ""
 
 #Comman Labels to add to all solr resources
-commonLabels: {}
-port: 8983
+labels:
+  # add labels common to all objects here
+
 ## deployment options
 # general: Minikube 
 # eks: Amazon Elastic Kubernetes Service
@@ -21,36 +22,78 @@ image:
   pullPolicy: IfNotPresent 
   # Overrides the image tag whose default is the chart appVersion.
   tag: "latest"
+
 podAnnotations: {}
 
 podSecurityContext: 
   fsGroup: 2000
 
 persistence:
-## persistence.enabled Enable persistence for Solr application using a PersistenceVolumeClaim
   enabled: true
-  name: ""
-  storageClass: ""
-  fsHandlerId: ""
-  #example 20G
-  size: 8Gi
-  existingClaim: ""
-  accessModes:
-    - ReadWriteOnce
+
+# Use this when not using other persistent volumes, to point to the root location
+# where the directories need to be created
+  localPath: "/opt/app/arkcase"
+
+#
+# There is 1 volume supported: data
+#
+  data:
+# The "spec" should match the contents of PersistenceVolume.spec
+    spec:
+#      storageClassName: "manual"
+#      persistentVolumeReclaimPolicy: Retain
+#      accessModes:
+#        - "ReadWriteOnce"
+#      capacity:
+#        storage: "10Gi"
+#      hostPath:
+#        path: /tmp/samba/data
+#
+    claim:
+# "name" is the name of an existing volume claim to be re-used, can't be used if "claim" is present
+#      name: "name-of-the-claim-to-consume"
+# "spec" should match the contents of PersistenceVolumeClaim.spec, can't be used if "name" is present
+#      spec: 
+#        storageClassName: ""
+#        volumeName: the-volume-to-claim
+#        accessModes:
+#          - "ReadWriteOnce"
+#        resources:
+#          limits: ""
+#          requests: ""
+#        selector:
+#          matchExpressions:
+#            - values:
+#                - ""
+#                - ""
+#                - ""
+#                ...
+#              operator: "In"|"NotIn"|"Exists"|"DoesNotExist"
+#              key: "labelKey"
+#            - values:
+#                - ""
+#                - ""
+#                - ""
+#                ...
+#              operator: "In"|"NotIn"|"Exists"|"DoesNotExist"
+#              key: "labelKey"
+#          matchLabels: "....."
+
 ## Solr Service parameters
 service:
   type: ClusterIP
   nodePort: ""
+
+##
 ## Configure extra options for containers' liveness and readiness probes
 ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/#configure-probes
 ## @param livenessProbe.enabled Enable liveness probe
-## @param livenessProbe.path Path to access on the HTTP server
-## @param livenessProbe.port Port for livenessProbe
-## @param livenessProbe.initialDelaySeconds Initial delay seconds for livenessProbe
-## @param livenessProbe.periodSeconds Period seconds for livenessProbe
-## @param livenessProbe.timeoutSeconds Timeout seconds for livenessProbe
-## @param livenessProbe.failureThreshold Failure threshold for livenessProbe
-## @param livenessProbe.successThreshold Success threshold for livenessProbe
+## @param livenessProbe.spec.initialDelaySeconds Initial delay seconds for livenessProbe
+## @param livenessProbe.spec.periodSeconds Period seconds for livenessProbe
+## @param livenessProbe.spec.timeoutSeconds Timeout seconds for livenessProbe
+## @param livenessProbe.spec.failureThreshold Failure threshold for livenessProbe
+## @param livenessProbe.spec.successThreshold Success threshold for livenessProbe
 ##
 livenessProbe:
   enabled: true
@@ -60,6 +103,7 @@ livenessProbe:
     timeoutSeconds: 5
     failureThreshold: 6
     successThreshold: 1
+
 resources: 
   ## Example
   # limits:
