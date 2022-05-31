@@ -30,6 +30,8 @@ podSecurityContext:
   fsGroup: 2000
 
 persistence:
+  # If set to `false`, an `emptyDir` will be used instead and all other `persistence.*` parameters
+  # are ignored.
   enabled: true
 
 # Use this when not using other persistent volumes, to point to the root location
