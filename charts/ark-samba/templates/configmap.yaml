@@ -4,12 +4,12 @@ kind: ConfigMap
 metadata:
   name: {{ include "common.fullname" . | quote }}
   namespace: {{ .Release.Namespace | quote }}
-  labels: {{- include "common.labels.standard" . | nindent 4 }}
-    {{- if .Values.commonLabels }}
-    {{- include "common.tplvalues.render" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
+  labels: {{- include "common.labels" . | nindent 4 }}
+    {{- if .Values.labels }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.labels "context" $ ) | nindent 4 }}
     {{- end }}
-  {{- if .Values.commonAnnotations }}
-  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- with .Values.annotations }}
+  annotations: {{- toYaml . | nindent 4 }}
   {{- end }}
 data:
   my.cnf: |-

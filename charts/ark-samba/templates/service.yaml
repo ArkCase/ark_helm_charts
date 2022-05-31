@@ -4,20 +4,20 @@ kind: Service
 metadata:
   name: {{ include "common.fullname" . | quote }}
   namespace: {{ .Release.Namespace | quote }}
-  labels: {{- include "common.labels.standard" . | nindent 4 }}
+  labels: {{- include "common.labels" . | nindent 4 }}
     app.kubernetes.io/component: primary
-    {{- if .Values.commonLabels }}
-    {{- include "common.tplvalues.render" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
+    {{- if .Values.labels }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.labels "context" $ ) | nindent 4 }}
     {{- end }}
   annotations:
-    {{- if .Values.commonAnnotations }}
-    {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+    {{- with .Values.annotations }}
+    {{- toYaml . | nindent 4 }}
     {{- end }}
-    {{- if .Values.service.annotations }}
-    {{- include "common.tplvalues.render" ( dict "value" .Values.service.annotations "context" $ ) | nindent 4 }}
+    {{- with (.Values.service).annotations }}
+    {{- toYaml . | nindent 4 }}
     {{- end }}
-    {{- if and .Values.metrics.enabled .Values.metrics.annotations }}
-    {{- include "common.tplvalues.render" ( dict "value" .Values.metrics.annotations "context" $ ) | nindent 4 }}
+    {{- if and (.Values.metrics).enabled (.Values.metrics).annotations }}
+    {{- toYaml .Values.metrics.annotations | nindent 4 }}
     {{- end }}
 spec:
   type: {{ .Values.service.type }}
