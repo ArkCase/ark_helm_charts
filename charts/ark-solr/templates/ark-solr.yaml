@@ -4,16 +4,29 @@ kind: StatefulSet
 metadata:
   name: {{ include "common.fullname" . | quote }}
   namespace: {{ .Release.Namespace | quote }}
-  labels: {{- include "common.labels" . | nindent 6 }}
+  labels: {{- include "common.labels" . | nindent 4 }}
+    {{- with .Values.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with .Values.annotations }}
+  annotations: {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   replicas: 1
   selector: 
     matchLabels: {{- include "common.labels" . | nindent 6 }}
-  serviceName: {{ printf "%s-headless" (include "common.fullname" .) | quote }}
+  serviceName: {{ include "common.fullname" . | quote }}
   template:
     metadata:
       name: {{ include "common.name" . | quote }}
+      namespace: {{ .Release.Namespace | quote }}
       labels: {{- include "common.labels" . | nindent 8 }}
+        {{- with .Values.labels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.annotations }}
+      annotations: {{- toYaml . | nindent 8 }}
+      {{- end }}
     spec:
       initContainers:
       - name: home
