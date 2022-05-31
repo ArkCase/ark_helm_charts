@@ -1,5 +1,5 @@
 {{- if (include "arkcase.tools.enabled" .) }}
-apiVersion: v1
+apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: {{ include "common.fullname" . | quote }}
@@ -132,7 +132,7 @@ spec:
       tolerations: {{- toYaml . | nindent 8 }}
       {{- end }}
 
-{{- if (include "common.persistence.isEnabled" .) }}
+{{- if (include "arkcase.persistence.enabled" .) }}
 {{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "data") | indent 0 }}
 {{- end }}
 {{- end }}
