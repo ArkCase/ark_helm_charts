@@ -12,12 +12,12 @@ metadata:
   annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.annotations "context" $ ) | nindent 4 }}
   {{- end }}
 spec:
-  {{- if not .Values.autoscaling.enabled }}
-  replicas: {{ .Values.replicaCount }}
+  {{- if not (.Values.autoscaling).enabled }}
+  replicas: {{ .Values.replicaCount | default 1 }}
   {{- end }}
   selector:
     matchLabels:
-      {{- include "common.selectorLabels" . | nindent 6 }}
+      {{- include "common.labels.matchLabels" . | nindent 6 }}
   serviceName: {{ include "common.fullname" . | quote }}
   updateStrategy:
     type: {{ .Values.updateStrategy }}
@@ -33,12 +33,12 @@ spec:
         {{- if (include "common.createConfigmap" .) }}
         checksum/configuration: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
         {{- end }}
-        {{- if .Values.service.ports.metrics }}
+        {{- if ((.Values.service).ports).metrics }}
         # NB: Both these annotation values must be of type "string"
         prometheus.io/scrape: "true"
         prometheus.io/port: {{ .Values.service.ports.metrics.port | quote }}
         {{- end }}
-        {{- with .Values.podAnnotations }}
+        {{- with .Values.annotations }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
       labels:
@@ -48,19 +48,21 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- if .Values.hostAliases }}
-      hostAliases: {{- include "common.tplvalues.render" (dict "value" .Values.hostAliases "context" $) | nindent 8 }}
+      {{- with .Values.hostAliases }}
+      hostAliases: {{- toYaml . | nindent 8 }}
       {{- end }}
       {{- if .Values.schedulerName }}
       schedulerName: {{ .Values.schedulerName | quote }}
       {{- end }}
       serviceAccountName: {{ include "common.serviceAccountName" . }}
-      securityContext:
-        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- with .Values.podSecurityContext }}
+      securityContext: {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: samba
-          securityContext:
-            {{- toYaml .Values.securityContext.samba | nindent 12 }}
+          {{- with (.Values.securityContext).samba }}
+          securityContext: {{- toYaml . | nindent 12 }}
+          {{- end }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           env:
@@ -104,14 +106,18 @@ spec:
           readinessProbe:
             exec:
               command: [ "/test-ready.sh" ]
-            {{- include "common.tplvalues.render" (dict "value" .Values.service.ports.ldaps.readinessProbe "context" $) | nindent 12 }}
+            {{- with (((.Values.service).ports).ldaps).readinessProbe }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           livenessProbe:
             exec:
               command: [ "/test-live.sh" ]
-            {{- include "common.tplvalues.render" (dict "value" .Values.service.ports.ldaps.livenessProbe "context" $) | nindent 12 }}
-          {{- if .Values.resources }}
+            {{- with (((.Values.service).ports).ldaps).livenessProbe }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- with .Values.resources }}
           resources:
-            {{- toYaml .Values.resources | nindent 12 }}
+            {{- toYaml . | nindent 12 }}
           {{- end }}
           volumeMounts:
             - name: "data"
