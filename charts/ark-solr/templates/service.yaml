@@ -1,0 +1,16 @@
+{{- if (include "arkcase.tools.enabled" .) }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "common.fullname" . | quote }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels: {{- include "common.labels" . | nindent 6 }}
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - name: solr
+      protocol: TCP
+      port: 8983
+  selector: {{- include "common.selectorLabels" . | nindent 4 }}
+{{- end }}

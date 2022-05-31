@@ -5,9 +5,9 @@
 imagePullSecrets: []
 
 #Common Parameters
-nameOverride: "ark-solr"
+nameOverride: ""
 
-fullnameOverride: "ark-solr"
+fullnameOverride: ""
 
 #Comman Labels to add to all solr resources
 commonLabels: {}
@@ -54,24 +54,23 @@ service:
 ##
 livenessProbe:
   enabled: true
-  path: "/solr"
-  port: 8983
-  initialDelaySeconds: 180
-  periodSeconds: 20
-  timeoutSeconds: 5
-  failureThreshold: 6
-  successThreshold: 1
+  spec:
+    initialDelaySeconds: 180
+    periodSeconds: 20
+    timeoutSeconds: 5
+    failureThreshold: 6
+    successThreshold: 1
 resources: 
   ## Example
   # limits:
   #   cpu: 100m
   #   memory: 128Mi
-  limit: {}
+  limits:
   ## Example
   # requests:
   #   cpu: 100m
   #   memory: 128Mi
-  requests: {}
+  requests:
 # autoscaling:
 #   enabled: false
 #   minReplicas: 1

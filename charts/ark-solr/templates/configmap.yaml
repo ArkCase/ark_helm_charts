@@ -1,13 +1,18 @@
+{{- if (include "arkcase.tools.enabled" .) }}
+---
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "solr.configmap-name" . }}
-  labels: {{- include "solr-helm-charts.selectorLabels" . | nindent 4 }}
+  name: {{ include "common.fullname" . | quote }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels: {{- include "common.selectorLabels" . | nindent 4 }}
   annotations:
     timestamp: "{{ date "20060102150405" now }}"
-  namespace: {{ .Release.Namespace | quote }}
 data:
   schema.xml: |-
-    {{-  .Files.Get "files/schema.xml" | nindent 8 }}
+    {{- .Files.Get "files/schema.xml" | nindent 8 }}
   solrconfig.xml: |-
-    {{-  .Files.Get "files/solrconfig.xml" | nindent 8 }}
+    {{- .Files.Get "files/solrconfig.xml" | nindent 8 }}
+  solr.xml: |-
+    {{- .Files.Get "files/solr.xml" | nindent 8 }}
+{{- end }}

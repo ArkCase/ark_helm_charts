@@ -1,0 +1,93 @@
+{{- if (include "arkcase.tools.enabled" .) }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "common.fullname" . | quote }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels: {{- include "common.labels" . | nindent 6 }}
+spec:
+  replicas: 1
+  selector: 
+    matchLabels: {{- include "common.labels" . | nindent 6 }}
+  serviceName: {{ printf "%s-headless" (include "common.fullname" .) | quote }}
+  template:
+    metadata:
+      name: {{ include "common.name" . | quote }}
+      labels: {{- include "common.labels" . | nindent 8 }}
+    spec:
+      initContainers:
+      - name: home
+        image: busybox:latest
+        command: ["sh", "-c", "cp /tmp/solr.xml /tmp-config/solr.xml"]
+        volumeMounts: 
+        - name: "solr.xml"
+          mountPath: "/tmp"
+        - name: "home"
+          mountPath: "/tmp-config"
+      containers:
+      - name: solr
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        env: 
+        - name: SOLR_HOME
+          value: "/data/conf/"
+        - name: SOLR_OPTS
+          value: "-Dsolr.autoSoftCommit.maxTime=1000"
+        ports:
+        - name: solr-port
+          protocol: TCP
+          containerPort: &solrPort 8983
+        {{- if .Values.command }}
+        command: {{- .Values.command | toYaml | nindent 10 }}
+        {{- end }}
+        {{- if (.Values.livenessProbe).enabled }}
+        livenessProbe:
+          httpGet:
+            path: "/solr"
+            port: *solrPort
+          {{- if (.Values.livenessProbe).spec }}
+          {{- .Values.livenessProbe.spec | toYaml | nindent 10 }}
+          {{- end }}
+        {{- end }}
+        {{- if .Values.resources }}
+        resources: {{- toYaml .Values.resources | nindent 10 }}
+        {{- end }}
+        volumeMounts:
+        - name: "data"
+          mountPath: "/data"
+        - name: "home"
+          mountPath: "/data/conf/"
+        - name: "schema.xml"
+          mountPath: "/opt/solr/server/solr/configsets/_default/conf/schema.xml"
+          subPath: "schema.xml"
+        - name: "solrconfig.xml"
+          mountPath: "/opt/solr/server/solr/configsets/_default/conf/solrconfig.xml"
+          subPath: "solrconfig.xml"
+      securityContext: {{- toYaml  .Values.podSecurityContext | nindent 8 }}
+      volumes:
+        - name: "home"
+          emptyDir: {}
+        - name: "solr.xml"
+          configMap:
+            name: {{ include "common.fullname" . | quote }}
+            items:
+            - key: "solr.xml"
+              path: "solr.xml"
+        - name: "schema.xml"
+          configMap: 
+            name: {{ include "common.fullname" . | quote }}
+            items:
+             - key: "schema.xml"
+               path: "schema.xml"
+        - name: "solrconfig.xml"
+          configMap: 
+            name: {{ include "common.fullname" . | quote }}
+            items:
+             - key: "solrconfig.xml"
+               path: "solrconfig.xml"
+        {{- include "arkcase.persistence.volume" (dict "name" "data" "ctx" $) | nindent 8 }}
+
+{{- if (include "arkcase.persistence.enabled" .) }}
+{{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "data") | nindent 0 }}
+{{- end }}
+
+{{- end }}
