@@ -17,15 +17,16 @@ global:
   storageClass: ""
 
 image:
-  repository: ark_samba
+  repository: "ark_samba"
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: ""
+  tag: "latest"
 
 annotations:
-  global-annotation/test: "a global annotation"
 
-imagePullSecrets: []
+imagePullSecrets:
+  - name: aws-arkcase-pull
+
 nameOverride: ""
 fullnameOverride: ""
 
@@ -38,7 +39,6 @@ serviceAccount:
   create: false
   # Annotations to add to the service account
   annotations:
-    crap-name: "some crap for serviceAccount"
   # The name of the service account to use.
   # If not set and create is true, a name is generated using the fullname template
   name: ""
@@ -71,7 +71,6 @@ metrics:
 
 service:
   annotations:
-    serviceAnnotation/test: "Some TEst For Service"
   type: NodePort
   ports:
     metrics:
