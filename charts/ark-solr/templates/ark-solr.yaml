@@ -33,7 +33,7 @@ spec:
         image: busybox:latest
         command: ["sh", "-c", "cp /tmp/solr.xml /tmp-config/solr.xml"]
         volumeMounts: 
-        - name: "solr.xml"
+        - name: "solr-xml"
           mountPath: "/tmp"
         - name: "home"
           mountPath: "/tmp-config"
@@ -69,29 +69,29 @@ spec:
           mountPath: "/data"
         - name: "home"
           mountPath: "/data/conf/"
-        - name: "schema.xml"
+        - name: "schema-xml"
           mountPath: "/opt/solr/server/solr/configsets/_default/conf/schema.xml"
           subPath: "schema.xml"
-        - name: "solrconfig.xml"
+        - name: "solrconfig-xml"
           mountPath: "/opt/solr/server/solr/configsets/_default/conf/solrconfig.xml"
           subPath: "solrconfig.xml"
       securityContext: {{- toYaml  .Values.podSecurityContext | nindent 8 }}
       volumes:
         - name: "home"
           emptyDir: {}
-        - name: "solr.xml"
+        - name: "solr-xml"
           configMap:
             name: {{ include "common.fullname" . | quote }}
             items:
             - key: "solr.xml"
               path: "solr.xml"
-        - name: "schema.xml"
+        - name: "schema-xml"
           configMap: 
             name: {{ include "common.fullname" . | quote }}
             items:
              - key: "schema.xml"
                path: "schema.xml"
-        - name: "solrconfig.xml"
+        - name: "solrconfig-xml"
           configMap: 
             name: {{ include "common.fullname" . | quote }}
             items:
