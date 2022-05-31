@@ -12,9 +12,11 @@ metadata:
   annotations: {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  replicas: 1
+  {{- if not (.Values.autoscaling).enabled }}
+  replicas: {{ .Values.replicaCount | default 1 }}
+  {{- end }}
   selector: 
-    matchLabels: {{- include "common.labels" . | nindent 6 }}
+    matchLabels: {{- include "common.labels.matchLabels" . | nindent 6 }}
   serviceName: {{ include "common.fullname" . | quote }}
   template:
     metadata:
@@ -37,7 +39,7 @@ spec:
       {{- if .Values.schedulerName }}
       schedulerName: {{ .Values.schedulerName | quote }}
       {{- end }}
-      {{- with .Values.podSecurityContext }}
+      {{- with (.Values.securityContext).template }}
       securityContext: {{- toYaml . | nindent 8 }}
       {{- end }}
       initContainers:
@@ -45,52 +47,78 @@ spec:
         image: busybox:latest
         command: ["sh", "-c", "cp /tmp/solr.xml /cfg/zoo.cfg /tmp-config"]
         volumeMounts: 
-        - name: "solr-xml"
-          mountPath: "/tmp"
-        - name: "zoo-cfg"
-          mountPath: "/cfg"
-        - name: "home"
-          mountPath: "/tmp-config"
+          - name: "solr-xml"
+            mountPath: "/tmp"
+          - name: "zoo-cfg"
+            mountPath: "/cfg"
+          - name: "home"
+            mountPath: "/tmp-config"
       containers:
-      - name: solr
-        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-        env: 
-        - name: SOLR_HOME
-          value: "/data/conf/"
-        - name: SOLR_OPTS
-          value: "-Dsolr.autoSoftCommit.maxTime=1000"
-        ports:
-        - name: solr-port
-          protocol: TCP
-          containerPort: &solrPort 8983
-        {{- if .Values.command }}
-        command: {{- .Values.command | toYaml | nindent 10 }}
-        {{- end }}
-        {{- if (.Values.livenessProbe).enabled }}
-        livenessProbe:
-          httpGet:
-            path: "/solr"
-            port: *solrPort
-          {{- if (.Values.livenessProbe).spec }}
-          {{- .Values.livenessProbe.spec | toYaml | nindent 10 }}
+        - name: solr
+          {{- with (.Values.securityContext).solr }}
+          securityContext: {{- toYaml . | nindent 12 }}
           {{- end }}
-        {{- end }}
-        {{- if .Values.resources }}
-        resources: {{- toYaml .Values.resources | nindent 10 }}
-        {{- end }}
-        volumeMounts:
-        - name: "data"
-          mountPath: "/data"
-        - name: "home"
-          mountPath: "/data/conf/"
-        - name: "schema-xml"
-          mountPath: "/opt/solr/server/solr/configsets/_default/conf/schema.xml"
-          subPath: "schema.xml"
-        - name: "solrconfig-xml"
-          mountPath: "/opt/solr/server/solr/configsets/_default/conf/solrconfig.xml"
-          subPath: "solrconfig.xml"
-      securityContext: {{- toYaml  .Values.podSecurityContext | nindent 8 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          env: 
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: POD_HOST_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            - name: SOLR_HOME
+              value: "/data/conf/"
+            - name: SOLR_OPTS
+              value: "-Dsolr.autoSoftCommit.maxTime=1000"
+          ports:
+            - name: solr-port
+              protocol: TCP
+              containerPort: &solrPort 8983
+          {{- if .Values.command }}
+          command: {{- .Values.command | toYaml | nindent 12 }}
+          {{- end }}
+          {{- if (.Values.probes).enabled }}
+          readinessProbe:
+            httpGet:
+              path: "/solr"
+              port: *solrPort
+            {{- if (.Values.probes).spec }}
+            {{- .Values.probes.spec | toYaml | nindent 12 }}
+            {{- end }}
+          livenessProbe:
+            httpGet:
+              path: "/solr"
+              port: *solrPort
+            {{- if (.Values.probes).spec }}
+            {{- .Values.probes.spec | toYaml | nindent 12 }}
+            {{- end }}
+          {{- end }}
+          {{- if .Values.resources }}
+          resources: {{- toYaml .Values.resources | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: "data"
+              mountPath: "/data"
+            - name: "home"
+              mountPath: "/data/conf/"
+            - name: "schema-xml"
+              mountPath: "/opt/solr/server/solr/configsets/_default/conf/schema.xml"
+              subPath: "schema.xml"
+            - name: "solrconfig-xml"
+              mountPath: "/opt/solr/server/solr/configsets/_default/conf/solrconfig.xml"
+              subPath: "solrconfig.xml"
       volumes:
+        {{- include "arkcase.persistence.volume" (dict "name" "data" "ctx" $) | nindent 8 }}
         - name: "home"
           emptyDir: {}
         - name: "solr-xml"
@@ -117,10 +145,8 @@ spec:
             items:
              - key: "zoo.cfg"
                path: "zoo.cfg"
-        {{- include "arkcase.persistence.volume" (dict "name" "data" "ctx" $) | nindent 8 }}
 
 {{- if (include "arkcase.persistence.enabled" .) }}
 {{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "data") | nindent 0 }}
 {{- end }}
-
 {{- end }}
