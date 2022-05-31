@@ -1,50 +1,40 @@
-{{- if or .Values.enabled (not (hasKey .Values "enabled")) }}
+{{- if (include "arkcase.tools.enabled" .) }}
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "common.fullname" . }}
-  labels:
-    {{- include "common.labels" . | nindent 4 }}
+  name: {{ include "common.fullname" . | quote }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels: {{- include "common.labels" . | nindent 4 }}
+    {{- with .Values.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  annotations:
+    {{- with .Values.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- with (.Values.service).annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
 spec:
-  type: {{ .Values.serviceType }}
-  clusterIP: None
+  type: NodePort
   ports:
-    {{- if .Values.ports.console }}
-    - port: {{ .Values.ports.console }}
-      targetPort: {{ .Values.ports.console }}
+    - name: console
       protocol: TCP
-      name: console
-    {{- end }}
-    {{- if .Values.ports.amqp }}
-    - port: {{ .Values.ports.amqp }}
-      targetPort: {{ .Values.ports.amqp }}
+      port: 8161
+    - name: amqp
       protocol: TCP
-      name: amqp
-    {{- end }}
-    {{- if .Values.ports.mqtt }}
-    - port: {{ .Values.ports.mqtt }}
-      targetPort: {{ .Values.ports.mqtt }}
+      port: 5672
+    - name: mqtt
       protocol: TCP
-      name: mqtt
-    {{- end }}
-    {{- if .Values.ports.openwire }}
-    - port: {{ .Values.ports.openwire }}
-      targetPort: {{ .Values.ports.openwire }}
+      port: 1883
+    - name: openwire
       protocol: TCP
-      name: openwire
-    {{- end }}
-    {{- if .Values.ports.websocket }}
-    - port: {{ .Values.ports.websocket }}
-      targetPort: {{ .Values.ports.websocket }}
+      port: 61616
+    - name: websocket
       protocol: TCP
-      name: websocket
-    {{- end }}
-    {{- if .Values.ports.stomp }}
-    - port: {{ .Values.ports.stomp }}
-      targetPort: {{ .Values.ports.stomp }}
+      port: 61614
+    - name: stomp
       protocol: TCP
-      name: stomp
-    {{- end }}
-  selector:
-    {{- include "common.selectorLabels" . | nindent 4 }}
+      port: 61613
+  selector: {{- include "common.selectorLabels" . | nindent 4 }}
 {{- end }}
