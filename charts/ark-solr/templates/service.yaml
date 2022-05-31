@@ -1,5 +1,5 @@
 {{- if (include "arkcase.tools.enabled" .) }}
-{{- $serviceType := ((.Values.service).type | default "ClusterIP") -}}
+{{- $serviceType := ((.Values.service).type | default "NodePort") -}}
 apiVersion: v1
 kind: Service
 metadata:
@@ -21,8 +21,8 @@ spec:
     - name: solr
       protocol: TCP
       port: 8983
-      {{- if (and (or (eq (.Values.service).type "NodePort") (eq (.Values.service).type "LoadBalancer")) (.Values.service).nodePort) }}
-      nodePort: 8983
+      {{- if (or (eq (.Values.service).type "NodePort") (eq (.Values.service).type "LoadBalancer")) }}
+      nodePort: {{ (.Values.service).nodePort | default "null" }}
       {{- else if (eq (.Values.service).type "ClusterIP") }}
       nodePort: null
       {{- end }}
