@@ -15,4 +15,6 @@ data:
     {{- .Files.Get "files/solrconfig.xml" | nindent 8 }}
   solr.xml: |-
     {{- .Files.Get "files/solr.xml" | nindent 8 }}
+  zoo.cfg: |-
+    {{- .Files.Get "files/zoo.cfg" | nindent 8 }}
 {{- end }}

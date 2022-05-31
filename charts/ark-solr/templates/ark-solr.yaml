@@ -43,10 +43,12 @@ spec:
       initContainers:
       - name: home
         image: busybox:latest
-        command: ["sh", "-c", "cp /tmp/solr.xml /tmp-config/solr.xml"]
+        command: ["sh", "-c", "cp /tmp/solr.xml /cfg/zoo.cfg /tmp-config"]
         volumeMounts: 
         - name: "solr-xml"
           mountPath: "/tmp"
+        - name: "zoo-cfg"
+          mountPath: "/cfg"
         - name: "home"
           mountPath: "/tmp-config"
       containers:
@@ -109,6 +111,12 @@ spec:
             items:
              - key: "solrconfig.xml"
                path: "solrconfig.xml"
+        - name: "zoo-cfg"
+          configMap:
+            name: {{ include "common.fullname" . | quote }}
+            items:
+             - key: "zoo.cfg"
+               path: "zoo.cfg"
         {{- include "arkcase.persistence.volume" (dict "name" "data" "ctx" $) | nindent 8 }}
 
 {{- if (include "arkcase.persistence.enabled" .) }}
