@@ -18,6 +18,14 @@ spec:
   selector: 
     matchLabels: {{- include "common.labels.matchLabels" . | nindent 6 }}
   serviceName: {{ include "common.fullname" . | quote }}
+  updateStrategy:
+    type: {{ .Values.updateStrategy }}
+    {{- if (eq "Recreate" .Values.updateStrategy) }}
+    rollingUpdate: null
+    {{- else if .Values.rollingUpdatePartition }}
+    rollingUpdate:
+      partition: {{ .Values.rollingUpdatePartition }}
+    {{- end }}
   template:
     metadata:
       name: {{ include "common.name" . | quote }}
