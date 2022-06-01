@@ -86,8 +86,6 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: status.hostIP
-            - name: ACTIVEMQ_SUNJMX_START
-              value: "-javaagent:/app/jmx_prometheus_javaagent.jar=9100:/app/jmx-prometheus-config.yaml"
           ports:
             - name: console
               protocol: TCP
