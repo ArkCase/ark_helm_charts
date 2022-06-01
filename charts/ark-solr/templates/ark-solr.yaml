@@ -43,16 +43,16 @@ spec:
       securityContext: {{- toYaml . | nindent 8 }}
       {{- end }}
       initContainers:
-      - name: home
-        image: busybox:latest
-        command: ["sh", "-c", "cp /tmp/solr.xml /cfg/zoo.cfg /tmp-config"]
-        volumeMounts: 
-          - name: "solr-xml"
-            mountPath: "/tmp"
-          - name: "zoo-cfg"
-            mountPath: "/cfg"
-          - name: "home"
-            mountPath: "/tmp-config"
+        - name: home
+          image: busybox:latest
+          command: ["sh", "-c", "cp /tmp/solr.xml /cfg/zoo.cfg /tmp-config"]
+          volumeMounts: 
+            - name: "solr-xml"
+              mountPath: "/tmp"
+            - name: "zoo-cfg"
+              mountPath: "/cfg"
+            - name: "home"
+              mountPath: "/tmp-config"
       containers:
         - name: solr
           {{- with (.Values.securityContext).solr }}
