@@ -88,7 +88,7 @@ spec:
             - name: DOMAINPASS
               valueFrom:
                 secretKeyRef:
-                  name: mysamba-ark-samba
+                  name: {{ include "common.fullname" . | quote }}
                   key: DOMAIN_PASSWORD
             - name: JOIN
               value: "false"
@@ -135,7 +135,7 @@ spec:
         {{- include "arkcase.persistence.volume" (dict "name" "logs" "ctx" $) | nindent 8 }}
         - name: secrets
           secret:
-            secretName: {{ include "common.fullname" . }}
+            secretName: {{ include "common.fullname" . | quote }}
       {{- with .Values.nodeSelector }}
       nodeSelector: {{- toYaml . | nindent 8 }}
       {{- end }}
