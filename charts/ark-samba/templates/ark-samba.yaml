@@ -28,20 +28,22 @@ spec:
     {{- end }}
   template:
     metadata:
-      annotations:
-        {{- if (include "common.createConfigmap" .) }}
-        checksum/configuration: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+      name: {{ include "common.name" . | quote }}
+      namespace: {{ .Release.Namespace | quote }}
+      labels: {{- include "common.labels" . | nindent 8 }}
+        {{- with .Values.labels }}
+        {{- toYaml . | nindent 8 }}
         {{- end }}
-        {{- if ((.Values.service).ports).metrics }}
+      annotations:
         # NB: Both these annotation values must be of type "string"
         prometheus.io/scrape: "true"
-        prometheus.io/port: {{ .Values.service.ports.metrics.port | quote }}
+        prometheus.io/port: "9100"
+        {{- if (include "common.createConfigmap" .) }}
+        checksum/configuration: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
         {{- end }}
         {{- with .Values.annotations }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
-      labels:
-        {{- include "common.labels" . | nindent 8 }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:

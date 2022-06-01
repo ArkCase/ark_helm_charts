@@ -34,9 +34,13 @@ spec:
         {{- with .Values.labels }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
-      {{- with .Values.annotations }}
-      annotations: {{- toYaml . | nindent 8 }}
-      {{- end }}
+      annotations:
+        # NB: Both these annotation values must be of type "string"
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9100"
+        {{- with .Values.annotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets: {{- toYaml . | nindent 8 }}
