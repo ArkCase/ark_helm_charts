@@ -98,7 +98,7 @@ spec:
               containerPort: 1883
             - name: openwire
               protocol: TCP
-              containerPort: 61616
+              containerPort: &openwire 61616
             - name: websocket
               protocol: TCP
               containerPort: 61614
@@ -108,13 +108,13 @@ spec:
           {{- if (.Values.probes).enabled }}
           readinessProbe:
             tcpSocket:
-              port: 61616
+              port: *openwire
             {{- with (.Values.probes).spec }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
           livenessProbe:
             tcpSocket:
-              port: 61616
+              port: *openwire
             {{- with (.Values.probes).spec }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
