@@ -26,11 +26,17 @@ serviceAccount:
   create: true
   # Annotations to add to the service account
   annotations: {}
+  # Labels to add to the service account
+  labels: {}
   # The name of the service account to use.
   # If not set and create is true, a name is generated using the fullname template
-  name: ""
+  # name: ""
 
-podAnnotations: {}
+# Custom annotations to apply throughout
+annotations: {}
+
+# Custom labels to apply throughout
+labels: {}
 
 podSecurityContext:
   # You must specify an `fsGroup` to allow ActiveMQ write access to mounted
@@ -43,23 +49,6 @@ securityContext: {}
   #   drop:
   #   - ALL
   # readOnlyRootFilesystem: true
-
-# Uncomment ports that you want ActiveMQ to open. You can also pass the ports
-# you want to open as arguments to the `helm` program. Please note you need to
-# open at least one of the following ports: amqp, mqtt, openwire, websocket or
-# stomp.
-ports:
-  metrics: 5556
-  console: 8161
-  openwire: 61616
-  stomp: 61613
-#  console: 8161
-#  amqp: 5672
-#  mqtt: 1883
-#  openwire: 61616
-#  websocket: 61614
-#  stomp: 61613
-serviceType: ClusterIP
 
 resources:
   ## Example

@@ -39,6 +39,8 @@ serviceAccount:
   create: false
   # Annotations to add to the service account
   annotations:
+  # Annotations to add to the service account
+  labels:
   # The name of the service account to use.
   # If not set and create is true, a name is generated using the fullname template
   name: ""
@@ -46,7 +48,10 @@ serviceAccount:
 updateStrategy: RollingUpdate
 rollingUpdatePartition: ""
 
-podAnnotations: {}
+# Custom annotations to apply throughout
+annotations:
+# Custom labels to apply throughout
+labels:
 
 podSecurityContext: {}
   # fsGroup: 2000
@@ -69,30 +74,13 @@ metrics:
   enabled: true
   annotations: {}
 
-service:
-  annotations:
-  type: NodePort
-  ports:
-    metrics:
-      name: metrics
-      protocol: TCP
-      port: 9100
-      targetPort: 9100
-    ldaps:
-      name: ldaps
-      protocol: TCP
-      port: 636
-      targetPort: 636
-      readinessProbe:
-        initialDelaySeconds: 30
-        periodSeconds: 10
-        failureThreshold: 5
-        timeoutSeconds: 5
-      livenessProbe:
-        initialDelaySeconds: 30
-        periodSeconds: 10
-        failureThreshold: 5
-        timeoutSeconds: 5
+probes:
+  enabled: true
+  spec:
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    failureThreshold: 5
+    timeoutSeconds: 5
 
 # Can only include at most one of claim: or data:, not both. Can include none,
 # but this will result in a "default" volume being created
@@ -230,9 +218,7 @@ persistence:
 #              key: "labelKey"
 #          matchLabels: "....."
 
-ingress: {}
-
-resources: {}
+resources:
   # We usually recommend not to specify default resources and to leave this as a conscious
   # choice for the user. This also increases chances charts run on environments with little
   # resources, such as Minikube. If you do want to specify resources, uncomment the following
@@ -244,11 +230,11 @@ resources: {}
   #   cpu: 100m
   #   memory: 128Mi
 
-autoscaling:
-  enabled: false
-  minReplicas: 1
-  maxReplicas: 100
-  targetCPUUtilizationPercentage: 80
+#autoscaling:
+  #enabled: false
+  #minReplicas: 1
+  #maxReplicas: 100
+  #targetCPUUtilizationPercentage: 80
   # targetMemoryUtilizationPercentage: 80
 
 nodeSelector: {}
