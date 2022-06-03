@@ -1,18 +1,28 @@
-{{- if or .Values.enabled (not (hasKey .Values "enabled")) }}
+{{- if(include "arkcase.tools.enabled" .) }}
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "common.fullname" . }}
-  labels:
-    {{- include "common.labels" . | nindent 4 }}
+  name: {{ include "common.fullname" . | quote }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels: {{- include "common.labels" . | nindent 4 }}
+    {{- with .Values.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- with (.Values.service).labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  annotations:
+    {{- with .Values.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- with (.Values.service).annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
 spec:
-  type: {{ .Values.serviceType }}
-  clusterIP: None
+  type: NodePort
   ports:
     - name: http
       protocol: TCP
-      port: {{ default 8080 .Values.snowbound_port }}
-      targetPort: {{ default 8080 .Values.snowbound_pod_port }}
-  selector:
-    {{- include "common.selectorLabels" . | nindent 4 }}
+      port: 8080
+  selector: {{ include "common.labels.matchLabels" . | nindent 4 }}
 {{- end }}

@@ -11,7 +11,9 @@ image:
   pullPolicy: IfNotPresent
   tag: 20210825-230fae0
 
-imagePullSecrets: []
+imagePullSecrets:
+  - name: aws-arkcase-pull
+
 nameOverride: ""
 fullnameOverride: ""
 
