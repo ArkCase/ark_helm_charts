@@ -16,7 +16,7 @@ metadata:
     {{- toYaml . | nindent 4 }}
     {{- end }}
 spec:
-  type: "NodePort"
+  type: ClusterIP
   ports:
     - name: solr
       protocol: TCP
