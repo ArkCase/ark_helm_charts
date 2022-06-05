@@ -84,10 +84,13 @@ persistence:
 #          matchLabels: "....."
 
 ## Solr Service parameters
-service:
-  type: NodePort
-  #nodePort: ""
 
+service:
+  #external: host-or-IP
+  ports:
+    - name: solr
+      protocol: TCP
+      port: 8983
 ##
 ## Configure extra options for containers' liveness and readiness probes
 ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/#configure-probes
@@ -98,14 +101,14 @@ service:
 ## @param probes.spec.failureThreshold Failure threshold for liveness and readiness probes
 ## @param probes.spec.successThreshold Success threshold for liveness and readiness probes
 ##
-probes:
-  enabled: true
-  spec:
-    initialDelaySeconds: 180
-    periodSeconds: 20
-    timeoutSeconds: 5
-    failureThreshold: 6
-    successThreshold: 1
+  probes:
+    enabled: true
+    spec:
+      initialDelaySeconds: 180
+      periodSeconds: 20
+      timeoutSeconds: 5
+      failureThreshold: 6
+      successThreshold: 1
 
 resources: 
   ## Example

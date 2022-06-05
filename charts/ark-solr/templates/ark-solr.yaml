@@ -1,4 +1,4 @@
-{{- if (include "arkcase.tools.enabled" .) }}
+{{- if (include "arkcase.subsystem.enabled" .) }}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -92,28 +92,28 @@ spec:
               value: "/data/conf/"
             - name: SOLR_OPTS
               value: "-Dsolr.autoSoftCommit.maxTime=1000"
+          {{- with (.Values.service) }}
+          {{- with .ports }}
           ports:
-            - name: solr-port
-              protocol: TCP
-              containerPort: &solrPort 8983
-          {{- if .Values.command }}
-          command: {{- .Values.command | toYaml | nindent 12 }}
+            {{- range . }}
+            - name: {{ (required "Port specifications must contain a name" .name) | quote }}
+              protocol: {{ default "TCP" .protocol }}
+              containerPort: {{ required (printf "Port [%s] doesn't have a port number" .name) .port }}
+            {{- end }}
           {{- end }}
-          {{- if (.Values.probes).enabled }}
+          {{- if (.probes).enabled }}
           readinessProbe:
-            httpGet:
-              path: "/solr"
-              port: *solrPort
-            {{- if (.Values.probes).spec }}
-            {{- .Values.probes.spec | toYaml | nindent 12 }}
+            {{- with (.probes).spec }}
+            {{- toYaml . | nindent 12 }}
             {{- end }}
           livenessProbe:
-            httpGet:
-              path: "/solr"
-              port: *solrPort
-            {{- if (.Values.probes).spec }}
-            {{- .Values.probes.spec | toYaml | nindent 12 }}
+            {{- with (.probes).spec }}
+            {{- toYaml . | nindent 12 }}
             {{- end }}
+          {{- end }}
+          {{- end }}
+          {{- if .Values.command }}
+          command: {{- .Values.command | toYaml | nindent 12 }}
           {{- end }}
           {{- if .Values.resources }}
           resources: {{- toYaml .Values.resources | nindent 12 }}
