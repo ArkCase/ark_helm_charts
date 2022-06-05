@@ -224,19 +224,13 @@ ports:
     containerPort: {{ required (printf "Port [%s] doesn't have a port number" .name) .port }}
   {{- end }}
 {{- end }}
-{{- if (.probes).enabled }}
-{{- /* if there is no readiness and no spec, don't render this */ -}}
-{{- /* overlay .probes.readiness with .probes.spec and use that */ -}}
-readinessProbe:
-  {{- with (.probes).spec }}
-  {{- toYaml . | nindent 12 }}
-  {{- end }}
-{{- /* if there is no liveness and no spec, don't render this */ -}}
-{{- /* overlay .probes.liveness with .probes.spec and use that */ -}}
-livenessProbe:
-  {{- with (.probes).spec }}
-  {{- toYaml . | nindent 12 }}
-  {{- end }}
+{{- if (.probes).enabled -}}
+{{- with (mergeOverwrite ((.probes).spec | default dict) ((.probes).readiness | default dict)) -}}
+readinessProbe: {{- toYaml . | nindent 2 }}
 {{- end }}
-{{- end }}
+{{- with (mergeOverwrite ((.probes).spec | default dict) ((.probes).liveness | default dict)) -}}
+livenessProbe: {{- toYaml . | nindent 2 }}
+{{- end -}}
+{{- end -}}
+{{- end -}}
 {{- end -}}
