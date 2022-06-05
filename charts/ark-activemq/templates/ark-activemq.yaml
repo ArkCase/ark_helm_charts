@@ -86,38 +86,9 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: status.hostIP
-          ports:
-            - name: console
-              protocol: TCP
-              containerPort: 8161
-            - name: amqp
-              protocol: TCP
-              containerPort: 5672
-            - name: mqtt
-              protocol: TCP
-              containerPort: 1883
-            - name: openwire
-              protocol: TCP
-              containerPort: &openwire 61616
-            - name: websocket
-              protocol: TCP
-              containerPort: 61614
-            - name: stomp
-              protocol: TCP
-              containerPort: 61613
-          {{- if (.Values.probes).enabled }}
-          readinessProbe:
-            tcpSocket:
-              port: *openwire
-            {{- with (.Values.probes).spec }}
-            {{- toYaml . | nindent 12 }}
-            {{- end }}
-          livenessProbe:
-            tcpSocket:
-              port: *openwire
-            {{- with (.Values.probes).spec }}
-            {{- toYaml . | nindent 12 }}
-            {{- end }}
+          {{- include "arkcase.subsystem.ports" . | nindent 10 }}
+          {{- if .Values.command }}
+          command: {{- .Values.command | toYaml | nindent 12 }}
           {{- end }}
           {{- with .Values.resources }}
           resources: {{- toYaml . | nindent 12 }}
