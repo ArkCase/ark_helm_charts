@@ -125,7 +125,7 @@ Parameter: either the root context (i.e. "." or "$"), or
 Render subsystem service declarations based on whether an external host declaration is provided or not
 */ -}}
 {{- define "arkcase.subsystem.service" -}}
-{{- if (or (include "arkcase.tools.enabled" .) (.Values.service).external) }}
+{{- if (include "arkcase.subsystem.enabledOrExternal" .) -}}
 {{- if (empty (.Values.service).ports) -}}
 {{- fail (printf "No ports are defined for chart %s" (include "common.name" .)) -}}
 {{- end -}}
