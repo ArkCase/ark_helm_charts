@@ -87,7 +87,37 @@ Parameter: either the root context (i.e. "." or "$"), or
 {{- define "arkcase.subsystem.enabled" -}}
   {{- $map := (include "arkcase.subsystem" . | fromYaml) -}}
   {{- if ($map.data.enabled) -}}
-    true
+    {{- true -}}
+  {{- end -}}
+{{- end -}}
+
+{{- /*
+Check whether a subsystem is enabled for provisioning, but not for external service.
+
+Parameter: either the root context (i.e. "." or "$"), or
+           a dict with two keys:
+             - ctx = the root context (either "." or "$")
+             - subsystem = a string with the name of the subsystem to query
+*/ -}}
+{{- define "arkcase.subsystem.enabled" -}}
+  {{- $map := (include "arkcase.subsystem" . | fromYaml) -}}
+  {{- if (and ($map.data.enabled) (not (($map.ctx.Values.service).external))) -}}
+    {{- true -}}
+  {{- end -}}
+{{- end -}}
+
+{{- /*
+Check whether a subsystem is enabled for provisioning, or for external service.
+
+Parameter: either the root context (i.e. "." or "$"), or
+           a dict with two keys:
+             - ctx = the root context (either "." or "$")
+             - subsystem = a string with the name of the subsystem to query
+*/ -}}
+{{- define "arkcase.subsystem.enabledOrExternal" -}}
+  {{- $map := (include "arkcase.subsystem" . | fromYaml) -}}
+  {{- if (or ($map.data.enabled) (($map.ctx.Values.service).external)) -}}
+    {{- true -}}
   {{- end -}}
 {{- end -}}
 
@@ -95,60 +125,82 @@ Parameter: either the root context (i.e. "." or "$"), or
 Render subsystem service declarations based on whether an external host declaration is provided or not
 */ -}}
 {{- define "arkcase.subsystem.service" -}}
-  {{- $service := (include "arkcase.tools.get" (dict "ctx" . "name" ".Values.service") | fromYaml | default dict) -}}
-  {{- $serviceName := (include "arkcase.subsystem.name" .) -}}
-  {{- /* Check to see if there are any ports defined ... there must be at least one */ -}}
-  {{- if not (empty $service.ports) }}
----
+{{- if (or (include "arkcase.tools.enabled" .) (.Values.service).external) }}
+{{- if (empty (.Values.service).ports) -}}
+{{- fail (printf "No ports are defined for chart %s" (include "common.name" .)) -}}
+{{- end -}}
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ $serviceName | quote }}
+  name: {{ include "common.name" . | quote }}
   namespace: {{ .Release.Namespace | quote }}
-  labels:
-	{{- include "common.labels" . | nindent 4 }}
-spec:
-  {{- if ($service.host) -}}
-    {{- if not (include "arkcase.tools.isIp" $service.host) }}
-  type: "ExternalName"
-  externalName: {{ $service.host | quote }}
-    {{- else }}
-  ports:
-    {{- range $service.ports }}
-    - name: {{ .name | required  "No port name given" | quote }}
-      protocol: {{ .protocol | default "TCP" | quote }}
-      port: {{ (int .port) | required "Port number must not be 0" }}
-      targetPort: {{ (int .targetPort) | default (int .port) }}
+  labels: {{- include "common.labels" . | nindent 4 }}
+    {{- with .Values.labels }}
+    {{- toYaml . | nindent 4 }}
     {{- end }}
+    {{- with (.Values.service).labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  annotations:
+    {{- with .Values.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- with (.Values.service).annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  {{- if or (empty .Values.service.external) (include "arkcase.tools.isIp" (.Values.service).external) }}
+  # This is either an internal service, or an external service using an IP address
+  type: ClusterIP
+  ports:
+    {{- range .Values.service.ports }}
+    - name: {{ (required "Port specifications must contain a name" .name) | quote }}
+      protocol: {{ default "TCP" .protocol }}
+      port: {{ required (printf "Port [%s] doesn't have a port number" .name) .port }}
+    {{- end }}
+  selector: {{ include "common.labels.matchLabels" . | nindent 4 }}
+  {{- else }}
+  # This is an external service, but using a hostname. This will cause a CNAME to
+  # be created to route service requests to the external hostname
+  type: ExternalName
+  externalName: {{ .Values.service.external | quote }}
+  {{- end }}
+
+{{- if and (not (empty .Values.service.external)) (include "arkcase.tools.isIp" .Values.service.external) }}
 ---
+# This is an external service to an IP address. We MUST create an endpoint
+# with the same name as the service, and this will cause the Kubernetes mesh
+# to proxy connections to the given IP+ports
 apiVersion: v1
 kind: Endpoints
 metadata:
-  name: {{ $serviceName | quote }}
+  name: {{ include "common.name" . | quote }}
   namespace: {{ .Release.Namespace | quote }}
-  labels:
-	{{- include "common.labels" . | nindent 4 }}
+  labels: {{- include "common.labels" . | nindent 4 }}
+    {{- with .Values.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- with (.Values.service).labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  annotations:
+    {{- with .Values.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- with (.Values.service).annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
 subsets:
   - addresses:
-      - ip: {{ $service.host | quote }}
+      {{- range (uniq (sortAlpha (splitList "," .Values.service.external))) }}
+      - ip: {{ . }}
+      {{- end }}
     ports:
-    {{- range $service.ports }}
-      - name: {{ .name | required  "No port name given" | quote }}
-        port: {{ (int .port) | required "Port number must not be 0" }}
-    {{- end }}
-    {{- end -}}
-  {{- else }}
-  type: {{ $service.type | default "NodePort" | quote }}
-  selector:
-    # Is this correct?
-    {{- include "common.labels" . | nindent 4 }}
-  ports:
-    {{- range $service.ports }}
-    - name: {{ .name | required  "No port name given" | quote }}
-      protocol: {{ .protocol | default "TCP" | quote }}
-      port: {{ (int .port) | required "Port number must not be 0" }}
-      targetPort: {{ (int .targetPort) | default (int .port) }}
-    {{- end }}
-  {{- end -}}
-  {{- end -}}
+      {{- range .Values.service.ports }}
+      - name: {{ (required "Port specifications must contain a name" .name) | quote }}
+        protocol: {{ default "TCP" .protocol }}
+        port: {{ required (printf "Port [%s] doesn't have a port number" .name) .port }}
+      {{- end }}
+{{- end }}
+{{- end }}
 {{- end -}}
