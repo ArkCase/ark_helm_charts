@@ -215,8 +215,8 @@ Render subsystem service declarations based on whether an external host declarat
 Parameter: the root context (i.e. "." or "$")
 */ -}}
 {{- define "arkcase.subsystem.ports" -}}
-{{- with (.Values.service) }}
-{{- with .ports }}
+{{- with (.Values.service) -}}
+{{- with .ports -}}
 ports:
   {{- range . }}
   - name: {{ (required "Port specifications must contain a name" .name) | quote }}
@@ -225,12 +225,12 @@ ports:
   {{- end }}
 {{- end }}
 {{- if (.probes).enabled -}}
-{{- with (mergeOverwrite ((.probes).spec | default dict) ((.probes).readiness | default dict)) -}}
+{{- with (mergeOverwrite ((.probes).spec | default dict) ((.probes).readiness | default dict)) }}
 readinessProbe: {{- toYaml . | nindent 2 }}
 {{- end }}
-{{- with (mergeOverwrite ((.probes).spec | default dict) ((.probes).liveness | default dict)) -}}
+{{- with (mergeOverwrite ((.probes).spec | default dict) ((.probes).liveness | default dict)) }}
 livenessProbe: {{- toYaml . | nindent 2 }}
-{{- end -}}
+{{- end }}
 {{- end -}}
 {{- end -}}
 {{- end -}}
