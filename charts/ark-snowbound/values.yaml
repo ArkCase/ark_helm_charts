@@ -119,6 +119,9 @@ service:
     - name: http
       protocol: TCP
       port: &http 8080
+  snowboundPort: *http
+  arkcasePort: 8080
+
 ##
 ## Configure extra options for containers' liveness and readiness probes
 ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/#configure-probes

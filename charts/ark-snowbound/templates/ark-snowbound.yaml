@@ -82,28 +82,9 @@ spec:
                   fieldPath: status.hostIP
             - name: CATALINA_OPTS
               value: >-
-                -Dsnowbound_host_port=8080
-                -Darkcase_host_port=8080
-          {{- with (.Values.service) }}
-          {{- with .ports }}
-          ports:
-            {{- range . }}
-            - name: {{ (required "Port specifications must contain a name" .name) | quote }}
-              protocol: {{ default "TCP" .protocol }}
-              containerPort: {{ required (printf "Port [%s] doesn't have a port number" .name) .port }}
-            {{- end }}
-          {{- end }}
-          {{- if (.probes).enabled }}
-          readinessProbe:
-            {{- with (.probes).spec }}
-            {{- toYaml . | nindent 12 }}
-            {{- end }}
-          livenessProbe:
-            {{- with (.probes).spec }}
-            {{- toYaml . | nindent 12 }}
-            {{- end }}
-          {{- end }}
-          {{- end }}
+                -Dsnowbound_host_port={{ (.Values.service).snowboundPort | default 8080 }}
+                -Darkcase_host_port={{ (.Values.service).arkcasePort | default 8080 }}
+          {{- include "arkcase.subsystem.ports" . | nindent 10 }}
           {{- if .Values.command }}
           command: {{- .Values.command | toYaml | nindent 12 }}
           {{- end }}
