@@ -125,6 +125,8 @@ Parameter: either the root context (i.e. "." or "$"), or
 
 {{- /*
 Render subsystem service declarations based on whether an external host declaration is provided or not
+
+Parameter: the root context (i.e. "." or "$")
 */ -}}
 {{- define "arkcase.subsystem.service" -}}
 {{- if (include "arkcase.subsystem.enabledOrExternal" .) -}}
@@ -203,6 +205,38 @@ subsets:
         protocol: {{ default "TCP" .protocol }}
         port: {{ required (printf "Port [%s] doesn't have a port number" .name) .port }}
       {{- end }}
+{{- end }}
+{{- end }}
+{{- end -}}
+
+{{- /*
+Render subsystem service declarations based on whether an external host declaration is provided or not
+
+Parameter: the root context (i.e. "." or "$")
+*/ -}}
+{{- define "arkcase.subsystem.ports" -}}
+{{- with (.Values.service) }}
+{{- with .ports }}
+ports:
+  {{- range . }}
+  - name: {{ (required "Port specifications must contain a name" .name) | quote }}
+    protocol: {{ default "TCP" .protocol }}
+    containerPort: {{ required (printf "Port [%s] doesn't have a port number" .name) .port }}
+  {{- end }}
+{{- end }}
+{{- if (.probes).enabled }}
+{{- /* if there is no readiness and no spec, don't render this */ -}}
+{{- /* overlay .probes.readiness with .probes.spec and use that */ -}}
+readinessProbe:
+  {{- with (.probes).spec }}
+  {{- toYaml . | nindent 12 }}
+  {{- end }}
+{{- /* if there is no liveness and no spec, don't render this */ -}}
+{{- /* overlay .probes.liveness with .probes.spec and use that */ -}}
+livenessProbe:
+  {{- with (.probes).spec }}
+  {{- toYaml . | nindent 12 }}
+  {{- end }}
 {{- end }}
 {{- end }}
 {{- end -}}

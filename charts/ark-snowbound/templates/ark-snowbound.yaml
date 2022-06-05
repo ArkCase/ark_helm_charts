@@ -1,4 +1,4 @@
-{{- if (include "arkcase.tools.enabled" .) }}
+{{- if (include "arkcase.subsystem.enabled" .) }}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -84,23 +84,28 @@ spec:
               value: >-
                 -Dsnowbound_host_port=8080
                 -Darkcase_host_port=8080
+          {{- with (.Values.service) }}
+          {{- with .ports }}
           ports:
-            - name: http
-              protocol: TCP
-              containerPort: &port 8080
-          {{- if (.Values.probes).enabled }}
+            {{- range . }}
+            - name: {{ (required "Port specifications must contain a name" .name) | quote }}
+              protocol: {{ default "TCP" .protocol }}
+              containerPort: {{ required (printf "Port [%s] doesn't have a port number" .name) .port }}
+            {{- end }}
+          {{- end }}
+          {{- if (.probes).enabled }}
           readinessProbe:
-            tcpSocket:
-              port: *port
-            {{- with (.Values.probes).spec }}
+            {{- with (.probes).spec }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
           livenessProbe:
-            tcpSocket:
-              port: *port
-            {{- with (.Values.probes).spec }}
+            {{- with (.probes).spec }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
+          {{- end }}
+          {{- end }}
+          {{- if .Values.command }}
+          command: {{- .Values.command | toYaml | nindent 12 }}
           {{- end }}
           {{- with .Values.resources }}
           resources: {{- toYaml . | nindent 12 }}

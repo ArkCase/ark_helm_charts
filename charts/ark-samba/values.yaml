@@ -45,30 +45,6 @@ serviceAccount:
   # If not set and create is true, a name is generated using the fullname template
   name: ""
 
-service:
-  #external: "192.168.3.54"
-  ports:
-    - name: ldap
-      protocol: TCP
-      port: 636
-##
-## Configure extra options for containers' liveness and readiness probes
-## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/#configure-probes
-## @param service.probes.enabled Enable liveness and readiness probes
-## @param service.probes.spec.initialDelaySeconds Initial delay seconds for liveness and readiness probes
-## @param service.probes.spec.periodSeconds Period seconds for liveness and readiness probes
-## @param service.probes.spec.timeoutSeconds Timeout seconds for liveness and readiness probes
-## @param service.probes.spec.failureThreshold Failure threshold for liveness and readiness probes
-## @param service.probes.spec.successThreshold Success threshold for liveness and readiness probes
-##
-  probes:
-    enabled: true
-    spec:
-      initialDelaySeconds: 30
-      periodSeconds: 10
-      failureThreshold: 5
-      timeoutSeconds: 5
-
 updateStrategy: RollingUpdate
 rollingUpdatePartition: ""
 
@@ -105,6 +81,31 @@ probes:
     periodSeconds: 10
     failureThreshold: 5
     timeoutSeconds: 5
+
+resources:
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+#autoscaling:
+  #enabled: false
+  #minReplicas: 1
+  #maxReplicas: 100
+  #targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
 
 # Can only include at most one of claim: or data:, not both. Can include none,
 # but this will result in a "default" volume being created
@@ -242,27 +243,28 @@ persistence:
 #              key: "labelKey"
 #          matchLabels: "....."
 
-resources:
-  # We usually recommend not to specify default resources and to leave this as a conscious
-  # choice for the user. This also increases chances charts run on environments with little
-  # resources, such as Minikube. If you do want to specify resources, uncomment the following
-  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
-  # limits:
-  #   cpu: 100m
-  #   memory: 128Mi
-  # requests:
-  #   cpu: 100m
-  #   memory: 128Mi
-
-#autoscaling:
-  #enabled: false
-  #minReplicas: 1
-  #maxReplicas: 100
-  #targetCPUUtilizationPercentage: 80
-  # targetMemoryUtilizationPercentage: 80
-
-nodeSelector: {}
-
-tolerations: []
-
-affinity: {}
+service:
+  #external: "192.168.3.54"
+  ports:
+    - name: ldap
+      protocol: TCP
+      port: 636
+##
+## Configure extra options for containers' liveness and readiness probes
+## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/#configure-probes
+## @param service.probes.enabled Enable liveness and readiness probes
+## @param service.probes.spec.initialDelaySeconds Initial delay seconds for liveness and readiness probes
+## @param service.probes.spec.periodSeconds Period seconds for liveness and readiness probes
+## @param service.probes.spec.timeoutSeconds Timeout seconds for liveness and readiness probes
+## @param service.probes.spec.failureThreshold Failure threshold for liveness and readiness probes
+## @param service.probes.spec.successThreshold Success threshold for liveness and readiness probes
+##
+  probes:
+    enabled: true
+    spec:
+      exec:
+        command: [ "/test-live.sh" ]
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      failureThreshold: 5
+      timeoutSeconds: 5

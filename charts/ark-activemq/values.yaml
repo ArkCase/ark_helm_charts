@@ -74,24 +74,11 @@ tolerations: []
 
 affinity: {}
 
-##
-## Configure extra options for containers' liveness and readiness probes
-## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/#configure-probes
-## @param probes.enabled Enable liveness and readiness probes
-## @param probes.spec.initialDelaySeconds Initial delay seconds for liveness and readiness probes
-## @param probes.spec.periodSeconds Period seconds for liveness and readiness probes
-## @param probes.spec.timeoutSeconds Timeout seconds for liveness and readiness probes
-## @param probes.spec.failureThreshold Failure threshold for liveness and readiness probes
-## @param probes.spec.successThreshold Success threshold for liveness and readiness probes
-##
-probes:
-  enabled: true
-  spec:
-    initialDelaySeconds: 10
-    periodSeconds: 5
-    timeoutSeconds: 2
-    failureThreshold: 2
-    successThreshold: 1
+# Limit, in GiB, of how big the KahaDB store can grow
+maxStoreUsageGb: 50
+
+# Limit, in GiB, of how much temporary storage ActiveMQ can use
+maxTempUsageGb: 10
 
 persistence:
   # If set to `false`, an `emptyDir` will be used instead and all other `persistence.*` parameters
@@ -147,9 +134,45 @@ persistence:
 #              key: "labelKey"
 #          matchLabels: "....."
 
-
-# Limit, in GiB, of how big the KahaDB store can grow
-maxStoreUsageGb: 50
-
-# Limit, in GiB, of how much temporary storage ActiveMQ can use
-maxTempUsageGb: 10
+service:
+  #external: host-or-IP
+  ports:
+    - name: console
+      protocol: TCP
+      port: &console 8161
+    - name: amqp
+      protocol: TCP
+      port: &amq 5672
+    - name: mqtt
+      protocol: TCP
+      port: &mqtt 1883
+    - name: openwire
+      protocol: TCP
+      port: &openwire 61616
+    - name: websocket
+      protocol: TCP
+      port: &websocket 61614
+    - name: stomp
+      protocol: TCP
+      port: &stomp 61613
+##
+## Configure extra options for containers' liveness and readiness probes
+## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/#configure-probes
+## @param probes.enabled Enable liveness and readiness probes
+## @param probes.spec.initialDelaySeconds Initial delay seconds for liveness and readiness probes
+## @param probes.spec.periodSeconds Period seconds for liveness and readiness probes
+## @param probes.spec.timeoutSeconds Timeout seconds for liveness and readiness probes
+## @param probes.spec.failureThreshold Failure threshold for liveness and readiness probes
+## @param probes.spec.successThreshold Success threshold for liveness and readiness probes
+##
+  probes:
+    enabled: true
+    spec:
+      httpGet:
+        path: "/"
+        port: *console
+      initialDelaySeconds: 180
+      periodSeconds: 20
+      timeoutSeconds: 5
+      failureThreshold: 6
+      successThreshold: 1

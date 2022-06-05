@@ -29,6 +29,26 @@ podAnnotations: {}
 podSecurityContext: 
   fsGroup: 2000
 
+resources: 
+  ## Example
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  limits:
+  ## Example
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+  requests:
+# autoscaling:
+#   enabled: false
+#   minReplicas: 1
+#   maxReplicas: 100
+#   targetCPUUtilizationPercentage: 80
+#   # targetMemoryUtilizationPercentage: 80
+
+replicaCount: 1
+
 persistence:
   # If set to `false`, an `emptyDir` will be used instead and all other `persistence.*` parameters
   # are ignored.
@@ -83,14 +103,12 @@ persistence:
 #              key: "labelKey"
 #          matchLabels: "....."
 
-## Solr Service parameters
-
 service:
   #external: host-or-IP
   ports:
     - name: solr
       protocol: TCP
-      port: 8983
+      port: &solr 8983
 ##
 ## Configure extra options for containers' liveness and readiness probes
 ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/#configure-probes
@@ -104,28 +122,11 @@ service:
   probes:
     enabled: true
     spec:
+      httpGet:
+        path: "/solr"
+        port: *solr
       initialDelaySeconds: 180
       periodSeconds: 20
       timeoutSeconds: 5
       failureThreshold: 6
       successThreshold: 1
-
-resources: 
-  ## Example
-  # limits:
-  #   cpu: 100m
-  #   memory: 128Mi
-  limits:
-  ## Example
-  # requests:
-  #   cpu: 100m
-  #   memory: 128Mi
-  requests:
-# autoscaling:
-#   enabled: false
-#   minReplicas: 1
-#   maxReplicas: 100
-#   targetCPUUtilizationPercentage: 80
-#   # targetMemoryUtilizationPercentage: 80
-replicaCount: 1
-
