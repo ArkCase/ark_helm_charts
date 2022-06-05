@@ -261,9 +261,13 @@ service:
 ##
   probes:
     enabled: true
-    spec:
+    readiness:
+      exec:
+        command: [ "/test-ready.sh" ]
+    liveness:
       exec:
         command: [ "/test-live.sh" ]
+    spec:
       initialDelaySeconds: 30
       periodSeconds: 10
       failureThreshold: 5
