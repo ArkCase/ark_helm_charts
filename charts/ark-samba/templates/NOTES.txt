@@ -1,4 +1,4 @@
-{{- if or .Values.enabled (not (hasKey .Values "enabled")) -}}
+{{- if (include "arkcase.subsystem.enabledOrExternal" .) -}}
 Samba Domain specs:
 
 	Domain: {{ .Values.domain.name }}
