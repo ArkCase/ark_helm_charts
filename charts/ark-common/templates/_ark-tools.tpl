@@ -5,7 +5,7 @@ usage: ( include "arkcase.tools.isIp" "some.ip.to.check" )
 result: either "" or "true"
 */ -}}
 {{- define "arkcase.tools.isIp" -}}
-  {{- $addx := . -}}
+  {{- $addx := (default "" .) -}}
   {{- if (eq (upper $addx) ($addx)) -}}
     {{- /* Second test: is it a set of 4 dot-separated numbers? */ -}}
     {{- $octets := splitList "." $addx }}
