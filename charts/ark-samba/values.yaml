@@ -45,6 +45,20 @@ serviceAccount:
   # If not set and create is true, a name is generated using the fullname template
   name: ""
 
+service:
+  #external: "192.168.3.54"
+  probes:
+    enabled: true
+    spec:
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      failureThreshold: 5
+      timeoutSeconds: 5
+  ports:
+    - name: ldap
+      protocol: TCP
+      port: 636
+
 updateStrategy: RollingUpdate
 rollingUpdatePartition: ""
 

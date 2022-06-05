@@ -1,4 +1,4 @@
-{{- if (include "arkcase.tools.enabled" .) }}
+{{- if (include "arkcase.subsystem.enabled" .) }}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -100,22 +100,30 @@ spec:
               value: "false"
             - name: NOCOMPLEXITY
               value: "true"
+          {{- with (.Values.service) }}
+          {{- with .ports }}
           ports:
-            - name: ldaps
-              protocol: TCP
-              containerPort: 636
+            {{- range . }}
+            - name: {{ (required "Port specifications must contain a name" .name) | quote }}
+              protocol: {{ default "TCP" .protocol }}
+              containerPort: {{ required (printf "Port [%s] doesn't have a port number" .name) .port }}
+            {{- end }}
+          {{- end }}
+          {{- if (.probes).enabled }}
           readinessProbe:
             exec:
               command: [ "/test-ready.sh" ]
-            {{- with (((.Values.service).ports).ldaps).readinessProbe }}
+            {{- with (.probes).spec }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
           livenessProbe:
             exec:
               command: [ "/test-live.sh" ]
-            {{- with (((.Values.service).ports).ldaps).livenessProbe }}
+            {{- with (.probes).spec }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
+          {{- end }}
+          {{- end }}
           {{- with .Values.resources }}
           resources: {{- toYaml . | nindent 12 }}
           {{- end }}

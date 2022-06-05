@@ -1,4 +1,4 @@
-{{- if and (include "arkcase.tools.enabled" .) (include "common.createConfigmap" .) }}
+{{- if and (include "arkcase.subsystem.enabled" .) (include "common.createConfigmap" .) }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
