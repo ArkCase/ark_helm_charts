@@ -47,6 +47,20 @@ serviceAccount:
 
 service:
   #external: "192.168.3.54"
+  ports:
+    - name: ldap
+      protocol: TCP
+      port: 636
+##
+## Configure extra options for containers' liveness and readiness probes
+## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/#configure-probes
+## @param service.probes.enabled Enable liveness and readiness probes
+## @param service.probes.spec.initialDelaySeconds Initial delay seconds for liveness and readiness probes
+## @param service.probes.spec.periodSeconds Period seconds for liveness and readiness probes
+## @param service.probes.spec.timeoutSeconds Timeout seconds for liveness and readiness probes
+## @param service.probes.spec.failureThreshold Failure threshold for liveness and readiness probes
+## @param service.probes.spec.successThreshold Success threshold for liveness and readiness probes
+##
   probes:
     enabled: true
     spec:
@@ -54,10 +68,6 @@ service:
       periodSeconds: 10
       failureThreshold: 5
       timeoutSeconds: 5
-  ports:
-    - name: ldap
-      protocol: TCP
-      port: 636
 
 updateStrategy: RollingUpdate
 rollingUpdatePartition: ""
