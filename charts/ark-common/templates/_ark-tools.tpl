@@ -6,7 +6,7 @@ result: either "" or "true"
 */ -}}
 {{- define "arkcase.tools.isIp" -}}
   {{- $addx := (default "" .) -}}
-  {{- if (eq (upper $addx) ($addx)) -}}
+  {{- if (eq (upper $addx) (lower $addx)) -}}
     {{- /* Second test: is it a set of 4 dot-separated numbers? */ -}}
     {{- $octets := splitList "." $addx }}
     {{- $fail := (eq 1 0) -}}
