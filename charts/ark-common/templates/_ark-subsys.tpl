@@ -84,12 +84,14 @@ Parameter: either the root context (i.e. "." or "$"), or
              - ctx = the root context (either "." or "$")
              - subsystem = a string with the name of the subsystem to query
 */ -}}
-{{- define "arkcase.tools.enabled" -}}
+{{- /*
+{{- define "arkcase.subsystem.enabled" -}}
   {{- $map := (include "arkcase.subsystem" . | fromYaml) -}}
   {{- if ($map.data.enabled) -}}
     {{- true -}}
   {{- end -}}
 {{- end -}}
+*/ -}}
 
 {{- /*
 Check whether a subsystem is enabled for provisioning, but not for external service.
