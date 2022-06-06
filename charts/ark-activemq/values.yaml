@@ -38,10 +38,10 @@ nameOverride: ""
 fullnameOverride: ""
 
 # Custom annotations to apply throughout
-annotations: {}
+annotations:
 
 # Custom labels to apply throughout
-labels: {}
+labels:
 
 updateStrategy: RollingUpdate
 rollingUpdatePartition: ""
@@ -87,11 +87,11 @@ resources:
   #targetCPUUtilizationPercentage: 80
   # targetMemoryUtilizationPercentage: 80
 
-nodeSelector: {}
+nodeSelector:
 
-tolerations: []
+tolerations:
 
-affinity: {}
+affinity:
 
 persistence:
   # If set to `false`, an `emptyDir` will be used instead and all other `persistence.*` parameters

@@ -32,10 +32,10 @@ nameOverride: ""
 fullnameOverride: ""
 
 # Custom annotations to apply throughout
-annotations: {}
+annotations:
 
 # Custom labels to apply throughout
-labels: {}
+labels:
 
 updateStrategy: RollingUpdate
 rollingUpdatePartition: ""
@@ -85,11 +85,11 @@ resources:
   #targetCPUUtilizationPercentage: 80
   # targetMemoryUtilizationPercentage: 80
 
-nodeSelector: {}
+nodeSelector:
 
-tolerations: []
+tolerations:
 
-affinity: {}
+affinity:
 
 # Can only include at most one of claim: or data:, not both. Can include none,
 # but this will result in a "default" volume being created

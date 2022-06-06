@@ -30,10 +30,10 @@ nameOverride: ""
 fullnameOverride: ""
 
 # Custom annotations to apply throughout
-annotations: {}
+annotations:
 
 # Custom labels to apply throughout
-labels: {}
+labels:
 
 updateStrategy: RollingUpdate
 rollingUpdatePartition: ""
@@ -73,11 +73,11 @@ resources:
   #   cpu: 100m
   #   memory: 128Mi
 
-nodeSelector: {}
+nodeSelector:
 
-tolerations: []
+tolerations:
 
-affinity: {}
+affinity:
 
 persistence:
   # If set to `false`, an `emptyDir` will be used instead and all other `persistence.*` parameters
