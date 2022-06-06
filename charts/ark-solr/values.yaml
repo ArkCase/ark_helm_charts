@@ -17,10 +17,11 @@ replicaCount: 1
 
 platform: ""
 image:
-  repository: "345280441424.dkr.ecr.ap-south-1.amazonaws.com/ark_solr"
-  pullPolicy: IfNotPresent 
+  registry: "345280441424.dkr.ecr.ap-south-1.amazonaws.com"
+  repository: "ark_solr"
   # Overrides the image tag whose default is the chart appVersion.
   tag: "latest"
+  pullPolicy: IfNotPresent 
 
 imagePullSecrets:
   - name: aws-arkcase-pull

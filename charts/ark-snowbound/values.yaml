@@ -17,10 +17,11 @@ replicaCount: 1
 
 platform: ""
 image:
-  repository: "345280441424.dkr.ecr.ap-south-1.amazonaws.com/ark_snowbound"
-  pullPolicy: IfNotPresent
+  registry: "345280441424.dkr.ecr.ap-south-1.amazonaws.com"
+  repository: "ark_snowbound"
   # Overrides the image tag whose default is the chart appVersion
   tag: "20210825-230fae0"
+  pullPolicy: IfNotPresent
 
 imagePullSecrets:
   - name: aws-arkcase-pull

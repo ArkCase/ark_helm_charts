@@ -401,3 +401,24 @@ Create the environment variables to facilitate detecting the Pod's IP, name, nam
     fieldRef:
       fieldPath: status.hostIP
 {{- end -}}
+
+{{- /*
+Render the image name taking into account the registry, repository, image name, and tag.
+*/ -}}
+{{- define "arkcase.tools.image" -}}
+  {{- $image := (required "No image information was found in the Values object" .Values.image) -}}
+  {{- $global := (default dict .Values.global) -}}
+  {{- $registryName := $image.registry -}}
+  {{- $repositoryName := (required "No repository (image) name was given" $image.repository) -}}
+  {{- $tag := (toString (default "latest" $image.tag)) -}}
+  {{- if $global -}}
+    {{- if $global.imageRegistry -}}
+      {{- $registryName = $global.imageRegistry -}}
+    {{- end -}}
+  {{- end -}}
+  {{- if $registryName -}}
+    {{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
+  {{- else -}}
+    {{- printf "%s:%s" $repositoryName $tag -}}
+  {{- end -}}
+{{- end -}}

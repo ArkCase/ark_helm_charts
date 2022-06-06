@@ -67,7 +67,7 @@ spec:
           {{- with (.Values.securityContext).activemq }}
           securityContext: {{- toYaml . | nindent 12 }}
           {{- end }}
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          image: {{ include "arkcase.tools.image" . | quote }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           env: {{- include "arkcase.tools.baseEnv" . | nindent 12}}
           {{- include "arkcase.subsystem.ports" . | nindent 10 }}

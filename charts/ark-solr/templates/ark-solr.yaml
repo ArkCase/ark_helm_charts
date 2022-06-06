@@ -70,7 +70,8 @@ spec:
           {{- with (.Values.securityContext).solr }}
           securityContext: {{- toYaml . | nindent 12 }}
           {{- end }}
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          image: {{ include "arkcase.tools.image" . | quote }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
           env: {{- include "arkcase.tools.baseEnv" . | nindent 12}}
             - name: SOLR_HOME
               value: "/data/conf/"
