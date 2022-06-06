@@ -1,0 +1,23 @@
+apiVersion: v2
+name: demochart
+version: 0.1.0
+appVersion: "1.16.0"
+description: A Helm chart for Kubernetes
+type: application
+dependencies:
+  - name: ark-solr
+    version: 0.1.2
+    repository: "https://arkcase.github.io/ark_helm_charts"
+    alias: search
+  - name: ark-samba
+    version: 0.1.3
+    repository: "https://arkcase.github.io/ark_helm_charts"
+    alias: ldap
+  - name: ark-activemq
+    version: 0.1.4
+    repository: "https://arkcase.github.io/ark_helm_charts"
+    alias: messaging
+  - name: ark-snowbound
+    version: 0.1.1
+    repository: "https://arkcase.github.io/ark_helm_charts"
+    alias: viewer
