@@ -216,7 +216,7 @@ Check to see if the "enabled" value is set to "true", or is not set (which cause
 {{- /*
 Create the environment variables to facilitate detecting the Pod's IP, name, namespace, and host IP
 */ -}}
-{{- define "arkcase.tools.baseEnv -}}
+{{- define "arkcase.tools.baseEnv" -}}
 - name: POD_NAME
   valueFrom:
     fieldRef:
