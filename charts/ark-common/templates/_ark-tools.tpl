@@ -1,22 +1,27 @@
 {{- /*
-Outputs "true" if the given parameter matches an IPv4 address (4 dot-separated octets between 0 and 255), or the empty string if not.
+Outputs "true" if the given parameter is a string that matches an IPv4 address (4 dot-separated octets between 0 and 255), a list (slice) of IP addresses, or a comma-separated string of IP addresses. If any of the strings submitted is not an IP address, template processing will be halted.
 
-usage: ( include "arkcase.tools.isIp" "some.ip.to.check" )
-result: either "" or "true"
+usage: ( include "arkcase.tools.mustIp" "some.ip.to.check" )
+       ( include "arkcase.tools.mustIp" (list "some.ip.to.check" "another.ip.to.check" ...) )
+       ( include "arkcase.tools.mustIp" "some.ip.to.check,another.ip.to.check" )
+result: either "true" or template processing will be halted
 */ -}}
-{{- define "arkcase.tools.isIp" -}}
-  {{- include "arkcase.tools.isAllIp" . -}}
+{{- define "arkcase.tools.mustIp" -}}
+  {{- $param := (default list .) -}}
+  {{- if (not (include "arkcase.tools.isIp" $param)) -}}
+    {{- fail (printf "One of the values in %s is not an IP address" $param) -}}
+  {{- end -}}
 {{- end -}}
 
 {{- /*
-Outputs "true" if the given parameter matches an IPv4 address (4 dot-separated octets between 0 and 255), or the empty string if not.
+Outputs "true" if the given parameter is a string that matches an IPv4 address (4 dot-separated octets between 0 and 255), a list (slice) of IP addresses, or a comma-separated string of IP addresses. If any of the strings submitted is not an IP address, the empty string will be output.
 
-usage: ( include "arkcase.tools.isAllIp" "some.ip.to.check" )
-       ( include "arkcase.tools.isAllIp" (list "some.ip.to.check" "another.ip.to.check" ...) )
-       ( include "arkcase.tools.isAllIp" "some.ip.to.check,another.ip.to.check" )
+usage: ( include "arkcase.tools.isIp" "some.ip.to.check" )
+       ( include "arkcase.tools.isIp" (list "some.ip.to.check" "another.ip.to.check" ...) )
+       ( include "arkcase.tools.isIp" "some.ip.to.check,another.ip.to.check" )
 result: either "" or "true"
 */ -}}
-{{- define "arkcase.tools.isAllIp" -}}
+{{- define "arkcase.tools.isIp" -}}
   {{- $allAddx := (default list .) -}}
   {{- $type := (kindOf $allAddx) -}}
   {{- if eq "string" $type -}}
