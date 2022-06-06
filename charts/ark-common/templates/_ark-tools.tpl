@@ -1,5 +1,5 @@
 {{- /*
-Outputs "true" if the given parameter is a string that matches an IPv4 address (4 dot-separated octets between 0 and 255). If the string submitted is not an IP address, the empty string will be output.
+Outputs "true" if the given parameter is a string that matches an IPv4 address (4 dot-separated octets between 0 and 255). If the string submitted is not an IPv4 address, the empty string will be output.
 
 usage: ( include "arkcase.tools.checkIp" "some.ip.to.check" )
 result: either "" or "true"
@@ -16,7 +16,7 @@ result: either "" or "true"
     {{- $octets := splitList "." $addx }}
     {{- if eq ( $octets | len ) 4 }}
       {{- range $, $octet := $octets }}
-        {{- if (not (regexMatch "^[0-9]{1,3}$" $octet)) -}}
+        {{- if (not (regexMatch "^(0|[1-9][0-9]{0,2})$" $octet)) -}}
           {{- $fail = (eq 1 1) -}}
         {{- else -}}
           {{- $octet = (int $octet) -}}
@@ -37,21 +37,74 @@ result: either "" or "true"
 {{- end -}}
 
 {{- /*
-Outputs "true" if the given parameter is a string that matches an IPv4 address (4 dot-separated octets between 0 and 255), a list (slice) of IP addresses, or a comma-separated string of IP addresses. If any of the strings submitted is not an IP address, template processing will be halted.
+Outputs "true" if the given parameter is a string that matches an RFC-1123 hostname. If the string submitted is not an RFC-1123 hostname, the empty string will be output.
+
+usage: ( include "arkcase.tools.checkHostname" "some.hostname.to.check" )
+result: either "" or "true"
+*/ -}}
+{{- define "arkcase.tools.checkHostname" -}}
+  {{- $host := (default "" .) -}}
+  {{- $type := (kindOf $host) -}}
+  {{- if (not (eq "string" $type)) -}}
+    {{- $host = (toString $host) -}}
+  {{- end -}}
+  {{- $fail := (eq 1 0) -}}
+  {{- if not (regexMatch "^[a-z0-9]([-a-z0-9]*[a-z0-9])?([.][a-z0-9]([-a-z0-9]*[a-z0-9])?)*$" (lower $host)) -}}
+    {{- $fail = (eq 1 1) -}}
+  {{- end -}}
+  {{- if not $fail -}}
+    {{- true -}}
+  {{- end -}}
+{{- end -}}
+
+{{- /*
+Ensures that the given parameter is a string that matches an IPv4 address (4 dot-separated octets between 0 and 255), a list (slice) of IP addresses, or a comma-separated string of IP addresses. If any of the strings submitted is not an IP address, template processing will be halted. Will output the original parameter if it passes the checks. If the parameter is a list, the list will be sorted (alphabetically), uniqued, and compacted (empty strings removed).
 
 usage: ( include "arkcase.tools.mustIp" "some.ip.to.check" )
        ( include "arkcase.tools.mustIp" (list "some.ip.to.check" "another.ip.to.check" ...) )
        ( include "arkcase.tools.mustIp" "some.ip.to.check,another.ip.to.check" )
-result: either "true" or template processing will be halted
 */ -}}
 {{- define "arkcase.tools.mustIp" -}}
   {{- $param := (default list .) -}}
-  {{- $result := (include "arkcase.tools.isIp" $param) -}}
-  {{- if $result -}}
-    {{- $result -}}
-  {{- else -}}
+  {{- if not (include "arkcase.tools.isIp" $param) -}}
     {{- fail (printf "One of the values in %s is not an IPv4 address" $param) -}}
   {{- end -}}
+  {{- $type := (kindOf $param) -}}
+  {{- if eq "string" $type -}}
+    {{- $param = (splitList "," $param) -}}
+  {{- else if (eq "slice" $type) -}}
+    {{- $param = (toStrings $param) -}}
+  {{- end -}}
+  {{- if (eq 1 (len $param)) -}}
+    {{- range $param -}}
+      {{- trim . -}}
+    {{- end -}}
+  {{- else -}}
+    {{- (sortAlpha $param | uniq | compact) -}}
+  {{- end -}}
+{{- end -}}
+
+{{- /*
+Ensures that the given parameter is a string that matches a single IPv4 address. If the string is not an IPv4 address, template processing will be halted.
+
+usage: ( include "arkcase.tools.mustSingleIp" "some.ip.to.check" )
+*/ -}}
+{{- define "arkcase.tools.mustSingleIp" -}}
+  {{- $param := (toString (default "" .)) -}}
+  {{- if not (include "arkcase.tools.checkIp" $param) -}}
+    {{- fail (printf "The string [%s] is not an IPv4 address" $param) -}}
+  {{- end -}}
+  {{- trim . -}}
+{{- end -}}
+
+{{- /*
+Outputs "true" if the given parameter is a string that matches a single IPv4 address. If the string is not an IPv4 address, the empty string will be output.
+
+usage: ( include "arkcase.tools.isSingleIp" "some.ip.to.check" )
+result: either "" or "true"
+*/ -}}
+{{- define "arkcase.tools.isSingleIp" -}}
+  {{- include "arkcase.tools.checkIp" (toString (default "" .)) -}}
 {{- end -}}
 
 {{- /*
@@ -60,7 +113,6 @@ Outputs "true" if the given parameter is a string that matches an IPv4 address (
 usage: ( include "arkcase.tools.isIp" "some.ip.to.check" )
        ( include "arkcase.tools.isIp" (list "some.ip.to.check" "another.ip.to.check" ...) )
        ( include "arkcase.tools.isIp" "some.ip.to.check,another.ip.to.check" )
-result: either "" or "true"
 */ -}}
 {{- define "arkcase.tools.isIp" -}}
   {{- $allAddx := (default list .) -}}
@@ -85,21 +137,53 @@ result: either "" or "true"
 {{- end -}}
 
 {{- /*
-Outputs "true" if the given parameter is a string that matches an RFC-1123 hostname, a list (slice) of hostnames, or a comma-separated string of hostnames. If any of the strings submitted is not an RFC-1123 hostname, template processing will be halted.
+Ensures that the given parameter is a string that matches an RFC-1123 hostname, a list (slice) of hostnames, or a comma-separated string of hostnames. If any of the strings submitted is not an RFC-1123 hostname, template processing will be halted.
 
-usage: ( include "arkcase.tools.mustIp" "some.hostname.to.check" )
-       ( include "arkcase.tools.mustIp" (list "some.hostname.to.check" "another.hostname.to.check" ...) )
-       ( include "arkcase.tools.mustIp" "some.hostname.to.check,another.hostname.to.check" )
-result: either "true" or template processing will be halted
+usage: ( include "arkcase.tools.mustHostname" "some.hostname.to.check" )
+       ( include "arkcase.tools.mustHostname" (list "some.hostname.to.check" "another.hostname.to.check" ...) )
+       ( include "arkcase.tools.mustHostname" "some.hostname.to.check,another.hostname.to.check" )
 */ -}}
 {{- define "arkcase.tools.mustHostname" -}}
   {{- $param := (default list .) -}}
-  {{- $result := (include "arkcase.tools.isHostname" $param) -}}
-  {{- if $result -}}
-    {{- $result -}}
-  {{- else -}}
+  {{- if not (include "arkcase.tools.isHostname" $param) -}}
     {{- fail (printf "One of the values in %s is not an RFC-1123 hostname" $param) -}}
   {{- end -}}
+  {{- $type := (kindOf $param) -}}
+  {{- if eq "string" $type -}}
+    {{- $param = (splitList "," $param) -}}
+  {{- else if (eq "slice" $type) -}}
+    {{- $param = (toStrings $param) -}}
+  {{- end -}}
+  {{- if (eq 1 (len $param)) -}}
+    {{- range $param -}}
+      {{- trim . -}}
+    {{- end -}}
+  {{- else -}}
+    {{- (sortAlpha $param | uniq | compact) -}}
+  {{- end -}}
+{{- end -}}
+
+{{- /*
+Ensures that the given parameter is a string that matches a single RFC-1123 hostname. If the string is not an RFC-1123 hostname, template processing will be halted.
+
+usage: ( include "arkcase.tools.mustSingleHostname" "some.hostname.to.check" )
+*/ -}}
+{{- define "arkcase.tools.mustSingleHostname" -}}
+  {{- $param := (toString (default "" .)) -}}
+  {{- if not (include "arkcase.tools.checkHostname" $param) -}}
+    {{- fail (printf "The string [%s] is not an RFC-1123 hostname" $param) -}}
+  {{- end -}}
+  {{- trim . -}}
+{{- end -}}
+
+{{- /*
+Outputs "true" if the given parameter is a string that matches a single RFC-1123 hostname. If the string is not an RFC-1123 hostname, the empty string will be output.
+
+usage: ( include "arkcase.tools.isSingleHostname" "some.hostname.to.check" )
+result: either "" or "true"
+*/ -}}
+{{- define "arkcase.tools.isSingleHostname" -}}
+  {{- include "arkcase.tools.checkHostname" (toString (default "" .)) -}}
 {{- end -}}
 
 {{- /*
@@ -125,7 +209,7 @@ result: either "" or "true"
   {{- range $allHosts -}}
     {{- if (not $fail) -}}
       {{- /* if it's an IP address, or if it doesn't match the RFC-1123 hostname expression, it's not a hostname */ -}}
-      {{- if or (include "arkcase.tools.checkIp" .) (not (regexMatch "^[a-z0-9]([-a-z0-9]*[a-z0-9])?([.][a-z0-9]([-a-z0-9]*[a-z0-9])?)*$" (lower .))) -}}
+      {{- if or (include "arkcase.tools.checkIp" .) (not (include "arkcase.tools.checkHostname" .)) -}}
         {{- $fail = (eq 1 1) -}}
       {{- end }}
     {{- else -}}

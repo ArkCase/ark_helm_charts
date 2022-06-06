@@ -128,11 +128,13 @@ Render subsystem service declarations based on whether an external host declarat
 
 Parameter: the root context (i.e. "." or "$")
 */ -}}
-{{- define "arkcase.subsystem.service" -}}
-{{- if (include "arkcase.subsystem.enabledOrExternal" .) -}}
-{{- if (empty (.Values.service).ports) -}}
-{{- fail (printf "No ports are defined for chart %s" (include "common.name" .)) -}}
-{{- end -}}
+{{- define "arkcase.subsystem.service" }}
+{{- if (include "arkcase.subsystem.enabledOrExternal" .) }}
+{{- $external := (default "" (.Values.service).external) }}
+{{- $ports := (default list (.Values.service).ports) }}
+{{- if and (empty $ports) (not $external) }}
+  {{- fail (printf "No ports are defined for chart %s, and no external server was given" (include "common.name" .)) }}
+{{- end }}
 apiVersion: v1
 kind: Service
 metadata:
@@ -153,28 +155,27 @@ metadata:
     {{- toYaml . | nindent 4 }}
     {{- end }}
 spec:
-  {{- if or (empty .Values.service.external) (include "arkcase.tools.isIp" (.Values.service).external) }}
+  {{- if or (not $external) (include "arkcase.tools.isIp" $external) }}
   # This is either an internal service, or an external service using an IP address
   type: ClusterIP
   ports:
-    {{- range .Values.service.ports }}
+    {{- if (empty $ports) }}
+      {{- fail "There are no ports defined to be proxied for this external service" }}
+    {{- end }}
+    {{- range $ports }}
     - name: {{ (required "Port specifications must contain a name" .name) | quote }}
       protocol: {{ default "TCP" .protocol }}
       port: {{ required (printf "Port [%s] doesn't have a port number" .name) .port }}
     {{- end }}
   selector: {{ include "common.labels.matchLabels" . | nindent 4 }}
   {{- else }}
-  {{- $externalName := (toString .Values.service.external) -}}
-  {{- if (not (include "arkcase.tools.isHostname" $externalName)) -}}
-    {{- fail (printf "The hostname [%s] is not valid per RFC-1123" $externalName) -}}
-  {{- end -}}
   # This is an external service, but using a hostname. This will cause a CNAME to
   # be created to route service requests to the external hostname
   type: ExternalName
-  externalName: {{ $externalName | quote }}
+  externalName: {{ include "arkcase.tools.mustSingleHostname" $external | quote }}
   {{- end }}
 
-{{- if and (not (empty .Values.service.external)) (include "arkcase.tools.isIp" .Values.service.external) }}
+{{- if and ($external) (include "arkcase.tools.isIp" $external) }}
 ---
 # This is an external service to an IP address. We MUST create an endpoint
 # with the same name as the service, and this will cause the Kubernetes mesh
@@ -200,41 +201,49 @@ metadata:
     {{- end }}
 subsets:
   - addresses:
-      {{- range (uniq (sortAlpha (splitList "," .Values.service.external))) }}
+      {{- range (splitList "," $external | sortAlpha | uniq | compact) }}
       - ip: {{ . }}
       {{- end }}
     ports:
-      {{- range .Values.service.ports }}
+      {{- range $ports }}
       - name: {{ (required "Port specifications must contain a name" .name) | quote }}
         protocol: {{ default "TCP" .protocol }}
         port: {{ required (printf "Port [%s] doesn't have a port number" .name) .port }}
       {{- end }}
 {{- end }}
 {{- end }}
-{{- end -}}
+{{- end }}
 
 {{- /*
-Render subsystem service declarations based on whether an external host declaration is provided or not
+Render container port declarations based on what's declared in the values file. Probes will also be rendered if enabled.
 
 Parameter: the root context (i.e. "." or "$")
 */ -}}
-{{- define "arkcase.subsystem.ports" -}}
-{{- with (.Values.service) -}}
-{{- with .ports -}}
+{{- define "arkcase.subsystem.ports" }}
+  {{- with (.Values.service) }}
+    {{- with .ports -}}
 ports:
-  {{- range . }}
+      {{- range . }}
   - name: {{ (required "Port specifications must contain a name" .name) | quote }}
     protocol: {{ default "TCP" .protocol }}
     containerPort: {{ required (printf "Port [%s] doesn't have a port number" .name) .port }}
+      {{- end }}
+    {{- end }}
+    {{- $probes := (default dict .probes) }}
+    {{- $common := (default dict $probes.spec) }}
+    {{- $readiness := (default dict $probes.readiness) }}
+    {{- $liveness := (default dict $probes.liveness) }}
+    {{- if or ($probes.enabled) (not (hasKey $probes "enabled")) }}
+      {{- if or ($readiness.enabled) (not (hasKey $readiness "enabled")) -}}
+        {{- with (mergeOverwrite $common $readiness) }}
+readinessProbe: {{- toYaml (unset . "enabled") | nindent 2 }}
+        {{- end }}
+      {{- end }}
+      {{- if or ($liveness.enabled) (not (hasKey $liveness "enabled")) -}}
+        {{- with (mergeOverwrite $common $liveness) }}
+livenessProbe: {{- toYaml (unset . "enabled") | nindent 2 }}
+        {{- end }}
+      {{- end }}
+    {{- end }}
   {{- end }}
 {{- end }}
-{{- if (.probes).enabled -}}
-{{- with (mergeOverwrite ((.probes).spec | default dict) ((.probes).readiness | default dict)) }}
-readinessProbe: {{- toYaml . | nindent 2 }}
-{{- end }}
-{{- with (mergeOverwrite ((.probes).spec | default dict) ((.probes).liveness | default dict)) }}
-livenessProbe: {{- toYaml . | nindent 2 }}
-{{- end }}
-{{- end -}}
-{{- end -}}
-{{- end -}}
