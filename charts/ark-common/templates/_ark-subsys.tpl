@@ -201,7 +201,10 @@ metadata:
     {{- end }}
 subsets:
   - addresses:
-      {{- range (splitList "," $external | sortAlpha | uniq | compact) }}
+      {{- if (kindIs "string" $external) }}
+        {{- $external = (splitList "," $external) }}
+      {{- end }}
+      {{- range (sortAlpha $external | uniq | compact) }}
       - ip: {{ . }}
       {{- end }}
     ports:
