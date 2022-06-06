@@ -184,6 +184,11 @@ service:
       httpGet:
         path: "/"
         port: *console
+        httpHeaders:
+          - name: Authorization
+            # This value must be updated like so:
+            # $ echo -n "${adminUsername}:${adminPassword}" | base64
+            value: Basic YWRtaW46YWRtaW4=
       initialDelaySeconds: 30
       periodSeconds: 20
       timeoutSeconds: 5
