@@ -164,10 +164,14 @@ spec:
     {{- end }}
   selector: {{ include "common.labels.matchLabels" . | nindent 4 }}
   {{- else }}
+  {{- $externalName := (toString .Values.service.external) -}}
+  {{- if (not (include "arkcase.tools.isHostname" $externalName)) -}}
+    {{- fail (printf "The hostname [%s] is not valid per RFC-1123" $externalName) -}}
+  {{- end -}}
   # This is an external service, but using a hostname. This will cause a CNAME to
   # be created to route service requests to the external hostname
   type: ExternalName
-  externalName: {{ .Values.service.external | quote }}
+  externalName: {{ $externalName | quote }}
   {{- end }}
 
 {{- if and (not (empty .Values.service.external)) (include "arkcase.tools.isIp" .Values.service.external) }}
