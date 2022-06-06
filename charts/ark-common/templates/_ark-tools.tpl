@@ -8,7 +8,10 @@ result: either "true" or template processing will be halted
 */ -}}
 {{- define "arkcase.tools.mustIp" -}}
   {{- $param := (default list .) -}}
-  {{- if (not (include "arkcase.tools.isIp" $param)) -}}
+  {{- $result := (include "arkcase.tools.isIp" $param) -}}
+  {{- if $result -}}
+    {{- $result -}}
+  {{- else -}}
     {{- fail (printf "One of the values in %s is not an IP address" $param) -}}
   {{- end -}}
 {{- end -}}
