@@ -1,4 +1,4 @@
-{{- if (include "arkcase.tools.enabled" .) }}
+{{- if (include "arkcase.subsystem.enabled" .) }}
 {{- $serviceType := "ClusterIP" -}}
 1. Get the application URL by running these commands:
 {{- if eq "NodePort" $serviceType }}
