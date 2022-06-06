@@ -2,35 +2,40 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
+# This can be set to "false" by parent charts. If not defined, it will be taken as true
+#enabled: true
+
+#
+# This should group all application-specific configurations
+#
+configuration:
+  # Console username and password: Please set a secure password
+  adminUsername: admin
+  adminPassword: admin
+
+  # Limit, in GiB, of how big the KahaDB store can grow
+  maxStoreUsageGb: 50
+
+  # Limit, in GiB, of how much temporary storage ActiveMQ can use
+  maxTempUsageGb: 10
+
 # Please leave the `replicaCount` to 1 for the time being. Clustering is not
 # supported yet.
 replicaCount: 1
 
+platform: ""
 image:
   repository: "345280441424.dkr.ecr.ap-south-1.amazonaws.com/ark_activemq"
   pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
   tag: "20210716-45b2fb2"
 
 imagePullSecrets:
   - name: aws-arkcase-pull
 
+# You generally shouldn't mess with these. These exist to support some name-generation templates
 nameOverride: ""
 fullnameOverride: ""
-
-# Console username and password: Please set a secure password
-adminUsername: admin
-adminPassword: admin
-
-serviceAccount:
-  # Specifies whether a service account should be created
-  create: true
-  # Annotations to add to the service account
-  annotations: {}
-  # Labels to add to the service account
-  labels: {}
-  # The name of the service account to use.
-  # If not set and create is true, a name is generated using the fullname template
-  # name: ""
 
 # Custom annotations to apply throughout
 annotations: {}
@@ -38,47 +43,55 @@ annotations: {}
 # Custom labels to apply throughout
 labels: {}
 
-podSecurityContext:
-  # You must specify an `fsGroup` to allow ActiveMQ write access to mounted
-  # volumes (as long as ActiveMQ runs as a non-root user, which should be the
-  # case). Any random number will do.
-  fsGroup: 23948
+updateStrategy: RollingUpdate
+rollingUpdatePartition: ""
 
-securityContext: {}
-  # capabilities:
-  #   drop:
-  #   - ALL
-  # readOnlyRootFilesystem: true
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: false
+  # Annotations to add to the service account
+  annotations:
+  # Annotations to add to the service account
+  labels:
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
 
+securityContext:
+  template:
+    # You must specify an `fsGroup` to allow ActiveMQ write access to mounted
+    # volumes (as long as ActiveMQ runs as a non-root user, which should be the
+    # case). Any random number will do.
+    fsGroup: 23948
+  activemq:
+    # capabilities:
+    #   drop:
+    #   - ALL
+    # readOnlyRootFilesystem: true
 resources:
-  ## Example
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
   # limits:
   #   cpu: 100m
   #   memory: 128Mi
-  limits:
-  ## Example
   # requests:
   #   cpu: 100m
   #   memory: 128Mi
-  requests:
-# autoscaling:
-#   enabled: false
-#   minReplicas: 1
-#   maxReplicas: 100
-#   targetCPUUtilizationPercentage: 80
-#   # targetMemoryUtilizationPercentage: 80
+
+#autoscaling:
+  #enabled: false
+  #minReplicas: 1
+  #maxReplicas: 100
+  #targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
 
 nodeSelector: {}
 
 tolerations: []
 
 affinity: {}
-
-# Limit, in GiB, of how big the KahaDB store can grow
-maxStoreUsageGb: 50
-
-# Limit, in GiB, of how much temporary storage ActiveMQ can use
-maxTempUsageGb: 10
 
 persistence:
   # If set to `false`, an `emptyDir` will be used instead and all other `persistence.*` parameters

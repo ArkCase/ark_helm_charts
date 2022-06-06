@@ -2,44 +2,64 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
+# This can be set to "false" by parent charts. If not defined, it will be taken as true
+#enabled: true
+
+#
+# This should group all application-specific configurations
+#
+configuration:
+  # add your configurations here
+
 # Please leave the `replicaCount` to 1 for the time being. Clustering is not
 # supported yet.
 replicaCount: 1
 
+platform: ""
 image:
-  repository: 345280441424.dkr.ecr.ap-south-1.amazonaws.com/ark_snowbound
+  repository: "345280441424.dkr.ecr.ap-south-1.amazonaws.com/ark_snowbound"
   pullPolicy: IfNotPresent
-  tag: 20210825-230fae0
+  # Overrides the image tag whose default is the chart appVersion
+  tag: "20210825-230fae0"
 
 imagePullSecrets:
   - name: aws-arkcase-pull
 
+# You generally shouldn't mess with these. These exist to support some name-generation templates
 nameOverride: ""
 fullnameOverride: ""
 
-#
+# Custom annotations to apply throughout
+annotations: {}
+
+# Custom labels to apply throughout
+labels: {}
+
+updateStrategy: RollingUpdate
+rollingUpdatePartition: ""
+
 serviceAccount:
   # Specifies whether a service account should be created
-  create: true
+  create: false
   # Annotations to add to the service account
   annotations:
+  # Annotations to add to the service account
+  labels:
   # The name of the service account to use.
   # If not set and create is true, a name is generated using the fullname template
   name: ""
 
-annotations:
-
-podSecurityContext:
-  # You must specify an `fsGroup` to allow Snowbound write access to mounted
-  # volumes (as long as Snowbound runs as a non-root user, which should be the
-  # case). Any random number will do.
-  fsGroup: 23949
-
-securityContext: {}
-  # capabilities:
-  #   drop:
-  #   - ALL
-  # readOnlyRootFilesystem: true
+securityContext:
+  template:
+    # You must specify an `fsGroup` to allow Snowbound write access to mounted
+    # volumes (as long as Snowbound runs as a non-root user, which should be the
+    # case). Any random number will do.
+    fsGroup: 23949
+  snowbound:
+    # capabilities:
+    #   drop:
+    #   - ALL
+    # readOnlyRootFilesystem: true
 
 resources:
   # We usually recommend not to specify default resources and to leave this as a conscious

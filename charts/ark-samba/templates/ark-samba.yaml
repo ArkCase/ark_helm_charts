@@ -38,9 +38,6 @@ spec:
         # NB: Both these annotation values must be of type "string"
         prometheus.io/scrape: "true"
         prometheus.io/port: "9100"
-        {{- if (include "common.createConfigmap" .) }}
-        checksum/configuration: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
-        {{- end }}
         {{- with .Values.annotations }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -56,7 +53,7 @@ spec:
       schedulerName: {{ .Values.schedulerName | quote }}
       {{- end }}
       serviceAccountName: {{ include "common.serviceAccountName" . }}
-      {{- with .Values.podSecurityContext }}
+      {{- with (.Values.securityContext).template }}
       securityContext: {{- toYaml . | nindent 8 }}
       {{- end }}
       containers:
@@ -66,25 +63,9 @@ spec:
           {{- end }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          env:
-            - name: POD_NAME
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.name
-            - name: POD_NAMESPACE
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.namespace
-            - name: POD_IP
-              valueFrom:
-                fieldRef:
-                  fieldPath: status.podIP
-            - name: POD_HOST_IP
-              valueFrom:
-                fieldRef:
-                  fieldPath: status.hostIP
+          env: {{- include "arkcase.tools.baseEnv" . | nindent 12}}
             - name: DOMAIN
-              value: {{ .Values.domain.name | quote }}
+              value: {{ .Values.configuration.domain.name | quote }}
             - name: DOMAINPASS
               valueFrom:
                 secretKeyRef:

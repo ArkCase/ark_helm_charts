@@ -63,23 +63,7 @@ spec:
           {{- end }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          env:
-            - name: POD_NAME
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.name
-            - name: POD_NAMESPACE
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.namespace
-            - name: POD_IP
-              valueFrom:
-                fieldRef:
-                  fieldPath: status.podIP
-            - name: POD_HOST_IP
-              valueFrom:
-                fieldRef:
-                  fieldPath: status.hostIP
+          env: {{- include "arkcase.tools.baseEnv" . | nindent 12}}
             - name: CATALINA_OPTS
               value: >-
                 -Dsnowbound_host_port={{ (.Values.service).snowboundPort | default 8080 }}

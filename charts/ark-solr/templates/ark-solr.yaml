@@ -71,23 +71,7 @@ spec:
           securityContext: {{- toYaml . | nindent 12 }}
           {{- end }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-          env: 
-            - name: POD_NAME
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.name
-            - name: POD_NAMESPACE
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.namespace
-            - name: POD_IP
-              valueFrom:
-                fieldRef:
-                  fieldPath: status.podIP
-            - name: POD_HOST_IP
-              valueFrom:
-                fieldRef:
-                  fieldPath: status.hostIP
+          env: {{- include "arkcase.tools.baseEnv" . | nindent 12}}
             - name: SOLR_HOME
               value: "/data/conf/"
             - name: SOLR_OPTS
