@@ -62,7 +62,7 @@ spec:
           securityContext: {{- toYaml . | nindent 12 }}
           {{- end }}
           image: {{ include "arkcase.tools.image" . | quote }}
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          imagePullPolicy: {{ include "arkcase.tools.imagePullPolicy" . | quote }}
           env: {{- include "arkcase.tools.baseEnv" . | nindent 12}}
             - name: DOMAIN
               value: {{ .Values.configuration.domain.name | quote }}

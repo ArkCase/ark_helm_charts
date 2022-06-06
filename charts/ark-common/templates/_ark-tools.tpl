@@ -422,3 +422,18 @@ Render the image name taking into account the registry, repository, image name, 
     {{- printf "%s:%s" $repositoryName $tag -}}
   {{- end -}}
 {{- end -}}
+
+{{- define "arkcase.tools.imagePullPolicy" -}}
+  {{- $image := (required "No image information was found in the Values object" .Values.image) -}}
+  {{- $global := (default dict .Values.global) -}}
+  {{- $tag := (toString (default "latest" $image.tag)) -}}
+  {{- $pullPolicy := (toString (default "IfNotPresent" $image.pullPolicy)) -}}
+  {{- if not (eq $pullPolicy "Never") -}}
+    {{- if or (empty $tag) (eq $tag "latest") -}}
+      {{- $pullPolicy = "Always" -}}
+    {{- else -}}
+      {{- $pullPolicy = "IfNotPresent" -}}
+    {{- end -}}
+  {{- end -}}
+  {{- $pullPolicy -}}
+{{- end -}}
