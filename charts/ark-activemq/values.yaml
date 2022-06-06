@@ -171,12 +171,12 @@ service:
 ##
 ## Configure extra options for containers' liveness and readiness probes
 ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/#configure-probes
-## @param probes.enabled Enable liveness and readiness probes
-## @param probes.spec.initialDelaySeconds Initial delay seconds for liveness and readiness probes
-## @param probes.spec.periodSeconds Period seconds for liveness and readiness probes
-## @param probes.spec.timeoutSeconds Timeout seconds for liveness and readiness probes
-## @param probes.spec.failureThreshold Failure threshold for liveness and readiness probes
-## @param probes.spec.successThreshold Success threshold for liveness and readiness probes
+## @param service.probes.enabled Enable liveness and readiness probes
+## @param service.probes.spec.initialDelaySeconds Initial delay seconds for liveness and readiness probes
+## @param service.probes.spec.periodSeconds Period seconds for liveness and readiness probes
+## @param service.probes.spec.timeoutSeconds Timeout seconds for liveness and readiness probes
+## @param service.probes.spec.failureThreshold Failure threshold for liveness and readiness probes
+## @param service.probes.spec.successThreshold Success threshold for liveness and readiness probes
 ##
   probes:
     enabled: true
@@ -184,7 +184,7 @@ service:
       httpGet:
         path: "/"
         port: *console
-      initialDelaySeconds: 180
+      initialDelaySeconds: 30
       periodSeconds: 20
       timeoutSeconds: 5
       failureThreshold: 6
