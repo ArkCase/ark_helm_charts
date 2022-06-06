@@ -1,10 +1,11 @@
 {{- $allIps := ((concat .Values.goodIPs .Values.badIPs) | sortAlpha | uniq | compact) -}}
 {{- range $allIps -}}
-  {{- $result := "unknown" -}}
-  {{- if (include "arkcase.tools.isHostname" .) -}}
-    {{- $result = "RFC-1123 hostname" -}}
-  {{- else if (include "arkcase.tools.isIp" .) -}}
-    {{- $result = "IPv4 address" -}}
-  {{- end -}}
-[{{- . -}}] -> [{{- $result -}}]
+{{- $result := "unknown" -}}
+{{- if (include "arkcase.tools.isHostname" .) -}}
+[{{- include "arkcase.tools.mustSingleHostname" . -}}] -> [RFC-1123 hostname]
+{{ else if (include "arkcase.tools.isIp" .) -}}
+[{{- include "arkcase.tools.mustSingleIp" . -}}] -> [IPv4 address]
+{{ else -}}
+[{{- . -}}] -> [unknown]
+{{ end -}}
 {{ end -}}
