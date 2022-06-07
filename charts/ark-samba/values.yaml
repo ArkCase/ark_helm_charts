@@ -2,52 +2,62 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
-replicaCount: 1
-
 # This can be set to "false" by parent charts. If not defined, it will be taken as true
 #enabled: true
 
-global:
-  imageRegistry: ""
-  ## E.g.
-  ## imagePullSecrets:
-  ##   - myRegistryKeySecretName
-  ##
-  imagePullSecrets: []
-  storageClass: ""
+#
+# This should group all application-specific configurations
+#
+configuration:
+  domain:
+    name: "arkcase.test"
+    password: "RaL@a5eio:heC3"
 
+# Please leave the `replicaCount` to 1 for the time being. Clustering is not
+# supported yet.
+replicaCount: 1
+
+platform: ""
 image:
-  repository: ark_samba
-  pullPolicy: IfNotPresent
+  # registry: "345280441424.dkr.ecr.ap-south-1.amazonaws.com"
+  repository: "ark_samba"
   # Overrides the image tag whose default is the chart appVersion.
-  tag: ""
+  tag: "latest"
+  pullPolicy: IfNotPresent
 
-imagePullSecrets: []
+imagePullSecrets:
+  - name: aws-arkcase-pull
+
+# You generally shouldn't mess with these. These exist to support some name-generation templates
 nameOverride: ""
 fullnameOverride: ""
 
-domain:
-  name: "arkcase.test"
-  password: "RaL@a5eio:heC3"
+# Custom annotations to apply throughout
+annotations:
+
+# Custom labels to apply throughout
+labels:
+
+updateStrategy: RollingUpdate
+rollingUpdatePartition: ""
 
 serviceAccount:
   # Specifies whether a service account should be created
   create: false
   # Annotations to add to the service account
-  annotations: {}
+  annotations:
+  # Annotations to add to the service account
+  labels:
   # The name of the service account to use.
   # If not set and create is true, a name is generated using the fullname template
   name: ""
 
-updateStrategy: RollingUpdate
-rollingUpdatePartition: ""
-
-podAnnotations: {}
-
-podSecurityContext: {}
-  # fsGroup: 2000
-
 securityContext:
+  template:
+    # You must specify an `fsGroup` to allow ActiveMQ write access to mounted
+    # volumes (as long as ActiveMQ runs as a non-root user, which should be the
+    # case). Any random number will do.
+    # fsGroup: 2000
   samba:
     privileged: true
     # capabilities:
@@ -57,37 +67,30 @@ securityContext:
     # runAsNonRoot: true
     # runAsUser: 1000
 
-ldap:
-  externalHost:
-    enabled: false
+resources:
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
 
-metrics:
-  enabled: true
-  annotations: {}
+#autoscaling:
+  #enabled: false
+  #minReplicas: 1
+  #maxReplicas: 100
+  #targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
 
-service:
-  type: NodePort
-  ports:
-    metrics:
-      name: metrics
-      protocol: TCP
-      port: 9100
-      targetPort: 9100
-    ldaps:
-      name: ldaps
-      protocol: TCP
-      port: 636
-      targetPort: 636
-      readinessProbe:
-        initialDelaySeconds: 30
-        periodSeconds: 10
-        failureThreshold: 5
-        timeoutSeconds: 5
-      livenessProbe:
-        initialDelaySeconds: 30
-        periodSeconds: 10
-        failureThreshold: 5
-        timeoutSeconds: 5
+nodeSelector:
+
+tolerations:
+
+affinity:
 
 # Can only include at most one of claim: or data:, not both. Can include none,
 # but this will result in a "default" volume being created
@@ -225,29 +228,33 @@ persistence:
 #              key: "labelKey"
 #          matchLabels: "....."
 
-ingress: {}
-
-resources: {}
-  # We usually recommend not to specify default resources and to leave this as a conscious
-  # choice for the user. This also increases chances charts run on environments with little
-  # resources, such as Minikube. If you do want to specify resources, uncomment the following
-  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
-  # limits:
-  #   cpu: 100m
-  #   memory: 128Mi
-  # requests:
-  #   cpu: 100m
-  #   memory: 128Mi
-
-autoscaling:
-  enabled: false
-  minReplicas: 1
-  maxReplicas: 100
-  targetCPUUtilizationPercentage: 80
-  # targetMemoryUtilizationPercentage: 80
-
-nodeSelector: {}
-
-tolerations: []
-
-affinity: {}
+service:
+  #external: "192.168.3.54"
+  ports:
+    - name: ldap
+      protocol: TCP
+      port: 636
+##
+## Configure extra options for containers' liveness and readiness probes
+## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/#configure-probes
+## @param service.probes.enabled Enable liveness and readiness probes
+## @param service.probes.spec.initialDelaySeconds Initial delay seconds for liveness and readiness probes
+## @param service.probes.spec.periodSeconds Period seconds for liveness and readiness probes
+## @param service.probes.spec.timeoutSeconds Timeout seconds for liveness and readiness probes
+## @param service.probes.spec.failureThreshold Failure threshold for liveness and readiness probes
+## @param service.probes.spec.successThreshold Success threshold for liveness and readiness probes
+##
+  probes:
+    enabled: true
+    readiness:
+      exec:
+        command: [ "/test-ready.sh" ]
+    liveness:
+      exec:
+        command: [ "/test-live.sh" ]
+    spec:
+      initialDelaySeconds: 30
+      periodSeconds: 20
+      timeoutSeconds: 5
+      failureThreshold: 6
+      successThreshold: 1

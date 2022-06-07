@@ -1,10 +1,19 @@
+{{- if (include "arkcase.subsystem.enabled" .) }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: arkcase-server-config
-  annotations:
-    timestamp: "{{ date "20060102150405" now }}"
   namespace: {{ .Release.Namespace | quote }}
+  name: {{ printf "%s-server-config" (include "common.fullname" .) | quote }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels: {{- include "common.labels" . | nindent 4 }}
+    {{- with .Values.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  annotations:
+    timestamp: {{ date "20060102150405" now | quote }}
+    {{- with .Values.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
 data:
   arkcase-server.yaml: |-
     {{- if .Values.global.db.externalHost.enabled }}
@@ -20,10 +29,10 @@ data:
     {{- end }}
     elk:
       server:
-        url: "https://{{ "external_host" }}/arkcase/acm-elastic"
+        url: "https://{{ external_host }}/arkcase/acm-elastic"
     frevvo:
       admin.password: "admin"
-      service.external.baseUrl: "https://{{ .Values.global.domainName}}"
+      service.external.baseUrl: "https://{{ .Values.global.domainName }}"
       browser.redirect.baseUrl: "https://{{ .Values.global.domainName }}"
       host: "{{ .Values.global.domainName }}"
     report:
@@ -164,6 +173,4 @@ data:
     ROLE_SUPERVISOR:
     - 247.ARKCASE_SUPERVISOR@APPDEV.ARMEDIA.COM
     - 247.ARKCASE_ADMINISTRATOR@APPDEV.ARMEDIA.COM
-
-
-
+{{- end }}

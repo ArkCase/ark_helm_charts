@@ -52,11 +52,11 @@ Check if persistence is enabled, assuming a missing setting defaults to true
 {{- end -}}
 
 {{- /*
-Render a volumeMount entry for a given volume, as per the persistence model
+Render a volumes: entry for a given volume, as per the persistence model
 */ -}}
-{{- define "arkcase.persistence.volumeMount" -}}
+{{- define "arkcase.persistence.volume" -}}
   {{- $volumeName := .name -}}
-name: {{ $volumeName | quote }}
+- name: {{ $volumeName | quote }}
   {{- if (include "arkcase.persistence.enabled" .ctx) -}}
     {{- $claimName := (printf "%s-%s" (include "common.fullname" .ctx) $volumeName ) -}}
     {{- $explicitClaimName := (include "arkcase.tools.get" (dict "ctx" .ctx "name" (printf ".Values.persistence.%s.claim.name" $volumeName) )) -}}
@@ -73,7 +73,7 @@ name: {{ $volumeName | quote }}
 {{- /*
 Render the PersistentVolume and PersistentVolumeClaim objects for a given volume, per configurations
 */ -}}
-{{- define "arkcase.persistence.declareVolume" -}}
+{{- define "arkcase.persistence.declareObjects" -}}
   {{- $ctx := .ctx -}}
   {{- if not $ctx -}}
     {{- fail "Must provide the 'ctx' context to find the configuration data" -}}
@@ -116,14 +116,20 @@ kind: PersistentVolume
 metadata:
   name: {{ $objectName | quote }}
   namespace: {{ $ctx.Release.Namespace | quote }}
-  labels:
-    {{- include "common.labels" $ctx | nindent 4 }}
-{{- if ($volumeData.annotations) }}
-{{- with $volumeData.annotations  }}
+  labels: {{- include "common.labels" $ctx | nindent 4 }}
+    {{- with $ctx.Values.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- with $volumeData.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
   annotations:
-{{ toYaml . | indent 4 }}
-{{- end }}
-{{- end }}
+  {{- with $ctx.Values.annotations  }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with $volumeData.annotations  }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
 {{- if ($volumeData.spec) -}}
   {{- $volumeData.spec | toYaml | nindent 2 -}}
@@ -147,8 +153,20 @@ apiVersion: v1
 metadata:
   name: {{ $objectName | quote }}
   namespace: {{ $ctx.Release.Namespace | quote }}
-  labels:
-    {{- include "common.labels" $ctx | nindent 4 }}
+  labels: {{- include "common.labels" $ctx | nindent 4 }}
+    {{- with $ctx.Values.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- with $volumeData.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  annotations:
+  {{- with $ctx.Values.annotations  }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with $volumeData.annotations  }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
 {{- if ($claimSpec) -}}
   {{- $claimSpec | toYaml | nindent 2 }}

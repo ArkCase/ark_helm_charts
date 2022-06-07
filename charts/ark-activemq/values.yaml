@@ -2,64 +2,75 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
+# This can be set to "false" by parent charts. If not defined, it will be taken as true
+#enabled: true
+
+#
+# This should group all application-specific configurations
+#
+configuration:
+  # Console username and password: Please set a secure password
+  adminUsername: admin
+  adminPassword: admin
+  # encryptPassword: activemq
+
+  # Limit, in GiB, of how big the KahaDB store can grow
+  maxStoreUsageGb: 50
+
+  # Limit, in GiB, of how much temporary storage ActiveMQ can use
+  maxTempUsageGb: 10
+
 # Please leave the `replicaCount` to 1 for the time being. Clustering is not
 # supported yet.
 replicaCount: 1
 
+platform: ""
 image:
-  repository: 345280441424.dkr.ecr.ap-south-1.amazonaws.com/ark_activemq
+  registry: "345280441424.dkr.ecr.ap-south-1.amazonaws.com"
+  repository: "ark_activemq"
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "20210716-45b2fb2"
   pullPolicy: IfNotPresent
-  tag: 20210716-45b2fb2
 
-imagePullSecrets: []
+imagePullSecrets:
+  - name: aws-arkcase-pull
+
+# You generally shouldn't mess with these. These exist to support some name-generation templates
 nameOverride: ""
 fullnameOverride: ""
 
-# Console username and password: Please set a secure password
-adminUsername: admin
-adminPassword: admin
+# Custom annotations to apply throughout
+annotations:
+
+# Custom labels to apply throughout
+labels:
+
+updateStrategy: RollingUpdate
+rollingUpdatePartition: ""
 
 serviceAccount:
   # Specifies whether a service account should be created
-  create: true
+  create: false
   # Annotations to add to the service account
-  annotations: {}
+  annotations:
+  # Annotations to add to the service account
+  labels:
   # The name of the service account to use.
   # If not set and create is true, a name is generated using the fullname template
   name: ""
 
-podAnnotations: {}
-
-podSecurityContext:
-  # You must specify an `fsGroup` to allow ActiveMQ write access to mounted
-  # volumes (as long as ActiveMQ runs as a non-root user, which should be the
-  # case). Any random number will do.
-  fsGroup: 23948
-
-securityContext: {}
-  # capabilities:
-  #   drop:
-  #   - ALL
-  # readOnlyRootFilesystem: true
-
-# Uncomment ports that you want ActiveMQ to open. You can also pass the ports
-# you want to open as arguments to the `helm` program. Please note you need to
-# open at least one of the following ports: amqp, mqtt, openwire, websocket or
-# stomp.
-ports:
-  metrics: 5556
-  console: 8161
-  openwire: 61616
-  stomp: 61613
-#  console: 8161
-#  amqp: 5672
-#  mqtt: 1883
-#  openwire: 61616
-#  websocket: 61614
-#  stomp: 61613
-serviceType: ClusterIP
-
-resources: {}
+securityContext:
+  template:
+    # You must specify an `fsGroup` to allow ActiveMQ write access to mounted
+    # volumes (as long as ActiveMQ runs as a non-root user, which should be the
+    # case). Any random number will do.
+    fsGroup: 23948
+  activemq:
+    # capabilities:
+    #   drop:
+    #   - ALL
+    # readOnlyRootFilesystem: true
+resources:
   # We usually recommend not to specify default resources and to leave this as a conscious
   # choice for the user. This also increases chances charts run on environments with little
   # resources, such as Minikube. If you do want to specify resources, uncomment the following
@@ -71,72 +82,117 @@ resources: {}
   #   cpu: 100m
   #   memory: 128Mi
 
-nodeSelector: {}
+#autoscaling:
+  #enabled: false
+  #minReplicas: 1
+  #maxReplicas: 100
+  #targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
 
-tolerations: []
+nodeSelector:
 
-affinity: {}
+tolerations:
 
-readinessProbe:
-  initialDelaySeconds: 10
-  periodSeconds: 5
-  timeoutSeconds: 2
-  failureThreshold: 2
-
-livenessProbe:
-  initialDelaySeconds: 10
-  periodSeconds: 5
-  timeoutSeconds: 2
-  failureThreshold: 2
+affinity:
 
 persistence:
-  # `persistence.enabled` enabled persistence for ActiveMQ
-  #
-  # This is done using a persistent volume claim. If set to `false`, an
-  # `emptyDir` will be used instead and all other `persistence.*` parameters
+  # If set to `false`, an `emptyDir` will be used instead and all other `persistence.*` parameters
   # are ignored.
   enabled: true
 
-  # `persistence.existingClaim` uses an external PVC
-  #
-  # If set, the specified persistent volume claim will be used and this Helm
-  # chart won't create a PVC.
-  existingClaim:
+# Use this when not using other persistent volumes, to point to the root location
+# where the directories need to be created
+  localPath: "/opt/app/arkcase"
 
-  # `persistence.subPath` is the directory of the volume to mount from
-  #
-  # Leave empty to mount the root of the volume.
-  subPath:
+#
+# There is 1 volume supported: data
+#
+  data:
+# The "spec" should match the contents of PersistenceVolume.spec
+    spec:
+#      storageClassName: "manual"
+#      persistentVolumeReclaimPolicy: Retain
+#      accessModes:
+#        - "ReadWriteOnce"
+#      capacity:
+#        storage: "10Gi"
+#      hostPath:
+#        path: /tmp/samba/data
+#
+    claim:
+# "name" is the name of an existing volume claim to be re-used, can't be used if "claim" is present
+#      name: "name-of-the-claim-to-consume"
+# "spec" should match the contents of PersistenceVolumeClaim.spec, can't be used if "name" is present
+#      spec: 
+#        storageClassName: ""
+#        volumeName: the-volume-to-claim
+#        accessModes:
+#          - "ReadWriteOnce"
+#        resources:
+#          limits: ""
+#          requests: ""
+#        selector:
+#          matchExpressions:
+#            - values:
+#                - ""
+#                - ""
+#                - ""
+#                ...
+#              operator: "In"|"NotIn"|"Exists"|"DoesNotExist"
+#              key: "labelKey"
+#            - values:
+#                - ""
+#                - ""
+#                - ""
+#                ...
+#              operator: "In"|"NotIn"|"Exists"|"DoesNotExist"
+#              key: "labelKey"
+#          matchLabels: "....."
 
-  # `persistence.storageClass` is the storage class for the new PVC
-  #
-  # If set to an empty string, the default provisionner will be used. If
-  # `persistence.existingClaim is set, this parameter is ignored.
-  storageClass: standard
-
-  # `persistence.annotations` are the annotations for the new PVC
-  #
-  # If `persistence.existingClaim` is set, this parameter is ignored.
-  annotations: {}
-
-  # `persistence.accessModes` are the access modes for the new PVC
-  #
-  # If `persistence.existingClaim` is set, this parameter is ignored.
-  accessModes: [ReadWriteOnce]
-
-  # `persistence.size` is the size of the new PVC
-  #
-  # Use the standard Kubernetes notations to express the units; eg: "8Gi". If
-  # `persistence.existingClaim` is set, this parameter is ignored.
-  size: 8Gi
-
-  # `persistence.mountPath` is the directory where the mount the persistent volume
-  #
-  # You should not modify this value unless you know what you are doing.
-  mountPath: /app/data
-
-# Limit, in GiB, of how big the KahaDB store can grow
-maxStoreUsageGb: 50
-
-# Limit, in GiB, of how much temporary storage ActiveMQ can use
-maxTempUsageGb: 10
+service:
+  #external: host-or-IP
+  ports:
+    - name: console
+      protocol: TCP
+      port: &console 8161
+    - name: amqp
+      protocol: TCP
+      port: &amq 5672
+    - name: mqtt
+      protocol: TCP
+      port: &mqtt 1883
+    - name: openwire
+      protocol: TCP
+      port: &openwire 61616
+    - name: websocket
+      protocol: TCP
+      port: &websocket 61614
+    - name: stomp
+      protocol: TCP
+      port: &stomp 61613
+##
+## Configure extra options for containers' liveness and readiness probes
+## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/#configure-probes
+## @param service.probes.enabled Enable liveness and readiness probes
+## @param service.probes.spec.initialDelaySeconds Initial delay seconds for liveness and readiness probes
+## @param service.probes.spec.periodSeconds Period seconds for liveness and readiness probes
+## @param service.probes.spec.timeoutSeconds Timeout seconds for liveness and readiness probes
+## @param service.probes.spec.failureThreshold Failure threshold for liveness and readiness probes
+## @param service.probes.spec.successThreshold Success threshold for liveness and readiness probes
+##
+  probes:
+    enabled: true
+    spec:
+      httpGet:
+        path: "/admin"
+        port: *console
+        httpHeaders:
+          - name: Authorization
+            # This value must be updated like so:
+            # $ echo -n "${adminUsername}:${adminPassword}" | base64
+            value: Basic YWRtaW46YWRtaW4=
+      initialDelaySeconds: 30
+      periodSeconds: 20
+      timeoutSeconds: 5
+      failureThreshold: 6
+      successThreshold: 1

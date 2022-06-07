@@ -1,18 +1,1 @@
-{{- if or .Values.enabled (not (hasKey .Values "enabled")) }}
-apiVersion: v1
-kind: Service
-metadata:
-  name: {{ include "common.fullname" . }}
-  labels:
-    {{- include "common.labels" . | nindent 4 }}
-spec:
-  type: {{ .Values.serviceType }}
-  clusterIP: None
-  ports:
-    - name: http
-      protocol: TCP
-      port: {{ default 8080 .Values.snowbound_port }}
-      targetPort: {{ default 8080 .Values.snowbound_pod_port }}
-  selector:
-    {{- include "common.selectorLabels" . | nindent 4 }}
-{{- end }}
+{{ include "arkcase.subsystem.service" . }}

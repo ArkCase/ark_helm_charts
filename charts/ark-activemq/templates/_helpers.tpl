@@ -1,64 +1,76 @@
-{{/*
-Expand the name of the chart.
-*/}}
-{{- define "ark-activemq.name" -}}
-{{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
-{{- end }}
+{{- define "arkcase.activemq.adminUser" -}}
+  {{- default "admin" (.Values.configuration).adminUsername -}}
+{{- end -}}
 
-{{/*
-Create a default fully qualified app name.
-We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
-If release name contains chart name it will be used as a full name.
-*/}}
-{{- define "ark-activemq.fullname" -}}
-{{- if .Values.fullnameOverride }}
-{{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
-{{- else }}
-{{- $name := default .Chart.Name .Values.nameOverride }}
-{{- if contains $name .Release.Name }}
-{{- .Release.Name | trunc 63 | trimSuffix "-" }}
-{{- else }}
-{{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" }}
-{{- end }}
-{{- end }}
-{{- end }}
+{{- define "arkcase.activemq.adminPassword" -}}
+  {{- default "admin" (.Values.configuration).adminPassword -}}
+{{- end -}}
 
-{{/*
-Create chart name and version as used by the chart label.
-*/}}
-{{- define "ark-activemq.chart" -}}
-{{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
-{{- end }}
+{{- define "arkcase.activemq.adminGroup" -}}
+  {{- default "admins" (.Values.configuration).adminGroup -}}
+{{- end -}}
 
-{{/*
-Common labels
-*/}}
-{{- define "ark-activemq.labels" -}}
-helm.sh/chart: {{ include "ark-activemq.chart" . }}
-{{ include "ark-activemq.selectorLabels" . }}
-{{- if .Chart.AppVersion }}
-app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
-{{- end }}
-app.kubernetes.io/managed-by: {{ .Release.Service }}
-app: ark-activemq
-version: {{ .Chart.AppVersion | quote }}
-{{- end }}
+{{- define "arkcase.activemq.adminRole" -}}
+  {{- default "admin" (.Values.configuration).adminRole -}}
+{{- end -}}
 
-{{/*
-Selector labels
-*/}}
-{{- define "ark-activemq.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "ark-activemq.name" . }}
-app.kubernetes.io/instance: {{ .Release.Name }}
-{{- end }}
+{{- define "arkcase.activemq.guestPassword" -}}
+  {{- default "password" (.Values.configuration).guestPassword -}}
+{{- end -}}
 
-{{/*
-Create the name of the service account to use
-*/}}
-{{- define "ark-activemq.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create }}
-{{- default (include "ark-activemq.fullname" .) .Values.serviceAccount.name }}
-{{- else }}
-{{- default "default" .Values.serviceAccount.name }}
-{{- end }}
-{{- end }}
+{{- define "arkcase.activemq.encryptionPassword" -}}
+  {{- default "activemq" (.Values.configuration).encryptionPassword -}}
+{{- end -}}
+
+{{- define "arkcase.activemq.users" -}}
+  {{ include "arkcase.activemq.adminUser" $ }}:{{ include "arkcase.activemq.adminPassword" $ }}
+  {{- range (.Values.configuration).users -}}
+    {{- $user := (required "Username may not be empty" .name) -}}
+    {{- $password := (default $user .password) }}
+{{ $user }}:{{ $password }}
+  {{- end }}
+{{- end -}}
+
+{{- define "arkcase.activemq.groups" -}}
+  {{- $groups := dict -}}
+  {{- $members := list -}}
+  {{- /* First, deal with the administrators */ -}}
+  {{- $adminUser := (include "arkcase.activemq.adminUser" $) -}}
+  {{- $adminGroup := (include "arkcase.activemq.adminGroup" $) -}}
+  {{- $admins := (default list (get $groups $adminGroup)) -}}
+  {{- $admins = (append $admins $adminUser) -}}
+  {{- $crap := set $groups $adminGroup (sortAlpha $admins | uniq | compact) -}}
+  {{- /* Now, deal with the rest of the users */ -}}
+  {{- range (.Values.configuration).users -}}
+    {{- $userName := (required "Username may not be empty" .name) -}}
+    {{- if not (eq $adminUser $userName) -}}
+      {{- range (sortAlpha (default list .groups) | uniq | compact) -}}
+        {{- $members = (default list (get $groups .)) -}}
+        {{- $members = (append $members $userName) -}}
+        {{- $crap = set $groups . (sortAlpha $members | uniq | compact) -}}
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
+  {{- range $group, $members := $groups }}
+{{ $group }}: {{ join "," $members }}
+  {{- end }}
+{{- end -}}
+
+{{- define "arkcase.activemq.roles" -}}
+  {{- $users := dict -}}
+  {{- $crap := set $users (include "arkcase.activemq.adminUser" $) (join "," (list (include "arkcase.activemq.adminPassword" $) (include "arkcase.activemq.adminRole" $))) -}}
+  {{- range (.Values.configuration).users -}}
+    {{- $user := (required "Username may not be empty" .name) -}}
+    {{- if not (hasKey $users $user) -}}
+      {{- $password := (default $user .password) -}}
+      {{- $roles := (list $password) -}}
+      {{- range (sortAlpha .roles | uniq | compact) -}}
+        {{- $roles = (append $roles .) -}}
+      {{- end -}}
+      {{- $crap = set $users $user $roles -}}
+    {{- end -}}
+  {{- end -}}
+  {{- range $user, $roles := $users }}
+{{ $user }}: {{ join "," $roles }}
+  {{- end }}
+{{- end -}}

@@ -1,0 +1,96 @@
+{{- if (include "arkcase.subsystem.enabled" .) }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "common.fullname" . | quote}}
+  labels: {{- include "common.labels" . | nindent 4 }}
+    {{- with .Values.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with .Values.annotations }}
+  annotations: {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if not (.Values.autoscaling).enabled }}
+  replicas: {{ .Values.replicaCount | default 1 }}
+  {{- end }}
+  selector:
+    matchLabels: {{- include "common.labels.matchLabels" . | nindent 6 }}
+  serviceName: {{ include "common.fullname" . | quote }}
+  updateStrategy:
+    type: {{ .Values.updateStrategy }}
+    {{- if (eq "Recreate" .Values.updateStrategy) }}
+    rollingUpdate: null
+    {{- else if .Values.rollingUpdatePartition }}
+    rollingUpdate:
+      partition: {{ .Values.rollingUpdatePartition }}
+    {{- end }}
+  serviceName: {{ include "common.fullname" . }}
+  template:
+    metadata:
+    metadata:
+      name: {{ include "common.name" . | quote }}
+      namespace: {{ .Release.Namespace | quote }}
+      labels: {{- include "common.labels" . | nindent 8 }}
+        {{- with .Values.labels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      annotations:
+        # NB: Both these annotation values must be of type "string"
+        prometheus.io/scrape: "false"
+        prometheus.io/port: "9100"
+        {{- with .Values.annotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.hostAliases }}
+      hostAliases: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.schedulerName }}
+      schedulerName: {{ .Values.schedulerName | quote }}
+      {{- end }}
+      serviceAccountName: {{ include "common.serviceAccountName" . }}
+      {{- with (.Values.securityContext).template }}
+      securityContext: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: snowbound
+          {{- with (.Values.securityContext).snowbound }}
+          securityContext: {{- toYaml . | nindent 12 }}
+          {{- end }}
+          image: {{ include "arkcase.tools.image" . | quote }}
+          imagePullPolicy: {{ include "arkcase.tools.imagePullPolicy" . | quote }}
+          env: {{- include "arkcase.tools.baseEnv" . | nindent 12}}
+            - name: CATALINA_OPTS
+              value: >-
+                -Dsnowbound_host_port={{ (.Values.service).snowboundPort | default 8080 }}
+                -Darkcase_host_port={{ (.Values.service).arkcasePort | default 8080 }}
+          {{- include "arkcase.subsystem.ports" . | nindent 10 }}
+          {{- if .Values.command }}
+          command: {{- .Values.command | toYaml | nindent 12 }}
+          {{- end }}
+          {{- with .Values.resources }}
+          resources: {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: "data"
+              mountPath: "/app/home/.snowbound-docs"
+      volumes:
+        {{- include "arkcase.persistence.volume" (dict "name" "data" "ctx" $) | nindent 8 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations: {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+{{- if (include "arkcase.persistence.enabled" .) }}
+{{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "data") | indent 0 }}
+{{- end }}
+{{- end }}

@@ -1,19 +1,23 @@
-{{- if or .Values.enabled (not (hasKey .Values "enabled")) }}
+{{- if (include "arkcase.subsystem.enabled" .) }}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ include "common.fullname" . }}
-  namespace: {{ .Release.Namespace }}
-  labels:
-    {{- include "common.labels" . | nindent 4 }}
+  name: {{ include "common.fullname" . | quote }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels: {{- include "common.labels" . | nindent 4 }}
+    {{- with .Values.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with .Values.annotations }}
+  annotations: {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
-  {{- if not .Values.autoscaling.enabled }}
-  replicas: {{ .Values.replicaCount }}
+  {{- if not (.Values.autoscaling).enabled }}
+  replicas: {{ .Values.replicaCount | default 1 }}
   {{- end }}
   selector:
-    matchLabels:
-      {{- include "common.selectorLabels" . | nindent 6 }}
-  serviceName: {{ include "common.fullname" . }}
+    matchLabels: {{- include "common.labels.matchLabels" . | nindent 6 }}
+  serviceName: {{ include "common.fullname" . | quote }}
   updateStrategy:
     type: {{ .Values.updateStrategy }}
     {{- if (eq "Recreate" .Values.updateStrategy) }}
@@ -24,63 +28,48 @@ spec:
     {{- end }}
   template:
     metadata:
-      annotations:
-        {{- if (include "common.createConfigmap" .) }}
-        checksum/configuration: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
-        {{- end }}
-        {{- if .Values.service.ports.metrics }}
-        # NB: Both these annotation values must be of type "string"
-        prometheus.io/scrape: "true"
-        prometheus.io/port: {{ .Values.service.ports.metrics.port | quote }}
-        {{- end }}
-        {{- with .Values.podAnnotations }}
+      name: {{ include "common.name" . | quote }}
+      namespace: {{ .Release.Namespace | quote }}
+      labels: {{- include "common.labels" . | nindent 8 }}
+        {{- with .Values.labels }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
-      labels:
-        {{- include "common.labels" . | nindent 8 }}
+      annotations:
+        # NB: Both these annotation values must be of type "string"
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9100"
+        {{- with .Values.annotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- if .Values.hostAliases }}
-      hostAliases: {{- include "common.tplvalues.render" (dict "value" .Values.hostAliases "context" $) | nindent 8 }}
+      {{- with .Values.hostAliases }}
+      hostAliases: {{- toYaml . | nindent 8 }}
       {{- end }}
       {{- if .Values.schedulerName }}
       schedulerName: {{ .Values.schedulerName | quote }}
       {{- end }}
       serviceAccountName: {{ include "common.serviceAccountName" . }}
-      securityContext:
-        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- with (.Values.securityContext).template }}
+      securityContext: {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: samba
-          securityContext:
-            {{- toYaml .Values.securityContext.samba | nindent 12 }}
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
-          env:
-            - name: POD_NAME
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.name
-            - name: POD_NAMESPACE
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.namespace
-            - name: POD_IP
-              valueFrom:
-                fieldRef:
-                  fieldPath: status.podIP
-            - name: POD_HOST_IP
-              valueFrom:
-                fieldRef:
-                  fieldPath: status.hostIP
+          {{- with (.Values.securityContext).samba }}
+          securityContext: {{- toYaml . | nindent 12 }}
+          {{- end }}
+          image: {{ include "arkcase.tools.image" . | quote }}
+          imagePullPolicy: {{ include "arkcase.tools.imagePullPolicy" . | quote }}
+          env: {{- include "arkcase.tools.baseEnv" . | nindent 12}}
             - name: DOMAIN
-              value: {{ .Values.domain.name | quote }}
+              value: {{ .Values.configuration.domain.name | quote }}
             - name: DOMAINPASS
               valueFrom:
                 secretKeyRef:
-                  name: mysamba-ark-samba
+                  name: {{ include "common.fullname" . | quote }}
                   key: DOMAIN_PASSWORD
             - name: JOIN
               value: "false"
@@ -92,21 +81,12 @@ spec:
               value: "false"
             - name: NOCOMPLEXITY
               value: "true"
-          ports:
-            - name: ldaps
-              protocol: TCP
-              containerPort: 636
-          readinessProbe:
-            exec:
-              command: [ "/test-ready.sh" ]
-            {{- include "common.tplvalues.render" (dict "value" .Values.service.ports.ldaps.readinessProbe "context" $) | nindent 12 }}
-          livenessProbe:
-            exec:
-              command: [ "/test-live.sh" ]
-            {{- include "common.tplvalues.render" (dict "value" .Values.service.ports.ldaps.livenessProbe "context" $) | nindent 12 }}
-          {{- if .Values.resources }}
-          resources:
-            {{- toYaml .Values.resources | nindent 12 }}
+          {{- include "arkcase.subsystem.ports" . | nindent 10 }}
+          {{- if .Values.command }}
+          command: {{- .Values.command | toYaml | nindent 12 }}
+          {{- end }}
+          {{- with .Values.resources }}
+          resources: {{- toYaml . | nindent 12 }}
           {{- end }}
           volumeMounts:
             - name: "data"
@@ -119,52 +99,26 @@ spec:
               mountPath: "/app/conf"
               readOnly: true
       volumes:
-        - name: "data"
-          {{- if (include "common.persistence.isEnabled" .) }}
-          persistentVolumeClaim:
-            {{- if (((.Values.persistence).data).claim).name }}
-            claimName: {{ .Values.persistence.data.claim.name | quote }}
-            {{- else }}
-            claimName: {{ template "common.fullname" . }}-data
-            {{- end }}
-          {{- else }}
-          emptyDir: {}
-          {{- end }}
-        - name: "conf"
-          {{- if (include "common.persistence.isEnabled" .) }}
-          persistentVolumeClaim:
-            {{- if (((.Values.persistence).conf).claim).name }}
-            claimName: {{ .Values.persistence.conf.claim.name | quote }}
-            {{- else }}
-            claimName: {{ template "common.fullname" . }}-conf
-            {{- end }}
-          {{- else }}
-          emptyDir: {}
-          {{- end }}
-        - name: "logs"
-          {{- if (include "common.persistence.isEnabled" .) }}
-          persistentVolumeClaim:
-            {{- if (((.Values.persistence).logs).claim).name }}
-            claimName: {{ .Values.persistence.logs.claim.name | quote }}
-            {{- else }}
-            claimName: {{ template "common.fullname" . }}-logs
-            {{- end }}
-          {{- else }}
-          emptyDir: {}
-          {{- end }}
+        {{- include "arkcase.persistence.volume" (dict "name" "data" "ctx" $) | nindent 8 }}
+        {{- include "arkcase.persistence.volume" (dict "name" "conf" "ctx" $) | nindent 8 }}
+        {{- include "arkcase.persistence.volume" (dict "name" "logs" "ctx" $) | nindent 8 }}
         - name: secrets
           secret:
-            secretName: {{ include "common.fullname" . }}
+            secretName: {{ include "common.fullname" . | quote }}
       {{- with .Values.nodeSelector }}
-      nodeSelector:
-        {{- toYaml . | nindent 8 }}
+      nodeSelector: {{- toYaml . | nindent 8 }}
       {{- end }}
       {{- with .Values.affinity }}
-      affinity:
-        {{- toYaml . | nindent 8 }}
+      affinity: {{- toYaml . | nindent 8 }}
       {{- end }}
       {{- with .Values.tolerations }}
-      tolerations:
-        {{- toYaml . | nindent 8 }}
+      tolerations: {{- toYaml . | nindent 8 }}
       {{- end }}
+
+{{- if (include "arkcase.persistence.enabled" .) }}
+{{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "data") | indent 0 }}
+{{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "conf") | indent 0 }}
+{{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "logs") | indent 0 }}
+{{- end }}
+
 {{- end }}

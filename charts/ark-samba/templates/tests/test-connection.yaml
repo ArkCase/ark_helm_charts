@@ -1,25 +1,37 @@
-{{- if or .Values.enabled (not (hasKey .Values "enabled")) }}
+{{- if (include "arkcase.subsystem.enabled" .) }}
 apiVersion: v1
 kind: Pod
 metadata:
-  name: '{{ include "common.fullname" . }}-test-connection'
-  labels:
-    {{- include "common.labels" . | nindent 4 }}
+  name: {{ printf "%s-test" (include "common.fullname" .) | quote }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels: {{- include "common.labels" . | nindent 4 }}
+    {{- with .Values.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- with (.Values.test).labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
   annotations:
-    'helm.sh/hook': test
+    helm.sh/hook: test
+    {{- with .Values.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- with (.Values.test).annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
 spec:
   containers:
     - name: openldap
       image: bitnami/openldap
-      command: [ '/opt/bitnami/openldap/bin/ldapsearch' ]
-      args: [ '-H', 'ldaps://{{ template "common.fullname" . }}:{{ .Values.service.port }}', '-D', '{{ include "common.samba.realm" .Values.domain.name }}\administrator', '-w', {{ .Values.domain.password | quote }}, '-b', {{ include "common.samba.dc" .Values.domain.name | quote }}, '(objectClass=user)', 'dn' ]
-      env:
+      command: [ "/opt/bitnami/openldap/bin/ldapsearch" ]
+      args: [ "-H", "ldaps://{{ include "common.fullname" . }}", "-D", "{{ include "common.samba.realm" .Values.configuration.domain.name }}\administrator", "-w", {{ .Values.configuration.domain.password | quote }}, "-b", {{ include "common.samba.dc" .Values.configuration.domain.name | quote }}, "(objectClass=user)", "dn" ]
+      env: {{- include "arkcase.tools.baseEnv" . | nindent 8}}
         - name: LDAPTLS_REQCERT
-          value: 'never'
+          value: "never"
         - name: ADMIN_PASS
           valueFrom:
             secretKeyRef:
-              name: {{ template "common.fullname" . }}
+              name: {{ include "common.fullname" . | quote }}
               key: DOMAIN_PASSWORD
   restartPolicy: Never
 {{- end }}

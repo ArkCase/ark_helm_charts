@@ -1,0 +1,130 @@
+{{- if (include "arkcase.subsystem.enabled" .) }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "common.fullname" . | quote }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels: {{- include "common.labels" . | nindent 4 }}
+    {{- with .Values.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with .Values.annotations }}
+  annotations: {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if not (.Values.autoscaling).enabled }}
+  replicas: {{ .Values.replicaCount | default 1 }}
+  {{- end }}
+  selector: 
+    matchLabels: {{- include "common.labels.matchLabels" . | nindent 6 }}
+  serviceName: {{ include "common.fullname" . | quote }}
+  updateStrategy:
+    type: {{ .Values.updateStrategy }}
+    {{- if (eq "Recreate" .Values.updateStrategy) }}
+    rollingUpdate: null
+    {{- else if .Values.rollingUpdatePartition }}
+    rollingUpdate:
+      partition: {{ .Values.rollingUpdatePartition }}
+    {{- end }}
+  template:
+    metadata:
+      name: {{ include "common.name" . | quote }}
+      namespace: {{ .Release.Namespace | quote }}
+      labels: {{- include "common.labels" . | nindent 8 }}
+        {{- with .Values.labels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      annotations:
+        # NB: Both these annotation values must be of type "string"
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9100"
+        {{- with .Values.annotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.hostAliases }}
+      hostAliases: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.schedulerName }}
+      schedulerName: {{ .Values.schedulerName | quote }}
+      {{- end }}
+      {{- with (.Values.securityContext).template }}
+      securityContext: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      initContainers:
+        - name: home
+          image: busybox:latest
+          command: ["sh", "-c", "cp /tmp/solr.xml /cfg/zoo.cfg /tmp-config"]
+          volumeMounts: 
+            - name: "solr-xml"
+              mountPath: "/tmp"
+            - name: "zoo-cfg"
+              mountPath: "/cfg"
+            - name: "home"
+              mountPath: "/tmp-config"
+      containers:
+        - name: solr
+          {{- with (.Values.securityContext).solr }}
+          securityContext: {{- toYaml . | nindent 12 }}
+          {{- end }}
+          image: {{ include "arkcase.tools.image" . | quote }}
+          imagePullPolicy: {{ include "arkcase.tools.imagePullPolicy" . | quote }}
+          env: {{- include "arkcase.tools.baseEnv" . | nindent 12}}
+            - name: SOLR_HOME
+              value: "/data/conf/"
+            - name: SOLR_OPTS
+              value: "-Dsolr.autoSoftCommit.maxTime=1000"
+          {{- include "arkcase.subsystem.ports" . | nindent 10 }}
+          {{- if .Values.command }}
+          command: {{- .Values.command | toYaml | nindent 12 }}
+          {{- end }}
+          {{- if .Values.resources }}
+          resources: {{- toYaml .Values.resources | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: "data"
+              mountPath: "/data"
+            - name: "home"
+              mountPath: "/data/conf/"
+            - name: "schema-xml"
+              mountPath: "/opt/solr/server/solr/configsets/_default/conf/schema.xml"
+              subPath: "schema.xml"
+            - name: "solrconfig-xml"
+              mountPath: "/opt/solr/server/solr/configsets/_default/conf/solrconfig.xml"
+              subPath: "solrconfig.xml"
+      volumes:
+        {{- include "arkcase.persistence.volume" (dict "name" "data" "ctx" $) | nindent 8 }}
+        - name: "home"
+          emptyDir: {}
+        - name: "solr-xml"
+          configMap:
+            name: {{ include "common.fullname" . | quote }}
+            items:
+            - key: "solr.xml"
+              path: "solr.xml"
+        - name: "schema-xml"
+          configMap: 
+            name: {{ include "common.fullname" . | quote }}
+            items:
+             - key: "schema.xml"
+               path: "schema.xml"
+        - name: "solrconfig-xml"
+          configMap: 
+            name: {{ include "common.fullname" . | quote }}
+            items:
+             - key: "solrconfig.xml"
+               path: "solrconfig.xml"
+        - name: "zoo-cfg"
+          configMap:
+            name: {{ include "common.fullname" . | quote }}
+            items:
+             - key: "zoo.cfg"
+               path: "zoo.cfg"
+
+{{- if (include "arkcase.persistence.enabled" .) }}
+{{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "data") | nindent 0 }}
+{{- end }}
+{{- end }}

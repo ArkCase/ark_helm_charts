@@ -2,68 +2,67 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
+# This can be set to "false" by parent charts. If not defined, it will be taken as true
+#enabled: true
+
+#
+# This should group all application-specific configurations
+#
+configuration:
+  # add your configurations here
+
 # Please leave the `replicaCount` to 1 for the time being. Clustering is not
 # supported yet.
 replicaCount: 1
 
+platform: ""
 image:
-  repository: 345280441424.dkr.ecr.ap-south-1.amazonaws.com/ark_snowbound
+  registry: "345280441424.dkr.ecr.ap-south-1.amazonaws.com"
+  repository: "ark_snowbound"
+  # Overrides the image tag whose default is the chart appVersion
+  tag: "20210825-230fae0"
   pullPolicy: IfNotPresent
-  tag: 20210825-230fae0
 
-imagePullSecrets: []
+imagePullSecrets:
+  - name: aws-arkcase-pull
+
+# You generally shouldn't mess with these. These exist to support some name-generation templates
 nameOverride: ""
 fullnameOverride: ""
 
-# `snowbound_port` is the port for the Snowbound service
-#
-# This is port number that other pods will need to connect to in order to
-# access Snowbound. The default is 8080, which is what is used if you leave
-# this variable empty.
-snowbound_port:
+# Custom annotations to apply throughout
+annotations:
 
-# `snowbound_pod_port` is the port exposes by Snowbound pods
-#
-# The default is 8080, which is what is used if you leave this variable empty.
-snowbound_pod_port:
+# Custom labels to apply throughout
+labels:
 
-# `snowbound_host_port` is the value to set in VirtualViewerJavaHTML5.xml
-#
-# You must provide a value for this variable.
-snowbound_host_port: 8080
-
-# `arkcase_host_port` is the value to set in VirtualViewerJavaHTML5.xml
-#
-# You must provide a value for this variable.
-arkcase_host_port: 8080
+updateStrategy: RollingUpdate
+rollingUpdatePartition: ""
 
 serviceAccount:
   # Specifies whether a service account should be created
-  create: true
+  create: false
   # Annotations to add to the service account
-  annotations: {}
+  annotations:
+  # Annotations to add to the service account
+  labels:
   # The name of the service account to use.
   # If not set and create is true, a name is generated using the fullname template
   name: ""
 
-podAnnotations: {}
+securityContext:
+  template:
+    # You must specify an `fsGroup` to allow Snowbound write access to mounted
+    # volumes (as long as Snowbound runs as a non-root user, which should be the
+    # case). Any random number will do.
+    fsGroup: 23949
+  snowbound:
+    # capabilities:
+    #   drop:
+    #   - ALL
+    # readOnlyRootFilesystem: true
 
-podSecurityContext:
-  # You must specify an `fsGroup` to allow Snowbound write access to mounted
-  # volumes (as long as Snowbound runs as a non-root user, which should be the
-  # case). Any random number will do.
-  fsGroup: 23949
-
-securityContext: {}
-  # capabilities:
-  #   drop:
-  #   - ALL
-  # readOnlyRootFilesystem: true
-
-# `serviceType` is the type of the Snowbound service
-serviceType: ClusterIP
-
-resources: {}
+resources:
   # We usually recommend not to specify default resources and to leave this as a conscious
   # choice for the user. This also increases chances charts run on environments with little
   # resources, such as Minikube. If you do want to specify resources, uncomment the following
@@ -75,66 +74,93 @@ resources: {}
   #   cpu: 100m
   #   memory: 128Mi
 
-nodeSelector: {}
+nodeSelector:
 
-tolerations: []
+tolerations:
 
-affinity: {}
-
-readinessProbe:
-  initialDelaySeconds: 10
-  periodSeconds: 5
-  timeoutSeconds: 2
-  failureThreshold: 2
-
-livenessProbe:
-  initialDelaySeconds: 10
-  periodSeconds: 5
-  timeoutSeconds: 2
-  failureThreshold: 2
+affinity:
 
 persistence:
-  # `persistence.enabled` enables persistence for Snowbound
-  #
-  # This is done using a persistent volume claim. If set to `false`, an
-  # `emptyDir` will be used instead and all the other `persistence.*`
-  # parameters are ignored.
+  # If set to `false`, an `emptyDir` will be used instead and all other `persistence.*` parameters
+  # are ignored.
   enabled: true
 
-  # `persistence.existingClaim` uses an external PVC
-  #
-  # If set, the specified persistent volume claim will be used and this Helm
-  # chart won't create a PVC.
-  existingClaim:
+# Use this when not using other persistent volumes, to point to the root location
+# where the directories need to be created
+  localPath: "/opt/app/arkcase"
 
-  # `persistence.subPath` is the directory of the volume to mount from
-  #
-  # Leave empty to mount the root of the volume.
-  subPath:
+#
+# There is 1 volume supported: data
+#
+  data:
+# The "spec" should match the contents of PersistenceVolume.spec
+    spec:
+#      storageClassName: "manual"
+#      persistentVolumeReclaimPolicy: Retain
+#      accessModes:
+#        - "ReadWriteOnce"
+#      capacity:
+#        storage: "10Gi"
+#      hostPath:
+#        path: /tmp/samba/data
+#
+    claim:
+# "name" is the name of an existing volume claim to be re-used, can't be used if "claim" is present
+#      name: "name-of-the-claim-to-consume"
+# "spec" should match the contents of PersistenceVolumeClaim.spec, can't be used if "name" is present
+#      spec: 
+#        storageClassName: ""
+#        volumeName: the-volume-to-claim
+#        accessModes:
+#          - "ReadWriteOnce"
+#        resources:
+#          limits: ""
+#          requests: ""
+#        selector:
+#          matchExpressions:
+#            - values:
+#                - ""
+#                - ""
+#                - ""
+#                ...
+#              operator: "In"|"NotIn"|"Exists"|"DoesNotExist"
+#              key: "labelKey"
+#            - values:
+#                - ""
+#                - ""
+#                - ""
+#                ...
+#              operator: "In"|"NotIn"|"Exists"|"DoesNotExist"
+#              key: "labelKey"
+#          matchLabels: "....."
 
-  # `persistence.storageClass` is the storage class for the new PVC
-  #
-  # If set to an empty string, the default provisionner will be used. If
-  # `persistence.existingClaim` is set, this parameter is ignored.
-  storageClass: standard
+service:
+  #external: host-or-IP
+  ports:
+    - name: http
+      protocol: TCP
+      port: &http 8080
+  snowboundPort: *http
+  arkcasePort: 8080
 
-  # `persistence.annotations` are the annotations for the new PVC
-  #
-  # If `persistence.existingClaim` is set, this parameter is ignored.
-  annotations: {}
-
-  # `persistence.accessModes` are the access modes for the new PVC
-  #
-  # If `persistence.existingClaim` is set, this parameter is ignored.
-  accessModes: [ReadWriteOnce]
-
-  # `persistence.size` is the size of the new PVC
-  #
-  # Use the standard Kubernetes notations to express the units; eg: "8Gi". If
-  # `persistence.existingClaim` is set, this parameter is ignored.
-  size: 8Gi
-
-  # `persistence.mountPath` is the directory where to mount the persistent volume
-  #
-  # You should not modify this value unless you know what you are doing.
-  mountPath: /app/home/.snowbound-docs
+##
+## Configure extra options for containers' liveness and readiness probes
+## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/#configure-probes
+## @param service.probes.enabled Enable liveness and readiness probes
+## @param service.probes.spec.initialDelaySeconds Initial delay seconds for liveness and readiness probes
+## @param service.probes.spec.periodSeconds Period seconds for liveness and readiness probes
+## @param service.probes.spec.timeoutSeconds Timeout seconds for liveness and readiness probes
+## @param service.probes.spec.failureThreshold Failure threshold for liveness and readiness probes
+## @param service.probes.spec.successThreshold Success threshold for liveness and readiness probes
+##
+  probes:
+    enabled: true
+    spec:
+      httpGet:
+        path: "/VirtualViewerJavaHTML5"
+        port: *http
+      initialDelaySeconds: 30
+      periodSeconds: 20
+      timeoutSeconds: 5
+      failureThreshold: 6
+      successThreshold: 1

@@ -1,0 +1,109 @@
+{{- if (include "arkcase.subsystem.enabled" .) }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "common.fullname" . | quote }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels: {{- include "common.labels" . | nindent 4 }}
+    {{- with .Values.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with .Values.annotations }}
+  annotations: {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if not (.Values.autoscaling).enabled }}
+  replicas: {{ .Values.replicaCount | default 1 }}
+  {{- end }}
+  selector:
+    matchLabels: {{- include "common.labels.matchLabels" . | nindent 6 }}
+  serviceName: {{ include "common.fullname" . | quote }}
+  updateStrategy:
+    type: {{ .Values.updateStrategy }}
+    {{- if (eq "Recreate" .Values.updateStrategy) }}
+    rollingUpdate: null
+    {{- else if .Values.rollingUpdatePartition }}
+    rollingUpdate:
+      partition: {{ .Values.rollingUpdatePartition }}
+    {{- end }}
+  template:
+    metadata:
+      name: {{ include "common.name" . | quote }}
+      namespace: {{ .Release.Namespace | quote }}
+      labels: {{- include "common.labels" . | nindent 8 }}
+        {{- with .Values.labels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      annotations:
+        # NB: Both these annotation values must be of type "string"
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9100"
+        {{- with .Values.annotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.hostAliases }}
+      hostAliases: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.schedulerName }}
+      schedulerName: {{ .Values.schedulerName | quote }}
+      {{- end }}
+      serviceAccountName: {{ include "common.serviceAccountName" . }}
+      {{- with (.Values.securityContext).template }}
+      securityContext: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      initContainers:
+        - name: chown
+          image: busybox:latest
+          command: ["sh", "-c", "chown -R 1000:1000 /data && chmod -R ug+rwX,o-rwx /data" ]
+          volumeMounts:
+            - name: "data"
+              mountPath: "/data"
+      containers:
+        - name: activemq
+          {{- with (.Values.securityContext).activemq }}
+          securityContext: {{- toYaml . | nindent 12 }}
+          {{- end }}
+          image: {{ include "arkcase.tools.image" . | quote }}
+          imagePullPolicy: {{ include "arkcase.tools.imagePullPolicy" . | quote }}
+          env: {{- include "arkcase.tools.baseEnv" . | nindent 12}}
+            - name: ACTIVEMQ_ENCRYPTION_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "common.fullname" . | quote }}
+                  key: ENCRYPTION_PASSWORD
+          {{- include "arkcase.subsystem.ports" . | nindent 10 }}
+          {{- if .Values.command }}
+          command: {{- .Values.command | toYaml | nindent 12 }}
+          {{- end }}
+          {{- with .Values.resources }}
+          resources: {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: "data"
+              mountPath: "/app/data"
+            - name: "secrets"
+              mountPath: "/app/conf"
+              readOnly: true
+      volumes:
+        {{- include "arkcase.persistence.volume" (dict "name" "data" "ctx" $) | nindent 8 }}
+        - name: secrets
+          secret:
+            secretName: {{ include "common.fullname" . }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations: {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+{{- if (include "arkcase.persistence.enabled" .) }}
+{{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "data") | indent 0 }}
+{{- end }}
+{{- end }}

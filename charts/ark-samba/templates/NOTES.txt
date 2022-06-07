@@ -1,11 +1,11 @@
-{{- if or .Values.enabled (not (hasKey .Values "enabled")) -}}
+{{- if (include "arkcase.subsystem.enabledOrExternal" .) -}}
 Samba Domain specs:
 
-	Domain: {{ .Values.domain.name }}
-	Realm: {{ include "common.samba.realm" .Values.domain.name }}
-	LDAP Base DN: {{ include "common.samba.dc" .Values.domain.name }}
+	Domain: {{ .Values.configuration.domain.name }}
+	Realm: {{ include "common.samba.realm" .Values.configuration.domain.name }}
+	LDAP Base DN: {{ include "common.samba.dc" .Values.configuration.domain.name }}
 
 Check that LDAPS is running by using the following command:
 
-    $ LDAPTLS_REQCERT=never ldapsearch -H ldaps://{{ template "common.fullname" . }}:{{ .Values.service.ports.ldaps.port }} -D '{{ include "common.samba.realm" .Values.domain.name }}\administrator' -w {{ .Values.domain.password | quote }} -b {{ include "common.samba.dc" .Values.domain.name | quote }} '(objectClass=user)' dn
+    $ LDAPTLS_REQCERT=never ldapsearch -H ldaps://{{ template "common.fullname" . }} -D '{{ include "common.samba.realm" .Values.configuration.domain.name }}\administrator' -w {{ .Values.configuration.domain.password | quote }} -b {{ include "common.samba.dc" .Values.configuration.domain.name | quote }} '(objectClass=user)' dn
 {{- end -}}
