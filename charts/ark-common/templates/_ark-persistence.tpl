@@ -188,7 +188,7 @@ spec:
 {{- else }}
   storageClassName: {{ $storageClassName | quote }}
   volumeName: {{ $objectName | quote }}
-  accessModes: {{- $accessModes | nindent 4 }}
+  accessModes: {{- toYaml $accessModes | nindent 4 }}
   resources:
     requests:
       storage: {{ $storageSize | quote }}
