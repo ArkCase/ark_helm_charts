@@ -70,6 +70,11 @@ spec:
           image: {{ include "arkcase.tools.image" . | quote }}
           imagePullPolicy: {{ include "arkcase.tools.imagePullPolicy" . | quote }}
           env: {{- include "arkcase.tools.baseEnv" . | nindent 12}}
+            - name: ACTIVEMQ_ENCRYPTION_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "common.fullname" . | quote }}
+                  key: ENCRYPTION_PASSWORD
           {{- include "arkcase.subsystem.ports" . | nindent 10 }}
           {{- if .Values.command }}
           command: {{- .Values.command | toYaml | nindent 12 }}
