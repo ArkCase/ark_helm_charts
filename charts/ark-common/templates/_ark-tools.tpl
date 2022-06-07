@@ -37,7 +37,7 @@ result: either "" or "true"
 {{- end -}}
 
 {{- /*
-Outputs "true" if the given parameter is a string that matches an RFC-1123 hostname. If the string submitted is not an RFC-1123 hostname, the empty string will be output.
+Outputs "true" if the given parameter is a string that matches an RFC-1123 host or domain name. If the string submitted is not an RFC-1123 host or domain name, the empty string will be output.
 
 usage: ( include "arkcase.tools.checkHostname" "some.hostname.to.check" )
 result: either "" or "true"
@@ -137,7 +137,7 @@ usage: ( include "arkcase.tools.isIp" "some.ip.to.check" )
 {{- end -}}
 
 {{- /*
-Ensures that the given parameter is a string that matches an RFC-1123 hostname, a list (slice) of hostnames, or a comma-separated string of hostnames. If any of the strings submitted is not an RFC-1123 hostname, template processing will be halted.
+Ensures that the given parameter is a string that matches an RFC-1123 host or domain name, a list (slice) of host or domain names, or a comma-separated string of host or domain names. If any of the strings submitted is not an RFC-1123 host or domain name, template processing will be halted.
 
 usage: ( include "arkcase.tools.mustHostname" "some.hostname.to.check" )
        ( include "arkcase.tools.mustHostname" (list "some.hostname.to.check" "another.hostname.to.check" ...) )
@@ -146,7 +146,7 @@ usage: ( include "arkcase.tools.mustHostname" "some.hostname.to.check" )
 {{- define "arkcase.tools.mustHostname" -}}
   {{- $param := (default list .) -}}
   {{- if not (include "arkcase.tools.isHostname" $param) -}}
-    {{- fail (printf "One of the values in %s is not an RFC-1123 hostname" $param) -}}
+    {{- fail (printf "One of the values in %s is not an RFC-1123 host or domain name" $param) -}}
   {{- end -}}
   {{- $type := (kindOf $param) -}}
   {{- if eq "string" $type -}}
@@ -164,20 +164,20 @@ usage: ( include "arkcase.tools.mustHostname" "some.hostname.to.check" )
 {{- end -}}
 
 {{- /*
-Ensures that the given parameter is a string that matches a single RFC-1123 hostname. If the string is not an RFC-1123 hostname, template processing will be halted.
+Ensures that the given parameter is a string that matches a single RFC-1123 host or domain name. If the string is not an RFC-1123 host or domain name, template processing will be halted.
 
 usage: ( include "arkcase.tools.mustSingleHostname" "some.hostname.to.check" )
 */ -}}
 {{- define "arkcase.tools.mustSingleHostname" -}}
   {{- $param := (toString (default "" .)) -}}
   {{- if not (include "arkcase.tools.checkHostname" $param) -}}
-    {{- fail (printf "The string [%s] is not an RFC-1123 hostname" $param) -}}
+    {{- fail (printf "The string [%s] is not an RFC-1123 host or domain name" $param) -}}
   {{- end -}}
   {{- trim . -}}
 {{- end -}}
 
 {{- /*
-Outputs "true" if the given parameter is a string that matches a single RFC-1123 hostname. If the string is not an RFC-1123 hostname, the empty string will be output.
+Outputs "true" if the given parameter is a string that matches a single RFC-1123 host or domain name. If the string is not an RFC-1123 host or domain name, the empty string will be output.
 
 usage: ( include "arkcase.tools.isSingleHostname" "some.hostname.to.check" )
 result: either "" or "true"
@@ -187,7 +187,7 @@ result: either "" or "true"
 {{- end -}}
 
 {{- /*
-Outputs "true" if the given parameter is a string that matches an RFC-1123 hostname, a list (slice) of hostnames, or a comma-separated string of hostnames. If any of the strings submitted is not an RFC-1123 hostname, the empty string will be output.
+Outputs "true" if the given parameter is a string that matches an RFC-1123 host or domain name, a list (slice) of host or domain names, or a comma-separated string of host or domain names. If any of the strings submitted is not an RFC-1123 host or domain name, the empty string will be output.
 
 usage: ( include "arkcase.tools.isHostname" "some.hostname.to.check" )
        ( include "arkcase.tools.isHostname" (list "some.hostname.to.check" "another.hostname.to.check" ...) )
@@ -222,30 +222,13 @@ result: either "" or "true"
 {{- end -}}
 
 {{/*
-Sanitize the given domain name by removing consecutive dots, and leading and trailing dots. The name must comply with RFC-1123 requirements (only A-Z, a-z, 0-9, the dots, and the dash (-) are allowed. This template will fail if the given name does not meet those requirements.
-
-usage: ( include "arkcase.tools.sanitizeDomain" "....some.domain......com....." )
-result: "some.domain.com" (may fail() if the domain is not valid per RFC-1123)
-*/}}
-{{- define "arkcase.tools.sanitizeDomain" -}}
-  {{- /* Remove consecutive dots */ -}}
-  {{- $name := (regexReplaceAll "[.]+" . ".") -}}
-  {{- /* Remove leading and trailing dots */ -}}
-  {{- $name = (regexReplaceAll "^[.]?(.*?)[.]?$" $name "${1}") -}}
-  {{- if (not (include "arkcase.tools.isHostname" $name)) -}}
-    {{- fail (printf "The domain name [%s] is not valid per DNS rules (RFC-1123)" .) -}}
-  {{- end -}}
-  {{- $name -}}
-{{- end -}}
-
-{{/*
 Compute the Samba dc=XXX,dc=XXX from a given domain name
 
 usage: ( include "arkcase.tools.samba.dc" "some.domain.com" )
 result: "DC=some,DC=domain,DC=com"
 */}}
 {{- define "arkcase.tools.samba.dc" -}}
-  {{- $parts := splitList "." (include "arkcase.tools.sanitizeDomain" . | upper) -}}
+  {{- $parts := splitList "." (include "arkcase.tools.mustHostname" . | upper) -}}
   {{- $dc := "" -}}
   {{- $sep := "" -}}
   {{- range $parts -}}
@@ -264,7 +247,7 @@ usage: ( include "arkcase.tools.samba.realm" "some.domain.com" )
 result: "SOME"
 */}}
 {{- define "arkcase.tools.samba.realm" -}}
-  {{- $parts := splitList "." (include "arkcase.tools.sanitizeDomain" . | upper) -}}
+  {{- $parts := splitList "." (include "arkcase.tools.mustHostname" . | upper) -}}
   {{- (index $parts 0) -}}
 {{- end -}}
 
