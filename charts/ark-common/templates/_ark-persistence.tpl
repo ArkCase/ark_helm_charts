@@ -129,7 +129,7 @@ metadata:
     {{- with $volumeData.labels }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
-    arkcase/volumeId: {{ $objectId | quote }}
+    arkcase/persistentVolumeId: {{ $objectId | quote }}
   annotations:
     {{- with $ctx.Values.annotations  }}
     {{- toYaml . | nindent 4 }}
@@ -160,6 +160,11 @@ spec:
     {{- $localPath := coalesce ($ctx.Values.persistence).localPath (($ctx.Values.global).persistence).localPath "/opt/app/arkcase" -}}
     {{- $localPath = (printf "%s/%s/%s" $localPath (include "arkcase.subsystem.name" $ctx) $volumeName) }}
     path: {{ $localPath | quote }}
+  claimRef:
+    apiVersion: v1
+    kind: PersistentVolumeClaim
+    name: {{ $objectName | quote }}
+    namespace: {{ $ctx.Release.Namespace | quote }}
 {{- end }}
 
     {{- end }}
@@ -177,6 +182,7 @@ metadata:
     {{- with $volumeData.labels }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
+    arkcase/persistentVolumeClaimId: {{ $objectId | quote }}
   annotations:
     {{- with $ctx.Values.annotations  }}
     {{- toYaml . | nindent 4 }}
@@ -191,7 +197,7 @@ spec:
   volumeName: {{ $objectName | quote }}
   selector:
     matchLabels:
-      arkcase/volumeId: {{ $objectId | quote }}
+      arkcase/persistentVolumeId: {{ $objectId | quote }}
   storageClassName: {{ $storageClassName | quote }}
   accessModes: {{- toYaml $accessModes | nindent 4 }}
   resources:
