@@ -67,10 +67,10 @@
       {{- range (sortAlpha .roles | uniq | compact) -}}
         {{- $roles = (append $roles .) -}}
       {{- end -}}
-      {{- $crap = set $users $user (join "," $roles) -}}
+      {{- $crap = set $users $user $roles -}}
     {{- end -}}
   {{- end -}}
   {{- range $user, $roles := $users }}
-{{ $user }}:{{ $roles }}
+{{ $user }}: {{ join "," $roles }}
   {{- end }}
 {{- end -}}
