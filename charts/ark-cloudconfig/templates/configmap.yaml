@@ -1,10 +1,18 @@
+{{- if (include "arkcase.subsystem.enabled" .) }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "ark-cloudconfig.fullname" . }}
+  name: {{ include "common.fullname" . | quote }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels: {{- include "common.labels" . | nindent 4 }}
+    {{- with .Values.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
   annotations:
-    timestamp: "{{ date "20060102150405" .Release.Time }}"
-  namespace: {{ .Release.Namespace }}
+    timestamp: {{ date "20060102150405" now | quote }}
+    {{- with .Values.annotations }}
+      {{- toYaml . | nindent 4 }}
+    {{- end }}
 data:
   application.yml: |-
     server.port: 9999
@@ -25,7 +33,7 @@ data:
         file: "%d{yyyy-MM-dd HH:mm:ss,SSS} [%thread] %-5level %logger.%M - %msg%n"
     jms.message.buffer.window: 1
     acm.activemq:
-      broker-url: ssl://${ACTIVE_MQ_URL}:${ACTIVE_MQ_PORT}
+      broker-url: ${ACTIVE_MQ_URL}
       user: ${ACTIVE_MQ_USERNAME}
       password: ${ACTIVE_MQ_PASSWORD}
       default-destination: configuration.changed
@@ -35,3 +43,4 @@ data:
       rules-destination: rules.changed
       timeout: 10 #seconds
     arkcase.languages: "-de,-en,-en-in,-es,-fr,-hi,-ja,-pt,-ru,-zh-cn,-zh-tw"
+{{- end }}
