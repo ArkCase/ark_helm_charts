@@ -102,11 +102,16 @@ Render the PersistentVolume and PersistentVolumeClaim objects for a given volume
     {{- $defaultStorageClassName := (include "arkcase.tools.get" (dict "ctx" $defaults "name" "storageClassName") | default "manual") -}}
     {{- $defaultAccessModes := (include "arkcase.tools.get" (dict "ctx" $defaults "name" "accessModes")) -}}
     {{- if not $defaultAccessModes -}}
-      {{- $defaultAccessModes = "- ReadWriteOnce" -}}
+      {{- $defaultAccessModes = (list "ReadWriteOnce") -}}
     {{- end -}}
 
-    {{- $claimName := (($volumeData.claim).name) -}}
-    {{- $claimSpec := (($volumeData.claim).spec) -}}
+    {{- $claimName := (default "" ($volumeData.claim).name) -}}
+    {{- $claimSpec := (default dict ($volumeData.claim).spec) -}}
+    {{- $volumeSpec := (default dict $volumeData.spec) -}}
+
+    {{- $storageClassName := $defaultStorageClassName -}}
+    {{- $accessModes := $defaultAccessModes -}}
+    {{- $storageSize := $defaultSize -}}
 
     {{- if not $claimName -}}
     {{- if not $claimSpec -}}
@@ -124,25 +129,35 @@ metadata:
     {{- toYaml . | nindent 4 }}
     {{- end }}
   annotations:
-  {{- with $ctx.Values.annotations  }}
+    {{- with $ctx.Values.annotations  }}
     {{- toYaml . | nindent 4 }}
-  {{- end }}
-  {{- with $volumeData.annotations  }}
+    {{- end }}
+    {{- with $volumeData.annotations  }}
     {{- toYaml . | nindent 4 }}
-  {{- end }}
+    {{- end }}
 spec:
-{{- if ($volumeData.spec) -}}
-  {{- $volumeData.spec | toYaml | nindent 2 -}}
+{{- if ($volumeSpec) }}
+  {{- if $volumeSpec.accessModes -}}
+    {{- $accessModes = $volumeSpec.accessModes -}}
+  {{- end -}}
+  {{- if ($volumeSpec.capacity).storage -}}
+    {{- $storageSize = $volumeSpec.capacity.storage -}}
+  {{- end -}}
+  {{- if $volumeSpec.storageClassName -}}
+    {{- $storageClassName = $volumeSpec.storageClassName -}}
+  {{- end -}}
+  {{- toYaml $volumeSpec | nindent 2 -}}
 {{- else }}
-  storageClassName: {{ $defaultStorageClassName | quote }}
+  {{- $storageClassName = "local-storage" }}
+  storageClassName: {{ $storageClassName | quote }}
   persistentVolumeReclaimPolicy: {{ $defaultReclaimPolicy | quote }}
-  accessModes: {{- $defaultAccessModes | nindent 4 }}
+  accessModes: {{- toYaml $accessModes | nindent 4 }}
   capacity:
-    storage: {{ $defaultSize | quote }}
-  hostPath:
-    {{- $hostPath := coalesce ($ctx.Values.persistence).localPath (($ctx.Values.global).persistence).localPath "/opt/app/arkcase" -}}
-    {{- $hostPath = (printf "%s/%s/%s" $hostPath (include "arkcase.subsystem.name" $ctx) $volumeName) }}
-    path: {{ $hostPath | quote }}
+    storage: {{ $storageSize | quote }}
+  local:
+    {{- $localPath := coalesce ($ctx.Values.persistence).localPath (($ctx.Values.global).persistence).localPath "/opt/app/arkcase" -}}
+    {{- $localPath = (printf "%s/%s/%s" $localPath (include "arkcase.subsystem.name" $ctx) $volumeName) }}
+    path: {{ $localPath | quote }}
 {{- end }}
 
     {{- end }}
@@ -161,22 +176,22 @@ metadata:
     {{- toYaml . | nindent 4 }}
     {{- end }}
   annotations:
-  {{- with $ctx.Values.annotations  }}
+    {{- with $ctx.Values.annotations  }}
     {{- toYaml . | nindent 4 }}
-  {{- end }}
-  {{- with $volumeData.annotations  }}
+    {{- end }}
+    {{- with $volumeData.annotations  }}
     {{- toYaml . | nindent 4 }}
-  {{- end }}
+    {{- end }}
 spec:
 {{- if ($claimSpec) -}}
   {{- $claimSpec | toYaml | nindent 2 }}
 {{- else }}
-  storageClassName: {{ $defaultStorageClassName | quote }}
+  storageClassName: {{ $storageClassName | quote }}
   volumeName: {{ $objectName | quote }}
-  accessModes: {{- $defaultAccessModes | nindent 4 }}
+  accessModes: {{- $accessModes | nindent 4 }}
   resources:
     requests:
-      storage: {{ $defaultSize | quote }}
+      storage: {{ $storageSize | quote }}
 {{- end }}
     {{- end -}}
 
