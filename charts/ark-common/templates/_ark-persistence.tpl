@@ -160,6 +160,15 @@ spec:
     {{- $localPath := coalesce ($ctx.Values.persistence).localPath (($ctx.Values.global).persistence).localPath "/opt/app/arkcase" -}}
     {{- $localPath = (printf "%s/%s/%s" $localPath (include "arkcase.subsystem.name" $ctx) $volumeName) }}
     path: {{ $localPath | quote }}
+  nodeAffinity:
+    # TODO: This should probably be revised ... should work for now
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/os
+              operator: In
+              values:
+                - linux
   claimRef:
     apiVersion: v1
     kind: PersistentVolumeClaim
