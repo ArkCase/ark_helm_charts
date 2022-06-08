@@ -118,7 +118,6 @@ Parameter: either the root context (i.e. "." or "$"), or
 */ -}}
 {{- define "arkcase.subsystem.enabledOrExternal" -}}
   {{- $map := (include "arkcase.subsystem" . | fromYaml) -}}
-  {{- 
   {{- if (or ($map.data.enabled) (($map.ctx.Values.service).external)) -}}
     {{- true -}}
   {{- end -}}
