@@ -150,7 +150,7 @@ spec:
   {{- end -}}
   {{- toYaml $volumeSpec | nindent 2 -}}
 {{- else }}
-  {{- /* Use "local-storage" when we've figured out the folder creation thing */ }}
+  {{- /* Use "local-storage" when we've figured out the folder creation thing */ -}}
   {{- $storageClassName = "manual" }}
   storageClassName: {{ $storageClassName | quote }}
   persistentVolumeReclaimPolicy: {{ $defaultReclaimPolicy | quote }}
