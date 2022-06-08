@@ -157,7 +157,7 @@ spec:
   accessModes: {{- toYaml $accessModes | nindent 4 }}
   capacity:
     storage: {{ $storageSize | quote }}
-  {{- if (eq "local-storage" $storageClass) }}
+  {{- if (eq "local-storage" $storageClassName) }}
   # Use "local:" when using "local-storage" as the storage class
   local:
   {{- else }}
@@ -167,7 +167,7 @@ spec:
     {{- $localPath := coalesce ($ctx.Values.persistence).localPath (($ctx.Values.global).persistence).localPath "/opt/app/arkcase" -}}
     {{- $localPath = (printf "%s/%s/%s" $localPath (include "arkcase.subsystem.name" $ctx) $volumeName) }}
     path: {{ $localPath | quote }}
-  {{- if (eq "local-storage" $storageClass) }}
+  {{- if (eq "local-storage" $storageClassName) }}
   # Node affinity is required when using "local-storage" as the storage class
   nodeAffinity:
     # TODO: This should probably be revised ... should work for now
