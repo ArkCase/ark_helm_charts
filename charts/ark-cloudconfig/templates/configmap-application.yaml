@@ -19,11 +19,11 @@ data:
     spring:
       profiles.active: native
       cloud.config.server:
-        native.searchLocations: file://${ark_extension_path}/acm/acm-config-server-repo, file://${ark_extension_path}/acm/acm-config-server-repo/rules, file://${ark_extension_path}/acm/acm-config-server-repo/lookups, file://${ark_extension_path}/acm/acm-config-server-repo/ldap, file://${ark_extension_path}/acm/acm-config-server-repo/labels
+        native.searchLocations: "file://${config_root},file://${config_root}/rules,file://${config_root}/lookups,file://${config_root}/ldap,file://${config_root}/labels"
       jms:
         pub-sub-domain: true
-    properties.folder.path: ${ark_extension_path}/acm/acm-config-server-repo
-    branding.files.folder.path: ${ark_extension_path}/acm/acm-config-server-repo/branding
+    properties.folder.path: "${config_root}"
+    branding.files.folder.path: "${config_root}/branding"
     logging:
       # file.max-history: 10
       # file.max-size: 10MB

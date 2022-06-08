@@ -57,6 +57,7 @@ spec:
       {{- with (.Values.securityContext).template }}
       securityContext: {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- if ((.Values.configuration).download).enabled }}
       initContainers:
         # - name: arkcase-extension
         #   image: alpine/git
@@ -88,6 +89,7 @@ spec:
         #       mountPath: /data/.arkcase
         #   command: ["/bin/sh","-c"]
         #   args: ["cd /data/.arkcase && git checkout main"]
+      {{- end }}
       containers:
         - name: cloudconfig
           securityContext: {{- toYaml . | nindent 12 }}
@@ -95,8 +97,8 @@ spec:
           image: {{ include "arkcase.tools.image" . | quote }}
           imagePullPolicy: {{ include "arkcase.tools.imagePullPolicy" . | quote }}
           env: {{- include "arkcase.tools.baseEnv" . | nindent 12}}
-            - name: ark_extension_path
-              value: "/data/.arkcase"
+            - name: config_root
+              value: &configRoot "/data"
           envFrom:
             - secretRef:
                 name: {{ include "common.fullname" . | quote }}
@@ -108,30 +110,33 @@ spec:
           resources: {{- toYaml . | nindent 12 }}
           {{- end }}
           volumeMounts:
-            - name: application-config
+            - name: "data"
+              mountPath: *configRoot
+            - name: "application-cfg"
               mountPath: "/app/application.yml"
-              subPath: application.yml
+              subPath: "application.yml"
               readOnly: true
-            - name: persistent-data
-              mountPath: "/data/.arkcase"
-            - name: server-config
-              mountPath: "/data/.arkcase/acm/acm-config-server-repo/arkcase-server.yaml"
-              subPath: arkcase-server.yaml
+            - name: "server-cfg"
+              mountPath: "/data/arkcase-server.yaml"
+              subPath: "arkcase-server.yaml"
       volumes:
-        - name: application-config
+        {{- include "arkcase.persistence.volume" (dict "name" "data" "ctx" $) | nindent 8 }}
+        - name: "application-cfg"
           configMap:
-            name: {{ include "ark-cloudconfig.fullname" . }}
+            name: {{ include "common.fullname" . | quote }}
             items:
-              - key: application.yml
-                path: application.yml
-        - name: server-config
+              - key: &applicationYaml "application.yml"
+                path: *applicationYaml
+        - name: "server-cfg"
           configMap:
-            name: arkcase-server-config
+            name: {{ printf "%s-server-config" (include "common.fullname" .) | quote }}
             items:
-              - key: arkcase-server.yaml
-                path: arkcase-server.yaml
+              - key: &serverYaml "arkcase-server.yaml"
+                path: *serverYaml
             defaultMode: 0777
-        - name: persistent-data
-          persistentVolumeClaim:
-            claimName: {{ .Values.global.arkcaseExtension.persistence.claimName }}
+
+{{- if (include "arkcase.persistence.enabled" .) }}
+{{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "data") | indent 0 }}
+{{- end }}
+
 {{- end }}
