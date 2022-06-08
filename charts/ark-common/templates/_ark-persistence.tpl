@@ -164,8 +164,11 @@ spec:
   # Use "hostPath:" when using "manual" as the storage class
   hostPath:
   {{- end }}
-    {{- $localPath := coalesce ($ctx.Values.persistence).localPath (($ctx.Values.global).persistence).localPath "/opt/app/arkcase" -}}
-    {{- $localPath = (printf "%s/%s/%s" $localPath (include "arkcase.subsystem.name" $ctx) $volumeName) }}
+    {{- $localPath := $volumeData.localPath -}}
+    {{- if not $localPath -}}
+      {{- $localPath = coalesce ($ctx.Values.persistence).localPath (($ctx.Values.global).persistence).localPath "/opt/app/arkcase" -}}
+      {{- $localPath = (printf "%s/%s/%s" $localPath (include "arkcase.subsystem.name" $ctx) $volumeName) -}}
+    {{- end }}
     path: {{ $localPath | quote }}
   {{- if (eq "local-storage" $storageClassName) }}
   # Node affinity is required when using "local-storage" as the storage class
