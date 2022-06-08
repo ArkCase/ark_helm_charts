@@ -25,6 +25,8 @@ data:
     properties.folder.path: ${ark_extension_path}/acm/acm-config-server-repo
     branding.files.folder.path: ${ark_extension_path}/acm/acm-config-server-repo/branding
     logging:
+      # file.max-history: 10
+      # file.max-size: 10MB
       file: /dev/stdout
       level:
         com.armedia.acm.configserver: debug
@@ -42,5 +44,9 @@ data:
       lookups-destination: lookups.changed
       rules-destination: rules.changed
       timeout: 10 #seconds
+      # keystore: {{ keystore location | quote }}
+      # keystore-password: {{ keystore password | quote }}
+      # truststore: {{ truststore location | quote }}
+      # truststore-password: {{ truststore password | quote }}
     arkcase.languages: "-de,-en,-en-in,-es,-fr,-hi,-ja,-pt,-ru,-zh-cn,-zh-tw"
 {{- end }}
