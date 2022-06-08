@@ -105,6 +105,8 @@ persistence:
 # There are 3 volumes supported: data, conf, and logs
 #
   data:
+# Use this instance of localPath when you want a specific directory for this volume
+#    localPath: "/....."
 # The "volume" should match the contents of PersistenceVolume.spec
 #    volume:
 #      storageClassName: "manual"
@@ -146,6 +148,8 @@ persistence:
 #              key: "labelKey"
 #          matchLabels: "....."
   conf:
+# Use this instance of localPath when you want a specific directory for this volume
+#    localPath: "/....."
 # The "volume" should match the contents of PersistenceVolume.spec
 #    volume:
 #      storageClassName: "manual"
@@ -187,6 +191,8 @@ persistence:
 #              key: "labelKey"
 #          matchLabels: "....."
   logs:
+# Use this instance of localPath when you want a specific directory for this volume
+#    localPath: "/....."
 # The "volume" should match the contents of PersistenceVolume.spec
 #    volume:
 #      storageClassName: "manual"

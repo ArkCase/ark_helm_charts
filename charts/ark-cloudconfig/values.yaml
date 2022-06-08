@@ -103,9 +103,11 @@ persistence:
   localPath: "/opt/app/arkcase"
 
 #
-# There are 3 volumes supported: data, conf, and logs
+# There is 1 volumes supported: data
 #
   data:
+# Use this instance of localPath when you want a specific directory for this volume
+#    localPath: "/....."
 # The "volume" should match the contents of PersistenceVolume.spec
 #    volume:
 #      storageClassName: "manual"
