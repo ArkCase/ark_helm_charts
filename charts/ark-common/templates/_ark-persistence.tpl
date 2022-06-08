@@ -150,16 +150,25 @@ spec:
   {{- end -}}
   {{- toYaml $volumeSpec | nindent 2 -}}
 {{- else }}
-  {{- $storageClassName = "local-storage" }}
+  {{- /* Use "local-storage" when we've figured out the folder creation thing */ }}
+  {{- $storageClassName = "manual" }}
   storageClassName: {{ $storageClassName | quote }}
   persistentVolumeReclaimPolicy: {{ $defaultReclaimPolicy | quote }}
   accessModes: {{- toYaml $accessModes | nindent 4 }}
   capacity:
     storage: {{ $storageSize | quote }}
+  {{- if (eq "local-storage" $storageClass) }}
+  # Use "local:" when using "local-storage" as the storage class
   local:
+  {{- else }}
+  # Use "hostPath:" when using "manual" as the storage class
+  hostPath:
+  {{- end }}
     {{- $localPath := coalesce ($ctx.Values.persistence).localPath (($ctx.Values.global).persistence).localPath "/opt/app/arkcase" -}}
     {{- $localPath = (printf "%s/%s/%s" $localPath (include "arkcase.subsystem.name" $ctx) $volumeName) }}
     path: {{ $localPath | quote }}
+  {{- if (eq "local-storage" $storageClass) }}
+  # Node affinity is required when using "local-storage" as the storage class
   nodeAffinity:
     # TODO: This should probably be revised ... should work for now
     required:
@@ -169,6 +178,7 @@ spec:
               operator: In
               values:
                 - linux
+  {{- end }}
   claimRef:
     apiVersion: v1
     kind: PersistentVolumeClaim
