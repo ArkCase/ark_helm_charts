@@ -55,7 +55,8 @@ securityContext:
     # You must specify an `fsGroup` to allow Solr write access to mounted
     # volumes (as long as Solr runs as a non-root user, which should be the
     # case). Any random number will do.
-    fsGroup: 2000
+    fsGroup: 2002
+    fsGroupChangePolicy: OnRootMismatch
   solr:
     # capabilities:
     #   drop:

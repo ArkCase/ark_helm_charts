@@ -64,7 +64,8 @@ securityContext:
     # You must specify an `fsGroup` to allow ActiveMQ write access to mounted
     # volumes (as long as ActiveMQ runs as a non-root user, which should be the
     # case). Any random number will do.
-    fsGroup: 23948
+    fsGroup: 2001
+    fsGroupChangePolicy: OnRootMismatch
   activemq:
     # capabilities:
     #   drop:

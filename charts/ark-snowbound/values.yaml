@@ -55,7 +55,8 @@ securityContext:
     # You must specify an `fsGroup` to allow Snowbound write access to mounted
     # volumes (as long as Snowbound runs as a non-root user, which should be the
     # case). Any random number will do.
-    fsGroup: 23949
+    fsGroup: 2003
+    fsGroupChangePolicy: OnRootMismatch
   snowbound:
     # capabilities:
     #   drop:
