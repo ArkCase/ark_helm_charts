@@ -234,9 +234,15 @@ ports:
     {{- end }}
     {{- $probes := (default dict .probes) }}
     {{- $common := (default dict $probes.spec) }}
+    {{- $startup := (default dict $probes.startup) }}
     {{- $readiness := (default dict $probes.readiness) }}
     {{- $liveness := (default dict $probes.liveness) }}
     {{- if or ($probes.enabled) (not (hasKey $probes "enabled")) }}
+      {{- if or ($startup.enabled) (not (hasKey $readiness "enabled")) -}}
+        {{- with (mergeOverwrite $common $startup) }}
+startupProbe: {{- toYaml (unset . "enabled") | nindent 2 }}
+        {{- end }}
+      {{- end }}
       {{- if or ($readiness.enabled) (not (hasKey $readiness "enabled")) -}}
         {{- with (mergeOverwrite $common $readiness) }}
 readinessProbe: {{- toYaml (unset . "enabled") | nindent 2 }}
