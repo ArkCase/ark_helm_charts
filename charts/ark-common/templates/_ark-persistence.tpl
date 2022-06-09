@@ -87,6 +87,7 @@ Render the PersistentVolume and PersistentVolumeClaim objects for a given volume
 
     {{- $objectName := (printf "%s-%s" (include "common.fullname" $ctx) $volumeName) -}}
     {{- $objectId := (printf "%s.%s" $volumeName uuidv4) -}}
+    {{- $volumeObjectName := (printf "%s-%s" .Release.Namespace $objectName) -}}
     {{- $volumeData := dict -}}
     {{- if (include "arkcase.tools.check" (dict "ctx" $ctx "name" (printf ".Values.persistence.%s" $volumeName))) -}}
       {{- $volumeData = (include "arkcase.tools.get" (dict "ctx" $ctx "name" (printf ".Values.persistence.%s" $volumeName)) | fromYaml) -}}
@@ -120,7 +121,7 @@ Render the PersistentVolume and PersistentVolumeClaim objects for a given volume
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: {{ $objectName | quote }}
+  name: {{ $volumeObjectName | quote }}
   namespace: {{ $ctx.Release.Namespace | quote }}
   labels: {{- include "common.labels" $ctx | nindent 4 }}
     {{- with $ctx.Values.labels }}
@@ -216,7 +217,7 @@ spec:
 {{- if ($claimSpec) -}}
   {{- $claimSpec | toYaml | nindent 2 }}
 {{- else }}
-  volumeName: {{ $objectName | quote }}
+  volumeName: {{ $volumeObjectName | quote }}
   selector:
     matchLabels:
       arkcase/persistentVolumeId: {{ $objectId | quote }}
