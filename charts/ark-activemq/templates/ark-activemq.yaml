@@ -56,9 +56,17 @@ spec:
       securityContext: {{- toYaml . | nindent 8 }}
       {{- end }}
       initContainers:
-        - name: chown
-          image: busybox:latest
-          command: ["sh", "-c", "chown -R 1000:1000 /data && chmod -R ug+rwX,o-rwx /data" ]
+        - name: set-permissions
+          image: {{ include "arkcase.tools.image" (dict "ctx" . "repository" "ark_setperm") | quote }}
+          env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
+            - name: JOBS
+              value: |
+                jobs:
+                  # We know the ActiveMQ image uses user 998
+                  - ownership: "998:"
+                  - permissions: "u=rwX,g=rX,o="
+                  - flags: [ "recurse", "noforced", "create", "changes" ]
+                  - targets: [ "/data" ]
           volumeMounts:
             - name: "data"
               mountPath: "/data"
