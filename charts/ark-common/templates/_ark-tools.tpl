@@ -393,6 +393,7 @@ Render the image name taking into account the registry, repository, image name, 
   {{- $registryName := "" -}}
   {{- $repositoryName := "" -}}
   {{- $tag := "" -}}
+  {{- $explicit := (eq 1 0) -}}
   {{- if not $ctx.Values -}}
     {{- $ctx = (required "No 'ctx' parameter was given pointing to the root context" .ctx) -}}
     {{- if not $ctx.Values -}}
@@ -400,12 +401,20 @@ Render the image name taking into account the registry, repository, image name, 
     {{- end -}}
     {{- $registryName = .registry -}}
     {{- $repositoryName = .repository -}}
-    {{- $tag = .tag -}}
+    {{- if (hasKey . "tag") -}}
+      {{- /* Make sure we use the tag given here - empty tags = "latest" */ -}}
+      {{- $tag = (coalesce .tag "latest") -}}
+    {{- end -}}
+    {{- $explicit = (eq 1 1) -}}
   {{- end -}}
   {{- $image := (required "No image information was found in the Values object" $ctx.Values.image) -}}
   {{- $global := (default dict $ctx.Values.global) -}}
-  {{- if not $registryName -}}
-    {{- $registryName = (include "arkcase.tools.imageRegistry" $ctx) -}}
+  {{- if or (hasKey $global "imageRegistry") ($global.imageRegistry) -}}
+    {{- /* Global registry trumps everything */ -}}
+    {{- $registryName = $global.imageRegistry -}}
+  {{- else if and (not $registryName) (or (not $explicit) (not (hasKey . "registry"))) -}}
+    {{- /* If we don't yet have a registry name, and we weren't given one explicitly, then use the "default" */ -}}
+    {{- $registryName = $image.registry -}}
   {{- end -}}
   {{- if not $repositoryName -}}
     {{- $repositoryName = (required "No repository (image) name was given" $image.repository) -}}
