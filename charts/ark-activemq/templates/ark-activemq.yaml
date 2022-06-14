@@ -69,7 +69,7 @@ spec:
           {{- end }}
           image: {{ include "arkcase.tools.image" . | quote }}
           imagePullPolicy: {{ include "arkcase.tools.imagePullPolicy" . | quote }}
-          env: {{- include "arkcase.tools.baseEnv" . | nindent 12}}
+          env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
             - name: ACTIVEMQ_ENCRYPTION_PASSWORD
               valueFrom:
                 secretKeyRef:
