@@ -391,19 +391,29 @@ Render the image name taking into account the registry, repository, image name, 
 {{- define "arkcase.tools.image" -}}
   {{- $image := (required "No image information was found in the Values object" .Values.image) -}}
   {{- $global := (default dict .Values.global) -}}
-  {{- $registryName := $image.registry -}}
+  {{- $registryName := (include "arkcase.tools.imageRegistry" $) -}}
   {{- $repositoryName := (required "No repository (image) name was given" $image.repository) -}}
   {{- $tag := (toString (default "latest" $image.tag)) -}}
-  {{- if $global -}}
-    {{- if $global.imageRegistry -}}
-      {{- $registryName = $global.imageRegistry -}}
-    {{- end -}}
-  {{- end -}}
   {{- if $registryName -}}
     {{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
   {{- else -}}
     {{- printf "%s:%s" $repositoryName $tag -}}
   {{- end -}}
+{{- end -}}
+
+{{- /*
+Render the image registry name taking into account global values as well
+*/ -}}
+{{- define "arkcase.tools.imageRegistry" -}}
+  {{- $image := (required "No image information was found in the Values object" .Values.image) -}}
+  {{- $global := (default dict .Values.global) -}}
+  {{- $registryName := $image.registry -}}
+  {{- if $global -}}
+    {{- if $global.imageRegistry -}}
+      {{- $registryName = $global.imageRegistry -}}
+    {{- end -}}
+  {{- end -}}
+  {{- $registryName -}}
 {{- end -}}
 
 {{- define "arkcase.tools.imagePullPolicy" -}}
