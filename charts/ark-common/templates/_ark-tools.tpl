@@ -389,11 +389,30 @@ Create the environment variables to facilitate detecting the Pod's IP, name, nam
 Render the image name taking into account the registry, repository, image name, and tag.
 */ -}}
 {{- define "arkcase.tools.image" -}}
-  {{- $image := (required "No image information was found in the Values object" .Values.image) -}}
-  {{- $global := (default dict .Values.global) -}}
-  {{- $registryName := (include "arkcase.tools.imageRegistry" $) -}}
-  {{- $repositoryName := (required "No repository (image) name was given" $image.repository) -}}
-  {{- $tag := (toString (default "latest" $image.tag)) -}}
+  {{- $ctx := . -}}
+  {{- $registryName := "" -}}
+  {{- $repositoryName := "" -}}
+  {{- $tag := "" -}}
+  {{- if not $ctx.Values -}}
+    {{- $ctx = (required "No 'ctx' parameter was given pointing to the root context" .ctx) -}}
+    {{- if not $ctx.Values -}}
+      {{- fail ("The 'ctx' parameter does not appear to point to the root context") -}}
+    {{- end -}}
+    {{- $registryName = .registry -}}
+    {{- $repositoryName = .repository -}}
+    {{- $tag = .tag -}}
+  {{- end -}}
+  {{- $image := (required "No image information was found in the Values object" $ctx.Values.image) -}}
+  {{- $global := (default dict $ctx.Values.global) -}}
+  {{- if not $registryName -}}
+    {{- $registryName = (include "arkcase.tools.imageRegistry" $ctx) -}}
+  {{- end -}}
+  {{- if not $repositoryName -}}
+    {{- $repositoryName = (required "No repository (image) name was given" $image.repository) -}}
+  {{- end -}}
+  {{- if not $tag -}}
+    {{- $tag = (toString (default "latest" $image.tag)) -}}
+  {{- end -}}
   {{- if $registryName -}}
     {{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
   {{- else -}}
