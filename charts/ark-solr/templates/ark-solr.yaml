@@ -72,7 +72,7 @@ spec:
           {{- end }}
           image: {{ include "arkcase.tools.image" . | quote }}
           imagePullPolicy: {{ include "arkcase.tools.imagePullPolicy" . | quote }}
-          env: {{- include "arkcase.tools.baseEnv" . | nindent 12}}
+          env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
             - name: SOLR_HOME
               value: "/data/conf/"
             - name: SOLR_OPTS

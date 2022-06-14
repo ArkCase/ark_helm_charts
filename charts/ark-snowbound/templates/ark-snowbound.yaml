@@ -63,7 +63,7 @@ spec:
           {{- end }}
           image: {{ include "arkcase.tools.image" . | quote }}
           imagePullPolicy: {{ include "arkcase.tools.imagePullPolicy" . | quote }}
-          env: {{- include "arkcase.tools.baseEnv" . | nindent 12}}
+          env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
             - name: CATALINA_OPTS
               value: >-
                 -Dsnowbound_host_port={{ (.Values.service).snowboundPort | default 8080 }}
