@@ -63,10 +63,10 @@ spec:
               value: |
                 jobs:
                   # We know the ActiveMQ image uses user 998
-                  - ownership: "998:"
-                  - permissions: "u=rwX,g=rX,o="
-                  - flags: [ "recurse", "noforced", "create", "changes" ]
-                  - targets: [ "/data" ]
+                  - ownership: "998:998"
+                    permissions: "u=rwX,g=rX,o="
+                    flags: [ "recurse", "noforced", "create", "changes" ]
+                    targets: [ "/data" ]
           volumeMounts:
             - name: "data"
               mountPath: "/data"
