@@ -226,7 +226,7 @@ This template should be invoked with a reference to the map describing the probe
 
 */ -}}
 {{- define "arkcase.subsystem.probeIsValid" -}}
-  {{- $valid := [] -}}
+  {{- $valid := list -}}
   {{- with .exec -}}
     {{- if .command -}}
       {{- $valid = (append $valid "exec") -}}
