@@ -218,6 +218,45 @@ subsets:
 {{- end }}
 
 {{- /*
+Check to see if a given probe specification is valid. For a probe to be valid it must contain
+exactly one of the exec, grpc, httpGet, or tcpSocket specifications. If more than one is contained,
+the template will be failed to notify of the issue.
+
+This template should be invoked with a reference to the map describing the probe as the argument.
+
+*/ -}}
+{{- define "arkcase.subsystem.probeIsValid" -}}
+  {{- $valid := [] -}}
+  {{- with .exec -}}
+    {{- if .command -}}
+      {{- $valid = (append $valid "exec") -}}
+    {{- end -}}
+  {{- end -}}
+  {{- with .grpc -}}
+    {{- if .port -}}
+      {{- $valid = (append $valid "grpc") -}}
+    {{- end -}}
+  {{- end -}}
+  {{- with .httpGet -}}
+    {{- if or .port .path -}}
+      {{- $valid = (append $valid "httpGet") -}}
+    {{- end -}}
+  {{- end -}}
+  {{- with .tcpSocket -}}
+    {{- if .port -}}
+      {{- $valid = (append $valid "tcpSocket") -}}
+    {{- end -}}
+  {{- end -}}
+  {{- if $valid -}}
+    {{- if eq (len $valid) 1 -}}
+      {{- true -}}
+    {{- else -}}
+      {{- fail (printf "Invalid probe specification - multiple probe modes specified: %s" (toString $valid))
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+
+{{- /*
 Render container port declarations based on what's declared in the values file. Probes will also be rendered if enabled.
 
 Parameter: the root context (i.e. "." or "$")
@@ -240,17 +279,23 @@ ports:
     {{- if or ($probes.enabled) (not (hasKey $probes "enabled")) }}
       {{- if or ($startup.enabled) (not (hasKey $readiness "enabled")) -}}
         {{- with (mergeOverwrite $common $startup) }}
+          {{- if (include "arkcase.subsystem.probeIsValid" .) -}}
 startupProbe: {{- toYaml (unset . "enabled") | nindent 2 }}
+          {{- end -}}
         {{- end }}
       {{- end }}
       {{- if or ($readiness.enabled) (not (hasKey $readiness "enabled")) -}}
         {{- with (mergeOverwrite $common $readiness) }}
+          {{- if (include "arkcase.subsystem.probeIsValid" .) -}}
 readinessProbe: {{- toYaml (unset . "enabled") | nindent 2 }}
+          {{- end }}
         {{- end }}
       {{- end }}
       {{- if or ($liveness.enabled) (not (hasKey $liveness "enabled")) -}}
         {{- with (mergeOverwrite $common $liveness) }}
+          {{- if (include "arkcase.subsystem.probeIsValid" .) -}}
 livenessProbe: {{- toYaml (unset . "enabled") | nindent 2 }}
+          {{- end }}
         {{- end }}
       {{- end }}
     {{- end }}
