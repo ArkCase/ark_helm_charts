@@ -35,15 +35,15 @@ data:
         file: "%d{yyyy-MM-dd HH:mm:ss,SSS} [%thread] %-5level %logger.%M - %msg%n"
     jms.message.buffer.window: 1
     acm.activemq:
-      broker-url: ${ACTIVE_MQ_URL}
-      user: ${ACTIVE_MQ_USERNAME}
-      password: ${ACTIVE_MQ_PASSWORD}
+      broker-url: "tcp://messaging:61616"
+      user: {{ default "cloudconfig" ((.Values.configuration).messaging).username }}
+      password: {{ default "c70uDk0nf19!" ((.Values.configuration).messaging).password }}
       default-destination: configuration.changed
       labels-destination: labels.changed
       ldap-destination: ldap.changed
       lookups-destination: lookups.changed
       rules-destination: rules.changed
-      timeout: 10 #seconds
+      timeout: 10
       # keystore: {{ keystore location | quote }}
       # keystore-password: {{ keystore password | quote }}
       # truststore: {{ truststore location | quote }}

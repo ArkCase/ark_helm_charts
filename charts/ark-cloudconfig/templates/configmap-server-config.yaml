@@ -15,40 +15,34 @@ metadata:
     {{- end }}
 data:
   arkcase-server.yaml: |-
-    {{- if .Values.global.db.externalHost.enabled }}
-    acm:
-      driverClassName: "{{ .Values.global.db.externalHost.driverName }}"
-      url: "jdbc:mysql://{{ .Values.global.db.externalHost.hostAddress }}:3306?autoReconnect=true&useUnicode=true&characterEncoding=UTF-8"
-      password: {{ .Values.global.db.externalHost.password | quote}}
-    {{- else }}
     acm:
       driverClassName: "org.mariadb.jdbc.Driver"
-      url: "jdbc:mysql://ark-core-mariadb:3306/arkcase"
+      url: "jdbc:mysql://db:3306/arkcase"
       password: "arkcase@123"
-    {{- end }}
     elk:
       server:
-        url: "https://{{ external_host }}/arkcase/acm-elastic"
+        # TODO: Elk?!?!
+        url: "https://elk/arkcase/acm-elastic"
     frevvo:
       admin.password: "admin"
-      service.external.baseUrl: "https://{{ .Values.global.domainName }}"
-      browser.redirect.baseUrl: "https://{{ .Values.global.domainName }}"
-      host: "{{ .Values.global.domainName }}"
+      service.external.baseUrl: "http://forms"
+      browser.redirect.baseUrl: "http://forms"
+      host: "what-goes-here-?"
     report:
       plugin:
-        PENTAHO_SERVER_URL: "https://{{ .Values.global.domainName}}"
+        PENTAHO_SERVER_URL: "https://report"
         PENTAHO_SERVER_USER: "arkcase-admin"
         PENTAHO_SERVER_PASSWORD: "Ai-0c9d92f7ef9b1d6a1"
         PENTAHO_SERVER_INTERNAL_URL: "http://pentaho"
         PENTAHO_SERVER_INTERNAL_PORT: 2002
     solr:
-      host: {{ .Values.global.domainName}}
+      host: "search"
       port: 443
     fileEditingEnabled: false
     ecm:
       viewer.snowbound.encryptionKey: ""
       viewer.snowbound.readonly:
-        url: "https://{{ .Values.global.domainName }}/VirtualViewerJavaHTML5/index-read-only.html?documentId=ecmFileId=$[fileId]%26acm_ticket=$[ticket]%26userid=$[userid]"
+        url: "http://viewer/VirtualViewerJavaHTML5/index-read-only.html?documentId=ecmFileId=$[fileId]%26acm_ticket=$[ticket]%26userid=$[userid]"
     outlook.exchange.integration:
       enabled: false
       system_user_email: "dev.core@arkcase.com"
@@ -56,11 +50,11 @@ data:
       system_user_id: "dev.core@arkcase.com"
     ################### Notification Plugin Configuration (notification.properties) ####################  
     notification:
-      arkcase.url: "https://{{ .Values.global.domainName}}"
-      arkcase.url.base: "https://{{ .Values.global.domainName }}"
+      arkcase.url: "http://arkcase"
+      arkcase.url.base: "http://arkcase"
       onlyoffice.plugin:
-      #base url used for sending to onlyoffice to be able to perform callbacks
-      arkcase.baseurl: "https://{{ .Values.global.domainName }}"
+      #baseurl used for sending to onlyoffice to be able to perform callbacks
+      arkcase.baseurl: "http://arkcase"
     wopi.plugin:
       tenant:
         domain: "{{ .Values.global.domainName}}"
@@ -79,17 +73,17 @@ data:
         logoutUrl: "/logout"
     alfresco:
       admin:
-        baseurl: "https://{{ .Values.global.domainName }}/alfresco/s/admin/admin-sync"
+        baseurl: "https://content/alfresco/s/admin/admin-sync"
         username: "admin"
         password: "admin"
       sync:
-        host: "{{ .Values.global.domainName }}"
+        host: "content"
         port: 443
         enabled: true
         username: "admin"
         password: "admin"
     ################### Alfresco RMA Plugin Configuration (alfrescoRmaPlugin.properties) ####################
-    alfresco_host: "{{ .Values.global.domainName  }}"
+    alfresco_host: "content"
     alfresco_port: 443
     email:
       should-delete-messages: false
@@ -123,22 +117,34 @@ data:
       tempPath: "${HOME}/tmp/arkcase/"
     ark.activemq:
       #URL of the ActiveMQ broker.
-      transportConnectorURI: "ssl://{{ .Values.global.domainName }}:61616"
+      transportConnectorURI: &activeMqUrl "tcp://messaging:61616"
     acm.websockets:
       stomp_broker_relay.relay_protocol: ssl
-      stomp_broker_relay.relay_host: "{{ .Values.global.activemq.brokerUrl }}"
+      stomp_broker_relay.relay_host: *activeMqUrl
       # stomp_broker_relay.client_login: "{{ .Values.global.activemq.username }}"
       # stomp_broker_relay.client_passcode: "{{ .Values.global.activemq.password}}"
       #STOMP (ArkCase to ActiveMQ) authentication
-      stomp_broker_relay.system_login: "{{ .Values.global.activemq.username}}"
-      stomp_broker_relay.system_passcode: "{{ .Values.global.activemq.password}}"
+      stomp_broker_relay.system_login: "stompUsername"
+      stomp_broker_relay.system_passcode: "stompPassword"
     ################### Calendar Configured Object Types (calendarConfiguredObjectTypes.properties) ####################
     calendar:
-      configuration: "{\"CASE_FILE\":{\"integrationEnabled\":true,\"systemEmail\"\
-        :\"dev.core@arkcase.com\",\"password\":\"admin\"\
-        ,\"purgeOptions\":\"RETAIN_INDEFINITELY\",\"daysClosed\":null},\"COMPLAINT\":{\"\
-        integrationEnabled\":false,\"systemEmail\":\"dev.core@arkcase.com\",\"password\":\"admin\",\"purgeOptions\"\
-        :\"RETAIN_INDEFINITELY\",\"daysClosed\":null}}"
+      configuration: |
+        {
+          "CASE_FILE" : {
+            "integrationEnabled" : true,
+            "systemEmail" : "dev.core@arkcase.com",
+            "password" : "admin",
+            "purgeOptions" : "RETAIN_INDEFINITELY",
+            "daysClosed":null
+          },
+          "COMPLAINT" : {
+            "integrationEnabled" : false,
+            "systemEmail" : "dev.core@arkcase.com",
+            "password" : "admin",
+            "purgeOptions" : "RETAIN_INDEFINITELY",
+            "daysClosed" : null
+          }
+        }
     acm.hazelcast:
       log.folder: "/tmp"
 

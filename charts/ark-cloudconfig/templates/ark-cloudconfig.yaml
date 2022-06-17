@@ -57,39 +57,21 @@ spec:
       {{- with (.Values.securityContext).template }}
       securityContext: {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- if ((.Values.configuration).download).enabled }}
       initContainers:
-        # - name: arkcase-extension
-        #   image: alpine/git
-        #   volumeMounts:
-        #     - name: persistent-data
-        #       mountPath: /data
-        #   command:
-        #     - git
-        #     - clone 
-        #     - https://github.com/ArkCase/.arkcase.git
-        #     -  /data
-        - name: arkcase-extension
-          image: amazon/aws-cli
+        - name: set-permissions
+          image: {{ include "arkcase.tools.image" (dict "ctx" . "repository" "ark_setperm") | quote }}
+          env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
+            - name: JOBS
+              value: |
+                jobs:
+                  # We know the Cloudconfig image uses user 997
+                  - ownership: "997:997"
+                    permissions: "u=rwX,g=rX,o="
+                    flags: [ "recurse", "noforced", "create", "changes" ]
+                    targets: [ "/app/data" ]
           volumeMounts:
-            - name: persistent-data
-              mountPath: /data
-          command:
-            - aws
-            - s3 
-            - sync
-            # TODO: This needs to be configurable
-            # TODO: How is the AWS access/auth/authz configured?
-            - "s3://arkcase-config/latest/"
-            - "/data"
-        # - name: config-checkout
-        #   image: bitnami/git
-        #   volumeMounts:
-        #     - name: persistent-data
-        #       mountPath: /data/.arkcase
-        #   command: ["/bin/sh","-c"]
-        #   args: ["cd /data/.arkcase && git checkout main"]
-      {{- end }}
+            - name: "data"
+              mountPath: &configRoot "/app/data"
       containers:
         - name: cloudconfig
           securityContext: {{- toYaml . | nindent 12 }}
@@ -98,7 +80,7 @@ spec:
           imagePullPolicy: {{ include "arkcase.tools.imagePullPolicy" . | quote }}
           env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
             - name: config_root
-              value: &configRoot "/data"
+              value: *configRoot
           envFrom:
             - secretRef:
                 name: {{ include "common.fullname" . | quote }}
@@ -113,11 +95,11 @@ spec:
             - name: "data"
               mountPath: *configRoot
             - name: "application-cfg"
-              mountPath: "/app/application.yml"
+              mountPath: "/app/data/application.yml"
               subPath: "application.yml"
               readOnly: true
             - name: "server-cfg"
-              mountPath: "/data/arkcase-server.yaml"
+              mountPath: "/app/data/config/arkcase-server.yaml"
               subPath: "arkcase-server.yaml"
       volumes:
         {{- include "arkcase.persistence.volume" (dict "name" "data" "ctx" $) | nindent 8 }}
