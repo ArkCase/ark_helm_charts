@@ -24,6 +24,6 @@ spec:
     - name: wget
       image: busybox
       command: [ "wget" ]
-      args: [ {{ printf "http://%s:9999" (include "common.fullname" .) | quote }} }} ]
+      args: [ {{ printf "http://%s:9999" (include "common.fullname" .) | quote }} ]
   restartPolicy: Never
 {{- end }}
