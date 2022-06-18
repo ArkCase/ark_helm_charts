@@ -19,6 +19,13 @@ configuration:
     enabled: false
     # mode: "s3"
     # args: [ .... ]
+  ssl:
+    # keystore:
+    #   location: "/some/keystore/path"
+    #   password: "KeyStorePass"
+    # truststore:
+    #   location: "/some/truststore/path"
+    #   password: "TrustStorePass"
 
 # Please leave the `replicaCount` to 1 for the time being. Clustering is not
 # supported yet.
@@ -113,7 +120,7 @@ persistence:
 #
   data:
 # Use this instance of localPath when you want a specific directory for this volume
-    localPath: "/opt/app/arkcase/config"
+    # localPath: "/opt/app/arkcase/config"
 # The "volume" should match the contents of PersistenceVolume.spec
 #    volume:
 #      storageClassName: "manual"
