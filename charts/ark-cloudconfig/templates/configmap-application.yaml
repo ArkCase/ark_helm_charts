@@ -44,9 +44,21 @@ data:
       lookups-destination: lookups.changed
       rules-destination: rules.changed
       timeout: 10
-      # keystore: {{ keystore location | quote }}
-      # keystore-password: {{ keystore password | quote }}
-      # truststore: {{ truststore location | quote }}
-      # truststore-password: {{ truststore password | quote }}
+      {{- with ((.Values.configuration).ssl).keystore }}
+      {{- if .location }}
+      keystore: {{ .location | quote }}
+      {{- end }}
+      {{- if .password }}
+      keystore-password: {{ .password | quote }}
+      {{- end }}
+      {{- end }}
+      {{- with ((.Values.configuration).ssl).truststore }}
+      {{- if .location }}
+      truststore: {{ .location | quote }}
+      {{- end }}
+      {{- if .password }}
+      truststore-password: {{ .password | quote }}
+      {{- end }}
+      {{- end }}
     arkcase.languages: "-de,-en,-en-in,-es,-fr,-hi,-ja,-pt,-ru,-zh-cn,-zh-tw"
 {{- end }}
