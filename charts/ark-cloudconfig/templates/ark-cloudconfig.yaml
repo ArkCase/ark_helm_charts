@@ -74,6 +74,7 @@ spec:
               mountPath: &configRoot "/app/data"
       containers:
         - name: cloudconfig
+          {{- with (.Values.securityContext).configserver }}
           securityContext: {{- toYaml . | nindent 12 }}
           {{- end }}
           image: {{ include "arkcase.tools.image" . | quote }}
