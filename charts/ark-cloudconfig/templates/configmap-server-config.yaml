@@ -57,7 +57,7 @@ data:
       arkcase.baseurl: "http://arkcase"
     wopi.plugin:
       tenant:
-        domain: "{{ .Values.global.domainName}}"
+        domain: "wopi"
         port: 443
     application:
       properties:
@@ -66,7 +66,7 @@ data:
         idleConfirm: 15000
         displayUserName: "userName"
         historyDays: 30
-        baseUrl: "https://{{ .Values.global.domainName }}"
+        baseUrl: "https://arkcase"
         applicationName: "arkcase"
         alfrescoUserIdLdapAttribute: "samAccountName"
         issueCollectorFlag: false
@@ -121,8 +121,8 @@ data:
     acm.websockets:
       stomp_broker_relay.relay_protocol: ssl
       stomp_broker_relay.relay_host: *activeMqUrl
-      # stomp_broker_relay.client_login: "{{ .Values.global.activemq.username }}"
-      # stomp_broker_relay.client_passcode: "{{ .Values.global.activemq.password}}"
+      # stomp_broker_relay.client_login: "stompClientName"
+      # stomp_broker_relay.client_passcode: "stompClientPassword"
       #STOMP (ArkCase to ActiveMQ) authentication
       stomp_broker_relay.system_login: "stompUsername"
       stomp_broker_relay.system_passcode: "stompPassword"
