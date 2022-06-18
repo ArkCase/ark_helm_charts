@@ -82,9 +82,6 @@ spec:
           env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
             - name: config_root
               value: *configRoot
-          envFrom:
-            - secretRef:
-                name: {{ include "common.fullname" . | quote }}
           {{- include "arkcase.subsystem.ports" . | nindent 10 }}
           {{- if .Values.command }}
           command: {{- .Values.command | toYaml | nindent 12 }}
@@ -100,7 +97,7 @@ spec:
               subPath: "application.yml"
               readOnly: true
             - name: "server-cfg"
-              mountPath: "/app/data/config/arkcase-server.yaml"
+              mountPath: "/app/data/arkcase-server.yaml"
               subPath: "arkcase-server.yaml"
       volumes:
         {{- include "arkcase.persistence.volume" (dict "name" "data" "ctx" $) | nindent 8 }}
