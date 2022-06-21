@@ -174,6 +174,7 @@ spec:
   {{- if (eq "local-storage" $storageClassName) }}
   # Node affinity is required when using "local-storage" as the storage class
   nodeAffinity:
+    # TODO: Could eventually match kubernetes.io/hostname=$(hostname) ... must use kustomize or somesuch
     # TODO: This should probably be revised ... should work for now
     required:
       nodeSelectorTerms:
