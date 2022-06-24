@@ -1,0 +1,29 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "common.fullname" . | quote }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels: {{- include "common.labels" . | nindent 4 }}
+    {{- with .Values.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- with (.Values.ingress).labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  annotations:
+    ingress.kubernetes.io/rewrite-target: /
+    timestamp: {{ date "20060102150405" now | quote }}
+    {{- with .Values.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- with (.Values.ingress).annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  rules:
+  - http:
+      paths:
+        {{- include "arkcase.subsystem.ingressPath" (dict "ctx" $ "subsystem" "config" "port" 9999) | nindent 8 }}
+        {{- include "arkcase.subsystem.ingressPath" (dict "ctx" $ "subsystem" "messaging" "port" 8161) | nindent 8 }}
+        {{- include "arkcase.subsystem.ingressPath" (dict "ctx" $ "subsystem" "search" "port" 8983) | nindent 8 }}
+        {{- include "arkcase.subsystem.ingressPath" (dict "ctx" $ "subsystem" "viewer" "port" 8080) | nindent 8 }}
