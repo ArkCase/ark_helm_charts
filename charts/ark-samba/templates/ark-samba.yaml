@@ -69,7 +69,7 @@ spec:
             - name: DOMAINPASS
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "common.fullname" . | quote }}
+                  name: {{ include "arkcase.subsystem.name" . | quote }}
                   key: DOMAIN_PASSWORD
             - name: JOIN
               value: "false"
