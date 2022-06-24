@@ -23,7 +23,9 @@ config:
 #
 configuration:
   ingress:
-    className: "haproxy"
+    className: &ingressClass "haproxy"
+    annotations:
+      kubernetes.io/ingress.class: *ingressClass
     ports:
       - subsystem: "config"
         port: 9999

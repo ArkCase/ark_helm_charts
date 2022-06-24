@@ -19,9 +19,15 @@ metadata:
     {{- with ((.Values.configuration).ingress).annotations }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
+    {{- with ((.Values.configuration).ingress).ports }}
+    {{- range . }}
+    haproxy.org/path-rewrite: /{{ .subsystem }} /
+    haproxy.org/path-rewrite: /{{ .subsystem }}/(.*) /\1
+    {{- end }}
+    {{- end }}
 spec:
   {{- with ((.Values.configuration).ingress).className }}
-  ingressClassName: {{ . | quote }}
+  # ingressClassName: {{ . | quote }}
   {{- end }}
   {{- with ((.Values.configuration).ingress).ports }}
   rules:

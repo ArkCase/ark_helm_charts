@@ -76,10 +76,10 @@ spec:
       volumes:
         - name: "ldap"
           secret:
-            secretName: "demo-ldap"
+            secretName: "ldap"
         - name: "messaging"
           secret:
-            secretName: "demo-messaging"
+            secretName: "messaging"
       {{- with .Values.nodeSelector }}
       nodeSelector: {{- toYaml . | nindent 8 }}
       {{- end }}
