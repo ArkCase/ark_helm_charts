@@ -301,3 +301,26 @@ livenessProbe: {{- toYaml (unset . "enabled") | nindent 2 }}
     {{- end }}
   {{- end }}
 {{- end }}
+
+{{- /*
+Render an ingress port declaration based on what's provided as parameters. Will only be rendered if the subsystem in question is enabled or external.
+
+Parameter: a dict with two keys:
+             - ctx = the root context (either "." or "$")
+             - subsystem = a string with the name of the subsystem to query
+             - port = the port number that the ingress will be pointed to
+*/ -}}
+{{- define "arkcase.subsystem.ingressPath" -}}
+  {{- $ctx := (required "Must provide a 'ctx' parameter with the root context" .ctx) -}}
+  {{- $subsystem := (required "Must provide a 'subsystem' parameter with the name of the subsystem to render" .subsystem) -}}
+  {{- $port := (required "Must provide a 'port' parameter with the port number for the service" (int .port)) -}}
+  {{- if (include "arkcase.subsystem.enabledOrExternal" (dict "ctx" $ctx "subsystem" $subsystem)) -}}
+- pathType: Prefix
+  path: {{ printf "/%s" $subsystem | quote }}
+  backend:
+    service:
+      name: {{ $subsystem | quote }}
+      port:
+        number: {{ $port }}
+  {{- end }}
+{{- end -}}
