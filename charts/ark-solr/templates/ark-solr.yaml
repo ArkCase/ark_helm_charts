@@ -5,10 +5,10 @@ metadata:
   name: {{ include "common.fullname" . | quote }}
   namespace: {{ .Release.Namespace | quote }}
   labels: {{- include "common.labels" . | nindent 4 }}
-    {{- with .Values.labels }}
+    {{- with (.Values.labels).common }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
-  {{- with .Values.annotations }}
+  {{- with (.Values.annotations).common }}
   annotations: {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
@@ -31,14 +31,14 @@ spec:
       name: {{ include "common.name" . | quote }}
       namespace: {{ .Release.Namespace | quote }}
       labels: {{- include "common.labels" . | nindent 8 }}
-        {{- with .Values.labels }}
+        {{- with (.Values.labels).common }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
       annotations:
         # NB: Both these annotation values must be of type "string"
         prometheus.io/scrape: "true"
         prometheus.io/port: "9100"
-        {{- with .Values.annotations }}
+        {{- with (.Values.annotations).common }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
     spec:
