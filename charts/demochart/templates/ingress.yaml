@@ -4,7 +4,7 @@ metadata:
   name: {{ include "common.fullname" . | quote }}
   namespace: {{ .Release.Namespace | quote }}
   labels: {{- include "common.labels" . | nindent 4 }}
-    {{- with .Values.labels }}
+    {{- with (.Values.labels).common }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
     {{- with (.Values.ingress).labels }}
@@ -13,7 +13,7 @@ metadata:
   annotations:
     ingress.kubernetes.io/rewrite-target: /
     timestamp: {{ date "20060102150405" now | quote }}
-    {{- with .Values.annotations }}
+    {{- with (.Values.annotations).common }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
     {{- with (.Values.ingress).annotations }}
