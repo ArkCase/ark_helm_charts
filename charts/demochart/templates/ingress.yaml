@@ -7,7 +7,7 @@ metadata:
     {{- with (.Values.labels).common }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
-    {{- with (.Values.labels).ingress }}
+    {{- with ((.Values.configuration).ingress).labels }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
   annotations:
@@ -16,14 +16,18 @@ metadata:
     {{- with (.Values.annotations).common }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
-    {{- with (.Values.annotations).ingress }}
+    {{- with ((.Values.configuration).ingress).annotations }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
 spec:
+  {{- with ((.Values.configuration).ingress).className }}
+  ingressClassName: {{ . | quote }}
+  {{- end }}
+  {{- with ((.Values.configuration).ingress).ports }}
   rules:
   - http:
       paths:
-        {{- include "arkcase.subsystem.ingressPath" (dict "ctx" $ "subsystem" "config" "port" 9999) | nindent 8 }}
-        {{- include "arkcase.subsystem.ingressPath" (dict "ctx" $ "subsystem" "messaging" "port" 8161) | nindent 8 }}
-        {{- include "arkcase.subsystem.ingressPath" (dict "ctx" $ "subsystem" "search" "port" 8983) | nindent 8 }}
-        {{- include "arkcase.subsystem.ingressPath" (dict "ctx" $ "subsystem" "viewer" "port" 8080) | nindent 8 }}
+        {{- range . }}
+        {{- include "arkcase.subsystem.ingressPath" (dict "ctx" $ "subsystem" .subsystem "port" .port) | nindent 8 }}
+        {{- end }}
+  {{- end }}

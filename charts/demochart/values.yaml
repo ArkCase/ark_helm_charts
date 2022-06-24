@@ -22,6 +22,17 @@ config:
 # This should group all application-specific configurations
 #
 configuration:
+  ingress:
+    className: "haproxy"
+    ports:
+      - subsystem: "config"
+        port: 9999
+      - subsystem: "messaging"
+        port: 8161
+      - subsystem: "search"
+        port: 8983
+      - subsystem: "viewer"
+        port: 8080
 
 # Please leave the `replicaCount` to 1 for the time being. Clustering is not
 # supported yet.
@@ -44,8 +55,6 @@ fullnameOverride: ""
 
 # Custom annotations to apply throughout
 annotations:
-  ingress:
-    kubernetes.io/ingress.class: haproxy
 
 # Custom labels to apply throughout
 labels:
