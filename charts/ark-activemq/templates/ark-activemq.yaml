@@ -100,7 +100,7 @@ spec:
         {{- include "arkcase.persistence.volume" (dict "name" "data" "ctx" $) | nindent 8 }}
         - name: secrets
           secret:
-            secretName: {{ include "arkcase.subsystem.name" . }}
+            secretName: {{ include "arkcase.subsystem.name" . | quote }}
       {{- with .Values.nodeSelector }}
       nodeSelector: {{- toYaml . | nindent 8 }}
       {{- end }}
