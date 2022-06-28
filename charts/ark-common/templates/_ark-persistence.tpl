@@ -35,13 +35,13 @@ Check if persistence is enabled, assuming a missing setting defaults to true
 {{- define "arkcase.persistence.enabled" -}}
   {{- /* First check to see what the local flag says (defaults to true if not set) */ -}}
   {{- $localSet := (include "arkcase.tools.check" (dict "ctx" $ "name" ".Values.persistence.enabled")) -}}
-  {{- $localEnabled := (eq 1 1) -}}
+  {{- $localEnabled := true -}}
   {{- if $localSet -}}
     {{- $localEnabled = (eq "true" (include "arkcase.tools.get" (dict "ctx" $ "name" ".Values.persistence.enabled") | lower)) -}}
   {{- end -}}
   {{- /* Now check to see what the global flag says (defaults to true if not set) */ -}}
   {{- $globalSet := (include "arkcase.tools.check" (dict "ctx" $ "name" ".Values.global.persistence.enabled")) -}}
-  {{- $globalEnabled := (eq 1 1) -}}
+  {{- $globalEnabled := true -}}
   {{- if $globalSet -}}
     {{- $globalEnabled = (eq "true" (include "arkcase.tools.get" (dict "ctx" $ "name" ".Values.global.persistence.enabled") | lower)) -}}
   {{- end -}}

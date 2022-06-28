@@ -10,26 +10,26 @@ result: either "" or "true"
   {{- if (not (eq "string" $type)) -}}
     {{- $addx = (toString $addx) -}}
   {{- end -}}
-  {{- $fail := (eq 1 0) -}}
+  {{- $fail := false -}}
   {{- if and (not $fail) (eq (upper $addx) (lower $addx)) -}}
     {{- /* Second test: is it a set of 4 dot-separated numbers? */ -}}
     {{- $octets := splitList "." $addx }}
     {{- if eq ( $octets | len ) 4 }}
       {{- range $, $octet := $octets }}
         {{- if (not (regexMatch "^(0|[1-9][0-9]{0,2})$" $octet)) -}}
-          {{- $fail = (eq 1 1) -}}
+          {{- $fail = true -}}
         {{- else -}}
           {{- $octet = (int $octet) -}}
           {{- if or (lt $octet 0) (gt $octet 255) -}}
-            {{- $fail = (eq 1 1) -}}
+            {{- $fail = true -}}
           {{- end -}}
         {{- end -}}
       {{- end -}}
     {{- else -}}
-      {{- $fail = (eq 1 1) -}}
+      {{- $fail = true -}}
     {{- end }}
   {{- else if (not $fail) -}}
-    {{- $fail = (eq 1 1) -}}
+    {{- $fail = true -}}
   {{- end -}}
   {{- if not $fail -}}
     {{- true -}}
@@ -48,9 +48,9 @@ result: either "" or "true"
   {{- if (not (eq "string" $type)) -}}
     {{- $host = (toString $host) -}}
   {{- end -}}
-  {{- $fail := (eq 1 0) -}}
+  {{- $fail := false -}}
   {{- if not (regexMatch "^[a-z0-9]([-a-z0-9]*[a-z0-9])?([.][a-z0-9]([-a-z0-9]*[a-z0-9])?)*$" (lower $host)) -}}
-    {{- $fail = (eq 1 1) -}}
+    {{- $fail = true -}}
   {{- end -}}
   {{- if not $fail -}}
     {{- true -}}
@@ -125,10 +125,10 @@ usage: ( include "arkcase.tools.isIp" "some.ip.to.check" )
     {{- fail (printf "The parameter must either be a string or a slice (%s)" $type) -}}
   {{- end -}}
   {{- $allAddx = (sortAlpha $allAddx | uniq | compact) -}}
-  {{- $fail := (eq 1 0) -}}
+  {{- $fail := false -}}
   {{- range $allAddx -}}
     {{- if and (not $fail) (not (include "arkcase.tools.checkIp" .)) -}}
-      {{- $fail = (eq 1 1) -}}
+      {{- $fail = true -}}
     {{- end -}}
   {{- end -}}
   {{- if not $fail -}}
@@ -205,15 +205,15 @@ result: either "" or "true"
     {{- fail (printf "The parameter must either be a string or a slice (%s)" $type) -}}
   {{- end -}}
   {{- $allHosts = (sortAlpha $allHosts | uniq | compact) -}}
-  {{- $fail := (eq 1 0) -}}
+  {{- $fail := false -}}
   {{- range $allHosts -}}
     {{- if (not $fail) -}}
       {{- /* if it's an IP address, or if it doesn't match the RFC-1123 hostname expression, it's not a hostname */ -}}
       {{- if or (include "arkcase.tools.checkIp" .) (not (include "arkcase.tools.checkHostname" .)) -}}
-        {{- $fail = (eq 1 1) -}}
+        {{- $fail = true -}}
       {{- end }}
     {{- else -}}
-      {{- $fail = (eq 1 1) -}}
+      {{- $fail = true -}}
     {{- end -}}
   {{- end -}}
   {{- if not $fail -}}
@@ -393,7 +393,7 @@ Render the image name taking into account the registry, repository, image name, 
   {{- $registryName := "" -}}
   {{- $repositoryName := "" -}}
   {{- $tag := "" -}}
-  {{- $explicit := (eq 1 0) -}}
+  {{- $explicit := false -}}
   {{- if not $ctx.Values -}}
     {{- $ctx = (required "No 'ctx' parameter was given pointing to the root context" .ctx) -}}
     {{- if not $ctx.Values -}}
@@ -405,7 +405,7 @@ Render the image name taking into account the registry, repository, image name, 
       {{- /* Make sure we use the tag given here - empty tags = "latest" */ -}}
       {{- $tag = (coalesce .tag "latest") -}}
     {{- end -}}
-    {{- $explicit = (eq 1 1) -}}
+    {{- $explicit = true -}}
   {{- end -}}
   {{- $image := (required "No image information was found in the Values object" $ctx.Values.image) -}}
   {{- $global := (default dict $ctx.Values.global) -}}
