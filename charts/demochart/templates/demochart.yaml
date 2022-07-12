@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ include "common.fullname" . | quote }}
+  name: &commonFullName {{ include "common.fullname" . | quote }}
   namespace: {{ .Release.Namespace | quote }}
   labels: {{- include "common.labels" . | nindent 4 }}
     {{- with (.Values.labels).common }}
@@ -16,7 +16,7 @@ spec:
   {{- end }}
   selector:
     matchLabels: {{- include "common.labels.matchLabels" . | nindent 6 }}
-  serviceName: {{ include "common.fullname" . | quote }}
+  serviceName: *commonFullName
   updateStrategy:
     type: {{ .Values.updateStrategy }}
     {{- if (eq "Recreate" .Values.updateStrategy) }}
@@ -54,10 +54,10 @@ spec:
       {{- end }}
       containers:
         - name: nettest
-          {{- with (.Values.securityContext).samba }}
+          {{- with (.Values.securityContext).nettest }}
           securityContext: {{- toYaml . | nindent 12 }}
           {{- end }}
-          image: {{ include "arkcase.tools.image" . | quote }}
+          image: {{ include "arkcase.tools.image" (dict "ctx" $ "repository" "ark_nettest") | quote }}
           imagePullPolicy: {{ include "arkcase.tools.imagePullPolicy" . | quote }}
           env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
           {{- if .Values.command }}
@@ -73,6 +73,24 @@ spec:
             - name: "messaging"
               mountPath: "/secrets/messaging"
               readOnly: true
+        - name: gateway
+          {{- with (.Values.securityContext).gateway }}
+          securityContext: {{- toYaml . | nindent 12 }}
+          {{- end }}
+          image: {{ include "arkcase.tools.image" . | quote }}
+          imagePullPolicy: {{ include "arkcase.tools.imagePullPolicy" . | quote }}
+          env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
+          {{- if .Values.command }}
+          command: {{- .Values.command | toYaml | nindent 12 }}
+          {{- end }}
+          {{- with .Values.resources }}
+          resources: {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: "conf"
+              mountPath: "/conf/config.yaml"
+              subPath: "config.yaml"
+              readOnly: true
       volumes:
         - name: "ldap"
           secret:
@@ -80,6 +98,12 @@ spec:
         - name: "messaging"
           secret:
             secretName: "messaging"
+        - name: "conf"
+          configMap:
+            name: *commonFullName
+            items:
+              - key: &configYaml "config.yaml"
+                path: *configYaml
       {{- with .Values.nodeSelector }}
       nodeSelector: {{- toYaml . | nindent 8 }}
       {{- end }}

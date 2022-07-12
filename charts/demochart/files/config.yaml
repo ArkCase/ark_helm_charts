@@ -1,0 +1,117 @@
+main:
+#   serverRoot: "/var/www/www"
+
+# ssl:
+#   cert: inc:cert.pem
+#   key: inc:key.pem
+#   ca:
+#     - inc:ca.1
+#   serverAdmin: kaka@test
+#   documentRoot: /www
+#   logLevel: "info ssl:warn"
+#   client:
+#     verify: require
+#     depth: 10
+#   options:
+#     - +FakeBasicAuth
+#     - +ExportCertData
+#     - +StrictRequire
+#   sections:
+#     filesMatch: |
+#       <FilesMatch "\.(cgi|shtml|phtml|php)$">
+#         SSLOptions +StdEnvVars
+#       </FilesMatch>
+#     directory: |
+#       <Directory /usr/lib/cgi-bin>
+#         SSLOptions +StdEnvVars
+#       </Directory>
+#     browserMatch: |
+#       BrowserMatch "MSIE [2-6]" \
+#       nokeepalive ssl-unclean-shutdown \
+#       downgrade-1.0 force-response-1.0
+#     other: |
+#       ... other sections that need to go here ...
+#   module:
+#     randomSeed:
+#       - startup builtin
+#       - startup file:/dev/urandom 512
+#       - connect builtin
+#       - connect file:/dev/urandom 512
+#     addType:
+#       - application/x-x509-ca-cert .crt
+#       - application/x-pkcs7-crl .crl
+#     passPhraseDialog: exec:/usr/share/apache2/ask-for-passphrase
+#     sessionCache:
+#       engine: shmcb:${APACHE_RUN_DIR}/ssl_scache(512000)
+#       timeout: 300
+#     mutex: file:${APACHE_LOCK_DIR}/ssl_mutex ssl-cache
+#     cipherSuite: HIGH:!aNULL
+#     honorCipherOrder: on
+#     protocol:
+#       - all
+#       - -SSLv3
+#     insecureRenegotiation: On
+#     strictSNIVHostCheck: On
+
+modules:
+  headers: add
+  proxy: add
+  proxy_html: add
+  proxy_http: add
+  proxy_wstunnel: add
+  rewrite: add
+  socache_shmcb: add
+  xml2enc: add
+
+# sites:
+#   site-1: boolean
+#   site-2:
+#     enabled: boolean
+#     conf: |
+#       contents of the site configuration
+#   # ...
+#   site-N: ...
+
+confs:
+  ark-config: |
+    ProxyPreserveHost On
+    Redirect "/config" "/config/"
+    <Location "/config/">
+        ProxyPass			http://config:9999/
+        ProxyPassReverse	http://config:9999/
+        # ProxyPassReverseCookieDomain	http://config:9999/
+        # ProxyPassReverseCookiePath		"/" "/config/"
+    </Location>
+
+  ark-messaging: |
+    ProxyPreserveHost On
+    Redirect "/admin" "/admin/"
+    Redirect "/api" "/api/"
+    <Location "/admin/">
+        ProxyPass			http://messaging:8161/admin/
+        ProxyPassReverse	http://messaging:8161/admin/
+    </Location>
+    <Location "/api/">
+        ProxyPass			http://messaging:8161/api/
+        ProxyPassReverse	http://messaging:8161/api/
+    </Location>
+
+  ark-search: |
+    ProxyPreserveHost On
+    Redirect "/solr" "/solr/"
+    <Location "/solr/">
+        ProxyPass			http://search:8983/solr/
+        ProxyPassReverse	http://search:8983/solr/
+        # ProxyPassReverseCookieDomain	http://search:8983/
+        # ProxyPassReverseCookiePath		"/" "/search/"
+    </Location>
+
+  ark-viewer: |
+    ProxyPreserveHost On
+    Redirect "/VirtualViewerJavaHTML5" "/VirtualViewerJavaHTML5/"
+    <Location "/VirtualViewerJavaHTML5/">
+        ProxyPass			http://viewer:8080/VirtualViewerJavaHTML5/
+        ProxyPassReverse	http://viewer:8080/VirtualViewerJavaHTML5/
+        # ProxyPassReverseCookieDomain	http://viewer:8080/
+        # ProxyPassReverseCookiePath		"/" "/viewer/"
+    </Location>

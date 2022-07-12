@@ -22,19 +22,37 @@ config:
 # This should group all application-specific configurations
 #
 configuration:
-  ingress:
-    className: &ingressClass "haproxy"
-    annotations:
-      kubernetes.io/ingress.class: *ingressClass
-    ports:
-      - subsystem: "config"
-        port: 9999
-      - subsystem: "messaging"
-        port: 8161
-      - subsystem: "search"
-        port: 8983
-      - subsystem: "viewer"
-        port: 8080
+#   ingress:
+#     className: &ingressClass "haproxy"
+#     annotations:
+#       kubernetes.io/ingress.class: *ingressClass
+#     ports:
+#       - subsystem: "config"
+#         port: 9999
+#       - subsystem: "messaging"
+#         port: 8161
+#       - subsystem: "search"
+#         port: 8983
+#       - subsystem: "viewer"
+#         port: 8080
+    # Enable this for TLS support at the ingress controller level
+    # tls:
+      # crt: |-
+        # MIIFPjCCBCagAwIBAgIBEzANBgkqhkiG9w0BAQsFADCBtzELMAkGA1UEBhMCQ1Ix
+        # ETAPBgNVBAgTCFNhbiBKb3NlMRIwEAYDVQQHEwlTYW50YSBBbmExFzAVBgNVBAoT
+        # DkVydWRpY2l0eSBTLkEuMRwwGgYDVQQLExNTZWN1cml0eSBPcGVyYXRpb25zMSMw
+        # ...
+        # uc3KmY3NvM2PcHdB5TAFj5s59d8bHwcVcDS4lXK2+bmYTimtpxusM+5/7VRUrKVE
+        # +f79UJY235PUKs3XXZPEjiknHj4c83nHQ+leCvhUGcQxnj/hu0r3fNetwucCyokl
+        # UWI=
+      # key: |-
+        # MIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQDuVBpXmE3jx4Cy
+        # BBWhsV3YQ8Er5B6iini4muyoRIxHX59wLIXmDFRAL1/s4MFegiCCXDVjuDNfwnqg
+        # sUOXYLK5uO0/p13FJZa5nXJKJSuKFhOvlBe+SY+MgScd3JU7QjUwpo2qQctsY9VX
+        # ...
+        # 1gBqSd2OMnETFz/mOH098N98xubIVFT21Xiw7kxAEw7+wk+RdlV5jcjrarqCBqyK
+        # SCf3y/YLFB6LvZUqUndIF5zu7M3iDZkmm9vH0II7ceScy9EPoneImyluOjqOWqCo
+        # P5IEB0fxZC3kZQ6Jjm/c9/a5Kw==
 
 # Please leave the `replicaCount` to 1 for the time being. Clustering is not
 # supported yet.
@@ -43,7 +61,7 @@ replicaCount: 1
 platform: ""
 image:
   registry: "345280441424.dkr.ecr.ap-south-1.amazonaws.com"
-  repository: "ark_nettest"
+  repository: "ark_gateway_apache"
   # Overrides the image tag whose default is the chart appVersion.
   tag: "latest"
   pullPolicy: IfNotPresent
@@ -142,7 +160,7 @@ persistence:
 #      hostPath:
 #        path: /tmp/samba/data
 #
-    claim:
+#    claim:
 # "name" is the name of an existing volume claim to be re-used, can't be used if "claim" is present
 #      name: "name-of-the-claim-to-consume"
 # "spec" should match the contents of PersistenceVolumeClaim.spec, can't be used if "name" is present
