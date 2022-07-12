@@ -86,7 +86,6 @@ Render the PersistentVolume and PersistentVolumeClaim objects for a given volume
   {{- if (include "arkcase.persistence.enabled" $ctx) -}}
 
     {{- $objectName := (printf "%s-%s" (include "common.fullname" $ctx) $volumeName) -}}
-    {{- $objectId := (printf "%s.%s" $volumeName uuidv4) -}}
     {{- $volumeObjectName := (printf "%s-%s" $ctx.Release.Namespace $objectName) -}}
     {{- $volumeData := dict -}}
     {{- if (include "arkcase.tools.check" (dict "ctx" $ctx "name" (printf ".Values.persistence.%s" $volumeName))) -}}
@@ -130,7 +129,7 @@ metadata:
     {{- with $volumeData.labels }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
-    arkcase/persistentVolumeId: {{ $objectId | quote }}
+    arkcase/persistentVolume: {{ $volumeObjectName | quote }}
   annotations:
     {{- with $ctx.Values.annotations  }}
     {{- toYaml . | nindent 4 }}
@@ -206,7 +205,7 @@ metadata:
     {{- with $volumeData.labels }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
-    arkcase/persistentVolumeClaimId: {{ $objectId | quote }}
+    arkcase/persistentVolumeClaim: {{ $objectName | quote }}
   annotations:
     {{- with $ctx.Values.annotations  }}
     {{- toYaml . | nindent 4 }}
@@ -221,7 +220,7 @@ spec:
   volumeName: {{ $volumeObjectName | quote }}
   selector:
     matchLabels:
-      arkcase/persistentVolumeId: {{ $objectId | quote }}
+      arkcase/persistentVolume: {{ $volumeObjectName | quote }}
   storageClassName: {{ $storageClassName | quote }}
   accessModes: {{- toYaml $accessModes | nindent 4 }}
   resources:
