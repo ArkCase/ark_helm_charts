@@ -16,8 +16,9 @@ confs:
         ProxyPass           http://config:9999/
         ProxyPassReverse    http://config:9999/
         ProxyHTMLEnable     On
-        ProxyHTMLURLMap     http://config:9999/(.*) /config/$1 Rx
-        ProxyHTMLURLMap     /(.*)                   /config/$1 Rx
+        ProxyHTMLExtended   On
+        ProxyHTMLURLMap     http://config:9999/ /config/
+        ProxyHTMLURLMap     /                   /config/
     </Location>
 
   ark-messaging: |
@@ -27,25 +28,19 @@ confs:
         ProxyPass           http://messaging:8161/
         ProxyPassReverse    http://messaging:8161/
         ProxyHTMLEnable     On
-        ProxyHTMLURLMap     http://messaging:8161/admin/(.*) /messaging/admin/$1 Rx
-        ProxyHTMLURLMap     /admin/(.*)                      /messaging/admin/$1 Rx
-        ProxyHTMLURLMap     http://messaging:8161/api/(.*)   /messaging/api/$1 Rx
-        ProxyHTMLURLMap     /api/(.*)                        /messaging/api/$1 Rx
+        ProxyHTMLExtended   On
+        ProxyHTMLURLMap     http://messaging:8161/admin/ /messaging/admin/
+        ProxyHTMLURLMap     /admin/                      /messaging/admin/
+        ProxyHTMLURLMap     http://messaging:8161/api/   /messaging/api/
+        ProxyHTMLURLMap     /api/                        /messaging/api/
     </Location>
 
   ark-search: |
     ProxyPreserveHost On
-    Redirect "/search" "/search/"
-    <Location "/search/">
+    Redirect "/solr" "/solr/"
+    <Location "/solr/">
         ProxyPass           http://search:8983/solr/
         ProxyPassReverse    http://search:8983/solr/
-        ProxyHTMLEnable     On
-        ProxyHTMLURLMap     http://search:8983/solr/(.*) /search/$1 Rx
-        ProxyHTMLURLMap     /solr/(.*)                   /search/$1 Rx
-        #ProxyHTMLURLMap     http://search:8983/solr/ /search/
-        #ProxyHTMLURLMap     http://search:8983/solr  /search
-        #ProxyHTMLURLMap     /solr/                   /search/
-        #ProxyHTMLURLMap     /solr                    /search
     </Location>
 
   ark-viewer: |
@@ -55,6 +50,7 @@ confs:
         ProxyPass           http://viewer:8080/VirtualViewerJavaHTML5/
         ProxyPassReverse    http://viewer:8080/VirtualViewerJavaHTML5/
         ProxyHTMLEnable     On
-        ProxyHTMLURLMap     http://viewer:8080/VirtualViewerJavaHTML5/(.*) /viewer/$1 Rx
-        ProxyHTMLURLMap     /VirtualViewerJavaHTML5/(.*)                   /viewer/$1 Rx
+        ProxyHTMLExtended   On
+        ProxyHTMLURLMap     http://viewer:8080/VirtualViewerJavaHTML5/ /viewer/
+        ProxyHTMLURLMap     /VirtualViewerJavaHTML5/                   /viewer/
     </Location>
