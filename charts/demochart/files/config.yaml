@@ -37,8 +37,8 @@ confs:
 
   ark-search: |
     ProxyPreserveHost On
-    Redirect "/solr" "/solr/"
-    <Location "/solr/">
+    Redirect "/search" "/search/"
+    <Location "/search/">
         ProxyPass           http://search:8983/solr/
         ProxyPassReverse    http://search:8983/solr/
     </Location>
