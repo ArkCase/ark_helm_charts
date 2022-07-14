@@ -15,25 +15,25 @@ configuration:
   #
   # This section describes common settings for the Apache server
   #
-  # main:
-  #   serverAdmin: "webmaster@localhost"
-  #   documentRoot: "/var/www/html"
-  #   timeOut: 300
-  #   keepAlive: "On"
-  #   maxKeepAliveRequests: 100
-  #   keepAliveTimeout: 5
-  #   hostnameLookups: "Off"
-  #   accessFileName: ".htaccess"
-  #   log:
-  #     level: warn
-  #     error: "${APACHE_LOG_DIR}/error.log"
-  #     custom: "${APACHE_LOG_DIR}/access.log combined"
-  #   includes:
-  #     - "include-path-1.conf"
-  #     - "include-path-2.conf"
-  #     # ...
-  #     - "include-path-N.conf"
-  #
+  main:
+    serverAdmin: "webmaster@localhost"
+    documentRoot: "/var/www/html"
+    timeOut: 300
+    keepAlive: "On"
+    maxKeepAliveRequests: 100
+    keepAliveTimeout: 5
+    hostnameLookups: "Off"
+    accessFileName: ".htaccess"
+    log:
+      level: warn
+      error: "${APACHE_LOG_DIR}/error.log"
+      custom: "${APACHE_LOG_DIR}/access.log combined"
+    includes:
+      - "include-path-1.conf"
+      - "include-path-2.conf"
+      # ...
+      - "include-path-N.conf"
+  
   #
   # This section describes settings for the SSL engine. If none are provided, the presence
   # of the files /conf/cert.pem and /conf/key.pem, along with their validity as SSL certificate
@@ -41,145 +41,122 @@ configuration:
   # to be executed even if no section is present. This is to facilitate configuration by
   # convention.
   #
-  # ssl:
-  #   enabled: boolean
-  #   cert: inc:${certFilePath}-or-pemString
-  #   key: inc:${certKeyFilePath}-or-pemString
-  #   ca:
-  #     - inc:${caFilePath}-or-pemString-1
-  #     - inc:${caFilePath}-or-pemString-2
-  #     # ...
-  #     - inc:${caFilePath}-or-pemString-N
-  #   crl:
-  #     - inf:${crlFilePath}-or-pemString-1
-  #     - inf:${crlFilePath}-or-pemString-2
-  #     # ...
-  #     - inf:${crlFilePath}-or-pemString-N
-  #   serverAdmin: kaka@test
-  #   documentRoot: /www
-  #   logLevel: "info ssl:warn"
-  #   client:
-  #   verify: require
-  #   depth: 10
-  #   options:
-  #     - +FakeBasicAuth
-  #     - +ExportCertData
-  #     - +StrictRequire
-  #   sections:
-  #     filesMatch: |
-  #       <FilesMatch "\.(cgi|shtml|phtml|php)$">
-  #         SSLOptions +StdEnvVars
-  #       </FilesMatch>
-  #     directory: |
-  #       <Directory /usr/lib/cgi-bin>
-  #         SSLOptions +StdEnvVars
-  #       </Directory>
-  #     browserMatch: |
-  #       BrowserMatch "MSIE [2-6]" \
-  #       nokeepalive ssl-unclean-shutdown \
-  #       downgrade-1.0 force-response-1.0
-  #     other: |
-  #       ... other sections that need to go here ...
-  #
+  ssl:
+    enabled: boolean
+    cert: inc:${certFilePath}-or-pemString
+    key: inc:${certKeyFilePath}-or-pemString
+    ca: inc:${caFilePath}-or-pemString-1
+    serverAdmin: kaka@test
+    documentRoot: /www
+    logLevel: "info ssl:warn"
+    client:
+    verify: require
+    depth: 10
+    options:
+      - +FakeBasicAuth
+      - +ExportCertData
+      - +StrictRequire
+    sections:
+      filesMatch: |
+        <FilesMatch "\.(cgi|shtml|phtml|php)$">
+          SSLOptions +StdEnvVars
+        </FilesMatch>
+      directory: |
+        <Directory /usr/lib/cgi-bin>
+          SSLOptions +StdEnvVars
+        </Directory>
+      browserMatch: |
+        BrowserMatch "MSIE [2-6]" \
+        nokeepalive ssl-unclean-shutdown \
+        downgrade-1.0 force-response-1.0
+      other: |
+        ... other sections that need to go here ...
+  
   # This section describes the modules that must be activated (or de-activated,
   # as appropriate) as part of this configuration. If the "removeDefaults" flag
   # is set to "true", then this will cause all default modules to be removed,
   # and only the modules explicitly configured here will be enabled.
   #
-  #  modules:
-  #
-  # Flag that indicates whether the default links should be removed prior
-  # to applying the configurations (default is false)
-  #  removeDefaults: true
-  #
-  # If using inc:${path} here, then the contents will be used for the .conf file and
-  # "add" will be assumed for the operation.
-  # Must use the other syntax to provide the contents of all files
-  # Operation is either "add" or "remove" (case-insensitive).
-  #
-  #  module-1: operation-or-inc:${path}-or-file-contents
-  #  module-2:
-  #    enabled: boolean
-  #    files:
-  #      # use "conf" for the .conf file, "load" for the .load file, etc....
-  #      conf: |
-  #        contents of the module's configuration (can also use inc:${path} here)
-  #      load: |
-  #        contents of the module's load statement (if not given, the existing load file will be used,
-  #        can also use inc:${path} here)
-  #  # ...
-  #  module-N: ...
-  #
-  # sites:
+  modules:
+    headers: add
+    proxy: add
+    proxy_html: add
+    proxy_http: add
+    proxy_wstunnel: add
+    rewrite: add
+    socache_shmcb: add
+    xml2enc: add
+
+  sites:
   # Flag that indicates whether the default links should be removed prior
   # to applying the configurations (default is false)
   #  removeDefaults: false
   #
-  #  site-1: operation-or-inc:${path}-or-file-contents
-  #  site-2:
-  #    enabled: boolean
-  #    files:
-  #      conf: |
-  #        contents of the site configuration (can also use inc:${path} here)
-  #  # ...
-  #  site-N: ...
-  #
-  # confs:
-  #  conf-1: operation-or-inc:${path}-or-file-contents
-  #  conf-2:
-  #    enabled: boolean
-  #    files:
-  #      conf: |
-  #        contents of the additional configuration (can also use inc:${path} here)
-  #  # ...
-  #  conf-N: ...
+   site-1: operation-or-inc:${path}-or-file-contents
+   site-2:
+     enabled: boolean
+     files:
+       conf: |
+         contents of the site configuration (can also use inc:${path} here)
+   # ...
+   site-N: ...
+  
+  confs:
+   conf-1: operation-or-inc:${path}-or-file-contents
+   conf-2:
+     enabled: boolean
+     files:
+       conf: |
+         contents of the additional configuration (can also use inc:${path} here)
+   # ...
+   conf-N: ...
 
   # This section leverages macros developed for this chart to facilitate declaring
   # proxied backend sites
   proxies:
-  #   # The key in the map ("example") only reflects the name that will be given
-  #   # to the configuration file(s) generated
-  #   example:
-  #     vhost:
-  #       name: virtual-host.rivera.prv
-  #       aliases:
-  #         - virtual-host
-  #         - virtual.rivera.prv
-  #         - virtual
-  #
-  #       settings: |
-  #         # Embed more Apache configurations here, for custom settings
-  #         # applied to the VirtualHost configuration
-  #
-  #       ssl:
-  #         cipherSuite: "ALL:!ADH:!EXPORT56:RC4+RSA:+HIGH:+MEDIUM:+LOW:+SSLv2:+EXP"
-  #         cert: <inc:${...}-or-PEM-encoded-crap>
-  #         key: <inc:${...}-or-PEM-encoded-crap>
-  #         caFile: <inc:${...}-or-PEM-encoded-crap>
-  #         caPath: <path>
-  #         settings: |
-  #           # Embed more Apache configurations here, for custom settings
-  #           # applied to the Virtual Host's SSL configuration
-  #
-  #     locations:
-  #       - url: "http://mongo-server.private.ip:9898/mng"
-  #         path: "/mongo"
-  #         html:
-  #           enabled: true
-  #           extended: true
-  #           # urlMap:
-  #           #   - from: ...
-  #           #     to: ...
-  #           #   #  ... more mappings ...
-  #           #   - from: ...
-  #           #     to: ...
-  #         settings: |
-  #           # Embed more Apache configurations here, for custom settings
-  #           # applied to the Location section
-  #
-  #     settings: |
-  #       # Embed more Apache configurations here, for custom settings
-  #       # applied to the global configuration
+    # The key in the map ("example") only reflects the name that will be given
+    # to the configuration file(s) generated
+    example:
+      vhost:
+        name: virtual-host.rivera.prv
+        aliases:
+          - virtual-host
+          - virtual.rivera.prv
+          - virtual
+  
+        settings: |
+          # Embed more Apache configurations here, for custom settings
+          # applied to the VirtualHost configuration
+  
+        ssl:
+          cipherSuite: "ALL:!ADH:!EXPORT56:RC4+RSA:+HIGH:+MEDIUM:+LOW:+SSLv2:+EXP"
+          cert: <inc:${...}-or-PEM-encoded-crap>
+          key: <inc:${...}-or-PEM-encoded-crap>
+          caFile: <inc:${...}-or-PEM-encoded-crap>
+          caPath: <path>
+          settings: |
+            # Embed more Apache configurations here, for custom settings
+            # applied to the Virtual Host's SSL configuration
+  
+      locations:
+        - url: "http://mongo-server.private.ip:9898/mng"
+          path: "/mongo"
+          html:
+            enabled: true
+            extended: true
+            urlMap:
+              - from: map1
+                to: target1
+              #  ... more mappings ...
+              - from: map2
+                to: target2
+          settings: |
+            # Embed more Apache configurations here, for custom settings
+            # applied to the Location section
+  
+      settings: |
+        # Embed more Apache configurations here, for custom settings
+        # applied to the global configuration
 
 # Please leave the `replicaCount` to 1 for the time being. Clustering is not
 # supported yet.
