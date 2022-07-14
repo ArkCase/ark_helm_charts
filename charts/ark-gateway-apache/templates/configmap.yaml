@@ -14,5 +14,37 @@ metadata:
       {{- toYaml . | nindent 4 }}
     {{- end }}
 data:
-  config.yaml: | {{- coalesce (get (coalesce .Values.configuration dict) "config.yaml") "" | nindent 4 }}
+  config.yaml: |
+    # Main section
+    main:
+    {{- with (.Values.configuration).main }}{{- toYaml . | nindent 6 }}{{- end }}
+    # SSL section
+    ssl:
+    {{- with (.Values.configuration).ssl }}{{- toYaml . | nindent 6 }}{{- end }}
+    modules:
+    {{- with (.Values.configuration).modules }}{{- toYaml . | nindent 6 }}{{- end }}
+      # These are the modules we're supposed to process always - if they've already
+      # been applied, these settings will trigger warnings, but be ignored
+      headers: add
+      proxy: add
+      proxy_html: add
+      proxy_http: add
+      proxy_wstunnel: add
+      rewrite: add
+      socache_shmcb: add
+      xml2enc: add
+
+    sites:
+    {{- with (.Values.configuration).sites }}{{- toYaml . | nindent 6 }}{{- end }}
+
+    # Custom configurations (including any rendered proxies)
+    confs:
+    {{- with (.Values.configuration).confs }}{{- toYaml . | nindent 6 }}{{- end }}
+
+    # Proxy configurations
+    {{- if (.Values.configuration).proxies }}
+      {{- range $name, $proxyConf := .Values.configuration.proxies }}
+        {{ cat $name ": |" | nindent 6 -}}{{- include "arkcase.gateway.proxy" $proxyConf | nindent 8 }}
+      {{- end }}
+    {{- end }}
 {{- end }}

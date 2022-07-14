@@ -85,8 +85,8 @@ spec:
               subPath: &configYaml "config.yaml"
               readOnly: true
             {{- end }}
-            {{- with .Values.configuration.ssl }}
-            {{- if and .crt .key }}
+            {{- with (.Values.configuration).ssl }}
+            {{- if and .cert .key }}
             - name: "ssl-crt-pem"
               mountPath: "/conf/crt.pem"
               subPath: &crtPem "crt.pem"
@@ -117,7 +117,7 @@ spec:
                 path: *configYaml
         {{- end }}
         {{- with (.Values.configuration).ssl }}
-        {{- if and .crt .key }}
+        {{- if and .cert .key }}
         - name: "ssl-crt-pem"
           secret:
             secretName: *commonFullName
