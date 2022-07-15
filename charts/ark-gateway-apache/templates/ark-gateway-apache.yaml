@@ -71,8 +71,10 @@ spec:
           resources: {{- toYaml . | nindent 12 }}
           {{- end }}
           volumeMounts:
+            {{- if (.Values.configuration).customDocumentRoot }}
             - name: "www"
               mountPath: "/var/www"
+            {{- end }}
             - name: "logs"
               mountPath: "/var/log/apache2"
             - name: "modules"
@@ -104,7 +106,9 @@ spec:
             {{- end }}
             {{- end }}
       volumes:
+        {{- if (.Values.configuration).customDocumentRoot }}
         {{- include "arkcase.persistence.volume" (dict "name" "www" "ctx" $) | nindent 8 }}
+        {{- end }}
         {{- include "arkcase.persistence.volume" (dict "name" "logs" "ctx" $) | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "name" "modules" "ctx" $) | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "name" "conf" "ctx" $) | nindent 8 }}
@@ -151,7 +155,9 @@ spec:
       {{- end }}
 
 {{- if (include "arkcase.persistence.enabled" .) }}
+{{- if (.Values.configuration).customDocumentRoot }}
 {{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "www") | indent 0 }}
+{{- end }}
 {{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "logs") | indent 0 }}
 {{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "modules") | indent 0 }}
 {{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "conf") | indent 0 }}
