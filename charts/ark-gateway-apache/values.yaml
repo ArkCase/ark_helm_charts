@@ -12,6 +12,11 @@ configuration:
   # This setting defaults to true if not set, and causes a default
   # set of modules to be activated for Apache in order to support
   # proxying. Setting it to false turns off those modules.
+  #
+  # These modules are applied after any other custom-configured modules,
+  # below. If they've already been applied, their presence will trigger
+  # warnings, but will ultimately be ignored and cause no issues.
+  #
   # addProxyModules: true
 
   # NOTE: When using inc:${path}, the path will be interpreted as relative to /conf, with no possibility
