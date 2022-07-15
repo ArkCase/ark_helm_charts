@@ -13,44 +13,44 @@ confs:
     ProxyPreserveHost On
     Redirect "/config" "/config/"
     <Location "/config/">
-        ProxyPass           http://config:9999/
-        ProxyPassReverse    http://config:9999/
+        ProxyPass           "http://config:9999/"
+        ProxyPassReverse    "http://config:9999/"
         ProxyHTMLEnable     On
         ProxyHTMLExtended   On
-        ProxyHTMLURLMap     http://config:9999/ /config/
-        ProxyHTMLURLMap     /                   /config/
+        ProxyHTMLURLMap     "http://config:9999/" "/config/"
+        ProxyHTMLURLMap     "/"                   "/config/"
     </Location>
 
   ark-messaging: |
     ProxyPreserveHost On
     Redirect "/messaging" "/messaging/"
     <Location "/messaging/">
-        ProxyPass           http://messaging:8161/
-        ProxyPassReverse    http://messaging:8161/
+        ProxyPass           "http://messaging:8161/"
+        ProxyPassReverse    "http://messaging:8161/"
         ProxyHTMLEnable     On
         ProxyHTMLExtended   On
-        ProxyHTMLURLMap     http://messaging:8161/admin/ /messaging/admin/
-        ProxyHTMLURLMap     /admin/                      /messaging/admin/
-        ProxyHTMLURLMap     http://messaging:8161/api/   /messaging/api/
-        ProxyHTMLURLMap     /api/                        /messaging/api/
+        ProxyHTMLURLMap     "http://messaging:8161/admin/" "/messaging/admin/"
+        ProxyHTMLURLMap     "/admin/"                      "/messaging/admin/"
+        ProxyHTMLURLMap     "http://messaging:8161/api/"   "/messaging/api/"
+        ProxyHTMLURLMap     "/api/"                        "/messaging/api/"
     </Location>
 
   ark-search: |
     ProxyPreserveHost On
     Redirect "/search" "/search/"
     <Location "/search/">
-        ProxyPass           http://search:8983/solr/
-        ProxyPassReverse    http://search:8983/solr/
+        ProxyPass           "http://search:8983/solr/"
+        ProxyPassReverse    "http://search:8983/solr/"
     </Location>
 
   ark-viewer: |
     ProxyPreserveHost On
     Redirect "/viewer" "/viewer/"
     <Location "/viewer/">
-        ProxyPass           http://viewer:8080/VirtualViewerJavaHTML5/
-        ProxyPassReverse    http://viewer:8080/VirtualViewerJavaHTML5/
+        ProxyPass           "http://viewer:8080/VirtualViewerJavaHTML5/"
+        ProxyPassReverse    "http://viewer:8080/VirtualViewerJavaHTML5/"
         ProxyHTMLEnable     On
         ProxyHTMLExtended   On
-        ProxyHTMLURLMap     http://viewer:8080/VirtualViewerJavaHTML5/ /viewer/
-        ProxyHTMLURLMap     /VirtualViewerJavaHTML5/                   /viewer/
+        ProxyHTMLURLMap     "http://viewer:8080/VirtualViewerJavaHTML5/" "/viewer/"
+        ProxyHTMLURLMap     "/VirtualViewerJavaHTML5/"                   "/viewer/"
     </Location>

@@ -18,6 +18,69 @@ config:
   service:
     # external: "192.168.1.14"
 
+gateway:
+  service:
+    type: NodePort
+    ports:
+      - name: http
+        protocol: TCP
+        port: 80
+        nodePort: 30080
+      - name: https
+        protocol: TCP
+        port: 443
+        nodePort: 30443
+  configuration:
+    proxies:
+      ark-config:
+        preserveHosts: true
+        locations:
+          - url: &configUrl "http://config:9999/"
+            path: "/config"
+            html:
+              enabled: true
+              extended: true
+              urlMap:
+                - from: *configUrl
+                  to: "/config/"
+                - from: "/"
+                  to: "/config/"
+      ark-messaging:
+        preserveHosts: true
+        locations:
+          - url: "http://messaging:8161/"
+            path: "/messaging"
+            html:
+              enabled: true
+              extended: true
+              urlMap:
+                - from: "http://messaging:8161/admin/"
+                  to: "/messaging/admin/"
+                - from: "/admin/"
+                  to: "/messaging/admin/"
+                - from: "http://messaging:8161/api/"
+                  to: "/messaging/api/"
+                - from: "/api/"
+                  to: "/messaging/api/"
+      ark-search:
+        preserveHosts: true
+        locations:
+          - url: "http://search:8983/solr/"
+            path: "/search"
+      ark-viewer:
+        preserveHosts: true
+        locations:
+          - url: &viewerUrl "http://viewer:8080/VirtualViewerJavaHTML5/"
+            path: "/viewer"
+            html:
+              enabled: true
+              extended: true
+              urlMap:
+                - from: *viewerUrl
+                  to: "/viewer/"
+                - from: "/VirtualViewerJavaHTML5/"
+                  to: "/viewer/"
+
 #
 # This should group all application-specific configurations
 #
@@ -61,7 +124,7 @@ replicaCount: 1
 platform: ""
 image:
   registry: "345280441424.dkr.ecr.ap-south-1.amazonaws.com"
-  repository: "ark_gateway_apache"
+  repository: "ark_nettest"
   # Overrides the image tag whose default is the chart appVersion.
   tag: "latest"
   pullPolicy: IfNotPresent
