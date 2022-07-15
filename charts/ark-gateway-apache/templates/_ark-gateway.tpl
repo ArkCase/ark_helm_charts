@@ -95,7 +95,7 @@ ProxyPreserveHost On
         ProxyHTMLExtended   On
           {{- end }}
           {{- range .html.urlMap }}
-        ProxyHTMLURLMap     {{ .from | quote }} {{ .to | quote }}
+        ProxyHTMLURLMap     {{ .from | quote }} {{ .to | quote }}{{- if .flags }} {{ .flags }}{{- end }}
           {{- end }}
         {{- end }}
 
