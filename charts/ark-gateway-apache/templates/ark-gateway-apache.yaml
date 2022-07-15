@@ -81,12 +81,10 @@ spec:
               mountPath: "/modules"
             - name: "conf"
               mountPath: "/conf"
-            {{- if get (coalesce .Values.configuration dict) "config.yaml" }}
             - name: "config-yaml"
               mountPath: "/conf/config.yaml"
               subPath: &configYaml "config.yaml"
               readOnly: true
-            {{- end }}
             {{- with (.Values.configuration).ssl }}
             {{- if and .cert .key }}
             - name: "ssl-crt-pem"
@@ -112,14 +110,12 @@ spec:
         {{- include "arkcase.persistence.volume" (dict "name" "logs" "ctx" $) | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "name" "modules" "ctx" $) | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "name" "conf" "ctx" $) | nindent 8 }}
-        {{- if get (coalesce .Values.configuration dict) "config.yaml" }}
         - name: "config-yaml"
           configMap:
             name: *commonFullName
             items:
               - key: *configYaml
                 path: *configYaml
-        {{- end }}
         {{- with (.Values.configuration).ssl }}
         {{- if and .cert .key }}
         - name: "ssl-crt-pem"
