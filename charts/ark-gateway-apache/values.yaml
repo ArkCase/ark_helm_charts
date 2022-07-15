@@ -9,6 +9,11 @@
 # This should group all application-specific configurations
 #
 configuration:
+  # This setting defaults to true if not set, and causes a default
+  # set of modules to be activated for Apache in order to support
+  # proxying. Setting it to false turns off those modules.
+  # addProxyModules: true
+
   # NOTE: When using inc:${path}, the path will be interpreted as relative to /conf, with no possibility
   #       of overflowing outside that sandbox via relative components (i.e. ".."). This is by design and
   #       will not change, for security reasons
@@ -404,13 +409,16 @@ persistence:
 #          matchLabels: "....."
 
 service:
+  type: NodePort
   ports:
     - name: http
       protocol: TCP
       port: &http 80
+      nodePort: 30080
     - name: https
       protocol: TCP
       port: &https 443
+      nodePort: 30443
 
 ##
 ## Configure extra options for containers' liveness and readiness probes

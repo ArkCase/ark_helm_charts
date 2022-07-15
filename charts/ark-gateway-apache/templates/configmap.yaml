@@ -28,7 +28,8 @@ data:
     {{- with (.Values.configuration).ssl }}{{- toYaml . | nindent 6 }}{{- end }}
     modules:
     {{- with (.Values.configuration).modules }}{{- toYaml . | nindent 6 }}{{- end }}
-      # These are the modules we're supposed to process always - if they've already
+    {{- if or (.Values.configuration).addProxyModules (not (hasKey (.Values.configuration) "addProxyModules")) }}
+      # These are the modules we use by default to support proxying. If they've already
       # been applied, these settings will trigger warnings, but be ignored
       headers: add
       proxy: add
@@ -38,6 +39,7 @@ data:
       rewrite: add
       socache_shmcb: add
       xml2enc: add
+    {{- end }}
 
     sites:
     {{- with (.Values.configuration).sites }}{{- toYaml . | nindent 6 }}{{- end }}
