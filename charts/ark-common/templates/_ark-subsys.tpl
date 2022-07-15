@@ -130,8 +130,9 @@ Parameter: the root context (i.e. "." or "$")
 */ -}}
 {{- define "arkcase.subsystem.service" }}
 {{- if (include "arkcase.subsystem.enabledOrExternal" .) }}
-{{- $external := (default "" (.Values.service).external) }}
-{{- $ports := (default list (.Values.service).ports) }}
+{{- $external := (coalesce (.Values.service).external "") }}
+{{- $ports := (coalesce (.Values.service).ports list) }}
+{{- $type := (coalesce (.Values.service).type "ClusterIP") }}
 {{- if and (empty $ports) (not $external) }}
   {{- fail (printf "No ports are defined for chart %s, and no external server was given" (include "common.name" .)) }}
 {{- end }}
@@ -157,15 +158,21 @@ metadata:
 spec:
   {{- if or (not $external) (include "arkcase.tools.isIp" $external) }}
   # This is either an internal service, or an external service using an IP address
-  type: ClusterIP
+  type: {{ coalesce $type "ClusterIP" }}
   ports:
     {{- if (empty $ports) }}
       {{- fail "There are no ports defined to be proxied for this external service" }}
     {{- end }}
     {{- range $ports }}
     - name: {{ (required "Port specifications must contain a name" .name) | quote }}
-      protocol: {{ default "TCP" .protocol }}
+      protocol: {{ coalesce .protocol "TCP" }}
       port: {{ required (printf "Port [%s] doesn't have a port number" .name) .port }}
+      {{- if .targetPort }}
+      targetPort: {{ int .targetPort }}
+      {{- end }}
+      {{- if and (eq $type "NodePort") .nodePort }}
+      nodePort: {{ int .nodePort }}
+      {{- end }}
     {{- end }}
   selector: {{ include "common.labels.matchLabels" . | nindent 4 }}
   {{- else }}
@@ -210,7 +217,7 @@ subsets:
     ports:
       {{- range $ports }}
       - name: {{ (required "Port specifications must contain a name" .name) | quote }}
-        protocol: {{ default "TCP" .protocol }}
+        protocol: {{ coalesce .protocol "TCP" }}
         port: {{ required (printf "Port [%s] doesn't have a port number" .name) .port }}
       {{- end }}
 {{- end }}
@@ -267,15 +274,15 @@ Parameter: the root context (i.e. "." or "$")
 ports:
       {{- range . }}
   - name: {{ (required "Port specifications must contain a name" .name) | quote }}
-    protocol: {{ default "TCP" .protocol }}
+    protocol: {{ coalesce .protocol "TCP" }}
     containerPort: {{ required (printf "Port [%s] doesn't have a port number" .name) .port }}
       {{- end }}
     {{- end }}
-    {{- $probes := (default dict .probes) }}
-    {{- $common := (default dict $probes.spec) }}
-    {{- $startup := (default dict $probes.startup) }}
-    {{- $readiness := (default dict $probes.readiness) }}
-    {{- $liveness := (default dict $probes.liveness) }}
+    {{- $probes := (coalesce .probes dict) }}
+    {{- $common := (coalesce $probes.spec dict) }}
+    {{- $startup := (coalesce $probes.startup dict) }}
+    {{- $readiness := (coalesce $probes.readiness dict) }}
+    {{- $liveness := (coalesce $probes.liveness dict) }}
     {{- if or ($probes.enabled) (not (hasKey $probes "enabled")) }}
       {{- if or ($startup.enabled) (not (hasKey $readiness "enabled")) -}}
         {{- with (mergeOverwrite $common $startup) }}
