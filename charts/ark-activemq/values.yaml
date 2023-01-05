@@ -29,7 +29,7 @@ image:
   registry: "345280441424.dkr.ecr.ap-south-1.amazonaws.com"
   repository: "ark_activemq"
   # Overrides the image tag whose default is the chart appVersion.
-  tag: "20210716-45b2fb2"
+  # tag: "20210716-45b2fb2"
   pullPolicy: IfNotPresent
 
 imagePullSecrets:
@@ -64,7 +64,8 @@ securityContext:
     # You must specify an `fsGroup` to allow ActiveMQ write access to mounted
     # volumes (as long as ActiveMQ runs as a non-root user, which should be the
     # case). Any random number will do.
-    fsGroup: 23948
+    fsGroup: 2001
+    fsGroupChangePolicy: OnRootMismatch
   activemq:
     # capabilities:
     #   drop:
@@ -108,6 +109,8 @@ persistence:
 # There is 1 volume supported: data
 #
   data:
+# Use this instance of localPath when you want a specific directory for this volume
+#    localPath: "/....."
 # The "spec" should match the contents of PersistenceVolume.spec
     spec:
 #      storageClassName: "manual"

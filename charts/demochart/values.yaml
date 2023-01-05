@@ -1,20 +1,251 @@
+gateway:
+  configuration:
+    proxies:
+
+      # ArkCase Cloud Configuration
+      ark-config:
+        preserveHosts: true
+        locations:
+          - url: &configUrl "http://config:9999/"
+            path: "/config"
+            html:
+              enabled: true
+              extended: true
+              urlMap:
+                - from: *configUrl
+                  to: "/config/"
+                - from: "/"
+                  to: "/config/"
+
+      # ActiveMQ
+      ark-messaging:
+        preserveHosts: true
+        locations:
+          - url: "http://messaging:8161/"
+            path: "/messaging"
+            html:
+              enabled: true
+              extended: true
+              urlMap:
+                - from: "http://messaging:8161/admin/"
+                  to: "/messaging/admin/"
+                - from: "/admin/"
+                  to: "/messaging/admin/"
+                - from: "http://messaging:8161/api/"
+                  to: "/messaging/api/"
+                - from: "/api/"
+                  to: "/messaging/api/"
+
+      # Solr
+      ark-search:
+        preserveHosts: true
+        locations:
+          - url: "http://search:8983/solr/"
+            path: "/search"
+
+      # Snowbound
+      ark-viewer:
+        preserveHosts: true
+        locations:
+          - url: &viewerUrl "http://viewer:8080/VirtualViewerJavaHTML5/"
+            path: "/viewer"
+            html:
+              enabled: true
+              extended: true
+              urlMap:
+                - from: *viewerUrl
+                  to: "/viewer/"
+                - from: "/VirtualViewerJavaHTML5/"
+                  to: "/viewer/"
+
 messaging:
-  image:
-    registry: ""
-    tag: "latest"
   service:
-    #external: "www.activemq.com"
+    # external: "www.activemq.com"
 
 ldap:
-  image:
-    registry: ""
   service:
-    #external: www.ldap.com
+    # external: www.ldap.com
 
 search:
   service:
-    #external: ["192.168.3.33", "12.13.14.15"]
+    # external: ["192.168.3.33", "12.13.14.15"]
 
 viewer:
   service:
-    #external: www.viewer.com
+    # external: www.viewer.com
+
+config:
+  service:
+    # external: "192.168.1.14"
+
+#
+# This should group all application-specific configurations
+#
+configuration:
+#   ingress:
+#     className: &ingressClass "haproxy"
+#     annotations:
+#       kubernetes.io/ingress.class: *ingressClass
+#     ports:
+#       - subsystem: "config"
+#         port: 9999
+#       - subsystem: "messaging"
+#         port: 8161
+#       - subsystem: "search"
+#         port: 8983
+#       - subsystem: "viewer"
+#         port: 8080
+    # Enable this for TLS support at the ingress controller level
+    # tls:
+      # crt: |-
+        # MIIFPjCCBCagAwIBAgIBEzANBgkqhkiG9w0BAQsFADCBtzELMAkGA1UEBhMCQ1Ix
+        # ETAPBgNVBAgTCFNhbiBKb3NlMRIwEAYDVQQHEwlTYW50YSBBbmExFzAVBgNVBAoT
+        # DkVydWRpY2l0eSBTLkEuMRwwGgYDVQQLExNTZWN1cml0eSBPcGVyYXRpb25zMSMw
+        # ...
+        # uc3KmY3NvM2PcHdB5TAFj5s59d8bHwcVcDS4lXK2+bmYTimtpxusM+5/7VRUrKVE
+        # +f79UJY235PUKs3XXZPEjiknHj4c83nHQ+leCvhUGcQxnj/hu0r3fNetwucCyokl
+        # UWI=
+      # key: |-
+        # MIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQDuVBpXmE3jx4Cy
+        # BBWhsV3YQ8Er5B6iini4muyoRIxHX59wLIXmDFRAL1/s4MFegiCCXDVjuDNfwnqg
+        # sUOXYLK5uO0/p13FJZa5nXJKJSuKFhOvlBe+SY+MgScd3JU7QjUwpo2qQctsY9VX
+        # ...
+        # 1gBqSd2OMnETFz/mOH098N98xubIVFT21Xiw7kxAEw7+wk+RdlV5jcjrarqCBqyK
+        # SCf3y/YLFB6LvZUqUndIF5zu7M3iDZkmm9vH0II7ceScy9EPoneImyluOjqOWqCo
+        # P5IEB0fxZC3kZQ6Jjm/c9/a5Kw==
+
+# Please leave the `replicaCount` to 1 for the time being. Clustering is not
+# supported yet.
+replicaCount: 1
+
+platform: ""
+image:
+  registry: "345280441424.dkr.ecr.ap-south-1.amazonaws.com"
+  repository: "ark_nettest"
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+imagePullSecrets:
+  - name: aws-arkcase-pull
+
+# You generally shouldn't mess with these. These exist to support some name-generation templates
+nameOverride: ""
+fullnameOverride: ""
+
+# Custom annotations to apply throughout
+annotations:
+
+# Custom labels to apply throughout
+labels:
+
+updateStrategy: RollingUpdate
+rollingUpdatePartition: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: false
+  # Annotations to add to the service account
+  annotations:
+  # Annotations to add to the service account
+  labels:
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+securityContext:
+  template:
+    # You must specify an `fsGroup` to allow ActiveMQ write access to mounted
+    # volumes (as long as ActiveMQ runs as a non-root user, which should be the
+    # case). Any random number will do.
+    # fsGroup: 2000
+    # fsGroupChangePolicy: OnRootMismatch
+  nettest:
+    # privileged: true
+    # capabilities:
+    #   drop:
+    #   - ALL
+    # readOnlyRootFilesystem: true
+    # runAsNonRoot: true
+    # runAsUser: 1000
+
+resources:
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+#autoscaling:
+  #enabled: false
+  #minReplicas: 1
+  #maxReplicas: 100
+  #targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+nodeSelector:
+
+tolerations:
+
+affinity:
+
+# Can only include at most one of claim: or data:, not both. Can include none,
+# but this will result in a "default" volume being created
+persistence:
+  enabled: false
+
+# Use this when not using other persistent volumes, to point to the root location
+# where the directories need to be created
+  localPath: "/opt/app/arkcase"
+
+#
+# There are 3 volumes supported: data, conf, and logs
+#
+  data:
+# Use this instance of localPath when you want a specific directory for this volume
+#    localPath: "/....."
+# The "volume" should match the contents of PersistenceVolume.spec
+#    volume:
+#      storageClassName: "manual"
+#      persistentVolumeReclaimPolicy: Retain
+#      accessModes:
+#        - "ReadWriteOnce"
+#      capacity:
+#        storage: "10Gi"
+#      hostPath:
+#        path: /tmp/samba/data
+#
+#    claim:
+# "name" is the name of an existing volume claim to be re-used, can't be used if "claim" is present
+#      name: "name-of-the-claim-to-consume"
+# "spec" should match the contents of PersistenceVolumeClaim.spec, can't be used if "name" is present
+#      spec: 
+#        storageClassName: ""
+#        volumeName: the-volume-to-claim
+#        accessModes:
+#          - "ReadWriteOnce"
+#        resources:
+#          limits: ""
+#          requests: ""
+#        selector:
+#          matchExpressions:
+#            - values:
+#                - ""
+#                - ""
+#                - ""
+#                ...
+#              operator: "In"|"NotIn"|"Exists"|"DoesNotExist"
+#              key: "labelKey"
+#            - values:
+#                - ""
+#                - ""
+#                - ""
+#                ...
+#              operator: "In"|"NotIn"|"Exists"|"DoesNotExist"
+#              key: "labelKey"
+#          matchLabels: "....."

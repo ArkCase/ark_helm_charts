@@ -5,7 +5,7 @@ metadata:
   name: {{ printf "%s-test" (include "common.fullname" .) | quote }}
   namespace: {{ .Release.Namespace | quote }}
   labels: {{- include "common.labels" . | nindent 4 }}
-    {{- with .Values.labels }}
+    {{- with (.Values.labels).common }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
     {{- with (.Values.test).labels }}
@@ -13,7 +13,7 @@ metadata:
     {{- end }}
   annotations:
     helm.sh/hook: test
-    {{- with .Values.annotations }}
+    {{- with (.Values.annotations).common }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
     {{- with (.Values.test).annotations }}
@@ -24,6 +24,6 @@ spec:
     - name: wget
       image: busybox
       command: [ "wget" ]
-      args: [ {{ printf "%s:9999" (include "common.fullname" .) | quote }} }} ]
+      args: [ {{ printf "http://%s:9999" (include "common.fullname" .) | quote }} ]
   restartPolicy: Never
 {{- end }}

@@ -118,7 +118,7 @@ Parameter: either the root context (i.e. "." or "$"), or
 */ -}}
 {{- define "arkcase.subsystem.enabledOrExternal" -}}
   {{- $map := (include "arkcase.subsystem" . | fromYaml) -}}
-  {{- if (and ($map.data.enabled) (($map.ctx.Values.service).external)) -}}
+  {{- if (or ($map.data.enabled) (($map.ctx.Values.service).external)) -}}
     {{- true -}}
   {{- end -}}
 {{- end -}}
@@ -130,8 +130,9 @@ Parameter: the root context (i.e. "." or "$")
 */ -}}
 {{- define "arkcase.subsystem.service" }}
 {{- if (include "arkcase.subsystem.enabledOrExternal" .) }}
-{{- $external := (default "" (.Values.service).external) }}
-{{- $ports := (default list (.Values.service).ports) }}
+{{- $external := (coalesce (.Values.service).external "") }}
+{{- $ports := (coalesce (.Values.service).ports list) }}
+{{- $type := (coalesce (.Values.service).type "ClusterIP") }}
 {{- if and (empty $ports) (not $external) }}
   {{- fail (printf "No ports are defined for chart %s, and no external server was given" (include "common.name" .)) }}
 {{- end }}
@@ -157,15 +158,21 @@ metadata:
 spec:
   {{- if or (not $external) (include "arkcase.tools.isIp" $external) }}
   # This is either an internal service, or an external service using an IP address
-  type: ClusterIP
+  type: {{ coalesce $type "ClusterIP" }}
   ports:
     {{- if (empty $ports) }}
       {{- fail "There are no ports defined to be proxied for this external service" }}
     {{- end }}
     {{- range $ports }}
     - name: {{ (required "Port specifications must contain a name" .name) | quote }}
-      protocol: {{ default "TCP" .protocol }}
+      protocol: {{ coalesce .protocol "TCP" }}
       port: {{ required (printf "Port [%s] doesn't have a port number" .name) .port }}
+      {{- if .targetPort }}
+      targetPort: {{ int .targetPort }}
+      {{- end }}
+      {{- if and (eq $type "NodePort") .nodePort }}
+      nodePort: {{ int .nodePort }}
+      {{- end }}
     {{- end }}
   selector: {{ include "common.labels.matchLabels" . | nindent 4 }}
   {{- else }}
@@ -210,12 +217,51 @@ subsets:
     ports:
       {{- range $ports }}
       - name: {{ (required "Port specifications must contain a name" .name) | quote }}
-        protocol: {{ default "TCP" .protocol }}
+        protocol: {{ coalesce .protocol "TCP" }}
         port: {{ required (printf "Port [%s] doesn't have a port number" .name) .port }}
       {{- end }}
 {{- end }}
 {{- end }}
 {{- end }}
+
+{{- /*
+Check to see if a given probe specification is valid. For a probe to be valid it must contain
+exactly one of the exec, grpc, httpGet, or tcpSocket specifications. If more than one is contained,
+the template will be failed to notify of the issue.
+
+This template should be invoked with a reference to the map describing the probe as the argument.
+
+*/ -}}
+{{- define "arkcase.subsystem.probeIsValid" -}}
+  {{- $valid := list -}}
+  {{- with .exec -}}
+    {{- if .command -}}
+      {{- $valid = (append $valid "exec") -}}
+    {{- end -}}
+  {{- end -}}
+  {{- with .grpc -}}
+    {{- if .port -}}
+      {{- $valid = (append $valid "grpc") -}}
+    {{- end -}}
+  {{- end -}}
+  {{- with .httpGet -}}
+    {{- if or .port .path -}}
+      {{- $valid = (append $valid "httpGet") -}}
+    {{- end -}}
+  {{- end -}}
+  {{- with .tcpSocket -}}
+    {{- if .port -}}
+      {{- $valid = (append $valid "tcpSocket") -}}
+    {{- end -}}
+  {{- end -}}
+  {{- if $valid -}}
+    {{- if eq (len $valid) 1 -}}
+      {{- true -}}
+    {{- else -}}
+      {{- fail (printf "Invalid probe specification - multiple probe modes specified: %s" (toString $valid)) -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
 
 {{- /*
 Render container port declarations based on what's declared in the values file. Probes will also be rendered if enabled.
@@ -228,25 +274,60 @@ Parameter: the root context (i.e. "." or "$")
 ports:
       {{- range . }}
   - name: {{ (required "Port specifications must contain a name" .name) | quote }}
-    protocol: {{ default "TCP" .protocol }}
+    protocol: {{ coalesce .protocol "TCP" }}
     containerPort: {{ required (printf "Port [%s] doesn't have a port number" .name) .port }}
       {{- end }}
     {{- end }}
-    {{- $probes := (default dict .probes) }}
-    {{- $common := (default dict $probes.spec) }}
-    {{- $readiness := (default dict $probes.readiness) }}
-    {{- $liveness := (default dict $probes.liveness) }}
+    {{- $probes := (coalesce .probes dict) }}
+    {{- $common := (coalesce $probes.spec dict) }}
+    {{- $startup := (coalesce $probes.startup dict) }}
+    {{- $readiness := (coalesce $probes.readiness dict) }}
+    {{- $liveness := (coalesce $probes.liveness dict) }}
     {{- if or ($probes.enabled) (not (hasKey $probes "enabled")) }}
+      {{- if or ($startup.enabled) (not (hasKey $readiness "enabled")) -}}
+        {{- with (mergeOverwrite $common $startup) }}
+          {{- if (include "arkcase.subsystem.probeIsValid" .) }}
+startupProbe: {{- toYaml (unset . "enabled") | nindent 2 }}
+          {{- end -}}
+        {{- end }}
+      {{- end }}
       {{- if or ($readiness.enabled) (not (hasKey $readiness "enabled")) -}}
         {{- with (mergeOverwrite $common $readiness) }}
+          {{- if (include "arkcase.subsystem.probeIsValid" .) }}
 readinessProbe: {{- toYaml (unset . "enabled") | nindent 2 }}
+          {{- end }}
         {{- end }}
       {{- end }}
       {{- if or ($liveness.enabled) (not (hasKey $liveness "enabled")) -}}
         {{- with (mergeOverwrite $common $liveness) }}
+          {{- if (include "arkcase.subsystem.probeIsValid" .) }}
 livenessProbe: {{- toYaml (unset . "enabled") | nindent 2 }}
+          {{- end }}
         {{- end }}
       {{- end }}
     {{- end }}
   {{- end }}
 {{- end }}
+
+{{- /*
+Render an ingress port declaration based on what's provided as parameters. Will only be rendered if the subsystem in question is enabled or external.
+
+Parameter: a dict with two keys:
+             - ctx = the root context (either "." or "$")
+             - subsystem = a string with the name of the subsystem to query
+             - port = the port number that the ingress will be pointed to
+*/ -}}
+{{- define "arkcase.subsystem.ingressPath" -}}
+  {{- $ctx := (required "Must provide a 'ctx' parameter with the root context" .ctx) -}}
+  {{- $subsystem := (required "Must provide a 'subsystem' parameter with the name of the subsystem to render" .subsystem) -}}
+  {{- $port := (required "Must provide a 'port' parameter with the port number for the service" (int .port)) -}}
+  {{- if (include "arkcase.subsystem.enabledOrExternal" (dict "ctx" $ctx "subsystem" $subsystem)) -}}
+- pathType: Prefix
+  path: {{ printf "/%s" $subsystem | quote }}
+  backend:
+    service:
+      name: {{ $subsystem | quote }}
+      port:
+        number: {{ $port }}
+  {{- end }}
+{{- end -}}

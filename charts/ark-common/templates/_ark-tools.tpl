@@ -10,26 +10,26 @@ result: either "" or "true"
   {{- if (not (eq "string" $type)) -}}
     {{- $addx = (toString $addx) -}}
   {{- end -}}
-  {{- $fail := (eq 1 0) -}}
+  {{- $fail := false -}}
   {{- if and (not $fail) (eq (upper $addx) (lower $addx)) -}}
     {{- /* Second test: is it a set of 4 dot-separated numbers? */ -}}
     {{- $octets := splitList "." $addx }}
     {{- if eq ( $octets | len ) 4 }}
       {{- range $, $octet := $octets }}
         {{- if (not (regexMatch "^(0|[1-9][0-9]{0,2})$" $octet)) -}}
-          {{- $fail = (eq 1 1) -}}
+          {{- $fail = true -}}
         {{- else -}}
           {{- $octet = (int $octet) -}}
           {{- if or (lt $octet 0) (gt $octet 255) -}}
-            {{- $fail = (eq 1 1) -}}
+            {{- $fail = true -}}
           {{- end -}}
         {{- end -}}
       {{- end -}}
     {{- else -}}
-      {{- $fail = (eq 1 1) -}}
+      {{- $fail = true -}}
     {{- end }}
   {{- else if (not $fail) -}}
-    {{- $fail = (eq 1 1) -}}
+    {{- $fail = true -}}
   {{- end -}}
   {{- if not $fail -}}
     {{- true -}}
@@ -48,9 +48,9 @@ result: either "" or "true"
   {{- if (not (eq "string" $type)) -}}
     {{- $host = (toString $host) -}}
   {{- end -}}
-  {{- $fail := (eq 1 0) -}}
+  {{- $fail := false -}}
   {{- if not (regexMatch "^[a-z0-9]([-a-z0-9]*[a-z0-9])?([.][a-z0-9]([-a-z0-9]*[a-z0-9])?)*$" (lower $host)) -}}
-    {{- $fail = (eq 1 1) -}}
+    {{- $fail = true -}}
   {{- end -}}
   {{- if not $fail -}}
     {{- true -}}
@@ -125,10 +125,10 @@ usage: ( include "arkcase.tools.isIp" "some.ip.to.check" )
     {{- fail (printf "The parameter must either be a string or a slice (%s)" $type) -}}
   {{- end -}}
   {{- $allAddx = (sortAlpha $allAddx | uniq | compact) -}}
-  {{- $fail := (eq 1 0) -}}
+  {{- $fail := false -}}
   {{- range $allAddx -}}
     {{- if and (not $fail) (not (include "arkcase.tools.checkIp" .)) -}}
-      {{- $fail = (eq 1 1) -}}
+      {{- $fail = true -}}
     {{- end -}}
   {{- end -}}
   {{- if not $fail -}}
@@ -205,15 +205,15 @@ result: either "" or "true"
     {{- fail (printf "The parameter must either be a string or a slice (%s)" $type) -}}
   {{- end -}}
   {{- $allHosts = (sortAlpha $allHosts | uniq | compact) -}}
-  {{- $fail := (eq 1 0) -}}
+  {{- $fail := false -}}
   {{- range $allHosts -}}
     {{- if (not $fail) -}}
       {{- /* if it's an IP address, or if it doesn't match the RFC-1123 hostname expression, it's not a hostname */ -}}
       {{- if or (include "arkcase.tools.checkIp" .) (not (include "arkcase.tools.checkHostname" .)) -}}
-        {{- $fail = (eq 1 1) -}}
+        {{- $fail = true -}}
       {{- end }}
     {{- else -}}
-      {{- $fail = (eq 1 1) -}}
+      {{- $fail = true -}}
     {{- end -}}
   {{- end -}}
   {{- if not $fail -}}
@@ -389,15 +389,38 @@ Create the environment variables to facilitate detecting the Pod's IP, name, nam
 Render the image name taking into account the registry, repository, image name, and tag.
 */ -}}
 {{- define "arkcase.tools.image" -}}
-  {{- $image := (required "No image information was found in the Values object" .Values.image) -}}
-  {{- $global := (default dict .Values.global) -}}
-  {{- $registryName := $image.registry -}}
-  {{- $repositoryName := (required "No repository (image) name was given" $image.repository) -}}
-  {{- $tag := (toString (default "latest" $image.tag)) -}}
-  {{- if $global -}}
-    {{- if $global.imageRegistry -}}
-      {{- $registryName = $global.imageRegistry -}}
+  {{- $ctx := . -}}
+  {{- $registryName := "" -}}
+  {{- $repositoryName := "" -}}
+  {{- $tag := "" -}}
+  {{- $explicit := false -}}
+  {{- if not $ctx.Values -}}
+    {{- $ctx = (required "No 'ctx' parameter was given pointing to the root context" .ctx) -}}
+    {{- if not $ctx.Values -}}
+      {{- fail ("The 'ctx' parameter does not appear to point to the root context") -}}
     {{- end -}}
+    {{- $registryName = .registry -}}
+    {{- $repositoryName = .repository -}}
+    {{- if (hasKey . "tag") -}}
+      {{- /* Make sure we use the tag given here - empty tags = "latest" */ -}}
+      {{- $tag = (coalesce .tag "latest") -}}
+    {{- end -}}
+    {{- $explicit = true -}}
+  {{- end -}}
+  {{- $image := (required "No image information was found in the Values object" $ctx.Values.image) -}}
+  {{- $global := (default dict $ctx.Values.global) -}}
+  {{- if or (hasKey $global "imageRegistry") ($global.imageRegistry) -}}
+    {{- /* Global registry trumps everything */ -}}
+    {{- $registryName = $global.imageRegistry -}}
+  {{- else if and (not $registryName) (or (not $explicit) (not (hasKey . "registry"))) -}}
+    {{- /* If we don't yet have a registry name, and we weren't given one explicitly, then use the "default" */ -}}
+    {{- $registryName = $image.registry -}}
+  {{- end -}}
+  {{- if not $repositoryName -}}
+    {{- $repositoryName = (required "No repository (image) name was given" $image.repository) -}}
+  {{- end -}}
+  {{- if not $tag -}}
+    {{- $tag = (toString (default "latest" $image.tag)) -}}
   {{- end -}}
   {{- if $registryName -}}
     {{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
@@ -406,12 +429,27 @@ Render the image name taking into account the registry, repository, image name, 
   {{- end -}}
 {{- end -}}
 
+{{- /*
+Render the image registry name taking into account global values as well
+*/ -}}
+{{- define "arkcase.tools.imageRegistry" -}}
+  {{- $image := (required "No image information was found in the Values object" .Values.image) -}}
+  {{- $global := (default dict .Values.global) -}}
+  {{- $registryName := $image.registry -}}
+  {{- if $global -}}
+    {{- if $global.imageRegistry -}}
+      {{- $registryName = $global.imageRegistry -}}
+    {{- end -}}
+  {{- end -}}
+  {{- $registryName -}}
+{{- end -}}
+
 {{- define "arkcase.tools.imagePullPolicy" -}}
   {{- $image := (required "No image information was found in the Values object" .Values.image) -}}
   {{- $global := (default dict .Values.global) -}}
-  {{- $tag := (toString (default "latest" $image.tag)) -}}
-  {{- $pullPolicy := (toString (default "IfNotPresent" $image.pullPolicy)) -}}
-  {{- if not (eq $pullPolicy "Never") -}}
+  {{- $tag := (toString (default "" $image.tag)) -}}
+  {{- $pullPolicy := (toString (default "" $image.pullPolicy)) -}}
+  {{- if (empty $pullPolicy) -}}
     {{- if or (empty $tag) (eq $tag "latest") -}}
       {{- $pullPolicy = "Always" -}}
     {{- else -}}

@@ -1,0 +1,122 @@
+{{- if (include "arkcase.subsystem.enabled" .) }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "common.fullname" . | quote }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels: {{- include "common.labels" . | nindent 4 }}
+    {{- with (.Values.labels).common }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with (.Values.annotations).common }}
+  annotations: {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if not (.Values.autoscaling).enabled }}
+  replicas: {{ .Values.replicaCount | default 1 }}
+  {{- end }}
+  selector:
+    matchLabels: {{- include "common.labels.matchLabels" . | nindent 6 }}
+  serviceName: {{ include "common.fullname" . | quote }}
+  updateStrategy:
+    type: {{ .Values.updateStrategy }}
+    {{- if (eq "Recreate" .Values.updateStrategy) }}
+    rollingUpdate: null
+    {{- else if .Values.rollingUpdatePartition }}
+    rollingUpdate:
+      partition: {{ .Values.rollingUpdatePartition }}
+    {{- end }}
+  template:
+    metadata:
+      name: {{ include "common.name" . | quote }}
+      namespace: {{ .Release.Namespace | quote }}
+      labels: {{- include "common.labels" . | nindent 8 }}
+        {{- with (.Values.labels).common }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      annotations:
+        # NB: Both these annotation values must be of type "string"
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9100"
+        timestamp: {{ date "20060102150405" now | quote }}
+        {{- with (.Values.annotations).common }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.hostAliases }}
+      hostAliases: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.schedulerName }}
+      schedulerName: {{ .Values.schedulerName | quote }}
+      {{- end }}
+      serviceAccountName: {{ include "common.serviceAccountName" . }}
+      {{- with (.Values.securityContext).template }}
+      securityContext: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      initContainers:
+        - name: set-permissions
+          image: {{ include "arkcase.tools.image" (dict "ctx" . "repository" "ark_setperm") | quote }}
+          env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
+            - name: JOBS
+              value: |
+                jobs:
+                  # We know the Cloudconfig image uses user 997
+                  - ownership: "997:997"
+                    permissions: "u=rwX,g=rX,o="
+                    flags: [ "recurse", "noforced", "create", "changes" ]
+                    targets: [ "/app/data" ]
+          volumeMounts:
+            - name: "data"
+              mountPath: &configRoot "/app/data"
+      containers:
+        - name: cloudconfig
+          {{- with (.Values.securityContext).configserver }}
+          securityContext: {{- toYaml . | nindent 12 }}
+          {{- end }}
+          image: {{ include "arkcase.tools.image" . | quote }}
+          imagePullPolicy: {{ include "arkcase.tools.imagePullPolicy" . | quote }}
+          env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
+            - name: config_root
+              value: *configRoot
+          {{- include "arkcase.subsystem.ports" . | nindent 10 }}
+          {{- if .Values.command }}
+          command: {{- .Values.command | toYaml | nindent 12 }}
+          {{- end }}
+          {{- with .Values.resources }}
+          resources: {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: "data"
+              mountPath: *configRoot
+            - name: "application-cfg"
+              mountPath: "/app/data/application.yml"
+              subPath: "application.yml"
+              readOnly: true
+            - name: "server-cfg"
+              mountPath: "/app/data/arkcase-server.yaml"
+              subPath: "arkcase-server.yaml"
+      volumes:
+        {{- include "arkcase.persistence.volume" (dict "name" "data" "ctx" $) | nindent 8 }}
+        - name: "application-cfg"
+          configMap:
+            name: {{ include "common.fullname" . | quote }}
+            items:
+              - key: &applicationYaml "application.yml"
+                path: *applicationYaml
+        - name: "server-cfg"
+          configMap:
+            name: {{ printf "%s-server-config" (include "common.fullname" .) | quote }}
+            items:
+              - key: &serverYaml "arkcase-server.yaml"
+                path: *serverYaml
+            defaultMode: 0777
+
+{{- if (include "arkcase.persistence.enabled" .) }}
+{{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "data") | indent 0 }}
+{{- end }}
+
+{{- end }}

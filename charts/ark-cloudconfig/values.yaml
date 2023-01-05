@@ -11,9 +11,21 @@
 configuration:
   # Add configuration values here
   messaging:
-    brokerUrl: ""
+    # We generally don't need to set this one as the default should cover most if not all cases
+    # brokerUrl: ""
     username: ""
     password: ""
+  download:
+    enabled: false
+    # mode: "s3"
+    # args: [ .... ]
+  ssl:
+    # keystore:
+    #   location: "/some/keystore/path"
+    #   password: "KeyStorePass"
+    # truststore:
+    #   location: "/some/truststore/path"
+    #   password: "TrustStorePass"
 
 # Please leave the `replicaCount` to 1 for the time being. Clustering is not
 # supported yet.
@@ -59,14 +71,16 @@ securityContext:
     # You must specify an `fsGroup` to allow ActiveMQ write access to mounted
     # volumes (as long as ActiveMQ runs as a non-root user, which should be the
     # case). Any random number will do.
-    # fsGroup: 2000
+    fsGroup: &fsGroup 2003
+    fsGroupChangePolicy: OnRootMismatch
   cloudconfig:
     # capabilities:
     #   drop:
     #   - ALL
     # readOnlyRootFilesystem: true
     runAsNonRoot: true
-    runAsUser: 1000
+    runAsUser: &runAsUser 2003
+    runAsGroup: *fsGroup
 resources:
   # We usually recommend not to specify default resources and to leave this as a conscious
   # choice for the user. This also increases chances charts run on environments with little
@@ -102,9 +116,11 @@ persistence:
   localPath: "/opt/app/arkcase"
 
 #
-# There are 3 volumes supported: data, conf, and logs
+# There is 1 volumes supported: data
 #
   data:
+# Use this instance of localPath when you want a specific directory for this volume
+    # localPath: "/opt/app/arkcase/config"
 # The "volume" should match the contents of PersistenceVolume.spec
 #    volume:
 #      storageClassName: "manual"

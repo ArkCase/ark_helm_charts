@@ -5,10 +5,10 @@ metadata:
   name: {{ include "common.fullname" . | quote }}
   namespace: {{ .Release.Namespace | quote }}
   labels: {{- include "common.labels" . | nindent 4 }}
-    {{- with .Values.labels }}
+    {{- with (.Values.labels).common }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
-  {{- with .Values.annotations }}
+  {{- with (.Values.annotations).common }}
   annotations: {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
@@ -31,14 +31,14 @@ spec:
       name: {{ include "common.name" . | quote }}
       namespace: {{ .Release.Namespace | quote }}
       labels: {{- include "common.labels" . | nindent 8 }}
-        {{- with .Values.labels }}
+        {{- with (.Values.labels).common }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
       annotations:
         # NB: Both these annotation values must be of type "string"
         prometheus.io/scrape: "true"
         prometheus.io/port: "9100"
-        {{- with .Values.annotations }}
+        {{- with (.Values.annotations).common }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
     spec:
@@ -56,9 +56,17 @@ spec:
       securityContext: {{- toYaml . | nindent 8 }}
       {{- end }}
       initContainers:
-        - name: chown
-          image: busybox:latest
-          command: ["sh", "-c", "chown -R 1000:1000 /data && chmod -R ug+rwX,o-rwx /data" ]
+        - name: set-permissions
+          image: {{ include "arkcase.tools.image" (dict "ctx" . "repository" "ark_setperm") | quote }}
+          env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
+            - name: JOBS
+              value: |
+                jobs:
+                  # We know the ActiveMQ image uses user 998
+                  - ownership: "998:998"
+                    permissions: "u=rwX,g=rX,o="
+                    flags: [ "recurse", "noforced", "create", "changes" ]
+                    targets: [ "/data" ]
           volumeMounts:
             - name: "data"
               mountPath: "/data"
@@ -69,11 +77,11 @@ spec:
           {{- end }}
           image: {{ include "arkcase.tools.image" . | quote }}
           imagePullPolicy: {{ include "arkcase.tools.imagePullPolicy" . | quote }}
-          env: {{- include "arkcase.tools.baseEnv" . | nindent 12}}
+          env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
             - name: ACTIVEMQ_ENCRYPTION_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "common.fullname" . | quote }}
+                  name: {{ include "arkcase.subsystem.name" . | quote }}
                   key: ENCRYPTION_PASSWORD
           {{- include "arkcase.subsystem.ports" . | nindent 10 }}
           {{- if .Values.command }}
@@ -92,7 +100,7 @@ spec:
         {{- include "arkcase.persistence.volume" (dict "name" "data" "ctx" $) | nindent 8 }}
         - name: secrets
           secret:
-            secretName: {{ include "common.fullname" . }}
+            secretName: {{ include "arkcase.subsystem.name" . | quote }}
       {{- with .Values.nodeSelector }}
       nodeSelector: {{- toYaml . | nindent 8 }}
       {{- end }}

@@ -5,12 +5,12 @@ metadata:
   name: {{ include "common.fullname" . | quote }}
   namespace: {{ .Release.Namespace | quote }}
   labels: {{- include "common.labels" . | nindent 4 }}
-    {{- with .Values.labels }}
+    {{- with (.Values.labels).common }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
   annotations:
     timestamp: {{ date "20060102150405" now | quote }}
-    {{- with .Values.annotations }}
+    {{- with (.Values.annotations).common }}
       {{- toYaml . | nindent 4 }}
     {{- end }}
 data:
@@ -19,12 +19,14 @@ data:
     spring:
       profiles.active: native
       cloud.config.server:
-        native.searchLocations: file://${ark_extension_path}/acm/acm-config-server-repo, file://${ark_extension_path}/acm/acm-config-server-repo/rules, file://${ark_extension_path}/acm/acm-config-server-repo/lookups, file://${ark_extension_path}/acm/acm-config-server-repo/ldap, file://${ark_extension_path}/acm/acm-config-server-repo/labels
+        native.searchLocations: "file://${config_root},file://${config_root}/rules,file://${config_root}/lookups,file://${config_root}/ldap,file://${config_root}/labels"
       jms:
         pub-sub-domain: true
-    properties.folder.path: ${ark_extension_path}/acm/acm-config-server-repo
-    branding.files.folder.path: ${ark_extension_path}/acm/acm-config-server-repo/branding
+    properties.folder.path: "${config_root}"
+    branding.files.folder.path: "${config_root}/branding"
     logging:
+      # file.max-history: 10
+      # file.max-size: 10MB
       file: /dev/stdout
       level:
         com.armedia.acm.configserver: debug
@@ -33,14 +35,30 @@ data:
         file: "%d{yyyy-MM-dd HH:mm:ss,SSS} [%thread] %-5level %logger.%M - %msg%n"
     jms.message.buffer.window: 1
     acm.activemq:
-      broker-url: ${ACTIVE_MQ_URL}
-      user: ${ACTIVE_MQ_USERNAME}
-      password: ${ACTIVE_MQ_PASSWORD}
+      broker-url: "tcp://messaging:61616"
+      user: {{ default "cloudconfig" ((.Values.configuration).messaging).username }}
+      password: {{ default "c70uDk0nf19!" ((.Values.configuration).messaging).password }}
       default-destination: configuration.changed
       labels-destination: labels.changed
       ldap-destination: ldap.changed
       lookups-destination: lookups.changed
       rules-destination: rules.changed
-      timeout: 10 #seconds
+      timeout: 10
+      {{- with ((.Values.configuration).ssl).keystore }}
+      {{- if .location }}
+      keystore: {{ .location | quote }}
+      {{- end }}
+      {{- if .password }}
+      keystore-password: {{ .password | quote }}
+      {{- end }}
+      {{- end }}
+      {{- with ((.Values.configuration).ssl).truststore }}
+      {{- if .location }}
+      truststore: {{ .location | quote }}
+      {{- end }}
+      {{- if .password }}
+      truststore-password: {{ .password | quote }}
+      {{- end }}
+      {{- end }}
     arkcase.languages: "-de,-en,-en-in,-es,-fr,-hi,-ja,-pt,-ru,-zh-cn,-zh-tw"
 {{- end }}

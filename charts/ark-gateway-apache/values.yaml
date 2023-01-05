@@ -1,0 +1,452 @@
+# Default values for ark-apache.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# This can be set to "false" by parent charts. If not defined, it will be taken as true
+#enabled: true
+
+#
+# This should group all application-specific configurations
+#
+configuration:
+  # This setting defaults to true if not set, and causes a default
+  # set of modules to be activated for Apache in order to support
+  # proxying. Setting it to false turns off those modules.
+  #
+  # These modules are applied after any other custom-configured modules,
+  # below. If they've already been applied, their presence will trigger
+  # warnings, but will ultimately be ignored and cause no issues.
+  #
+  # addProxyModules: true
+
+  # NOTE: When using inc:${path}, the path will be interpreted as relative to /conf, with no possibility
+  #       of overflowing outside that sandbox via relative components (i.e. ".."). This is by design and
+  #       will not change, for security reasons
+  #
+  # This section describes common settings for the Apache server
+  #
+  # main:
+  #   serverAdmin: "webmaster@localhost"
+  #   documentRoot: "/var/www/html"
+  #   timeOut: 300
+  #   keepAlive: "On"
+  #   maxKeepAliveRequests: 100
+  #   keepAliveTimeout: 5
+  #   hostnameLookups: "Off"
+  #   accessFileName: ".htaccess"
+  #   log:
+  #     level: warn
+  #     error: "${APACHE_LOG_DIR}/error.log"
+  #     custom: "${APACHE_LOG_DIR}/access.log combined"
+  #   includes:
+  #     - "include-path-1.conf"
+  #     - "include-path-2.conf"
+  #     # ...
+  #     - "include-path-N.conf"
+  #
+  #
+  # This section describes settings for the SSL engine. If none are provided, the presence
+  # of the files /conf/cert.pem and /conf/key.pem, along with their validity as SSL certificate
+  # and private key (respectively, and matching each other) will cause the SSL configuration
+  # to be executed even if no section is present. This is to facilitate configuration by
+  # convention.
+  #
+  # ssl:
+  #   enabled: boolean
+  #   cert: inc:${certFilePath}-or-pemString
+  #   key: inc:${certKeyFilePath}-or-pemString
+  #   ca:
+  #     - inc:${caFilePath}-or-pemString-1
+  #     - inc:${caFilePath}-or-pemString-2
+  #     # ...
+  #     - inc:${caFilePath}-or-pemString-N
+  #   crl:
+  #     - inf:${crlFilePath}-or-pemString-1
+  #     - inf:${crlFilePath}-or-pemString-2
+  #     # ...
+  #     - inf:${crlFilePath}-or-pemString-N
+  #   serverAdmin: kaka@test
+  #   documentRoot: /www
+  #   logLevel: "info ssl:warn"
+  #   client:
+  #   verify: require
+  #   depth: 10
+  #   options:
+  #     - +FakeBasicAuth
+  #     - +ExportCertData
+  #     - +StrictRequire
+  #   sections:
+  #     filesMatch: |
+  #       <FilesMatch "\.(cgi|shtml|phtml|php)$">
+  #         SSLOptions +StdEnvVars
+  #       </FilesMatch>
+  #     directory: |
+  #       <Directory /usr/lib/cgi-bin>
+  #         SSLOptions +StdEnvVars
+  #       </Directory>
+  #     browserMatch: |
+  #       BrowserMatch "MSIE [2-6]" \
+  #       nokeepalive ssl-unclean-shutdown \
+  #       downgrade-1.0 force-response-1.0
+  #     other: |
+  #       ... other sections that need to go here ...
+  #
+  # This section describes the modules that must be activated (or de-activated,
+  # as appropriate) as part of this configuration. If the "removeDefaults" flag
+  # is set to "true", then this will cause all default modules to be removed,
+  # and only the modules explicitly configured here will be enabled.
+  #
+  #  modules:
+  #
+  # Flag that indicates whether the default links should be removed prior
+  # to applying the configurations (default is false)
+  #  removeDefaults: true
+  #
+  # If using inc:${path} here, then the contents will be used for the .conf file and
+  # "add" will be assumed for the operation.
+  # Must use the other syntax to provide the contents of all files
+  # Operation is either "add" or "remove" (case-insensitive).
+  #
+  #  module-1: operation-or-inc:${path}-or-file-contents
+  #  module-2:
+  #    enabled: boolean
+  #    files:
+  #      # use "conf" for the .conf file, "load" for the .load file, etc....
+  #      conf: |
+  #        contents of the module's configuration (can also use inc:${path} here)
+  #      load: |
+  #        contents of the module's load statement (if not given, the existing load file will be used,
+  #        can also use inc:${path} here)
+  #  # ...
+  #  module-N: ...
+  #
+  # sites:
+  # Flag that indicates whether the default links should be removed prior
+  # to applying the configurations (default is false)
+  #  removeDefaults: false
+  #
+  #  site-1: operation-or-inc:${path}-or-file-contents
+  #  site-2:
+  #    enabled: boolean
+  #    files:
+  #      conf: |
+  #        contents of the site configuration (can also use inc:${path} here)
+  #  # ...
+  #  site-N: ...
+  #
+  # confs:
+  #  conf-1: operation-or-inc:${path}-or-file-contents
+  #  conf-2:
+  #    enabled: boolean
+  #    files:
+  #      conf: |
+  #        contents of the additional configuration (can also use inc:${path} here)
+  #  # ...
+  #  conf-N: ...
+
+  # This section leverages macros developed for this chart to facilitate declaring
+  # proxied backend sites
+  proxies:
+  #   # The key in the map ("example") only reflects the name that will be given
+  #   # to the configuration file(s) generated
+  #   example:
+  #     vhost:
+  #       name: virtual-host.rivera.prv
+  #       aliases:
+  #         - virtual-host
+  #         - virtual.rivera.prv
+  #         - virtual
+  #
+  #       settings: |
+  #         # Embed more Apache configurations here, for custom settings
+  #         # applied to the VirtualHost configuration
+  #
+  #       ssl:
+  #         cipherSuite: "ALL:!ADH:!EXPORT56:RC4+RSA:+HIGH:+MEDIUM:+LOW:+SSLv2:+EXP"
+  #         cert: <inc:${...}-or-PEM-encoded-crap>
+  #         key: <inc:${...}-or-PEM-encoded-crap>
+  #         caFile: <inc:${...}-or-PEM-encoded-crap>
+  #         caPath: <path>
+  #         settings: |
+  #           # Embed more Apache configurations here, for custom settings
+  #           # applied to the Virtual Host's SSL configuration
+  #
+  #     locations:
+  #       - url: "http://mongo-server.private.ip:9898/mng"
+  #         path: "/mongo"
+  #         html:
+  #           enabled: true
+  #           extended: true
+  #           # urlMap:
+  #           #   - from: ...
+  #           #     to: ...
+  #           #   #  ... more mappings ...
+  #           #   - from: ...
+  #           #     to: ...
+  #         settings: |
+  #           # Embed more Apache configurations here, for custom settings
+  #           # applied to the Location section
+  #
+  #     settings: |
+  #       # Embed more Apache configurations here, for custom settings
+  #       # applied to the global configuration
+
+# Please leave the `replicaCount` to 1 for the time being. Clustering is not
+# supported yet.
+replicaCount: 1
+
+platform: ""
+image:
+  registry: "345280441424.dkr.ecr.ap-south-1.amazonaws.com"
+  repository: "ark_gateway_apache"
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+imagePullSecrets:
+  - name: aws-arkcase-pull
+
+# You generally shouldn't mess with these. These exist to support some name-generation templates
+nameOverride: ""
+fullnameOverride: ""
+
+# Custom annotations to apply throughout
+annotations:
+
+# Custom labels to apply throughout
+labels:
+
+updateStrategy: RollingUpdate
+rollingUpdatePartition: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: false
+  # Annotations to add to the service account
+  annotations:
+  # Annotations to add to the service account
+  labels:
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+securityContext:
+  template:
+    # You must specify an `fsGroup` to allow ActiveMQ write access to mounted
+    # volumes (as long as ActiveMQ runs as a non-root user, which should be the
+    # case). Any random number will do.
+    # fsGroup: 2000
+    # fsGroupChangePolicy: OnRootMismatch
+  # apache:
+    # privileged: true
+    # capabilities:
+    #   drop:
+    #   - ALL
+    # readOnlyRootFilesystem: true
+    # runAsNonRoot: true
+    # runAsUser: 1000
+
+resources:
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+#autoscaling:
+  #enabled: false
+  #minReplicas: 1
+  #maxReplicas: 100
+  #targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+nodeSelector:
+
+tolerations:
+
+affinity:
+
+# Can only include at most one of claim: or data:, not both. Can include none,
+# but this will result in a "default" volume being created
+persistence:
+  enabled: true
+
+# Use this when not using other persistent volumes, to point to the root location
+# where the directories need to be created
+  localPath: "/opt/app/arkcase"
+
+#
+# There are 3 volumes supported: data, conf, and logs
+#
+  data:
+# Use this instance of localPath when you want a specific directory for this volume
+#    localPath: "/....."
+# The "volume" should match the contents of PersistenceVolume.spec
+#    volume:
+#      storageClassName: "manual"
+#      persistentVolumeReclaimPolicy: Retain
+#      accessModes:
+#        - "ReadWriteOnce"
+#      capacity:
+#        storage: "10Gi"
+#      hostPath:
+#        path: /tmp/samba/data
+#
+    claim:
+# "name" is the name of an existing volume claim to be re-used, can't be used if "claim" is present
+#      name: "name-of-the-claim-to-consume"
+# "spec" should match the contents of PersistenceVolumeClaim.spec, can't be used if "name" is present
+#      spec: 
+#        storageClassName: ""
+#        volumeName: the-volume-to-claim
+#        accessModes:
+#          - "ReadWriteOnce"
+#        resources:
+#          limits: ""
+#          requests: ""
+#        selector:
+#          matchExpressions:
+#            - values:
+#                - ""
+#                - ""
+#                - ""
+#                ...
+#              operator: "In"|"NotIn"|"Exists"|"DoesNotExist"
+#              key: "labelKey"
+#            - values:
+#                - ""
+#                - ""
+#                - ""
+#                ...
+#              operator: "In"|"NotIn"|"Exists"|"DoesNotExist"
+#              key: "labelKey"
+#          matchLabels: "....."
+  conf:
+# Use this instance of localPath when you want a specific directory for this volume
+#    localPath: "/....."
+# The "volume" should match the contents of PersistenceVolume.spec
+#    volume:
+#      storageClassName: "manual"
+#      persistentVolumeReclaimPolicy: Retain
+#      accessModes:
+#        - "ReadWriteOnce"
+#      capacity:
+#        storage: "10Gi"
+#      hostPath:
+#        path: /tmp/samba/conf
+#
+#    claim:
+# "name" is the name of an existing volume claim to be re-used, can't be used if "claim" is present
+#      name: "name-of-the-claim-to-consume"
+# "spec" should match the contents of PersistenceVolumeClaim.spec, can't be used if "name" is present
+#      spec: 
+#        storageClassName: ""
+#        volumeName: the-volume-to-claim
+#        accessModes:
+#          - "ReadWriteOnce"
+#        resources:
+#          limits: ""
+#          requests: ""
+#        selector:
+#          matchExpressions:
+#            - values:
+#                - ""
+#                - ""
+#                - ""
+#                ...
+#              operator: "In"|"NotIn"|"Exists"|"DoesNotExist"
+#              key: "labelKey"
+#            - values:
+#                - ""
+#                - ""
+#                - ""
+#                ...
+#              operator: "In"|"NotIn"|"Exists"|"DoesNotExist"
+#              key: "labelKey"
+#          matchLabels: "....."
+  logs:
+# Use this instance of localPath when you want a specific directory for this volume
+#    localPath: "/....."
+# The "volume" should match the contents of PersistenceVolume.spec
+#    volume:
+#      storageClassName: "manual"
+#      persistentVolumeReclaimPolicy: Retain
+#      accessModes:
+#        - "ReadWriteOnce"
+#      capacity:
+#        storage: "10Gi"
+#      hostPath:
+#        path: /tmp/samba/logs
+#
+#    claim:
+# "name" is the name of an existing volume claim to be re-used, can't be used if "claim" is present
+#      name: "name-of-the-claim-to-consume"
+# "spec" should match the contents of PersistenceVolumeClaim.spec, can't be used if "name" is present
+#      spec: 
+#        storageClassName: ""
+#        volumeName: the-volume-to-claim
+#        accessModes:
+#          - "ReadWriteOnce"
+#        resources:
+#          limits: ""
+#          requests: ""
+#        selector:
+#          matchExpressions:
+#            - values:
+#                - ""
+#                - ""
+#                - ""
+#                ...
+#              operator: "In"|"NotIn"|"Exists"|"DoesNotExist"
+#              key: "labelKey"
+#            - values:
+#                - ""
+#                - ""
+#                - ""
+#                ...
+#              operator: "In"|"NotIn"|"Exists"|"DoesNotExist"
+#              key: "labelKey"
+#          matchLabels: "....."
+
+service:
+  type: NodePort
+  ports:
+    - name: http
+      protocol: TCP
+      port: &http 80
+      nodePort: 30080
+    - name: https
+      protocol: TCP
+      port: &https 443
+      nodePort: 30443
+
+##
+## Configure extra options for containers' liveness and readiness probes
+## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/#configure-probes
+## @param service.probes.enabled Enable liveness and readiness probes
+## @param service.probes.spec.initialDelaySeconds Initial delay seconds for liveness and readiness probes
+## @param service.probes.spec.periodSeconds Period seconds for liveness and readiness probes
+## @param service.probes.spec.timeoutSeconds Timeout seconds for liveness and readiness probes
+## @param service.probes.spec.failureThreshold Failure threshold for liveness and readiness probes
+## @param service.probes.spec.successThreshold Success threshold for liveness and readiness probes
+##
+  probes:
+    enabled: true
+    readiness:
+      enabled: true
+    liveness:
+      enabled: true
+    spec:
+      httpGet:
+        path: "/"
+        port: *http
+      initialDelaySeconds: 30
+      periodSeconds: 20
+      timeoutSeconds: 5
+      failureThreshold: 6
+      successThreshold: 1
