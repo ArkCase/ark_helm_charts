@@ -76,7 +76,7 @@ spec:
           securityContext: {{- toYaml . | nindent 12 }}
           {{- end }}
           image: {{ include "arkcase.tools.image" . | quote }}
-          imagePullPolicy: Always
+          imagePullPolicy: {{ include "arkcase.tools.imagePullPolicy" . | quote }}
           env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
             - name: ACTIVEMQ_ENCRYPTION_PASSWORD
               valueFrom:
