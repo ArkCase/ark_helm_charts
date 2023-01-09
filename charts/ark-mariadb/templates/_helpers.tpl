@@ -1,150 +1,76 @@
-{{/* vim: set filetype=mustache: */}}
-
-{{- define "mariadb.primary.fullname" -}}
-{{- if eq .Values.architecture "replication" }}
-{{- printf "%s-%s" (include "common.names.fullname" .) "primary" | trunc 63 | trimSuffix "-" -}}
-{{- else -}}
-{{- include "common.names.fullname" . -}}
-{{- end -}}
+{{- define "arkcase.activemq.adminUser" -}}
+  {{- default "admin" (.Values.configuration).adminUsername -}}
 {{- end -}}
 
-{{- define "mariadb.secondary.fullname" -}}
-{{- printf "%s-%s" (include "common.names.fullname" .) "secondary" | trunc 63 | trimSuffix "-" -}}
+{{- define "arkcase.activemq.adminPassword" -}}
+  {{- default "admin" (.Values.configuration).adminPassword -}}
 {{- end -}}
 
-{{/*
-Return the proper MariaDB image name
-*/}}
-{{- define "mariadb.image" -}}
-{{ include "common.images.image" (dict "imageRoot" .Values.image "global" .Values.global) }}
+{{- define "arkcase.activemq.adminGroup" -}}
+  {{- default "admins" (.Values.configuration).adminGroup -}}
 {{- end -}}
 
-{{/*
-Return the proper metrics image name
-*/}}
-{{- define "mariadb.metrics.image" -}}
-{{ include "common.images.image" (dict "imageRoot" .Values.metrics.image "global" .Values.global) }}
+{{- define "arkcase.activemq.adminRole" -}}
+  {{- default "admin" (.Values.configuration).adminRole -}}
 {{- end -}}
 
-{{/*
-Return the proper image name (for the init container volume-permissions image)
-*/}}
-{{- define "mariadb.volumePermissions.image" -}}
-{{ include "common.images.image" (dict "imageRoot" .Values.volumePermissions.image "global" .Values.global) }}
+{{- define "arkcase.activemq.guestPassword" -}}
+  {{- default "password" (.Values.configuration).guestPassword -}}
 {{- end -}}
 
-{{/*
-Return the proper Docker Image Registry Secret Names
-*/}}
-{{- define "mariadb.imagePullSecrets" -}}
-{{ include "common.images.pullSecrets" (dict "images" (list .Values.image .Values.metrics.image .Values.volumePermissions.image) "global" .Values.global) }}
+{{- define "arkcase.activemq.encryptionPassword" -}}
+  {{- default "activemq" (.Values.configuration).encryptionPassword -}}
 {{- end -}}
 
-{{ template "mariadb.initdbScriptsCM" . }}
-{{/*
-Get the initialization scripts ConfigMap name.
-*/}}
-{{- define "mariadb.initdbScriptsCM" -}}
-{{- if .Values.initdbScriptsConfigMap -}}
-{{- printf "%s" .Values.initdbScriptsConfigMap -}}
-{{- else -}}
-{{- printf "%s-init-scripts" (include "mariadb.primary.fullname" .) -}}
-{{- end -}}
+{{- define "arkcase.activemq.users" -}}
+  {{ include "arkcase.activemq.adminUser" $ }}:{{ include "arkcase.activemq.adminPassword" $ }}
+  {{- range (.Values.configuration).users -}}
+    {{- $user := (required "Username may not be empty" .name) -}}
+    {{- $password := (default $user .password) }}
+{{ $user }}:{{ $password }}
+  {{- end }}
 {{- end -}}
 
-{{/*
-Create the name of the service account to use
-*/}}
-{{- define "mariadb.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create -}}
-    {{ default (include "common.names.fullname" .) .Values.serviceAccount.name }}
-{{- else -}}
-    {{ default "default" .Values.serviceAccount.name }}
-{{- end -}}
-{{- end -}}
-
-{{/*
-Return the configmap with the MariaDB Primary configuration
-*/}}
-{{- define "mariadb.primary.configmapName" -}}
-{{- if .Values.primary.existingConfigmap -}}
-    {{- printf "%s" (tpl .Values.primary.existingConfigmap $) -}}
-{{- else -}}
-    {{- printf "%s" (include "mariadb.primary.fullname" .) -}}
-{{- end -}}
-{{- end -}}
-
-{{/*
-Return true if a configmap object should be created for MariaDB Secondary
-*/}}
-{{- define "mariadb.primary.createConfigmap" -}}
-{{- if and .Values.primary.configuration (not .Values.primary.existingConfigmap) }}
-    {{- true -}}
-{{- else -}}
-{{- end -}}
-{{- end -}}
-
-{{/*
-Return the configmap with the MariaDB Primary configuration
-*/}}
-{{- define "mariadb.secondary.configmapName" -}}
-{{- if .Values.secondary.existingConfigmap -}}
-    {{- printf "%s" (tpl .Values.secondary.existingConfigmap $) -}}
-{{- else -}}
-    {{- printf "%s" (include "mariadb.secondary.fullname" .) -}}
-{{- end -}}
-{{- end -}}
-
-{{/*
-Return true if a configmap object should be created for MariaDB Secondary
-*/}}
-{{- define "mariadb.secondary.createConfigmap" -}}
-{{- if and (eq .Values.architecture "replication") .Values.secondary.configuration (not .Values.secondary.existingConfigmap) }}
-    {{- true -}}
-{{- else -}}
-{{- end -}}
-{{- end -}}
-
-{{/*
-Return the secret with MariaDB credentials
-*/}}
-{{- define "mariadb.secretName" -}}
-    {{- if .Values.auth.existingSecret -}}
-        {{- printf "%s" .Values.auth.existingSecret -}}
-    {{- else -}}
-        {{- printf "%s" (include "common.names.fullname" .) -}}
+{{- define "arkcase.activemq.groups" -}}
+  {{- $groups := dict -}}
+  {{- $members := list -}}
+  {{- /* First, deal with the administrators */ -}}
+  {{- $adminUser := (include "arkcase.activemq.adminUser" $) -}}
+  {{- $adminGroup := (include "arkcase.activemq.adminGroup" $) -}}
+  {{- $admins := (default list (get $groups $adminGroup)) -}}
+  {{- $admins = (append $admins $adminUser) -}}
+  {{- $crap := set $groups $adminGroup (sortAlpha $admins | uniq | compact) -}}
+  {{- /* Now, deal with the rest of the users */ -}}
+  {{- range (.Values.configuration).users -}}
+    {{- $userName := (required "Username may not be empty" .name) -}}
+    {{- if not (eq $adminUser $userName) -}}
+      {{- range (sortAlpha (default list .groups) | uniq | compact) -}}
+        {{- $members = (default list (get $groups .)) -}}
+        {{- $members = (append $members $userName) -}}
+        {{- $crap = set $groups . (sortAlpha $members | uniq | compact) -}}
+      {{- end -}}
     {{- end -}}
+  {{- end -}}
+  {{- range $group, $members := $groups }}
+{{ $group }}: {{ join "," $members }}
+  {{- end }}
 {{- end -}}
 
-{{/*
-Return true if a secret object should be created for MariaDB
-*/}}
-{{- define "mariadb.createSecret" -}}
-{{- if and (not .Values.auth.existingSecret) (not .Values.auth.customPasswordFiles) }}
-    {{- true -}}
-{{- else -}}
-{{- end -}}
-{{- end -}}
-
-{{/*
-Compile all warnings into a single message, and call fail.
-*/}}
-{{- define "mariadb.validateValues" -}}
-{{- $messages := list -}}
-{{- $messages := append $messages (include "mariadb.validateValues.architecture" .) -}}
-{{- $messages := without $messages "" -}}
-{{- $message := join "\n" $messages -}}
-
-{{- if $message -}}
-{{-   printf "\nVALUES VALIDATION:\n%s" $message | fail -}}
-{{- end -}}
-{{- end -}}
-
-{{/* Validate values of MariaDB - must provide a valid architecture */}}
-{{- define "mariadb.validateValues.architecture" -}}
-{{- if and (ne .Values.architecture "standalone") (ne .Values.architecture "replication") -}}
-mariadb: architecture
-    Invalid architecture selected. Valid values are "standalone" and
-    "replication". Please set a valid architecture (--set architecture="xxxx")
-{{- end -}}
+{{- define "arkcase.activemq.roles" -}}
+  {{- $users := dict -}}
+  {{- $crap := set $users (include "arkcase.activemq.adminUser" $) (join "," (list (include "arkcase.activemq.adminPassword" $) (include "arkcase.activemq.adminRole" $))) -}}
+  {{- range (.Values.configuration).users -}}
+    {{- $user := (required "Username may not be empty" .name) -}}
+    {{- if not (hasKey $users $user) -}}
+      {{- $password := (default $user .password) -}}
+      {{- $roles := (list $password) -}}
+      {{- range (sortAlpha .roles | uniq | compact) -}}
+        {{- $roles = (append $roles .) -}}
+      {{- end -}}
+      {{- $crap = set $users $user $roles -}}
+    {{- end -}}
+  {{- end -}}
+  {{- range $user, $roles := $users }}
+{{ $user }}: {{ join "," $roles }}
+  {{- end }}
 {{- end -}}
