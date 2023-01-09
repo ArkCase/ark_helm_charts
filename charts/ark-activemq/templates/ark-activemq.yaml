@@ -62,8 +62,8 @@ spec:
             - name: JOBS
               value: |
                 jobs:
-                  # We know the ActiveMQ image uses user 998
-                  - ownership: "998:998"
+                  # We know the ActiveMQ image uses user 998 (centos), 1998 (rocky)
+                  - ownership: "1998:1998"
                     permissions: "u=rwX,g=rX,o="
                     flags: [ "recurse", "noforced", "create", "changes" ]
                     targets: [ "/data" ]
@@ -76,7 +76,7 @@ spec:
           securityContext: {{- toYaml . | nindent 12 }}
           {{- end }}
           image: {{ include "arkcase.tools.image" . | quote }}
-          imagePullPolicy: {{ include "arkcase.tools.imagePullPolicy" . | quote }}
+          imagePullPolicy: Always
           env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
             - name: ACTIVEMQ_ENCRYPTION_PASSWORD
               valueFrom:
