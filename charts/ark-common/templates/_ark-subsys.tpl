@@ -76,24 +76,6 @@ Parameter: "optional" (not used)
 {{- end -}}
 
 {{- /*
-Check whether a subsystem is enabled for provisioning. If it's not enabled, attempting to access its configurations
-should result in an error.
-
-Parameter: either the root context (i.e. "." or "$"), or
-           a dict with two keys:
-             - ctx = the root context (either "." or "$")
-             - subsystem = a string with the name of the subsystem to query
-*/ -}}
-{{- /*
-{{- define "arkcase.subsystem.enabled" -}}
-  {{- $map := (include "arkcase.subsystem" . | fromYaml) -}}
-  {{- if ($map.data.enabled) -}}
-    {{- true -}}
-  {{- end -}}
-{{- end -}}
-*/ -}}
-
-{{- /*
 Check whether a subsystem is enabled for provisioning, but not for external service.
 
 Parameter: either the root context (i.e. "." or "$"), or
