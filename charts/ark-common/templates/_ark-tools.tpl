@@ -403,7 +403,7 @@ Render the image name taking into account the registry, repository, image name, 
     {{- $repositoryName = .repository -}}
     {{- if (hasKey . "tag") -}}
       {{- /* Make sure we use the tag given here - empty tags = "latest" */ -}}
-      {{- $tag = (coalesce .tag $ctx.Chart.appVersion "latest") -}}
+      {{- $tag = (coalesce .tag $ctx.Chart.AppVersion "latest") -}}
     {{- end -}}
     {{- $explicit = true -}}
   {{- end -}}
@@ -420,7 +420,7 @@ Render the image name taking into account the registry, repository, image name, 
     {{- $repositoryName = (required "No repository (image) name was given" $image.repository) -}}
   {{- end -}}
   {{- if not $tag -}}
-    {{- $tag = (toString (coalesce $image.tag $ctx.Chart.appVersion "latest")) -}}
+    {{- $tag = (toString (coalesce $image.tag $ctx.Chart.AppVersion "latest")) -}}
   {{- end -}}
   {{- if $registryName -}}
     {{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
