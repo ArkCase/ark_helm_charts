@@ -1,4 +1,4 @@
-# Default values for ark-activemq.
+# Default values for ark-mariadb.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
@@ -10,14 +10,12 @@
 #
 configuration:
   # Console username and password: Please set a secure password
-  adminUsername: admin
-  adminPassword: admin
-  # encryptPassword: activemq
+  rootPassword: admin
 
   # Limit, in GiB, of how big the KahaDB store can grow
   maxStoreUsageGb: 50
 
-  # Limit, in GiB, of how much temporary storage ActiveMQ can use
+  # Limit, in GiB, of how much temporary storage MariaDB can use
   maxTempUsageGb: 10
 
 # Please leave the `replicaCount` to 1 for the time being. Clustering is not
@@ -61,12 +59,12 @@ serviceAccount:
 
 securityContext:
   template:
-    # You must specify an `fsGroup` to allow ActiveMQ write access to mounted
-    # volumes (as long as ActiveMQ runs as a non-root user, which should be the
+    # You must specify an `fsGroup` to allow MariaDB write access to mounted
+    # volumes (as long as MariaDB runs as a non-root user, which should be the
     # case). Any random number will do.
     fsGroup: 22
     fsGroupChangePolicy: OnRootMismatch
-  activemq:
+  mariadb:
     # capabilities:
     #   drop:
     #   - ALL
@@ -169,16 +167,10 @@ service:
 ## @param service.probes.spec.successThreshold Success threshold for liveness and readiness probes
 ##
   probes:
-    enabled: false
+    enabled: true
     spec:
-      httpGet:
-        path: "/admin"
-        port: *db
-        httpHeaders:
-          - name: Authorization
-            # This value must be updated like so:
-            # $ echo -n "${adminUsername}:${adminPassword}" | base64
-            value: Basic YWRtaW46YWRtaW4=
+      exec:
+        command: [ "/usr/bin/mysqladmin", "version" ]
       initialDelaySeconds: 30
       periodSeconds: 20
       timeoutSeconds: 5
