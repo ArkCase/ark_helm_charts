@@ -37,6 +37,11 @@ image:
   repository: "ark_cloudconfig"
   # Overrides the image tag whose default is the chart appVersion.
   tag: "latest"
+  # If required, for tweaking setperm
+  # setperm:
+  #   registry: "alternate-registry"
+  #   repository: "alternate-image"
+  #   tag: "alternate-tag"
   pullPolicy: IfNotPresent
 
 imagePullSecrets:
