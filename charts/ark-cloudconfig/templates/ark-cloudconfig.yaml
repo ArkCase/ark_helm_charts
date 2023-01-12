@@ -64,8 +64,8 @@ spec:
             - name: JOBS
               value: |
                 jobs:
-                  # We know the Cloudconfig image uses user 997
-                  - ownership: "997:997"
+                  # We know the Cloudconfig image uses user 997i (centos) , 1997 (rocky)
+                  - ownership: "1997:1997"
                     permissions: "u=rwX,g=rX,o="
                     flags: [ "recurse", "noforced", "create", "changes" ]
                     targets: [ "/app/data" ]
