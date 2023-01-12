@@ -30,6 +30,11 @@ image:
   repository: "ark_activemq"
   # Overrides the image tag whose default is the chart appVersion.
   # tag: "20210716-45b2fb2"
+  # If required, for tweaking setperm
+  # setperm:
+  #   registry: "alternate-registry"
+  #   repository: "alternate-image"
+  #   tag: "alternate-tag"
   pullPolicy: IfNotPresent
 
 imagePullSecrets:
