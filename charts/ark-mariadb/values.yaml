@@ -25,7 +25,7 @@ replicaCount: 1
 platform: ""
 image:
   registry: "345280441424.dkr.ecr.ap-south-1.amazonaws.com"
-  repository: "ark_mariadb"
+  repository: "arkcase_pentaho_ce"
   # Overrides the image tag whose default is the chart appVersion.
   # tag: "20210716-45b2fb2"
   pullPolicy: IfNotPresent
@@ -167,7 +167,7 @@ service:
 ## @param service.probes.spec.successThreshold Success threshold for liveness and readiness probes
 ##
   probes:
-    enabled: true
+    enabled: false
     spec:
       exec:
         command: [ "/usr/bin/mysqladmin", "version" ]
