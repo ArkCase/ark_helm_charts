@@ -158,7 +158,7 @@ service:
       port: &db 2002
     - name: http
       protocol: TCP
-      port: &db 8080
+      port: &http 8080
 ##
 ## Configure extra options for containers' liveness and readiness probes
 ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/#configure-probes
@@ -172,9 +172,10 @@ service:
   probes:
     enabled: false
     spec:
-      exec:
-        command: [ "/usr/bin/mysqladmin", "version" ]
-      initialDelaySeconds: 30
+      httpGet:
+        path: "/pentaho/Login"
+        port: *http
+      initialDelaySeconds: 45
       periodSeconds: 20
       timeoutSeconds: 5
       failureThreshold: 6

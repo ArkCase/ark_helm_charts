@@ -71,7 +71,7 @@ spec:
             - name: "data"
               mountPath: "/data"
       containers:
-        - name: mariadb
+        - name: pentaho
           {{- with (.Values.securityContext).mariadb }}
           securityContext: {{- toYaml . | nindent 12 }}
           {{- end }}
