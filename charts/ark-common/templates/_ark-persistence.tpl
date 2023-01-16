@@ -170,6 +170,7 @@ spec:
       {{- $localPath = (printf "%s/%s/%s" $localPath (include "arkcase.subsystem.name" $ctx) $volumeName) -}}
     {{- end }}
     path: {{ $localPath | quote }}
+    type: DirectoryOrCreate
   {{- if (eq "local-storage" $storageClassName) }}
   # Node affinity is required when using "local-storage" as the storage class
   nodeAffinity:
