@@ -58,6 +58,19 @@ gateway:
                 - from: "/VirtualViewerJavaHTML5/"
                   to: "/viewer/"
 
+      # Pentaho
+      ark-reports:
+        preserveHosts: true
+        locations:
+          - url: &reportsUrl "http://reports:8080/pentaho/"
+            path: "/reports"
+            html:
+              enabled: true
+              extended: true
+              urlMap:
+                - from: *reportsUrl
+                  to: "/reports/"
+
 messaging:
   service:
     # external: "www.activemq.com"
@@ -77,6 +90,10 @@ viewer:
 config:
   service:
     # external: "192.168.1.14"
+
+reports:
+  service:
+    # external: "some-external-ip"
 
 #
 # This should group all application-specific configurations

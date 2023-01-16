@@ -1,31 +1,39 @@
 apiVersion: v2
 name: demochart
-version: 0.1.2
+version: 0.1.3
 appVersion: "1.16.0"
 description: A Helm chart for demonstrations
 type: application
 dependencies:
   - name: ark-solr
-    version: 0.1.3
+    version: ~0.1.3
     repository: "https://arkcase.github.io/ark_helm_charts"
     alias: search
   - name: ark-samba
-    version: 0.1.4
+    version: ~0.1.4
     repository: "https://arkcase.github.io/ark_helm_charts"
     alias: ldap
   - name: ark-activemq
-    version: 0.1.6
+    version: ~0.1.6
     repository: "https://arkcase.github.io/ark_helm_charts"
     alias: messaging
   - name: ark-snowbound
-    version: 0.1.2
+    version: ~0.1.2
     repository: "https://arkcase.github.io/ark_helm_charts"
     alias: viewer
   - name: ark-cloudconfig
-    version: 0.1.2
+    version: ~0.1.2
     repository: "https://arkcase.github.io/ark_helm_charts"
     alias: config
+  - name: ark-mariadb
+    version: ~0.1.7
+    repository: "https://arkcase.github.io/ark_helm_charts"
+    alias: rdbms
+  - name: ark-pentaho-ce
+    version: ~0.1.2
+    repository: "https://arkcase.github.io/ark_helm_charts"
+    alias: reports
   - name: ark-gateway-apache
-    version: 0.1.1
+    version: ~0.1.1
     repository: "https://arkcase.github.io/ark_helm_charts"
     alias: gateway
