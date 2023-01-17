@@ -63,7 +63,7 @@ spec:
               value: |
                 jobs:
                   # We know the ActiveMQ image uses user 998 (centos), 1998 (rocky)
-                  - ownership: "1998:1998"
+                  - ownership: {{ coalesce (.Values.persistence).ownership "1998:1998" | quote }}
                     permissions: "u=rwX,g=rX,o="
                     flags: [ "recurse", "noforced", "create", "changes" ]
                     targets: [ "/data" ]
