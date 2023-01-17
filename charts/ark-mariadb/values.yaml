@@ -153,7 +153,7 @@ persistence:
 service:
   #external: host-or-IP
   ports:
-    - name: console
+    - name: mysql
       protocol: TCP
       port: &db 3306
 ##
@@ -171,8 +171,8 @@ service:
     spec:
       exec:
         command: [ "/usr/bin/mysqladmin", "version" ]
-      initialDelaySeconds: 30
-      periodSeconds: 20
+      initialDelaySeconds: 15
+      periodSeconds: 15
       timeoutSeconds: 5
       failureThreshold: 6
       successThreshold: 1
