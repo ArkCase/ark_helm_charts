@@ -153,9 +153,9 @@ persistence:
 service:
   #external: host-or-IP
   ports:
-    - name: console
+    - name: postgresql
       protocol: TCP
-      port: &db 3306
+      port: &db 5432
 ##
 ## Configure extra options for containers' liveness and readiness probes
 ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/#configure-probes
@@ -169,10 +169,10 @@ service:
   probes:
     enabled: true
     spec:
-      exec:
-        command: [ "/usr/bin/psql", "--version" ]
-      initialDelaySeconds: 30
-      periodSeconds: 20
+      tcpSocket:
+        port: *db
+      initialDelaySeconds: 15
+      periodSeconds: 15
       timeoutSeconds: 5
       failureThreshold: 6
       successThreshold: 1
