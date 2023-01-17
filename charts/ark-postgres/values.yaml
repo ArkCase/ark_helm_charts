@@ -1,4 +1,4 @@
-# Default values for ark-mariadb.
+# Default values for ark-postgres.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
@@ -64,7 +64,7 @@ securityContext:
     # case). Any random number will do.
     fsGroup: 26
     fsGroupChangePolicy: OnRootMismatch
-  mariadb:
+  postgres:
     # capabilities:
     #   drop:
     #   - ALL
@@ -167,10 +167,10 @@ service:
 ## @param service.probes.spec.successThreshold Success threshold for liveness and readiness probes
 ##
   probes:
-    enabled: false
+    enabled: true
     spec:
       exec:
-        command: [ "/usr/bin/mysqladmin", "version" ]
+        command: [ "/usr/bin/psql", "--version" ]
       initialDelaySeconds: 30
       periodSeconds: 20
       timeoutSeconds: 5
