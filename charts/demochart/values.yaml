@@ -63,23 +63,19 @@ gateway:
         preserveHosts: true
         locations:
           - url: &reportsUrl "http://reports:8080/pentaho/"
-            path: "/reports"
-            html:
-              enabled: true
-              extended: true
-              urlMap:
-                - from: *reportsUrl
-                  to: "/reports/"
+            path: "/pentaho"
 
 messaging:
   service:
     # external: "www.activemq.com"
-  # persistence:
-  #   ownership: "1998:1998"
+  persistence:
+    ownership: "998:998"
   securityContext:
     activemq:
-      runAsUser: 1998
-      runAsGroup: 1998
+      runAsUser: 998
+      runAsGroup: 998
+  image:
+    tag: 5.16.2
 
 ldap:
   service:
