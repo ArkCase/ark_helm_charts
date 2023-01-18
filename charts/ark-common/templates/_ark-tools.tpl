@@ -444,6 +444,9 @@ Render the image registry name taking into account global values as well
   {{- $registryName -}}
 {{- end -}}
 
+{{- /*
+Render the image pull policy taking into account the global value as well
+*/ -}}
 {{- define "arkcase.tools.imagePullPolicy" -}}
   {{- $image := (required "No image information was found in the Values object" .Values.image) -}}
   {{- $global := (default dict .Values.global) -}}
@@ -457,4 +460,59 @@ Render the image registry name taking into account global values as well
     {{- end -}}
   {{- end -}}
   {{- $pullPolicy -}}
+{{- end -}}
+
+{{- /*
+Ensure that the given value is an integer value - even if in string form
+*/ -}}
+{{- define "arkcase.tools.mustInt" -}}
+  {{- $value := . -}}
+  {{- if kindIs "string" $value -}}
+    {{- if not (regexMatch "^-?[1-9][0-9]*$" $value) -}}
+      {{- fail (printf "The value [%s] is not a valid integer" $value) -}}
+    {{- end -}}
+    {{- $value = ($value | int64) -}}
+  {{- else if or (kindIs "int" $value) (kindIs "int64" $value) (kindIs "float64" $value) -}}
+    {{- $value = ($value | int64) -}}
+  {{- else if $value -}}
+    {{- fail (printf "The value [%s] is not a valid integer (%s)" $value) -}}
+  {{- end -}}
+  {{- $value -}}
+{{- end -}}
+
+{{- /*
+Check that the given value is either a numeric port (1-65535) or a potentially valid port name (per /etc/services), and
+return either the value if correct, or the empty string if not.
+*/ -}}
+{{- define "arkcase.tools.checkPort" -}}
+  {{- $value := . -}}
+  {{- $result := "" -}}
+  {{- if kindIs "string" $value -}}
+    {{- /* Check that it's not the empty string and it contains no spaces */ -}}
+    {{- if regexMatch "^[^\\s]+$" $value -}}
+      {{- /* Might be an /etc/services port, or a port number */ -}}
+      {{- if regexMatch "^[0-9]+$" $value -}}
+        {{- /* It's a "number" (but may have leading zeros, so check) */ -}}
+        {{- if regexMatch "^[1-9][0-9]*$" $value -}}
+          {{- /* It's a valid number! Check that it's a number between 1 and 65535 */ -}}
+          {{- $value = ($value | int) -}}
+          {{- if and (ge $value 1) (le $value 65535) -}}
+            {{- $result = $value -}}
+          {{- end -}}
+        {{- end -}}
+      {{- else -}}
+        {{- /* Might be an /etc/services port */ -}}
+        {{- $result = $value -}}
+      {{- end -}}
+    {{- end -}}
+  {{- else if or (kindIs "int" $value) (kindIs "int64" $value) (kindIs "float64" $value) -}}
+    {{- /* Check that it's a number between 1 and 65535 */ -}}
+    {{- $value = ($value | int64) -}}
+    {{- if and (ge $value 1) (le $value 65535) -}}
+      {{- $result = $value -}}
+    {{- end -}}
+  {{- else -}}
+    {{- /* Most definitely not a valid port specification */ -}}
+  {{- end -}}
+  {{- $result -}}
 {{- end -}}
