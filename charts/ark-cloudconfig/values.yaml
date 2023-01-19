@@ -27,6 +27,22 @@ configuration:
     #   location: "/some/truststore/path"
     #   password: "TrustStorePass"
 
+initDependencies:
+  mode: all
+  dependencies:
+    messaging:
+      mode: any
+      initialDelay: 10
+      delay: 5
+      attempts: 12
+      ports:
+        - 1883
+        - 5672
+        - 8161
+        - 61613
+        - 61614
+        - 61616
+
 # Please leave the `replicaCount` to 1 for the time being. Clustering is not
 # supported yet.
 replicaCount: 1

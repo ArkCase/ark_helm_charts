@@ -61,4 +61,6 @@ data:
       {{- end }}
       {{- end }}
     arkcase.languages: "-de,-en,-en-in,-es,-fr,-hi,-ja,-pt,-ru,-zh-cn,-zh-tw"
+    INIT_DEPENDENCIES: |-
+      {{- include "arkcase.initDependencies.yaml" . | nindent 6 -}}
 {{- end }}

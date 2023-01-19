@@ -72,6 +72,16 @@ spec:
           volumeMounts:
             - name: "data"
               mountPath: &configRoot "/app/data"
+        {{- if eq "true" (include "arkcase.hasDependencies" . | lower) }}
+        - name: init-dependencies
+          image: {{ include "arkcase.tools.image" (dict "ctx" . "registry" (coalesce ((.Values.image).nettest).registry (.Values.image).registry) "repository" (coalesce ((.Values.image).nettest).repository "ark_nettest") "tag" (coalesce ((.Values.image).nettest).tag "latest") ) | quote }}
+          env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
+            - name: INIT_DEPENDENCIES
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "common.fullname" . | quote }}
+                  key: INIT_DEPENDENCIES
+        {{- end }}
       containers:
         - name: cloudconfig
           {{- with (.Values.securityContext).configserver }}
