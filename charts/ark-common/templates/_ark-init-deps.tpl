@@ -29,6 +29,11 @@ that checks the boot order
     {{- fail (printf "Unknown value for the port template tracking mode: [%s] - must be either 'all' or 'any'" $templateMode) -}}
   {{- end -}}
 
+  {{- $templateInitialDelay :=  (include "arkcase.tools.mustInt" (coalesce $template.initialDelay 0) | int) -}}
+  {{- if lt $templateInitialDelay 0 -}}
+    {{- $templateInitialDelay = 0 -}}
+  {{- end -}}
+
   {{- $templateDelay :=  (include "arkcase.tools.mustInt" (coalesce $template.delay 5) | int) -}}
   {{- if lt $templateDelay 0 -}}
     {{- $templateDelay = 0 -}}
@@ -83,6 +88,7 @@ that checks the boot order
         {{- end -}}
         {{- /* The contents have been validated and cleaned up, now fill in the rest of it */ -}}
         {{- $dependency = set $dependency "mode" $templateMode -}}
+        {{- $dependency = set $dependency "initialDelay" $templateInitialDelay -}}
         {{- $dependency = set $dependency "delay" $templateDelay -}}
         {{- $dependency = set $dependency "timeout" $templateTimeout -}}
         {{- $dependency = set $dependency "attempts" $templateAttempts -}}
@@ -103,6 +109,10 @@ that checks the boot order
           {{- $mode := (coalesce $value.mode $templateMode "all" | toString) -}}
           {{- if and (ne $mode "all") (ne $mode "any") -}}
             {{- fail (printf "Unknown value for the '%s' dependency tracking mode: [%s]" $hostname $mode) -}}
+          {{- end -}}
+          {{- $initialDelay := (include "arkcase.tools.mustInt" (coalesce $value.initialDelay $templateInitialDelay) | int) -}}
+          {{- if lt $initialDelay 0 -}}
+            {{- $initialDelay = 0 -}}
           {{- end -}}
           {{- $delay := (include "arkcase.tools.mustInt" (coalesce $value.delay $templateDelay) | int) -}}
           {{- if lt $delay 0 -}}
@@ -126,6 +136,7 @@ that checks the boot order
   
           {{- /* Add the sanitized values */ -}}
           {{- $dependency = set $dependency "mode" $mode -}}
+          {{- $dependency = set $dependency "initialDelay" $initialDelay -}}
           {{- $dependency = set $dependency "delay" $delay -}}
           {{- $dependency = set $dependency "timeout" $timeout -}}
           {{- $dependency = set $dependency "attempts" $attempts -}}
