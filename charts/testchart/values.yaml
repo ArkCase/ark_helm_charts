@@ -14,12 +14,21 @@ image:
 global:
   imageRegistry: "GlobalRegistry"
 
-# initDependencies:
-#   mode: any
-#   template:
-#     mode: ALL
-#   dependencies:
-#     "1" :
-#       delay: 0
-#       ports:
-#         - 1
+initDependencies:
+  mode: any
+  template:
+    mode: ALL
+  dependencies:
+    config :
+      delay: 15
+      ports:
+        - 9999
+    rdbms :
+      delay: 15
+      ports:
+        - 5432
+    messaging :
+      delay: 5
+      ports:
+        - 8161
+        - 61616

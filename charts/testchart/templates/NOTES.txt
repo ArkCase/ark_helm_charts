@@ -1,1 +1,10 @@
 Add test code here
+
+YAML:= [{{ include "arkcase.initDependencies.yaml" . | nindent 2 }}]
+JSON:= [{{ include "arkcase.initDependencies.json" . }}]
+DEF := [{{ include "arkcase.initDependencies" . }}]
+
+{{ $obj := dict "a" "b" "c" (list 1 2 3 4 5) }}
+
+JSON -> [{{ $obj | mustToPrettyJson }}]
+YAML -> [{{ $obj | toYaml | nindent 2 }}]
