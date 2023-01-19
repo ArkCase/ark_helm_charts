@@ -4,49 +4,64 @@ that checks the boot order
 */ -}}
 {{- define "arkcase.initDependencies.render" -}}
   {{- $declaration := dict -}}
-  {{- if .Values.initDependencies -}}
+  {{- if hasKey .Values "initDependencies" -}}
     {{- $declaration = .Values.initDependencies -}}
   {{- end -}}
   {{- if not (kindIs "map" $declaration) -}}
     {{- fail (printf "The .Values.initDependencies value must be a map data structure (%s)" (kindOf $declaration)) -}}
   {{- end -}}
 
-  {{- $globalMode := (coalesce $declaration.mode "all" | toString | lower) -}}
+  {{- $globalMode := "" -}}
+  {{- if hasKey $declaration "mode" -}}
+    {{- $globalMode = ($declaration.mode | toString) -}}
+  {{- else -}}
+    {{- $globalMode = "all" -}}
+  {{- end -}}
   {{- if and (ne $globalMode "all") (ne $globalMode "any") -}}
     {{- fail (printf "Unknown value for the general dependency tracking mode: [%s] - must be either 'all' or 'any'" $globalMode) -}}
   {{- end -}}
 
   {{- $template := dict -}}
-  {{- if $declaration.template -}}
+  {{- if hasKey $declaration "template" -}}
     {{- $template = $declaration.template -}}
   {{- end -}}
   {{- if not (kindIs "map" $template) -}}
     {{- fail (printf "The .Values.initDependencies.template value must be a map data structure (%s)" (kindOf $template)) -}}
   {{- end -}}
 
-  {{- $templateMode := (coalesce $template.mode "all" | toString | lower) -}}
-  {{- if and (ne $templateMode "all") (ne $templateMode "any") -}}
-    {{- fail (printf "Unknown value for the port template tracking mode: [%s] - must be either 'all' or 'any'" $templateMode) -}}
+  {{- if hasKey $template "mode" -}}
+    {{- $tempVar := ($declaration.mode | toString) -}}
+    {{- if and (ne $tempVar "all") (ne $tempVar "any") -}}
+      {{- fail (printf "Unknown value for the dependency template tracking mode: [%s] - must be either 'all' or 'any'" $tempVar) -}}
+    {{- end -}}
   {{- end -}}
 
-  {{- $templateInitialDelay :=  (include "arkcase.tools.mustInt" (coalesce $template.initialDelay 0) | int) -}}
-  {{- if lt $templateInitialDelay 0 -}}
-    {{- $templateInitialDelay = 0 -}}
+  {{- if hasKey $template "initialDelay" -}}
+    {{- $tempVar := ($template.initialDelay | int) -}}
+    {{- if lt $tempVar 0 -}}
+      {{- $crap := set $template "initialDelay" 0 -}}
+    {{- end -}}
   {{- end -}}
 
-  {{- $templateDelay :=  (include "arkcase.tools.mustInt" (coalesce $template.delay 5) | int) -}}
-  {{- if lt $templateDelay 0 -}}
-    {{- $templateDelay = 0 -}}
+  {{- if hasKey $template "delay" -}}
+    {{- $tempVar := ($template.delay | int) -}}
+    {{- if lt $tempVar 0 -}}
+      {{- $crap := set $template "delay" 1 -}}
+    {{- end -}}
   {{- end -}}
 
-  {{- $templateTimeout := (include "arkcase.tools.mustInt" (coalesce $template.timeout 5) | int) -}}
-  {{- if le $templateTimeout 0 -}}
-    {{- $templateTimeout = 5 -}}
+  {{- if hasKey $template "timeout" -}}
+    {{- $tempVar := ($template.timeout | int) -}}
+    {{- if lt $tempVar 0 -}}
+      {{- $crap := set $template "timeout" 1 -}}
+    {{- end -}}
   {{- end -}}
 
-  {{- $templateAttempts := (include "arkcase.tools.mustInt" (coalesce $template.attempts 3) | int) -}}
-  {{- if le $templateAttempts 0 -}}
-    {{- $templateAttempts = 3 -}}
+  {{- if hasKey $template "attempts" -}}
+    {{- $tempVar := ($template.attempts | int) -}}
+    {{- if lt $tempVar 0 -}}
+      {{- $crap := set $template "attempts" 1 -}}
+    {{- end -}}
   {{- end -}}
 
   {{- $dependencies := dict -}}
@@ -87,11 +102,6 @@ that checks the boot order
           {{- $ports = append $ports $newPort -}}
         {{- end -}}
         {{- /* The contents have been validated and cleaned up, now fill in the rest of it */ -}}
-        {{- $dependency = set $dependency "mode" $templateMode -}}
-        {{- $dependency = set $dependency "initialDelay" $templateInitialDelay -}}
-        {{- $dependency = set $dependency "delay" $templateDelay -}}
-        {{- $dependency = set $dependency "timeout" $templateTimeout -}}
-        {{- $dependency = set $dependency "attempts" $templateAttempts -}}
         {{- $dependency = set $dependency "ports" $ports -}}
       {{- else if kindIs "map" $value -}}
         {{- $ports := list -}}
@@ -103,43 +113,55 @@ that checks the boot order
         {{- end -}}
 
         {{- if $ports -}}
-          {{- /* We have ports to work upon, so validate them */ -}}
+          {{- /* Validate the configuration values for this dependency */ -}}
+          {{- if hasKey $value "mode" -}}
+            {{- $tempVar := ($declaration.mode | toString) -}}
+            {{- if and (ne $tempVar "all") (ne $tempVar "any") -}}
+              {{- fail (printf "Unknown value for the dependency [%s] tracking mode: [%s] - must be either 'all' or 'any'" $hostname $tempVar) -}}
+            {{- end -}}
+            {{- $crap := set $dependency "mode" $tempVar -}}
+          {{- end -}}
 
-          {{- /* First, validate the general values... */ -}}
-          {{- $mode := (coalesce $value.mode $templateMode "all" | toString) -}}
-          {{- if and (ne $mode "all") (ne $mode "any") -}}
-            {{- fail (printf "Unknown value for the '%s' dependency tracking mode: [%s]" $hostname $mode) -}}
+          {{- if hasKey $value "initialDelay" -}}
+            {{- $tempVar := ($value.initialDelay | int) -}}
+            {{- if lt $tempVar 0 -}}
+              {{- $tempVar = 0 -}}
+            {{- end -}}
+            {{- $crap := set $dependency "initialDelay" $tempVar -}}
           {{- end -}}
-          {{- $initialDelay := (include "arkcase.tools.mustInt" (coalesce $value.initialDelay $templateInitialDelay) | int) -}}
-          {{- if lt $initialDelay 0 -}}
-            {{- $initialDelay = 0 -}}
+
+          {{- if hasKey $value "delay" -}}
+            {{- $tempVar := ($value.delay | int) -}}
+            {{- if lt $tempVar 0 -}}
+              {{- $tempVar = 0 -}}
+            {{- end -}}
+            {{- $crap := set $dependency "delay" $tempVar -}}
           {{- end -}}
-          {{- $delay := (include "arkcase.tools.mustInt" (coalesce $value.delay $templateDelay) | int) -}}
-          {{- if lt $delay 0 -}}
-            {{- $delay = 0 -}}
+
+          {{- if hasKey $value "timeout" -}}
+            {{- $tempVar := ($value.timeout | int) -}}
+            {{- if lt $tempVar 0 -}}
+              {{- $tempVar = 1 -}}
+            {{- end -}}
+            {{- $crap := set $dependency "attempts" $tempVar -}}
           {{- end -}}
-          {{- $timeout := (include "arkcase.tools.mustInt" (coalesce $value.timeout $templateTimeout) | int) -}}
-          {{- if lt $timeout 0 -}}
-            {{- $timeout = 0 -}}
+
+          {{- if hasKey $value "attempts" -}}
+            {{- $tempVar := ($value.attempts | int) -}}
+            {{- if lt $tempVar 0 -}}
+              {{- $tempVar = 1 -}}
+            {{- end -}}
+            {{- $crap := set $dependency "attempts" $tempVar -}}
           {{- end -}}
-          {{- $attempts := (include "arkcase.tools.mustInt" (coalesce $value.attempts $templateAttempts) | int) -}}
-          {{- if lt $attempts 0 -}}
-            {{- $attempts = 0 -}}
-          {{- end -}}
-  
+
+          {{- /* We have ports to work upon, so validate them */ -}}
           {{- range $port := $ports -}}
             {{- $newPort := (include "arkcase.tools.checkPort" $port) -}}
             {{- if not $newPort -}}
               {{- fail (printf "The port specification [%s] for the initDependency '%s' must either be a valid service spec (from /etc/services) or a port number between 1 and 65535" $port $hostname) -}}
             {{- end -}}
           {{- end -}}
-  
-          {{- /* Add the sanitized values */ -}}
-          {{- $dependency = set $dependency "mode" $mode -}}
-          {{- $dependency = set $dependency "initialDelay" $initialDelay -}}
-          {{- $dependency = set $dependency "delay" $delay -}}
-          {{- $dependency = set $dependency "timeout" $timeout -}}
-          {{- $dependency = set $dependency "attempts" $attempts -}}
+
           {{- $dependency = set $dependency "ports" $ports -}}
         {{- end -}}
       {{- end -}}
@@ -152,9 +174,11 @@ that checks the boot order
   {{- end -}}
 
   {{- if $initDependencies -}}
-    {{- $initDependencies = dict "hosts" $initDependencies -}}
+    {{- $initDependencies = dict "dependencies" $initDependencies -}}
     {{- $initDependencies = set $initDependencies "mode" $globalMode -}}
-    {{- $initDependencies | mustToPrettyJson -}}
+    {{- (dict "result" $initDependencies) | toYaml -}}
+  {{- else -}}
+    {{- (dict "result" "") | toYaml -}}
   {{- end -}}
 {{- end -}}
 
@@ -162,7 +186,7 @@ that checks the boot order
 Either render and cache, or fetch the cached rendering of the init dependencies configuration
 in JSON format
 */ -}}
-{{- define "arkcase.initDependencies" -}}
+{{- define "arkcase.initDependencies.cached" -}}
   {{- $masterCache := dict -}}
   {{- if (hasKey $ "InitDependencies") -}}
     {{- $masterCache = $.InitDependencies -}}
@@ -174,9 +198,25 @@ in JSON format
 
   {{- $chartName := (include "common.fullname" $) -}}
   {{- if not (hasKey $masterCache $chartName) -}}
-    {{- $crap := set $masterCache $chartName (include "arkcase.initDependencies.render" .) -}}
+    {{- $obj := get (include "arkcase.initDependencies.render" . | fromYaml) "result" -}}
+    {{- if not $obj -}}
+      {{- $obj = dict -}}
+    {{- end -}}
+    {{- $crap := set $masterCache $chartName $obj -}}
   {{- end -}}
-  {{- (get $masterCache $chartName) -}}
+  {{- get $masterCache $chartName | toYaml -}}
+{{- end -}}
+
+{{- define "arkcase.initDependencies.yaml" -}}
+  {{- include "arkcase.initDependencies.cached" . -}}
+{{- end -}}
+
+{{- define "arkcase.initDependencies.json" -}}
+  {{- include "arkcase.initDependencies.yaml" . | fromYaml | mustToPrettyJson -}}
+{{- end -}}
+
+{{- define "arkcase.initDependencies" -}}
+  {{- include "arkcase.initDependencies.json" . -}}
 {{- end -}}
 
 {{- /*
@@ -184,8 +224,8 @@ Render the boot order configuration file to be consumed by the init container
 that checks the boot order (remember to |bool the outcome!)
 */ -}}
 {{- define "arkcase.hasDependencies" -}}
-  {{- $json := (include "arkcase.initDependencies" .) -}}
-  {{- if $json -}}
+  {{- $yaml := (include "arkcase.initDependencies.yaml" .) -}}
+  {{- if $yaml -}}
     {{- true -}}
   {{- else -}}
     {{- false -}}
