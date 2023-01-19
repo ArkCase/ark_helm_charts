@@ -230,11 +230,9 @@ in JSON format
 Render the boot order configuration file to be consumed by the init container
 that checks the boot order (remember to |bool the outcome!)
 */ -}}
-{{- define "arkcase.hasDependencies" -}}
-  {{- $yaml := (include "arkcase.initDependencies.yaml" .) -}}
+{{- define "arkcase.hasInitDependencies" -}}
+  {{- $yaml := (include "arkcase.initDependencies.yaml" . | fromYaml) -}}
   {{- if $yaml -}}
     {{- true -}}
-  {{- else -}}
-    {{- false -}}
   {{- end -}}
 {{- end -}}
