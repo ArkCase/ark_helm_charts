@@ -236,3 +236,51 @@ that checks the boot order (remember to |bool the outcome!)
     {{- true -}}
   {{- end -}}
 {{- end -}}
+
+{{- define "arkcase.initDependencies.container" -}}
+  {{- $ctx := $ -}}
+  {{- $yaml := (include "arkcase.initDependencies.yaml" $ctx | fromYaml) -}}
+  {{- if $yaml -}}
+    {{- $containerName := "something" -}}
+name: {{ $containerName | quote }}
+image: {{ include "arkcase.tools.image" (dict "ctx" $ctx "registry" (coalesce (($ctx.Values.image).nettest).registry ($ctx.Values.image).registry) "repository" (coalesce (($ctx.Values.image).nettest).repository "ark_nettest") "tag" (coalesce (($ctx.Values.image).nettest).tag "latest") ) | quote }}
+env: {{- include "arkcase.tools.baseEnv" $ctx | nindent 2 }}
+  - name: INIT_DEPENDENCIES
+    value: |-
+      {{ $yaml | toYaml | nindent 6 }}
+  {{- end -}}
+{{- end -}}
+
+{{- define "arkcase.initDependencies.container" -}}
+  {{- if not (kindIs "map" .) -}}
+    {{- fail "The parameter object must be a dict with a 'ctx' and a 'name' values" -}}
+  {{- end -}}
+  {{- /* If we're given a parameter map, analyze it */ -}}
+  {{- if not (hasKey . "name") -}}
+    {{- fail "The parameter dict must contain the 'name' value" -}}
+  {{- end -}}
+  {{- $containerName := .name -}}
+  {{- $ctx := . -}}
+  {{- if hasKey . "ctx" -}}
+    {{- $ctx = .ctx -}}
+  {{- else -}}
+    {{- $ctx = $ -}}
+  {{- end -}}
+
+  {{- if or (not (hasKey $ctx "Values")) (not (hasKey $ctx "Chart")) (not (hasKey $ctx "Release")) -}}
+    {{- fail "You must supply the 'ctx' parameter, pointing to the root context that contains 'Values' et al." -}}
+  {{- end -}}
+
+  {{- if (include "arkcase.hasInitDependencies" $ctx) -}}
+    {{- $yaml := (include "arkcase.initDependencies.yaml" $ctx | fromYaml) -}}
+    {{- if $yaml -}}
+- name: {{ .name | quote }}
+  image: {{ include "arkcase.tools.image" (dict "ctx" $ctx "registry" (coalesce (($ctx.Values.image).nettest).registry ($ctx.Values.image).registry) "repository" (coalesce (($ctx.Values.image).nettest).repository "ark_nettest") "tag" (coalesce (($ctx.Values.image).nettest).tag "latest") ) | quote }}
+  command: [ "/wait-for-ports" ]
+  env: {{- include "arkcase.tools.baseEnv" $ctx | nindent 2 }}
+    - name: INIT_DEPENDENCIES
+      value: |-
+        {{- $yaml | toYaml | nindent 8 }}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
