@@ -199,9 +199,9 @@ in JSON format
   {{- $chartName := (include "common.fullname" $) -}}
   {{- if not (hasKey $masterCache $chartName) -}}
     {{- $obj := dict -}}
-    {{- $enabled := true -}}
-    {{- if and (hasKey .Values "initDependencies") (hasKey .Values.initDependencies "enabled") -}}
-      {{- $enabled = eq "true" (.Values.initDependencies.enabled | toString | lower) -}}
+    {{- $enabled := (and (hasKey .Values "initDependencies") (kindIs "map" .Values.initDependencies)) -}}
+    {{- if $enabled -}}
+      {{- $enabled = (or (not (hasKey .Values.initDependencies "enabled")) (eq "true" (.Values.initDependencies.enabled | toString | lower))) -}}
     {{- end -}}
     {{- if $enabled -}}
       {{- $obj = get (include "arkcase.initDependencies.render" . | fromYaml) "result" -}}
