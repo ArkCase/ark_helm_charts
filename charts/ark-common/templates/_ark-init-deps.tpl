@@ -238,20 +238,6 @@ that checks the boot order (remember to |bool the outcome!)
 {{- end -}}
 
 {{- define "arkcase.initDependencies.container" -}}
-  {{- $ctx := $ -}}
-  {{- $yaml := (include "arkcase.initDependencies.yaml" $ctx | fromYaml) -}}
-  {{- if $yaml -}}
-    {{- $containerName := "something" -}}
-name: {{ $containerName | quote }}
-image: {{ include "arkcase.tools.image" (dict "ctx" $ctx "registry" (coalesce (($ctx.Values.image).nettest).registry ($ctx.Values.image).registry) "repository" (coalesce (($ctx.Values.image).nettest).repository "ark_nettest") "tag" (coalesce (($ctx.Values.image).nettest).tag "latest") ) | quote }}
-env: {{- include "arkcase.tools.baseEnv" $ctx | nindent 2 }}
-  - name: INIT_DEPENDENCIES
-    value: |-
-      {{ $yaml | toYaml | nindent 6 }}
-  {{- end -}}
-{{- end -}}
-
-{{- define "arkcase.initDependencies.container" -}}
   {{- if not (kindIs "map" .) -}}
     {{- fail "The parameter object must be a dict with a 'ctx' and a 'name' values" -}}
   {{- end -}}
