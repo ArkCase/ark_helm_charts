@@ -263,7 +263,7 @@ that checks the boot order (remember to |bool the outcome!)
   {{- if (include "arkcase.hasInitDependencies" $ctx) -}}
     {{- $yaml := (include "arkcase.initDependencies.yaml" $ctx | fromYaml) -}}
     {{- if $yaml -}}
-- name: {{ .name | quote }}
+- name: {{ $containerName | quote }}
   image: {{ include "arkcase.tools.image" (dict "ctx" $ctx "registry" (coalesce (($ctx.Values.image).nettest).registry ($ctx.Values.image).registry) "repository" (coalesce (($ctx.Values.image).nettest).repository "ark_nettest") "tag" (coalesce (($ctx.Values.image).nettest).tag "latest") ) | quote }}
   command: [ "/wait-for-ports" ]
   env: {{- include "arkcase.tools.baseEnv" $ctx | nindent 2 }}
