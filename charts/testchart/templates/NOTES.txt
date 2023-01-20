@@ -10,4 +10,4 @@ JSON -> [{{ $obj | mustToPrettyJson }}]
 YAML -> [{{ $obj | toYaml | nindent 2 }}]
 
       initContainers:
-        {{- include "arkcase.initDependencies.container" (dict "ctx" . "name" "some-container-name") | nindent 8 }}
+        {{- include "arkcase.initDependencies.container" . | nindent 8 }}

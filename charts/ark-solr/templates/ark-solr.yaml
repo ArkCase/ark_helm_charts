@@ -65,6 +65,7 @@ spec:
               mountPath: "/cfg"
             - name: "home"
               mountPath: "/tmp-config"
+        {{- include "arkcase.initDependencies.container" . | nindent 8 }}
       containers:
         - name: solr
           {{- with (.Values.securityContext).solr }}

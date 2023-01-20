@@ -56,6 +56,8 @@ spec:
       {{- with (.Values.securityContext).template }}
       securityContext: {{- toYaml . | nindent 8 }}
       {{- end }}
+      initContainers:
+        {{- include "arkcase.initDependencies.container" . | nindent 8 }}
       containers:
         - name: samba
           {{- with (.Values.securityContext).samba }}

@@ -70,6 +70,7 @@ spec:
           volumeMounts:
             - name: "data"
               mountPath: "/data"
+        {{- include "arkcase.initDependencies.container" . | nindent 8 }}
       containers:
         - name: pentaho
           {{- with (.Values.securityContext).mariadb }}
