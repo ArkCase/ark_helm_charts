@@ -199,7 +199,7 @@ in JSON format
   {{- $chartName := (include "common.fullname" $) -}}
   {{- if not (hasKey $masterCache $chartName) -}}
     {{- $obj := dict -}}
-    {{- $enabled := (and (hasKey .Values "initDependencies") (kindIs "map" .Values.initDependencies) (not (empty .Values.initDependencies)) -}}
+    {{- $enabled := (and (hasKey .Values "initDependencies") (kindIs "map" .Values.initDependencies) (not (empty .Values.initDependencies))) -}}
     {{- if $enabled -}}
       {{- $enabled = (or (not (hasKey .Values.initDependencies "enabled")) (eq "true" (.Values.initDependencies.enabled | toString | lower))) -}}
     {{- end -}}
