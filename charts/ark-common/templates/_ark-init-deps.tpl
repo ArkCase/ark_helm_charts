@@ -242,10 +242,13 @@ that checks the boot order (remember to |bool the outcome!)
     {{- fail "The parameter object must be a dict with a 'ctx' and a 'name' values" -}}
   {{- end -}}
   {{- /* If we're given a parameter map, analyze it */ -}}
-  {{- if not (hasKey . "name") -}}
-    {{- fail "The parameter dict must contain the 'name' value" -}}
+  {{- $containerName := "" -}}
+  {{- if hasKey . "name" -}}
+    {{- $containerName := (.name | toString) -}}
   {{- end -}}
-  {{- $containerName := .name -}}
+  {{- if not $containerName -}}
+    {{- $containerName = "init-dependencies" -}}
+  {{- end -}}
   {{- $ctx := . -}}
   {{- if hasKey . "ctx" -}}
     {{- $ctx = .ctx -}}
