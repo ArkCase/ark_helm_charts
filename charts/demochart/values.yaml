@@ -69,13 +69,13 @@ messaging:
   service:
     # external: "www.activemq.com"
   persistence:
-    ownership: "998:998"
+    ownership: "1998:1998"
   securityContext:
     activemq:
-      runAsUser: 998
-      runAsGroup: 998
-  image:
-    tag: 5.16.2
+      runAsUser: 1998
+      runAsGroup: 1998
+  # image:
+  #   tag: 5.16.2
 
 ldap:
   service:
@@ -92,6 +92,22 @@ viewer:
 config:
   service:
     # external: "192.168.1.14"
+  initDependencies:
+    enabled: true
+    mode: all
+    dependencies:
+      messaging:
+        mode: any
+        initialDelay: 10
+        delay: 5
+        attempts: 12
+        ports:
+          - 1883
+          - 5672
+          - 8161
+          - 61613
+          - 61614
+          - 61616
 
 reports:
   service:
