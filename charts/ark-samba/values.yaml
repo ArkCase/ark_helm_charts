@@ -261,7 +261,7 @@ service:
         command: [ "/test-live.sh" ]
     spec:
       initialDelaySeconds: 15
-      periodSeconds: 15
+      periodSeconds: 5
       timeoutSeconds: 5
-      failureThreshold: 6
+      failureThreshold: 12
       successThreshold: 1

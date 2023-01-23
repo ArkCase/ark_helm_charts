@@ -170,13 +170,13 @@ service:
 ## @param service.probes.spec.successThreshold Success threshold for liveness and readiness probes
 ##
   probes:
-    enabled: false
+    enabled: true
     spec:
       httpGet:
         path: "/pentaho/Login"
         port: *http
       initialDelaySeconds: 45
-      periodSeconds: 20
+      periodSeconds: 10
       timeoutSeconds: 5
       failureThreshold: 6
       successThreshold: 1

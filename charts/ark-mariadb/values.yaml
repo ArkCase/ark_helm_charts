@@ -167,12 +167,12 @@ service:
 ## @param service.probes.spec.successThreshold Success threshold for liveness and readiness probes
 ##
   probes:
-    enabled: false
+    enabled: true
     spec:
       exec:
         command: [ "/usr/bin/mysqladmin", "version" ]
-      initialDelaySeconds: 15
-      periodSeconds: 15
+      initialDelaySeconds: 5
+      periodSeconds: 5
       timeoutSeconds: 5
-      failureThreshold: 6
+      failureThreshold: 12
       successThreshold: 1
