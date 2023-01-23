@@ -193,16 +193,10 @@ service:
   probes:
     enabled: true
     spec:
-      httpGet:
-        path: "/admin"
-        port: *console
-        httpHeaders:
-          - name: Authorization
-            # This value must be updated like so:
-            # $ echo -n "${adminUsername}:${adminPassword}" | base64
-            value: Basic YWRtaW46YWRtaW4=
-      initialDelaySeconds: 30
-      periodSeconds: 20
+      tcpSocket:
+        port: *openwire
+      initialDelaySeconds: 10
+      periodSeconds: 5
       timeoutSeconds: 5
-      failureThreshold: 6
+      failureThreshold: 12
       successThreshold: 1
