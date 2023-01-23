@@ -65,6 +65,20 @@ gateway:
           - url: &reportsUrl "http://reports:8080/pentaho/"
             path: "/pentaho"
 
+initDependencies: &initDependencies
+  # This template basically means that any of the given ports
+  # will be accepted as sufficient, there will be a 10 second
+  # delay before probing starts, and up to 12 probing attempts
+  # will be undertaken with a 5 second pause between attempts,
+  # with each attempt timing out after 5 seconds. That leads
+  # to a theoretical maximum wait time of 2 minutes for startup
+  template:
+    mode: any
+    initialDelay: 10
+    delay: 5
+    timeout: 5
+    attempts: 12
+
 messaging:
   service:
     # external: "www.activemq.com"
@@ -93,14 +107,12 @@ config:
   service:
     # external: "192.168.1.14"
   initDependencies:
+    <<: *initDependencies
     enabled: true
     mode: all
     dependencies:
       messaging:
-        mode: any
-        initialDelay: 10
-        delay: 5
-        attempts: 12
+        # Listen until any of the ActiveMQ ports goes live
         ports:
           - 1883
           - 5672
@@ -112,6 +124,21 @@ config:
 reports:
   service:
     # external: "some-external-ip"
+  initDependencies:
+    <<: *initDependencies
+    enabled: true
+    mode: all
+    dependencies:
+      rdbms:
+        # By using the approach that any of these ports is
+        # sufficient, we cover all our bases regarding the RDBMS
+        # backend in use, be it MS-SQL (1433), Oracle (1521),
+        # MySQL (3306), or PostgreSQL (5432)
+        ports:
+          - 1433
+          - 1521
+          - 3306
+          - 5432
 
 #
 # This should group all application-specific configurations
