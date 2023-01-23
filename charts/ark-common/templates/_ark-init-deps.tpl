@@ -13,12 +13,10 @@ that checks the boot order
 
   {{- $globalMode := "" -}}
   {{- if hasKey $declaration "mode" -}}
-    {{- $globalMode = ($declaration.mode | toString) -}}
-  {{- else -}}
-    {{- $globalMode = "all" -}}
-  {{- end -}}
-  {{- if and (ne $globalMode "all") (ne $globalMode "any") -}}
-    {{- fail (printf "Unknown value for the general dependency tracking mode: [%s] - must be either 'all' or 'any'" $globalMode) -}}
+    {{- $globalMode = ($declaration.mode | toString | lower) -}}
+    {{- if and (ne $globalMode "all") (ne $globalMode "any") -}}
+      {{- fail (printf "Unknown value for the general dependency tracking mode: [%s] - must be either 'all' or 'any'" $globalMode) -}}
+    {{- end -}}
   {{- end -}}
 
   {{- $template := dict -}}
@@ -30,10 +28,11 @@ that checks the boot order
   {{- end -}}
 
   {{- if hasKey $template "mode" -}}
-    {{- $tempVar := ($declaration.mode | toString) -}}
+    {{- $tempVar := ($template.mode | toString | lower) -}}
     {{- if and (ne $tempVar "all") (ne $tempVar "any") -}}
       {{- fail (printf "Unknown value for the dependency template tracking mode: [%s] - must be either 'all' or 'any'" $tempVar) -}}
     {{- end -}}
+    {{- $template = set $template "mode" $tempVar -}}
   {{- end -}}
 
   {{- if hasKey $template "initialDelay" -}}
@@ -115,11 +114,11 @@ that checks the boot order
         {{- if $ports -}}
           {{- /* Validate the configuration values for this dependency */ -}}
           {{- if hasKey $value "mode" -}}
-            {{- $tempVar := ($declaration.mode | toString) -}}
+            {{- $tempVar := ($value.mode | toString | lower) -}}
             {{- if and (ne $tempVar "all") (ne $tempVar "any") -}}
               {{- fail (printf "Unknown value for the dependency [%s] tracking mode: [%s] - must be either 'all' or 'any'" $hostname $tempVar) -}}
             {{- end -}}
-            {{- $crap := set $dependency "mode" $tempVar -}}
+            {{- $crap := set $value "mode" $tempVar -}}
           {{- end -}}
 
           {{- if hasKey $value "initialDelay" -}}
@@ -175,7 +174,12 @@ that checks the boot order
 
   {{- if $initDependencies -}}
     {{- $initDependencies = dict "dependencies" $initDependencies -}}
-    {{- $initDependencies = set $initDependencies "mode" $globalMode -}}
+    {{- if $globalMode -}}
+      {{- $initDependencies = set $initDependencies "mode" $globalMode -}}
+    {{- end -}}
+    {{- if $template -}}
+      {{- $initDependencies = set $initDependencies "template" $template -}}
+    {{- end -}}
     {{- (dict "result" $initDependencies) | toYaml -}}
   {{- else -}}
     {{- (dict "result" "") | toYaml -}}
