@@ -266,10 +266,9 @@ that checks the boot order (remember to |bool the outcome!)
 - name: {{ $containerName | quote }}
   image: {{ include "arkcase.tools.image" (dict "ctx" $ctx "registry" (coalesce (($ctx.Values.image).nettest).registry ($ctx.Values.image).registry) "repository" (coalesce (($ctx.Values.image).nettest).repository "ark_nettest") "tag" (coalesce (($ctx.Values.image).nettest).tag "latest") ) | quote }}
   command: [ "/wait-for-ports" ]
-  env: {{- include "arkcase.tools.baseEnv" $ctx | nindent 2 }}
+  env: {{- include "arkcase.tools.baseEnv" $ctx | nindent 4 }}
     - name: INIT_DEPENDENCIES
-      value: |-
-        {{- $yaml | toYaml | nindent 8 }}
+      value: |- {{- $yaml | toYaml | nindent 8 }}
     {{- end -}}
   {{- end -}}
 {{- end -}}
