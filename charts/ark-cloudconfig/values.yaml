@@ -206,8 +206,8 @@ service:
       httpGet:
         path: "/actuator/health"
         port: *servicePort
-      initialDelaySeconds: 30
-      periodSeconds: 20
+      initialDelaySeconds: 10
+      periodSeconds: 5
       timeoutSeconds: 5
-      failureThreshold: 6
+      failureThreshold: 12
       successThreshold: 1
