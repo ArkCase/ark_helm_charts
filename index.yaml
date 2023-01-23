@@ -3,7 +3,25 @@ entries:
   ark-activemq:
   - apiVersion: v2
     appVersion: 5.17.3
-    created: "2023-01-23T11:16:06.038770609-06:00"
+    created: "2023-01-23T11:27:23.438617285-06:00"
+    dependencies:
+    - name: ark-common
+      repository: https://arkcase.github.io/ark_helm_charts
+      version: ~0.1.17
+    description: Helm chart for ActiveMQ as used by ArkCase
+    digest: c301e33bde8f2d56ab387dd75235151ef65416813cec00a3f9790876fbc244f8
+    keywords:
+    - activemq
+    - message broker
+    name: ark-activemq
+    sources:
+    - https://github.com/ArkCase/ark_helm_charts
+    urls:
+    - https://arkcase.github.io/ark_helm_charts/ark-activemq-0.1.12.tgz
+    version: 0.1.12
+  - apiVersion: v2
+    appVersion: 5.17.3
+    created: "2023-01-23T11:27:23.436760509-06:00"
     dependencies:
     - name: ark-common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -21,7 +39,7 @@ entries:
     version: 0.1.11
   - apiVersion: v2
     appVersion: 5.17.3
-    created: "2023-01-23T11:16:06.037319534-06:00"
+    created: "2023-01-23T11:27:23.435390985-06:00"
     dependencies:
     - name: ark-common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -39,7 +57,7 @@ entries:
     version: 0.1.10
   - apiVersion: v2
     appVersion: 5.17.3
-    created: "2023-01-23T11:16:06.050470583-06:00"
+    created: "2023-01-23T11:27:23.448709165-06:00"
     dependencies:
     - name: ark-common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -57,7 +75,7 @@ entries:
     version: 0.1.9
   - apiVersion: v2
     appVersion: 5.17.3
-    created: "2023-01-23T11:16:06.048212829-06:00"
+    created: "2023-01-23T11:27:23.447362794-06:00"
     dependencies:
     - name: ark-common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -75,7 +93,7 @@ entries:
     version: 0.1.8
   - apiVersion: v2
     appVersion: 5.17.3
-    created: "2023-01-23T11:16:06.046864646-06:00"
+    created: "2023-01-23T11:27:23.445703058-06:00"
     dependencies:
     - name: ark-common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -93,7 +111,7 @@ entries:
     version: 0.1.7
   - apiVersion: v2
     appVersion: 5.17.3
-    created: "2023-01-23T11:16:06.045546035-06:00"
+    created: "2023-01-23T11:27:23.444395128-06:00"
     dependencies:
     - name: ark-common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -111,7 +129,7 @@ entries:
     version: 0.1.6
   - apiVersion: v2
     appVersion: 5.16.2
-    created: "2023-01-23T11:16:06.04423372-06:00"
+    created: "2023-01-23T11:27:23.443020455-06:00"
     dependencies:
     - name: ark-common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -129,7 +147,7 @@ entries:
     version: 0.1.5
   - apiVersion: v2
     appVersion: 5.16.2
-    created: "2023-01-23T11:16:06.042919336-06:00"
+    created: "2023-01-23T11:27:23.441750321-06:00"
     dependencies:
     - name: ark-common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -147,7 +165,7 @@ entries:
     version: 0.1.4
   - apiVersion: v2
     appVersion: 5.16.2
-    created: "2023-01-23T11:16:06.041481341-06:00"
+    created: "2023-01-23T11:27:23.440439747-06:00"
     dependencies:
     - name: ark-common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -165,7 +183,7 @@ entries:
     version: 0.1.3
   - apiVersion: v2
     appVersion: 5.16.2
-    created: "2023-01-23T11:16:06.039410821-06:00"
+    created: "2023-01-23T11:27:23.439122013-06:00"
     description: Helm chart for ActiveMQ as used by ArkCase
     digest: da7d21cdf4c6a09638cbc0ffb688e7a3b10217d1ad729c3ac89075c9f341a494
     keywords:
@@ -179,7 +197,7 @@ entries:
     version: 0.1.2
   - apiVersion: v2
     appVersion: 5.16.2
-    created: "2023-01-23T11:16:06.035739573-06:00"
+    created: "2023-01-23T11:27:23.434080998-06:00"
     description: Helm chart for ActiveMQ as used by ArkCase
     digest: 1ae47ba33af768adf50afc4746c87b091cb98d4a35dbc55febaafb9bad12165d
     keywords:
@@ -193,7 +211,7 @@ entries:
     version: 0.1.0
   ark-alfresco:
   - apiVersion: v2
-    created: "2023-01-23T11:16:06.066838842-06:00"
+    created: "2023-01-23T11:27:23.465745886-06:00"
     dependencies:
     - condition: postgresql.enabled
       name: postgresql
@@ -240,7 +258,7 @@ entries:
     version: 5.1.0-M2-ark
   - apiVersion: v2
     appVersion: 5.1.0-M2
-    created: "2023-01-23T11:16:06.058974264-06:00"
+    created: "2023-01-23T11:27:23.456998605-06:00"
     dependencies:
     - condition: postgresql.enabled
       name: postgresql
@@ -288,7 +306,21 @@ entries:
   ark-cloudconfig:
   - apiVersion: v2
     appVersion: "2021.01"
-    created: "2023-01-23T11:16:06.076015213-06:00"
+    created: "2023-01-23T11:27:23.475224134-06:00"
+    dependencies:
+    - name: ark-common
+      repository: https://arkcase.github.io/ark_helm_charts
+      version: ~0.1.17
+    description: A Helm chart for ArkCase cloud configurations
+    digest: 2effb16eb33d302a0996bc51efc173c91ed77710dd06a23abd7e028721a2cead
+    name: ark-cloudconfig
+    type: application
+    urls:
+    - https://arkcase.github.io/ark_helm_charts/ark-cloudconfig-0.1.7.tgz
+    version: 0.1.7
+  - apiVersion: v2
+    appVersion: "2021.01"
+    created: "2023-01-23T11:27:23.474031218-06:00"
     dependencies:
     - name: ark-common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -302,7 +334,7 @@ entries:
     version: 0.1.6
   - apiVersion: v2
     appVersion: "2021.01"
-    created: "2023-01-23T11:16:06.074611635-06:00"
+    created: "2023-01-23T11:27:23.472294766-06:00"
     dependencies:
     - name: ark-common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -316,7 +348,7 @@ entries:
     version: 0.1.5
   - apiVersion: v2
     appVersion: "2021.01"
-    created: "2023-01-23T11:16:06.073274286-06:00"
+    created: "2023-01-23T11:27:23.471101074-06:00"
     dependencies:
     - name: ark-common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -330,7 +362,7 @@ entries:
     version: 0.1.4
   - apiVersion: v2
     appVersion: "2021.01"
-    created: "2023-01-23T11:16:06.071978198-06:00"
+    created: "2023-01-23T11:27:23.469821846-06:00"
     dependencies:
     - name: ark-common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -344,7 +376,7 @@ entries:
     version: 0.1.3
   - apiVersion: v2
     appVersion: "2021.01"
-    created: "2023-01-23T11:16:06.070770692-06:00"
+    created: "2023-01-23T11:27:23.468743845-06:00"
     dependencies:
     - name: ark-common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -358,7 +390,7 @@ entries:
     version: 0.1.2
   - apiVersion: v2
     appVersion: "2021.01"
-    created: "2023-01-23T11:16:06.069564777-06:00"
+    created: "2023-01-23T11:27:23.467648378-06:00"
     dependencies:
     - name: ark-common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -372,7 +404,7 @@ entries:
     version: 0.1.1
   - apiVersion: v2
     appVersion: "2021.01"
-    created: "2023-01-23T11:16:06.068228314-06:00"
+    created: "2023-01-23T11:27:23.466541801-06:00"
     dependencies:
     - name: ark-common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -387,7 +419,7 @@ entries:
   ark-common:
   - apiVersion: v2
     appVersion: 1.2.1
-    created: "2023-01-23T11:16:06.083871607-06:00"
+    created: "2023-01-23T11:27:23.481939989-06:00"
     description: A library of common templates and functions, consumable by ArkCase
       charts
     digest: 9258a51f19382979b80a7fab11c4cf9764d0675bd75c511cc62eeeedceec0fad
@@ -398,7 +430,7 @@ entries:
     version: 0.1.17
   - apiVersion: v2
     appVersion: 1.2.1
-    created: "2023-01-23T11:16:06.082763708-06:00"
+    created: "2023-01-23T11:27:23.481239541-06:00"
     description: A library of common templates and functions, consumable by ArkCase
       charts
     digest: 8d7d20fb400cf19684a23de1abcd8212e59197bfefdd6f5770d4225ec9b3d794
@@ -409,7 +441,7 @@ entries:
     version: 0.1.16
   - apiVersion: v2
     appVersion: 1.2.1
-    created: "2023-01-23T11:16:06.081976158-06:00"
+    created: "2023-01-23T11:27:23.480513065-06:00"
     description: A library of common templates and functions, consumable by ArkCase
       charts
     digest: d123cabdf02ac0eb002c51f4d537e4b784b29ed871f28fb8fe1ae2279657e0d1
@@ -420,7 +452,7 @@ entries:
     version: 0.1.15
   - apiVersion: v2
     appVersion: 1.2.1
-    created: "2023-01-23T11:16:06.081188209-06:00"
+    created: "2023-01-23T11:27:23.479771598-06:00"
     description: A library of common templates and functions, consumable by ArkCase
       charts
     digest: 3a7276f36df1872e59561934e49f99be56efc4b68cdf803bab76d1b9b2a9fd98
@@ -431,7 +463,7 @@ entries:
     version: 0.1.14
   - apiVersion: v2
     appVersion: 1.2.1
-    created: "2023-01-23T11:16:06.080383998-06:00"
+    created: "2023-01-23T11:27:23.479040555-06:00"
     description: A library of common templates and functions, consumable by ArkCase
       charts
     digest: a19e136ab859056a212578b5a816e7653b15ace601fda7f1417cef6b1e3c5f99
@@ -442,7 +474,7 @@ entries:
     version: 0.1.13
   - apiVersion: v2
     appVersion: 1.2.1
-    created: "2023-01-23T11:16:06.079576182-06:00"
+    created: "2023-01-23T11:27:23.477782964-06:00"
     description: A library of common templates and functions, consumable by ArkCase
       charts
     digest: 2fdb45e950667f7c60ed0f3b34821d3a94b019d54cd94a8f7d648e1d044541b0
@@ -453,7 +485,7 @@ entries:
     version: 0.1.12
   - apiVersion: v2
     appVersion: 1.2.1
-    created: "2023-01-23T11:16:06.078779666-06:00"
+    created: "2023-01-23T11:27:23.477085265-06:00"
     description: A library of common templates and functions, consumable by ArkCase
       charts
     digest: e2460256bb4d4af0f9b2faf2bddcfd0df11956ed1bb4d799af1203e0306b3f04
@@ -464,7 +496,7 @@ entries:
     version: 0.1.11
   - apiVersion: v2
     appVersion: 1.2.1
-    created: "2023-01-23T11:16:06.077955781-06:00"
+    created: "2023-01-23T11:27:23.476403709-06:00"
     description: A library of common templates and functions, consumable by ArkCase
       charts
     digest: 8a09707d7f7067013bbc166979ac34489ac96a8149796051b875a8ef9ca91797
@@ -475,7 +507,7 @@ entries:
     version: 0.1.10
   - apiVersion: v2
     appVersion: 1.2.1
-    created: "2023-01-23T11:16:06.089908682-06:00"
+    created: "2023-01-23T11:27:23.487514662-06:00"
     description: A library of common templates and functions, consumable by ArkCase
       charts
     digest: 27153c4b621dab3e9052357a8799b716fed66201c5016326bce731695133d85a
@@ -486,7 +518,7 @@ entries:
     version: 0.1.9
   - apiVersion: v2
     appVersion: 1.2.1
-    created: "2023-01-23T11:16:06.089109535-06:00"
+    created: "2023-01-23T11:27:23.486822614-06:00"
     description: A library of common templates and functions, consumable by ArkCase
       charts
     digest: 97eb8a86530d31caef17bef3a62ccbd655c7d450b09e6ca70cda33c18502c7d7
@@ -497,7 +529,7 @@ entries:
     version: 0.1.8
   - apiVersion: v2
     appVersion: 1.2.1
-    created: "2023-01-23T11:16:06.088318748-06:00"
+    created: "2023-01-23T11:27:23.486142157-06:00"
     description: A library of common templates and functions, consumable by ArkCase
       charts
     digest: 205f1e22a253e2da4c76b0e2e4546457ab71387a99e7d1a68c8484d97eeba568
@@ -508,7 +540,7 @@ entries:
     version: 0.1.7
   - apiVersion: v2
     appVersion: 1.2.1
-    created: "2023-01-23T11:16:06.087550497-06:00"
+    created: "2023-01-23T11:27:23.485496489-06:00"
     description: A library of common templates and functions, consumable by ArkCase
       charts
     digest: d78a7d73bfef5270c4cbf1d5f42d04707807165dd30d10a0cd5a17f2280596e4
@@ -519,7 +551,7 @@ entries:
     version: 0.1.6
   - apiVersion: v2
     appVersion: 1.2.0
-    created: "2023-01-23T11:16:06.086807599-06:00"
+    created: "2023-01-23T11:27:23.484853347-06:00"
     description: A library of common templates and functions, consumable by ArkCase
       charts
     digest: 8590cee5fca1b2ad2dd63191818111262d5da1468efaf27c3232f6b0aeac9d8a
@@ -530,7 +562,7 @@ entries:
     version: 0.1.5
   - apiVersion: v2
     appVersion: 1.2.0
-    created: "2023-01-23T11:16:06.0860699-06:00"
+    created: "2023-01-23T11:27:23.48418309-06:00"
     description: A library of common templates and functions, consumable by ArkCase
       charts
     digest: cb0fa8f5dda0d5496213dfaf5d6ea225031138375e77fbaca63248ddce69bb70
@@ -541,7 +573,7 @@ entries:
     version: 0.1.4
   - apiVersion: v2
     appVersion: 1.1.1
-    created: "2023-01-23T11:16:06.085327782-06:00"
+    created: "2023-01-23T11:27:23.483082189-06:00"
     description: A library of common templates and functions, consumable by ArkCase
       charts
     digest: 6d203a1151606389e1c2dec3199a4287af8ea640b7b802267b1abf1827778e64
@@ -552,7 +584,7 @@ entries:
     version: 0.1.3
   - apiVersion: v2
     appVersion: 1.1.0
-    created: "2023-01-23T11:16:06.084610983-06:00"
+    created: "2023-01-23T11:27:23.482495233-06:00"
     description: A library of common templates and functions, consumable everywhere
     digest: f5a7d1db4b3ebc736f57d3f6c05bb0a34040e080e68c8bba82d48e8ae71e8077
     name: ark-common
@@ -562,7 +594,7 @@ entries:
     version: 0.1.2
   - apiVersion: v2
     appVersion: 1.16.0
-    created: "2023-01-23T11:16:06.077075247-06:00"
+    created: "2023-01-23T11:27:23.475712812-06:00"
     description: A library of common templates and functions, consumable everywhere
     digest: 1173796f8ce43fc253d2fb9b52ff9add5f4f1da53fface17b385ab7b60113b7a
     name: ark-common
@@ -573,7 +605,22 @@ entries:
   ark-gateway-apache:
   - apiVersion: v2
     appVersion: 1.0.0
-    created: "2023-01-23T11:16:06.09892978-06:00"
+    created: "2023-01-23T11:27:23.497573854-06:00"
+    dependencies:
+    - name: ark-common
+      repository: https://arkcase.github.io/ark_helm_charts
+      version: ~0.1.17
+    description: A Helm chart to provide a reverse proxy to all ArkCase services using
+      Apache
+    digest: 282ba5bf1f9b6bb4a41b8b179fe5275c924b52649846a268f2f93aeaabb7fedc
+    name: ark-gateway-apache
+    type: application
+    urls:
+    - https://arkcase.github.io/ark_helm_charts/ark-gateway-apache-0.1.5.tgz
+    version: 0.1.5
+  - apiVersion: v2
+    appVersion: 1.0.0
+    created: "2023-01-23T11:27:23.496014704-06:00"
     dependencies:
     - name: ark-common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -588,7 +635,7 @@ entries:
     version: 0.1.4
   - apiVersion: v2
     appVersion: 1.0.0
-    created: "2023-01-23T11:16:06.097230858-06:00"
+    created: "2023-01-23T11:27:23.494436253-06:00"
     dependencies:
     - name: ark-common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -603,7 +650,7 @@ entries:
     version: 0.1.3
   - apiVersion: v2
     appVersion: 1.0.0
-    created: "2023-01-23T11:16:06.09543156-06:00"
+    created: "2023-01-23T11:27:23.492849853-06:00"
     dependencies:
     - name: ark-common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -618,7 +665,7 @@ entries:
     version: 0.1.2
   - apiVersion: v2
     appVersion: 1.0.0
-    created: "2023-01-23T11:16:06.093781444-06:00"
+    created: "2023-01-23T11:27:23.490697846-06:00"
     dependencies:
     - name: ark-common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -633,7 +680,7 @@ entries:
     version: 0.1.1
   - apiVersion: v2
     appVersion: 1.0.0
-    created: "2023-01-23T11:16:06.092142901-06:00"
+    created: "2023-01-23T11:27:23.489038954-06:00"
     dependencies:
     - name: ark-common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -649,7 +696,30 @@ entries:
   ark-mariadb:
   - apiVersion: v2
     appVersion: "10.5"
-    created: "2023-01-23T11:16:06.103168164-06:00"
+    created: "2023-01-23T11:27:23.502501378-06:00"
+    dependencies:
+    - name: ark-common
+      repository: https://arkcase.github.io/ark_helm_charts
+      version: ~0.1.17
+    description: Fast, reliable, scalable, and easy to use open-source relational
+      database system. MariaDB Server is intended for mission-critical, heavy-load
+      production systems as well as for embedding into mass-deployed software. Highly
+      available MariaDB cluster.
+    digest: 75ec431fc074de409f98fb482225ce4b003d43f4f3a9495f1b1f0e15cfdfb985
+    keywords:
+    - mariadb
+    - mysql
+    - database
+    - sql
+    name: ark-mariadb
+    sources:
+    - https://github.com/ArkCase/ark_helm_charts
+    urls:
+    - https://arkcase.github.io/ark_helm_charts/ark-mariadb-0.1.11.tgz
+    version: 0.1.11
+  - apiVersion: v2
+    appVersion: "10.5"
+    created: "2023-01-23T11:27:23.501358754-06:00"
     dependencies:
     - name: ark-common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -672,7 +742,7 @@ entries:
     version: 0.1.10
   - apiVersion: v2
     appVersion: "10.5"
-    created: "2023-01-23T11:16:06.114524633-06:00"
+    created: "2023-01-23T11:27:23.513127095-06:00"
     dependencies:
     - name: ark-common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -695,7 +765,7 @@ entries:
     version: 0.1.9
   - apiVersion: v2
     appVersion: "10.5"
-    created: "2023-01-23T11:16:06.113316765-06:00"
+    created: "2023-01-23T11:27:23.512009957-06:00"
     dependencies:
     - name: ark-common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -718,7 +788,7 @@ entries:
     version: 0.1.8
   - apiVersion: v2
     appVersion: "10.5"
-    created: "2023-01-23T11:16:06.112110838-06:00"
+    created: "2023-01-23T11:27:23.510900626-06:00"
     dependencies:
     - name: ark-common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -741,7 +811,7 @@ entries:
     version: 0.1.7
   - apiVersion: v2
     appVersion: "10.5"
-    created: "2023-01-23T11:16:06.110960388-06:00"
+    created: "2023-01-23T11:27:23.509870313-06:00"
     dependencies:
     - name: ark-common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -764,7 +834,7 @@ entries:
     version: 0.1.6
   - apiVersion: v2
     appVersion: "10.5"
-    created: "2023-01-23T11:16:06.109825081-06:00"
+    created: "2023-01-23T11:27:23.508822266-06:00"
     dependencies:
     - name: ark-common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -789,7 +859,7 @@ entries:
       category: Database
     apiVersion: v2
     appVersion: 10.5.12
-    created: "2023-01-23T11:16:06.108509414-06:00"
+    created: "2023-01-23T11:27:23.507591842-06:00"
     dependencies:
     - name: ark-common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -822,7 +892,7 @@ entries:
       category: Database
     apiVersion: v2
     appVersion: 10.5.12
-    created: "2023-01-23T11:16:06.105578528-06:00"
+    created: "2023-01-23T11:27:23.504738451-06:00"
     dependencies:
     - name: ark-common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -855,7 +925,7 @@ entries:
       category: Database
     apiVersion: v2
     appVersion: 10.5.12
-    created: "2023-01-23T11:16:06.101916456-06:00"
+    created: "2023-01-23T11:27:23.500235759-06:00"
     dependencies:
     - name: ark-common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -887,7 +957,7 @@ entries:
   ark-pentaho-ce:
   - apiVersion: v2
     appVersion: 8.1.0.0-365
-    created: "2023-01-23T11:16:06.125438701-06:00"
+    created: "2023-01-23T11:27:23.524212422-06:00"
     dependencies:
     - name: ark-common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -901,7 +971,7 @@ entries:
     version: 1.0.2
   - apiVersion: v2
     appVersion: 8.1.0.0-365
-    created: "2023-01-23T11:16:06.1230959-06:00"
+    created: "2023-01-23T11:27:23.522461482-06:00"
     description: A Helm chart for Kubernetes
     digest: 5d9993ec98fcd92f975b4e9695a4eea6d45681ec6c54b37c32ccb70e912a8e71
     name: ark-pentaho-ce
@@ -911,7 +981,25 @@ entries:
     version: 1.0.0
   - apiVersion: v2
     appVersion: 8.1.0.0-365
-    created: "2023-01-23T11:16:06.122237255-06:00"
+    created: "2023-01-23T11:27:23.521088874-06:00"
+    dependencies:
+    - name: ark-common
+      repository: https://arkcase.github.io/ark_helm_charts
+      version: ~0.1.17
+    description: Helm chart for Pentaho CE as used by ArkCase
+    digest: ed165c0eccb84e86ec2926c17b5e75f17dc427aaf4611eff6d10cef082b71502
+    keywords:
+    - pentaho
+    - reports
+    name: ark-pentaho-ce
+    sources:
+    - https://github.com/ArkCase/ark_helm_charts
+    urls:
+    - https://arkcase.github.io/ark_helm_charts/ark-pentaho-ce-0.1.6.tgz
+    version: 0.1.6
+  - apiVersion: v2
+    appVersion: 8.1.0.0-365
+    created: "2023-01-23T11:27:23.519961505-06:00"
     dependencies:
     - name: ark-common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -929,7 +1017,7 @@ entries:
     version: 0.1.5
   - apiVersion: v2
     appVersion: 8.1.0.0-365
-    created: "2023-01-23T11:16:06.121054012-06:00"
+    created: "2023-01-23T11:27:23.51884997-06:00"
     dependencies:
     - name: ark-common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -947,7 +1035,7 @@ entries:
     version: 0.1.4
   - apiVersion: v2
     appVersion: 8.1.0.0-365
-    created: "2023-01-23T11:16:06.119637846-06:00"
+    created: "2023-01-23T11:27:23.517769502-06:00"
     dependencies:
     - name: ark-common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -961,7 +1049,7 @@ entries:
     version: 0.1.3
   - apiVersion: v2
     appVersion: 8.1.0.0-365
-    created: "2023-01-23T11:16:06.117863143-06:00"
+    created: "2023-01-23T11:27:23.516115833-06:00"
     dependencies:
     - name: ark-common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -979,7 +1067,7 @@ entries:
     version: 0.1.2
   - apiVersion: v2
     appVersion: 8.1.0.0-365
-    created: "2023-01-23T11:16:06.116618088-06:00"
+    created: "2023-01-23T11:27:23.515010955-06:00"
     dependencies:
     - name: ark-common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -994,7 +1082,31 @@ entries:
   ark-postgres:
   - apiVersion: v2
     appVersion: 13.7-2
-    created: "2023-01-23T11:16:06.126680832-06:00"
+    created: "2023-01-23T11:27:23.526522423-06:00"
+    dependencies:
+    - name: ark-common
+      repository: https://arkcase.github.io/ark_helm_charts
+      version: ~0.1.17
+    description: This container image provides a containerized packaging of the PostgreSQL
+      postgres daemon and client application. The postgres server daemon accepts connections
+      from clients and provides access to content from PostgreSQL databases on behalf
+      of the clients. You can find more information on the PostgreSQL project from
+      the project Web site (https://www.postgresql.org/).
+    digest: 3871999ab6b311b979ebf6bc78adf9458686edf05cc81f38b2eb3d99bcde71e5
+    keywords:
+    - postgres
+    - mysql
+    - database
+    - sql
+    name: ark-postgres
+    sources:
+    - https://github.com/ArkCase/ark_helm_charts
+    urls:
+    - https://arkcase.github.io/ark_helm_charts/ark-postgres-0.1.11.tgz
+    version: 0.1.11
+  - apiVersion: v2
+    appVersion: 13.7-2
+    created: "2023-01-23T11:27:23.5254124-06:00"
     dependencies:
     - name: ark-common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -1018,7 +1130,7 @@ entries:
     version: 0.1.10
   - apiVersion: v2
     appVersion: 13.7-2
-    created: "2023-01-23T11:16:06.12908781-06:00"
+    created: "2023-01-23T11:27:23.529333087-06:00"
     dependencies:
     - name: ark-common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -1042,7 +1154,7 @@ entries:
     version: 0.1.9
   - apiVersion: v2
     appVersion: 13.7-2
-    created: "2023-01-23T11:16:06.127886896-06:00"
+    created: "2023-01-23T11:27:23.527630667-06:00"
     dependencies:
     - name: ark-common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -1067,7 +1179,21 @@ entries:
   ark-samba:
   - apiVersion: v2
     appVersion: 4.14.5
-    created: "2023-01-23T11:16:06.140017753-06:00"
+    created: "2023-01-23T11:27:23.54076762-06:00"
+    dependencies:
+    - name: ark-common
+      repository: https://arkcase.github.io/ark_helm_charts
+      version: ~0.1.17
+    description: A Helm chart for Samba 4 as used by ArkCase
+    digest: 2c010cdbb21b0965f13a02a4ea9d991de9c6a1f989bebb7c1127163cb3d32b93
+    name: ark-samba
+    type: application
+    urls:
+    - https://arkcase.github.io/ark_helm_charts/ark-samba-0.1.8.tgz
+    version: 0.1.8
+  - apiVersion: v2
+    appVersion: 4.14.5
+    created: "2023-01-23T11:27:23.539374367-06:00"
     dependencies:
     - name: ark-common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -1081,7 +1207,7 @@ entries:
     version: 0.1.7
   - apiVersion: v2
     appVersion: 4.14.5
-    created: "2023-01-23T11:16:06.138525952-06:00"
+    created: "2023-01-23T11:27:23.537964633-06:00"
     dependencies:
     - name: ark-common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -1095,7 +1221,7 @@ entries:
     version: 0.1.6
   - apiVersion: v2
     appVersion: 4.14.5
-    created: "2023-01-23T11:16:06.137011932-06:00"
+    created: "2023-01-23T11:27:23.536572187-06:00"
     dependencies:
     - name: ark-common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -1109,7 +1235,7 @@ entries:
     version: 0.1.5
   - apiVersion: v2
     appVersion: 4.14.5
-    created: "2023-01-23T11:16:06.135478084-06:00"
+    created: "2023-01-23T11:27:23.534710268-06:00"
     dependencies:
     - name: ark-common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -1123,7 +1249,7 @@ entries:
     version: 0.1.4
   - apiVersion: v2
     appVersion: 4.14.5
-    created: "2023-01-23T11:16:06.134017391-06:00"
+    created: "2023-01-23T11:27:23.533415676-06:00"
     dependencies:
     - name: ark-common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -1137,7 +1263,7 @@ entries:
     version: 0.1.3
   - apiVersion: v2
     appVersion: 4.14.5
-    created: "2023-01-23T11:16:06.132548231-06:00"
+    created: "2023-01-23T11:27:23.532046995-06:00"
     dependencies:
     - name: ark-common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -1151,7 +1277,7 @@ entries:
     version: 0.1.2
   - apiVersion: v2
     appVersion: 4.14.5
-    created: "2023-01-23T11:16:06.130404783-06:00"
+    created: "2023-01-23T11:27:23.530548201-06:00"
     description: A Helm chart for Samba 4
     digest: efe7d81aa98be8ebc0c3a22320fe30bdebf60d2264f6e437272ad8ac6fab4790
     name: ark-samba
@@ -1162,7 +1288,22 @@ entries:
   ark-snowbound:
   - apiVersion: v2
     appVersion: 5.6.2-2021.02.04
-    created: "2023-01-23T11:16:06.1475905-06:00"
+    created: "2023-01-23T11:27:23.548748714-06:00"
+    dependencies:
+    - name: ark-common
+      repository: https://arkcase.github.io/ark_helm_charts
+      version: ~0.1.17
+    description: Helm chart for Snowbound as used by ArkCase
+    digest: f27f7a408dcb922f278364d3adc1d3f01972299e9baec839c9a5654b111cc548
+    name: ark-snowbound
+    sources:
+    - https://github.com/ArkCase/ark_helm_charts
+    urls:
+    - https://arkcase.github.io/ark_helm_charts/ark-snowbound-0.1.6.tgz
+    version: 0.1.6
+  - apiVersion: v2
+    appVersion: 5.6.2-2021.02.04
+    created: "2023-01-23T11:27:23.547633958-06:00"
     dependencies:
     - name: ark-common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -1177,7 +1318,7 @@ entries:
     version: 0.1.5
   - apiVersion: v2
     appVersion: 5.6.2-2021.02.04
-    created: "2023-01-23T11:16:06.146450406-06:00"
+    created: "2023-01-23T11:27:23.546547614-06:00"
     dependencies:
     - name: ark-common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -1192,7 +1333,7 @@ entries:
     version: 0.1.4
   - apiVersion: v2
     appVersion: 5.6.2-2021.02.04
-    created: "2023-01-23T11:16:06.145224796-06:00"
+    created: "2023-01-23T11:27:23.545513294-06:00"
     dependencies:
     - name: ark-common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -1207,7 +1348,7 @@ entries:
     version: 0.1.3
   - apiVersion: v2
     appVersion: 5.6.2-2021.02.04
-    created: "2023-01-23T11:16:06.14404498-06:00"
+    created: "2023-01-23T11:27:23.544408232-06:00"
     dependencies:
     - name: ark-common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -1222,7 +1363,7 @@ entries:
     version: 0.1.2
   - apiVersion: v2
     appVersion: 5.6.2-2021.02.04
-    created: "2023-01-23T11:16:06.142939554-06:00"
+    created: "2023-01-23T11:27:23.542895477-06:00"
     dependencies:
     - name: ark-common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -1237,7 +1378,7 @@ entries:
     version: 0.1.1
   - apiVersion: v2
     appVersion: 5.6.2-2021.02.04
-    created: "2023-01-23T11:16:06.14178203-06:00"
+    created: "2023-01-23T11:27:23.541885295-06:00"
     dependencies:
     - name: ark-common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -1253,7 +1394,21 @@ entries:
   ark-solr:
   - apiVersion: v2
     appVersion: 7.7.2
-    created: "2023-01-23T11:16:06.159772525-06:00"
+    created: "2023-01-23T11:27:23.562242126-06:00"
+    dependencies:
+    - name: ark-common
+      repository: https://arkcase.github.io/ark_helm_charts
+      version: ~0.1.17
+    description: A Helm chart for Solr as used by ArkCase
+    digest: d747b2da26c0341ddec0e4d9951dba21474b08be8d3d6810554d16dae483b598
+    name: ark-solr
+    type: application
+    urls:
+    - https://arkcase.github.io/ark_helm_charts/ark-solr-0.1.7.tgz
+    version: 0.1.7
+  - apiVersion: v2
+    appVersion: 7.7.2
+    created: "2023-01-23T11:27:23.560536184-06:00"
     dependencies:
     - name: ark-common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -1267,7 +1422,7 @@ entries:
     version: 0.1.6
   - apiVersion: v2
     appVersion: 7.7.2
-    created: "2023-01-23T11:16:06.15767809-06:00"
+    created: "2023-01-23T11:27:23.558374656-06:00"
     dependencies:
     - name: ark-common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -1281,7 +1436,7 @@ entries:
     version: 0.1.5
   - apiVersion: v2
     appVersion: 7.7.2
-    created: "2023-01-23T11:16:06.15569107-06:00"
+    created: "2023-01-23T11:27:23.556697327-06:00"
     dependencies:
     - name: ark-common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -1295,7 +1450,7 @@ entries:
     version: 0.1.4
   - apiVersion: v2
     appVersion: 7.7.2
-    created: "2023-01-23T11:16:06.153867854-06:00"
+    created: "2023-01-23T11:27:23.554980998-06:00"
     dependencies:
     - name: ark-common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -1309,7 +1464,7 @@ entries:
     version: 0.1.3
   - apiVersion: v2
     appVersion: 7.7.2
-    created: "2023-01-23T11:16:06.15214191-06:00"
+    created: "2023-01-23T11:27:23.553345811-06:00"
     dependencies:
     - name: ark-common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -1323,7 +1478,7 @@ entries:
     version: 0.1.2
   - apiVersion: v2
     appVersion: 7.7.2
-    created: "2023-01-23T11:16:06.150345602-06:00"
+    created: "2023-01-23T11:27:23.551592611-06:00"
     dependencies:
     - name: ark-common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -1337,7 +1492,7 @@ entries:
     version: 0.1.1
   - apiVersion: v2
     appVersion: 7.7.2
-    created: "2023-01-23T11:16:06.148950088-06:00"
+    created: "2023-01-23T11:27:23.549658483-06:00"
     description: A Helm chart for Kubernetes
     digest: 18b974e355c508c1410ec34a97b6810924bb169fca5c71de0a5d81d3c97f761b
     name: ark-solr
@@ -1348,7 +1503,7 @@ entries:
   hazelcast:
   - apiVersion: v1
     appVersion: "5.0"
-    created: "2023-01-23T11:16:06.161749731-06:00"
+    created: "2023-01-23T11:27:23.564021951-06:00"
     description: Hazelcast IMDG is the most widely used in-memory data grid with hundreds
       of thousands of installed clusters around the world. It offers caching solutions
       ensuring that data is in the right place when it’s needed for optimal performance.
@@ -1376,7 +1531,7 @@ entries:
   testchart:
   - apiVersion: v2
     appVersion: 1.0.0
-    created: "2023-01-23T11:16:06.160767166-06:00"
+    created: "2023-01-23T11:27:23.56315535-06:00"
     dependencies:
     - name: ark-common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -1388,4 +1543,4 @@ entries:
     urls:
     - https://arkcase.github.io/ark_helm_charts/testchart-0.1.0.tgz
     version: 0.1.0
-generated: "2023-01-23T11:16:06.026368494-06:00"
+generated: "2023-01-23T11:27:23.433550006-06:00"
