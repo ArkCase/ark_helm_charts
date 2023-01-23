@@ -118,7 +118,7 @@ that checks the boot order
             {{- if and (ne $tempVar "all") (ne $tempVar "any") -}}
               {{- fail (printf "Unknown value for the dependency [%s] tracking mode: [%s] - must be either 'all' or 'any'" $hostname $tempVar) -}}
             {{- end -}}
-            {{- $crap := set $value "mode" $tempVar -}}
+            {{- $value = set $dependency "mode" $tempVar -}}
           {{- end -}}
 
           {{- if hasKey $value "initialDelay" -}}
