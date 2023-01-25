@@ -49,7 +49,7 @@ result: either "" or "true"
     {{- $host = (toString $host) -}}
   {{- end -}}
   {{- $fail := false -}}
-  {{- if not (regexMatch "^[a-z0-9]([-a-z0-9]*[a-z0-9])?([.][a-z0-9]([-a-z0-9]*[a-z0-9])?)*$" (lower $host)) -}}
+  {{- if not (regexMatch "^([a-z0-9][-a-z0-9]*)?[a-z0-9]([.]([a-z0-9][-a-z0-9]*)?[a-z0-9])*$" (lower $host)) -}}
     {{- $fail = true -}}
   {{- end -}}
   {{- if not $fail -}}
