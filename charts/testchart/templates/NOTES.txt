@@ -1,13 +1,14 @@
 Add test code here
 
-YAML:= [{{ include "arkcase.initDependencies.yaml" . | nindent 2 }}]
-JSON:= [{{ include "arkcase.initDependencies.json" . }}]
-DEF := [{{ include "arkcase.initDependencies" . }}]
-
-{{ $obj := dict "a" "b" "c" (list 1 2 3 4 5) }}
-
-JSON -> [{{ $obj | mustToPrettyJson }}]
-YAML -> [{{ $obj | toYaml | nindent 2 }}]
+YAML:= [{{ include "arkcase.initDatabase.yaml" . | nindent 2 }}]
+JSON:= [{{ include "arkcase.initDatabase.json" . }}]
+DEF := [{{ include "arkcase.initDatabase" . }}]
 
       initContainers:
-        {{- include "arkcase.initDependencies.container" . | nindent 8 }}
+        {{- include "arkcase.initDatabase.container" . | nindent 8 }}
+
+ADMIN PASSWORD:
+{{ include "arkcase.initDatabase.adminPassEnv" (dict "ctx" $ "var" "ADMIN_PASS") }}
+
+USER_PASSWORD:
+{{ include "arkcase.initDatabase.userPassEnv" (dict "ctx" $ "var" "USER_PASS" "user" "twobert") }}

@@ -33,3 +33,51 @@ initDependencies:
       ports:
         - 8161
         - 61616
+
+dbinit:
+  admin:
+    # Form 1: Direct value
+    # password: password
+
+    # Form 2: Secret reference
+    password:
+      secretName: secretName
+      secretKey: entryName
+
+  # Describe the users that need to be created
+  users:
+    kakabert: "asdfasdf"
+    onebert:
+      password: pass4-1bert
+    # ...
+    twobert:
+      password:
+        secretName: twosecret
+        secretKey: towentry
+
+  # Describe the databases that need to be created
+  databases:
+    primus:
+      owner: onebert
+
+      # Describe the schemas that need to be created
+      schemas:
+        esquema: {}
+
+    duopolis:
+      owner: twobert
+
+    triadia: "admin"
+
+  scripts:
+    - query: example query
+      runAs: user (default admin)
+      runOn: db-or-schema-name
+      onlyFor:
+        - psql
+    - file: only-for-mariadb
+      runAs: user (default admin)
+      runOn: db-or-schema-name
+      onlyFor:
+        - mariadb
+        - some: map
