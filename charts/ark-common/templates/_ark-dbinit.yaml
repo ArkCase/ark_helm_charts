@@ -428,6 +428,7 @@ that checks the boot order (remember to |bool the outcome!)
   {{- if (include "arkcase.hasInitDatabase" .) -}}
     {{- $yaml := (include "arkcase.initDatabase.cached" . | fromYaml) -}}
     {{- $secret := $yaml.secret -}}
+    {{- if $secret -}}
 ---
 apiVersion: v1
 kind: Secret
@@ -445,8 +446,9 @@ metadata:
     {{- end }}
 type: Opaque
 stringData:
-    {{- range $key, $value := $secret.entries }}
+      {{- range $key, $value := $secret.entries }}
   {{ $key | quote }}: {{ $value | quote }}
-    {{- end }}
+      {{- end }}
+    {{- end -}}
   {{- end -}}
 {{- end -}}
