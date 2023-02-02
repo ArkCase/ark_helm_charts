@@ -429,6 +429,58 @@ Render the image name taking into account the registry, repository, image name, 
   {{- end -}}
 {{- end -}}
 
+{{- define "arkcase.tools.subimage" -}}
+  {{- if or (not (hasKey . "ctx")) (not (kindIs "map" .ctx)) (empty .ctx) -}}
+    {{- fail "The 'ctx' parameter is required and must be a non-empty map" -}}
+  {{- end -}}
+  {{- $ctx := .ctx -}}
+  {{- if or (not (hasKey $ctx "Values")) (not (hasKey $ctx "Chart")) (not (hasKey $ctx "Release")) -}}
+    {{- fail "You must supply the 'ctx' parameter, pointing to the root context that contains 'Values' et al." -}}
+  {{- end -}}
+  {{- if or (not (hasKey . "name")) (not (kindIs "string" .name)) (empty .name) -}}
+    {{- fail "The 'name' parameter is required and must be a non-empty string" -}}
+  {{- end -}}
+  {{- $name := .name | trim -}}
+  {{- if or (not (hasKey . "image")) (not (kindIs "string" .image)) (empty .image) -}}
+    {{- fail "The 'image' parameter is required and must be a non-empty string" -}}
+  {{- end -}}
+  {{- $image := .image | trim -}}
+
+  {{- $imageMap := (coalesce $ctx.Values.image dict) -}}
+  {{- $subimageMap := dict -}}
+  {{- if and (hasKey $imageMap $name) -}}
+    {{- $subimageMap = get $imageMap $name -}}
+  {{- end -}}
+  {{- if not (and (kindIs "map" $subimageMap) (not (empty $subimageMap))) -}}
+    {{- $subimageMap = dict -}}
+  {{- end -}}
+
+  {{- $registry := "" -}}
+  {{- if and (hasKey $subimageMap "registry") (kindIs "string" $subimageMap.registry) (not (empty $subimageMap.registry)) -}}
+    {{- $registry = $subimageMap.registry -}}
+  {{- else -}}
+    {{- $registry = ($ctx.Values.image).registry -}}
+  {{- end -}}
+
+  {{- $repository := "" -}}
+  {{- if and (hasKey $subimageMap "repository") (kindIs "string" $subimageMap.repository) (not (empty $subimageMap.repository)) -}}
+    {{- $repository = $subimageMap.repository -}}
+  {{- else -}}
+    {{- $repository = $image -}}
+  {{- end -}}
+
+  {{- $tag := "" -}}
+  {{- if and (hasKey $subimageMap "tag") (kindIs "string" $subimageMap.tag) (not (empty $subimageMap.tag)) -}}
+    {{- $tag = $subimageMap.tag -}}
+  {{- else -}}
+    {{- $tag = "latest" -}}
+  {{- end -}}
+
+  {{- $params := dict "ctx" $ctx "registry" $registry "repository" $repository "tag" $tag -}}
+
+  {{- include "arkcase.tools.image" $params -}}
+{{- end -}}
+
 {{- /*
 Render the image registry name taking into account global values as well
 */ -}}
