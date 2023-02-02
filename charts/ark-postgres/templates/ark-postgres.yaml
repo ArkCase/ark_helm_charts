@@ -70,7 +70,8 @@ spec:
           volumeMounts:
             - name: "data"
               mountPath: "/data"
-        {{- include "arkcase.initDependencies.container" . | nindent 8 }}
+        {{- include "arkcase.initDatabase.container" (dict "ctx" $ "db" "postgres" "volume" "dbinit") | nindent 8 }}
+        {{- include "arkcase.initDependencies.container" $ | nindent 8 }}
       containers:
         - name: postgres
           {{- with (.Values.securityContext).postgres }}
@@ -96,13 +97,16 @@ spec:
           resources: {{- toYaml . | nindent 12 }}
           {{- end }}
           volumeMounts:
+            - name: "dbinit"
+              mountPath: "/docker-entrypoint-initdb.d"
             - name: "data"
               mountPath: "/var/lib/pgsql/data"
             - name: "secrets"
               mountPath: "/app/secrets"
               readOnly: true
       volumes:
-        {{- include "arkcase.persistence.volume" (dict "name" "data" "ctx" $) | nindent 8 }}
+        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "dbinit") | nindent 8 }}
+        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
         - name: secrets
           secret:
             secretName: {{ include "arkcase.subsystem.name" . | quote }}
@@ -117,6 +121,7 @@ spec:
       {{- end }}
 
 {{- if (include "arkcase.persistence.enabled" .) }}
+{{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "dbinit") | indent 0 }}
 {{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "data") | indent 0 }}
 {{- end }}
 
