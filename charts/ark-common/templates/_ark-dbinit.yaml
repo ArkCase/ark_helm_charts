@@ -41,6 +41,8 @@ that checks the boot order
         {{- else -}}
           {{- fail "The value for .Values.dbinit.admin.password must be either a map or a string" -}}
         {{- end -}}
+      {{- else -}}
+        {{- $admin = set $admin "password" "admin" -}}
       {{- end -}}
     {{- end -}}
     {{- if $admin -}}
