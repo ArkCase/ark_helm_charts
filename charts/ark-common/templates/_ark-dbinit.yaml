@@ -4,7 +4,7 @@ that checks the boot order
 */ -}}
 {{- define "arkcase.initDatabase.render" -}}
   {{- $declaration := dict -}}
-  {{- if hasKey .Values "dbinit" -}}
+  {{- if and (hasKey .Values "dbinit") (.Values.dbinit) -}}
     {{- $declaration = .Values.dbinit -}}
   {{- end -}}
   {{- if not (kindIs "map" $declaration) -}}
@@ -256,16 +256,9 @@ in JSON format
 
   {{- $chartName := (include "common.fullname" $) -}}
   {{- if not (hasKey $masterCache $chartName) -}}
-    {{- $obj := dict -}}
-    {{- $enabled := (and (hasKey .Values "dbinit") (kindIs "map" .Values.dbinit) (not (empty .Values.dbinit))) -}}
-    {{- if $enabled -}}
-      {{- $enabled = (or (not (hasKey .Values.dbinit "enabled")) (eq "true" (.Values.dbinit.enabled | toString | lower))) -}}
-    {{- end -}}
-    {{- if $enabled -}}
-      {{- $obj = get (include "arkcase.initDatabase.render" . | fromYaml) "result" -}}
-      {{- if not $obj -}}
-        {{- $obj = dict -}}
-      {{- end -}}
+    {{- $obj := get (include "arkcase.initDatabase.render" . | fromYaml) "result" -}}
+    {{- if not $obj -}}
+      {{- $obj = dict -}}
     {{- end -}}
     {{- $masterCache = set $masterCache $chartName $obj -}}
   {{- end -}}
