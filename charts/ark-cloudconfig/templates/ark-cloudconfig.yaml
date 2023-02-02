@@ -59,7 +59,7 @@ spec:
       {{- end }}
       initContainers:
         - name: set-permissions
-          image: {{ include "arkcase.tools.image" (dict "ctx" . "registry" (coalesce ((.Values.image).setperm).registry (.Values.image).registry) "repository" (coalesce ((.Values.image).setperm).repository "ark_setperm") "tag" (coalesce ((.Values.image).setperm).tag "latest") ) | quote }}
+          image: {{ include "arkcase.tools.subimage" (dict "ctx" . "name" "setperm" "image" "ark_setperm") | quote }}
           env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
             - name: JOBS
               value: |
