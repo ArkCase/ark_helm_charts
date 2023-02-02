@@ -324,7 +324,7 @@ that checks the boot order (remember to |bool the outcome!)
   {{- end -}}
 {{- end -}}
 
-{{- define "arkcase.initDatabase.adminPass" -}}
+{{- define "arkcase.initDatabase.adminPassEnv" -}}
   {{- if not (kindIs "map" .) -}}
     {{- fail "The parameter object must be a dict with a 'ctx', and an optional 'var' values" -}}
   {{- end -}}
@@ -366,7 +366,7 @@ that checks the boot order (remember to |bool the outcome!)
   {{- end -}}
 {{- end -}}
 
-{{- define "arkcase.initDatabase.userPass" -}}
+{{- define "arkcase.initDatabase.userPassEnv" -}}
   {{- if not (kindIs "map" .) -}}
     {{- fail "The parameter object must be a dict with a 'ctx', and an optional 'var' values" -}}
   {{- end -}}
