@@ -5,10 +5,17 @@ JSON:= [{{ include "arkcase.initDatabase.json" . }}]
 DEF := [{{ include "arkcase.initDatabase" . }}]
 
       initContainers:
-        {{- include "arkcase.initDatabase.container" . | nindent 8 }}
+        {{- include "arkcase.initDatabase.container" (dict "ctx" . "db" "postgres" "volume" "KAKAVOLUME") | nindent 8 }}
 
 ADMIN PASSWORD:
 {{ include "arkcase.initDatabase.adminPassEnv" (dict "ctx" $ "var" "ADMIN_PASS") }}
 
 USER_PASSWORD:
 {{ include "arkcase.initDatabase.userPassEnv" (dict "ctx" $ "var" "USER_PASS" "user" "twobert") }}
+
+SECRET:
+{{ include "arkcase.initDatabase.secret" . }}
+
+VOLUME:
+{{ include "arkcase.initDatabase.secretVolume" . }}
+--- END OF FILE ---

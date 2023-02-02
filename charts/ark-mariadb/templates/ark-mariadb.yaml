@@ -80,11 +80,7 @@ spec:
           image: {{ include "arkcase.tools.image" . | quote }}
           imagePullPolicy: {{ include "arkcase.tools.imagePullPolicy" . | quote }}
           env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
-            - name: MYSQL_ROOT_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "arkcase.subsystem.name" . | quote }}
-                  key: MYSQL_ROOT_PASSWORD
+            {{- include "arkcase.initDatabase.adminPassEnv" (dict "ctx" $ "var" "MYSQL_ROOT_PASSWORD") | nindent 12 }}
           {{- include "arkcase.subsystem.ports" . | nindent 10 }}
           {{- if .Values.command }}
           command: {{- .Values.command | toYaml | nindent 12 }}
@@ -101,11 +97,9 @@ spec:
               mountPath: "/app/secrets"
               readOnly: true
       volumes:
+        {{- include "arkcase.initDatabase.secretVolume" . | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "dbinit") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
-        - name: secrets
-          secret:
-            secretName: {{ include "arkcase.subsystem.name" . | quote }}
       {{- with .Values.nodeSelector }}
       nodeSelector: {{- toYaml . | nindent 8 }}
       {{- end }}

@@ -270,11 +270,11 @@ in JSON format
 {{- end -}}
 
 {{- define "arkcase.initDatabase.json" -}}
-  {{- get ((include "arkcase.initDatabase.yaml" .) | fromYaml) "config" | mustToPrettyJson -}}
+  {{- (include "arkcase.initDatabase.yaml" .) | fromYaml | mustToPrettyJson -}}
 {{- end -}}
 
 {{- define "arkcase.initDatabase" -}}
-  {{- include "arkcase.initDatabase.json" . -}}
+  {{- include "arkcase.initDatabase.cached" . | fromYaml | mustToPrettyJson -}}
 {{- end -}}
 
 {{- /*
@@ -293,8 +293,14 @@ that checks the boot order (remember to |bool the outcome!)
     {{- fail "The parameter object must be a dict with a 'ctx', a 'db', a 'volume', and an optional 'name' values" -}}
   {{- end -}}
   {{- /* If we're given a parameter map, analyze it */ -}}
-  {{- $dbType := (required "The 'db' parameter must be present and non-empty" (.db | toString | trim)) -}}
-  {{- $volume := (required "The 'volume' parameter must be present and non-empty" (.volume | toString | trim)) -}}
+  {{- if or (not (hasKey . "db")) (empty .db) (not (kindIs "string" .db)) -}}
+    {{- fail "The 'db' parameter must be present, a string-value, and non-empty" -}}
+  {{- end -}}
+  {{- $dbType := (.db | trim) -}}
+  {{- if or (not (hasKey . "volume")) (empty .volume) (not (kindIs "string" .volume)) -}}
+    {{- fail "The 'volume' parameter must be present, a string-value, and non-empty" -}}
+  {{- end -}}
+  {{- $volume := (.volume | trim) -}}
   {{- $containerName := "" -}}
   {{- if hasKey . "name" -}}
     {{- $containerName := (.name | toString) -}}
@@ -314,19 +320,29 @@ that checks the boot order (remember to |bool the outcome!)
   {{- end -}}
 
   {{- if (include "arkcase.hasInitDatabase" $ctx) -}}
-    {{- $yaml := (include "arkcase.initDatabase.yaml" $ctx | fromYaml) -}}
+    {{- $yaml := (include "arkcase.initDatabase.cached" $ctx | fromYaml) -}}
     {{- if $yaml -}}
 - name: {{ $containerName | quote }}
   image: {{ include "arkcase.tools.image" (dict "ctx" $ctx "registry" (coalesce (($ctx.Values.image).dbinit).registry ($ctx.Values.image).registry) "repository" (coalesce (($ctx.Values.image).dbinit).repository "ark_dbinit") "tag" (coalesce (($ctx.Values.image).dbinit).tag "latest") ) | quote }}
   command: [ "/wait-for-ports" ]
   env: {{- include "arkcase.tools.baseEnv" $ctx | nindent 4 }}
+    - name: INIT_DB_TYPE
+      value: {{ $dbType | quote }}
     - name: INIT_DB_CONF
-      value: |- {{- $yaml | toYaml | nindent 8 }}
+      value: |- {{- $yaml.config | toYaml | nindent 8 }}
+    - name: INIT_DB_STORE
+      value: &dbInitStoreMount "/dbinit"
+    - name: INIT_DB_SECRETS
+      value: &dbInitSecretsMount "/dbsecrets"
   volumeMounts:
     # This volume mount is required b/c this is where we'll put the rendered initialization scripts
     # that the DB container is expected to execute during startup
     - name: {{  $volume | quote  }}
-      mountPath: "/dbinit"
+      mountPath: *dbInitStoreMount
+      {{- if $yaml.secret }}
+    - name: {{ (printf "%s-volume" $yaml.secret.name) | quote }}
+      mountPath: *dbInitSecretsMount
+      {{- end }}
     {{- end -}}
   {{- end -}}
 {{- end -}}
@@ -442,6 +458,18 @@ stringData:
       {{- range $key, $value := $secret.entries }}
   {{ $key | quote }}: {{ $value | quote }}
       {{- end }}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+
+{{- define "arkcase.initDatabase.secretVolume" -}}
+  {{- if (include "arkcase.hasInitDatabase" .) -}}
+    {{- $yaml := (include "arkcase.initDatabase.cached" . | fromYaml) -}}
+    {{- $secret := $yaml.secret -}}
+    {{- if $secret -}}
+- name: {{ (printf "%s-volume" $secret.name) | quote }}
+  secret:
+    secretName: {{ $secret.name | quote }}
     {{- end -}}
   {{- end -}}
 {{- end -}}
