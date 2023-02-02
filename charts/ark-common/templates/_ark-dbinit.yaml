@@ -12,42 +12,47 @@ that checks the boot order
   {{- end -}}
 
   {{- $dbInit := dict -}}
+  {{- $secretEntries := dict -}}
+  {{- $secret := (dict "name" (printf "%s-database-init" (include "common.fullname" .))) -}}
 
   {{- /* Sanitize the admin object */ -}}
-  {{- if hasKey $declaration "admin" -}}
-    {{- /* Verify that the admin password information is set properly */ -}}
-    {{- $admin := $declaration.admin -}}
-    {{- if kindIs "string" $admin -}}
-      {{- $admin = dict "password" $admin -}}
+  {{- $admin := dict -}}
+  {{- if or (not (hasKey $declaration "admin")) (not $declaration.admin) -}}
+    {{- $admin = (sha1sum "admin") -}}
+  {{- else -}}
+    {{- $admin = $declaration.admin -}}
+  {{- end -}}
+  {{- /* Verify that the admin password information is set properly */ -}}
+  {{- if kindIs "string" $admin -}}
+    {{- $admin = dict "password" $admin -}}
+  {{- end -}}
+  {{- if kindIs "map" $admin -}}
+    {{- if not (hasKey $admin "password") -}}
+      {{- $admin = set $admin "password" (sha1sum "admin") -}}
+    {{- end -}}
+    {{- $password := $admin.password -}}
+    {{- if (kindIs "string" $password) -}}
+      {{- $key := "__ADMIN_PASSWORD__" -}}
+      {{- $secretEntries = set $secretEntries $key $password -}}
+      {{- $password = (dict "secretName" $secret.name "secretKey" $key) -}}
+    {{- end -}}
+    {{- if (kindIs "map" $password) -}}
+      {{- /* If this is a map, validate its contents */ -}}
+      {{- if not (hasKey $password "secretName") -}}
+        {{- fail "The .Values.dbinit.admin.password map doesn't have a secretName" -}}
+      {{- end -}}
+      {{- if not (hasKey $password "secretKey") -}}
+        {{- fail "The .Values.dbinit.admin.password map doesn't have a secretKey" -}}
+      {{- end -}}
+      {{- $password = set $password "secretName" ($password.secretName | toString) -}}
+      {{- $password = set $password "secretKey" ($password.secretKey | toString) -}}
+      {{- $admin = set $admin "password" $password -}}
     {{- else -}}
-      {{- if not (kindIs "map" $admin) -}}
-        {{- $admin = dict -}}
-      {{- end -}}
-      {{- if hasKey $admin "password" -}}
-        {{- $password := $admin.password -}}
-        {{- if (kindIs "string" $password) -}}
-          {{- $admin = set $admin "password" $password -}}
-        {{- else if (kindIs "map" $password) -}}
-          {{- /* If this is a map, validate its contents */ -}}
-          {{- if not (hasKey $password "secretName") -}}
-            {{- fail "The .Values.dbinit.admin.password map doesn't have a secretName" -}}
-          {{- end -}}
-          {{- if not (hasKey $password "secretKey") -}}
-            {{- fail "The .Values.dbinit.admin.password map doesn't have a secretKey" -}}
-          {{- end -}}
-          {{- $password = set $password "secretName" ($password.secretName | toString) -}}
-          {{- $password = set $password "secretKey" ($password.secretKey | toString) -}}
-          {{- $admin = set $admin "password" $password -}}
-        {{- else -}}
-          {{- fail "The value for .Values.dbinit.admin.password must be either a map or a string" -}}
-        {{- end -}}
-      {{- else -}}
-        {{- $admin = set $admin "password" "admin" -}}
-      {{- end -}}
+      {{- fail "The value for .Values.dbinit.admin.password must be either a map or a string" -}}
     {{- end -}}
-    {{- if $admin -}}
-      {{- $dbInit = set $dbInit "admin" $admin -}}
-    {{- end -}}
+    {{- $dbInit = set $dbInit "admin" $admin -}}
+  {{- else -}}
+    {{- fail "The value for .Values.dbinit.admin must be either a map or a string" -}}
   {{- end -}}
 
   {{- /* Sanitize the user list */ -}}
@@ -61,31 +66,32 @@ that checks the boot order
       {{- if not (regexMatch "^.*$" $userName) -}}
         {{- fail (printf "The username [%s] is not a valid username" $userName) -}}
       {{- end -}}
-      {{- if kindIs "string" $userData -}}
+      {{- if or (kindIs "string" $userData) (not $userData) -}}
         {{- $userData = dict "password" $userData -}}
-      {{- else -}}
-        {{- if not (kindIs "map" $userData) -}}
-          {{- $userData = dict -}}
-        {{- end -}}
-        {{- if hasKey $userData "password" -}}
-          {{- $password := $userData.password -}}
-          {{- if (kindIs "string" $password) -}}
-            {{- $userData = set $userData "password" $password -}}
-          {{- else if (kindIs "map" $password) -}}
-            {{- /* If this is a map, validate its contents */ -}}
-            {{- if not (hasKey $password "secretName") -}}
-              {{- fail (printf "The .Values.dbinit.users.%s.password map doesn't have a secretName" $userName) -}}
-            {{- end -}}
-            {{- if not (hasKey $password "secretKey") -}}
-              {{- fail (printf "The .Values.dbinit.users.%s.password map doesn't have a secretKey" $userName) -}}
-            {{- end -}}
-            {{- $userData = set $userData "password" (dict "secretName" ($password.secretName | toString) "secretKey" ($password.secretKey | toString)) -}}
-          {{- else -}}
-            {{- fail "The value for .Values.dbinit.admin.password must be either a map or a string" -}}
-          {{- end -}}
-        {{- else -}}
+      {{- end -}}
+      {{- if kindIs "map" $userData -}}
+        {{- if not (hasKey $userData "password") -}}
           {{- $userData = set $userData "password" (sha1sum $userName) -}}
         {{- end -}}
+        {{- $password := $userData.password -}}
+        {{- if (kindIs "string" $password) -}}
+          {{- $secretEntries = set $secretEntries $userName $password -}}
+          {{- $password = (dict "secretName" $secret.name "secretKey" $userName) -}}
+        {{- end -}}
+        {{- if (kindIs "map" $password) -}}
+          {{- /* If this is a map, validate its contents */ -}}
+          {{- if not (hasKey $password "secretName") -}}
+            {{- fail (printf "The .Values.dbinit.users[%s].password map doesn't have a secretName" $userName) -}}
+          {{- end -}}
+          {{- if not (hasKey $password "secretKey") -}}
+            {{- fail (printf "The .Values.dbinit.users[%s].password map doesn't have a secretKey" $userName) -}}
+          {{- end -}}
+          {{- $userData = set $userData "password" (dict "secretName" ($password.secretName | toString) "secretKey" ($password.secretKey | toString)) -}}
+        {{- else -}}
+          {{- fail (printf "The value for .Values.dbinit.users[%s].password must either be a map or a string" $userName) -}}
+        {{- end -}}
+      {{- else -}}
+        {{- fail (printf "The .Values.dbinit.users[%s] object must be a map or a string" $userName) -}}
       {{- end -}}
       {{- if $userData -}}
         {{- $users = set $users $userName $userData -}}
@@ -222,9 +228,15 @@ that checks the boot order
   {{- end -}}
 
   {{- if $dbInit -}}
-    {{- (dict "result" $dbInit) | toYaml -}}
+    {{- if $secretEntries -}}
+      {{- $secret = set $secret "entries" $secretEntries -}}
+    {{- else -}}
+      {{- /* If there are no secrets to keep, we don't render a secret */ -}}
+      {{- $secret = dict -}}
+    {{- end -}}
+    {{- (dict "result" (dict "config" $dbInit "secret" $secret)) | toYaml -}}
   {{- else -}}
-    {{- (dict "result" "") | toYaml -}}
+    {{- (dict (dict "result" "" "secret" "")) | toYaml -}}
   {{- end -}}
 {{- end -}}
 
@@ -255,17 +267,17 @@ in JSON format
         {{- $obj = dict -}}
       {{- end -}}
     {{- end -}}
-    {{- $crap := set $masterCache $chartName $obj -}}
+    {{- $masterCache = set $masterCache $chartName $obj -}}
   {{- end -}}
   {{- get $masterCache $chartName | toYaml -}}
 {{- end -}}
 
 {{- define "arkcase.initDatabase.yaml" -}}
-  {{- include "arkcase.initDatabase.cached" . -}}
+  {{- get ((include "arkcase.initDatabase.cached" .) | fromYaml) "config" | toYaml -}}
 {{- end -}}
 
 {{- define "arkcase.initDatabase.json" -}}
-  {{- include "arkcase.initDatabase.yaml" . | fromYaml | mustToPrettyJson -}}
+  {{- get ((include "arkcase.initDatabase.yaml" .) | fromYaml) "config" | mustToPrettyJson -}}
 {{- end -}}
 
 {{- define "arkcase.initDatabase" -}}
@@ -295,7 +307,7 @@ that checks the boot order (remember to |bool the outcome!)
     {{- $containerName := (.name | toString) -}}
   {{- end -}}
   {{- if not $containerName -}}
-    {{- $containerName = "db-init" -}}
+    {{- $containerName = "database-init" -}}
   {{- end -}}
   {{- $ctx := . -}}
   {{- if hasKey . "ctx" -}}
@@ -355,14 +367,10 @@ that checks the boot order (remember to |bool the outcome!)
       {{- $adminPassword := ($yaml.admin).password -}}
       {{- if $adminPassword -}}
 - name: {{ $var | quote }}
-        {{- if kindIs "string" $adminPassword }}
-  value: {{ $adminPassword | quote }}
-        {{ else }}
   valueFrom:
     secretKeyRef:
       name: {{ $adminPassword.secretName | quote }}
       key: {{ $adminPassword.secretKey | quote }}
-        {{- end -}}
       {{- end -}}
     {{- end -}}
   {{- end -}}
@@ -407,15 +415,38 @@ that checks the boot order (remember to |bool the outcome!)
         {{- $user = get $users $user -}}
         {{- $password := $user.password -}}
 - name: {{ $var | quote }}
-        {{- if kindIs "string" $password }}
-  value: {{ $password | quote }}
-        {{ else }}
   valueFrom:
     secretKeyRef:
       name: {{ $password.secretName | quote }}
       key: {{ $password.secretKey | quote }}
-        {{- end -}}
       {{- end -}}
     {{- end -}}
+  {{- end -}}
+{{- end -}}
+
+{{- define "arkcase.initDatabase.secret" -}}
+  {{- if (include "arkcase.hasInitDatabase" .) -}}
+    {{- $yaml := (include "arkcase.initDatabase.cached" . | fromYaml) -}}
+    {{- $secret := $yaml.secret -}}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ $secret.name | quote }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels: {{- include "common.labels" . | nindent 4 }}
+    {{- with (.Values.labels).common }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  annotations:
+    timestamp: {{ date "20060102150405" now | quote }}
+    {{- with (.Values.annotations).common }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+type: Opaque
+stringData:
+    {{- range $key, $value := $secret.entries }}
+  {{ $key | quote }}: {{ $value | quote }}
+    {{- end }}
   {{- end -}}
 {{- end -}}
