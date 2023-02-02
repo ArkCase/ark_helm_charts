@@ -324,7 +324,6 @@ that checks the boot order (remember to |bool the outcome!)
     {{- if $yaml -}}
 - name: {{ $containerName | quote }}
   image: {{ include "arkcase.tools.image" (dict "ctx" $ctx "registry" (coalesce (($ctx.Values.image).dbinit).registry ($ctx.Values.image).registry) "repository" (coalesce (($ctx.Values.image).dbinit).repository "ark_dbinit") "tag" (coalesce (($ctx.Values.image).dbinit).tag "latest") ) | quote }}
-  command: [ "/wait-for-ports" ]
   env: {{- include "arkcase.tools.baseEnv" $ctx | nindent 4 }}
     - name: INIT_DB_TYPE
       value: {{ $dbType | quote }}
@@ -340,7 +339,7 @@ that checks the boot order (remember to |bool the outcome!)
     - name: {{  $volume | quote  }}
       mountPath: *dbInitStoreMount
       {{- if $yaml.secret }}
-    - name: {{ (printf "%s-volume" $yaml.secret.name) | quote }}
+    - name: {{ (printf "%s-secret" $yaml.secret.name) | quote }}
       mountPath: *dbInitSecretsMount
       {{- end }}
     {{- end -}}
@@ -467,7 +466,7 @@ stringData:
     {{- $yaml := (include "arkcase.initDatabase.cached" . | fromYaml) -}}
     {{- $secret := $yaml.secret -}}
     {{- if $secret -}}
-- name: {{ (printf "%s-volume" $secret.name) | quote }}
+- name: {{ (printf "%s-secret" $secret.name) | quote }}
   secret:
     secretName: {{ $secret.name | quote }}
     {{- end -}}
