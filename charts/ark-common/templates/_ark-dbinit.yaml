@@ -113,16 +113,7 @@ that checks the boot order
       {{- if not (regexMatch "^.*$" $dbName) -}}
         {{- fail (printf "The database name [%s] is not a valid database name" $dbName) -}}
       {{- end -}}
-      {{- if kindIs "string" $dbData -}}
-        {{- $dbData = dict "owner" $dbData -}}
-      {{- else -}}
-        {{- if not (kindIs "map" $dbData) -}}
-          {{- $dbData = dict -}}
-        {{- end -}}
-        {{- /* validate each database declaration */ -}}
-        {{- if hasKey $dbData "owner" -}}
-          {{- $dbData = set $dbData "owner" ($dbData.owner | toString) -}}
-        {{- end -}}
+      {{- if kindIs "map" $dbData -}}
         {{- if hasKey $dbData "schemas" -}}
           {{- if not (kindIs "map" $dbData.schemas) -}}
             {{- fail (printf "The .Values.dbinit.databases.%s.schemas object must be a map" $dbName) -}}
@@ -132,17 +123,6 @@ that checks the boot order
             {{- /* TODO: validate the schema name */ -}}
             {{- if not (regexMatch "^.*$" $schemaName) -}}
               {{- fail (printf "The schema name [%s] is not a valid schema name" $schemaName) -}}
-            {{- end -}}
-            {{- if kindIs "string" $schemaData -}}
-              {{- $schemaData = dict "owner" $schemaData -}}
-            {{- else -}}
-              {{- if not (kindIs "map" $schemaData) -}}
-                {{- $schemaData = dict -}}
-              {{- end -}}
-              {{- /* validate the schema declaration */ -}}
-              {{- if hasKey $schemaData "owner" -}}
-                {{- $schemaData = set $schemaData "owner" ($schemaData.owner | toString) -}}
-              {{- end -}}
             {{- end -}}
             {{- if $schemaData -}}
               {{- $schemas = set $schemas $schemaName $schemaData -}}
@@ -172,12 +152,7 @@ that checks the boot order
     {{- range $script := $declaration.scripts -}}
       {{- $pos = add $pos 1 -}}
       {{- /* validate each script */ -}}
-      {{- if kindIs "string" $script -}}
-        {{- $script = dict "query" $script -}}
-      {{- else -}}
-        {{- if not (kindIs "map" $script) -}}
-          {{- $script = dict -}}
-        {{- end -}}
+      {{- if kindIs "map" $script -}}
         {{- $map := dict -}}
         {{- $query := $script.query -}}
         {{- if $query -}}
@@ -195,14 +170,6 @@ that checks the boot order
           {{- fail (printf "Scripts must have EXACTLY ONE of 'query', 'url', or 'file' (position %d)" $pos) -}}
         {{- end -}}
 
-        {{- $runAs := $script.runAs -}}
-        {{- if $runAs -}}
-          {{- $script = set $script "runAs" ($runAs | toString) -}}
-        {{- end -}}
-        {{- $runOn := $script.runOn -}}
-        {{- if $runOn -}}
-          {{- $script = set $script "runOn" ($runOn | toString) -}}
-        {{- end -}}
         {{- if and (hasKey $script "onlyFor") (kindIs "slice" $script.onlyFor) -}}
           {{- $onlyFor := list -}}
           {{- range $dbName := $script.onlyFor -}}
@@ -217,6 +184,11 @@ that checks the boot order
             {{- $script = set $script "onlyFor" $onlyFor -}}
           {{- end -}}
         {{- end -}}
+        {{- end -}}
+      {{- else if kindIs "string" $script -}}
+        {{- $script = dict "query" $script -}}
+      {{- else -}}
+        {{- fail (printf "Script declarations must either be a map or a string (position %d)" $pos) -}}
       {{- end -}}
       {{- if $script -}}
         {{- $scripts = append $scripts $script -}}
