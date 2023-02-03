@@ -432,12 +432,26 @@ stringData:
   {{- end -}}
 {{- end -}}
 
+{{- define "__.arkcase.initDatabase.secretVolume.name" -}}
+  {{- printf "%s-secret" .name -}}
+{{- end -}}
+
+{{- define "arkcase.initDatabase.secretVolume.name" -}}
+  {{- if (include "arkcase.hasInitDatabase" .) -}}
+    {{- $yaml := (include "arkcase.initDatabase.cached" . | fromYaml) -}}
+    {{- $secret := $yaml.secret -}}
+    {{- if $secret -}}
+{{ include "__.arkcase.initDatabase.secretVolume.name" $secret | quote }}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+
 {{- define "arkcase.initDatabase.secretVolume" -}}
   {{- if (include "arkcase.hasInitDatabase" .) -}}
     {{- $yaml := (include "arkcase.initDatabase.cached" . | fromYaml) -}}
     {{- $secret := $yaml.secret -}}
     {{- if $secret -}}
-- name: {{ (printf "%s-secret" $secret.name) | quote }}
+- name: {{ include "__.arkcase.initDatabase.secretVolume.name" $secret | quote }}
   secret:
     secretName: {{ $secret.name | quote }}
     {{- end -}}
