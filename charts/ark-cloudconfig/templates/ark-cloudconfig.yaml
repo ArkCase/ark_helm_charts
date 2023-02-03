@@ -83,7 +83,7 @@ spec:
           imagePullPolicy: {{ include "arkcase.tools.imagePullPolicy" . | quote }}
           env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
             - name: DATA_DIR
-              value: "/acm/data/acm/acm-config-server-repo"
+              value: "/app/data/acm/acm-config-server-repo"
           {{- include "arkcase.subsystem.ports" . | nindent 10 }}
           {{- if .Values.command }}
           command: {{- .Values.command | toYaml | nindent 12 }}
