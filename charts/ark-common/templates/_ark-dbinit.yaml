@@ -441,7 +441,7 @@ stringData:
     {{- $yaml := (include "arkcase.initDatabase.cached" . | fromYaml) -}}
     {{- $secret := $yaml.secret -}}
     {{- if $secret -}}
-{{ include "__.arkcase.initDatabase.secretVolume.name" $secret | quote }}
+{{ include "__.arkcase.initDatabase.secretVolume.name" $secret }}
     {{- end -}}
   {{- end -}}
 {{- end -}}
