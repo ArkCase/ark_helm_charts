@@ -93,7 +93,7 @@ spec:
               mountPath: "/docker-entrypoint-initdb.d"
             - name: "data"
               mountPath: "/var/lib/pgsql/data"
-            - name: "secrets"
+            - name: {{ include "arkcase.initDatabase.secretVolume.name" . | quote }}
               mountPath: "/app/secrets"
               readOnly: true
       volumes:
