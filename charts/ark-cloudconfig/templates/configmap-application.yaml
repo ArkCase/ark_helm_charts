@@ -35,9 +35,9 @@ data:
         file: "%d{yyyy-MM-dd HH:mm:ss,SSS} [%thread] %-5level %logger.%M - %msg%n"
     jms.message.buffer.window: 1
     acm.activemq:
-      broker-url: "tcp://messaging:61616"
-      user: {{ default "cloudconfig" ((.Values.configuration).messaging).username }}
-      password: {{ default "c70uDk0nf19!" ((.Values.configuration).messaging).password }}
+      broker-url: {{ (((.Values.configuration).messaging).broker).transportConnectorURI | default "tcp://messaging:61616" | quote }}
+      user: {{ (((.Values.configuration).messaging).broker).user | default "cloudconfig" | quote }}
+      password: {{ (((.Values.configuration).messaging).broker).password | default "c70uDk0nf19!" | quote }}
       default-destination: configuration.changed
       labels-destination: labels.changed
       ldap-destination: ldap.changed
