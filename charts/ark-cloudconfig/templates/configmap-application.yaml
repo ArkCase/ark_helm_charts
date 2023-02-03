@@ -19,11 +19,11 @@ data:
     spring:
       profiles.active: native
       cloud.config.server:
-        native.searchLocations: "file://${config_root},file://${config_root}/rules,file://${config_root}/lookups,file://${config_root}/ldap,file://${config_root}/labels"
+        native.searchLocations: "file://${DATA_DIR},file://${DATA_DIR}/rules,file://${DATA_DIR}/lookups,file://${DATA_DIR}/ldap,file://${DATA_DIR}/labels"
       jms:
         pub-sub-domain: true
-    properties.folder.path: "${config_root}"
-    branding.files.folder.path: "${config_root}/branding"
+    properties.folder.path: "${DATA_DIR}"
+    branding.files.folder.path: "${DATA_DIR}/branding"
     logging:
       # file.max-history: 10
       # file.max-size: 10MB
