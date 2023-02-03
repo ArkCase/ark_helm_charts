@@ -139,6 +139,10 @@ configuration:
       transportConnectorURI: &brokerUrl "tcp://messaging:61616"
       user: ""
       password: ""
+    config:
+      brokerUrl: *brokerUrl
+      user: "cloduconfig"
+      password: "c70uDk0nf19!"
     stomp:
       stomp_broker_relay.relay_protocol: "ssl"
       stomp_broker_relay.relay_host: *brokerUrl
