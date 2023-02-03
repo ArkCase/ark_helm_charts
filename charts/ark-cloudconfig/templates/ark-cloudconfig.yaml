@@ -65,6 +65,7 @@ spec:
               value: |
                 jobs:
                   # We know the Cloudconfig image uses user 997i (centos) , 1997 (rocky)
+                  # TODO: Make this autodetected via the securityContext
                   - ownership: "1997:1997"
                     permissions: "u=rwX,g=rX,o="
                     flags: [ "recurse", "noforced", "create", "changes" ]
@@ -89,6 +90,9 @@ spec:
           {{- end }}
           {{- with .Values.resources }}
           resources: {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with (.Values.securityContext).cloudconfig }}
+          securityContext: {{- toYaml . | nindent 12 }}
           {{- end }}
           volumeMounts:
             - name: "data"
