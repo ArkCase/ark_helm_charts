@@ -80,7 +80,7 @@ spec:
           image: {{ include "arkcase.tools.image" . | quote }}
           imagePullPolicy: {{ include "arkcase.tools.imagePullPolicy" . | quote }}
           env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
-            {{- include "arkcase.initDatabase.adminPassEnv" (dict "ctx" $ "var" "POSTGRESQL_PASSWORD") | nindent 12 }}
+            {{- include "arkcase.initDatabase.adminPassEnv" (dict "ctx" $ "var" "POSTGRESQL_ADMIN_PASSWORD") | nindent 12 }}
           {{- include "arkcase.subsystem.ports" . | nindent 10 }}
           {{- if .Values.command }}
           command: {{- .Values.command | toYaml | nindent 12 }}
