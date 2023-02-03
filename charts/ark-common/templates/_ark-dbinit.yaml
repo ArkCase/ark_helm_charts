@@ -184,7 +184,6 @@ that checks the boot order
             {{- $script = set $script "onlyFor" $onlyFor -}}
           {{- end -}}
         {{- end -}}
-        {{- end -}}
       {{- else if kindIs "string" $script -}}
         {{- $script = dict "query" $script -}}
       {{- else -}}
