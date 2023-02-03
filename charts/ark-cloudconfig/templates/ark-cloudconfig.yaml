@@ -71,7 +71,7 @@ spec:
                     targets: [ "/app/data" ]
           volumeMounts:
             - name: "data"
-              mountPath: &configRoot "/app/data"
+              mountPath: &dataDir "/app/data"
         {{- include "arkcase.initDependencies.container" (dict "ctx" . "name" "init-dependencies") | nindent 8 }}
       containers:
         - name: cloudconfig
@@ -82,7 +82,7 @@ spec:
           imagePullPolicy: {{ include "arkcase.tools.imagePullPolicy" . | quote }}
           env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
             - name: config_root
-              value: *configRoot
+              value: "/acm/data/acm/acm-config-server-repo"
           {{- include "arkcase.subsystem.ports" . | nindent 10 }}
           {{- if .Values.command }}
           command: {{- .Values.command | toYaml | nindent 12 }}
@@ -92,13 +92,13 @@ spec:
           {{- end }}
           volumeMounts:
             - name: "data"
-              mountPath: *configRoot
+              mountPath: *dataDir
             - name: "application-cfg"
-              mountPath: "/app/data/application.yml"
+              mountPath: "/app/data/acm/acm-config-server-repo/application.yml"
               subPath: "application.yml"
               readOnly: true
             - name: "server-cfg"
-              mountPath: "/app/data/arkcase-server.yaml"
+              mountPath: "/app/data/acm/acm-config-server-repo/arkcase-server.yaml"
               subPath: "arkcase-server.yaml"
       volumes:
         {{- include "arkcase.persistence.volume" (dict "name" "data" "ctx" $) | nindent 8 }}
