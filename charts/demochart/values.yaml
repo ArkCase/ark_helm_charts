@@ -90,6 +90,16 @@ messaging:
       runAsGroup: 1998
   # image:
   #   tag: 5.16.2
+  configuration:
+    users:
+      - name: &arkcaseMessagingUser "arkcase"
+        password: &arkcaseMessagingPassword "Thoan-aeL[u>u7eC"
+        groups: "admins"
+        roles: "admin"
+      - name: &cloudConfigMessagingUser "cloudconfig"
+        password: &cloudConfigMessagingPassword "mie|Qu}ai8ahniu|"
+        groups: "admins"
+        roles: "admin"
 
 ldap:
   service:
@@ -102,6 +112,22 @@ search:
 viewer:
   service:
     # external: www.viewer.com
+
+rdbms:
+  dbinit:
+    admin: "YieghuV!ahh0EoC1"
+    users:
+      arkcase: &arkcaseDbPassword "ho!aKaeyoh-zo1do"
+      content: &contentDbPassword "eth3be.ox4phah!W"
+      # pentaho: &pentahoDbPassword "faiv>a[gheeP3Cai"
+      # jcr: &jcrDbPassword "ong>oo0Ocha~up^e"
+      # quartz: &quartzDbPassword "lie't+ahra6aiShu"
+    databases:
+      arkcase: &arkcaseDb "arkcase"
+      content: &contentDb "content"
+      # pentaho: &pentahoDb "pentaho"
+      # jcr: &jcrDb "jcr"
+      # quartz: &quartzDb "quartz"
 
 config:
   service:
@@ -120,6 +146,50 @@ config:
           - 61613
           - 61614
           - 61616
+
+  # These settings will get put straight into the ArkCase configuration
+  # file (arkcase-server.yaml)
+  configuration:
+    db:
+        driverClassName: "org.postgresql.Driver"
+        # Can't append the DB name here :(
+        url: "jdbc:postgresql://rdbms:5432/arkcase"
+        username: *arkcaseDb
+        password: *arkcaseDbPassword
+
+    messaging:
+      config:
+        brokerUrl: &brokerUrl "tcp://messaging:61616"
+        user: *cloudConfigMessagingUser
+        password: *cloudConfigMessagingPassword
+      broker:
+        transportConnectorURI: *brokerUrl
+        user: *arkcaseMessagingUser
+        password: *arkcaseMessagingPassword
+      stomp:
+        stomp_broker_relay.relay_host: *brokerUrl
+        stomp_broker_relay.system_login: *arkcaseMessagingPassword
+        stomp_broker_relay.system_passcode: *arkcaseMessagingUser
+
+    reports:
+      plugin:
+        PENTAHO_SERVER_URL: "https://reports"
+        PENTAHO_SERVER_USER: "arkcase-admin"
+        PENTAHO_SERVER_PASSWORD: "Ai-0c9d92f7ef9b1d6a1"
+        PENTAHO_SERVER_INTERNAL_URL: "http://reports"
+        PENTAHO_SERVER_INTERNAL_PORT: 2002
+
+    content:
+      admin:
+        baseurl: "https://content/alfresco/s/admin/admin-sync"
+        username: &contentUser "admin"
+        password: &contentPassword "admin"
+      sync:
+        host: "content"
+        port: 443
+        enabled: true
+        username: *contentUser
+        password: *contentPassword
 
 reports:
   service:
@@ -288,7 +358,7 @@ persistence:
 # "name" is the name of an existing volume claim to be re-used, can't be used if "claim" is present
 #      name: "name-of-the-claim-to-consume"
 # "spec" should match the contents of PersistenceVolumeClaim.spec, can't be used if "name" is present
-#      spec: 
+#      spec:
 #        storageClassName: ""
 #        volumeName: the-volume-to-claim
 #        accessModes:
