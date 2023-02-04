@@ -9,14 +9,132 @@
 # This should group all application-specific configurations
 #
 configuration:
+
   # Console username and password: Please set a secure password
   rootPassword: admin
 
-  # Limit, in GiB, of how big the KahaDB store can grow
-  maxStoreUsageGb: 50
+  quartz:
+    jndiUrl: "Quartz"
+    delegateClass: "org.quartz.impl.jdbcjobstore.PostgreSQLDelegate"
 
-  # Limit, in GiB, of how much temporary storage MariaDB can use
-  maxTempUsageGb: 10
+  hibernate:
+    # dialect: "h2"
+    # dialect: "hsql"
+    # dialect: "mysql5"
+    # dialect: "oracle10g"
+    dialect: "postgresql"
+    # dialect: "sqlserver"
+
+  jcr:
+    base: &base
+      url: "java:comp/env/jdbc/jackrabbit"
+      db: "postgresql"
+
+    repository: &repository
+      <<: *base
+      class: "org.apache.jackrabbit.core.fs.db.DbFileSystem"
+      # class: "org.apache.jackrabbit.core.fs.db.OracleFileSystem"
+      # class: "org.apache.jackrabbit.core.fs.db.MSSqlFileSystem"
+
+    dataStore:
+      <<: *base
+      class: "org.apache.jackrabbit.core.data.db.DbDataStore"
+      # class: "org.apache.jackrabbit.core.data.FileDataStore"
+
+    workspaces:
+      <<: *repository
+
+    workspacesPm: &workspacePm
+      <<: *base
+      # class: "org.apache.jackrabbit.core.persistence.bundle.MySqlPersistenceManager"
+      # class: "org.apache.jackrabbit.core.persistence.bundle.OraclePersistenceManager"
+      # class: "org.apache.jackrabbit.core.persistence.bundle.MSSqlPersistenceManager"
+      class: "org.apache.jackrabbit.core.persistence.bundle.PostgreSQLPersistenceManager"
+      # class: "org.apache.jackrabbit.core.persistence.pool.H2PersistenceManager"
+
+    versioning:
+      <<: *repository
+
+    versioningPm:
+      <<: *workspacePm
+
+    dbJournal:
+      <<: *base
+
+  # Some JDBC URL Examples:
+  # url: "jdbc:mysql://rdbms:3306/hibernate"/>
+  # url: "jdbc:oracle:thin:@rdbms:1521/XE"/>
+  # url: "jdbc:sqlserver://rdbms:1433;DatabaseName=hibernate"/>
+  # url: "jdbc:postgresql://rdbms:5432/hibernate"
+
+  db:
+    baseDb: &baseDb
+      driverClassName: "org.postgresql.Driver"
+      initialSize: "0"
+      maxActive: "20"
+      maxIdle: "5"
+      maxWait: "10000"
+      minIdle: "0"
+      testOnBorrow: "true"
+      validationQuery: "select 1"
+
+    sampleBase: &sampleBase
+      <<: *baseDb
+      driverClassName: "org.hsqldb.jdbcDriver"
+      url: "jdbc:hsqldb:hsql://rdbms:5432/sampledata"
+
+
+    # ???
+    sampleData:
+      <<: *sampleBase
+      username: "pentaho_user"
+      password: "password"
+
+    # ???
+    sampleDataAdmin:
+      <<: *sampleBase
+      username: "pentaho_admin"
+      password: "password"
+
+    hibernateBase: &hibernateBase
+      <<: *baseDb
+      username: "hibuser"
+      password: "password"
+      url: "jdbc:postgresql://rdbms:5432/hibernate"
+
+    hibernate:
+      <<: *hibernateBase
+      defaultAutoCommit: "true"
+      jdbcInterceptors: "ConnectionState"
+
+    audit:
+      <<: *hibernateBase
+
+    pentaho: &pentaho
+      <<: *baseDb
+      username: "pentaho_user"
+      password: "password"
+      url: "jdbc:postgresql://rdbms:5432/pentaho"
+
+    quartz:
+      <<: *pentaho
+      url: "jdbc:postgresql://rdbms:5432/quartz"
+
+    pdiOperationsMart:
+      <<: *hibernateBase
+
+    pentahoOperationsMart:
+      <<: *hibernateBase
+
+    liveLogging:
+      <<: *hibernateBase
+      url: "jdbc:postgresql://rdbms:5432/hibernate?searchpath=pentaho_dilogs"
+
+    jcr:
+      <<: *baseDb
+      username: "jcr_user"
+      password: "password"
+      url: "jdbc:postgresql://rdbms:5432/jackrabbit"
 
 # Please leave the `replicaCount` to 1 for the time being. Clustering is not
 # supported yet.

@@ -81,11 +81,6 @@ spec:
           image: {{ include "arkcase.tools.image" . | quote }}
           imagePullPolicy: {{ include "arkcase.tools.imagePullPolicy" . | quote }}
           env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
-            - name: MYSQL_ROOT_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "arkcase.subsystem.name" . | quote }}
-                  key: MYSQL_ROOT_PASSWORD
           {{- include "arkcase.subsystem.ports" . | nindent 10 }}
           {{- if .Values.command }}
           command: {{- .Values.command | toYaml | nindent 12 }}
@@ -96,14 +91,36 @@ spec:
           volumeMounts:
             - name: "data"
               mountPath: "/home/pentaho/app/pentaho/pentaho-server/data"
-            - name: "secrets"
-              mountPath: "/app/secrets"
+            - name: &secrets "secrets"
+              mountPath: "/home/pentaho/app/pentaho/pentaho-server/tomcat/webapps/pentaho/META-INF/context.xml"
+              subPath: &contextXml "context.xml"
+              readOnly: true
+            - name: &configMap "configMap"
+              mountPath: "/home/pentaho/app/pentaho/pentaho-server/pentaho-solutions/system/jackrabbit/repository.xml"
+              subPath: &repositoryXml "repository.xml"
+              readOnly: true
+            - name: *configMap
+              mountPath: "/home/pentaho/app/pentaho/pentaho-server/pentaho-solutions/system/hibernate/hibernate-settings.xml"
+              subPath: &hibernateSettingsXml "hibernate-settings.xml"
               readOnly: true
       volumes:
         {{- include "arkcase.persistence.volume" (dict "name" "data" "ctx" $) | nindent 8 }}
-        - name: secrets
+        - name: *secrets
           secret:
+            optional: false
             secretName: {{ include "arkcase.subsystem.name" . | quote }}
+            items:
+              - key: *contextXml
+                path: *contextXml
+        - name: *configMap
+          configMap:
+            optional: false
+            name: {{ include "arkcase.subsystem.name" . | quote }}
+            items:
+              - key: *repositoryXml
+                path: *repositoryXml
+              - key: *hibernateSettingsXml
+                path: *hibernateSettingsXml
       {{- with .Values.nodeSelector }}
       nodeSelector: {{- toYaml . | nindent 8 }}
       {{- end }}
