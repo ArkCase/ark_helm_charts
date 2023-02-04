@@ -13,22 +13,40 @@ configuration:
   # Console username and password: Please set a secure password
   rootPassword: admin
 
-  quartz:
-    jndiUrl: "Quartz"
-    delegateClass: "org.quartz.impl.jdbcjobstore.PostgreSQLDelegate"
+  db: 
+    # Uncomment the correct one
+    # dialect: &dialect "mysql5"
+    # dialect: &dialect "oracle10g"
+    dialect: &dialect "postgresql"
+    # dialect: &dialect "sqlserver"
 
-  hibernate:
-    # dialect: "h2"
-    # dialect: "hsql"
-    # dialect: "mysql5"
-    # dialect: "oracle10g"
-    dialect: "postgresql"
-    # dialect: "sqlserver"
+    # For Oracle 12c we must use different initialization
+    # scripts, but the Oracle 10g dialect
+    # scripts: "oracle12c"
+    scripts: *dialect
+
+    host: "rdbms"
+    port: 5432
+    user: "postgres"
+    # Unfortunately this is required to run the DB initializer scripts
+    pass: "...."
+
+  quartz:
+    # delegateClass: "org.quartz.impl.jdbcjobstore.StdJDBCDelegate"
+    # delegateClass: "org.quartz.impl.jdbcjobstore.MSSQLDelegate"
+    # delegateClass: "org.quartz.impl.jdbcjobstore.oracle.OracleDelegate"
+    delegateClass: "org.quartz.impl.jdbcjobstore.PostgreSQLDelegate"
 
   jcr:
     base: &base
       url: "java:comp/env/jdbc/jackrabbit"
-      db: "postgresql"
+      # These are the allowed values here, so you may have to diverge from
+      # the dialect, above
+      # db: mssql
+      # db: mysql
+      # db: oracle
+      # db: postgresql (matches the *dialect anchor, above)
+      db: *dialect
 
     repository: &repository
       <<: *base
@@ -50,7 +68,6 @@ configuration:
       # class: "org.apache.jackrabbit.core.persistence.bundle.OraclePersistenceManager"
       # class: "org.apache.jackrabbit.core.persistence.bundle.MSSqlPersistenceManager"
       class: "org.apache.jackrabbit.core.persistence.bundle.PostgreSQLPersistenceManager"
-      # class: "org.apache.jackrabbit.core.persistence.pool.H2PersistenceManager"
 
     versioning:
       <<: *repository
@@ -67,7 +84,7 @@ configuration:
   # url: "jdbc:sqlserver://rdbms:1433;DatabaseName=hibernate"/>
   # url: "jdbc:postgresql://rdbms:5432/hibernate"
 
-  db:
+  jdbc:
     baseDb: &baseDb
       driverClassName: "org.postgresql.Driver"
       initialSize: "0"

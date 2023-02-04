@@ -95,13 +95,17 @@ spec:
               mountPath: "/home/pentaho/app/pentaho/pentaho-server/tomcat/webapps/pentaho/META-INF/context.xml"
               subPath: &contextXml "context.xml"
               readOnly: true
-            - name: &configMap "configMap"
+            - name: *secrets
               mountPath: "/home/pentaho/app/pentaho/pentaho-server/pentaho-solutions/system/jackrabbit/repository.xml"
               subPath: &repositoryXml "repository.xml"
               readOnly: true
-            - name: *configMap
+            - name: &configMap "configMap"
               mountPath: "/home/pentaho/app/pentaho/pentaho-server/pentaho-solutions/system/hibernate/hibernate-settings.xml"
               subPath: &hibernateSettingsXml "hibernate-settings.xml"
+              readOnly: true
+            - name: *configMap
+              mountPath: "/arkcase-boot.sh"
+              subPath: &arkcaseBootSh "arkcase-boot.sh"
               readOnly: true
       volumes:
         {{- include "arkcase.persistence.volume" (dict "name" "data" "ctx" $) | nindent 8 }}
@@ -112,15 +116,17 @@ spec:
             items:
               - key: *contextXml
                 path: *contextXml
+              - key: *repositoryXml
+                path: *repositoryXml
         - name: *configMap
           configMap:
             optional: false
             name: {{ include "arkcase.subsystem.name" . | quote }}
             items:
-              - key: *repositoryXml
-                path: *repositoryXml
               - key: *hibernateSettingsXml
                 path: *hibernateSettingsXml
+              - key: *arkcaseBootSh
+                path: *arkcaseBootSh
       {{- with .Values.nodeSelector }}
       nodeSelector: {{- toYaml . | nindent 8 }}
       {{- end }}

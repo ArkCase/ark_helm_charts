@@ -7,7 +7,9 @@
   {{- if or (not $ctx) (not (kindIs "map" $ctx)) -}}
     {{- $ctx = dict -}}
   {{- end -}}
-  {{- range $key, $value := $ctx -}}
+{{- /* This isn't indented to make it easier to render it properly */ -}}
+{{- range $key, $value := $ctx -}}
 {{ $key }}="{{ $value }}"
-  {{- end -}}
+{{ end -}}
+{{- /* End unindented block */ -}}
 {{- end -}}
