@@ -97,28 +97,25 @@ spec:
           volumeMounts:
             - name: "data"
               mountPath: *dataDir
-            - name: "application-cfg"
+            - name: &secrets "secrets"
               mountPath: "/app/data/acm/acm-config-server-repo/application.yml"
-              subPath: "application.yml"
+              subPath: &applicationYaml "application.yml"
               readOnly: true
-            - name: "server-cfg"
+            - name: *secrets
               mountPath: "/app/data/acm/acm-config-server-repo/arkcase-server.yaml"
-              subPath: "arkcase-server.yaml"
+              subPath: &arkcaseServerYaml "arkcase-server.yaml"
+              readOnly: true
       volumes:
         {{- include "arkcase.persistence.volume" (dict "name" "data" "ctx" $) | nindent 8 }}
-        - name: "application-cfg"
-          configMap:
-            name: {{ include "common.fullname" . | quote }}
+        - name: *secrets
+          secret:
+            secretName: {{ include "common.fullname" . | quote }}
             items:
-              - key: &applicationYaml "application.yml"
+              - key: *applicationYaml
                 path: *applicationYaml
-        - name: "server-cfg"
-          configMap:
-            name: {{ printf "%s-server-config" (include "common.fullname" .) | quote }}
-            items:
-              - key: &serverYaml "arkcase-server.yaml"
-                path: *serverYaml
-            defaultMode: 0777
+              - key: *arkcaseServerYaml
+                path: *arkcaseServerYaml
+            defaultMode: 0444
 
 {{- if (include "arkcase.persistence.enabled" .) }}
 {{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "data") | indent 0 }}
