@@ -59,12 +59,10 @@ spec:
         - name: set-permissions
           image: {{ include "arkcase.tools.subimage" (dict "ctx" . "name" "setperm" "image" "ark_setperm") | quote }}
           env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
-            - name: RDBS
-              value: "rdbs"
             - name: JOBS
               value: |
                 jobs:
-                  # We know the MariaDB image uses user 27
+                  # We know the UID for the Pentaho container is 998:996
                   - ownership: "998:996"
                     permissions: "u=rwX,g=rX,o="
                     flags: [ "recurse", "noforced", "create", "changes" ]
@@ -75,7 +73,7 @@ spec:
         {{- include "arkcase.initDependencies.container" . | nindent 8 }}
       containers:
         - name: pentaho
-          {{- with (.Values.securityContext).mariadb }}
+          {{- with (.Values.securityContext).pentaho }}
           securityContext: {{- toYaml . | nindent 12 }}
           {{- end }}
           image: {{ include "arkcase.tools.image" . | quote }}
