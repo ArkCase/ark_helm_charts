@@ -110,7 +110,7 @@ spec:
         - name: *secrets
           secret:
             optional: false
-            secretName: {{ include "arkcase.subsystem.name" . | quote }}
+            secretName: {{ include "common.fullname" . | quote }}
             items:
               - key: *contextXml
                 path: *contextXml
@@ -119,7 +119,7 @@ spec:
         - name: *configMap
           configMap:
             optional: false
-            name: {{ include "arkcase.subsystem.name" . | quote }}
+            name: {{ include "common.fullname" . | quote }}
             items:
               - key: *hibernateSettingsXml
                 path: *hibernateSettingsXml
