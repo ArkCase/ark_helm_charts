@@ -97,6 +97,10 @@ spec:
               mountPath: "/home/pentaho/app/pentaho/pentaho-server/pentaho-solutions/system/jackrabbit/repository.xml"
               subPath: &repositoryXml "repository.xml"
               readOnly: true
+            - name: *secrets
+              mountPath: "/dbconfig.json"
+              subPath: &dbconfigJson "dbconfig.json"
+              readOnly: true
             - name: &configMap "config-map"
               mountPath: "/home/pentaho/app/pentaho/pentaho-server/pentaho-solutions/system/hibernate/hibernate-settings.xml"
               subPath: &hibernateSettingsXml "hibernate-settings.xml"
@@ -114,6 +118,8 @@ spec:
             items:
               - key: *contextXml
                 path: *contextXml
+              - key: *dbconfigJson
+                path: *dbconfigJson
               - key: *repositoryXml
                 path: *repositoryXml
         - name: *configMap
