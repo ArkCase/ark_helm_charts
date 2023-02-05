@@ -70,7 +70,7 @@ spec:
           volumeMounts:
             - name: "data"
               mountPath: "/data"
-        {{- include "arkcase.initDatabase.container" (dict "ctx" $ "db" "mariadb" "volume" "dbinit") | nindent 8 }}
+        {{- include "arkcase.initDatabase.container" (dict "ctx" $ "db" "mariadb" "volume" "dbinit" "shell" true) | nindent 8 }}
         {{- include "arkcase.initDependencies.container" $ | nindent 8 }}
       containers:
         - name: mariadb
@@ -90,7 +90,7 @@ spec:
           {{- end }}
           volumeMounts:
             - name: "dbinit"
-              mountPath: "/docker-entrypoint-initdb.d"
+              mountPath: "/opt/app-root/src/mysql-init"
             - name: "data"
               mountPath: "/var/lib/mysql/data"
             - name: {{ include "arkcase.initDatabase.secretVolume.name" . | quote }}
