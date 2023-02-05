@@ -315,10 +315,10 @@ that checks the boot order (remember to |bool the outcome!)
       value: &dbInitSecretsMount "/dbsecrets"
     - name: INIT_DB_SHELL
       value: {{ $shell | quote }}
-    {{- if $scriptSources -}}
+    {{- if $scriptSources }}
     - name: INIT_DB_SHELL_SOURCES
       value: {{ $scriptSources | quote }}
-    {{- end -}}
+    {{- end }}
   volumeMounts:
     # This volume mount is required b/c this is where we'll put the rendered initialization scripts
     # that the DB container is expected to execute during startup
