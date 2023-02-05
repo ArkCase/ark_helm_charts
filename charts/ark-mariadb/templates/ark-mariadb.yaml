@@ -70,7 +70,7 @@ spec:
           volumeMounts:
             - name: "data"
               mountPath: "/data"
-        {{- include "arkcase.initDatabase.container" (dict "ctx" $ "db" "mariadb" "volume" "dbinit" "shell" true) | nindent 8 }}
+        {{- include "arkcase.initDatabase.container" (dict "ctx" $ "db" "mariadb" "volume" "init" "shell" true) | nindent 8 }}
         {{- include "arkcase.initDependencies.container" $ | nindent 8 }}
       containers:
         - name: mariadb
@@ -89,7 +89,7 @@ spec:
           resources: {{- toYaml . | nindent 12 }}
           {{- end }}
           volumeMounts:
-            - name: "dbinit"
+            - name: "init"
               mountPath: "/opt/app-root/src/mysql-init"
             - name: "data"
               mountPath: "/var/lib/mysql/data"
@@ -98,7 +98,7 @@ spec:
               readOnly: true
       volumes:
         {{- include "arkcase.initDatabase.secretVolume" . | nindent 8 }}
-        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "dbinit") | nindent 8 }}
+        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "init") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
       {{- with .Values.nodeSelector }}
       nodeSelector: {{- toYaml . | nindent 8 }}
@@ -111,7 +111,7 @@ spec:
       {{- end }}
 
 {{- if (include "arkcase.persistence.enabled" .) }}
-{{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "dbinit") | indent 0 }}
+{{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "init") | indent 0 }}
 {{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "data") | indent 0 }}
 {{- end }}
 
