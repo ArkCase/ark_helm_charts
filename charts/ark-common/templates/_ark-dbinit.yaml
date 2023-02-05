@@ -271,6 +271,15 @@ that checks the boot order (remember to |bool the outcome!)
   {{- if or (not (hasKey . "volume")) (empty .volume) (not (kindIs "string" .volume)) -}}
     {{- fail "The 'volume' parameter must be present, a string-value, and non-empty" -}}
   {{- end -}}
+  {{- $shell := false -}}
+  {{- if .shell -}}
+    {{- if (kindIs "bool" .shell) -}}
+      {{- $shell = .shell -}}
+    {{- else -}}
+      {{- $shell = (eq (.shell | toString | trim | lower) "true") -}}
+    {{- end -}}
+  {{- end -}}
+  {{- $scriptSources := (.scriptSources | default "") -}}
   {{- $volume := (.volume | trim) -}}
   {{- $containerName := "" -}}
   {{- if hasKey . "name" -}}
@@ -304,6 +313,12 @@ that checks the boot order (remember to |bool the outcome!)
       value: &dbInitStoreMount "/dbinit"
     - name: INIT_DB_SECRETS
       value: &dbInitSecretsMount "/dbsecrets"
+    - name: INIT_DB_SHELL
+      value: {{ $shell | quote }}
+    {{- if $scriptSources -}}
+    - name: INIT_DB_SHELL_SOURCES
+      value: {{ $scriptSources | quote }}
+    {{- end -}}
   volumeMounts:
     # This volume mount is required b/c this is where we'll put the rendered initialization scripts
     # that the DB container is expected to execute during startup
