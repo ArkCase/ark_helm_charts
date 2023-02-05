@@ -120,6 +120,7 @@ spec:
           configMap:
             optional: false
             name: {{ include "common.fullname" . | quote }}
+            defaultMode: 0555
             items:
               - key: *hibernateSettingsXml
                 path: *hibernateSettingsXml
