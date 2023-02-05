@@ -4,12 +4,12 @@ set -euo pipefail
 DBCONFIG="/dbconfig.json"
 
 say() {
-    echo -e "${@}"
+	echo -e "${@}"
 }
 
 fail() {
-    say "${@}" 1>&2
-    exit ${EXIT_CODE:-1}
+	say "${@}" 1>&2
+	exit ${EXIT_CODE:-1}
 }
 
 [ -v PENTAHO_HOME ] || PENTAHO_HOME="/home/pentaho/app/pentaho/pentaho-server"
@@ -25,23 +25,24 @@ say "The database dialect is [${DB_DIALECT}]..."
 SCRIPT_DIALECT="$(jq -r .script < "${DBCONFIG}")"
 # Just for safety
 if [ -z "${SCRIPT_DIALECT}" ] ; then
-    say "\tNo scripts dialect provided, so using the same database dialect"
-    SCRIPT_DIALECT="${DB_DIALECT}"
+	say "\tNo scripts dialect provided, so using the same database dialect"
+	SCRIPT_DIALECT="${DB_DIALECT}"
 else
-    say "The script dialect is [${DB_DIALECT}]..."
+	say "The script dialect is [${DB_DIALECT}]..."
 fi
 
 say "Initializing the Pentaho configurations at [${PENTAHO_HOME}]..."
 
-isInitialized()
+initRequired()
 {
-    # TODO: Check to see if the DB is already initialized
-    return 1
+	# TODO: Check to see if the DB is already initialized
+	return 0
 }
 
 runScript() {
-    local SCRIPT="${1}"
-    say "Running the script [${SCRIPT}] (for dialect ${SCRIPT_DIALECT}"
+	local SCRIPT="${1}"
+	say "Running the script [${SCRIPT}] (from the ${SCRIPT_DIALECT} dialect)"
+	return 0
 }
 
 # Set the correct audit_sql ... no harm in doing this every time (right?)
@@ -51,15 +52,14 @@ TGT_AUDIT_XML="${PENTAHO_HOME}/pentaho-solutions/system/audit_sql.xml"
 say "Setting the audit_xml file for dialect ${DB_DIALECT}..."
 cp -vf "${SRC_AUDIT_XML}" "${TGT_AUDIT_XML}"
 
-if ! isInitialized ; then
-    # Run the correct scripts (but how?!?! We don't have the DBInit clients)
-    SQL_DIR="${PENTAHO_HOME}/data/${SCRIPT_DIALECT}"
-    [ -d "${SQL_DIR}" ] || fail "There are no SQL initialization scripts for dialect [${SCRIPT_DIALECT}], cannot continue"
-    for n in create_jcr_*.sql create_quartz_*.sql create_repository_*.sql pentaho_mart_*.sql ; do
-        runScript "${n}"
-    done
-    # TODO: Add the script that changes the default passwords into whatever is in the configurations ... there must also be
-    #       dialectic versions of this script
+if initRequired ; then
+	# Run the correct scripts (but how?!?! We don't have the DBInit clients)
+	SQL_DIR="${PENTAHO_HOME}/data/${SCRIPT_DIALECT}"
+	[ -d "${SQL_DIR}" ] || fail "There are no SQL initialization scripts for dialect [${SCRIPT_DIALECT}], cannot continue"
+	for n in create_jcr_*.sql create_quartz_*.sql create_repository_*.sql pentaho_mart_*.sql ; do
+		runScript "${n}"
+	done
+	runScript "/fix-passwords-${SCRIPT_DIALECT}.sql" || fail "Failed to update the passwords as required"
 fi
 
 # Continue with normal bootup
