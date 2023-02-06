@@ -237,7 +237,8 @@ image:
   registry: "345280441424.dkr.ecr.ap-south-1.amazonaws.com"
   repository: "ark_cloudconfig"
   # Overrides the image tag whose default is the chart appVersion.
-  tag: "2021.03.11"
+  #tag: "2021.03.11"
+  tag: "2023.02.06.07"
   # If required, for tweaking setperm
   # setperm:
   #   registry: "alternate-registry"
@@ -374,6 +375,7 @@ service:
     - name: http
       protocol: TCP
       port: &servicePort 9999
+
 ##
 ## Configure extra options for containers' liveness and readiness probes
 ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/#configure-probes
@@ -385,7 +387,7 @@ service:
 ## @param service.probes.spec.successThreshold Success threshold for liveness and readiness probes
 ##
   probes:
-    enabled: true
+    enabled: false
     spec:
       httpGet:
         path: "/actuator/health"
