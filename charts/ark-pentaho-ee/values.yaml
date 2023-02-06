@@ -31,6 +31,9 @@ configuration:
     # Unfortunately this is required to run the DB initializer scripts
     pass: "...."
 
+  hibernate:
+    dialect: *dialect
+
   quartz:
     # delegateClass: "org.quartz.impl.jdbcjobstore.StdJDBCDelegate"
     # delegateClass: "org.quartz.impl.jdbcjobstore.MSSQLDelegate"

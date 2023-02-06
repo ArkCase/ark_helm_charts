@@ -499,7 +499,7 @@ data:
       * system/hibernate/oracle10g.hibernate.cfg.xml
       *
       -->
-        <config-file>system/hibernate/{{ ((.Values.configuration).hibernate).dialect }}.hibernate.cfg.xml</config-file>
+        <config-file>system/hibernate/{{ required "You must set a .Values.configuration.hibernate.dialect value" ((.Values.configuration).hibernate).dialect }}.hibernate.cfg.xml</config-file>
     
       <!--
       *
