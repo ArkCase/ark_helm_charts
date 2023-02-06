@@ -105,10 +105,6 @@ spec:
               mountPath: "/home/pentaho/app/pentaho/pentaho-server/pentaho-solutions/system/hibernate/hibernate-settings.xml"
               subPath: &hibernateSettingsXml "hibernate-settings.xml"
               readOnly: true
-            - name: *configMap
-              mountPath: "/arkcase-boot.sh"
-              subPath: &arkcaseBootSh "arkcase-boot.sh"
-              readOnly: true
       volumes:
         {{- include "arkcase.persistence.volume" (dict "name" "data" "ctx" $) | nindent 8 }}
         - name: *secrets
@@ -130,8 +126,6 @@ spec:
             items:
               - key: *hibernateSettingsXml
                 path: *hibernateSettingsXml
-              - key: *arkcaseBootSh
-                path: *arkcaseBootSh
       {{- with .Values.nodeSelector }}
       nodeSelector: {{- toYaml . | nindent 8 }}
       {{- end }}
