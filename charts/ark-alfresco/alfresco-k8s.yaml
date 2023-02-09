@@ -1,0 +1,1185 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  annotations:
+    kompose.cmd: kompose convert --volumes hostPath --out k8s
+    kompose.version: 1.28.0 (c4137012e)
+  creationTimestamp: null
+  name: alfresco
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  annotations:
+    kompose.cmd: kompose convert --volumes hostPath --out k8s
+    kompose.version: 1.28.0 (c4137012e)
+  creationTimestamp: null
+  namespace: alfresco
+  name: alfresco-pull-secrets
+type: kubernetes.io/dockerconfigjson
+data:
+  .dockerconfigjson: ewoJImF1dGhzIjogewoJCSJxdWF5LmlvIjogewoJCQkiYXV0aCI6ICJZV3htY21WelkyOHJZV056WDNZMlgzUnlhV0ZzT2sxRVJqbFNUa2RWU2xCTFdqZ3pTMHM0VlZaSFZWWlhUemxCV1V0VldqQldUalpYUnpWV1QwOURWVlEyUWxneE9VcEtURlUxV2t3d1NFdFZOMDR5TUVNPSIKCQl9Cgl9Cn0K
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  creationTimestamp: null
+  namespace: alfresco
+  name: alfresco-default
+spec:
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              io.kompose.network/alfresco-default: "true"
+  podSelector:
+    matchLabels:
+      io.kompose.network/alfresco-default: "true"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert --volumes hostPath --out k8s
+    kompose.version: 1.28.0 (c4137012e)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: activemq
+  namespace: alfresco
+  name: activemq
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: activemq
+  strategy: {}
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose convert --volumes hostPath --out k8s
+        kompose.version: 1.28.0 (c4137012e)
+      creationTimestamp: null
+      labels:
+        io.kompose.network/alfresco-default: "true"
+        io.kompose.service: activemq
+    spec:
+      imagePullSecrets:
+        - name: alfresco-pull-secrets
+      containers:
+        - image: alfresco/alfresco-activemq:5.15.8
+          name: activemq
+          ports:
+            - containerPort: 8161
+            - containerPort: 5672
+            - containerPort: 61616
+            - containerPort: 61613
+          resources:
+            limits:
+              memory: "1Gi"
+      restartPolicy: Always
+status: {}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert --volumes hostPath --out k8s
+    kompose.version: 1.28.0 (c4137012e)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: alfresco-pdf-renderer
+  namespace: alfresco
+  name: alfresco-pdf-renderer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: alfresco-pdf-renderer
+  strategy: {}
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose convert --volumes hostPath --out k8s
+        kompose.version: 1.28.0 (c4137012e)
+      creationTimestamp: null
+      labels:
+        io.kompose.network/alfresco-default: "true"
+        io.kompose.service: alfresco-pdf-renderer
+    spec:
+      imagePullSecrets:
+        - name: alfresco-pull-secrets
+      containers:
+        - image: quay.io/alfresco/alfresco-pdf-renderer:2.1.0
+          name: alfresco-pdf-renderer
+          env:
+            - name: ACTIVEMQ_URL
+              value: nio://activemq:61616
+            - name: FILE_STORE_URL
+              value: http://shared-file-store:8099/alfresco/api/-default-/private/sfs/versions/1/file
+            - name: JAVA_OPTS
+              value: ' -Xms256m -Xmx512m'
+          ports:
+            - containerPort: 8090
+          resources:
+            limits:
+              memory: "1Gi"
+      restartPolicy: Always
+status: {}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert --volumes hostPath --out k8s
+    kompose.version: 1.28.0 (c4137012e)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: content
+  namespace: alfresco
+  name: content
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: content
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose convert --volumes hostPath --out k8s
+        kompose.version: 1.28.0 (c4137012e)
+      creationTimestamp: null
+      labels:
+        io.kompose.network/alfresco-default: "true"
+        io.kompose.service: content
+    spec:
+      imagePullSecrets:
+        - name: alfresco-pull-secrets
+      containers:
+        - image: alfresco/alfresco-content-repository:6.2.0
+          name: content
+          env:
+            - name: CATALINA_OPTS
+              value: >-
+                -server
+                -Ddir.root=/alf_data
+                -Ddb.driver=org.postgresql.Driver
+                -Ddb.username=alfresco
+                -Ddb.password="thie*h;ah8keePh}"
+                -Ddb.url="jdbc:postgresql://postgres:5432/alfresco"
+                -Dsolr.host=solr6
+                -Dsolr.port=8983
+                -Dsolr.secureComms=none
+                -Dsolr.base.url=/solr
+                -Dindex.subsystem.name=solr6
+                -Dshare.host=127.0.0.1
+                -Dshare.port=8080
+                -Dalfresco.host=content.alfresco.svc.cluster.local
+                -Dalfresco.port=8080
+                -Daos.baseUrlOverwrite=http://content.alfresco.svc.cluster.local:8080/alfresco/aos
+                -Dmessaging.broker.url="failover:(nio://activemq:61616)?timeout=3000&jms.useCompression=true"
+                -Ddeployment.method=DOCKER_COMPOSE
+                -Dtransform.service.enabled=true
+                -Dtransform.service.url=http://transform-router:8095
+                -Dsfs.url=http://shared-file-store:8099/
+                -Dlocal.transform.service.enabled=true
+                -DlocalTransform.pdfrenderer.url=http://alfresco-pdf-renderer:8090/
+                -DlocalTransform.imagemagick.url=http://imagemagick:8090/
+                -DlocalTransform.libreoffice.url=http://libreoffice:8090/
+                -DlocalTransform.tika.url=http://tika:8090/
+                -DlocalTransform.misc.url=http://transform-misc:8090/
+                -Dlegacy.transform.service.enabled=true
+                -Dalfresco-pdf-renderer.url=http://alfresco-pdf-renderer:8090/
+                -Djodconverter.url=http://libreoffice:8090/
+                -Dimg.url=http://imagemagick:8090/
+                -Dtika.url=http://tika:8090/
+                -Dtransform.misc.url=http://transform-misc:8090/
+                -Dcsrf.filter.enabled=false
+                -Ddsync.service.uris=http://sync-service.alfresco.svc.cluster.local:9090/alfresco
+                -Xms8192m
+                -Xmx8192m
+                -Dcom.sun.management.jmxremote
+                -Dalfresco.jmx.connector.enabled=true
+                -Dalfresco.rmi.services.port=50500
+          ports:
+            - containerPort: 8080
+          resources:
+            limits:
+              memory: "4Gi"
+          volumeMounts:
+            - name: &contentRepository content-repository
+              mountPath: /alf_data
+            # - name: &postgresDriverJar postgres-driver-jar
+            #   mountPath: /usr/local/tomcat/lib/postgresql-42.2.6.jar
+            - name: &licenseFile license-file
+              mountPath: /usr/local/tomcat/shared/classes/alfresco/extension/license/armedia.lic
+      restartPolicy: Always
+      volumes:
+        - name: *contentRepository
+          hostPath:
+            path: /opt/app/alfresco/data/repo
+        # - name: *postgresDriverJar
+        #   hostPath:
+        #     path: /opt/app/alfresco/lib/postgresql-42.5.2.jar
+        - name: *licenseFile
+          hostPath:
+            path: /opt/app/alfresco/lib/armedia.lic
+status: {}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert --volumes hostPath --out k8s
+    kompose.version: 1.28.0 (c4137012e)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: digital-workspace
+  namespace: alfresco
+  name: digital-workspace
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: digital-workspace
+  strategy: {}
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose convert --volumes hostPath --out k8s
+        kompose.version: 1.28.0 (c4137012e)
+      creationTimestamp: null
+      labels:
+        io.kompose.network/alfresco-default: "true"
+        io.kompose.service: digital-workspace
+    spec:
+      imagePullSecrets:
+        - name: alfresco-pull-secrets
+      containers:
+        - image: quay.io/alfresco/alfresco-digital-workspace:1.3.0
+          name: digital-workspace
+          env:
+            - name: BASE_PATH
+              value: ./
+          resources:
+            limits:
+              memory: "128Mi"
+          ports:
+            - containerPort: 8080
+      restartPolicy: Always
+status: {}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert --volumes hostPath --out k8s
+    kompose.version: 1.28.0 (c4137012e)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: imagemagick
+  namespace: alfresco
+  name: imagemagick
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: imagemagick
+  strategy: {}
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose convert --volumes hostPath --out k8s
+        kompose.version: 1.28.0 (c4137012e)
+      creationTimestamp: null
+      labels:
+        io.kompose.network/alfresco-default: "true"
+        io.kompose.service: imagemagick
+    spec:
+      imagePullSecrets:
+        - name: alfresco-pull-secrets
+      containers:
+        - image: quay.io/alfresco/alfresco-imagemagick:2.1.0
+          name: imagemagick
+          env:
+            - name: ACTIVEMQ_URL
+              value: nio://activemq:61616
+            - name: FILE_STORE_URL
+              value: http://shared-file-store:8099/alfresco/api/-default-/private/sfs/versions/1/file
+            - name: JAVA_OPTS
+              value: ' -Xms256m -Xmx512m'
+          ports:
+            - containerPort: 8090
+          resources:
+            limits:
+              memory: "1Gi"
+      restartPolicy: Always
+status: {}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert --volumes hostPath --out k8s
+    kompose.version: 1.28.0 (c4137012e)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: libreoffice
+  namespace: alfresco
+  name: libreoffice
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: libreoffice
+  strategy: {}
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose convert --volumes hostPath --out k8s
+        kompose.version: 1.28.0 (c4137012e)
+      creationTimestamp: null
+      labels:
+        io.kompose.network/alfresco-default: "true"
+        io.kompose.service: libreoffice
+    spec:
+      imagePullSecrets:
+        - name: alfresco-pull-secrets
+      containers:
+        - image: quay.io/alfresco/alfresco-libreoffice:2.1.0
+          name: libreoffice
+          env:
+            - name: ACTIVEMQ_URL
+              value: nio://activemq:61616
+            - name: FILE_STORE_URL
+              value: http://shared-file-store:8099/alfresco/api/-default-/private/sfs/versions/1/file
+            - name: JAVA_OPTS
+              value: ' -Xms256m -Xmx512m'
+          ports:
+            - containerPort: 8090
+          resources:
+            limits:
+              memory: "1Gi"
+      restartPolicy: Always
+status: {}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert --volumes hostPath --out k8s
+    kompose.version: 1.28.0 (c4137012e)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: postgres
+  namespace: alfresco
+  name: postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: postgres
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose convert --volumes hostPath --out k8s
+        kompose.version: 1.28.0 (c4137012e)
+      creationTimestamp: null
+      labels:
+        io.kompose.network/alfresco-default: "true"
+        io.kompose.service: postgres
+    spec:
+      imagePullSecrets:
+        - name: alfresco-pull-secrets
+      containers:
+        - image: postgres:13
+          name: db
+          env:
+            - name: POSTGRES_DB
+              value: "alfresco"
+            - name: POSTGRES_PASSWORD
+              value: "thie*h;ah8keePh}"
+            - name: POSTGRES_USER
+              value: "alfresco"
+          ports:
+            - containerPort: 5432
+          resources: {}
+          volumeMounts:
+            - name: &postgresData postgres-data
+              mountPath: /var/lib/postgresql/data
+      restartPolicy: Always
+      volumes:
+        - name: *postgresData
+          hostPath:
+            path: /opt/app/alfresco/data/postgres
+status: {}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert --volumes hostPath --out k8s
+    kompose.version: 1.28.0 (c4137012e)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: proxy
+  namespace: alfresco
+  name: proxy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: proxy
+  strategy: {}
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose convert --volumes hostPath --out k8s
+        kompose.version: 1.28.0 (c4137012e)
+      creationTimestamp: null
+      labels:
+        io.kompose.network/alfresco-default: "true"
+        io.kompose.service: proxy
+    spec:
+      imagePullSecrets:
+        - name: alfresco-pull-secrets
+      containers:
+        - image: alfresco/alfresco-acs-nginx:3.0.1
+          name: proxy
+          ports:
+            - containerPort: 8080
+          resources:
+            limits:
+              memory: "128Mi"
+      restartPolicy: Always
+status: {}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert --volumes hostPath --out k8s
+    kompose.version: 1.28.0 (c4137012e)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: share
+  namespace: alfresco
+  name: share
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: share
+  strategy: {}
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose convert --volumes hostPath --out k8s
+        kompose.version: 1.28.0 (c4137012e)
+      creationTimestamp: null
+      labels:
+        io.kompose.network/alfresco-default: "true"
+        io.kompose.service: share
+    spec:
+      imagePullSecrets:
+        - name: alfresco-pull-secrets
+      containers:
+        - image: alfresco/alfresco-share:6.2.0
+          name: share
+          env:
+            - name: JAVA_OPTS
+              value: >-
+                -Xms500m
+                -Xmx500m
+                -Dalfresco.host=content
+                -Dalfresco.port=8080
+                -Dalfresco.context=alfresco
+                -Dalfresco.protocol=http
+            - name: REPO_HOST
+              value: alfresco
+            - name: REPO_PORT
+              value: "8080"
+          resources:
+            limits:
+              memory: "1Gi"
+      restartPolicy: Always
+status: {}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert --volumes hostPath --out k8s
+    kompose.version: 1.28.0 (c4137012e)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: shared-file-store
+  namespace: alfresco
+  name: shared-file-store
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: shared-file-store
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose convert --volumes hostPath --out k8s
+        kompose.version: 1.28.0 (c4137012e)
+      creationTimestamp: null
+      labels:
+        io.kompose.network/alfresco-default: "true"
+        io.kompose.service: shared-file-store
+    spec:
+      imagePullSecrets:
+        - name: alfresco-pull-secrets
+      containers:
+        - image: alfresco/alfresco-shared-file-store:0.5.3
+          name: shared-file-store
+          env:
+            - name: JAVA_OPTS
+              value: ' -Xms256m -Xmx512m'
+            - name: scheduler.cleanup.interval
+              value: "86400000"
+            - name: scheduler.content.age.millis
+              value: "86400000"
+          ports:
+            - containerPort: 8099
+          resources:
+            limits:
+              memory: "512Mi"
+          volumeMounts:
+            - name: &sharedFileStore shared-file-store
+              mountPath: /tmp/Alfresco/sfs
+      restartPolicy: Always
+      volumes:
+        - name: *sharedFileStore
+          hostPath:
+            path: /opt/app/alfresco/data/shared
+status: {}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert --volumes hostPath --out k8s
+    kompose.version: 1.28.0 (c4137012e)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: solr6
+  namespace: alfresco
+  name: solr6
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: solr6
+  strategy: {}
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose convert --volumes hostPath --out k8s
+        kompose.version: 1.28.0 (c4137012e)
+      creationTimestamp: null
+      labels:
+        io.kompose.network/alfresco-default: "true"
+        io.kompose.service: solr6
+    spec:
+      imagePullSecrets:
+        - name: alfresco-pull-secrets
+      containers:
+        - image: alfresco/alfresco-search-services:1.4.0
+          name: solr6
+          env:
+            - name: ALFRESCO_SECURE_COMMS
+              value: none
+            - name: SOLR_ALFRESCO_HOST
+              value: content
+            - name: SOLR_ALFRESCO_PORT
+              value: "8080"
+            - name: SOLR_CREATE_ALFRESCO_DEFAULTS
+              value: alfresco,archive
+            - name: SOLR_JAVA_MEM
+              value: -Xms2g -Xmx2g
+            - name: SOLR_SOLR_HOST
+              value: solr6
+            - name: SOLR_SOLR_PORT
+              value: "8983"
+          ports:
+            - containerPort: 8983
+          resources:
+            limits:
+              memory: "2Gi"
+      restartPolicy: Always
+status: {}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert --volumes hostPath --out k8s
+    kompose.version: 1.28.0 (c4137012e)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: sync-service
+  namespace: alfresco
+  name: sync-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: sync-service
+  strategy: {}
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose convert --volumes hostPath --out k8s
+        kompose.version: 1.28.0 (c4137012e)
+      creationTimestamp: null
+      labels:
+        io.kompose.network/alfresco-default: "true"
+        io.kompose.service: sync-service
+    spec:
+      imagePullSecrets:
+        - name: alfresco-pull-secrets
+      containers:
+        - image: quay.io/alfresco/service-sync:3.2.0
+          name: sync-service
+          env:
+            - name: JAVA_OPTS
+              value: >-
+                -Ddb.driver=org.postgresql.Driver
+                -Ddb.username=alfresco
+                -Ddb.password="thie*h;ah8keePh}"
+                -Ddb.url="jdbc:postgresql://postgres:5432/alfresco"
+                -Dmessaging.broker.host=activemq
+                -Drepo.hostname=content
+                -Drepo.port=8080
+                -Ddw.server.applicationConnectors[0].type=http
+                -Xms1000m
+                -Xmx1000m
+          ports:
+            - containerPort: 9090
+          resources:
+            limits:
+              memory: "1Gi"
+      restartPolicy: Always
+status: {}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert --volumes hostPath --out k8s
+    kompose.version: 1.28.0 (c4137012e)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: tika
+  namespace: alfresco
+  name: tika
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: tika
+  strategy: {}
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose convert --volumes hostPath --out k8s
+        kompose.version: 1.28.0 (c4137012e)
+      creationTimestamp: null
+      labels:
+        io.kompose.network/alfresco-default: "true"
+        io.kompose.service: tika
+    spec:
+      imagePullSecrets:
+        - name: alfresco-pull-secrets
+      containers:
+        - image: quay.io/alfresco/alfresco-tika:2.1.0
+          name: tika
+          env:
+            - name: ACTIVEMQ_URL
+              value: nio://activemq:61616
+            - name: FILE_STORE_URL
+              value: http://shared-file-store:8099/alfresco/api/-default-/private/sfs/versions/1/file
+            - name: JAVA_OPTS
+              value: ' -Xms256m -Xmx512m'
+          ports:
+            - containerPort: 8090
+          resources:
+            limits:
+              memory: "1Gi"
+      restartPolicy: Always
+status: {}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert --volumes hostPath --out k8s
+    kompose.version: 1.28.0 (c4137012e)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: transform-misc
+  namespace: alfresco
+  name: transform-misc
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: transform-misc
+  strategy: {}
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose convert --volumes hostPath --out k8s
+        kompose.version: 1.28.0 (c4137012e)
+      creationTimestamp: null
+      labels:
+        io.kompose.network/alfresco-default: "true"
+        io.kompose.service: transform-misc
+    spec:
+      imagePullSecrets:
+        - name: alfresco-pull-secrets
+      containers:
+        - image: alfresco/alfresco-transform-misc:2.1.0
+          name: transform-misc
+          env:
+            - name: ACTIVEMQ_URL
+              value: nio://activemq:61616
+            - name: FILE_STORE_URL
+              value: http://shared-file-store:8099/alfresco/api/-default-/private/sfs/versions/1/file
+            - name: JAVA_OPTS
+              value: ' -Xms256m -Xmx512m'
+          ports:
+            - containerPort: 8090
+          resources:
+            limits:
+              memory: "1Gi"
+      restartPolicy: Always
+status: {}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert --volumes hostPath --out k8s
+    kompose.version: 1.28.0 (c4137012e)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: transform-router
+  namespace: alfresco
+  name: transform-router
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      io.kompose.service: transform-router
+  strategy: {}
+  template:
+    metadata:
+      annotations:
+        kompose.cmd: kompose convert --volumes hostPath --out k8s
+        kompose.version: 1.28.0 (c4137012e)
+      creationTimestamp: null
+      labels:
+        io.kompose.network/alfresco-default: "true"
+        io.kompose.service: transform-router
+    spec:
+      imagePullSecrets:
+        - name: alfresco-pull-secrets
+      containers:
+        - image: quay.io/alfresco/alfresco-transform-router:1.1.0
+          name: transform-router
+          env:
+            - name: ACTIVEMQ_URL
+              value: nio://activemq:61616
+            - name: FILE_STORE_URL
+              value: http://shared-file-store:8099/alfresco/api/-default-/private/sfs/versions/1/file
+            - name: IMAGEMAGICK_URL
+              value: http://imagemagick:8090
+            - name: JAVA_OPTS
+              value: ' -Xms256m -Xmx512m'
+            - name: LIBREOFFICE_URL
+              value: http://libreoffice:8090
+            - name: MISC_URL
+              value: http://transform-misc:8090
+            - name: PDF_RENDERER_URL
+              value: http://alfresco-pdf-renderer:8090
+            - name: TIKA_URL
+              value: http://tika:8090
+          ports:
+            - containerPort: 8095
+          resources:
+            limits:
+              memory: "1Gi"
+      restartPolicy: Always
+status: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: kompose convert --volumes hostPath --out k8s
+    kompose.version: 1.28.0 (c4137012e)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: activemq
+  namespace: alfresco
+  name: activemq
+spec:
+  type: ClusterIP
+  ports:
+    - name: "5672"
+      port: 5672
+      targetPort: 5672
+    - name: "8161"
+      port: 8161
+      targetPort: 8161
+    - name: "61613"
+      port: 61613
+      targetPort: 61613
+    - name: "61616"
+      port: 61616
+      targetPort: 61616
+  selector:
+    io.kompose.service: activemq
+status:
+  loadBalancer: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: kompose convert --volumes hostPath --out k8s
+    kompose.version: 1.28.0 (c4137012e)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: alfresco-pdf-renderer
+  namespace: alfresco
+  name: alfresco-pdf-renderer
+spec:
+  type: ClusterIP
+  ports:
+    - name: "8090"
+      port: 8090
+      targetPort: 8090
+  selector:
+    io.kompose.service: alfresco-pdf-renderer
+status:
+  loadBalancer: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: kompose convert --volumes hostPath --out k8s
+    kompose.version: 1.28.0 (c4137012e)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: content
+  namespace: alfresco
+  name: content
+spec:
+  type: ClusterIP
+  ports:
+    - name: "8080"
+      port: 8080
+      targetPort: 8080
+  selector:
+    io.kompose.service: content
+status:
+  loadBalancer: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: kompose convert --volumes hostPath --out k8s
+    kompose.version: 1.28.0 (c4137012e)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: content
+  namespace: alfresco
+  name: alfresco
+spec:
+  type: ClusterIP
+  ports:
+    - name: "8080"
+      port: 8080
+      targetPort: 8080
+  selector:
+    io.kompose.service: content
+status:
+  loadBalancer: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: kompose convert --volumes hostPath --out k8s
+    kompose.version: 1.28.0 (c4137012e)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: digital-workspace
+  namespace: alfresco
+  name: digital-workspace
+spec:
+  type: ClusterIP
+  ports:
+    - name: "8080"
+      port: 8080
+      targetPort: 8080
+  selector:
+    io.kompose.service: digital-workspace
+status:
+  loadBalancer: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: kompose convert --volumes hostPath --out k8s
+    kompose.version: 1.28.0 (c4137012e)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: imagemagick
+  namespace: alfresco
+  name: imagemagick
+spec:
+  type: ClusterIP
+  ports:
+    - name: "8090"
+      port: 8090
+      targetPort: 8090
+  selector:
+    io.kompose.service: imagemagick
+status:
+  loadBalancer: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: kompose convert --volumes hostPath --out k8s
+    kompose.version: 1.28.0 (c4137012e)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: libreoffice
+  namespace: alfresco
+  name: libreoffice
+spec:
+  type: ClusterIP
+  ports:
+    - name: "8090"
+      port: 8090
+      targetPort: 8090
+  selector:
+    io.kompose.service: libreoffice
+status:
+  loadBalancer: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: kompose convert --volumes hostPath --out k8s
+    kompose.version: 1.28.0 (c4137012e)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: postgres
+  namespace: alfresco
+  name: postgres
+spec:
+  type: ClusterIP
+  ports:
+    - name: "5432"
+      port: 5432
+      targetPort: 5432
+  selector:
+    io.kompose.service: postgres
+status:
+  loadBalancer: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: kompose convert --volumes hostPath --out k8s
+    kompose.version: 1.28.0 (c4137012e)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: proxy
+  namespace: alfresco
+  name: proxy
+spec:
+  type: ClusterIP
+  ports:
+    - name: "8080"
+      port: 8080
+      targetPort: 8080
+  selector:
+    io.kompose.service: proxy
+status:
+  loadBalancer: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: kompose convert --volumes hostPath --out k8s
+    kompose.version: 1.28.0 (c4137012e)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: shared-file-store
+  namespace: alfresco
+  name: shared-file-store
+spec:
+  type: ClusterIP
+  ports:
+    - name: "8099"
+      port: 8099
+      targetPort: 8099
+  selector:
+    io.kompose.service: shared-file-store
+status:
+  loadBalancer: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: kompose convert --volumes hostPath --out k8s
+    kompose.version: 1.28.0 (c4137012e)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: solr6
+  namespace: alfresco
+  name: solr6
+spec:
+  type: ClusterIP
+  ports:
+    - name: "8983"
+      port: 8983
+      targetPort: 8983
+  selector:
+    io.kompose.service: solr6
+status:
+  loadBalancer: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: kompose convert --volumes hostPath --out k8s
+    kompose.version: 1.28.0 (c4137012e)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: sync-service
+  namespace: alfresco
+  name: sync-service
+spec:
+  type: ClusterIP
+  ports:
+    - name: "9090"
+      port: 9090
+      targetPort: 9090
+  selector:
+    io.kompose.service: sync-service
+status:
+  loadBalancer: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: kompose convert --volumes hostPath --out k8s
+    kompose.version: 1.28.0 (c4137012e)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: tika
+  namespace: alfresco
+  name: tika
+spec:
+  type: ClusterIP
+  ports:
+    - name: "8090"
+      port: 8090
+      targetPort: 8090
+  selector:
+    io.kompose.service: tika
+status:
+  loadBalancer: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: kompose convert --volumes hostPath --out k8s
+    kompose.version: 1.28.0 (c4137012e)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: digital-workspace
+  namespace: alfresco
+  name: share
+spec:
+  type: ClusterIP
+  ports:
+    - name: "8080"
+      port: 8080
+      targetPort: 8080
+  selector:
+    io.kompose.service: share
+status:
+  loadBalancer: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: kompose convert --volumes hostPath --out k8s
+    kompose.version: 1.28.0 (c4137012e)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: transform-misc
+  namespace: alfresco
+  name: transform-misc
+spec:
+  type: ClusterIP
+  ports:
+    - name: "8090"
+      port: 8090
+      targetPort: 8090
+  selector:
+    io.kompose.service: transform-misc
+status:
+  loadBalancer: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: kompose convert --volumes hostPath --out k8s
+    kompose.version: 1.28.0 (c4137012e)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: transform-router
+  namespace: alfresco
+  name: transform-router
+spec:
+  type: ClusterIP
+  ports:
+    - name: "8090"
+      port: 8090
+      targetPort: 8090
+  selector:
+    io.kompose.service: transform-router
+status:
+  loadBalancer: {}
