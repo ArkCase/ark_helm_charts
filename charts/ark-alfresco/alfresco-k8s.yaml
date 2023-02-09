@@ -21,24 +21,8 @@ type: kubernetes.io/dockerconfigjson
 data:
   .dockerconfigjson: ewoJImF1dGhzIjogewoJCSJxdWF5LmlvIjogewoJCQkiYXV0aCI6ICJZV3htY21WelkyOHJZV056WDNZMlgzUnlhV0ZzT2sxRVJqbFNUa2RWU2xCTFdqZ3pTMHM0VlZaSFZWWlhUemxCV1V0VldqQldUalpYUnpWV1QwOURWVlEyUWxneE9VcEtURlUxV2t3d1NFdFZOMDR5TUVNPSIKCQl9Cgl9Cn0K
 ---
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  creationTimestamp: null
-  namespace: alfresco
-  name: alfresco-default
-spec:
-  ingress:
-    - from:
-        - podSelector:
-            matchLabels:
-              io.kompose.network/alfresco-default: "true"
-  podSelector:
-    matchLabels:
-      io.kompose.network/alfresco-default: "true"
----
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   annotations:
     kompose.cmd: kompose convert --volumes hostPath --out k8s
@@ -53,7 +37,6 @@ spec:
   selector:
     matchLabels:
       io.kompose.service: activemq
-  strategy: {}
   template:
     metadata:
       annotations:
@@ -81,7 +64,7 @@ spec:
 status: {}
 ---
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   annotations:
     kompose.cmd: kompose convert --volumes hostPath --out k8s
@@ -96,7 +79,6 @@ spec:
   selector:
     matchLabels:
       io.kompose.service: alfresco-pdf-renderer
-  strategy: {}
   template:
     metadata:
       annotations:
@@ -128,7 +110,7 @@ spec:
 status: {}
 ---
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   annotations:
     kompose.cmd: kompose convert --volumes hostPath --out k8s
@@ -143,8 +125,6 @@ spec:
   selector:
     matchLabels:
       io.kompose.service: content
-  strategy:
-    type: Recreate
   template:
     metadata:
       annotations:
@@ -167,7 +147,7 @@ spec:
                 -Ddir.root=/alf_data
                 -Ddb.driver=org.postgresql.Driver
                 -Ddb.username=alfresco
-                -Ddb.password="thie*h;ah8keePh}"
+                -Ddb.password="nie7yaiX0ahm9aec"
                 -Ddb.url="jdbc:postgresql://postgres:5432/alfresco"
                 -Dsolr.host=solr6
                 -Dsolr.port=8983
@@ -229,7 +209,7 @@ spec:
 status: {}
 ---
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   annotations:
     kompose.cmd: kompose convert --volumes hostPath --out k8s
@@ -244,7 +224,6 @@ spec:
   selector:
     matchLabels:
       io.kompose.service: digital-workspace
-  strategy: {}
   template:
     metadata:
       annotations:
@@ -272,7 +251,7 @@ spec:
 status: {}
 ---
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   annotations:
     kompose.cmd: kompose convert --volumes hostPath --out k8s
@@ -287,7 +266,6 @@ spec:
   selector:
     matchLabels:
       io.kompose.service: imagemagick
-  strategy: {}
   template:
     metadata:
       annotations:
@@ -319,7 +297,7 @@ spec:
 status: {}
 ---
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   annotations:
     kompose.cmd: kompose convert --volumes hostPath --out k8s
@@ -334,7 +312,6 @@ spec:
   selector:
     matchLabels:
       io.kompose.service: libreoffice
-  strategy: {}
   template:
     metadata:
       annotations:
@@ -366,7 +343,7 @@ spec:
 status: {}
 ---
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   annotations:
     kompose.cmd: kompose convert --volumes hostPath --out k8s
@@ -381,8 +358,6 @@ spec:
   selector:
     matchLabels:
       io.kompose.service: postgres
-  strategy:
-    type: Recreate
   template:
     metadata:
       annotations:
@@ -401,10 +376,10 @@ spec:
           env:
             - name: POSTGRES_DB
               value: "alfresco"
-            - name: POSTGRES_PASSWORD
-              value: "thie*h;ah8keePh}"
             - name: POSTGRES_USER
               value: "alfresco"
+            - name: POSTGRES_PASSWORD
+              value: "nie7yaiX0ahm9aec"
           ports:
             - containerPort: 5432
           resources: {}
@@ -419,7 +394,7 @@ spec:
 status: {}
 ---
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   annotations:
     kompose.cmd: kompose convert --volumes hostPath --out k8s
@@ -434,7 +409,6 @@ spec:
   selector:
     matchLabels:
       io.kompose.service: proxy
-  strategy: {}
   template:
     metadata:
       annotations:
@@ -459,7 +433,7 @@ spec:
 status: {}
 ---
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   annotations:
     kompose.cmd: kompose convert --volumes hostPath --out k8s
@@ -474,7 +448,6 @@ spec:
   selector:
     matchLabels:
       io.kompose.service: share
-  strategy: {}
   template:
     metadata:
       annotations:
@@ -510,7 +483,7 @@ spec:
 status: {}
 ---
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   annotations:
     kompose.cmd: kompose convert --volumes hostPath --out k8s
@@ -525,8 +498,6 @@ spec:
   selector:
     matchLabels:
       io.kompose.service: shared-file-store
-  strategy:
-    type: Recreate
   template:
     metadata:
       annotations:
@@ -565,7 +536,7 @@ spec:
 status: {}
 ---
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   annotations:
     kompose.cmd: kompose convert --volumes hostPath --out k8s
@@ -580,7 +551,6 @@ spec:
   selector:
     matchLabels:
       io.kompose.service: solr6
-  strategy: {}
   template:
     metadata:
       annotations:
@@ -620,7 +590,7 @@ spec:
 status: {}
 ---
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   annotations:
     kompose.cmd: kompose convert --volumes hostPath --out k8s
@@ -635,7 +605,6 @@ spec:
   selector:
     matchLabels:
       io.kompose.service: sync-service
-  strategy: {}
   template:
     metadata:
       annotations:
@@ -656,7 +625,7 @@ spec:
               value: >-
                 -Ddb.driver=org.postgresql.Driver
                 -Ddb.username=alfresco
-                -Ddb.password="thie*h;ah8keePh}"
+                -Ddb.password="nie7yaiX0ahm9aec"
                 -Ddb.url="jdbc:postgresql://postgres:5432/alfresco"
                 -Dmessaging.broker.host=activemq
                 -Drepo.hostname=content
@@ -673,7 +642,7 @@ spec:
 status: {}
 ---
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   annotations:
     kompose.cmd: kompose convert --volumes hostPath --out k8s
@@ -688,7 +657,6 @@ spec:
   selector:
     matchLabels:
       io.kompose.service: tika
-  strategy: {}
   template:
     metadata:
       annotations:
@@ -720,7 +688,7 @@ spec:
 status: {}
 ---
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   annotations:
     kompose.cmd: kompose convert --volumes hostPath --out k8s
@@ -735,7 +703,6 @@ spec:
   selector:
     matchLabels:
       io.kompose.service: transform-misc
-  strategy: {}
   template:
     metadata:
       annotations:
@@ -767,7 +734,7 @@ spec:
 status: {}
 ---
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   annotations:
     kompose.cmd: kompose convert --volumes hostPath --out k8s
@@ -782,7 +749,6 @@ spec:
   selector:
     matchLabels:
       io.kompose.service: transform-router
-  strategy: {}
   template:
     metadata:
       annotations:
