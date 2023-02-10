@@ -154,11 +154,11 @@ spec:
                 -Dsolr.secureComms=none
                 -Dsolr.base.url=/solr
                 -Dindex.subsystem.name=solr6
-                -Dshare.host=127.0.0.1
-                -Dshare.port=8080
+                -Dshare.host=iad032-1san01.appdev.armedia.com
+                -Dshare.port=80
                 -Dalfresco.host=content.alfresco.svc.cluster.local
                 -Dalfresco.port=8080
-                -Daos.baseUrlOverwrite=http://content.alfresco.svc.cluster.local:8080/alfresco/aos
+                -Daos.baseUrlOverwrite=https://iad032-1san01.appdev.armedia.com/alfresco/aos
                 -Dmessaging.broker.url="failover:(nio://activemq:61616)?timeout=3000&jms.useCompression=true"
                 -Ddeployment.method=DOCKER_COMPOSE
                 -Dtransform.service.enabled=true
@@ -183,6 +183,7 @@ spec:
                 -Dcom.sun.management.jmxremote
                 -Dalfresco.jmx.connector.enabled=true
                 -Dalfresco.rmi.services.port=50500
+                -Dcsrf.filter.enabled=false
           ports:
             - containerPort: 8080
           resources:
@@ -191,21 +192,16 @@ spec:
           volumeMounts:
             - name: &contentRepository content-repository
               mountPath: /alf_data
-            # - name: &postgresDriverJar postgres-driver-jar
-            #   mountPath: /usr/local/tomcat/lib/postgresql-42.2.6.jar
             - name: &licenseFile license-file
               mountPath: /usr/local/tomcat/shared/classes/alfresco/extension/license/armedia.lic
-      restartPolicy: Always
       volumes:
         - name: *contentRepository
           hostPath:
             path: /opt/app/alfresco/data/repo
-        # - name: *postgresDriverJar
-        #   hostPath:
-        #     path: /opt/app/alfresco/lib/postgresql-42.5.2.jar
         - name: *licenseFile
           hostPath:
             path: /opt/app/alfresco/lib/armedia.lic
+      restartPolicy: Always
 status: {}
 ---
 apiVersion: apps/v1
@@ -424,6 +420,9 @@ spec:
       containers:
         - image: alfresco/alfresco-acs-nginx:3.0.1
           name: proxy
+          env:
+            - name: REPO_URL
+              value: http://content:8080
           ports:
             - containerPort: 8080
           resources:
@@ -472,10 +471,15 @@ spec:
                 -Dalfresco.port=8080
                 -Dalfresco.context=alfresco
                 -Dalfresco.protocol=http
+                -Dcsrf.filter.enabled=false
             - name: REPO_HOST
-              value: alfresco
+              value: content
             - name: REPO_PORT
               value: "8080"
+            - name: CSRF_FILTER_REFERER
+              value: "^.*$"
+            - name: CSRF_FILTER_ORIGIN
+              value: "^.*$"
           resources:
             limits:
               memory: "1Gi"
@@ -872,28 +876,6 @@ metadata:
     kompose.version: 1.28.0 (c4137012e)
   creationTimestamp: null
   labels:
-    io.kompose.service: content
-  namespace: alfresco
-  name: alfresco
-spec:
-  type: ClusterIP
-  ports:
-    - name: "8080"
-      port: 8080
-      targetPort: 8080
-  selector:
-    io.kompose.service: content
-status:
-  loadBalancer: {}
----
-apiVersion: v1
-kind: Service
-metadata:
-  annotations:
-    kompose.cmd: kompose convert --volumes hostPath --out k8s
-    kompose.version: 1.28.0 (c4137012e)
-  creationTimestamp: null
-  labels:
     io.kompose.service: digital-workspace
   namespace: alfresco
   name: digital-workspace
@@ -1149,3 +1131,160 @@ spec:
     io.kompose.service: transform-router
 status:
   loadBalancer: {}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    kompose.cmd: kompose convert --volumes hostPath --out k8s
+    kompose.version: 1.28.0 (c4137012e)
+  creationTimestamp: null
+  labels:
+    io.kompose.ingress: alfresco
+  namespace: alfresco
+  name: alfresco
+spec:
+  ingressClassName: haproxy
+  rules:
+    - host: iad032-1san01.appdev.armedia.com
+      http:
+        paths:
+        - backend:
+            service:
+              name: proxy
+              port:
+                number: 8080
+          path: /alfresco
+          pathType: Prefix
+        - backend:
+            service:
+              name: share
+              port:
+                number: 8080
+          path: /share
+          pathType: Prefix
+  tls:
+    - hosts:
+        - iad032-1san01.appdev.armedia.com
+      secretName: tls-secret
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  annotations:
+    kompose.cmd: kompose convert --volumes hostPath --out k8s
+    kompose.version: 1.28.0 (c4137012e)
+  creationTimestamp: null
+  labels:
+    io.kompose.secret: alfresco
+  namespace: alfresco
+  name: tls-secret
+type: kubernetes.io/tls
+data:
+  tls.crt: |-
+    LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUhyVENDQlpXZ0F3SUJBZ0lURkFBQUVwbjBI
+    M2UwMjdkS013QUJBQUFTbVRBTkJna3Foa2lHOXcwQkFRc0YKQURCMk1STXdFUVlLQ1pJbWlaUHlM
+    R1FCR1JZRFkyOXRNUmN3RlFZS0NaSW1pWlB5TEdRQkdSWUhZWEp0WldScApZVEVXTUJRR0NnbVNK
+    b21UOGl4a0FSa1dCbUZ3Y0dSbGRqRXVNQ3dHQTFVRUF4TWxRWEp0WldScFlTQk1URU1nClUzVmli
+    M0prYVc1aGRHVWdTWE56ZFdsdVp5QkRRU0JFTVRBZUZ3MHlNekF5TURreU16VXhORFZhRncweU5q
+    QXkKTURneU16VXhORFZhTUlHZ01Rc3dDUVlEVlFRR0V3SlZVekVMTUFrR0ExVUVDQk1DUjBFeEVE
+    QU9CZ05WQkFjVApCMEYwYkdGdWRHRXhFREFPQmdOVkJBb1RCMEZ5YldWa2FXRXhFREFPQmdOVkJB
+    c1RCMEZ5YTBOaGMyVXhLVEFuCkJnTlZCQU1USUdsaFpEQXpNaTB4YzJGdU1ERXVZWEJ3WkdWMkxt
+    RnliV1ZrYVdFdVkyOXRNU013SVFZSktvWkkKaHZjTkFRa0JGaFJ6WldOMWNtbDBlVUJoY20xbFpH
+    bGhMbU52YlRDQ0FpSXdEUVlKS29aSWh2Y05BUUVCQlFBRApnZ0lQQURDQ0Fnb0NnZ0lCQU05N0U1
+    TjhiMnMwWGZHYmFpRC9iaVQ0UkZydGd5M0ZZY1Vwa1V4VWwzMzY5d3phCnFmQkpWcWZVb3dYYzhY
+    amxKMWE4eVJkalJvYU9lQ3doNWtGZGRxWUJTYnZoOUppSVVET05RWDZja2ozSjRnYkcKVmxNMFRU
+    bnh1LzNHTDZ1N0dTY3dSc2VmRGcvSlZKdlNRazhkREJtS2dSSDBlYlZ6b01YK3F6RWhiTVk1SGh1
+    cApNY0kxekwvMC9zTjdkbmJVYUx6RFpEdWNnVjJKUktKcWlBYW5xU2lUNmJPSFJibXp3V1ZtTzI4
+    dk9xSytRaFYxClpWcXV4NjkzTGdzSkE4UDloT0RibmwvUzlPYWJTL21lUTM1MlViekdCMmkvbkZE
+    RzlUanFvdnpHemd3bEsvQkIKMVF2NnVEcko2VDY5Rm53OW5yZExGUjJVVGtvb3dsMTJ5SklqbFNk
+    aFpFS3lSYUk3eG9RVEIwWnFkdmhRYSsyYgp5enZPcVFiYmQrQk9ydGFTNmczdWVoK1FNR0oyU3Vl
+    enVBc0I2L0xtdXJxdDNtVGxDamVhcjhIdGlnOFk4YWxXCkZhaTBZU1hrRmcraUo2Z1VDNWZYOEg4
+    TW5FYkdDK1k2N245eHl5UElGMkJ4Y21IV21scW5pcmlJbUdpOWhCODcKQkdmVjZaRDh6d0tvb29S
+    Snd3a0RyRHVlbERXQUlxdFdSeTZPdCtKS1czRFVBWUVRZlFvWmxMVTQyalZyVHdOWgpSUUcwZVNk
+    d3Vwc0RYdUdkRXd4SUY4clZLdDhFVHE1clFvem96eS9nTzhKN1ZKM1ZJajQ5Z3daNWhyaEdJNC9I
+    CjBGbHJGQ1V1clE5MG5lMVZEWlF5MnRiQ012ckhTOVJpb0NWanhvZ0tMcEpJbmZnOUo5bWtONXpS
+    akFBWEFnTUIKQUFHamdnSUhNSUlDQXpBckJnTlZIUkVFSkRBaWdpQnBZV1F3TXpJdE1YTmhiakF4
+    TG1Gd2NHUmxkaTVoY20xbApaR2xoTG1OdmJUQWRCZ05WSFE0RUZnUVVpWW9pQWlKempTbVI4K1Nv
+    dWFnQVQrcW1aOU13SHdZRFZSMGpCQmd3CkZvQVU5d0d5bEhJSzNDclRyTHZQNjRkUTVFN2VPalV3
+    YVFZRFZSMGZCR0l3WURCZW9GeWdXb1pZYUhSMGNEb3YKTDNCcmFTNWhjSEJrWlhZdVlYSnRaV1Jw
+    WVM1amIyMHZjR3RwTDBGeWJXVmthV0VsTWpCTVRFTWxNakJUZFdKdgpjbVJwYm1GMFpTVXlNRWx6
+    YzNWcGJtY2xNakJEUVNVeU1FUXhLREVwTG1OeWJEQ0JsUVlJS3dZQkJRVUhBUUVFCmdZZ3dnWVV3
+    Z1lJR0NDc0dBUVVGQnpBQ2huWm9kSFJ3T2k4dmNHdHBMbUZ3Y0dSbGRpNWhjbTFsWkdsaExtTnYK
+    YlM5d2Eya3ZZWEp0WkdWemQyTmhNUzVoY0hCa1pYWXVZWEp0WldScFlTNWpiMjFmUVhKdFpXUnBZ
+    U1V5TUV4TQpReVV5TUZOMVltOXlaR2x1WVhSbEpUSXdTWE56ZFdsdVp5VXlNRU5CSlRJd1JERW9N
+    U2t1WTNKME1Bc0dBMVVkCkR3UUVBd0lGb0RBOEJna3JCZ0VFQVlJM0ZRY0VMekF0QmlVckJnRUVB
+    WUkzRlFpRWs3ZGdvTDhzZ1ltRE40YmoKbjJXSHViSU5Pb2JJMWllSDlwTWlBZ0ZsQWdFY01CMEdB
+    MVVkSlFRV01CUUdDQ3NHQVFVRkJ3TUJCZ2dyQmdFRgpCUWNEQWpBbkJna3JCZ0VFQVlJM0ZRb0VH
+    akFZTUFvR0NDc0dBUVVGQndNQk1Bb0dDQ3NHQVFVRkJ3TUNNQTBHCkNTcUdTSWIzRFFFQkN3VUFB
+    NElDQVFBMmFlc3VmaHpuanZ1SHY1citQd29zdEQ5NExGbWtmbHgxait5TFNHOGsKaXZ5ZXBrcVNV
+    WjZiakwvbk5CUlR1YkJlNVNkQlVvSnhHYUtqYlRUVWNOcVZEbUhaUk9SSFp5dGxSYTIwNDJkdgpC
+    aFQ3UlA1b3NmaVhSd2lNblg3TGRZTVA1N0RtcGpwZU9YVld4eU5ydlhaTWJxVFdWQmRaUTFFYTlM
+    anVGSDBGCitKNWpCcjJCNmlQWENaWXJpcVhXeDZHM2NibzgyRWJFQWlmK3JmMGZndlVFMC9TT0Z5
+    THVPdXVkS01TUlRmczYKdzJiTW1TOGlsRzVrQkRwdEpYR0hZSHJCMlh1VXVoZmNvWFZwLzd3NlM3
+    dVhLRDRtUVoxeXZPVlJGdmZqTWFEMAp1b2ZRMUJ1WGFKbEdCMERGb0tuYXg5UGc3SVFSSVZvWE5D
+    T2NtSjdJeW9oN3p6d0MweUx4TzM1L05KUGRibFFGClhXbTVUVUJNRVBEODh0SmhjNVo5Q1Jnem9o
+    dVBDcUpGYkVuN0dFRWFmSXkxdWdNbW1TaEZVRUxLMFlEbUpzRVMKRW1HWG90RlY1SUk5OUorYTRp
+    TnBVR2ZoNFNhOXVjb3MwT056SWZwSDVnYUFjd0I2UWNvcFF6SjJtbW8rRWZhcgpRVytoUTIvZXhz
+    Z3BmajBZNzA0aUdnMUVLKy9lVUg0bmZIL3ZUWnBIbFBFZzgvZ0Q5elgwTzB2YzM0ejltRGVSCjhY
+    SUhsZlJjUlM5eUMrM2labHdUdVhCbFFhMmNiK0lKa0VtM2txbjRqb0M0OGxobUlFZyszeEMwTFYr
+    MFJLR2QKa0JiMVdzVkhMS2k5dFFKZWtvM3l1cEJscjBYZytSMHRINzRqU1R2dG5xR0FqSjQ0cUNT
+    d0pIYzlBTnY0aWsvZApXUT09Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
+  tls.key: |-
+    LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlKS1FJQkFBS0NBZ0VBejNzVGszeHZh
+    elJkOFp0cUlQOXVKUGhFV3UyRExjVmh4U21SVEZTWGZmcjNETnFwCjhFbFdwOVNqQmR6eGVPVW5W
+    cnpKRjJOR2hvNTRMQ0htUVYxMnBnRkp1K0gwbUloUU00MUJmcHlTUGNuaUJzWlcKVXpSTk9mRzcv
+    Y1l2cTdzWkp6Qkd4NThPRDhsVW05SkNUeDBNR1lxQkVmUjV0WE9neGY2ck1TRnN4amtlRzZreAp3
+    alhNdi9UK3czdDJkdFJvdk1Oa081eUJYWWxFb21xSUJxZXBLSlBwczRkRnViUEJaV1k3Ynk4Nm9y
+    NUNGWFZsCldxN0hyM2N1Q3drRHcvMkU0TnVlWDlMMDVwdEwrWjVEZm5aUnZNWUhhTCtjVU1iMU9P
+    cWkvTWJPRENVcjhFSFYKQy9xNE9zbnBQcjBXZkQyZXQwc1ZIWlJPU2lqQ1hYYklraU9WSjJGa1Fy
+    SkZvanZHaEJNSFJtcDIrRkJyN1p2TApPODZwQnR0MzRFNnUxcExxRGU1Nkg1QXdZblpLNTdPNEN3
+    SHI4dWE2dXEzZVpPVUtONXF2d2UyS0R4anhxVllWCnFMUmhKZVFXRDZJbnFCUUxsOWZ3Znd5Y1Jz
+    WUw1anJ1ZjNITEk4Z1hZSEZ5WWRhYVdxZUt1SWlZYUwyRUh6c0UKWjlYcGtQelBBcWlpaEVuRENR
+    T3NPNTZVTllBaXExWkhMbzYzNGtwYmNOUUJnUkI5Q2htVXRUamFOV3RQQTFsRgpBYlI1SjNDNm13
+    TmU0WjBUREVnWHl0VXEzd1JPcm10Q2pPalBMK0E3d250VW5kVWlQajJEQm5tR3VFWWpqOGZRCldX
+    c1VKUzZ0RDNTZDdWVU5sRExhMXNJeStzZEwxR0tnSldQR2lBb3Vra2lkK0QwbjJhUTNuTkdNQUJj
+    Q0F3RUEKQVFLQ0FnQW9MWW85N2tQWk83dlJkS29abDcwcGxaWVBFWjFzZUtPVlBaWndkSlVkaFVM
+    Z0Qxd0hOdng3NVpabwpKVC94akZhUTJtQUtrbVB1M0pueTJlR3YyTHlJS3dtdlEzTk5NbUJ0aXpZ
+    YW9aRkVPOXIwT3VZdW1KczMxRkwyCk1yRzZqTEd6UUFzRXp3MDNDMkxDQmZablFaVzlRRy84SFI2
+    UWY4S3JkTVNMOEJBVFZxNDQ1d3ZHc3dwaVJid3IKK0xXWkQwcjArdFZuSWNoL1ozeU9BeGt5U0xk
+    ZUx6NTdVSCsxRlZVbklLUHp4TzZTNDBzQ3dzZ014bm5PeGNKNQp5cFliRnZYcllUd0xERnYyYUM1
+    UE9WR1NwTER4WUZ2QThoSUFKbmNJUFkrd2FZTXZJT2VnVCs5RXNabUpjTjRsCkV4TE9ubFFrNUhw
+    RFR4dldDb3lROHRhbVRoT3N3ZWROaUM1dWxlUkFMU3YyMlRPUVBNa056RWpXMXhpemNwR0oKS3ZU
+    R0dycHRkcWVKVGZMb0RDdHFsTE1kVWJwMkpMV3o3M3VtRXdPKzRTRGFOMGZPN0J2TlMvVGltUHRL
+    Y3hEVgo4ZzJGUVdCN3VaU2lJa2FzcDR6QXg0aW00WExPaWR1dC8vUEUyN0NKUytGZ0pwUWNLWTFK
+    eXpQcmdXc0EvRnN0CmdOL3NaNzN4VzIxNWlEeDcwcitLUk9Wem9zVUVMU2M0UFpwM3dFTk50emJp
+    dWpKeTlXTnBBaGxJaThrSEw1ajYKVkJYZXNkMExqcnJuUGw1Y2lzRU1kZlM3cDdRLzZkWXZIajVo
+    TVNCNjJXck9ndnM0eVhMdkZZaWlBTUtIOFpHSApEN0tuVUM3cllvWWpiWUhGWi93OFNwRUJwMWVG
+    ZjBFdFFRRHMyOEdJeU56N2wyVFhrUUtDQVFFQS9kU0FEV29oCmV3aWM0dXRJQWw3UHJhYytRS0Vx
+    MUR2Y0FvZ3VMUTJGclBhN2RML0xPaXVvTlE2eFM3SHRYOGZJdExZWEx4N0UKbkxuU01MUkd3VklO
+    QUNmNys5TW5ad21HUkVoSDdUa0t0dFlRZTdzaFdibW9rNWN3cmpJM213MENiVkdIZy9rUApIQ1dN
+    cVBOejIyS0h1V3cxY2RZMnozRHY2MHFZbW5PQ1IwNTNwSUJETTRuSXQ2ZFA2eFdVZ1c3VHdPRFFR
+    VVJmCmpmU3FUOWpCOCtxSUJ4eUFTS25EbkhSbU9LVmpiWWNUcE1IL0tDWkIyR1k3ZG9abEVER1Q3
+    dVVhZG1UTDNkd20KWE9zMnI3R0FlUXBLekxqbC9OVTFLNThvREdQVGE4VHZmMkVERWExU1dLWXhn
+    Q1hHQmNrYis1V1ZSa3d5YktoSQpVYUZQeHYzckJ6RFY2UUtDQVFFQTBVRWtZdm9tQ0sxN1hId0Mw
+    aVkxcU9VSFc5Wloxd2pDNyttTWV4MENFN1dpCkRTNzd6LzR4SlU3Z1h4TGlWTjRjWDgrbmtPbFpx
+    dnBUU0RoZmJ4RkxZZStzTC84S0hCcndLYlptbWlKekw5NUQKZXhxNWtCZkFkdVA0VlN4M3VYLzdO
+    MjF2OWcwMHplb0F3aW14em95VkhjMm5hU3NteFcxWVVsMi9jUVJIUkJ1Qgo2YWVGK0NSWUx0M1Fz
+    RW1uN1BVQWlNNHJ1TCtRaFVaa2ljSGh4MWZjaEJUWitZdFFZMk9RREQ4T0RPU092S0l4Cm5ydm1I
+    VzhuRjNhR3FGeFNiZUpEeERVUXlobkZoaTR4MnpST1dpelZvTGVHOG1IWWJ6YUYxZ2I2U2twbHBG
+    UkkKcExwQnRoNDAwWTN2WnlsMFJTRU9Zb1dOeVdYbjBvdUNrdnBPUERKbC93S0NBUUJlTjNCSWlt
+    cGZCclZsTFR3UApWUzMxSVN6a1JHNW5WTWkzVCtFRDdBOEFRcDBXR3RMT2hzSHEzOGREZDRuS2ta
+    ZVlMRGF5ME5MZDhjTnBQS0UrCnhMdjZvTnpSZm5FVHQ5OVVuUmZGbi9Td0pRajlSRnArdVlFdk4y
+    RmtaMU5vaEEyd2tpQ2hCZU5yNlN3cTBpTGcKL2RPdktkRTByZlN1VHhkZTJOT0lFUFA4ajgydEM4
+    Ymw3SERLYXBvcGdsc2JLQTRGZSswUkxOWGpGVHZhWTNTcQpteFZldmwrSG1TdjRlT1F3aG9NL2Ru
+    SCtKOXdVQlE5UHliS3NyZm41WnMyb1VQWGZtRTVyelhtWDU5N21uQlk1CjEyNG9TMEZpOWFqRXhs
+    RFJPSVNUYmdnUDJleVB0U3ZwcDlhYjRHbCtZRVc0dnE4bjVzU1l2R1lMbHJyTC9CZ3YKRlJ0eEFv
+    SUJBUUNEZXpYOHh3Yjg3dHlUZVF4Z3RVZUVMeHhYbFREd0QzNUZOdTloTUJIdEJuU2phZ0VwYUtQ
+    Qwp1SFA4NlNXemc3ZzZiNFR2WmVCRXNYT0E3b0x3aStKYzBEYldGWjlwbDNlT0RpRWIra2Q4TFdF
+    alNlQ003SSt2ClpJRFdLOUd5aWZyMGtkd0dzN2VaSnM2Qk1hZWFpL1RxUEIxVDFKeFE4dXJMSGtL
+    N0phQU42R2JSeE1SRjdiaEgKQW5NdFFhcTFGaURXMVF6ZDBlaGlCYUFJZXYxOXZ2UTlQY2pVcHJm
+    Rkszc0ladHBTT1k2Q2NqdFJiT2tqVjRNdApsL2oyY3NRTWJWNTlPNGFvSmxkWmYwOHVXQWhmV3Nx
+    RWFLenZRWkc0RjM4eXcwR2pTbW5oUG1CQ3VSR3U5LzNpCktoZmlMMGJ5Wk5uZ0IrRFdTaVRHdzRn
+    eEIvditrUUJMQW9JQkFRQ2lWSFBBRTlIN3BLR3FDVE4rTGZjUUtjUEIKaVBCOWN4cU9OcTJqS0hu
+    RU1kSzA0Y210RU8vSEV6OCtoRVR4dWhtcWh6WGxwbld2Q2syYUE4aVN0VUdjS3YvcAoxQzc5bVJy
+    WDliYWM1aFV5K2dGUWNtTXo4Tko5L0gxLzVnU2hmUmdaY1ZCeUhFaXZzZVdXNDYrY05FZERGTzhG
+    CjY4NWdDc3NQZWhBc2JCK29ROUJuaTVTbDc2MnpkZ0dPajdDQ0FranJDMVdkRmRhS3hqeWdRTXR4
+    NzV5U201YWQKSGFyNTZ3NC8rTW9zaW84SGRibEpxWS9ON00yZjZoaEVRa2JCQ0JMTytxSzdVSm5m
+    K3lJYmFXMDdDRmF5N3JsbgpPR1hBU0FQQXFuMTRMNU9nQzdwcXdNRUl3NHNEY01iRUJYeXEwVXda
+    YVFRemxKcjJzNGM0d2l0WGk2YkUKLS0tLS1FTkQgUlNBIFBSSVZBVEUgS0VZLS0tLS0K
