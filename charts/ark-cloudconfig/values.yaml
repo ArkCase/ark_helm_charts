@@ -30,10 +30,9 @@ replicaCount: 1
 platform: ""
 image:
   registry: "345280441424.dkr.ecr.ap-south-1.amazonaws.com"
-  repository: "ark_core"
+  repository: "ark_cloudconfig"
   # Overrides the image tag whose default is the chart appVersion.
-  #tag: "2021.03.11"
-  tag: "2023020902"
+  tag: "2021.03.11"
   # If required, for tweaking setperm
   # setperm:
   #   registry: "alternate-registry"
@@ -169,7 +168,7 @@ service:
   ports:
     - name: http
       protocol: TCP
-      port: &servicePort 8080
+      port: &servicePort 9999
 
 ##
 ## Configure extra options for containers' liveness and readiness probes
@@ -182,7 +181,7 @@ service:
 ## @param service.probes.spec.successThreshold Success threshold for liveness and readiness probes
 ##
   probes:
-    enabled: false
+    enabled: true
     spec:
       httpGet:
         path: "/actuator/health"
