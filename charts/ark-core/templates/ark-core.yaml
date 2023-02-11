@@ -88,6 +88,9 @@ spec:
           env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
             - name: DATA_DIR
               value: *confDir
+            {{- with ((.Values.configuration).config).env }}
+              {{- toYaml . | nindent 12 }}
+            {{- end }}
           {{- include "arkcase.subsystem.ports" (.Values.service).config | nindent 10 }}
           {{- with (.Values.command).config }}
           command: {{- toYaml . | nindent 12 }}
@@ -115,11 +118,8 @@ spec:
               value: *dataDir
             - name: WORK_DIR
               value: *workDir
-            - name: LD_LIBRARY_PATH
-              value: "/app/conf/libraries"
-            {{- with ((.Values.configuration).arkcase).catalinaOpts }}
-            - name: CATALINA_OPTS
-              value: {{ . | quote }}
+            {{- with ((.Values.configuration).arkcase).env }}
+              {{- toYaml . | nindent 12 }}
             {{- end }}
           {{- include "arkcase.subsystem.ports" (.Values.service).arkcase | nindent 10 }}
           {{- with (.Values.command).arkcase }}

@@ -17,16 +17,23 @@ configuration:
     #       perhaps come up with a template macro that computes them based
     #       on resource allocations (request/limit)?
     catalinaOpts: >-
-      -Dacm.configurationserver.propertyfile=/app/home/.arkcase/acm/conf.yml
-      -Dconfiguration.client.spring.path=spring
-      -Dspring.profiles.active=ldap
-      -Duser.home=/app/home
-      -Xms1024m
-      -Xmx2048m
+
+    # In case you need more environment variables ...
+    env:
+      - name: LD_LIBRARY_PATH
+        value: "/app/conf/libraries"
+      - name: CATALINA_OPTS
+        value: >-
+          -Dacm.configurationserver.propertyfile=/app/home/.arkcase/acm/conf.yml
+          -Dconfiguration.client.spring.path=spring
+          -Dspring.profiles.active=ldap
+          -Duser.home=/app/home
+          -Xms1024m
+          -Xmx2048m
 
 command:
   # TODO: This command is intended for debugging purposes *ONLY*
-  arkcase: [ "sleep", "infinity" ]
+  # arkcase: [ "sleep", "infinity" ]
 
 initDependencies:
   enabled: true
