@@ -3,25 +3,3 @@
 ## @skip exampleValue
 ##
 exampleValue: common-chart
-
-service:
-  # external: "192.168.3.1"
-  # external: "www.outer.com"
-  ports:
-   - name: outer
-     protocol: TCP
-     port: 1234
-
-  test:
-    type: ClusterIP
-    # external: "192.168.3.3"
-    # external: "www.inner.com"
-    ports:
-     - name: inner
-       protocol: UDP
-       port: 5678
-
-
-global:
-  subsystem:
-    ark-common: true
