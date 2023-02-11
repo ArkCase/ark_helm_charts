@@ -10,6 +10,8 @@
 #
 configuration:
   # Add configurations here
+  config:
+    # Settings for config
   arkcase:
     # TODO: these memory settings need tweaking for the final deployment
     #       perhaps come up with a template macro that computes them based
@@ -75,10 +77,10 @@ image:
   #   repository: "alternate-image"
   #   tag: "alternate-tag"
   pullPolicy: IfNotPresent
-  arkcase:
+  config:
     repository: "ark_cloudconfig"
     tag: *arkcaseTag
-  config:
+  arkcase:
     # repository: "ark_core"
     # tag: *arkcaseTag
     repository: "ark_nettest"
@@ -118,7 +120,7 @@ securityContext:
     # case). Any random number will do.
     fsGroup: &fsGroup 1997
     fsGroupChangePolicy: OnRootMismatch
-  arkcase:
+  config:
     # capabilities:
     #   drop:
     #   - ALL
@@ -126,7 +128,7 @@ securityContext:
     runAsNonRoot: true
     runAsUser: &runAsUser 1997
     runAsGroup: *fsGroup
-  config:
+  arkcase:
     # capabilities:
     #   drop:
     #   - ALL
@@ -231,17 +233,17 @@ service:
 ## @param service.probes.spec.failureThreshold Failure threshold for liveness and readiness probes
 ## @param service.probes.spec.successThreshold Success threshold for liveness and readiness probes
 ##
-    probes:
-      enabled: true
-      spec:
-        httpGet:
-          path: "/actuator/health"
-          port: *configPort
-        initialDelaySeconds: 10
-        periodSeconds: 5
-        timeoutSeconds: 5
-        failureThreshold: 12
-        successThreshold: 1
+#    probes:
+#      enabled: true
+#      spec:
+#        httpGet:
+#          path: "/actuator/health"
+#          port: *configPort
+#        initialDelaySeconds: 10
+#        periodSeconds: 5
+#        timeoutSeconds: 5
+#        failureThreshold: 12
+#        successThreshold: 1
 
   arkcase:
     ports:
