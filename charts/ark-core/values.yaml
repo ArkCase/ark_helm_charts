@@ -1,4 +1,4 @@
-# Default values for ark-cloudconfig.
+# Default values for ark-core.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
@@ -9,19 +9,58 @@
 # This should group all application-specific configurations
 #
 configuration:
+  # Add configurations here
+  config:
+    # Settings for config
+  arkcase:
+    # TODO: these memory settings need tweaking for the final deployment
+    #       perhaps come up with a template macro that computes them based
+    #       on resource allocations (request/limit)?
+    catalinaOpts: >-
+      -Dacm.configurationserver.propertyfile=/app/home/.arkcase/acm/conf.yml
+      -Dconfiguration.client.spring.path=spring
+      -Dspring.profiles.active=ldap
+      -Duser.home=/app/home
+      -Xms1024m
+      -Xmx2048m
+
+command:
+  # TODO: This command is intended for debugging purposes *ONLY*
+  arkcase: [ "sleep", "infinity" ]
 
 initDependencies:
-  enabled: false
+  enabled: true
   mode: all
   template:
+    # Any of the required ports are enough to succeed
     mode: any
     initialDelay: 10
     delay: 5
     attempts: 12
   dependencies:
+    ldap:
+      ports:
+        - 389
+        - 636
     messaging:
       ports:
+        - 61613
         - 61616
+    rdbms:
+      ports:
+        # In case of SQLServer
+        - 1443
+        # In case of Oracle
+        - 1521
+        # In case of MySQL/MariaDB
+        - 3306
+        # In case of PostgreSQL
+        - 5432
+    search:
+      ports:
+        - 80
+        - 443
+        - 8983
 
 # Please leave the `replicaCount` to 1 for the time being. Clustering is not
 # supported yet.
@@ -30,16 +69,19 @@ replicaCount: 1
 platform: ""
 image:
   registry: "345280441424.dkr.ecr.ap-south-1.amazonaws.com"
-  repository: "ark_core"
   # Overrides the image tag whose default is the chart appVersion.
-  #tag: "2021.03.11"
-  tag: "2023020902"
   # If required, for tweaking setperm
   # setperm:
   #   registry: "alternate-registry"
   #   repository: "alternate-image"
   #   tag: "alternate-tag"
   pullPolicy: IfNotPresent
+  config:
+    # repository: "ark_cloudconfig"
+    tag: "2021.03.11"
+  arkcase:
+    # repository: "ark_core"
+    tag: "2021.03.19"
 
 imagePullSecrets:
   - name: aws-arkcase-pull
@@ -75,7 +117,15 @@ securityContext:
     # case). Any random number will do.
     fsGroup: &fsGroup 1997
     fsGroupChangePolicy: OnRootMismatch
-  cloudconfig:
+  config:
+    # capabilities:
+    #   drop:
+    #   - ALL
+    # readOnlyRootFilesystem: true
+    runAsNonRoot: true
+    runAsUser: &runAsUser 1997
+    runAsGroup: *fsGroup
+  arkcase:
     # capabilities:
     #   drop:
     #   - ALL
@@ -124,53 +174,52 @@ persistence:
 # Use this instance of localPath when you want a specific directory for this volume
     # localPath: "/opt/app/arkcase/config"
 # The "volume" should match the contents of PersistenceVolume.spec
-#    volume:
-#      storageClassName: "manual"
-#      persistentVolumeReclaimPolicy: Retain
-#      accessModes:
-#        - "ReadWriteOnce"
-#      capacity:
-#        storage: "10Gi"
-#      hostPath:
-#        path: /tmp/samba/data
+#     volume:
+#       storageClassName: "manual"
+#       persistentVolumeReclaimPolicy: Retain
+#       accessModes:
+#         - "ReadWriteOnce"
+#       capacity:
+#         storage: "10Gi"
+#       hostPath:
+#         path: /tmp/samba/data
 #
-    claim:
+#   claim:
 # "name" is the name of an existing volume claim to be re-used, can't be used if "claim" is present
-#      name: "name-of-the-claim-to-consume"
+#     name: "name-of-the-claim-to-consume"
 # "spec" should match the contents of PersistenceVolumeClaim.spec, can't be used if "name" is present
-#      spec: 
-#        storageClassName: ""
-#        volumeName: the-volume-to-claim
-#        accessModes:
-#          - "ReadWriteOnce"
-#        resources:
-#          limits: ""
-#          requests: ""
-#        selector:
-#          matchExpressions:
-#            - values:
-#                - ""
-#                - ""
-#                - ""
-#                ...
-#              operator: "In"|"NotIn"|"Exists"|"DoesNotExist"
-#              key: "labelKey"
-#            - values:
-#                - ""
-#                - ""
-#                - ""
-#                ...
-#              operator: "In"|"NotIn"|"Exists"|"DoesNotExist"
-#              key: "labelKey"
-#          matchLabels: "....."
+#     spec: 
+#       storageClassName: ""
+#       volumeName: the-volume-to-claim
+#       accessModes:
+#         - "ReadWriteOnce"
+#       resources:
+#         limits: ""
+#         requests: ""
+#       selector:
+#         matchExpressions:
+#           - values:
+#               - ""
+#               - ""
+#               - ""
+#               ...
+#             operator: "In"|"NotIn"|"Exists"|"DoesNotExist"
+#             key: "labelKey"
+#           - values:
+#               - ""
+#               - ""
+#               - ""
+#               ...
+#             operator: "In"|"NotIn"|"Exists"|"DoesNotExist"
+#             key: "labelKey"
+#         matchLabels: "....."
 
 service:
-  #external: "192.168.3.54"
-  ports:
-    - name: http
-      protocol: TCP
-      port: &servicePort 8080
-
+  config:
+    ports:
+      - name: config
+        protocol: TCP
+        port: &configPort 9999
 ##
 ## Configure extra options for containers' liveness and readiness probes
 ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/#configure-probes
@@ -181,14 +230,31 @@ service:
 ## @param service.probes.spec.failureThreshold Failure threshold for liveness and readiness probes
 ## @param service.probes.spec.successThreshold Success threshold for liveness and readiness probes
 ##
-  probes:
-    enabled: false
-    spec:
-      httpGet:
-        path: "/actuator/health"
-        port: *servicePort
-      initialDelaySeconds: 10
-      periodSeconds: 5
-      timeoutSeconds: 5
-      failureThreshold: 12
-      successThreshold: 1
+    probes:
+      enabled: true
+      spec:
+        httpGet:
+          path: "/actuator/health"
+          port: *configPort
+        initialDelaySeconds: 10
+        periodSeconds: 5
+        timeoutSeconds: 5
+        failureThreshold: 12
+        successThreshold: 1
+
+  arkcase:
+    ports:
+      - name: arkcase
+        protocol: TCP
+        port: &arkcasePort 8080
+#    probes:
+#      enabled: true
+#      spec:
+#        httpGet:
+#          path: "/"
+#          port: *arkcasePort
+#        initialDelaySeconds: 10
+#        periodSeconds: 5
+#        timeoutSeconds: 5
+#        failureThreshold: 12
+#        successThreshold: 1

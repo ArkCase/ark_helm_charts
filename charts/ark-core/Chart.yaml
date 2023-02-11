@@ -1,0 +1,10 @@
+apiVersion: v2
+name: ark-core
+version: 0.1.1
+appVersion: "2021.03.11"
+description: A Helm chart for core ArkCase and ConfigServer
+type: application
+dependencies:
+  - name: ark-common
+    version: ~0.1.19
+    repository: "https://arkcase.github.io/ark_helm_charts"

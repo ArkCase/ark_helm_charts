@@ -69,39 +69,84 @@ spec:
                   - ownership: "1997:1997"
                     permissions: "u=rwX,g=rX,o="
                     flags: [ "recurse", "noforced", "create", "changes" ]
-                    targets: [ "/app/data" ]
+                    targets: [ "/app/conf", "/app/data", "/app/work" ]
           volumeMounts:
-            - name: "data"
+            - name: &confVolume "conf"
+              mountPath: &confDir "/app/conf"
+            - name: &dataVolume "data"
               mountPath: &dataDir "/app/data"
+            - name: &workVolume "work"
+              mountPath: &workDir "/app/work"
         {{- include "arkcase.initDependencies.container" (dict "ctx" . "name" "init-dependencies") | nindent 8 }}
       containers:
         - name: config
           {{- with (.Values.securityContext).config }}
           securityContext: {{- toYaml . | nindent 12 }}
           {{- end }}
-          image: {{ include "arkcase.tools.image" . | quote }}
+          image: {{ include "arkcase.tools.subimage" (dict "ctx" . "name" "config" "image" "ark_cloudconfig") | quote }}
           imagePullPolicy: {{ include "arkcase.tools.imagePullPolicy" . | quote }}
           env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
             - name: DATA_DIR
-              value: "/app/data"
-          {{- include "arkcase.subsystem.ports" . | nindent 10 }}
-          {{- if .Values.command }}
-          command: {{- .Values.command | toYaml | nindent 12 }}
+              value: *confDir
+          {{- include "arkcase.subsystem.ports" (.Values.service).config | nindent 10 }}
+          {{- with (.Values.command).config }}
+          command: {{- toYaml . | nindent 12 }}
           {{- end }}
-          {{- with .Values.resources }}
+          {{- with (.Values.resources).config }}
           resources: {{- toYaml . | nindent 12 }}
           {{- end }}
           {{- with (.Values.securityContext).config }}
           securityContext: {{- toYaml . | nindent 12 }}
           {{- end }}
           volumeMounts:
-            - name: "data"
+            - name: *confVolume
+              mountPath: *confDir
+              subPath: "acm/acm-config-server-repo"
+        - name: arkcase
+          {{- with (.Values.securityContext).arkcase }}
+          securityContext: {{- toYaml . | nindent 12 }}
+          {{- end }}
+          image: {{ include "arkcase.tools.subimage" (dict "ctx" . "name" "arkcase" "image" "ark_core") | quote }}
+          imagePullPolicy: {{ include "arkcase.tools.imagePullPolicy" . | quote }}
+          env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
+            - name: CONF_DIR
+              value: *confDir
+            - name: DATA_DIR
+              value: *dataDir
+            - name: WORK_DIR
+              value: *workDir
+            - name: LD_LIBRARY_PATH
+              value: "/app/conf/libraries"
+            {{- with ((.Values.configuration).arkcase).catalinaOpts }}
+            - name: CATALINA_OPTS
+              value: {{ . | quote }}
+            {{- end }}
+          {{- include "arkcase.subsystem.ports" (.Values.service).arkcase | nindent 10 }}
+          {{- with (.Values.command).arkcase }}
+          command: {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with (.Values.resources).arkcase }}
+          resources: {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with (.Values.securityContext).arkcase }}
+          securityContext: {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: *confVolume
+              mountPath: "/app/home/.arkcase"
+            - name: *dataVolume
               mountPath: *dataDir
+            - name: *workVolume
+              mountPath: *workDir
       volumes:
-        {{- include "arkcase.persistence.volume" (dict "name" "data" "ctx" $) | nindent 8 }}
+        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "conf") | nindent 8 }}
+        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
+        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "work") | nindent 8 }}
 
 {{- if (include "arkcase.persistence.enabled" .) }}
+{{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "conf") | indent 0 }}
 {{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "data") | indent 0 }}
+{{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "work") | indent 0 }}
 {{- end }}
 
 {{- end }}
