@@ -70,7 +70,6 @@ platform: ""
 image:
   registry: "345280441424.dkr.ecr.ap-south-1.amazonaws.com"
   # Overrides the image tag whose default is the chart appVersion.
-  tag: &arkcaseTag "2021.03.11"
   # If required, for tweaking setperm
   # setperm:
   #   registry: "alternate-registry"
@@ -78,13 +77,11 @@ image:
   #   tag: "alternate-tag"
   pullPolicy: IfNotPresent
   config:
-    repository: "ark_cloudconfig"
-    tag: *arkcaseTag
+    # repository: "ark_cloudconfig"
+    tag: "2021.03.11"
   arkcase:
     # repository: "ark_core"
-    # tag: *arkcaseTag
-    repository: "ark_nettest"
-    tag: "latest"
+    tag: "2021.03.19"
 
 imagePullSecrets:
   - name: aws-arkcase-pull

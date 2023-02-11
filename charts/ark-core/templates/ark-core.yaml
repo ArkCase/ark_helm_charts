@@ -133,7 +133,7 @@ spec:
           {{- end }}
           volumeMounts:
             - name: *confVolume
-              mountPath: *confDir
+              mountPath: "/app/home/.arkcase"
             - name: *dataVolume
               mountPath: *dataDir
             - name: *workVolume
