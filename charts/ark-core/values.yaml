@@ -233,17 +233,17 @@ service:
 ## @param service.probes.spec.failureThreshold Failure threshold for liveness and readiness probes
 ## @param service.probes.spec.successThreshold Success threshold for liveness and readiness probes
 ##
-#    probes:
-#      enabled: true
-#      spec:
-#        httpGet:
-#          path: "/actuator/health"
-#          port: *configPort
-#        initialDelaySeconds: 10
-#        periodSeconds: 5
-#        timeoutSeconds: 5
-#        failureThreshold: 12
-#        successThreshold: 1
+    probes:
+      enabled: true
+      spec:
+        httpGet:
+          path: "/actuator/health"
+          port: *configPort
+        initialDelaySeconds: 10
+        periodSeconds: 5
+        timeoutSeconds: 5
+        failureThreshold: 12
+        successThreshold: 1
 
   arkcase:
     ports:
