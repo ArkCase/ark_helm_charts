@@ -248,42 +248,52 @@ This template should be invoked with a reference to the map describing the probe
 {{- /*
 Render container port declarations based on what's declared in the values file. Probes will also be rendered if enabled.
 
-Parameter: the root context (i.e. "." or "$")
+Parameter: the root context (i.e. "." or "$"), or a map which descibes the ports and probes
 */ -}}
 {{- define "arkcase.subsystem.ports" }}
-  {{- with (.Values.service) }}
-    {{- with .ports -}}
+  {{- $root := . -}}
+  {{- if $root -}}
+    {{- if not (kindIs "map" $root) -}}
+      {{- fail "The parameter given must be a map" -}}
+    {{- end -}}
+    {{- /* This is a simple detection of whether we were given the root, or a specific map */ -}}
+    {{- if (($root.Values).service).ports -}}
+      {{- $root = $root.Values.service -}}
+    {{- end -}}
+    {{- with $root }}
+      {{- with .ports -}}
 ports:
-      {{- range . }}
+        {{- range . }}
   - name: {{ (required "Port specifications must contain a name" .name) | quote }}
     protocol: {{ coalesce .protocol "TCP" }}
     containerPort: {{ required (printf "Port [%s] doesn't have a port number" .name) .port }}
-      {{- end }}
-    {{- end }}
-    {{- $probes := (coalesce .probes dict) }}
-    {{- $common := (coalesce $probes.spec dict) }}
-    {{- $startup := (coalesce $probes.startup dict) }}
-    {{- $readiness := (coalesce $probes.readiness dict) }}
-    {{- $liveness := (coalesce $probes.liveness dict) }}
-    {{- if or ($probes.enabled) (not (hasKey $probes "enabled")) }}
-      {{- if or ($startup.enabled) (not (hasKey $readiness "enabled")) -}}
-        {{- with (mergeOverwrite $common $startup) }}
-          {{- if (include "arkcase.subsystem.probeIsValid" .) }}
-startupProbe: {{- toYaml (unset . "enabled") | nindent 2 }}
-          {{- end -}}
         {{- end }}
       {{- end }}
-      {{- if or ($readiness.enabled) (not (hasKey $readiness "enabled")) -}}
-        {{- with (mergeOverwrite $common $readiness) }}
-          {{- if (include "arkcase.subsystem.probeIsValid" .) }}
-readinessProbe: {{- toYaml (unset . "enabled") | nindent 2 }}
+      {{- $probes := (coalesce .probes dict) }}
+      {{- $common := (coalesce $probes.spec dict) }}
+      {{- $startup := (coalesce $probes.startup dict) }}
+      {{- $readiness := (coalesce $probes.readiness dict) }}
+      {{- $liveness := (coalesce $probes.liveness dict) }}
+      {{- if or ($probes.enabled) (not (hasKey $probes "enabled")) }}
+        {{- if or ($startup.enabled) (not (hasKey $readiness "enabled")) -}}
+          {{- with (mergeOverwrite $common $startup) }}
+            {{- if (include "arkcase.subsystem.probeIsValid" .) }}
+startupProbe: {{- toYaml (unset . "enabled") | nindent 2 }}
+            {{- end -}}
           {{- end }}
         {{- end }}
-      {{- end }}
-      {{- if or ($liveness.enabled) (not (hasKey $liveness "enabled")) -}}
-        {{- with (mergeOverwrite $common $liveness) }}
-          {{- if (include "arkcase.subsystem.probeIsValid" .) }}
+        {{- if or ($readiness.enabled) (not (hasKey $readiness "enabled")) -}}
+          {{- with (mergeOverwrite $common $readiness) }}
+            {{- if (include "arkcase.subsystem.probeIsValid" .) }}
+readinessProbe: {{- toYaml (unset . "enabled") | nindent 2 }}
+            {{- end }}
+          {{- end }}
+        {{- end }}
+        {{- if or ($liveness.enabled) (not (hasKey $liveness "enabled")) -}}
+          {{- with (mergeOverwrite $common $liveness) }}
+            {{- if (include "arkcase.subsystem.probeIsValid" .) }}
 livenessProbe: {{- toYaml (unset . "enabled") | nindent 2 }}
+            {{- end }}
           {{- end }}
         {{- end }}
       {{- end }}
