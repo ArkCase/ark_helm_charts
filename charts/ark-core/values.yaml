@@ -79,8 +79,10 @@ image:
     repository: "ark_cloudconfig"
     tag: *arkcaseTag
   config:
-    repository: "ark_core"
-    tag: *arkcaseTag
+    # repository: "ark_core"
+    # tag: *arkcaseTag
+    repository: "ark_nettest"
+    tag: "latest"
 
 imagePullSecrets:
   - name: aws-arkcase-pull
@@ -246,14 +248,14 @@ service:
       - name: arkcase
         protocol: TCP
         port: &arkcasePort 8080
-    probes:
-      enabled: true
-      spec:
-        httpGet:
-          path: "/"
-          port: *arkcasePort
-        initialDelaySeconds: 10
-        periodSeconds: 5
-        timeoutSeconds: 5
-        failureThreshold: 12
-        successThreshold: 1
+#    probes:
+#      enabled: true
+#      spec:
+#        httpGet:
+#          path: "/"
+#          port: *arkcasePort
+#        initialDelaySeconds: 10
+#        periodSeconds: 5
+#        timeoutSeconds: 5
+#        failureThreshold: 12
+#        successThreshold: 1
