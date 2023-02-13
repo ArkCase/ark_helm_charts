@@ -273,14 +273,16 @@ Parameter: the root context (i.e. "." or "$")
     {{- /* Render a global service with all declared ports, as necessary */ -}}
     {{- $containerPorts := list }}
     {{- range $container, $spec := $containers }}
-      {{- if not (kindIs "map" $spec) }}
-        {{- fail (printf "The declaration for .Values.service.%s must be a map" $container) }}
-      {{- end }}
-      {{- if $spec.ports }}
-        {{- if (not (kindIs "slice" $spec.ports)) }}
-          {{- fail (printf "The declaration for .Values.service.%s.ports must be a list of ports (maps) (%s)" $container (kindOf $spec.ports)) }}
+      {{- if (kindIs "map" $spec) }}
+        {{- if $spec.ports }}
+          {{- if (not (kindIs "slice" $spec.ports)) }}
+            {{- fail (printf "The declaration for .Values.service.%s.ports must be a list of ports (maps) (%s)" $container (kindOf $spec.ports)) }}
+          {{- end }}
+          {{- $containerPorts = concat $containerPorts $spec.ports }}
         {{- end }}
-        {{- $containerPorts = concat $containerPorts $spec.ports }}
+      {{- else }}
+        {{- /* Turn it into a map spec? Or just ignore it? */ -}}
+        {{- fail (printf "The declaration for .Values.service.%s must be a map" $container) }}
       {{- end }}
     {{- end }}
     {{- /* It will fall to the values author to avoid duplication */ -}}

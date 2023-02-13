@@ -69,14 +69,14 @@ spec:
                   - ownership: "1997:1997"
                     permissions: "u=rwX,g=rX,o="
                     flags: [ "recurse", "noforced", "create", "changes" ]
-                    targets: [ "/app/conf", "/app/data", "/app/work" ]
+                    targets: [ "/app/conf", "/app/data", "/app/home" ]
           volumeMounts:
+            - name: &homeVolume "home"
+              mountPath: &homeDir "/app/home"
             - name: &confVolume "conf"
               mountPath: &confDir "/app/conf"
             - name: &dataVolume "data"
               mountPath: &dataDir "/app/data"
-            - name: &workVolume "work"
-              mountPath: &workDir "/app/work"
         {{- include "arkcase.initDependencies.container" (dict "ctx" . "name" "init-dependencies") | nindent 8 }}
       containers:
         - name: config
@@ -116,8 +116,8 @@ spec:
               value: *confDir
             - name: DATA_DIR
               value: *dataDir
-            - name: WORK_DIR
-              value: *workDir
+            - name: HOME_DIR
+              value: *homeDir
             {{- with ((.Values.configuration).arkcase).env }}
               {{- toYaml . | nindent 12 }}
             {{- end }}
@@ -132,21 +132,21 @@ spec:
           securityContext: {{- toYaml . | nindent 12 }}
           {{- end }}
           volumeMounts:
+            - name: *homeVolume
+              mountPath: "/app/home"
             - name: *confVolume
               mountPath: "/app/home/.arkcase"
             - name: *dataVolume
               mountPath: *dataDir
-            - name: *workVolume
-              mountPath: *workDir
       volumes:
+        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "home") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "conf") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
-        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "work") | nindent 8 }}
 
 {{- if (include "arkcase.persistence.enabled" .) }}
+{{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "home") | indent 0 }}
 {{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "conf") | indent 0 }}
 {{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "data") | indent 0 }}
-{{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "work") | indent 0 }}
 {{- end }}
 
 {{- end }}
