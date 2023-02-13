@@ -68,8 +68,8 @@ spec:
           env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
             - name: CATALINA_OPTS
               value: >-
-                -Dsnowbound_host_port={{ (.Values.service).snowboundPort | default 8080 }}
-                -Darkcase_host_port={{ (.Values.service).arkcasePort | default 8080 }}
+                -Dsnowbound_host_port={{ (.Values.configuration).snowboundPort | default 8080 }}
+                -Darkcase_host_port={{ (.Values.configuration).arkcasePort | default 8080 }}
           {{- include "arkcase.subsystem.ports" . | nindent 10 }}
           {{- if .Values.command }}
           command: {{- .Values.command | toYaml | nindent 12 }}

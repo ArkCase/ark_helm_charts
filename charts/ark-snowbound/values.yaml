@@ -10,6 +10,8 @@
 #
 configuration:
   # add your configurations here
+  snowboundPort: &http 8080
+  arkcasePort: 8080
 
 # Please leave the `replicaCount` to 1 for the time being. Clustering is not
 # supported yet.
@@ -142,9 +144,7 @@ service:
   ports:
     - name: http
       protocol: TCP
-      port: &http 8080
-  snowboundPort: *http
-  arkcasePort: 8080
+      port: *http
 
 ##
 ## Configure extra options for containers' liveness and readiness probes
