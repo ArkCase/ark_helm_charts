@@ -1,12 +1,59 @@
+#
+# This should group all application-specific configurations
+#
+configuration:
+  ingress:
+    className: &ingressClass "haproxy"
+    # service:
+    #   name: "gateway"
+    #   port: 80
+    # annotations:
+    #   kubernetes.io/ingress.class: *ingressClass
+    # labels:
+    #   kubernetes.io/ingress.class: *ingressClass
+    # Enable this for TLS support at the ingress controller level
+    # tls:
+      # crt: |-
+        # MIIFPjCCBCagAwIBAgIBEzANBgkqhkiG9w0BAQsFADCBtzELMAkGA1UEBhMCQ1Ix
+        # ETAPBgNVBAgTCFNhbiBKb3NlMRIwEAYDVQQHEwlTYW50YSBBbmExFzAVBgNVBAoT
+        # DkVydWRpY2l0eSBTLkEuMRwwGgYDVQQLExNTZWN1cml0eSBPcGVyYXRpb25zMSMw
+        # ...
+        # uc3KmY3NvM2PcHdB5TAFj5s59d8bHwcVcDS4lXK2+bmYTimtpxusM+5/7VRUrKVE
+        # +f79UJY235PUKs3XXZPEjiknHj4c83nHQ+leCvhUGcQxnj/hu0r3fNetwucCyokl
+        # UWI=
+      # key: |-
+        # MIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQDuVBpXmE3jx4Cy
+        # BBWhsV3YQ8Er5B6iini4muyoRIxHX59wLIXmDFRAL1/s4MFegiCCXDVjuDNfwnqg
+        # sUOXYLK5uO0/p13FJZa5nXJKJSuKFhOvlBe+SY+MgScd3JU7QjUwpo2qQctsY9VX
+        # ...
+        # 1gBqSd2OMnETFz/mOH098N98xubIVFT21Xiw7kxAEw7+wk+RdlV5jcjrarqCBqyK
+        # SCf3y/YLFB6LvZUqUndIF5zu7M3iDZkmm9vH0II7ceScy9EPoneImyluOjqOWqCo
+        # P5IEB0fxZC3kZQ6Jjm/c9/a5Kw==
+      # ca: |-
+        # MIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQDuVBpXmE3jx4Cy
+        # BBWhsV3YQ8Er5B6iini4muyoRIxHX59wLIXmDFRAL1/s4MFegiCCXDVjuDNfwnqg
+        # sUOXYLK5uO0/p13FJZa5nXJKJSuKFhOvlBe+SY+MgScd3JU7QjUwpo2qQctsY9VX
+        # ...
+        # 1gBqSd2OMnETFz/mOH098N98xubIVFT21Xiw7kxAEw7+wk+RdlV5jcjrarqCBqyK
+        # SCf3y/YLFB6LvZUqUndIF5zu7M3iDZkmm9vH0II7ceScy9EPoneImyluOjqOWqCo
+        # P5IEB0fxZC3kZQ6Jjm/c9/a5Kw==
+
 gateway:
   configuration:
     proxies:
+
+      # ArkCase Core
+      ark-core:
+        preserveHosts: true
+        locations:
+          - url: &coreUrl "http://core:8080/arkcase"
+            path: "/arkcase"
 
       # ArkCase Cloud Configuration
       ark-config:
         preserveHosts: true
         locations:
-          - url: &configUrl "http://config:9999/"
+          - url: &configUrl "http://core:9999/"
             path: "/config"
             html:
               enabled: true
@@ -216,42 +263,6 @@ reports:
           - 1521
           - 3306
           - 5432
-
-#
-# This should group all application-specific configurations
-#
-configuration:
-#   ingress:
-#     className: &ingressClass "haproxy"
-#     annotations:
-#       kubernetes.io/ingress.class: *ingressClass
-#     ports:
-#       - subsystem: "config"
-#         port: 9999
-#       - subsystem: "messaging"
-#         port: 8161
-#       - subsystem: "search"
-#         port: 8983
-#       - subsystem: "viewer"
-#         port: 8080
-    # Enable this for TLS support at the ingress controller level
-    # tls:
-      # crt: |-
-        # MIIFPjCCBCagAwIBAgIBEzANBgkqhkiG9w0BAQsFADCBtzELMAkGA1UEBhMCQ1Ix
-        # ETAPBgNVBAgTCFNhbiBKb3NlMRIwEAYDVQQHEwlTYW50YSBBbmExFzAVBgNVBAoT
-        # DkVydWRpY2l0eSBTLkEuMRwwGgYDVQQLExNTZWN1cml0eSBPcGVyYXRpb25zMSMw
-        # ...
-        # uc3KmY3NvM2PcHdB5TAFj5s59d8bHwcVcDS4lXK2+bmYTimtpxusM+5/7VRUrKVE
-        # +f79UJY235PUKs3XXZPEjiknHj4c83nHQ+leCvhUGcQxnj/hu0r3fNetwucCyokl
-        # UWI=
-      # key: |-
-        # MIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQDuVBpXmE3jx4Cy
-        # BBWhsV3YQ8Er5B6iini4muyoRIxHX59wLIXmDFRAL1/s4MFegiCCXDVjuDNfwnqg
-        # sUOXYLK5uO0/p13FJZa5nXJKJSuKFhOvlBe+SY+MgScd3JU7QjUwpo2qQctsY9VX
-        # ...
-        # 1gBqSd2OMnETFz/mOH098N98xubIVFT21Xiw7kxAEw7+wk+RdlV5jcjrarqCBqyK
-        # SCf3y/YLFB6LvZUqUndIF5zu7M3iDZkmm9vH0II7ceScy9EPoneImyluOjqOWqCo
-        # P5IEB0fxZC3kZQ6Jjm/c9/a5Kw==
 
 # Please leave the `replicaCount` to 1 for the time being. Clustering is not
 # supported yet.
