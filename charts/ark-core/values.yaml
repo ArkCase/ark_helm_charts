@@ -20,6 +20,8 @@ configuration:
 
     # In case you need more environment variables ...
     env:
+      - name: DEVELOPMENT
+        value: "true"
       - name: LD_LIBRARY_PATH
         value: "/app/home/.arkcase/libraries"
       - name: CATALINA_OPTS
@@ -88,7 +90,7 @@ image:
     tag: "2021.03.11"
   arkcase:
     # repository: "ark_core"
-    tag: "2021.03.19"
+    tag: "2023.02.13-03"
 
 imagePullSecrets:
   - name: aws-arkcase-pull
