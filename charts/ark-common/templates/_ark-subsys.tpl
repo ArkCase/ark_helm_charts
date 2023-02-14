@@ -118,7 +118,6 @@ Parameter: either the root context (i.e. "." or "$"), or
 {{- define "arkcase.subsystem.service.render" }}
   {{- $ctx := .ctx }}
   {{- $data := .data }}
-  {{- $name := (.name | default "") | toString }}
   {{- if (include "arkcase.subsystem.enabledOrExternal" (dict "ctx" $ctx "data" $data)) }}
     {{- $external := (coalesce $data.external "") }}
 
@@ -127,15 +126,19 @@ Parameter: either the root context (i.e. "." or "$"), or
     {{- if and (empty $ports) (not $external) }}
       {{- fail (printf "No ports are defined for chart %s, and no external server was given" (include "common.name" $ctx)) }}
     {{- end }}
-    {{- $namePattern := "%s" }}
-    {{- if $name }}
-      {{- $namePattern = (printf "%%s-%s" $name) }}
+    {{- $name := "" }}
+    {{- $name := ($data.name | default "") | toString }}
+    {{- if not $name }}
+      {{- $name =  (include "common.name" $ctx) }}
+      {{- if .name }}
+        {{- $name = (printf "%s-%s" $name .name) }}
+      {{- end }}
     {{- end }}
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ printf $namePattern (include "common.name" $ctx) | quote }}
+  name: {{ $name | quote }}
   namespace: {{ $ctx.Release.Namespace | quote }}
   labels: {{- include "common.labels" $ctx | nindent 4 }}
     {{- with $ctx.Values.labels }}
@@ -186,7 +189,7 @@ spec:
 apiVersion: v1
 kind: Endpoints
 metadata:
-  name: {{ printf $namePattern (include "common.name" $ctx) | quote }}
+  name: {{ $name | quote }}
   namespace: {{ $ctx.Release.Namespace | quote }}
   labels: {{- include "common.labels" $ctx | nindent 4 }}
       {{- with $ctx.Values.labels }}
@@ -273,16 +276,11 @@ Parameter: the root context (i.e. "." or "$")
     {{- /* Render a global service with all declared ports, as necessary */ -}}
     {{- $containerPorts := list }}
     {{- range $container, $spec := $containers }}
-      {{- if (kindIs "map" $spec) }}
-        {{- if $spec.ports }}
-          {{- if (not (kindIs "slice" $spec.ports)) }}
-            {{- fail (printf "The declaration for .Values.service.%s.ports must be a list of ports (maps) (%s)" $container (kindOf $spec.ports)) }}
-          {{- end }}
-          {{- $containerPorts = concat $containerPorts $spec.ports }}
+      {{- if if (kindIs "map" $spec) $spec.ports }}
+        {{- if (not (kindIs "slice" $spec.ports)) }}
+          {{- fail (printf "The declaration for .Values.service.%s.ports must be a list of ports (maps) (%s)" $container (kindOf $spec.ports)) }}
         {{- end }}
-      {{- else }}
-        {{- /* Turn it into a map spec? Or just ignore it? */ -}}
-        {{- fail (printf "The declaration for .Values.service.%s must be a map" $container) }}
+        {{- $containerPorts = concat $containerPorts $spec.ports }}
       {{- end }}
     {{- end }}
     {{- /* It will fall to the values author to avoid duplication */ -}}
