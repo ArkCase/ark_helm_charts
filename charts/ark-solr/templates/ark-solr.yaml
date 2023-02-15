@@ -55,16 +55,6 @@ spec:
       securityContext: {{- toYaml . | nindent 8 }}
       {{- end }}
       initContainers:
-        - name: home
-          image: busybox:latest
-          command: ["sh", "-c", "cp /tmp/solr.xml /cfg/zoo.cfg /tmp-config"]
-          volumeMounts: 
-            - name: "solr-xml"
-              mountPath: "/tmp"
-            - name: "zoo-cfg"
-              mountPath: "/cfg"
-            - name: "home"
-              mountPath: "/tmp-config"
         {{- include "arkcase.initDependencies.container" . | nindent 8 }}
       containers:
         - name: solr
@@ -74,10 +64,11 @@ spec:
           image: {{ include "arkcase.tools.image" . | quote }}
           imagePullPolicy: {{ include "arkcase.tools.imagePullPolicy" . | quote }}
           env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
-            - name: SOLR_HOME
-              value: "/data/conf/"
             - name: SOLR_OPTS
               value: "-Dsolr.autoSoftCommit.maxTime=1000"
+            {{- if .Values.env }}
+            {{- .Values.env | toYaml | nindent 12 }}
+            {{- end }}
           {{- include "arkcase.subsystem.ports" . | nindent 10 }}
           {{- if .Values.command }}
           command: {{- .Values.command | toYaml | nindent 12 }}
@@ -87,45 +78,34 @@ spec:
           {{- end }}
           volumeMounts:
             - name: "data"
-              mountPath: "/data"
-            - name: "home"
-              mountPath: "/data/conf/"
-            - name: "schema-xml"
-              mountPath: "/opt/solr/server/solr/configsets/_default/conf/schema.xml"
-              subPath: "schema.xml"
-            - name: "solrconfig-xml"
-              mountPath: "/opt/solr/server/solr/configsets/_default/conf/solrconfig.xml"
-              subPath: "solrconfig.xml"
+              mountPath: "/app/data"
+            - name: "init"
+              mountPath: "/app/init"
+            - name: &configMap "configmap"
+              mountPath: "/app/init/arkcase-conf.tar.gz"
+              subPath: &arkcaseConfTarGz "arkcase-conf.tar.gz"
+              readOnly: true
+            - name: *configMap
+              mountPath: "/app/init/00-deploy-config.sh"
+              subPath: &deployConfigSh "deploy-config.sh"
+              readOnly: true
       volumes:
         {{- include "arkcase.persistence.volume" (dict "name" "data" "ctx" $) | nindent 8 }}
-        - name: "home"
-          emptyDir: {}
-        - name: "solr-xml"
+        {{- include "arkcase.persistence.volume" (dict "name" "init" "ctx" $) | nindent 8 }}
+        - name: *configMap
           configMap:
             name: {{ include "common.fullname" . | quote }}
+            optional: false
+            defaultMode: 0440
             items:
-            - key: "solr.xml"
-              path: "solr.xml"
-        - name: "schema-xml"
-          configMap: 
-            name: {{ include "common.fullname" . | quote }}
-            items:
-             - key: "schema.xml"
-               path: "schema.xml"
-        - name: "solrconfig-xml"
-          configMap: 
-            name: {{ include "common.fullname" . | quote }}
-            items:
-             - key: "solrconfig.xml"
-               path: "solrconfig.xml"
-        - name: "zoo-cfg"
-          configMap:
-            name: {{ include "common.fullname" . | quote }}
-            items:
-             - key: "zoo.cfg"
-               path: "zoo.cfg"
+            - key: *arkcaseConfTarGz
+              path: *arkcaseConfTarGz
+            - key: *deployConfigSh
+              path: *deployConfigSh
+              mode: 0550
 
 {{- if (include "arkcase.persistence.enabled" .) }}
 {{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "data") | nindent 0 }}
+{{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "init") | nindent 0 }}
 {{- end }}
 {{- end }}

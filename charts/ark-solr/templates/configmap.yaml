@@ -6,20 +6,14 @@ metadata:
   namespace: {{ .Release.Namespace | quote }}
   labels: {{- include "common.labels" . | nindent 4 }}
     {{- with (.Values.labels).common }}
-    {{- toYaml . | nindent 4 }}
+      {{- toYaml . | nindent 4 }}
     {{- end }}
   annotations:
     timestamp: {{ date "20060102150405" now | quote }}
     {{- with (.Values.annotations).common }}
-    {{- toYaml . | nindent 4 }}
+      {{- toYaml . | nindent 4 }}
     {{- end }}
 data:
-  schema.xml: |-
-    {{- .Files.Get "files/schema.xml" | nindent 8 }}
-  solrconfig.xml: |-
-    {{- .Files.Get "files/solrconfig.xml" | nindent 8 }}
-  solr.xml: |-
-    {{- .Files.Get "files/solr.xml" | nindent 8 }}
-  zoo.cfg: |-
-    {{- .Files.Get "files/zoo.cfg" | nindent 8 }}
+  arkcase-conf.tar.gz: |-
+    {{- .Files.Get "files/arkcase-conf.tar.gz" | nindent 4 }}
 {{- end }}
