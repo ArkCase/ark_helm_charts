@@ -1,0 +1,10 @@
+CONFIGSETS="/app/solr/configsets"
+
+# For SOLR Standalone
+rm -rf "${CONFIGSETS}/${CONFIGNAME}"
+cp -Rrp "${CONFIGSETS}/_default" "${CONFIGSETS}/${CONFIGNAME}"
+solr create -c "${COLLECTION}" -d "${CONFIGSETS}/${CONFIGNAME}"
+
+# For SOLR Cloud
+solr create -c "${COLLECTION}" -n "${CONFIGNAME}"
+solr zk upconfig localhost:2182 -n ${CONFIGNAME} -d "${CONFIGSETS}/${CONFIGNAME}"
