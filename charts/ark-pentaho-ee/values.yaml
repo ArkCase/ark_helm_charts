@@ -313,8 +313,8 @@ service:
       httpGet:
         path: "/pentaho/Login"
         port: *http
-      initialDelaySeconds: 120
-      periodSeconds: 30
-      timeoutSeconds: 5
-      failureThreshold: 20
+      initialDelaySeconds: 0
+      periodSeconds: 1
+      timeoutSeconds: 1
+      failureThreshold: 60
       successThreshold: 1

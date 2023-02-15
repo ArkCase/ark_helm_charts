@@ -171,8 +171,8 @@ service:
     spec:
       exec:
         command: [ "/usr/bin/mysqladmin", "version" ]
-      initialDelaySeconds: 5
-      periodSeconds: 5
-      timeoutSeconds: 5
-      failureThreshold: 12
+      initialDelaySeconds: 0
+      periodSeconds: 1
+      timeoutSeconds: 1
+      failureThreshold: 60
       successThreshold: 1
