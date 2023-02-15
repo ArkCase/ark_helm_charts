@@ -6,7 +6,7 @@ description: A Helm chart for demonstrations
 type: application
 dependencies:
   - name: ark-solr
-    version: ~0.1.8
+    version: ~0.1.10
     repository: "https://arkcase.github.io/ark_helm_charts"
     alias: search
   - name: ark-samba
@@ -21,10 +21,11 @@ dependencies:
     version: ~0.1.7
     repository: "https://arkcase.github.io/ark_helm_charts"
     alias: viewer
-  - name: ark-core
-    version: ~0.1.1
-    repository: "https://arkcase.github.io/ark_helm_charts"
-    alias: core
+# Disabled for now - we can't configure it automagically yet
+#   - name: ark-core
+#     version: ~0.1.1
+#     repository: "https://arkcase.github.io/ark_helm_charts"
+#     alias: core
   - name: ark-postgres
     version: ~0.1.17
     repository: "https://arkcase.github.io/ark_helm_charts"
