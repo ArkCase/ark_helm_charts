@@ -363,7 +363,7 @@ ports:
       {{- $readiness := (coalesce $probes.readiness dict) }}
       {{- $liveness := (coalesce $probes.liveness dict) }}
       {{- if or ($probes.enabled) (not (hasKey $probes "enabled")) }}
-        {{- if or ($startup.enabled) (not (hasKey $readiness "enabled")) -}}
+        {{- if or ($startup.enabled) (not (hasKey $startup "enabled")) -}}
           {{- with (mergeOverwrite $common $startup) }}
             {{- if (include "arkcase.subsystem.probeIsValid" .) }}
 startupProbe: {{- toYaml (unset . "enabled") | nindent 2 }}
