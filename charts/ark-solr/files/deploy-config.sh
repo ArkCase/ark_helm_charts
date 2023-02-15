@@ -32,7 +32,7 @@ fi
 say "Copying the ${CONF_SOURCE} configuration into ${CONF_TARGET}..."
 cp -Rprfv "${CONF_SOURCE}" "${CONF_TARGET}"
 say "Extracting the bundled configuration"
-tar -C "${CONF_TARGET}" -xzvf "${CONF}"
+tar -C "${CONF_TARGET}/conf" -xzvf "${CONF}"
 say "Removing extraneous files"
 rm -fv "${CONF_TARGET}/conf/managed-schema"
 say "Initialization complete"
