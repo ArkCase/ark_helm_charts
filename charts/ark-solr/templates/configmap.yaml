@@ -13,6 +13,10 @@ metadata:
     {{- with (.Values.annotations).common }}
       {{- toYaml . | nindent 4 }}
     {{- end }}
+data:
+  deploy-config.sh: |-
+    {{- .Files.Get "files/deploy-config.sh" | nindent 4 }}
 binaryData:
-  arkcase-conf.tar.gz: {{ .Files.Get "files/arkcase-conf.tar.gz" | b64enc }}
+  arkcase-conf.tar.gz: |-
+    {{- .Files.Get "files/arkcase-conf.tar.gz" | b64enc | nindent 4 }}
 {{- end }}

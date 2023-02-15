@@ -55,6 +55,22 @@ spec:
       securityContext: {{- toYaml . | nindent 8 }}
       {{- end }}
       initContainers:
+        - name: set-permissions
+          image: {{ include "arkcase.tools.subimage" (dict "ctx" . "name" "setperm" "image" "ark_setperm") | quote }}
+          env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
+            - name: JOBS
+              value: |
+                jobs:
+                  # We know the ActiveMQ image uses user 998 (centos), 1998 (rocky)
+                  - ownership: {{ coalesce (.Values.persistence).ownership "2000:2000" | quote }}
+                    permissions: "u=rwX,g=rX,o="
+                    flags: [ "recurse", "noforced", "create", "changes" ]
+                    targets: [ "/app/data", "/app/init" ]
+          volumeMounts:
+            - name: &dataVolume "data"
+              mountPath: &dataPath "/app/data"
+            - name: &initVolume "init"
+              mountPath: &initPath "/app/init"
         {{- include "arkcase.initDependencies.container" . | nindent 8 }}
       containers:
         - name: solr
@@ -77,10 +93,10 @@ spec:
           resources: {{- toYaml .Values.resources | nindent 12 }}
           {{- end }}
           volumeMounts:
-            - name: "data"
-              mountPath: "/app/data"
-            - name: "init"
-              mountPath: "/app/init"
+            - name: *dataVolume
+              mountPath: *dataPath
+            - name: *initVolume
+              mountPath: *initPath
             - name: &configMap "configmap"
               mountPath: "/app/init/arkcase-conf.tar.gz"
               subPath: &arkcaseConfTarGz "arkcase-conf.tar.gz"
