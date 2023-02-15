@@ -13,7 +13,6 @@ metadata:
     {{- with (.Values.annotations).common }}
       {{- toYaml . | nindent 4 }}
     {{- end }}
-data:
-  arkcase-conf.tar.gz: |-
-    {{- .Files.Get "files/arkcase-conf.tar.gz" | nindent 4 }}
+binaryData:
+  arkcase-conf.tar.gz: {{ .Files.Get "files/arkcase-conf.tar.gz" | b64enc }}
 {{- end }}
