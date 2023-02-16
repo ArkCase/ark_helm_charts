@@ -11,7 +11,8 @@
 configuration:
 
   # Console username and password: Please set a secure password
-  rootPassword: admin
+  adminUsername: &adminUsername admin
+  adminPassword: *adminUsername
 
   db: 
     # Uncomment the correct one
@@ -309,12 +310,18 @@ service:
 ##
   probes:
     enabled: true
+    startup:
+      enabled: true
+    liveness:
+      enabled: false
+    readiness:
+      enabled: false
     spec:
       httpGet:
         path: "/pentaho/Login"
         port: *http
-      initialDelaySeconds: 0
-      periodSeconds: 1
+      initialDelaySeconds: 30
+      periodSeconds: 10
       timeoutSeconds: 1
       failureThreshold: 60
       successThreshold: 1
