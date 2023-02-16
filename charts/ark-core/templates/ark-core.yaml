@@ -77,6 +77,8 @@ spec:
               mountPath: &confDir "/app/conf"
             - name: &dataVolume "data"
               mountPath: &dataDir "/app/data"
+            - name: &logsVolume "logs"
+              mountPath: &logsDir "/app/home/logs"
         {{- include "arkcase.initDependencies.container" (dict "ctx" . "name" "init-dependencies") | nindent 8 }}
       containers:
         - name: arkcase
@@ -92,6 +94,8 @@ spec:
               value: *dataDir
             - name: HOME_DIR
               value: *homeDir
+            - name: LOGS_DIR
+              value: *logsDir
             {{- with ((.Values.configuration).arkcase).env }}
               {{- toYaml . | nindent 12 }}
             {{- end }}
@@ -107,11 +111,13 @@ spec:
           {{- end }}
           volumeMounts:
             - name: *homeVolume
-              mountPath: "/app/home"
+              mountPath: *homeDir
             - name: *confVolume
               mountPath: "/app/home/.arkcase"
             - name: *dataVolume
               mountPath: *dataDir
+            - name: *logsVolume
+              mountPath: *logsDir
         - name: config
           {{- with (.Values.securityContext).config }}
           securityContext: {{- toYaml . | nindent 12 }}
@@ -142,11 +148,13 @@ spec:
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "home") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "conf") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
+        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "logs") | nindent 8 }}
 
 {{- if (include "arkcase.persistence.enabled" .) }}
 {{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "home") | indent 0 }}
 {{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "conf") | indent 0 }}
 {{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "data") | indent 0 }}
+{{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "logs") | indent 0 }}
 {{- end }}
 
 {{- end }}
