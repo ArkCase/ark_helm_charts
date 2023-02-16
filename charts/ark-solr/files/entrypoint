@@ -1,0 +1,63 @@
+#!/bin/bash
+
+timestamp() {
+	/usr/bin/date -Isec -u
+}
+
+say() {
+	echo -e "$(timestamp): ${@}"
+}
+
+fail() {
+	say "${@}" 1>&2
+	exit ${EXIT_CODE:-1}
+}
+
+set -euo pipefail
+
+if [ -d "${SOLR_HOME}" ] ; then
+	say "Persistence is already initialized, proceeding with the normal boot"
+else
+	say "Persistence has not been initialized, proceeding with the first-time initialization"
+
+	/config-pre.sh || fail "Pre-configuration failed - the Solr initialization may not be complete"
+
+	# This is important: ${HOME_DIR} must be *ephemeral* - this flag is only meant to
+	# inform when the init script ran, so we can run the post-init script in the helm chart
+	touch "${HOME_DIR}/.initRan"
+fi
+
+[ -v SOLR_LOGS_DIR ] || SOLR_LOGS_DIR="${DATA_DIR}/logs"
+[ -d "${SOLR_LOGS_DIR}" ] || mkdir -p "${SOLR_LOGS_DIR}" || say "WARNING: Failed to find and create the log directory at [${SOLR_LOGS_DIR}]"
+
+ZK_FLAGS=()
+if [ -v "${ZOOKEEPER}" ] ; then
+	# Validate the hostnames
+	readarray -d , -t FLAGS < <(echo -n "${ZOOKEEPER}")
+	say "Validating the Zookeeper settings"
+	for H in "${FLAGS[@]}" ; do
+		# Each host must be in the form hostname:port
+		[[ "${H}" =~ ^([^:]+):([1-9][0-9]*)$ ]] || fail "\tIgnoring the Zookeeper spec [${H}]: must be in the form \${hostname}:\${port}"
+
+		HOST="${BASH_REMATCH[1]}"
+		[[ "${HOST}" =~ ^([a-z0-9][-a-z0-9]*)?[a-z0-9]([.]([a-z0-9][-a-z0-9]*)?[a-z0-9])*$ ]] || fail "\tIgnoring the Zookeeper spec [${H}]: invalid host name [${HOST}]"
+
+		PORT="${BASH_REMATCh[2]}"
+		[ ${PORT} -le 65535 ] || fail "\tIgnoring the Zookeeper spec [${H}]: invalid port number ${PORT}"
+
+		say "\tAdding Zookeeper at ${HOST}:${PORT}"
+		ZK_FLAGS+=("${HOST}:${PORT}")
+	done
+
+	if [ ${#ZK_FLAGS[@]} -gt 0 ] ; then
+		say "Found ${#ZK_FLAGS[@]} Zookeeper targets: ${ZK_FLAGS[@]}"
+		ZK_FLAGS=("-z" "${ZK_FLAGS[@]}")
+	else
+		say "No Zookeeper configurations, using the default"
+	fi
+fi
+
+
+set -- "${HOME_DIR}/bin/solr" start -f -cloud "${ZK_FLAGS[@]}"
+say "Launching Solr as: ${@@Q}"
+exec "${@}"

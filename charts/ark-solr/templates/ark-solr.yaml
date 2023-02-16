@@ -82,13 +82,21 @@ spec:
           env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
             - name: SOLR_OPTS
               value: "-Dsolr.autoSoftCommit.maxTime=1000"
+            - name: SOLR_CORES
+              value: "acmAdvancedSearch=arkcase,acmQuickSearch=arkcase"
             {{- if .Values.env }}
             {{- .Values.env | toYaml | nindent 12 }}
             {{- end }}
           {{- include "arkcase.subsystem.ports" . | nindent 10 }}
           {{- if .Values.command }}
           command: {{- .Values.command | toYaml | nindent 12 }}
+          {{- else }}
+          command: [ "/entrypoint" ]
           {{- end }}
+          lifecycle:
+            postStart:
+              exec:
+                command: [ "/config-post.sh" ]
           {{- if .Values.resources }}
           resources: {{- toYaml .Values.resources | nindent 12 }}
           {{- end }}
@@ -98,12 +106,28 @@ spec:
             - name: *initVolume
               mountPath: *initPath
             - name: &configMap "configmap"
-              mountPath: "/app/init/arkcase-conf.tar.gz"
+              mountPath: "/entrypoint"
+              subPath: &entrypoint "entrypoint"
+              readOnly: true
+            - name: *configMap
+              mountPath: "/config-pre.sh"
+              subPath: &configPreSh "config-pre.sh"
+              readOnly: true
+            - name: *configMap
+              mountPath: "/config-post.sh"
+              subPath: &configPostSh "config-post.sh"
+              readOnly: true
+            - name: *configMap
+              mountPath: "/app/init/pre/00-deploy-config.sh"
+              subPath: &deployConfigsSh "deploy-configs.sh"
+              readOnly: true
+            - name: *configMap
+              mountPath: "/app/init/pre/arkcase-conf.tar.gz"
               subPath: &arkcaseConfTarGz "arkcase-conf.tar.gz"
               readOnly: true
             - name: *configMap
-              mountPath: "/app/init/00-deploy-config.sh"
-              subPath: &deployConfigSh "deploy-config.sh"
+              mountPath: "/app/init/post/00-create-cores.sh"
+              subPath: &createCoresSh "create-cores.sh"
               readOnly: true
       volumes:
         {{- include "arkcase.persistence.volume" (dict "name" "data" "ctx" $) | nindent 8 }}
@@ -112,14 +136,21 @@ spec:
           configMap:
             name: {{ include "common.fullname" . | quote }}
             optional: false
-            defaultMode: 0440
+            defaultMode: 0550
             items:
-            - key: *arkcaseConfTarGz
-              path: *arkcaseConfTarGz
-            - key: *deployConfigSh
-              path: *deployConfigSh
-              mode: 0550
-
+              - key: *entrypoint
+                path: *entrypoint
+              - key: *configPreSh
+                path: *configPreSh
+              - key: *configPostSh
+                path: *configPostSh
+              - key: *deployConfigsSh
+                path: *deployConfigsSh
+              - key: *createCoresSh
+                path: *createCoresSh
+              - key: *arkcaseConfTarGz
+                path: *arkcaseConfTarGz
+                mode: 0440
 {{- if (include "arkcase.persistence.enabled" .) }}
 {{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "data") | nindent 0 }}
 {{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "init") | nindent 0 }}

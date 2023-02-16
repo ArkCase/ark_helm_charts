@@ -14,9 +14,17 @@ metadata:
       {{- toYaml . | nindent 4 }}
     {{- end }}
 data:
-  deploy-config.sh: |-
-    {{- .Files.Get "files/deploy-config.sh" | nindent 4 }}
+  entrypoint: |-
+    {{- .Files.Get "files/entrypoint" | nindent 4 }}
+  config-pre.sh: |-
+    {{- .Files.Get "files/config-pre.sh" | nindent 4 }}
+  config-post.sh: |-
+    {{- .Files.Get "files/config-post.sh" | nindent 4 }}
+  deploy-configs.sh: |-
+    {{- .Files.Get "files/pre/deploy-configs.sh" | nindent 4 }}
+  create-cores.sh: |-
+    {{- .Files.Get "files/post/create-cores.sh" | nindent 4 }}
 binaryData:
   arkcase-conf.tar.gz: |-
-    {{- .Files.Get "files/arkcase-conf.tar.gz" | b64enc | nindent 4 }}
+    {{- .Files.Get "files/pre/arkcase-conf.tar.gz" | b64enc | nindent 4 }}
 {{- end }}
