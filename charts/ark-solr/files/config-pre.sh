@@ -19,9 +19,10 @@ set -euo pipefail
 say "\tInitializing the SOLR_HOME at [${SOLR_HOME}]"
 mkdir -p "${SOLR_HOME}"
 ( cd "${HOME_DIR}/server/solr" && tar -cf - . ) | tar -C "${SOLR_HOME}" -xf -
-say "\t...SOLR_HOME is ready"
+say "\t\t...SOLR_HOME is ready"
 
 # Run the scripts due to be run before Solr is booted up
+[ -v INIT_DIR ] || INIT_DIR="/app/init"
 INIT_DIR="${INIT_DIR}/pre"
 if [ -d "${INIT_DIR}" ] ; then
 	cd "${INIT_DIR}" || fail "Failed to CD into [${INIT_DIR}]"

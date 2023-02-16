@@ -20,17 +20,18 @@ fail() {
 set -euo pipefail
 
 # By default, wait up to 90 seconds if not told otherwise
-[ -v INIT_POLL_SLEEP ] || [[ "${INIT_POLL_SLEEP}" =~ ^[1-9][0-9]*$ ]] || INIT_POLL_SLEEP=2
-[ -v INIT_MAX_WAIT ] || [[ "${INIT_MAX_WAIT}" =~ ^[1-9][0-9]*$ ]] || INIT_MAX_WAIT=90
+[ -v INIT_POLL_SLEEP ] || INIT_POLL_SLEEP=2
+[[ "${INIT_POLL_SLEEP}" =~ ^[1-9][0-9]*$ ]] || INIT_POLL_SLEEP=2
+[ -v INIT_MAX_WAIT ] || INIT_MAX_WAIT=90
+[[ "${INIT_MAX_WAIT}" =~ ^[1-9][0-9]*$ ]] || INIT_MAX_WAIT=90
 
 [ -v SOLR_URL ] || SOLR_URL="http://localhost:8983/solr"
 SOLR_URL+="/admin/info/health"
 
-wait_for_solr "${SOLR_URL}" || fail "Failed to wait for Solr to start up - can't complete post-initialization"
 START="$(date +%s)"
 say "Starting the polling cycle"
 while true ; do
-	/usr/bin/curl -k -m 5 "${1}" &>/dev/null && break
+	/usr/bin/curl -k -m 5 "${SOLR_URL}" &>/dev/null && break
 	say "\tURL is not up yet at [${SOLR_URL}]"
 	 NOW="$(date +%s)"
 	[ $(( NOW - START )) -ge ${INIT_MAX_WAIT} ] && fail "Timed out waiting for the URL [${SOLR_URL}] to come up"
@@ -41,6 +42,7 @@ done
 say "The URL [${SOLR_URL}] responded, continuing"
 
 # Run the scripts due to be run before Solr is booted up
+[ -v INIT_DIR ] || INIT_DIR="/app/init"
 INIT_DIR="${INIT_DIR}/post"
 if [ -d "${INIT_DIR}" ] ; then
 	cd "${INIT_DIR}" || fail "Failed to CD into [${INIT_DIR}]"

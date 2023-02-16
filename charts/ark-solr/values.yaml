@@ -145,13 +145,6 @@ persistence:
 #          matchLabels: "....."
 
 
-probeTemplate: &probeTemplate
-  initialDelaySeconds: 0
-  periodSeconds: 1
-  timeoutSeconds: 1
-  failureThreshold: 60
-  successThreshold: 1
-
 service:
   #external: host-or-IP
   ports:
@@ -171,16 +164,15 @@ service:
   probes:
     enabled: true
     startup:
-      <<: *probeTemplate
-    liveness:
-      <<: *probeTemplate
-      initialDelaySeconds: 10
-      periodSeconds: 10
-    readiness:
-      <<: *probeTemplate
-      initialDelaySeconds: 10
-      periodSeconds: 10
-    spec:
       httpGet:
         path: "/solr/admin/info/health"
         port: *solr
+      initialDelaySeconds: 0
+      periodSeconds: 1
+      timeoutSeconds: 1
+      failureThreshold: 60
+      successThreshold: 1
+    liveness:
+      enabled: false
+    readiness:
+      enabled: false

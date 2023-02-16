@@ -31,12 +31,13 @@ fi
 [ -d "${SOLR_LOGS_DIR}" ] || mkdir -p "${SOLR_LOGS_DIR}" || say "WARNING: Failed to find and create the log directory at [${SOLR_LOGS_DIR}]"
 
 ZK_FLAGS=()
-if [ -v "${ZOOKEEPER}" ] ; then
+if [ -v ZOOKEEPER ] ; then
 	# Validate the hostnames
 	readarray -d , -t FLAGS < <(echo -n "${ZOOKEEPER}")
 	say "Validating the Zookeeper settings"
 	for H in "${FLAGS[@]}" ; do
 		# Each host must be in the form hostname:port
+		[ -n "${H}" ] || continue
 		[[ "${H}" =~ ^([^:]+):([1-9][0-9]*)$ ]] || fail "\tIgnoring the Zookeeper spec [${H}]: must be in the form \${hostname}:\${port}"
 
 		HOST="${BASH_REMATCH[1]}"

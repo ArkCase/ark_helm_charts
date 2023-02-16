@@ -37,7 +37,7 @@ deploy_config() {
 		say "The ${CONF_TARGET} configuration seems to already be deployed, skipping initialization"
 		return 0
 	fi
-	if [ -d "${CONF_SOURCE}" ] ; then
+	if [ ! -d "${CONF_SOURCE}" ] ; then
 		say "The ${CONF_SOURCE} configuration can't be found"
 		return 1
 	fi

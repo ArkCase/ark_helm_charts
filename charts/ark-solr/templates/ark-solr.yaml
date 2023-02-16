@@ -82,6 +82,8 @@ spec:
           env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
             - name: SOLR_OPTS
               value: "-Dsolr.autoSoftCommit.maxTime=1000"
+            - name: SOLR_HOME
+              value: "/app/data/solr"
             - name: SOLR_CORES
               value: "acmAdvancedSearch=arkcase,acmQuickSearch=arkcase"
             {{- if .Values.env }}
@@ -146,11 +148,11 @@ spec:
                 path: *configPostSh
               - key: *deployConfigsSh
                 path: *deployConfigsSh
-              - key: *createCoresSh
-                path: *createCoresSh
               - key: *arkcaseConfTarGz
                 path: *arkcaseConfTarGz
                 mode: 0440
+              - key: *createCoresSh
+                path: *createCoresSh
 {{- if (include "arkcase.persistence.enabled" .) }}
 {{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "data") | nindent 0 }}
 {{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "init") | nindent 0 }}
