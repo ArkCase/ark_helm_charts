@@ -58,7 +58,7 @@ spec:
     service:
       name: {{ (((.Values.configuration).ingress).service).name | default "gateway" | quote }}
       port:
-        number: {{ (((.Values.configuration).ingress).service).port | default 80 | atoi }}
+        number: {{ (((.Values.configuration).ingress).service).port | default 80 | toString | atoi }}
 {{- if $hasTLS }}
   tls:
     - secretName: {{ include "common.fullname" . | quote }}
