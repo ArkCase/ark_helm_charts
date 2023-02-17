@@ -1,0 +1,143 @@
+#!/bin/bash
+
+set -euo pipefail
+
+say() {
+	echo -e "${@}"
+}
+
+fail() {
+	say "${@}" 1>&2
+	exit ${EXIT_CODE:-1}
+}
+
+initRequired()
+{
+	case "${1,,}" in
+		mysql5 )
+			export LAUNCH_COMMAND=""
+			;;
+		oracle10g )
+			;;
+		postgresql )
+			;;
+		sqlserver )
+			;;
+	esac
+	return 1
+}
+
+renderPasswordScript() {
+	local SCRIPT="${1}"
+	# TODO: Render the password update script based on the database
+	return 0
+}
+
+runScript() {
+	local SCRIPT="${1}"
+	say "Running the script [${SCRIPT}] (from the ${SCRIPT_DIALECT} dialect)"
+	return 0
+}
+
+[ -v PENTAHO_SERVER ] || PENTAHO_SERVER="/opt/app/pentaho/pentaho-server"
+[ -e "${PENTAHO_SERVER}" ] || fail "The Pentaho home directory could not be found at [${PENTAHO_SERVER}], cannot continue."
+[ -d "${PENTAHO_SERVER}" ] || fail "The path [${PENTAHO_SERVER}] is not a directory, cannot continue."
+
+[ -v DBCONFIG ] || DBCONFIG="/dbconfig.json"
+if [ -e "${DBCONFIG}" ] ; then
+	[ -f "${DBCONFIG}" ] || fail "The path ${DBCONFIG} is not a regular file, cannot continue."
+	[ -r "${DBCONFIG}" ] || fail "The Database configuration file ${DBCONFIG} is not readable, cannot continue."
+
+	jq -r . < "${DBCONFIG}" &>/dev/null || fail "The Database configuration ${DBCONFIG} is malformed JSON, cannot continue"
+
+	DB_DIALECT="$(jq -r .db.dialect < "${DBCONFIG}")"
+	[ -n "${DB_DIALECT}" ] || fail "No dialect is set in the DB configuration file ${DBCONFIG}, cannot continue"
+	say "The database dialect is [${DB_DIALECT}]..."
+	SCRIPT_DIALECT="$(jq -r .db.script < "${DBCONFIG}")"
+
+	# Just for safety
+	if [ -z "${SCRIPT_DIALECT}" ] ; then
+		say "\tNo scripts dialect provided, so using the same database dialect"
+		SCRIPT_DIALECT="${DB_DIALECT}"
+	else
+		say "The script dialect is [${DB_DIALECT}]..."
+	fi
+
+	say "Initializing the Pentaho database configurations at [${PENTAHO_SERVER}]..."
+
+	# Set the correct audit_sql ... no harm in doing this every time (right?)
+	SRC_AUDIT_XML="${PENTAHO_SERVER}/pentaho-solutions/system/dialects/${DB_DIALECT}/audit_sql.xml"
+	[ -f "${SRC_AUDIT_XML}" ] || fail "There's no audit_sql.xml file for DB dialect [${DB_DIALECT}], cannot continue"
+	TGT_AUDIT_XML="${PENTAHO_SERVER}/pentaho-solutions/system/audit_sql.xml"
+	say "Setting the audit_xml file for dialect ${DB_DIALECT}..."
+	cp -vf "${SRC_AUDIT_XML}" "${TGT_AUDIT_XML}"
+
+	if initRequired "${DB_DIALECT}" ; then
+		# Run the correct scripts (but how?!?! We don't have the DBInit clients)
+		SQL_DIR="${PENTAHO_SERVER}/data/${SCRIPT_DIALECT}"
+		[ -d "${SQL_DIR}" ] || fail "There are no SQL initialization scripts for dialect [${SCRIPT_DIALECT}], cannot continue"
+		pushd "${SQL_DIR}"
+		runScript "${n}" || fail "Failed to initialize the database"
+		renderPasswordScript "fix-passwords.sql" || fail "Failed to render the password update script"
+		runScript "fix-passwords.sql" || fail "Failed to update the passwords as required"
+		popd
+	else
+		say "No database initialization is required"
+	fi
+else
+	say "No database configuration was found at [${DBCONFIG}], will not attempt to initialize any DB-related configurations"
+fi
+
+
+[ -v BASE_DIR ] || BASE_DIR="/app"
+[ -v PENTAHO_HOME ] || PENTAHO_HOME="${BASE_DIR}/pentaho"
+
+###################################################################
+# CONFIGURE PERSISTENCE                                           #
+###################################################################
+[ -v DATA_DIR ] || DATA_DIR="${BASE_DIR}/data"
+[ -d "${DATA_DIR}" ] || mkdir -p "${DATA_DIR}"
+export DATA_DIR
+
+#
+# ActiveMQ Persistence
+#
+ACTIVEMQ_DATA="${DATA_DIR}/activemq"
+[ -d "${ACTIVEMQ_DATA}" ] || mkdir -p "${ACTIVEMQ_DATA}"
+export ACTIVEMQ_DATA
+
+#
+# Configure Kettle
+#
+[ -v KETTLE_HOME ] || KETTLE_HOME="${DATA_DIR}/pdi"
+[ -d "${KETTLE_HOME}" ] || mkdir -p "${KETTLE_HOME}"
+export KETTLE_HOME
+
+#
+# Configure license location
+#
+[ -v PENTAHO_INSTALLED_LICENSE_PATH ] || PENTAHO_INSTALLED_LICENSE_PATH="${DATA_DIR}/.installedLicenses.xml"
+[ -f "${PENTAHO_INSTALLED_LICENSE_PATH}" ] || mkdir -p "$(dirname "${PENTAHO_INSTALLED_LICENSE_PATH}")"
+export PENTAHO_INSTALLED_LICENSE_PATH
+
+###################################################################
+# CONFIGURE LOGGING                                               #
+###################################################################
+[ -v LOGS_DIR ] || LOGS_DIR="${BASE_DIR}/logs"
+[ -d "${LOGS_DIR}" ] || mkdir -p "${LOGS_DIR}"
+export LOGS_DIR
+
+#
+# Tomcat Logging
+#
+[ -v TOMCAT_LOGS_DIR ] || TOMCAT_LOGS_DIR="${LOGS_DIR}/tomcat"
+[ -d "${TOMCAT_LOGS_DIR}" ] || mkdir -p "${TOMCAT_LOGS_DIR}"
+export TOMCAT_LOGS_DIR
+
+###################################################################
+# LAUNCH THE SERVER PROCESS                                       #
+###################################################################
+
+# Run the launcher, which returns immediately
+say "Launching Pentaho..."
+exec "${PENTAHO_SERVER}/start-pentaho.sh" "${@}"

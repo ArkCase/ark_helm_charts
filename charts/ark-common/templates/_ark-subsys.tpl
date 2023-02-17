@@ -50,9 +50,11 @@ Return a map which contains the subsystem data map as required by other API call
     {{- /* Retrieve the cached data */ -}}
     {{- $data = get $subsys $subsysName -}}
   {{- else -}}
-    {{- $enabled := (include "arkcase.tools.get" (dict "ctx" $ctx "name" (printf ".Values.global.subsystem.%s" $subsysName))) -}}
     {{- /* Set the "enabled" flag, which defaults to TRUE if it's not set */ -}}
-    {{- $enabled = or (empty $enabled) (eq "true" (toString $enabled | lower)) -}}
+    {{- $enabled := true -}}
+    {{- if (hasKey $ctx.Values "enabled") -}}
+      {{- $enabled = $ctx.Values.enabled -}}
+    {{- end -}}
     {{- if not (kindIs "bool" $enabled) -}}
       {{- $enabled = (eq "true" (toString $enabled | lower)) -}}
     {{- end -}}

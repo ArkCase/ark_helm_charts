@@ -197,17 +197,18 @@ serviceAccount:
   name: ""
 
 securityContext:
-  template:
+  # template:
     # You must specify an `fsGroup` to allow MariaDB write access to mounted
     # volumes (as long as MariaDB runs as a non-root user, which should be the
     # case). Any random number will do.
-    fsGroup: 996
-    fsGroupChangePolicy: OnRootMismatch
-  mariadb:
+    # fsGroup: 996
+    # fsGroupChangePolicy: OnRootMismatch
+  # pentaho:
     # capabilities:
     #   drop:
     #   - ALL
     # readOnlyRootFilesystem: true
+
 resources:
   # We usually recommend not to specify default resources and to leave this as a conscious
   # choice for the user. This also increases chances charts run on environments with little
@@ -309,7 +310,7 @@ service:
 ## @param service.probes.spec.successThreshold Success threshold for liveness and readiness probes
 ##
   probes:
-    enabled: true
+    enabled: false
     startup:
       enabled: true
     liveness:
