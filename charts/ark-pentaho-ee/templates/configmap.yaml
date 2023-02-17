@@ -13,7 +13,11 @@ metadata:
     {{- with (.Values.annotations).common }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
-data:
+data: {{- (.Files.Glob "files/configmap/text/*").AsConfig | nindent 2 }}
+
+  #
+  # Add items that require template processing
+  #
   quartz.properties: |
     # Copyright 2008 - 2017 Hitachi Vantara.  All rights reserved. 
     # This software was developed by Hitachi Vantara and is provided under the terms 
@@ -593,31 +597,6 @@ data:
     # overridden here.
     #karafWaitForBoot = 120000
 
-  entrypoint: |
-    {{- .Files.Get "files/entrypoint" | nindent 4 }}
+binaryData: {{- (.Files.Glob "files/configmap/bin/*").AsSecrets | nindent 2 }}
 
-  config-pre.sh: |
-    {{- .Files.Get "files/config-pre.sh" | nindent 4 }}
-
-  config-post.sh: |
-    {{- .Files.Get "files/config-post.sh" | nindent 4 }}
-
-  start-pentaho.sh: |
-    {{- .Files.Get "files/start-pentaho.sh" | nindent 4 }}
-
-  log4j2.xml: |
-    {{- .Files.Get "files/log4j2.xml" | nindent 4 }}
-
-  logging.properties: |
-    {{- .Files.Get "files/logging.properties" | nindent 4 }}
-
-  arkcase-preauth.xml: |
-    {{- .Files.Get "files/arkcase-preauth.xml" | nindent 4 }}
-
-  applicationContext-spring-security.xml: |
-    {{- .Files.Get "files/applicationContext-spring-security.xml" | nindent 4 }}
-
-binaryData:
-  arkcase-base-reports.zip: |
-    {{- .Files.Get "files/arkcase-base-reports.zip" | b64enc | nindent 4 }}
 {{- end }}
