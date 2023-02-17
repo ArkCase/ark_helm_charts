@@ -1,5 +1,11 @@
 #!/bin/bash
 
+[ -v DEBUG ] || DEBUG="false"
+case "${DEBUG,,}" in
+	true | t | 1 | on | y | yes | enabled | enable | active ) DEBUG="true" ;;
+	* ) DEBUG="false" ;;
+esac
+
 timestamp() {
 	/usr/bin/date -Isec -u
 }
@@ -20,17 +26,27 @@ fail() {
 cleanup() {
 	[ -v RUN_MARKER ] || RUN_MARKER=""
 	[ -z "${RUN_MARKER}" ] || rm -rf "${RUN_MARKER}" &>/dev/null
+	if [ ${#WORKDIRS[@]} -gt 0 ] ; then
+		for n in "${WORKDIRS[@]}" ; do
+			rm -rf "${n}" &>/dev/null
+		done
+	fi
 }
 
-RUN_MARKER="${HOME_DIR}/.initRan"
+debug_report_installer() {
+	say "\t${@}" 1>&2
+}
+
+WORKDIRS=()
+RUN_MARKER="${PENTAHO_HOME}/.initRan"
 trap cleanup EXIT
 set -euo pipefail
 
-# By default, wait up to 90 seconds if not told otherwise
+# By default, wait up to 300 seconds if not told otherwise
 [ -v INIT_POLL_SLEEP ] || INIT_POLL_SLEEP=2
 [[ "${INIT_POLL_SLEEP}" =~ ^[1-9][0-9]*$ ]] || INIT_POLL_SLEEP=2
-[ -v INIT_MAX_WAIT ] || INIT_MAX_WAIT=90
-[[ "${INIT_MAX_WAIT}" =~ ^[1-9][0-9]*$ ]] || INIT_MAX_WAIT=90
+[ -v INIT_MAX_WAIT ] || INIT_MAX_WAIT=300
+[[ "${INIT_MAX_WAIT}" =~ ^[1-9][0-9]*$ ]] || INIT_MAX_WAIT=300
 
 [ -v ADMIN_URL ] || ADMIN_URL="http://localhost:2002/pentaho"
 
@@ -47,41 +63,110 @@ while true ; do
 done
 say "The URL [${ADMIN_URL}] responded, continuing"
 
-# TODO: Remove this when ready to test
-exit 0
-
 [ -f "${RUN_MARKER}" ] || exit 0
 
 # wait until port 2002 is open, then...
 
 [ -v BASE_DIR ] || BASE_DIR="/app"
 [ -v INIT_DIR ] || INIT_DIR="${BASE_DIR}/init"
+[ -v DATA_DIR ] || DATA_DIR="${BASE_DIR}/data"
+[ -v LOGS_DIR ] || LOGS_DIR="${DATA_DIR}/logs"
+UPLOAD_LOG_FILE="${LOGS_DIR}/uploads-$(date -u +%Y%m%d-%H%M%s)Z.log"
 
 REPORT_INSTALLER="${PENTAHO_HOME}/pentaho-server/import-export.sh"
+${DEBUG} && REPORT_INSTALLER="debug_report_installer"
+
+extract_archive() {
+	local TYPE="${1}"
+	local SRC="${2}"
+
+	local WORK="$(mktemp -d)"
+	WORK="$(readlink -f "${WORK}")"
+
+	# Track it for cleanup
+	WORKDIRS+=("${WORK}")
+
+	local C=""
+	local ZIP="false"
+	case "${TYPE,,}" in
+		zip )
+			unzip -uod "${WORK}" "${SRC}" 1>&2 || return ${?}
+			ZIP="true"
+			;;
+		tgz ) C="z" ;;
+		tbz ) C="j" ;;
+		txz ) C="J" ;;
+	esac
+	"${ZIP}" || tar -C "${WORK}" -x${C}f "${SRC}" 1>&2 || return ${?}
+	local L="${#WORK}"
+	find "${WORK}" -type f | sort | while read f ; do
+		local D="${f:${L}}"
+		D="${D%/*}"
+		echo "${D}:///:${f}"
+	done
+	return 0
+}
 
 install_report() {
-	local URL_PATH="${1}"
-	local SRC_FILE="${2}"
+	local SRC_FILE="${1}"
 
-	"${REPORT_INSTALLER}" \
-		--import \
-		--url="${ADMIN_URL}" \
-		--username="${ADMIN_USERNAME}"
-		--password="${ADMIN_PASSWORD}" \
-		--path="/public${URL_PATH}" \
-		--file-path="${SRC_FILE}" \
-		--logfile="${UPLOAD_LOG_FILE}" \
-		--charset=UTF-8 \
-		--permission=true \
-		--overwrite=true \
-		--retainOwnership=true
-	return ${?}
+	# If the file is an archive of some kind, then we make note of its name sans exception,
+	# extract it flattened into a temporary directory, and deploy the files within
+	# (we support zip, tar, and tar.gz archives)
+
+	case "${SRC_FILE,,}" in
+		*.zip | *.jar ) ARCHIVE_TYPE="zip" ;;
+		*.tar ) ARCHIVE_TYPE="tar" ;;
+		*.tar.gz | *.tgz ) ARCHIVE_TYPE="tgz" ;;
+		*.tar.bz2 | *.tbz2 ) ARCHIVE_TYPE="tbz" ;;
+		*.tar.xz | *.txz ) ARCHIVE_TYPE="txz" ;;
+		* ) ARCHIVE_TYPE="" ;;
+	esac
+
+	local REPORTS=()
+	if [ -n "${ARCHIVE_TYPE}" ] ; then
+		# Extract, then enumerate the contents into the SRC_FILE array
+		SRC_FILE="${REPORTS_DIR}/${SRC_FILE}"
+		say "Extracting the reports from [${SRC_FILE}]..."
+		readarray -t REPORTS < <(extract_archive "${ARCHIVE_TYPE}" "${SRC_FILE}")
+	else
+		REPORTS=("$(dirname "${SRC_FILE}"):///:${REPORTS_DIR}/${SRC_FILE}")
+	fi
+
+	local RC=0
+	local ARCHIVE_INFO=""
+	[ -z "${ARCHIVE_TYPE}" ] || ARCHIVE_INFO=" extracted from the archive [${SRC_FILE}]"
+	for F in "${REPORTS[@]}" ; do
+		[[ "${F}" =~ ^(.*):///:(.*)$ ]]
+		local P="${BASH_REMATCH[1]}"
+		F="${BASH_REMATCH[2]}"
+		say "Intalling the report from [${F}]${ARCHIVE_INFO}..."
+		"${REPORT_INSTALLER}" \
+			--import \
+			--url="${ADMIN_URL}" \
+			--username="${ADMIN_USERNAME}" \
+			--password="${ADMIN_PASSWORD}" \
+			--path="/public${P}" \
+			--file-path="${F}" \
+			--logfile="${UPLOAD_LOG_FILE}" \
+			--charset=UTF-8 \
+			--permission=true \
+			--overwrite=true \
+			--retainOwnership=true || RC=${?}
+		if [ ${RC} -ne 0 ] ; then
+			err "\tFailed to install the report from [${F}]${ARCHIVE_INFO} (rc=${RC})"
+			return ${?}
+		fi
+	done
+	[ -z "${ARCHIVE_TYPE}" ] || say "Finished processing the reports contained in [${SRC_FILE}]"
+	return 0
 }
 
 list_reports() {
 	local REPORTS_DIR="${1}"
+	[ -d "${REPORTS_DIR}" ] | return 0
 	find "${REPORTS_DIR}" -type f | \
-		sed -e "s;^${REPORTS_DIR}/;/;g" | \
+		sed -e "s;^${REPORTS_DIR}/;;g" | \
 		sort
 }
 
@@ -91,31 +176,24 @@ list_reports() {
 ADMIN_USERNAME="admin"
 ADMIN_PASSWORD="admin"
 
-#
-# Install reports
-#
-REPORTS_DIR="${INIT_DIR}/reports"
-while read REPORT_SRC_FILE ; do
-	# Remove any leading dot, but preserve any leading slash
-	REPORT_SRC_FILE="${REPORT_SRC_FILE#.}"
-	[ -n "${REPORT_SRC_FILE}" ] || continue
+if ${DEBUG} || [ -x "${REPORT_INSTALLER}" ] ; then
+	#
+	# Install reports
+	#
+	REPORTS_DIR="${INIT_DIR}/reports"
+	while read FILE ; do
 
-	REPORT_URL_PATH="$(dirname "${REPORT_SRC_FILE}")"
+		# TODO: Implement the "check if changed" thing, and only
+		# deploy the report if it's new or changed
 
-	# Remove any leading dot, but preserve any leading slash
-	REPORT_URL_PATH="${REPORT_URL_PATH#.}"
-	[ -n "${REPORT_URL_PATH}" ] || continue
+		# TODO: What if we want to undeploy? How do we do that?
 
-	# TODO: Implement the "check if changed" thing, and only
-	# deploy the report if it's new or changed
-	# TODO: What if we want to undeploy? How do we do that?
-
-	# Reconstitute the full path
-	REPORT_SRC_FILE="${REPORTS_DIR}${REPORT_SRC_FILE}"
-
-	# Install the report
-	install_report "${REPORT_URL_PATH}" "${REPORT_SRC_FILE}" || \
-		fail "Failed to install the extension for path [${REPORT_URL_PATH} from [${REPORT_SRC_FILE}]"
-done < <(list_reports "${REPORTS_DIR}")
+		# Install the report
+		install_report "${FILE}" || \
+			fail "Failed to install the report from [${FILE}]"
+	done < <(list_reports "${REPORTS_DIR}")
+else
+	say "The reports installer executable could not be found at [${REPORT_INSTALLER}]"
+fi
 
 exit 0
