@@ -95,6 +95,10 @@ spec:
           {{- else }}
           command: [ "/entrypoint" ]
           {{- end }}
+          lifecycle:
+            postStart:
+              exec:
+                command: [ "/config-post.sh" ]
           {{- with .Values.resources }}
           resources: {{- toYaml . | nindent 12 }}
           {{- end }}
@@ -146,12 +150,20 @@ spec:
               subPath: &log4j2Xml "log4j2.xml"
               readOnly: true
             - name: *configMap
-              mountPath: "/app/pentaho/pentaho-server/start-pentaho.sh"
-              subPath: &startPentahoSh "start-pentaho.sh"
-              readOnly: true
-            - name: *configMap
               mountPath: "/entrypoint"
               subPath: &entrypoint "entrypoint"
+              readOnly: true
+            - name: *configMap
+              mountPath: "/config-pre.sh"
+              subPath: &configPreSh "config-pre.sh"
+              readOnly: true
+            - name: *configMap
+              mountPath: "/config-post.sh"
+              subPath: &configPostSh "config-post.sh"
+              readOnly: true
+            - name: *configMap
+              mountPath: "/app/pentaho/pentaho-server/start-pentaho.sh"
+              subPath: &startPentahoSh "start-pentaho.sh"
               readOnly: true
       volumes:
         {{- include "arkcase.persistence.volume" (dict "name" "data" "ctx" $) | nindent 8 }}
@@ -191,6 +203,12 @@ spec:
                 path: *log4j2Xml
               - key: *entrypoint
                 path: *entrypoint
+                mode: 0555
+              - key: *configPreSh
+                path: *configPreSh
+                mode: 0555
+              - key: *configPostSh
+                path: *configPostSh
                 mode: 0555
               - key: *startPentahoSh
                 path: *startPentahoSh

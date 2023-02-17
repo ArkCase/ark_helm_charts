@@ -614,6 +614,6 @@ data:
     {{- .Files.Get "files/applicationContext-spring-security.xml" | nindent 4 }}
 
 binaryData:
-  arkcase-techlogix-extension.jar: |-
-    {{- .Files.Get "files/arkcase-techlogix-extension.jar" | b64enc | nindent 4 }}
+  arkcase-base-reports.zip: |-
+    {{- .Files.Get "files/arkcase-base-reports.zip" | b64enc | nindent 4 }}
 {{- end }}
