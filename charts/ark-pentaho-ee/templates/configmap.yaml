@@ -463,6 +463,7 @@ data:
     # Configure Plugins =========================================================
     #
     #org.quartz.triggerListener.dummy.class = org.quartz.examples.DumbTriggerListener
+
   hibernate-settings.xml: |
     <?xml version='1.0' encoding='utf-8'?>
     <!--===========================================================================
@@ -517,7 +518,7 @@ data:
         <managed>false</managed>
     </settings>
 
-  repository.spring.properties: |-
+  repository.spring.properties: |
     #
     # *******************************************************************************
     #
@@ -558,7 +559,7 @@ data:
     # this must be set to false.
     useMultiByteEncoding=false
 
-  server.properties: |-
+  server.properties: |
     # FullyQualifiedServerUrl is used only in the case of offline content generation
     # and whenever something need to talk back to the server
     fully-qualified-server-url={{ (.Values.configuration).serverUrl | default "http://localhost:8080/pentaho/" }}
@@ -592,28 +593,31 @@ data:
     # overridden here.
     #karafWaitForBoot = 120000
 
-  entrypoint: |-
+  entrypoint: |
     {{- .Files.Get "files/entrypoint" | nindent 4 }}
 
-  deployExtensions: |-
-    {{- .Files.Get "files/deployExtensions" | nindent 4 }}
+  config-pre.sh: |
+    {{- .Files.Get "files/config-pre.sh" | nindent 4 }}
 
-  start-pentaho.sh: |-
+  config-post.sh: |
+    {{- .Files.Get "files/config-post.sh" | nindent 4 }}
+
+  start-pentaho.sh: |
     {{- .Files.Get "files/start-pentaho.sh" | nindent 4 }}
 
-  log4j2.xml: |-
+  log4j2.xml: |
     {{- .Files.Get "files/log4j2.xml" | nindent 4 }}
 
-  logging.properties: |-
+  logging.properties: |
     {{- .Files.Get "files/logging.properties" | nindent 4 }}
 
-  arkcase-preauth.xml: |-
+  arkcase-preauth.xml: |
     {{- .Files.Get "files/arkcase-preauth.xml" | nindent 4 }}
 
-  applicationContext-spring-security.xml: |-
+  applicationContext-spring-security.xml: |
     {{- .Files.Get "files/applicationContext-spring-security.xml" | nindent 4 }}
 
 binaryData:
-  arkcase-base-reports.zip: |-
+  arkcase-base-reports.zip: |
     {{- .Files.Get "files/arkcase-base-reports.zip" | b64enc | nindent 4 }}
 {{- end }}

@@ -110,6 +110,10 @@ spec:
             - name: *logsVol
               mountPath: *logsPath
             - name: &secrets "secrets"
+              mountPath: "/dbconfig.json"
+              subPath: &dbconfigJson "dbconfig.json"
+              readOnly: true
+            - name: *secrets
               mountPath: "/app/pentaho/pentaho-server/tomcat/webapps/pentaho/META-INF/context.xml"
               subPath: &contextXml "context.xml"
               readOnly: true
@@ -118,38 +122,10 @@ spec:
               subPath: &repositoryXml "repository.xml"
               readOnly: true
             - name: *secrets
-              mountPath: "/dbconfig.json"
-              subPath: &dbconfigJson "dbconfig.json"
-              readOnly: true
-            - name: &configMap "config-map"
-              mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/hibernate/hibernate-settings.xml"
-              subPath: &hibernateSettingsXml "hibernate-settings.xml"
-              readOnly: true
-            - name: *configMap
-              mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/server.properties"
-              subPath: &serverProperties "server.properties"
-              readOnly: true
-            - name: *configMap
-              mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/repository.spring.properties"
-              subPath: &repositorySpringProperties "repository.spring.properties"
-              readOnly: true
-            - name: *configMap
               mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/applicationContext-security-ldap.properties"
               subPath: &applicationContextSecurityLdapProperties "applicationContext-security-ldap.properties"
               readOnly: true
-            - name: *configMap
-              mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/applicationContext-spring-security.xml"
-              subPath: &applicationContextSpringSecurityXml "applicationContext-spring-security.xml"
-              readOnly: true
-            - name: *configMap
-              mountPath: "/app/pentaho/pentaho-server/tomcat/conf/logging.properties"
-              subPath: &loggingProperties "logging.properties"
-              readOnly: true
-            - name: *configMap
-              mountPath: "/app/pentaho/pentaho-server/tomcat/webapps/pentaho/WEB-INF/classes/log4j2.xml"
-              subPath: &log4j2Xml "log4j2.xml"
-              readOnly: true
-            - name: *configMap
+            - name: &configMap "config-map"
               mountPath: "/entrypoint"
               subPath: &entrypoint "entrypoint"
               readOnly: true
@@ -164,6 +140,38 @@ spec:
             - name: *configMap
               mountPath: "/app/pentaho/pentaho-server/start-pentaho.sh"
               subPath: &startPentahoSh "start-pentaho.sh"
+              readOnly: true
+            - name: *configMap
+              mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/arkcase-preauth.xml"
+              subPath: &arkcasePreauthXml "arkcase-preauth.xml"
+              readOnly: true
+            - name: *configMap
+              mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/server.properties"
+              subPath: &serverProperties "server.properties"
+              readOnly: true
+            - name: *configMap
+              mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/repository.spring.properties"
+              subPath: &repositorySpringProperties "repository.spring.properties"
+              readOnly: true
+            - name: *configMap
+              mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/applicationContext-spring-security.xml"
+              subPath: &applicationContextSpringSecurityXml "applicationContext-spring-security.xml"
+              readOnly: true
+            - name: *configMap
+              mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/quartz/quartz.properties"
+              subPath: &quartzProperties "quartz.properties"
+              readOnly: true
+            - name: *configMap
+              mountPath: "/app/pentaho/pentaho-server/tomcat/conf/logging.properties"
+              subPath: &loggingProperties "logging.properties"
+              readOnly: true
+            - name: *configMap
+              mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/hibernate/hibernate-settings.xml"
+              subPath: &hibernateSettingsXml "hibernate-settings.xml"
+              readOnly: true
+            - name: *configMap
+              mountPath: "/app/pentaho/pentaho-server/tomcat/webapps/pentaho/WEB-INF/classes/log4j2.xml"
+              subPath: &log4j2Xml "log4j2.xml"
               readOnly: true
       volumes:
         {{- include "arkcase.persistence.volume" (dict "name" "data" "ctx" $) | nindent 8 }}
@@ -181,6 +189,8 @@ spec:
                 path: *dbconfigJson
               - key: *repositoryXml
                 path: *repositoryXml
+              - key: *applicationContextSecurityLdapProperties
+                path: *applicationContextSecurityLdapProperties
         - name: *configMap
           configMap:
             optional: false
@@ -191,8 +201,6 @@ spec:
                 path: *hibernateSettingsXml
               - key: *repositorySpringProperties
                 path: *repositorySpringProperties
-              - key: *applicationContextSecurityLdapProperties
-                path: *applicationContextSecurityLdapProperties
               - key: *applicationContextSpringSecurityXml
                 path: *applicationContextSpringSecurityXml
               - key: *serverProperties
@@ -201,6 +209,10 @@ spec:
                 path: *loggingProperties
               - key: *log4j2Xml
                 path: *log4j2Xml
+              - key: *quartzProperties
+                path: *quartzProperties
+              - key: *arkcasePreauthXml
+                path: *arkcasePreauthXml
               - key: *entrypoint
                 path: *entrypoint
                 mode: 0555
