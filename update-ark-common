@@ -1,5 +1,5 @@
 #!/bin/bash
-helm repo update
+helm repo update && \
 find charts -type f -name 'ark-common-*.tgz'| while read f ; do
 	D="$(dirname "${f}")"
 	D="$(dirname "${D}")"
