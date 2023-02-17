@@ -63,13 +63,17 @@ spec:
               value: |
                 jobs:
                   # We know the UID for the Pentaho container is 998:996
-                  - ownership: "998:996"
+                  - ownership: "1998:1998"
                     permissions: "u=rwX,g=rX,o="
                     flags: [ "recurse", "noforced", "create", "changes" ]
-                    targets: [ "/data" ]
+                    targets: [ "/app/data", "/app/logs", "/app/init" ]
           volumeMounts:
-            - name: "data"
-              mountPath: "/data"
+            - name: &dataVol "data"
+              mountPath: &dataPath "/app/data"
+            - name: &initVol "init"
+              mountPath: &initPath "/app/init"
+            - name: &logsVol "logs"
+              mountPath: &logsPath "/app/logs"
         {{- include "arkcase.initDependencies.container" . | nindent 8 }}
       containers:
         - name: pentaho
@@ -79,22 +83,34 @@ spec:
           image: {{ include "arkcase.tools.image" . | quote }}
           imagePullPolicy: {{ include "arkcase.tools.imagePullPolicy" . | quote }}
           env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
+            - name: DATA_DIR
+              value: *dataPath
+            - name: INIT_DIR
+              value: *initPath
+            - name: LOGS_DIR
+              value: *logsPath
           {{- include "arkcase.subsystem.ports" . | nindent 10 }}
           {{- if .Values.command }}
           command: {{- .Values.command | toYaml | nindent 12 }}
+          {{- else }}
+          command: [ "/entrypoint" ]
           {{- end }}
           {{- with .Values.resources }}
           resources: {{- toYaml . | nindent 12 }}
           {{- end }}
           volumeMounts:
-            - name: "data"
-              mountPath: "/home/pentaho/app/pentaho/pentaho-server/data"
+            - name: *dataVol
+              mountPath: *dataPath
+            - name: *initVol
+              mountPath: *initPath
+            - name: *logsVol
+              mountPath: *logsPath
             - name: &secrets "secrets"
-              mountPath: "/home/pentaho/app/pentaho/pentaho-server/tomcat/webapps/pentaho/META-INF/context.xml"
+              mountPath: "/app/pentaho/pentaho-server/tomcat/webapps/pentaho/META-INF/context.xml"
               subPath: &contextXml "context.xml"
               readOnly: true
             - name: *secrets
-              mountPath: "/home/pentaho/app/pentaho/pentaho-server/pentaho-solutions/system/jackrabbit/repository.xml"
+              mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/jackrabbit/repository.xml"
               subPath: &repositoryXml "repository.xml"
               readOnly: true
             - name: *secrets
@@ -102,15 +118,42 @@ spec:
               subPath: &dbconfigJson "dbconfig.json"
               readOnly: true
             - name: &configMap "config-map"
-              mountPath: "/home/pentaho/app/pentaho/pentaho-server/pentaho-solutions/system/hibernate/hibernate-settings.xml"
+              mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/hibernate/hibernate-settings.xml"
               subPath: &hibernateSettingsXml "hibernate-settings.xml"
+              readOnly: true
+            - name: *configMap
+              mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/server.properties"
+              subPath: &serverProperties "server.properties"
+              readOnly: true
+            - name: *configMap
+              mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/repository.spring.properties"
+              subPath: &repositorySpringProperties "repository.spring.properties"
+              readOnly: true
+            - name: *configMap
+              mountPath: "/app/pentaho/pentaho-server/tomcat/conf/logging.properties"
+              subPath: &loggingProperties "logging.properties"
+              readOnly: true
+            - name: *configMap
+              mountPath: "/app/pentaho/pentaho-server/tomcat/webapps/pentaho/WEB-INF/classes/log4j2.xml"
+              subPath: &log4j2Xml "log4j2.xml"
+              readOnly: true
+            - name: *configMap
+              mountPath: "/app/pentaho/pentaho-server/start-pentaho.sh"
+              subPath: &startPentahoSh "start-pentaho.sh"
+              readOnly: true
+            - name: *configMap
+              mountPath: "/entrypoint"
+              subPath: &entrypoint "entrypoint"
               readOnly: true
       volumes:
         {{- include "arkcase.persistence.volume" (dict "name" "data" "ctx" $) | nindent 8 }}
+        {{- include "arkcase.persistence.volume" (dict "name" "init" "ctx" $) | nindent 8 }}
+        {{- include "arkcase.persistence.volume" (dict "name" "logs" "ctx" $) | nindent 8 }}
         - name: *secrets
           secret:
             optional: false
             secretName: {{ include "common.fullname" . | quote }}
+            defaultMode: 0444
             items:
               - key: *contextXml
                 path: *contextXml
@@ -122,10 +165,24 @@ spec:
           configMap:
             optional: false
             name: {{ include "common.fullname" . | quote }}
-            defaultMode: 0555
+            defaultMode: 0444
             items:
               - key: *hibernateSettingsXml
                 path: *hibernateSettingsXml
+              - key: *repositorySpringProperties
+                path: *repositorySpringProperties
+              - key: *serverProperties
+                path: *serverProperties
+              - key: *loggingProperties
+                path: *loggingProperties
+              - key: *log4j2Xml
+                path: *log4j2Xml
+              - key: *entrypoint
+                path: *entrypoint
+                mode: 0555
+              - key: *startPentahoSh
+                path: *startPentahoSh
+                mode: 0555
       {{- with .Values.nodeSelector }}
       nodeSelector: {{- toYaml . | nindent 8 }}
       {{- end }}
@@ -138,6 +195,8 @@ spec:
 
 {{- if (include "arkcase.persistence.enabled" .) }}
 {{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "data") | indent 0 }}
+{{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "init") | indent 0 }}
+{{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "logs") | indent 0 }}
 {{- end }}
 
 {{- end }}

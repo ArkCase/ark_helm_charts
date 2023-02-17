@@ -517,4 +517,91 @@ data:
         <managed>false</managed>
     </settings>
 
+  repository.spring.properties: |-
+    #
+    # *******************************************************************************
+    #
+    # Copyright (C) 2002-2017 by Hitachi Vantara : http://www.pentaho.com
+    #
+    # *******************************************************************************
+    #
+    # Licensed under the Apache License, Version 2.0 (the "License");
+    # you may not use this file except in compliance with
+    # the License. You may obtain a copy of the License at
+    #
+    #    http://www.apache.org/licenses/LICENSE-2.0
+    #
+    # Unless required by applicable law or agreed to in writing, software
+    # distributed under the License is distributed on an "AS IS" BASIS,
+    # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    # See the License for the specific language governing permissions and
+    # limitations under the License.
+    #
+    #Tue Mar 26 17:50:44 EDT 2013
+    singleTenantAdminDefaultUserName={{ (.Values.configuration).adminUsername | default "admin" }}
+    singleTenantAdminUserName={{ (.Values.configuration).adminUsername | default "admin" }}
+    singleTenantAdminDefaultAuthorityName=Administrator
+    singleTenantAdminAuthorityName=Administrator
+    repositoryAdminUsername=pentahoRepoAdmin
+    singleTenantAuthenticatedAuthorityName=Authenticated
+    singleTenantAnonymousAuthorityName=Anonymous
+    superAdminAuthorityName=SysAdmin
+    superAdminUserName=super
+    systemTenantAdminUserName=system
+    systemTenantAdminPassword=Encrypted 2be98afc86aa7f2e4bb18bd63c99dbdde
+    cache-size=100
+    cache-ttl=300
+    versioningEnabled=false
+    versionCommentsEnabled=false
+    # This is the property to enable/disable multi byte encoding in the repository
+    # This property can only be changed to "true" if you are installing it fresh. For upgrades,
+    # this must be set to false.
+    useMultiByteEncoding=false
+
+  server.properties: |-
+    # FullyQualifiedServerUrl is used only in the case of offline content generation
+    # and whenever something need to talk back to the server
+    fully-qualified-server-url={{ (.Values.configuration).serverUrl | default "http://localhost:8080/pentaho/" }}
+
+    # for example 'fr' for French, 'de' for German, da for danish
+    locale-language=
+
+    # for example 'FR' for France, 'CA' for Canada
+    locale-country=
+
+    pentahoObjectFactory=com.pentaho.platform.web.http.context.WebSpringPentahoObjectFactory
+    # The param-value for objectFactoryCreatorCfgFile must be one of the following: 
+    #    - just the file name of the spring configuration file for the pentaho
+    #      object factory, in which case the code will look in the solution
+    #      repository's system folder for the file with that name.
+    #    - The full path to the spring configuration file (including file name).
+    #    - Empty or non-existent, the system will look for the file called
+    #      pentahoObjects.spring.xml in the solution's system folder
+    pentahoObjectFactoryCfgFile=pentahoObjects.spring.xml
+
+    # This defaults to UTF-8. Change the value for other encodings. Also change
+    # the URIEncoding in Tomcat's server.xml.
+    encoding=UTF-8
+
+    # This defaults to LTR (left to right), uncomment this property and
+    # change the value for other text directions.
+    #text-direction=RTL
+
+    # This sets the amount of time the system will wait for karaf to install all of
+    # it's features before timing out.  The default value is 2 minutes but can be
+    # overridden here.
+    #karafWaitForBoot = 120000
+
+  entrypoint: |-
+    {{- .Files.Get "files/entrypoint" | nindent 4 }}
+
+  start-pentaho.sh: |-
+    {{- .Files.Get "files/start-pentaho.sh" | nindent 4 }}
+
+  log4j2.xml: |-
+    {{- .Files.Get "files/log4j2.xml" | nindent 4 }}
+
+  logging.properties: |-
+    {{- .Files.Get "files/logging.properties" | nindent 4 }}
+
 {{- end }}
