@@ -595,6 +595,9 @@ data:
   entrypoint: |-
     {{- .Files.Get "files/entrypoint" | nindent 4 }}
 
+  deployExtensions: |-
+    {{- .Files.Get "files/deployExtensions" | nindent 4 }}
+
   start-pentaho.sh: |-
     {{- .Files.Get "files/start-pentaho.sh" | nindent 4 }}
 
@@ -604,4 +607,13 @@ data:
   logging.properties: |-
     {{- .Files.Get "files/logging.properties" | nindent 4 }}
 
+  arkcase-preauth.xml: |-
+    {{- .Files.Get "files/arkcase-preauth.xml" | nindent 4 }}
+
+  applicationContext-spring-security.xml: |-
+    {{- .Files.Get "files/applicationContext-spring-security.xml" | nindent 4 }}
+
+binaryData:
+  arkcase-techlogix-extension.jar: |-
+    {{- .Files.Get "files/arkcase-techlogix-extension.jar" | b64enc | nindent 4 }}
 {{- end }}
