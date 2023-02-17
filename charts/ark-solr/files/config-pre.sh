@@ -37,7 +37,4 @@ if [ -d "${INIT_DIR}" ] ; then
 	) || fail "Initialization failed"
 fi
 say "Initialization complete"
-# This is important: ${HOME_DIR} must be *ephemeral* - this flag is only meant to
-# inform when the init script ran, so we can run the post-init script in the helm chart
-touch "${HOME_DIR}/.initRan"
 exit 0

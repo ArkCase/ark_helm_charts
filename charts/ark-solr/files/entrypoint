@@ -15,16 +15,21 @@ fail() {
 
 set -euo pipefail
 
-if [ -d "${SOLR_HOME}" ] ; then
+[ -v INIT_MARKER ] || INIT_MARKER="${DATA_DIR}/.initialized"
+
+# This is important: ${HOME_DIR} must be *ephemeral* - this flag is only meant to
+# inform when the init script ran, so we can run the post-init script in the helm chart
+[ -v RUN_MARKER ] || RUN_MARKER="${HOME_DIR}/.initRan"
+
+if [ -e "${INIT_MARKER}" ] ; then
 	say "Persistence is already initialized, proceeding with the normal boot"
 else
 	say "Persistence has not been initialized, proceeding with the first-time initialization"
 
 	/config-pre.sh || fail "Pre-configuration failed - the Solr initialization may not be complete"
 
-	# This is important: ${HOME_DIR} must be *ephemeral* - this flag is only meant to
-	# inform when the init script ran, so we can run the post-init script in the helm chart
-	touch "${HOME_DIR}/.initRan"
+	touch "${INIT_MARKER}"
+	touch "${RUN_MARKER}"
 fi
 
 [ -v SOLR_LOGS_DIR ] || SOLR_LOGS_DIR="${DATA_DIR}/logs"

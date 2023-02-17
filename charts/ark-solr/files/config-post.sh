@@ -17,6 +17,13 @@ fail() {
 	exit ${EXIT_CODE:-1}
 }
 
+cleanup() {
+	[ -v RUN_MARKER ] || RUN_MARKER=""
+	[ -z "${RUN_MARKER}" ] || rm -rf "${RUN_MARKER}" &>/dev/null
+}
+
+RUN_MARKER="${HOME_DIR}/.initRan"
+trap cleanup EXIT
 set -euo pipefail
 
 # By default, wait up to 90 seconds if not told otherwise
@@ -41,8 +48,12 @@ while true ; do
 done
 say "The URL [${SOLR_URL}] responded, continuing"
 
+# Don't run if init didn't run
+[ -f "${RUN_MARKER}" ] || exit 0
+
 # Run the scripts due to be run before Solr is booted up
-[ -v INIT_DIR ] || INIT_DIR="/app/init"
+[ -v BASE_DIR ] || BASE_DIR="/app"
+[ -v INIT_DIR ] || INIT_DIR="${BASE_DIR}/init"
 INIT_DIR="${INIT_DIR}/post"
 if [ -d "${INIT_DIR}" ] ; then
 	cd "${INIT_DIR}" || fail "Failed to CD into [${INIT_DIR}]"
