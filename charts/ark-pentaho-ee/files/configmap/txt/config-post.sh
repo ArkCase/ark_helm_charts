@@ -48,7 +48,7 @@ set -euo pipefail
 [ -v INIT_MAX_WAIT ] || INIT_MAX_WAIT=300
 [[ "${INIT_MAX_WAIT}" =~ ^[1-9][0-9]*$ ]] || INIT_MAX_WAIT=300
 
-[ -v ADMIN_URL ] || ADMIN_URL="http://localhost:2002/pentaho"
+[ -v ADMIN_URL ] || ADMIN_URL="http://localhost:8080/pentaho/"
 
 START="$(date +%s)"
 say "Starting the polling cycle"
@@ -65,7 +65,10 @@ say "The URL [${ADMIN_URL}] responded, continuing"
 
 [ -f "${RUN_MARKER}" ] || exit 0
 
-# wait until port 2002 is open, then...
+# We have to sanitize the Admin URL to remove any trailing slashes
+shopt -s extglob
+ADMIN_URL="${ADMIN_URL%%+(/)}"
+shopt -u extglob
 
 [ -v BASE_DIR ] || BASE_DIR="/app"
 [ -v INIT_DIR ] || INIT_DIR="${BASE_DIR}/init"
@@ -74,7 +77,6 @@ say "The URL [${ADMIN_URL}] responded, continuing"
 UPLOAD_LOG_FILE="${LOGS_DIR}/uploads-$(date -u +%Y%m%d-%H%M%s)Z.log"
 
 REPORT_INSTALLER="${PENTAHO_HOME}/pentaho-server/import-export.sh"
-${DEBUG} && REPORT_INSTALLER="debug_report_installer"
 
 extract_archive() {
 	local TYPE="${1}"
@@ -136,24 +138,29 @@ install_report() {
 	local RC=0
 	local ARCHIVE_INFO=""
 	[ -z "${ARCHIVE_TYPE}" ] || ARCHIVE_INFO=" extracted from the archive [${SRC_FILE}]"
+	local CMD=()
 	for F in "${REPORTS[@]}" ; do
 		[[ "${F}" =~ ^(.*):///:(.*)$ ]]
 		local P="${BASH_REMATCH[1]}"
 		F="${BASH_REMATCH[2]}"
 		say "Intalling the report from [${F}]${ARCHIVE_INFO}..."
-		"${REPORT_INSTALLER}" \
-			--import \
-			--url="${ADMIN_URL}" \
-			--username="${ADMIN_USERNAME}" \
-			--password="${ADMIN_PASSWORD}" \
-			--path="/public${P}" \
-			--file-path="${F}" \
-			--logfile="${UPLOAD_LOG_FILE}" \
-			--charset=UTF-8 \
-			--permission=true \
-			--overwrite=true \
-			--retainOwnership=true || RC=${?}
-		if [ ${RC} -ne 0 ] ; then
+		CMD=(
+			"${REPORT_INSTALLER}"
+			--import
+			--url="${ADMIN_URL}"
+			--username="${ADMIN_USERNAME}"
+			--password="${ADMIN_PASSWORD}"
+			--path="/public${P}"
+			--file-path="${F}"
+			--logfile="${UPLOAD_LOG_FILE}"
+			--charset=UTF-8
+			--permission=true
+			--overwrite=true
+			--retainOwnership=true
+		)
+		${DEBUG} && say "\t${CMD[@]@Q}"
+		OUT="$("${CMD[@]}" 2>&1)"
+		if ! grep -iq "Import was successful" <<< "${OUT}" ; then
 			err "\tFailed to install the report from [${F}]${ARCHIVE_INFO} (rc=${RC})"
 			return ${?}
 		fi
