@@ -173,8 +173,8 @@ list_reports() {
 #
 # TODO: How do we populate these? (especially the password)
 #
-ADMIN_USERNAME="admin"
-ADMIN_PASSWORD="admin"
+[ -v ADMIN_USERNAME ] || ADMIN_USERNAME="admin"
+[ -v ADMIN_PASSWORD ] || ADMIN_PASSWORD="password"
 
 if ${DEBUG} || [ -x "${REPORT_INSTALLER}" ] ; then
 	#
