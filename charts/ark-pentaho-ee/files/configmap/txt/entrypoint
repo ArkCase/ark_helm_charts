@@ -60,6 +60,7 @@ if [ -d "${LICENSE_DIR}" ] ; then
 	while read LICENSE ; do
 		if /bin/sh "${LICENSE_INSTALLER}" install -q "${LICENSE}" ; then
 			say "\tInstalled the license from [${LICENSE}], removing the original file"
+			rm -fv "${LICENSE}" &>/dev/null || true
 		else
 			say "\tERROR: failed to install the license from [${LICENSE}]"
 		fi
