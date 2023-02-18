@@ -278,7 +278,7 @@ Parameter: the root context (i.e. "." or "$")
     {{- /* Render a global service with all declared ports, as necessary */ -}}
     {{- $containerPorts := list }}
     {{- range $container, $spec := $containers }}
-      {{- if (kindIs "map" $spec) $spec.ports }}
+      {{- if and (kindIs "map" $spec) $spec.ports }}
         {{- if (not (kindIs "slice" $spec.ports)) }}
           {{- fail (printf "The declaration for .Values.service.%s.ports must be a list of ports (maps) (%s)" $container (kindOf $spec.ports)) }}
         {{- end }}
