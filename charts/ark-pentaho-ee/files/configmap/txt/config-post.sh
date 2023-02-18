@@ -74,7 +74,6 @@ shopt -u extglob
 [ -v INIT_DIR ] || INIT_DIR="${BASE_DIR}/init"
 [ -v DATA_DIR ] || DATA_DIR="${BASE_DIR}/data"
 [ -v LOGS_DIR ] || LOGS_DIR="${DATA_DIR}/logs"
-UPLOAD_LOG_FILE="${LOGS_DIR}/uploads-$(date -u +%Y%m%d-%H%M%s)Z.log"
 
 REPORT_INSTALLER="${PENTAHO_HOME}/pentaho-server/import-export.sh"
 
@@ -144,6 +143,7 @@ install_report() {
 		local P="${BASH_REMATCH[1]}"
 		F="${BASH_REMATCH[2]}"
 		say "Intalling the report from [${F}]${ARCHIVE_INFO}..."
+		local UPLOAD_LOG_FILE="${LOGS_DIR}/uploads-$(date -u +%Y%m%d-%H%M%S)Z.log"
 		CMD=(
 			"${REPORT_INSTALLER}"
 			--import
@@ -160,8 +160,12 @@ install_report() {
 		)
 		${DEBUG} && say "\t${CMD[@]@Q}"
 		OUT="$("${CMD[@]}" 2>&1)"
-		if ! grep -iq "Import was successful" <<< "${OUT}" ; then
-			err "\tFailed to install the report from [${F}]${ARCHIVE_INFO} (rc=${RC})"
+		if grep -iq "Import was successful" "${UPLOAD_LOG_FILE}" ; then
+			rm -f "${UPLOAD_LOG_FILE}" &>/dev/null
+		else
+			err "\tFailed to install the report from [${F}]${ARCHIVE_INFO} (rc=${RC})\n$(cat "${UPLOAD_LOG_FILE}")"
+			# To assist in debugging
+			echo -e "\n${CMD[@]@Q}" >> "${UPLOAD_LOG_FILE}"
 			return ${?}
 		fi
 	done
