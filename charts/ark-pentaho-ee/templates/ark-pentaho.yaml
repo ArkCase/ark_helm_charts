@@ -146,6 +146,10 @@ spec:
               subPath: &arkcasePreauthXml "arkcase-preauth.xml"
               readOnly: true
             - name: *configMap
+              mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/security.properties"
+              subPath: &securityProperties "security.properties"
+              readOnly: true
+            - name: *configMap
               mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/server.properties"
               subPath: &serverProperties "server.properties"
               readOnly: true
@@ -207,6 +211,8 @@ spec:
                 path: *repositorySpringProperties
               - key: *applicationContextSpringSecurityXml
                 path: *applicationContextSpringSecurityXml
+              - key: *securityProperties
+                path: *securityProperties
               - key: *serverProperties
                 path: *serverProperties
               - key: *loggingProperties
