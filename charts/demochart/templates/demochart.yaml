@@ -66,20 +66,20 @@ spec:
           {{- with .Values.resources }}
           resources: {{- toYaml . | nindent 12 }}
           {{- end }}
-          volumeMounts:
-            - name: "ldap"
-              mountPath: "/secrets/ldap"
-              readOnly: true
-            - name: "messaging"
-              mountPath: "/secrets/messaging"
-              readOnly: true
-      volumes:
-        - name: "ldap"
-          secret:
-            secretName: "ldap"
-        - name: "messaging"
-          secret:
-            secretName: "messaging"
+#           volumeMounts:
+#             - name: "ldap"
+#               mountPath: "/secrets/ldap"
+#               readOnly: true
+#             - name: "messaging"
+#               mountPath: "/secrets/messaging"
+#               readOnly: true
+#       volumes:
+#         - name: "ldap"
+#           secret:
+#             secretName: "ldap"
+#         - name: "messaging"
+#           secret:
+#             secretName: "messaging"
       {{- with .Values.nodeSelector }}
       nodeSelector: {{- toYaml . | nindent 8 }}
       {{- end }}
