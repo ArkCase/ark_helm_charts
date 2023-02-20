@@ -676,7 +676,12 @@ data: {{- (.Files.Glob "files/configmap/txt/*").AsConfig | nindent 2 }}
            relaxedQueryChars="^{}[]|&amp;"
            maxHttpHeaderSize="65536"
            {{- if and $proxyName $proxyPort }}
+           {{- $proxyName = (include "arkcase.tools.mustSingleHostname" $proxyName) }}
            proxyName="{{ $proxyName }}"
+           {{- $proxyPort = ($proxyPort | toString | int) }}
+           {{- if or (lt $proxyPort 1) (gt $proxyPort 65535) }}
+             {{- fail (printf "The port number %d is invalid - must be within [1..65535]" $proxyPort) }}
+           {{- end }}
            proxyPort="{{ $proxyPort }}"
            {{- end }}
         />
