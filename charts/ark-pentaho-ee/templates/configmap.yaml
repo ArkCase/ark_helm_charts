@@ -677,7 +677,7 @@ data: {{- (.Files.Glob "files/configmap/txt/*").AsConfig | nindent 2 }}
            maxHttpHeaderSize="65536"
            {{- if and $proxyName $proxyPort }}
            proxyName="{{ $proxyName }}"
-           proxyName="{{ $proxyPort }}"
+           proxyPort="{{ $proxyPort }}"
            {{- end }}
         />
         <!-- A "Connector" using the shared thread pool-->
