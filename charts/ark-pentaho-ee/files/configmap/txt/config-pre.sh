@@ -11,6 +11,7 @@ fail() {
 
 initRequired()
 {
+	# TODO: How to properly identify if initialization is actually required?
 	case "${1,,}" in
 		mysql5 )
 			export LAUNCH_COMMAND=""
@@ -27,13 +28,14 @@ initRequired()
 
 renderPasswordScript() {
 	local SCRIPT="${1}"
-	# TODO: Render the password update script based on the database
+	# TODO: Render the password update script based on the database information
 	return 0
 }
 
 runScript() {
 	local SCRIPT="${1}"
 	say "Running the script [${SCRIPT}] (from the ${SCRIPT_DIALECT} dialect)"
+	# TODO: Run the given SQL script ...
 	return 0
 }
 
