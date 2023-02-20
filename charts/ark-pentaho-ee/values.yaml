@@ -128,6 +128,12 @@ configuration:
       defaultAutoCommit: "true"
       jdbcInterceptors: "ConnectionState"
 
+    acm3:
+      <<: *hibernateBase
+      username: "arkcase"
+      password: "arkcase"
+      url: "jdbc:postgresql://rdbms:5432/arkcase"
+
     audit:
       <<: *hibernateBase
 
