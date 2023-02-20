@@ -73,6 +73,8 @@ spec:
           volumeMounts:
             - name: &homeVolume "home"
               mountPath: &homeDir "/app/home"
+            - name: &initVolume "init"
+              mountPath: &initDir "/app/init"
             - name: &confVolume "conf"
               mountPath: &confDir "/app/conf"
             - name: &dataVolume "data"
@@ -94,6 +96,8 @@ spec:
               value: *dataDir
             - name: HOME_DIR
               value: *homeDir
+            - name: INIT_DIR
+              value: *initDir
             - name: LOGS_DIR
               value: *logsDir
             {{- with ((.Values.configuration).arkcase).env }}
@@ -112,6 +116,8 @@ spec:
           volumeMounts:
             - name: *homeVolume
               mountPath: *homeDir
+            - name: *initVolume
+              mountPath: *initDir
             - name: *confVolume
               mountPath: "/app/home/.arkcase"
             - name: *dataVolume
@@ -146,12 +152,14 @@ spec:
               subPath: "acm/acm-config-server-repo"
       volumes:
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "home") | nindent 8 }}
+        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "init") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "conf") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "logs") | nindent 8 }}
 
 {{- if (include "arkcase.persistence.enabled" .) }}
 {{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "home") | indent 0 }}
+{{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "init") | indent 0 }}
 {{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "conf") | indent 0 }}
 {{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "data") | indent 0 }}
 {{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "logs") | indent 0 }}
