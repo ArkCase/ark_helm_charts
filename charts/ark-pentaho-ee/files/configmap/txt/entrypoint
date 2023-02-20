@@ -43,6 +43,19 @@ export ACTIVEMQ_DATA
 [ -d "${KETTLE_HOME}" ] || mkdir -p "${KETTLE_HOME}"
 export KETTLE_HOME
 
+
+
+[ -v INIT_DIR ] || INIT_DIR="${BASE_DIR}/init"
+
+###################################################################
+# UPDATE CA CERTIFICATES                                          #
+###################################################################
+/update-ssl
+
+###################################################################
+# INSTALL ANY LICENSES                                            #
+###################################################################
+
 #
 # Configure license location
 #
@@ -50,9 +63,9 @@ export KETTLE_HOME
 [ -f "${PENTAHO_INSTALLED_LICENSE_PATH}" ] || mkdir -p "$(dirname "${PENTAHO_INSTALLED_LICENSE_PATH}")"
 export PENTAHO_INSTALLED_LICENSE_PATH
 
-###################################################################
-# INSTALL ANY LICENSES                                            #
-###################################################################
+#
+# Install the licenses
+#
 [ -v LICENSE_DIR ] || LICENSE_DIR="${INIT_DIR}/licenses"
 if [ -d "${LICENSE_DIR}" ] ; then
 	LICENSE_INSTALLER="${PENTAHO_HOME}/license-installer/install_license.sh"
@@ -95,7 +108,7 @@ if [ -e "${INIT_MARKER}" ] ; then
 else
 	say "Persistence has not been initialized, proceeding with the first-time initialization"
 
-	/config-pre.sh || fail "Pre-configuration failed - the Solr initialization may not be complete"
+	/config-pre.sh || fail "Pre-configuration failed - the Pentaho initialization may not be complete"
 
 	touch "${INIT_MARKER}"
 	touch "${RUN_MARKER}"
@@ -105,6 +118,6 @@ fi
 # LAUNCH THE SERVER PROCESS                                       #
 ###################################################################
 
-# Run the launcher, which returns immediately
-say "Launching Pentaho..."
-exec "${PENTAHO_SERVER}/start-pentaho.sh" "${@}"
+CMD=("${PENTAHO_SERVER}/start-pentaho.sh" "${@}")
+say "Launching Pentaho as: ${CMD[@]@Q}"
+exec "${CMD}"
