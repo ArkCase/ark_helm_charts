@@ -248,6 +248,13 @@ config:
 reports:
   service:
     # external: "some-external-ip"
+  configuration:
+    jdbc:
+      acm3:
+        username: *arkcaseDb
+        password: *arkcaseDbPassword
+        url: "jdbc:postgresql://rdbms:5432/arkcase"
+
   initDependencies:
     <<: *initDependencies
     enabled: true
