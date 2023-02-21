@@ -92,7 +92,7 @@ spec:
             - name: ADMIN_USERNAME
               valueFrom:
                 secretKeyRef:
-                  name: &secrets "secrets"
+                  name: &secrets {{ include "common.fullname" . | quote }}
                   key: "adminUsername"
             - name: ADMIN_PASSWORD
               valueFrom:
@@ -123,7 +123,7 @@ spec:
               mountPath: *initPath
             - name: *logsVol
               mountPath: *logsPath
-            - name: *secrets
+            - name: &secrets "secrets"
               mountPath: "/dbconfig.json"
               subPath: &dbconfigJson "dbconfig.json"
               readOnly: true
