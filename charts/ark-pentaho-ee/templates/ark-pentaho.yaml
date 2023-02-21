@@ -89,6 +89,16 @@ spec:
               value: *initPath
             - name: LOGS_DIR
               value: *logsPath
+            - name: ADMIN_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: &secrets "secrets"
+                  key: "adminUsername"
+            - name: ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: *secrets
+                  key: "adminPassword"
           {{- include "arkcase.subsystem.ports" . | nindent 10 }}
           {{- if .Values.command }}
           command: {{- .Values.command | toYaml | nindent 12 }}
@@ -113,7 +123,7 @@ spec:
               mountPath: *initPath
             - name: *logsVol
               mountPath: *logsPath
-            - name: &secrets "secrets"
+            - name: *secrets
               mountPath: "/dbconfig.json"
               subPath: &dbconfigJson "dbconfig.json"
               readOnly: true
