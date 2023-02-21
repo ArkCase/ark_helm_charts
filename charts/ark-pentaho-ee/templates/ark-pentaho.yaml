@@ -166,7 +166,7 @@ spec:
               mountPath: "/app/pentaho/pentaho-server/tomcat/conf/server.xml"
               subPath: &serverXml "server.xml"
             - name: *configMap
-              mountPath: "/app/pentaho/pentaho-server/tomcat/webapps/pentaho/WEB-INF/classes/log4j2.xml"
+              mountPath: "/app/pentaho/pentaho-server/tomcat/webapps/pentaho/WEB-INF/classes/log4j2.xml.base"
               subPath: &log4j2Xml "log4j2.xml"
             - name: *configMap
               mountPath: "/app/init/reports/000-arkcase-base-reports.tar.gz"

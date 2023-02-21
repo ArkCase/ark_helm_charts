@@ -88,6 +88,13 @@ fi
 export LOGS_DIR
 
 #
+# This is for debugging - if the log4j2 configuration isn't set already,
+# we copy it from the base file
+#
+LOG4J2_XML="${PENTAHO_SERVER}/tomcat/webapps/pentaho/WEB-INF/classes/log4j2.xml"
+[ -f "${LOG4J2_XML}" ] || cp -vf "${LOG$J2_XML}.base" "${LOG4J2_XML}" || fail "Failed to create the Log4J2 configuration"
+
+#
 # Tomcat Logging
 #
 [ -v TOMCAT_LOGS_DIR ] || TOMCAT_LOGS_DIR="${LOGS_DIR}/tomcat"
