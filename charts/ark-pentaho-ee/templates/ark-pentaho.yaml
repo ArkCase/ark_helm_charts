@@ -120,75 +120,57 @@ spec:
             - name: *secrets
               mountPath: "/app/pentaho/pentaho-server/tomcat/webapps/pentaho/META-INF/context.xml"
               subPath: &contextXml "context.xml"
-              readOnly: true
             - name: *secrets
               mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/jackrabbit/repository.xml"
               subPath: &repositoryXml "repository.xml"
-              readOnly: true
             - name: *secrets
               mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/applicationContext-security-ldap.properties"
               subPath: &applicationContextSecurityLdapProperties "applicationContext-security-ldap.properties"
-              readOnly: true
             - name: &configMap "config-map"
               mountPath: "/entrypoint"
               subPath: &entrypoint "entrypoint"
-              readOnly: true
             - name: *configMap
               mountPath: "/config-pre.sh"
               subPath: &configPreSh "config-pre.sh"
-              readOnly: true
             - name: *configMap
               mountPath: "/config-post.sh"
               subPath: &configPostSh "config-post.sh"
-              readOnly: true
             - name: *configMap
               mountPath: "/app/pentaho/pentaho-server/start-pentaho.sh"
               subPath: &startPentahoSh "start-pentaho.sh"
-              readOnly: true
             - name: *configMap
               mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/arkcase-preauth.xml"
               subPath: &arkcasePreauthXml "arkcase-preauth.xml"
-              readOnly: true
             - name: *configMap
               mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/security.properties"
               subPath: &securityProperties "security.properties"
-              readOnly: true
             - name: *configMap
               mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/server.properties"
               subPath: &serverProperties "server.properties"
-              readOnly: true
             - name: *configMap
               mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/repository.spring.properties"
               subPath: &repositorySpringProperties "repository.spring.properties"
-              readOnly: true
             - name: *configMap
               mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/applicationContext-spring-security.xml"
               subPath: &applicationContextSpringSecurityXml "applicationContext-spring-security.xml"
-              readOnly: true
             - name: *configMap
               mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/quartz/quartz.properties"
               subPath: &quartzProperties "quartz.properties"
-              readOnly: true
             - name: *configMap
               mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/hibernate/hibernate-settings.xml"
               subPath: &hibernateSettingsXml "hibernate-settings.xml"
-              readOnly: true
             - name: *configMap
               mountPath: "/app/pentaho/pentaho-server/tomcat/conf/logging.properties"
               subPath: &loggingProperties "logging.properties"
-              readOnly: true
             - name: *configMap
               mountPath: "/app/pentaho/pentaho-server/tomcat/conf/server.xml"
               subPath: &serverXml "server.xml"
-              readOnly: true
             - name: *configMap
               mountPath: "/app/pentaho/pentaho-server/tomcat/webapps/pentaho/WEB-INF/classes/log4j2.xml"
               subPath: &log4j2Xml "log4j2.xml"
-              readOnly: true
             - name: *configMap
               mountPath: "/app/init/reports/000-arkcase-base-reports.tar.gz"
               subPath: &arkcaseBaseReportsTarGz "arkcase-base-reports.tar.gz"
-              readOnly: true
       volumes:
         {{- include "arkcase.persistence.volume" (dict "name" "data" "ctx" $) | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "name" "init" "ctx" $) | nindent 8 }}
@@ -197,7 +179,7 @@ spec:
           secret:
             optional: false
             secretName: {{ include "common.fullname" . | quote }}
-            defaultMode: 0444
+            defaultMode: 0666
             items:
               - key: *contextXml
                 path: *contextXml
@@ -211,7 +193,7 @@ spec:
           configMap:
             optional: false
             name: {{ include "common.fullname" . | quote }}
-            defaultMode: 0444
+            defaultMode: 0666
             items:
               - key: *hibernateSettingsXml
                 path: *hibernateSettingsXml
@@ -237,16 +219,16 @@ spec:
                 path: *arkcaseBaseReportsTarGz
               - key: *entrypoint
                 path: *entrypoint
-                mode: 0555
+                mode: 0777
               - key: *configPreSh
                 path: *configPreSh
-                mode: 0555
+                mode: 0777
               - key: *configPostSh
                 path: *configPostSh
-                mode: 0555
+                mode: 0777
               - key: *startPentahoSh
                 path: *startPentahoSh
-                mode: 0555
+                mode: 0777
       {{- with .Values.nodeSelector }}
       nodeSelector: {{- toYaml . | nindent 8 }}
       {{- end }}
