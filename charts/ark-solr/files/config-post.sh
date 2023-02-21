@@ -26,6 +26,16 @@ RUN_MARKER="${HOME_DIR}/.initRan"
 trap cleanup EXIT
 set -euo pipefail
 
+[ -v BASE_DIR ] || BASE_DIR="/app"
+
+[ -v LOGS_DIR ] || LOGS_DIR="${BASE_DIR}/logs"
+if [ -d "${LOGS_DIR}" ] ; then
+	LOG_FILE="${LOGS_DIR}/config-post.log"
+	exec >> >(/usr/bin/tee -a "${LOG_FILE}")
+	exec 2>&1
+	say "Logs redirected to [${LOG_FILE}]"
+fi
+
 # By default, wait up to 90 seconds if not told otherwise
 [ -v INIT_POLL_SLEEP ] || INIT_POLL_SLEEP=2
 [[ "${INIT_POLL_SLEEP}" =~ ^[1-9][0-9]*$ ]] || INIT_POLL_SLEEP=2
@@ -52,7 +62,6 @@ say "The URL [${SOLR_URL}] responded, continuing"
 [ -f "${RUN_MARKER}" ] || exit 0
 
 # Run the scripts due to be run before Solr is booted up
-[ -v BASE_DIR ] || BASE_DIR="/app"
 [ -v INIT_DIR ] || INIT_DIR="${BASE_DIR}/init"
 INIT_DIR="${INIT_DIR}/post"
 if [ -d "${INIT_DIR}" ] ; then

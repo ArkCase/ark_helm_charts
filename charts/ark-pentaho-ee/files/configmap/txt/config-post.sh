@@ -42,6 +42,16 @@ RUN_MARKER="${PENTAHO_HOME}/.initRan"
 trap cleanup EXIT
 set -euo pipefail
 
+[ -v BASE_DIR ] || BASE_DIR="/app"
+
+[ -v LOGS_DIR ] || LOGS_DIR="${BASE_DIR}/logs"
+if [ -d "${LOGS_DIR}" ] ; then
+	LOG_FILE="${LOGS_DIR}/config-post.log"
+	exec >> >(/usr/bin/tee -a "${LOG_FILE}")
+	exec 2>&1
+	say "Logs redirected to [${LOG_FILE}]"
+fi
+
 # By default, wait up to 300 seconds if not told otherwise
 [ -v INIT_POLL_SLEEP ] || INIT_POLL_SLEEP=2
 [[ "${INIT_POLL_SLEEP}" =~ ^[1-9][0-9]*$ ]] || INIT_POLL_SLEEP=2
@@ -70,7 +80,6 @@ shopt -s extglob
 ADMIN_URL="${ADMIN_URL%%+(/)}"
 shopt -u extglob
 
-[ -v BASE_DIR ] || BASE_DIR="/app"
 [ -v INIT_DIR ] || INIT_DIR="${BASE_DIR}/init"
 [ -v DATA_DIR ] || DATA_DIR="${BASE_DIR}/data"
 [ -v LOGS_DIR ] || LOGS_DIR="${DATA_DIR}/logs"
