@@ -1,3 +1,4 @@
+{{- if or (not (hasKey ((.Values.configuration).ingress | default dict) "enabled")) ((.Values.configuration).ingress).enabled -}}
 {{- $hasTLS := false }}
 {{- if ((.Values.configuration).ingress).tls }}
   {{- $hasTLS = true }}
@@ -62,4 +63,5 @@ spec:
 {{- if $hasTLS }}
   tls:
     - secretName: {{ include "common.fullname" . | quote }}
+{{- end }}
 {{- end }}
