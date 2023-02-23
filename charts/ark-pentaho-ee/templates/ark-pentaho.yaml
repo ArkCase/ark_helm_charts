@@ -197,7 +197,7 @@ spec:
               readOnly: true
             - name: *configMap
               mountPath: "/app/init/reports/000-arkcase-base-reports.tar.gz"
-              subPath: &arkcaseBaseReportsTarGz "arkcase-base-reports.tar.gz"
+              subPath: &arkcaseBaseReportsTarGz {{ printf "%s-arkcase-base-reports.tar.gz" (required "Must provide a value for .configuration.db.dialect" ((.Values.configuration).db).dialect) | quote }}
               readOnly: true
       volumes:
         {{- include "arkcase.persistence.volume" (dict "name" "data" "ctx" $) | nindent 8 }}
