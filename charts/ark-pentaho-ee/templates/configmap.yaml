@@ -318,7 +318,7 @@ data: {{- (.Files.Glob "files/configmap/txt/*").AsConfig | nindent 2 }}
     #_replace_jobstore_properties
     
     org.quartz.jobStore.misfireThreshold = 60000
-    org.quartz.jobStore.driverDelegateClass = {{ (((.Values).configuration).quartz).delegateClass }}
+    org.quartz.jobStore.driverDelegateClass = {{ include "arkcase.pentaho.quartz.delegateClass" . }}
     org.quartz.jobStore.useProperties = false
     org.quartz.jobStore.dataSource = myDS
     org.quartz.jobStore.tablePrefix = QRTZ5_
@@ -502,9 +502,10 @@ data: {{- (.Files.Glob "files/configmap/txt/*").AsConfig | nindent 2 }}
       * system/hibernate/mysql5.hibernate.cfg.xml
       * system/hibernate/postgresql.hibernate.cfg.xml
       * system/hibernate/oracle10g.hibernate.cfg.xml
+      * system/hibernate/sqlserver.hibernate.cfg.xml
       *
       -->
-        <config-file>system/hibernate/{{ required "You must set a .Values.configuration.hibernate.dialect value" ((.Values.configuration).hibernate).dialect }}.hibernate.cfg.xml</config-file>
+        <config-file>system/hibernate/{{- include "arkcase.pentaho.db.dialect" . -}}.hibernate.cfg.xml</config-file>
     
       <!--
       *

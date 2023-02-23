@@ -89,6 +89,10 @@ spec:
               value: *initPath
             - name: LOGS_DIR
               value: *logsPath
+            - name: DB_DIALECT
+              value: {{ include "arkcase.pentaho.db.dialect" . | quote }}
+            - name: DB_SCRIPTS
+              value: {{ include "arkcase.pentaho.db.scripts" . | quote }}
             - name: ADMIN_USERNAME
               valueFrom:
                 secretKeyRef:

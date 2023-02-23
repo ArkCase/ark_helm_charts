@@ -11,7 +11,7 @@
 configuration:
 
   # Console username and password: Please set a secure password
-  adminUsername: &adminUsername admin
+  adminUsername: &adminUsername "admin"
   adminPassword: *adminUsername
 
   db: 
@@ -21,66 +21,17 @@ configuration:
     dialect: &dialect "postgresql"
     # dialect: &dialect "sqlserver"
 
-    # For Oracle 12c we must use different initialization
-    # scripts, but the Oracle 10g dialect
-    # scripts: "oracle12c"
-    scripts: *dialect
-
     host: "rdbms"
     port: 5432
-    user: "postgres"
+    username: "postgres"
     # Unfortunately this is required to run the DB initializer scripts
-    pass: "...."
-
-  hibernate:
-    dialect: *dialect
+    password: "...."
 
   quartz:
     # delegateClass: "org.quartz.impl.jdbcjobstore.StdJDBCDelegate"
     # delegateClass: "org.quartz.impl.jdbcjobstore.MSSQLDelegate"
     # delegateClass: "org.quartz.impl.jdbcjobstore.oracle.OracleDelegate"
     delegateClass: "org.quartz.impl.jdbcjobstore.PostgreSQLDelegate"
-
-  jcr:
-    base: &base
-      url: "java:comp/env/jdbc/jackrabbit"
-      # These are the allowed values here, so you may have to diverge from
-      # the dialect, above
-      # db: mssql
-      # db: mysql
-      # db: oracle
-      # db: postgresql (matches the *dialect anchor, above)
-      db: *dialect
-
-    repository: &repository
-      <<: *base
-      class: "org.apache.jackrabbit.core.fs.db.DbFileSystem"
-      # class: "org.apache.jackrabbit.core.fs.db.OracleFileSystem"
-      # class: "org.apache.jackrabbit.core.fs.db.MSSqlFileSystem"
-
-    dataStore:
-      <<: *base
-      class: "org.apache.jackrabbit.core.data.db.DbDataStore"
-      # class: "org.apache.jackrabbit.core.data.FileDataStore"
-
-    workspaces:
-      <<: *repository
-
-    workspacesPm: &workspacePm
-      <<: *base
-      # class: "org.apache.jackrabbit.core.persistence.bundle.MySqlPersistenceManager"
-      # class: "org.apache.jackrabbit.core.persistence.bundle.OraclePersistenceManager"
-      # class: "org.apache.jackrabbit.core.persistence.bundle.MSSqlPersistenceManager"
-      class: "org.apache.jackrabbit.core.persistence.bundle.PostgreSQLPersistenceManager"
-
-    versioning:
-      <<: *repository
-
-    versioningPm:
-      <<: *workspacePm
-
-    dbJournal:
-      <<: *base
 
   # Some JDBC URL Examples:
   # url: "jdbc:mysql://rdbms:3306/hibernate"/>

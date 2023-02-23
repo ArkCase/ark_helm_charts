@@ -34,7 +34,7 @@ renderPasswordScript() {
 
 runScript() {
 	local SCRIPT="${1}"
-	say "Running the script [${SCRIPT}] (from the ${SCRIPT_DIALECT} dialect)"
+	say "Running the script [${SCRIPT}] (from the ${DB_SCRIPTS} dialect)"
 	# TODO: Run the given SQL script ...
 	return 0
 }
@@ -50,15 +50,16 @@ set -euo pipefail
 
 OUT="$(jq -r . < "${DBCONFIG}" 2>&1)" || fail "The Database configuration ${DBCONFIG} is malformed JSON, cannot continue:\n${OUT}"
 
-DB_DIALECT="$(jq -r '.db.dialect // ""' < "${DBCONFIG}")"
+[ -v DB_DIALECT ] || DB_DIALECT="$(jq -r '.db.dialect // ""' < "${DBCONFIG}")"
 [ -n "${DB_DIALECT}" ] || fail "No dialect is set in the DB configuration file ${DBCONFIG}, cannot continue"
 say "The database dialect is [${DB_DIALECT}]..."
 
-SCRIPT_DIALECT="$(jq -r '.db.scripts // ""' < "${DBCONFIG}")"
+[ -v DB_SCRIPTS ] || DB_SCRIPTS="$(jq -r '.db.scripts // ""' < "${DBCONFIG}")"
+
 # Just for safety
-if [ -z "${SCRIPT_DIALECT}" ] ; then
+if [ -z "${DB_SCRIPTS}" ] ; then
 	say "\tNo scripts dialect provided, so using the same database dialect"
-	SCRIPT_DIALECT="${DB_DIALECT}"
+	DB_SCRIPTS="${DB_DIALECT}"
 else
 	say "The script dialect is [${DB_DIALECT}]..."
 fi
@@ -74,8 +75,8 @@ cp -vf "${SRC_AUDIT_XML}" "${TGT_AUDIT_XML}"
 
 if initRequired "${DB_DIALECT}" ; then
 	# Run the correct scripts (but how?!?! We don't have the DBInit clients)
-	SQL_DIR="${PENTAHO_SERVER}/data/${SCRIPT_DIALECT}"
-	[ -d "${SQL_DIR}" ] || fail "There are no SQL initialization scripts for dialect [${SCRIPT_DIALECT}], cannot continue"
+	SQL_DIR="${PENTAHO_SERVER}/data/${DB_SCRIPTS}"
+	[ -d "${SQL_DIR}" ] || fail "There are no SQL initialization scripts for dialect [${DB_SCRIPTS}], cannot continue"
 	pushd "${SQL_DIR}"
 	runScript "${n}" || fail "Failed to initialize the database"
 	renderPasswordScript "fix-passwords.sql" || fail "Failed to render the password update script"
