@@ -62,6 +62,7 @@ configuration:
 
   # TODO: This must be read from *somewhere* and provided to us
   ldap:
+    domain: "appdev.armedia.com"
     url: "ldaps://ldap.appdev.armedia.com:636"
     baseDn: &baseDn "OU=ArkCase Techlogix,OU=Clients,DC=appdev,DC=armedia,DC=com"
     bind:
@@ -80,7 +81,8 @@ configuration:
       groups:
         base: "OU=Dev, OU=Groups"
         attribute: "cn"
-        filter: "(objectClass=group)"
+        filter: "(&(objectClass=group)(cn={0}))"
+        allFilter: "(objectClass=group)"
         membership: "(&(objectClass=group)(member={0}))"
         ignoreCase: "false"
         subtree: "true"
