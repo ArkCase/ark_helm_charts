@@ -20,21 +20,24 @@
   {{- end -}}
   {{- $db = lower $db -}}
 
-  {{- $mysql := dict "dialect" "mysql5" "jcr" "mysql" "scripts" "mysql" "quartz" "StdJDBCDelegate" -}}
-  {{- $oracle := dict "dialect" "oracle10g" "jcr" "oracle" "scripts" "oracle10g" "quartz" "oracle.OracleDelegate" -}}
-  {{- $oracle12 := set (omit $oracle "scripts") "scripts" "oracle12c" -}}
-  {{- $postgresql := dict "dialect" "postgresql" "jcr" "postgresql" "scripts" "postgresql" "quartz" "PostgreSQLDelegate" -}}
-  {{- $sqlserver := dict "dialect" "sqlserver" "jcr" "mssql" "scripts" "sqlserver" "quartz" "MSSQLDelegate" -}}
-
-  {{- /* Now create a map for all the allowed aliases */ -}}
-  {{- /* We could do something more complicated above, but it would be much slower and this is enough for now */ -}}
-  {{- $mappings := dict "mariadb" $mysql "mysql" $mysql "mysql5" $mysql "mysql8" $mysql "postgresql" $postgresql "psql" $postgresql "orcl" $oracle "orcl10g" $oracle "oracle" $oracle "orcl12" $oracle12 "orcl12c" $oracle12 "oracle12" $oracle12 "oracle12c" $oracle12 "sqlserver" $sqlserver "mssql" $sqlserver -}}
-
-  {{- if not (hasKey $mappings $db) -}}
-    {{- fail (printf "Unsupported database type '%s' - must be one of %s" $db (keys $mappings | sortAlpha)) -}}
+  {{- $dbInfo := (.Files.Get "dbinfo.yaml" | fromYaml ) -}}
+  {{- range $key, $db := $dbInfo -}}
+    {{- if not (hasKey $db "scripts") -}}
+      {{- $db = set $db "scripts" $db.dialect -}}
+    {{- end -}}
+    {{- if hasKey $db "aliases" -}}
+      {{- range $alias := $db.aliases -}}
+        {{- $dbInfo = set $dbInfo $alias $db -}}
+      {{- end -}}
+    {{- end -}}
+    {{- $dbInfo = set $dbInfo $key $db -}}
   {{- end -}}
 
-  {{- get $mappings $db | toYaml -}}
+  {{- if not (hasKey $dbInfo $db) -}}
+    {{- fail (printf "Unsupported database type '%s' - must be one of %s" $db (keys $dbInfo | sortAlpha)) -}}
+  {{- end -}}
+
+  {{- get $dbInfo $db | toYaml -}}
 {{- end -}}
 
 {{- define "arkcase.pentaho.db.dialect" -}}
@@ -60,7 +63,7 @@
   {{- end -}}
   {{- $dbInfo := ((include "arkcase.pentaho.db.info" $ctx) | fromYaml) -}}
   {{- $fsClass := "Db" -}}
-  {{- $schema := get $dbInfo "jcr" -}}
+  {{- $schema := coalesce $dbInfo.jcr $dbInfo.jdbc.type -}}
   {{- if eq $schema "oracle" -}}
     {{- $fsClass = "Oracle" -}}
   {{- else if eq $schema "mssql" -}}
@@ -84,7 +87,7 @@
     {{- fail "The 'prefix' parameter must be a string" -}}
   {{- end -}}
   {{- $dbInfo := ((include "arkcase.pentaho.db.info" $ctx) | fromYaml) -}}
-  {{- $schema := get $dbInfo "jcr" -}}
+  {{- $schema := coalesce $dbInfo.jcr $dbInfo.jdbc.type -}}
 <DataStore class="org.apache.jackrabbit.core.data.db.DbDataStore">
   <param name="driver" value="javax.naming.InitialContext"/>
   <param name="url" value="java:comp/env/jdbc/jackrabbit"/>
@@ -108,7 +111,7 @@
   {{- end -}}
   {{- $dbInfo := ((include "arkcase.pentaho.db.info" $ctx) | fromYaml) -}}
   {{- $pmClass := "Db" -}}
-  {{- $schema := get $dbInfo "jcr" -}}
+  {{- $schema := coalesce $dbInfo.jcr $dbInfo.jdbc.type -}}
   {{- if eq $schema "oracle" -}}
     {{- $pmClass = "Oracle" -}}
   {{- else if eq $schema "mssql" -}}
@@ -126,4 +129,119 @@
   <param name="schema" value="{{ $schema }}"/>
   <param name="schemaObjectPrefix" value="{{ $prefix }}"/>
 </PersistenceManager>
+{{- end -}}
+
+{{- define "arkcase.pentaho.jdbc.driver" -}}
+  {{- if not (kindIs "map" .) -}}
+    {{- fail "The parameter must be a map" -}}
+  {{- end -}}
+  {{- $ctx := . -}}
+  {{- if hasKey . "ctx" -}}
+    {{- $ctx = .ctx -}}
+  {{- end -}}
+  {{- if not (kindIs "map" $ctx) -}}
+    {{- fail "The context given (either the parameter map, or the 'ctx' value within) must be a map" -}}
+  {{- end -}}
+  {{- if or (not (hasKey $ctx "Values")) (not (hasKey $ctx "Chart")) (not (hasKey $ctx "Release")) -}}
+    {{- fail "The context given (either the parameter map, or the 'ctx' value within) is not the top-level context" -}}
+  {{- end -}}
+
+  {{- $dbInfo := ((include "arkcase.pentaho.db.info" $ctx) | fromYaml) -}}
+  {{- $dbInfo.jdbc.driver -}}
+{{- end -}}
+
+{{- define "arkcase.pentaho.jdbc.param" -}}
+  {{- if not (kindIs "map" .) -}}
+    {{- fail "The parameter must be a map" -}}
+  {{- end -}}
+  {{- if not (hasKey . "ctx") -}}
+    {{- fail "Must provide the root context as the 'ctx' parameter value" -}}
+  {{- end -}}
+  {{- $ctx := .ctx -}}
+  {{- if not (kindIs "map" $ctx) -}}
+    {{- fail "The context given ('ctx' parameter) must be a map" -}}
+  {{- end -}}
+  {{- if or (not (hasKey $ctx "Values")) (not (hasKey $ctx "Chart")) (not (hasKey $ctx "Release")) -}}
+    {{- fail "The context given (either the parameter map, or the 'ctx' value within) is not the top-level context" -}}
+  {{- end -}}
+
+  {{- if not .target -}}
+    {{- fail "Must provide a 'target' parameter to indicate which username to fetch" -}}
+  {{- end -}}
+  {{- $target := .target | toString -}}
+
+  {{- if not .param -}}
+    {{- fail "Must provide a 'param' parameter to indicate which value to fetch" -}}
+  {{- end -}}
+  {{- $param := .param | toString -}}
+
+  {{- $jdbc := $ctx.Values.configuration.jdbc -}}
+  {{- if not (hasKey $jdbc $target) -}}
+    {{- fail (printf "No JDBC instance named '%s' - must be one of %s" $target (keys $jdbc)) -}}
+  {{- end -}}
+
+  {{- $jdbc = get $jdbc $target -}}
+  {{- $value := "" -}}
+  {{- if (hasKey $jdbc $param) -}}
+    {{- $value = (get $jdbc $param) -}}
+  {{- else if hasKey $ctx.Values.configuration.db $param -}}
+    {{- $value = (get $ctx.Values.configuration.db $param) -}}
+  {{- end -}}
+
+  {{- $value -}}
+{{- end -}}
+
+{{- define "arkcase.pentaho.jdbc.url" -}}
+  {{- if not (kindIs "map" .) -}}
+    {{- fail "The parameter must be a map" -}}
+  {{- end -}}
+  {{- if not (hasKey . "ctx") -}}
+    {{- fail "Must provide the root context as the 'ctx' parameter value" -}}
+  {{- end -}}
+  {{- $ctx := .ctx -}}
+  {{- if not (kindIs "map" $ctx) -}}
+    {{- fail "The context given ('ctx' parameter) must be a map" -}}
+  {{- end -}}
+  {{- if or (not (hasKey $ctx "Values")) (not (hasKey $ctx "Chart")) (not (hasKey $ctx "Release")) -}}
+    {{- fail "The context given (either the parameter map, or the 'ctx' value within) is not the top-level context" -}}
+  {{- end -}}
+
+  {{- $database := (include "arkcase.pentaho.jdbc.param" (set . "param" "database")) -}}
+  {{- $instance := (include "arkcase.pentaho.jdbc.param" (set . "param" "instance")) -}}
+
+  {{- $dbInfo := ((include "arkcase.pentaho.db.info" $ctx) | fromYaml) -}}
+  {{- $data := mustDeepCopy $ctx.Values.configuration.db -}}
+
+  {{- if not (hasKey $data "hostname") -}}
+    {{- fail "Must provide the server name in the 'hostname' parameter value" -}}
+  {{- end -}}
+  {{- if not (kindIs "string" $data.hostname) -}}
+    {{- fail "The 'hostname' parameter must be a string" -}}
+  {{- end -}}
+  {{- if not ($data.hostname) -}}
+    {{- fail "The 'hostname' parameter may not be an empty string" -}}
+  {{- end -}}
+  {{- /* TODO: Check that it's a valid hostname */ -}}
+
+  {{- if and ($instance) ($dbInfo.jdbc.instance) -}}
+    {{- $instance = ($dbInfo.jdbc.instance | replace "${INSTANCE}" $instance) -}}
+  {{- end -}}
+
+  {{- $format := $dbInfo.jdbc.format -}}
+  {{- /* Output the result */ -}}
+  {{-
+    $format
+      | replace "${HOSTNAME}" ($data.hostname | toString)
+      | replace "${PORT}" ($data.port | toString)
+      | replace "${DATABASE}" ($database | toString)
+      | replace "${INSTANCE}" ($instance | toString)
+  -}}
+{{- end -}}
+
+{{- define "arkcase.pentaho.jdbc.username" -}}
+  {{- include "arkcase.pentaho.jdbc.param" (set . "param" "username") -}}
+{{- end -}}
+
+{{- define "arkcase.pentaho.jdbc.password" -}}
+  {{- include "arkcase.pentaho.jdbc.param" (set . "param" "password") -}}
 {{- end -}}
