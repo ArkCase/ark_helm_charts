@@ -23,7 +23,7 @@ set -euo pipefail
 [ -d "${PENTAHO_SERVER}" ] || fail "The path [${PENTAHO_SERVER}] is not a directory, cannot continue."
 
 ###################################################################
-# CONFIGURE FILESYSTEM PERSISTENCE                                #
+# CONFIGURE FILESYSTEM PERSISTENCE								#
 ###################################################################
 [ -v DATA_DIR ] || DATA_DIR="${BASE_DIR}/data"
 [ -d "${DATA_DIR}" ] || mkdir -p "${DATA_DIR}"
@@ -48,12 +48,12 @@ export KETTLE_HOME
 [ -v INIT_DIR ] || INIT_DIR="${BASE_DIR}/init"
 
 ###################################################################
-# UPDATE CA CERTIFICATES                                          #
+# UPDATE CA CERTIFICATES										  #
 ###################################################################
 /update-ssl
 
 ###################################################################
-# INSTALL ANY LICENSES                                            #
+# INSTALL ANY LICENSES											#
 ###################################################################
 
 #
@@ -81,7 +81,7 @@ if [ -d "${LICENSE_DIR}" ] ; then
 fi
 
 ###################################################################
-# CONFIGURE LOGGING                                               #
+# CONFIGURE LOGGING											   #
 ###################################################################
 [ -v LOGS_DIR ] || LOGS_DIR="${BASE_DIR}/logs"
 [ -d "${LOGS_DIR}" ] || mkdir -p "${LOGS_DIR}"
@@ -108,7 +108,7 @@ export TOMCAT_LOGS_DIR
 [ -v RUN_MARKER ] || RUN_MARKER="${PENTAHO_HOME}/.initRan"
 
 ###################################################################
-# INITIALIZE PERSISTENT DATA AND CONFIGURATIONS                   #
+# INITIALIZE PERSISTENT DATA AND CONFIGURATIONS				   #
 ###################################################################
 if [ -e "${INIT_MARKER}" ] ; then
 	say "Persistence is already initialized, proceeding with the normal boot"
@@ -122,7 +122,7 @@ else
 fi
 
 ###################################################################
-# LAUNCH THE SERVER PROCESS                                       #
+# LAUNCH THE SERVER PROCESS									   #
 ###################################################################
 
 CMD=("${PENTAHO_SERVER}/start-pentaho.sh" "${@}")

@@ -47,13 +47,13 @@
                 For more information, see:
                 http://activemq.apache.org/producer-flow-control.html
             -->
-		
-		<!--  use JAAS to authenticate -->
-		<plugins>
-		  <jaasAuthenticationPlugin configuration="karaf" />
-		</plugins>
+        
+        <!--  use JAAS to authenticate -->
+        <plugins>
+          <jaasAuthenticationPlugin configuration="karaf" />
+        </plugins>
 
-		<destinationPolicy>
+        <destinationPolicy>
                 <policyMap>
                   <policyEntries>
                     <policyEntry topic=">" producerFlowControl="true">
