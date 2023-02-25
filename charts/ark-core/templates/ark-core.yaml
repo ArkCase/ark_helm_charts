@@ -120,6 +120,10 @@ spec:
               mountPath: *initDir
             - name: *confVolume
               mountPath: "/app/home/.arkcase"
+            - name: &secrets "secrets"
+              mountPath: "/app/home/.arkcase/acm/acm-config-server-repo/ldap/ldap.yaml"
+              subPath: *ldapYaml
+              readOnly: true
             - name: *dataVolume
               mountPath: *dataDir
             - name: *logsVolume
@@ -150,7 +154,19 @@ spec:
             - name: *confVolume
               mountPath: *confDir
               subPath: "acm/acm-config-server-repo"
+            - name: *secrets
+              mountPath: "/app/conf/ldap/ldap.yaml"
+              subPath: *ldapYaml
+              readOnly: true
       volumes:
+        - name: *secrets
+          secret:
+            optional: false
+            secretName: {{ include "common.fullname" . | quote }}
+            defaultMode: 0444
+            items:
+              - key: *ldapYaml
+                path: *ldapYaml
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "home") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "init") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "conf") | nindent 8 }}
