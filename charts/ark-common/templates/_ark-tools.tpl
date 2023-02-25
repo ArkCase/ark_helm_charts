@@ -568,3 +568,28 @@ return either the value if correct, or the empty string if not.
   {{- end -}}
   {{- $result -}}
 {{- end -}}
+
+{{- define "arkcase.tools.ldap" -}}
+  {{- if not (kindIs "map" .) -}}
+    {{- fail "The parameter must be a map" -}}
+  {{- end -}}
+  {{- if not (hasKey . "ctx") -}}
+    {{- fail "Must provide the root context as the 'ctx' parameter value" -}}
+  {{- end -}}
+  {{- $ctx := .ctx -}}
+  {{- if not (kindIs "map" $ctx) -}}
+    {{- fail "The context given ('ctx' parameter) must be a map" -}}
+  {{- end -}}
+  {{- if or (not (hasKey $ctx "Values")) (not (hasKey $ctx "Chart")) (not (hasKey $ctx "Release")) -}}
+    {{- fail "The context given (either the parameter map, or the 'ctx' value within) is not the top-level context" -}}
+  {{- end -}}
+
+  {{- if not .value -}}
+    {{- fail "Must provide a 'value' parameter to indicate which value to fetch" -}}
+  {{- end -}}
+
+  {{- $ldap := ($ctx.Values.configuration).ldap -}}
+  {{- if $ldap -}}
+    {{- include "arkcase.tools.get" (dict "ctx" $ldap "name" (.value | toString)) -}}
+  {{- end -}}
+{{- end -}}
