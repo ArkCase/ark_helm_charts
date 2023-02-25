@@ -122,7 +122,7 @@ spec:
               mountPath: "/app/home/.arkcase"
             - name: &secrets "secrets"
               mountPath: "/app/home/.arkcase/acm/acm-config-server-repo/ldap/ldap.yaml"
-              subPath: *ldapYaml
+              subPath: &ldapYaml "ldap.yaml"
               readOnly: true
             - name: *dataVolume
               mountPath: *dataDir
