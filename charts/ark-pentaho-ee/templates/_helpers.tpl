@@ -166,7 +166,7 @@
   {{- end -}}
 
   {{- if not .target -}}
-    {{- fail "Must provide a 'target' parameter to indicate which username to fetch" -}}
+    {{- fail "Must provide a 'target' parameter to indicate which parameter to fetch" -}}
   {{- end -}}
   {{- $target := .target | toString -}}
 
