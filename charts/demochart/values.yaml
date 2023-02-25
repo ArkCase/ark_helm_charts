@@ -192,13 +192,13 @@ messaging:
 
 ldap:
   configuration:
-    domain:
-      name: "default.svc.cluster.local"
-      password: "RaL@a5eio:heC3"
     ldap:
       <<: *ldapConfig
+    # domain:
+    #   name: "default.svc.cluster.local"
+    #   password: "RaL@a5eio:heC3"
   service:
-    # external: www.ldap.com
+    external: "ldap.appdev.armedia.com"
 
 search:
   service:
@@ -225,72 +225,33 @@ rdbms:
       # jcr: &jcrDb "jcr"
       # quartz: &quartzDb "quartz"
 
-config:
-  service:
-    # external: "192.168.1.14"
+core:
+  configuration:
+    ldap:
+      <<: *ldapConfig
+
   initDependencies:
     <<: *initDependencies
     enabled: true
     mode: all
     dependencies:
-      messaging:
-        # Listen until any of the ActiveMQ ports goes live
+      search:
         ports:
-          - 1883
-          - 5672
-          - 8161
+          - 8983
+      viewer:
+        ports:
+          - 8080
+      rdbms:
+        ports:
+          - 1433
+          - 1521
+          - 3306
+          - 5432
+      messaging:
+        ports:
           - 61613
           - 61614
           - 61616
-
-  # These settings will get put straight into the ArkCase configuration
-  # file (arkcase-server.yaml)
-  configuration:
-    db:
-        driverClassName: "org.postgresql.Driver"
-        # Can't append the DB name here :(
-        url: "jdbc:postgresql://rdbms:5432/arkcase"
-        username: *arkcaseDb
-        password: *arkcaseDbPassword
-
-    messaging:
-      config:
-        brokerUrl: &brokerUrl "tcp://messaging:61616"
-        user: *cloudConfigMessagingUser
-        password: *cloudConfigMessagingPassword
-      broker:
-        transportConnectorURI: *brokerUrl
-        user: *arkcaseMessagingUser
-        password: *arkcaseMessagingPassword
-      stomp:
-        stomp_broker_relay.relay_host: *brokerUrl
-        stomp_broker_relay.system_login: *arkcaseMessagingPassword
-        stomp_broker_relay.system_passcode: *arkcaseMessagingUser
-
-    reports:
-      plugin:
-        PENTAHO_SERVER_URL: "https://reports"
-        PENTAHO_SERVER_USER: "arkcase-admin"
-        PENTAHO_SERVER_PASSWORD: "Ai-0c9d92f7ef9b1d6a1"
-        PENTAHO_SERVER_INTERNAL_URL: "http://reports"
-        PENTAHO_SERVER_INTERNAL_PORT: 2002
-
-    content:
-      admin:
-        baseurl: "https://content/alfresco/s/admin/admin-sync"
-        username: &contentUser "admin"
-        password: &contentPassword "admin"
-      sync:
-        host: "content"
-        port: 443
-        enabled: true
-        username: *contentUser
-        password: *contentPassword
-
-core:
-  configuration:
-    ldap:
-      <<: *ldapConfig
 
 reports:
   service:
