@@ -101,7 +101,7 @@ spec:
               mountPath: "/app/conf"
               readOnly: true
             - name: &configMap "configmap"
-              mountPath: "/"
+              mountPath: "/seeds.yaml"
               subPath: &seedsYaml "seeds.yaml"
               readOnly: true
       volumes:
@@ -119,7 +119,7 @@ spec:
             defaultMode: 0444
             items:
               - key: *seedsYaml
-              - path: *seedsYaml
+                path: *seedsYaml
       {{- with .Values.nodeSelector }}
       nodeSelector: {{- toYaml . | nindent 8 }}
       {{- end }}
