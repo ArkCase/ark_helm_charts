@@ -71,7 +71,7 @@ spec:
             - name: DOMAINPASS
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "arkcase.subsystem.name" . | quote }}
+                  name: {{ include "common.fullname" . | quote }}
                   key: DOMAIN_PASSWORD
             - name: JOIN
               value: "false"
@@ -97,16 +97,29 @@ spec:
               mountPath: "/config"
             - name: "logs"
               mountPath: "/var/log/samba"
-            - name: "secrets"
+            - name: &secrets "secrets"
               mountPath: "/app/conf"
+              readOnly: true
+            - name: &configMap "configmap"
+              mountPath: "/"
+              subPath: &seedsYaml "seeds.yaml"
               readOnly: true
       volumes:
         {{- include "arkcase.persistence.volume" (dict "name" "data" "ctx" $) | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "name" "conf" "ctx" $) | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "name" "logs" "ctx" $) | nindent 8 }}
-        - name: secrets
+        - name: *secrets
           secret:
-            secretName: {{ include "arkcase.subsystem.name" . | quote }}
+            optional: false
+            secretName: {{ include "common.fullname" . | quote }}
+        - name: *configMap
+          configMap:
+            optional: false
+            name: {{ include "common.fullname" . | quote }}
+            defaultMode: 0444
+            items:
+              - key: *seedsYaml
+              - path: *seedsYaml
       {{- with .Values.nodeSelector }}
       nodeSelector: {{- toYaml . | nindent 8 }}
       {{- end }}

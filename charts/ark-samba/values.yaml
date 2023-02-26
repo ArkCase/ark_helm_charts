@@ -10,8 +10,15 @@
 #
 configuration:
   domain:
+    # The LDAP DNs will be computed from this
     name: "arkcase.test"
     password: "RaL@a5eio:heC3"
+
+  # If this setting is a string, then it will be used to compute the name
+  # of the seed file to consume as "files/seeds-${seeds}.yaml". If it's a map,
+  # it *must* contain at most two keys named "users" and "groups", and its contents
+  # must match the contents of the seed files.
+  seeds: "dev"
 
 # Please leave the `replicaCount` to 1 for the time being. Clustering is not
 # supported yet.

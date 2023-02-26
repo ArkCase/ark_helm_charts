@@ -1,0 +1,95 @@
+# Remember to apply the group prefix to the group ID
+groups:
+  ARKCASE_ENTITY_ADMINISTRATOR:
+    description: Entity administrators
+  ARKCASE_CONSUMER:
+    description: Consumers
+  ARKCASE_SUPERVISOR:
+    description: Supervisors
+  ARKCASE_ADMINISTRATOR:
+    description: Administrators
+  ARKCASE_EXTERNAL:
+    description: External users
+  ARKCASE_CONTRIBUTOR:
+    description: Contributors
+  APPROVERS:
+    description: Approvers
+  OFFICERS:
+    description: Officers
+
+# Remember to apply the user prefix to the user ID
+# Remember to apply the group prefix to the group IDs in the membership list
+users:
+  arkcase-admin:
+    description: ArkCase administrator
+    name: "ArkCase Administrator"
+    mail: "arkcase-admin@armedia.com"
+    firstName: ArkCase
+    lastName: Administrator
+    nonexpiring_password: yes
+    groups:
+      - ARKCASE_ADMINISTRATOR
+      - ARKCASE_ENTITY_ADMINISTRATOR
+  ann-acm:
+    description: Ann Smith
+    name: Ann Smith
+    mail: "ann-acm@armedia.com"
+    firstName: Ann
+    lastName: Smith
+    nonexpiring_password: yes
+    groups:
+      - ARKCASE_ADMINISTRATOR
+      - ARKCASE_ENTITY_ADMINISTRATOR
+  david.miller:
+    description: David Miller
+    name: David Miller
+    mail: "david.miller@arkcase.com"
+    firstName: David
+    lastName: Miller
+    nonexpiring_password: yes
+    groups:
+      - ARKCASE_ADMINISTRATOR
+  matthew.maines:
+    description: Matthew Maines
+    name: Matthew Maines
+    mail: "mmaines@armedia.com"
+    firstName: Matthew
+    lastName: Maines
+    nonexpiring_password: yes
+    groups:
+      - ARKCASE_ADMINISTRATOR
+  sally-acm:
+    description: Sally Supervisor
+    name: Sally Supervisor
+    mail: "sally-acm@armedia.com"
+    firstName: Sally
+    lastName: Supervisor
+    nonexpiring_password: yes
+    groups:
+      - ARKCASE_SUPERVISOR
+  samuel-acm:
+    description: Samuel Supervisor
+    name: Samuel Supervisor
+    mail: "samuel-acm@armedia.com"
+    firstName: Samuel
+    lastName: Supervisor
+    nonexpiring_password: yes
+    groups:
+      - ARKCASE_SUPERVISOR
+  owen.officer:
+    description: Owen Officer
+    name: Owen Officer
+    mail: "owen.officer@armedia.com"
+    firstName: Owen
+    lastName: Officer
+    nonexpiring_password: yes
+    groups:
+      - OFFICERS
+  andy.approver:
+    description: Andy Approver
+    name: Andy Approver
+    mail: "andy.approver@armedia.com"
+    firstName: Andy
+    lastName: Approver
+    groups:
+      - APPROVERS

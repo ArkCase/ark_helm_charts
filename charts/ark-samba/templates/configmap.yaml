@@ -1,0 +1,58 @@
+{{- if (include "arkcase.subsystem.enabled" .) }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "common.fullname" . | quote }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels: {{- include "common.labels" . | nindent 4 }}
+    {{- with (.Values.labels).common }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  annotations:
+    timestamp: {{ date "20060102150405" now | quote }}
+    {{- with (.Values.annotations).common }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+data:
+  #
+  # Process static files
+  #
+  {{- range $path, $_ := (.Files.Glob "files/configmap/txt/*") }}
+  {{ $path | base }}: |{{- $.Files.Get $path | nindent 4 }}
+  {{- end }}
+
+  #
+  # Process templated files
+  #
+  {{- range $path, $_ := (.Files.Glob "files/configmap/tpl/*") }}
+  {{ $path | base }}: |{{- tpl ($.Files.Get $path) $ | nindent 4 }}
+  {{- end }}
+
+  #
+  # Select and render the seeds file
+  #
+  {{ if (.Values.configuration).seeds }}
+  {{- $seeds := .Values.configuration.seeds }}
+    {{- if kindIs "string" $seeds }}
+      {{- $seedFile := .Files.Get (printf "files/seeds-%s.yaml" $seeds) }}
+      {{- if not $seedFile }}
+        {{- fail (printf "Did not find the '%s' seeds file" $seeds) }}
+      {{- end }}
+      {{- $seeds = $seedFile | fromYaml | toYaml }}
+    {{- else if kindIs "map" $seeds }}
+      {{- $seeds = (pick $seeds "users" "groups" | toYaml) }}
+    {{- else }}
+      {{- fail "The 'seeds' setting must be either a string or a map" }}
+    {{- end }}
+    {{- if not $seeds }}
+      {{- $seeds = "" }}
+    {{- end -}}
+  seeds.yaml: | {{- $seeds | nindent 4 }}
+  {{- end }}
+
+binaryData:
+  #
+  # Process binary files
+  #
+  {{- (.Files.Glob "files/configmap/bin/*").AsSecrets | nindent 2 }}
+{{- end }}
