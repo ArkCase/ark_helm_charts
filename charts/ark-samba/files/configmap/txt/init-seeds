@@ -17,10 +17,13 @@ ENV_INIT_DEPENDENCIES = "INIT_DEPENDENCIES"
 
 EXE_SAMBA_TOOL = "/usr/bin/samba-tool"
 
-KEY_SERVER = "server"
-KEY_SERVER_URL = "url"
-KEY_SERVER_BIND_DN = "bindDn"
-KEY_SERVER_BIND_PASS = "bindPassword"
+KEY_LDAP = "server"
+KEY_LDAP_URL = "url"
+KEY_LDAP_ADMIN_USER = "adminUser"
+KEY_LDAP_ADMIN_PASS = "adminPass"
+KEY_LDAP_USER_PREFIX = "userPrefix"
+KEY_LDAP_GROUP_PREFIX = "groupPrefix"
+KEY_LDAP_DEFAULT_PASSWORD = "defaultPassword"
 
 KEY_USERS = "users"
 KEY_PASSWORD = "password"
@@ -68,53 +71,26 @@ def fail(msg):
 	logging.error(msg)
 	exit(1)
 
-def getArgOrEnv(args, argName, envName, default = None):
+def get_config_value(conf, confName, args, argName, envName, default = None):
 	if hasattr(args, argName):
 		v = getattr(args, argName)
 
-		if v is None:
-			if envName in os.environ:
-				return os.environ[envName]
+		if v is not None:
+			if type(v) == list:
+				v = v[0]
+			return str(v)
 
-		if not v:
-			return None
-		if type(v) == list:
-			v = v[0]
-		return v
+	if conf and (confName in conf):
+		v = conf[confName]
+		if v:
+			return str(v)
 
 	if envName in os.environ:
-		return os.environ[envName]
+		v = os.environ[envName]
+		if v:
+			return str(v)
 
 	return default
-
-# Compute the value of the prefixes. If the trimmed value isn't empty, append a dot to it.
-# The prefixes may not begin with a dot, may not end with a dot, may not contain consecutive dots, and will be stripped
-
-USER_PREFIX = ""
-v = getArgOrEnv(args, "user_prefix", ENV_USER_PREFIX)
-if v:
-	USER_PREFIX = f"{v}."
-
-GROUP_PREFIX = ""
-v = getArgOrEnv(args, "group_prefix", ENV_GROUP_PREFIX)
-if v:
-	GROUP_PREFIX = f"{v}."
-
-DEFAULT_PASSWORD = getArgOrEnv(args, "default_password", ENV_DEFAULT_PASSWORD)
-if not DEFAULT_PASSWORD:
-	DEFAULT_PASSWORD = None
-
-LDAP_URL = getArgOrEnv(args, "ldap_url", ENV_LDAP_URL)
-if not LDAP_URL:
-	LDAP_URL = None
-
-LDAP_ADMIN_USER = getArgOrEnv(args, "ldap_admin_user", ENV_LDAP_ADMIN_USER)
-if LDAP_ADMIN_USER:
-	LDAP_ADMIN_PASS = getArgOrEnv(args, "ldap_admin_password", ENV_LDAP_ADMIN_PASS)
-	if not LDAP_ADMIN_PASS:
-		fail(f"Must provide a password to authenticate the user {LDAP_ADMIN_USER} with")
-else:
-	LDAP_ADMIN_USER = None
 
 if len(sys.argv) < 2:
 	# If no parameter is given, use an environment variable
@@ -256,6 +232,38 @@ def apply_memberships(groupId, members):
 	result = run_command(command)
 	if result != 0:
 		fail("Failed to apply the memberships for group '{groupId}' (rc={result})")
+
+serverInfo = {}
+if KEY_LDAP in data:
+	serverInfo = data[KEY_LDAP]
+	if type(serverInfo) != dict:
+		serverInfo = {}
+
+USER_PREFIX = ""
+v = get_config_value(serverInfo, KEY_LDAP_USER_PREFIX, args, "user_prefix", ENV_USER_PREFIX)
+if v:
+	USER_PREFIX = f"{v}."
+
+GROUP_PREFIX = ""
+v = get_config_value(serverInfo, KEY_LDAP_GROUP_PREFIX, args, "group_prefix", ENV_GROUP_PREFIX)
+if v:
+	GROUP_PREFIX = f"{v}."
+
+DEFAULT_PASSWORD = get_config_value(serverInfo, KEY_LDAP_DEFAULT_PASSWORD, args, "default_password", ENV_DEFAULT_PASSWORD)
+if not DEFAULT_PASSWORD:
+	DEFAULT_PASSWORD = None
+
+LDAP_URL = get_config_value(serverInfo, KEY_LDAP_URL, args, "ldap_url", ENV_LDAP_URL)
+if not LDAP_URL:
+	LDAP_URL = None
+
+LDAP_ADMIN_USER = get_config_value(serverInfo, KEY_LDAP_ADMIN_USER, args, "ldap_admin_user", ENV_LDAP_ADMIN_USER)
+if LDAP_ADMIN_USER:
+	LDAP_ADMIN_PASS = get_config_value(serverInfo, KEY_LDAP_ADMIN_PASS, args, "ldap_admin_password", ENV_LDAP_ADMIN_PASS)
+	if not LDAP_ADMIN_PASS:
+		fail(f"Must provide a password to authenticate the user {LDAP_ADMIN_USER} with")
+else:
+	LDAP_ADMIN_USER = None
 
 try:
 	memberships = {}
