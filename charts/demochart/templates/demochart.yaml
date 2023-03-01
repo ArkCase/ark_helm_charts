@@ -1,3 +1,4 @@
+{{- if eq (((.Values.configuration).testPod | default "false") | toString | lower) "true" -}}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -89,3 +90,4 @@ spec:
       {{- with .Values.tolerations }}
       tolerations: {{- toYaml . | nindent 8 }}
       {{- end }}
+{{- end -}}
