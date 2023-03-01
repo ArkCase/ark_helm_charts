@@ -217,6 +217,11 @@ def create_group(groupId, groupData):
 	groupId = render_group_id(groupId)
 	logging.info(f"Creating group '{groupId}' from [{groupData}]")
 	command = [ "group", "add", groupId ]
+
+	# Special workaround: Group OU may be bugged out to be CN=Users, which is wrong
+	if "ou" not in groupData:
+		groupData["ou"] = "CN=Groups"
+
 	for attName, attFlag in GROUP_ATTRIBUTES.items():
 		if attFlag is None:
 			attFlag = attName
