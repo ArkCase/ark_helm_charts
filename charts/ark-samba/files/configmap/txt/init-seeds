@@ -172,7 +172,7 @@ def create_user(userId, userData):
 	userId = render_user_id(userId)
 	# a) create the user
 	logging.info(f"Creating user '{userId}' from [{userData}]")
-	command = [ "user", "add", userId ]
+	command = [ "user", "add", userId, "--random-password" ]
 	for attName, attFlag in USER_ATTRIBUTES.items():
 		if attFlag is None:
 			attFlag = attName
