@@ -83,6 +83,8 @@ spec:
               value: "false"
             - name: NOCOMPLEXITY
               value: "true"
+            - name: LDAP_SEED_FILE
+              value: "/app/conf/seeds.yaml"
           {{- include "arkcase.subsystem.ports" . | nindent 10 }}
           {{- if .Values.command }}
           command: {{- .Values.command | toYaml | nindent 12 }}
@@ -101,8 +103,8 @@ spec:
               mountPath: "/app/conf"
               readOnly: true
             - name: &configMap "configmap"
-              mountPath: "/seeds.yaml"
-              subPath: &seedsYaml "seeds.yaml"
+              mountPath: "/app/init/000-init-seeds"
+              subPath: &initSeeds "init-seeds"
               readOnly: true
       volumes:
         {{- include "arkcase.persistence.volume" (dict "name" "data" "ctx" $) | nindent 8 }}
@@ -112,14 +114,16 @@ spec:
           secret:
             optional: false
             secretName: {{ include "common.fullname" . | quote }}
+            defaultMode: 0444
         - name: *configMap
           configMap:
             optional: false
             name: {{ include "common.fullname" . | quote }}
             defaultMode: 0444
             items:
-              - key: *seedsYaml
-                path: *seedsYaml
+              - key: *initSeeds
+                path: *initSeeds
+                mode: 0555
       {{- with .Values.nodeSelector }}
       nodeSelector: {{- toYaml . | nindent 8 }}
       {{- end }}

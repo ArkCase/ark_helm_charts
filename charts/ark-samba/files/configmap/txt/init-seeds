@@ -17,6 +17,7 @@ ENV_INIT_DEPENDENCIES = "INIT_DEPENDENCIES"
 
 EXE_SAMBA_TOOL = "/usr/bin/samba-tool"
 
+KEY_DEBUG = "debug"
 KEY_LDAP = "server"
 KEY_LDAP_URL = "url"
 KEY_LDAP_ADMIN_USER = "adminUser"
@@ -44,6 +45,8 @@ GROUP_ATTRIBUTES = {
 	"ou" : "groupou",
 }
 
+ENV_DEBUG = "DEBUG"
+
 ENV_LDAP_URL = "LDAP_URL"
 ENV_LDAP_ADMIN_USER = "LDAP_ADMIN_USER"
 ENV_LDAP_ADMIN_PASS = "LDAP_ADMIN_PASS"
@@ -54,14 +57,16 @@ ENV_GROUP_PREFIX = "LDAP_GROUP_PREFIX"
 ENV_DEFAULT_PASSWORD = "LDAP_DEFAULT_PASSWORD"
 
 parser = argparse.ArgumentParser(description="LDAP User/Group Initializer Script")
-parser.add_argument("seedfile", metavar="seedfile", action="store", help=f"The seed file to use (if not given, it will be read from the {ENV_SEED_FILE} environment variable)", type=str, nargs="?")
-parser.add_argument("--user-prefix", metavar="user_prefix", action="store", help=f"The prefix to apply to all user names created (if not given, it will be read from the {ENV_USER_PREFIX} environment variable)", type=str, nargs=1)
-parser.add_argument("--group-prefix", metavar="group_prefix", action="store", help=f"The prefix to apply to all group names created (if not given, it will be read from the{ENV_GROUP_PREFIX} environment variable)", type=str, nargs=1)
-parser.add_argument("--default-password", metavar="default_password", action="store", help=f"The default password to be assigned to all users created (if not given, it will be read from the{ENV_DEFAULT_PASSWORD} environment variable)", type=str, nargs=1)
+parser.add_argument("seedfile", action="store", help=f"The seed file to use (if not given, it will be read from the {ENV_SEED_FILE} environment variable)", type=str, nargs="?")
+parser.add_argument("--user-prefix", action="store", help=f"The prefix to apply to all user names created (if not given, it will be read from the {ENV_USER_PREFIX} environment variable)", type=str, nargs=1)
+parser.add_argument("--group-prefix", action="store", help=f"The prefix to apply to all group names created (if not given, it will be read from the{ENV_GROUP_PREFIX} environment variable)", type=str, nargs=1)
+parser.add_argument("--default-password", action="store", help=f"The default password to be assigned to all users created (if not given, it will be read from the{ENV_DEFAULT_PASSWORD} environment variable)", type=str, nargs=1)
 
-parser.add_argument("--ldap-url", metavar="ldap_url", action="store", help=f"The URL for the LDAP server to connect to (if not given, it will be read from the {ENV_LDAP_URL} environment variable)", type=str, nargs=1)
-parser.add_argument("--ldap-admin-user", metavar="ldap_admin_user", action="store", help=f"The administrator username to authenticate with (if not given, it will be read from the{ENV_LDAP_ADMIN_USER} environment variable)", type=str, nargs=1)
-parser.add_argument("--ldap-admin-password", metavar="ldap_admin_password", action="store", help=f"The administrator password to authenticate with (if not given, it will be read from the{ENV_LDAP_ADMIN_PASS} environment variable)", type=str, nargs=1)
+parser.add_argument("--ldap-url", action="store", help=f"The URL for the LDAP server to connect to (if not given, it will be read from the {ENV_LDAP_URL} environment variable)", type=str, nargs=1)
+parser.add_argument("--ldap-admin-user", action="store", help=f"The administrator username to authenticate with (if not given, it will be read from the{ENV_LDAP_ADMIN_USER} environment variable)", type=str, nargs=1)
+parser.add_argument("--ldap-admin-password", action="store", help=f"The administrator password to authenticate with (if not given, it will be read from the{ENV_LDAP_ADMIN_PASS} environment variable)", type=str, nargs=1)
+
+parser.add_argument("--debug", action="store_true", help=f"Enable debug mode (if not given, it will be read from the {ENV_DEBUG} environment variable)")
 
 args = parser.parse_args()
 
@@ -148,9 +153,10 @@ def render_auth_info():
 
 def run_command(flags):
 	command = [ EXE_SAMBA_TOOL ] + render_auth_info() + flags
-	logging.info(f"\tCommand = {command}")
-	return 0
-	# return subprocess.run(command).result
+	if DEBUG:
+		logging.info(f"\tCommand = {command}")
+		return 0
+	return subprocess.run(command).returncode
 
 def render_user_id(userId):
 	return f"{USER_PREFIX}{userId}"
@@ -264,6 +270,12 @@ if LDAP_ADMIN_USER:
 		fail(f"Must provide a password to authenticate the user {LDAP_ADMIN_USER} with")
 else:
 	LDAP_ADMIN_USER = None
+
+DEBUG = get_config_value(serverInfo, KEY_DEBUG, args, "debug", ENV_DEBUG)
+if DEBUG:
+	DEBUG = (DEBUG.lower() == "true")
+else:
+	DEBUG = False
 
 try:
 	memberships = {}
