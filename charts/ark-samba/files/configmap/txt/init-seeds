@@ -1,0 +1,292 @@
+#!/usr/bin/python
+import argparse
+import concurrent.futures
+import errno
+import json
+import logging
+import os
+import socket
+import subprocess
+import sys
+import threading
+import time
+import traceback
+import yaml
+
+ENV_INIT_DEPENDENCIES = "INIT_DEPENDENCIES"
+
+EXE_SAMBA_TOOL = "/usr/bin/samba-tool"
+
+KEY_SERVER = "server"
+KEY_SERVER_URL = "url"
+KEY_SERVER_BIND_DN = "bindDn"
+KEY_SERVER_BIND_PASS = "bindPassword"
+
+KEY_USERS = "users"
+KEY_PASSWORD = "password"
+USER_ATTRIBUTES = {
+	"firstName" : "given-name",
+	"lastName" : "surname",
+	"mail" : "mail-address",
+	"description" : None,
+	"ou" : "userou",
+}
+
+KEY_GROUPS = "groups"
+GROUP_ATTRIBUTES = {
+	"scope" : "group-scope",
+	"type" : "group-type",
+	"description" : None,
+	"notes" : None,
+	"ou" : "groupou",
+}
+
+ENV_LDAP_URL = "LDAP_URL"
+ENV_LDAP_ADMIN_USER = "LDAP_ADMIN_USER"
+ENV_LDAP_ADMIN_PASS = "LDAP_ADMIN_PASS"
+
+ENV_SEED_FILE = "LDAP_SEED_FILE"
+ENV_USER_PREFIX = "LDAP_USER_PREFIX"
+ENV_GROUP_PREFIX = "LDAP_GROUP_PREFIX"
+ENV_DEFAULT_PASSWORD = "LDAP_DEFAULT_PASSWORD"
+
+parser = argparse.ArgumentParser(description="LDAP User/Group Initializer Script")
+parser.add_argument("seedfile", metavar="seedfile", action="store", help=f"The seed file to use (if not given, it will be read from the {ENV_SEED_FILE} environment variable)", type=str, nargs="?")
+parser.add_argument("--user-prefix", metavar="user_prefix", action="store", help=f"The prefix to apply to all user names created (if not given, it will be read from the {ENV_USER_PREFIX} environment variable)", type=str, nargs=1)
+parser.add_argument("--group-prefix", metavar="group_prefix", action="store", help=f"The prefix to apply to all group names created (if not given, it will be read from the{ENV_GROUP_PREFIX} environment variable)", type=str, nargs=1)
+parser.add_argument("--default-password", metavar="default_password", action="store", help=f"The default password to be assigned to all users created (if not given, it will be read from the{ENV_DEFAULT_PASSWORD} environment variable)", type=str, nargs=1)
+
+parser.add_argument("--ldap-url", metavar="ldap_url", action="store", help=f"The URL for the LDAP server to connect to (if not given, it will be read from the {ENV_LDAP_URL} environment variable)", type=str, nargs=1)
+parser.add_argument("--ldap-admin-user", metavar="ldap_admin_user", action="store", help=f"The administrator username to authenticate with (if not given, it will be read from the{ENV_LDAP_ADMIN_USER} environment variable)", type=str, nargs=1)
+parser.add_argument("--ldap-admin-password", metavar="ldap_admin_password", action="store", help=f"The administrator password to authenticate with (if not given, it will be read from the{ENV_LDAP_ADMIN_PASS} environment variable)", type=str, nargs=1)
+
+args = parser.parse_args()
+
+logging.basicConfig(level=logging.INFO, format = '%(asctime)s - %(levelname)s - %(message)s')
+
+def fail(msg):
+	logging.error(msg)
+	exit(1)
+
+def getArgOrEnv(args, argName, envName, default = None):
+	if hasattr(args, argName):
+		v = getattr(args, argName)
+
+		if v is None:
+			if envName in os.environ:
+				return os.environ[envName]
+
+		if not v:
+			return None
+		if type(v) == list:
+			v = v[0]
+		return v
+
+	if envName in os.environ:
+		return os.environ[envName]
+
+	return default
+
+# Compute the value of the prefixes. If the trimmed value isn't empty, append a dot to it.
+# The prefixes may not begin with a dot, may not end with a dot, may not contain consecutive dots, and will be stripped
+
+USER_PREFIX = ""
+v = getArgOrEnv(args, "user_prefix", ENV_USER_PREFIX)
+if v:
+	USER_PREFIX = f"{v}."
+
+GROUP_PREFIX = ""
+v = getArgOrEnv(args, "group_prefix", ENV_GROUP_PREFIX)
+if v:
+	GROUP_PREFIX = f"{v}."
+
+DEFAULT_PASSWORD = getArgOrEnv(args, "default_password", ENV_DEFAULT_PASSWORD)
+if not DEFAULT_PASSWORD:
+	DEFAULT_PASSWORD = None
+
+LDAP_URL = getArgOrEnv(args, "ldap_url", ENV_LDAP_URL)
+if not LDAP_URL:
+	LDAP_URL = None
+
+LDAP_ADMIN_USER = getArgOrEnv(args, "ldap_admin_user", ENV_LDAP_ADMIN_USER)
+if LDAP_ADMIN_USER:
+	LDAP_ADMIN_PASS = getArgOrEnv(args, "ldap_admin_password", ENV_LDAP_ADMIN_PASS)
+	if not LDAP_ADMIN_PASS:
+		fail(f"Must provide a password to authenticate the user {LDAP_ADMIN_USER} with")
+else:
+	LDAP_ADMIN_USER = None
+
+if len(sys.argv) < 2:
+	# If no parameter is given, use an environment variable
+	if ENV_SEED_FILE not in os.environ:
+		parser.print_help(sys.stderr)
+		sys.exit(1)
+	source_file = os.environ[ENV_SEED_FILE]
+	# Check if this points to a file ...
+	source_file_is_file = (os.path.exists(source_file) and os.path.isfile(source_file))
+else:
+	# If the parameter is given, use it
+	source_file = args.seedfile
+	if source_file == "-":
+		source_file = sys.stdin
+		source_file_is_file = False
+	else:
+		source_file_is_file = True
+
+show_data = True
+try:
+	if source_file_is_file:
+		logging.info(f"Loading the configuration from the file [{source_file}]...")
+		with open(source_file, "r") as f:
+			data = yaml.safe_load(f)
+	else:
+		if type(source_file) == str:
+			logging.info(f"Parsing the configuration from the string: [\n{source_file}\n]...")
+			show_data = False
+		else:
+			logging.info("Parsing the configuration from stdin...")
+		data = yaml.safe_load(source_file)
+	if data is None:
+		raise Exception("Data is not in YAML format")
+except Exception as e:
+	# Yaml parse failed ... try as JSON
+	logging.warning(f"File [{source_file}] was not in YAML format, trying JSON")
+	try:
+		with open(source_file, "r") as f:
+			data = json.load(f)
+	except Exception as e:
+		logging.error(e)
+		sys.exit(1)
+
+if show_data:
+	logging.info(f"Loaded configuration: [{json.dumps(data, indent=4)}]")
+
+def render_auth_info():
+	# TODO: Find the admin user and password
+	info = []
+	if LDAP_URL:
+		info += [ f"--URL={LDAP_URL}" ]
+	if LDAP_ADMIN_USER:
+		info += [ f"--username={LDAP_ADMIN_USER}", f"--password={LDAP_ADMIN_PASS}" ]
+	return info
+
+def run_command(flags):
+	command = [ EXE_SAMBA_TOOL ] + render_auth_info() + flags
+	logging.info(f"\tCommand = {command}")
+	return 0
+	# return subprocess.run(command).result
+
+def render_user_id(userId):
+	return f"{USER_PREFIX}{userId}"
+
+def render_group_id(groupId):
+	# If the groupId starts with the plus sign, remove the plus sign and return
+	# it as-is, no prefix. If it doesn't start with a plus sign, apply the prefix
+	if groupId.startswith("+"):
+		groupId = re.sub("^\++", "", groupId).strip()
+	return f"{GROUP_PREFIX}{groupId}"
+
+def create_user(userId, userData):
+	userId = render_user_id(userId)
+	# a) create the user
+	logging.info(f"Creating user '{userId}' from [{userData}]")
+	command = [ "user", "add", userId ]
+	for attName, attFlag in USER_ATTRIBUTES.items():
+		if attFlag is None:
+			attFlag = attName
+		if (attName in userData) and userData[attName]:
+			command += [ f"--{attFlag}={userData[attName]}" ]
+
+	result = run_command(command)
+	if result != 0:
+		fail("Failed to create the user '{userId}' (rc={result})")
+
+	# b) set the user's password
+	if KEY_PASSWORD in userData.items():
+		password = userData[KEY_PASSWORD]
+	else:
+		password = DEFAULT_PASSWORD
+
+	if not password:
+		password = f"${userId}$"
+
+	logging.info(f"Setting the password for '{userId}' to [{password}]")
+	command = [ "user", "setpassword", userId, f"--newpassword={password}" ]
+
+	result = run_command(command)
+	if result != 0:
+		fail("Failed to set the password for '{userId}' (rc={result})")
+
+	return userId
+
+def compile_memberships(memberships, memberId, memberData):
+	# No group memberships given
+	if KEY_GROUPS not in memberData:
+		return
+
+	groups = memberData[KEY_GROUPS]
+	for groupId in groups:
+		memberships[render_group_id(groupId)][memberId] = True
+
+def create_group(groupId, groupData):
+	if groupId.startswith("+"):
+		fail("Can't create groups that aren't 'owned' by ArkCase")
+
+	groupId = render_group_id(groupId)
+	logging.info(f"Creating group '{groupId}' from [{groupData}]")
+	command = [ "group", "add", groupId ]
+	for attName, attFlag in GROUP_ATTRIBUTES.items():
+		if attFlag is None:
+			attFlag = attName
+		if (attName in groupData) and groupData[attName]:
+			command += [ f"--{attFlag}={groupData[attName]}" ]
+
+	result = run_command(command)
+	if result != 0:
+		fail("Failed to create the group '{groupId}' (rc={result})")
+
+	return groupId
+
+def apply_memberships(groupId, members):
+	if not members:
+		return
+	logging.info(f"Applying group memberships for '{groupId}' = {members}")
+	command = [ "group", "addmembers", groupId, ",".join(members) ]
+
+	result = run_command(command)
+	if result != 0:
+		fail("Failed to apply the memberships for group '{groupId}' (rc={result})")
+
+try:
+	memberships = {}
+
+	# 1) create the groups
+	if KEY_GROUPS in data:
+		groups = data[KEY_GROUPS]
+		if type(groups) == dict:
+			for groupId, groupData in groups.items():
+				groupId = create_group(groupId, groupData)
+				compile_memberships(memberships, groupId, groupData)
+				memberships[groupId] = {}
+		else:
+			logging.error(f"The '{KEY_GROUPS}' item in the configuration data is not a map, skipping its processing")
+
+	# 2) create users
+	if KEY_USERS in data:
+		users = data[KEY_USERS]
+		if type(users) == dict:
+			for userId, userData in users.items():
+				userId = create_user(userId, userData)
+				compile_memberships(memberships, userId, userData)
+		else:
+			logging.error(f"The '{KEY_USERS}' item in the configuration data is not a map, skipping its processing")
+
+	# 3) apply the memberships
+	for groupId, members in memberships.items():
+		apply_memberships(groupId, sorted(members.keys()))
+
+	# Done!
+	sys.exit(0)
+except KeyboardInterrupt:
+	logging.info("INTERRUPTED!")
+	os._exit(1)
