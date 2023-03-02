@@ -5,6 +5,7 @@ server:
   # userPrefix: 123
   # groupPrefix: 968
   # defaultPassword: "34"
+  expirationDays: 0
 
 # Remember to apply the group prefix to the group ID
 groups:
@@ -32,7 +33,6 @@ users:
     mail: "arkcase-admin@armedia.com"
     firstName: ArkCase
     lastName: Administrator
-    nonexpiring_password: yes
     groups:
       - ARKCASE_ADMINISTRATOR
       - ARKCASE_ENTITY_ADMINISTRATOR
@@ -40,7 +40,6 @@ users:
     mail: "ann-acm@armedia.com"
     firstName: Ann
     lastName: Smith
-    nonexpiring_password: yes
     groups:
       - ARKCASE_ADMINISTRATOR
       - ARKCASE_ENTITY_ADMINISTRATOR
@@ -48,35 +47,30 @@ users:
     mail: "david.miller@arkcase.com"
     firstName: David
     lastName: Miller
-    nonexpiring_password: yes
     groups:
       - ARKCASE_ADMINISTRATOR
   matthew.maines:
     mail: "mmaines@armedia.com"
     firstName: Matthew
     lastName: Maines
-    nonexpiring_password: yes
     groups:
       - ARKCASE_ADMINISTRATOR
   sally-acm:
     mail: "sally-acm@armedia.com"
     firstName: Sally
     lastName: Supervisor
-    nonexpiring_password: yes
     groups:
       - ARKCASE_SUPERVISOR
   samuel-acm:
     mail: "samuel-acm@armedia.com"
     firstName: Samuel
     lastName: Supervisor
-    nonexpiring_password: yes
     groups:
       - ARKCASE_SUPERVISOR
   owen.officer:
     mail: "owen.officer@armedia.com"
     firstName: Owen
     lastName: Officer
-    nonexpiring_password: yes
     groups:
       - OFFICERS
   andy.approver:

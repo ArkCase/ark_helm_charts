@@ -84,7 +84,7 @@ spec:
             - name: NOCOMPLEXITY
               value: "true"
             - name: LDAP_SEED_FILE
-              value: "/app/conf/seeds.yaml"
+              value: "/app/secrets/seeds.yaml"
           {{- include "arkcase.subsystem.ports" . | nindent 10 }}
           {{- if .Values.command }}
           command: {{- .Values.command | toYaml | nindent 12 }}
@@ -93,22 +93,25 @@ spec:
           resources: {{- toYaml . | nindent 12 }}
           {{- end }}
           volumeMounts:
+            - name: "init"
+              mountPath: "/app/init"
+            - name: "conf"
+              mountPath: "/app/conf"
             - name: "data"
               mountPath: "/var/lib/samba"
-            - name: "conf"
-              mountPath: "/config"
             - name: "logs"
               mountPath: "/var/log/samba"
             - name: &secrets "secrets"
-              mountPath: "/app/conf"
+              mountPath: "/app/secrets"
               readOnly: true
             - name: &configMap "configmap"
-              mountPath: "/app/init/000-init-seeds"
+              mountPath: "/app/init/init.d/000-init-seeds"
               subPath: &initSeeds "init-seeds"
               readOnly: true
       volumes:
-        {{- include "arkcase.persistence.volume" (dict "name" "data" "ctx" $) | nindent 8 }}
+        {{- include "arkcase.persistence.volume" (dict "name" "init" "ctx" $) | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "name" "conf" "ctx" $) | nindent 8 }}
+        {{- include "arkcase.persistence.volume" (dict "name" "data" "ctx" $) | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "name" "logs" "ctx" $) | nindent 8 }}
         - name: *secrets
           secret:
@@ -135,8 +138,9 @@ spec:
       {{- end }}
 
 {{- if (include "arkcase.persistence.enabled" .) }}
-{{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "data") | indent 0 }}
+{{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "init") | indent 0 }}
 {{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "conf") | indent 0 }}
+{{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "data") | indent 0 }}
 {{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "logs") | indent 0 }}
 {{- end }}
 

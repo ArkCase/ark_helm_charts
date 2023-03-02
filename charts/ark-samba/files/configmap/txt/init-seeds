@@ -28,6 +28,7 @@ KEY_LDAP_DEFAULT_PASSWORD = "defaultPassword"
 
 KEY_USERS = "users"
 KEY_PASSWORD = "password"
+KEY_EXPIRATION_DAYS = "expirationDays"
 USER_ATTRIBUTES = {
 	"firstName" : "given-name",
 	"lastName" : "surname",
@@ -55,16 +56,18 @@ ENV_SEED_FILE = "LDAP_SEED_FILE"
 ENV_USER_PREFIX = "LDAP_USER_PREFIX"
 ENV_GROUP_PREFIX = "LDAP_GROUP_PREFIX"
 ENV_DEFAULT_PASSWORD = "LDAP_DEFAULT_PASSWORD"
+ENV_EXPIRATION_DAYS = "LDAP_EXPIRATION_DAYS"
 
 parser = argparse.ArgumentParser(description="LDAP User/Group Initializer Script")
 parser.add_argument("seedfile", action="store", help=f"The seed file to use (if not given, it will be read from the {ENV_SEED_FILE} environment variable)", type=str, nargs="?")
 parser.add_argument("--user-prefix", action="store", help=f"The prefix to apply to all user names created (if not given, it will be read from the {ENV_USER_PREFIX} environment variable)", type=str, nargs=1)
-parser.add_argument("--group-prefix", action="store", help=f"The prefix to apply to all group names created (if not given, it will be read from the{ENV_GROUP_PREFIX} environment variable)", type=str, nargs=1)
-parser.add_argument("--default-password", action="store", help=f"The default password to be assigned to all users created (if not given, it will be read from the{ENV_DEFAULT_PASSWORD} environment variable)", type=str, nargs=1)
+parser.add_argument("--group-prefix", action="store", help=f"The prefix to apply to all group names created (if not given, it will be read from the {ENV_GROUP_PREFIX} environment variable)", type=str, nargs=1)
+parser.add_argument("--default-password", action="store", help=f"The default password to be assigned to all users created (if not given, it will be read from the {ENV_DEFAULT_PASSWORD} environment variable)", type=str, nargs=1)
+parser.add_argument("--expiration-days", action="store", help=f"The default expiration days to assign the new passwords if none is given specifically (if not given, it will be read from the {ENV_EXPIRATION_DAYS} environment variable)", type=str, nargs=1)
 
 parser.add_argument("--ldap-url", action="store", help=f"The URL for the LDAP server to connect to (if not given, it will be read from the {ENV_LDAP_URL} environment variable)", type=str, nargs=1)
-parser.add_argument("--ldap-admin-user", action="store", help=f"The administrator username to authenticate with (if not given, it will be read from the{ENV_LDAP_ADMIN_USER} environment variable)", type=str, nargs=1)
-parser.add_argument("--ldap-admin-password", action="store", help=f"The administrator password to authenticate with (if not given, it will be read from the{ENV_LDAP_ADMIN_PASS} environment variable)", type=str, nargs=1)
+parser.add_argument("--ldap-admin-user", action="store", help=f"The administrator username to authenticate with (if not given, it will be read from the {ENV_LDAP_ADMIN_USER} environment variable)", type=str, nargs=1)
+parser.add_argument("--ldap-admin-password", action="store", help=f"The administrator password to authenticate with (if not given, it will be read from the {ENV_LDAP_ADMIN_PASS} environment variable)", type=str, nargs=1)
 
 parser.add_argument("--debug", action="store_true", help=f"Enable debug mode (if not given, it will be read from the {ENV_DEBUG} environment variable)")
 
@@ -87,7 +90,7 @@ def get_config_value(conf, confName, args, argName, envName, default = None):
 
 	if conf and (confName in conf):
 		v = conf[confName]
-		if v:
+		if v is not None:
 			return str(v)
 
 	if envName in os.environ:
@@ -199,6 +202,32 @@ def create_user(userId, userData):
 	if result != 0:
 		fail("Failed to set the password for '{userId}' (rc={result})")
 
+	if KEY_EXPIRATION_DAYS in userData:
+		expiration = userData[KEY_EXPIRATION_DAYS]
+		if type(expiration) != int:
+			try:
+				expiration = int(str(expiration))
+			except:
+				# Not a valid value, so can't do anything
+				expiration = None
+	else:
+		expiration = EXPIRATION_DAYS
+
+	if expiration is not None:
+		if expiration > 0:
+			expiration = f"--days={expiration}"
+			expirationDesc = f"expire after {expiration} day(s)"
+		else:
+			expiration = f"--noexpiry"
+			expirationDesc = "never expire"
+
+		logging.info(f"Setting the password for '{userId}' to {expirationDesc}")
+		command = [ "user", "setexpiry", userId, expiration ]
+
+		result = run_command(command)
+		if result != 0:
+			fail("Failed to set the password expiration for '{userId}' (rc={result})")
+
 	return userId
 
 def compile_memberships(memberships, memberId, memberData):
@@ -255,6 +284,13 @@ GROUP_PREFIX = ""
 v = get_config_value(serverInfo, KEY_LDAP_GROUP_PREFIX, args, "group_prefix", ENV_GROUP_PREFIX)
 if v:
 	GROUP_PREFIX = f"{v}."
+
+EXPIRATION_DAYS = get_config_value(serverInfo, KEY_EXPIRATION_DAYS, args, "expiration_days", ENV_EXPIRATION_DAYS)
+if EXPIRATION_DAYS is not None:
+	try:
+		EXPIRATION_DAYS = int(EXPIRATION_DAYS)
+	except:
+		fail(f"The configuration value [{EXPIRATION_DAYS}] is not a valid integer - cannot proceeed")
 
 DEFAULT_PASSWORD = get_config_value(serverInfo, KEY_LDAP_DEFAULT_PASSWORD, args, "default_password", ENV_DEFAULT_PASSWORD)
 if not DEFAULT_PASSWORD:
