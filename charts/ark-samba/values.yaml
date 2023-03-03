@@ -248,6 +248,10 @@ service:
     - name: ldap
       protocol: TCP
       port: 636
+    - name: ca
+      protocol: TCP
+      port: 80
+##
 ##
 ## Configure extra options for containers' liveness and readiness probes
 ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/#configure-probes
