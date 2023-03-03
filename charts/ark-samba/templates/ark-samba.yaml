@@ -85,6 +85,8 @@ spec:
               value: "true"
             - name: LDAP_SEED_FILE
               value: "/app/secrets/seeds.yaml"
+            - name: SERVICE_NAME
+              value: {{ include "common.name" . | quote }}
           {{- include "arkcase.subsystem.ports" . | nindent 10 }}
           {{- if .Values.command }}
           command: {{- .Values.command | toYaml | nindent 12 }}
