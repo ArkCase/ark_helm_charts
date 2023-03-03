@@ -117,6 +117,68 @@ Parameter: either the root context (i.e. "." or "$"), or
   {{- end }}
 {{- end }}
 
+{{- define "arkcase.subsystem.service.name.render" -}}
+  {{- $ctx := .ctx -}}
+  {{- $data := .data -}}
+  {{- $name := "" -}}
+  {{- if (include "arkcase.subsystem.enabledOrExternal" (dict "ctx" $ctx "data" $data)) -}}
+    {{- $name = ($data.name | default "") | toString -}}
+    {{- if not $name -}}
+      {{- $name =  (include "common.name" $ctx) -}}
+      {{- if .name -}}
+        {{- $name = (printf "%s-%s" $name .name) -}}
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
+  {{- if $name -}}
+    {{- $name -}}
+  {{- end -}}
+{{- end -}}
+
+{{- define "arkcase.subsystem.service.name" -}}
+  {{- $ctx := . -}}
+  {{- $split := false -}}
+  {{- $container := "" -}}
+  {{- if and (hasKey $ctx "ctx") (or (hasKey $ctx "split") (hasKey $ctx "container")) -}}
+    {{- $ctx = .ctx -}}
+    {{- if hasKey . "container" -}}
+      {{- $container = (.container | toString) -}}
+      {{- $split = false -}}
+    {{- else if hasKey . "split" -}}
+      {{- $split = .split -}}
+      {{- if not (kindIs "bool" $split) -}}
+        {{- $split = eq "true" (.split | toString | lower) -}}
+      {{- end -}}
+    {{- else -}}
+      {{- $split = true -}}
+    {{- end -}}
+  {{- end -}}
+
+  {{- /* Gather the global ports */ -}}
+  {{- $global := pick $ctx.Values.service "ports" "type" "probes" "external" -}}
+  {{- $globalPorts := list -}}
+  {{- if $global.ports -}}
+    {{- if (not (kindIs "slice" $global.ports)) -}}
+      {{- fail (printf "The declaration for .Values.service.ports must be a list of ports (maps) (%s)" (kindOf $global.ports)) -}}
+    {{- end -}}
+    {{- $globalPorts = $global.ports -}}
+  {{- end -}}
+
+  {{- $containers := omit $ctx.Values.service "ports" "type" "probes" "external" -}}
+
+  {{- if $container -}}
+    {{- $spec := (get $containers $container) -}}
+    {{- if not $split -}}
+      {{- $container = "" -}}
+    {{- end -}}
+    {{- include "arkcase.subsystem.service.name.render" (dict "ctx" $ctx "data" $spec "name" $container) -}}
+  {{- else -}}
+    {{- $data := pick $global "type" "external" -}}
+    {{- include "arkcase.subsystem.service.name.render" (dict "ctx" $ctx "data" $data "name" "") -}}
+  {{- end -}}
+{{- end -}}
+
+
 {{- define "arkcase.subsystem.service.render" }}
   {{- $ctx := .ctx }}
   {{- $data := .data }}
