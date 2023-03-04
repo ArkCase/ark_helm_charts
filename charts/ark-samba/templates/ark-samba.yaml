@@ -57,6 +57,22 @@ spec:
       securityContext: {{- toYaml . | nindent 8 }}
       {{- end }}
       initContainers:
+        {{- if (include "arkcase.samba.step" .) }}
+        - name: set-permissions
+          image: {{ include "arkcase.tools.subimage" (dict "ctx" . "name" "setperm" "image" "ark_setperm") | quote }}
+          env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
+            - name: JOBS
+              value: |
+                jobs:
+                  # We know the Step image uses user 1000
+                  - ownership: {{ coalesce (.Values.persistence).ownership "1000:1000" | quote }}
+                    permissions: "u=rwX,g=rX,o="
+                    flags: [ "recurse", "noforced", "create", "changes" ]
+                    targets: [ "/step" ]
+          volumeMounts:
+            - name: &stepVolume "step"
+              mountPath: "/step"
+        {{- end }}
         {{- include "arkcase.initDependencies.container" . | nindent 8 }}
       containers:
         - name: samba
@@ -71,7 +87,7 @@ spec:
             - name: DOMAINPASS
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "common.fullname" . | quote }}
+                  name: &secretName {{ include "common.fullname" . | quote }}
                   key: DOMAIN_PASSWORD
             - name: JOIN
               value: "false"
@@ -87,6 +103,12 @@ spec:
               value: "/app/secrets/seeds.yaml"
             - name: SERVICE_NAME
               value: {{ include "arkcase.subsystem.service.name" . | quote }}
+          {{- if (include "arkcase.samba.step" .) }}
+            - name: STEP_URL
+              value: "https://localhost:9000"
+            - name: STEP_PASSWORD_FILE
+              value: "/app/secrets/step.password"
+          {{- end }}
           {{- include "arkcase.subsystem.ports" . | nindent 10 }}
           {{- if .Values.command }}
           command: {{- .Values.command | toYaml | nindent 12 }}
@@ -110,15 +132,40 @@ spec:
               mountPath: "/app/init/init.d/000-init-seeds"
               subPath: &initSeeds "init-seeds"
               readOnly: true
+          {{- if (include "arkcase.samba.step" .) }}
+        - name: step
+          image: {{ include "arkcase.tools.subimage" (dict "ctx" . "name" "step" "image" "smallstep/step-ca") | quote }}
+          imagePullPolicy: {{ include "arkcase.tools.imagePullPolicy" . | quote }}
+          env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
+            - name: DOCKER_STEPCA_INIT_NAME
+              value: "ArkCase Samba"
+            - name: DOCKER_STEPCA_INIT_DNS_NAMES
+              value: "localhost"
+            - name: DOCKER_STEPCA_INIT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: *secretName
+                  key: "step.password"
+          # ports:
+          #   - name: https
+          #     protocol: TCP
+          #     containerPort: 9000
+          volumeMounts:
+            - name: *stepVolume
+              mountPath: "/home/step"
+          {{- end }}
       volumes:
         {{- include "arkcase.persistence.volume" (dict "name" "init" "ctx" $) | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "name" "conf" "ctx" $) | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "name" "data" "ctx" $) | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "name" "logs" "ctx" $) | nindent 8 }}
+        {{- if (include "arkcase.samba.step" .) }}
+        {{- include "arkcase.persistence.volume" (dict "name" "step" "ctx" $) | nindent 8 }}
+        {{- end }}
         - name: *secrets
           secret:
             optional: false
-            secretName: {{ include "common.fullname" . | quote }}
+            secretName: *secretName
             defaultMode: 0444
         - name: *configMap
           configMap:
@@ -144,6 +191,9 @@ spec:
 {{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "conf") | indent 0 }}
 {{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "data") | indent 0 }}
 {{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "logs") | indent 0 }}
+{{- if (include "arkcase.samba.step" .) }}
+{{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "step") | indent 0 }}
+{{- end }}
 {{- end }}
 
 {{- end }}

@@ -31,6 +31,10 @@ image:
   # Overrides the image tag whose default is the chart appVersion.
   tag: "latest"
   pullPolicy: IfNotPresent
+  step:
+    registry: "smallstep"
+    repository: "step-ca"
+    tag: "latest"
 
 imagePullSecrets:
   - name: aws-arkcase-pull
@@ -250,7 +254,7 @@ service:
       port: 636
     - name: ca
       protocol: TCP
-      port: 80
+      port: 9000
 ##
 ##
 ## Configure extra options for containers' liveness and readiness probes
