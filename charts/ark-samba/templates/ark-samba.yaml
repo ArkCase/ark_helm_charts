@@ -153,6 +153,10 @@ spec:
           volumeMounts:
             - name: *stepVolume
               mountPath: "/home/step"
+            - name: *configMap
+              mountPath: "/entrypoint.sh"
+              subPath: &stepEntrypointSh "step-entrypoint.sh"
+              readOnly: true
           {{- end }}
       volumes:
         {{- include "arkcase.persistence.volume" (dict "name" "init" "ctx" $) | nindent 8 }}
@@ -175,6 +179,9 @@ spec:
             items:
               - key: *initSeeds
                 path: *initSeeds
+                mode: 0555
+              - key: *stepEntrypointSh
+                path: *stepEntrypointSh
                 mode: 0555
       {{- with .Values.nodeSelector }}
       nodeSelector: {{- toYaml . | nindent 8 }}
