@@ -117,10 +117,10 @@ image:
   pullPolicy: IfNotPresent
   config:
     # repository: "ark_cloudconfig"
-    tag: "2021.03.11"
+    tag: &arkcaseVersion "2021.03.24-01"
   arkcase:
     # repository: "ark_core"
-    tag: "2023.02.22-01"
+    tag: *arkcaseVersion
 
 imagePullSecrets:
   - name: aws-arkcase-pull
