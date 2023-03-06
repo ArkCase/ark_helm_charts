@@ -134,7 +134,7 @@ spec:
               readOnly: true
           {{- if (include "arkcase.samba.step" .) }}
         - name: step
-          image: {{ include "arkcase.tools.subimage" (dict "ctx" . "name" "step" "image" "smallstep/step-ca") | quote }}
+          image: {{ include "arkcase.tools.subimage" (dict "ctx" . "name" "step" "image" "ark_step_ca") | quote }}
           imagePullPolicy: {{ include "arkcase.tools.imagePullPolicy" . | quote }}
           env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
             - name: DOCKER_STEPCA_INIT_NAME
@@ -153,10 +153,6 @@ spec:
           volumeMounts:
             - name: *stepVolume
               mountPath: "/home/step"
-            - name: *configMap
-              mountPath: "/entrypoint.sh"
-              subPath: &stepEntrypointSh "step-entrypoint.sh"
-              readOnly: true
           {{- end }}
       volumes:
         {{- include "arkcase.persistence.volume" (dict "name" "init" "ctx" $) | nindent 8 }}
@@ -179,9 +175,6 @@ spec:
             items:
               - key: *initSeeds
                 path: *initSeeds
-                mode: 0555
-              - key: *stepEntrypointSh
-                path: *stepEntrypointSh
                 mode: 0555
       {{- with .Values.nodeSelector }}
       nodeSelector: {{- toYaml . | nindent 8 }}
