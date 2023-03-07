@@ -8,7 +8,7 @@ In addition to the standard deployment methods for non-containerized deployment,
 
 You can start Arkcase from a number of Docker images. These images are available in the Amazon Elastic Container Registery (ECR). However, starting individual Docker containers based on these images, and configuring them to work together can be complicated. To make things easier, a **Helm Chart**  is available to quickly start Arkcase.  These charts are a deployment template which can be used as the basis for your specific deployment needs. 
 
-The following is a list of concepts and technologies that you'll need to understand as part of deploying and using Content Services. If you know all about Docker, then you can skip this part.
+The following is a list of concepts and technologies that you'll need to understand as part of deploying and using containerized Arkcase. If you know all about Docker, then you can skip this part.
 
 ### Virtual Machine Monitor (Hypervisor)
 
@@ -132,7 +132,15 @@ Once you've created your custom image, you can either change the default values 
 
 Parameters bundled in helm are most infrastructure parameters, with the larger configuration bundled within the .Arkcase bundle.
 
-### Light Weight Directory Protocal (LDAP) Configuration
+### Overall Configuration
+| Parameter | Description |
+| --------- | ----------- |
+| hostname | User Facing Public Host Name
+| backendName | Back End Services Host Name
+| adminUsername | Application Administrator's Username
+| adminPassword | Application Administrator's Password
+
+### Configuration : Light Weight Directory Protocal (LDAP) Configuration
 
 | Parameter | Description |
 | --------- | ----------- |
@@ -153,6 +161,43 @@ Parameters bundled in helm are most infrastructure parameters, with the larger c
 | search users rolePrefix | Prefix for roles
 | search users prefix | Prefix for users
 
+## Messaging
+
+| Parameter | Description |
+| --------- | ----------- |
+| external | External Active MQ URL
+| ownership | User:Group ID numbers for Persistance
+| runAsUser | User ID for container Runtime
+| runAsGroup | Group ID for container Runtime
+| users | List of users, passwords and roles for Messaging
+| users name | Messaging User's name
+| users password | Messaging User's password
+| users roles | Messaging User's role
+
+## Light Weight Directory Protocal (LDAP)
+This block pulls in from ldapConfig with one additional parameter
+
+| Parameter | Description |
+| --------- | ----------- |
+| external | Fully Qualified Domain Name for an External LDAP Server
+
+## Relational Database Management System (rdbms):
+| Parameter | Description |
+| --------- | ----------- |
+| admin | Database Administrator Password
+| Users | List of Users and Passwords
+| Databases | List of Databases with their associated Users
+
+## Initilization Dependencies (initDependencies)
+      
+This block contains the dependency checking (and which ports) must be available before the next container is allowed to start.  Consult Arkcase Support if you need assistance modifying this block.
+
+## Reports:
+| Parameter | Description |
+| --------- | ----------- |
+| serverUrl | End Point for Reporting Server
+| jdbc acm3 url | JDBC End Point for Database
+      
 
 ## Troubleshooting
 
