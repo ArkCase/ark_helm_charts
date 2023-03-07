@@ -24,11 +24,11 @@ An instance of an image is called a container. If you start this image, you have
 
 ### Docker
 
-Docker is one of the most popular container platforms. [Docker](https://www.docker.com/){:target="_blank"} provides functionality for deploying and running applications in containers based on images.
+Docker is one of the most popular container platforms. [Docker](https://www.docker.com/) provides functionality for deploying and running applications in containers based on images.
 
 ### Docker Compose
 
-When you have many containers making up your solution, such as with Content Services, and you need to configure each individual container so that they all work well together, then you need a tool for this. Docker Compose is such a tool for defining and running multi-container Docker applications locally. With Compose, you use a [YAML](https://en.wikipedia.org/wiki/YAML){:target="_blank"} file to configure your application's services. Then, with a single command, you create and start all the services from your configuration.
+When you have many containers making up your solution, such as with Content Services, and you need to configure each individual container so that they all work well together, then you need a tool for this. Docker Compose is such a tool for defining and running multi-container Docker applications locally. With Compose, you use a [YAML](https://en.wikipedia.org/wiki/YAML) file to configure your application's services. Then, with a single command, you create and start all the services from your configuration.
 
 ### Dockerfile
 
@@ -36,7 +36,7 @@ A **Dockerfile** is a script containing a successive series of instructions, dir
 
 ### Difference between containers and virtual machines
 
-It's important to understand the difference between using containers and using VMs. Here's a comparison from the Docker site - [What is a Container](https://www.docker.com/resources/what-container){:target="_blank"}:
+It's important to understand the difference between using containers and using VMs. Here's a comparison from the Docker site - [What is a Container](https://www.docker.com/resources/what-container):
 
 The main difference is that when you run a container, you are not starting a complete new OS instance. This makes containers much more lightweight and quicker to start. A container also takes up much less space on your hard-disk as it doesn't have to ship the whole OS.
 
