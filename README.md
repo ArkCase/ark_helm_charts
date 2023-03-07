@@ -1,4 +1,4 @@
-## Containers overview
+# Containers overview
 
 The following sections help you to understand what containerized deployment is, and the deployment options available for Arkcase when using containers.
 
@@ -87,4 +87,59 @@ To deploy Content Services using Helm charts, you need to install the following 
 * [Helm](https://github.com/helm/helm#install) - the tool for installing and managing Kubernetes applications.
   * There are Helm charts that allow you to deploy Content Services in a Kubernetes cluster, for example, on AWS.
 
-See [Install using Helm]({% link content-services/latest/install/containers/helm.md %}) for more.
+# Install using Helm
+
+Arkcase provides tested Helm charts as a "deployment template" for customers who want to take advantage of the container orchestration benefits of Kubernetes. These Helm charts are undergoing continual development and improvement, and shouldn't be used "as is" for your production environments, but should help you save time and effort deploying Content Services for your organization.
+
+The Helm charts in this repository provide a PostgreSQL database in a Docker container and don't configure any logging. This design was chosen so that you can install them in a Kubernetes cluster without changes, and they're flexible enough for adopting to your actual environment.
+
+You should use these charts in your environment only as a starting point, and modify them so that Content Services integrates into your infrastructure. You typically want to remove the PostgreSQL container, and connect directly to your database (this might require custom images to get the required JDBC driver in the container).
+
+Another typical change is the integration of your company-wide monitoring and logging tools.
+
+## Customize
+
+To customize the Helm deployment, for example applying AMPs, we recommend following the best practice of creating your own custom Docker image(s). The following customization guidelines walk you through this process.
+
+Any customizations (including major configuration changes) should be done inside the Docker image, resulting in the creation of a new image with a new tag. This approach allows changes to be tracked in the source code (Dockerfile) and rolling updates to the deployment in the Kubernetes cluster.
+
+The Helm chart configuration customization should only include environment-specific changes (for example DB server connection properties) or altered Docker image names and tags. The configuration changes applied via `--set` will only be reflected in the configuration stored in Kubernetes cluster, a better approach would be to have those in source control i.e. maintain your own values files.
+
+## Using custom Docker images
+
+Once you've created your custom image, you can either change the default values in the appropriate values file in the HELM Chart, or you can override the values via the `--set` command-line option during the install:
+
+## DNS
+
+1. Create a FQDN Arkcase will utilize
+
+2. Create a public certificate for the hosted services. 
+
+3. Update the .Arkcase configuration bundle
+
+4. Configure Ingress Controller if necessary
+
+5. Customize Helm Chart if necessary
+
+6. Install Helm Chart
+
+## .Arkcase 
+
+.Arkcase is a configuration bundle for Case Management application
+
+## HELM Configuration options
+
+Parameters bundled in helm are most infrastructure parameters, with the larger configuration bundled within the .Arkcase bundle.
+
+| Parameter | Description |
+| --------- | ----------- |
+| parameter1 | description
+| parameter2 | description
+| parameter3 | description
+| parameter4 | description
+| parameter5 | description
+
+
+## Troubleshooting
+
+Here's some help for diagnosing and resolving any issues you may encounter.
