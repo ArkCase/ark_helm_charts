@@ -44,7 +44,7 @@ The main difference is that when you run a container, you are not starting a com
 The Arkcase Docker images are available in the Amazon Elastic Container Registry (ECR). 
 
 The following Docker images relate to Arkcase:
-* https://github.com/arkcase/ark_arkcase_core - Case Management Core Product
+* https://github.com/arkcase/ark_arkcase_core - Case Management Core Product (Arkcase)
 * https://github.com/ArkCase/ark_cloudconfig - Configuration Server
 * https://github.com/ArkCase/ark_pentaho_ee - Reporting Server
 * https://github.com/ArkCase/ark_activemq - Messaging Server
@@ -59,29 +59,32 @@ Additional Docker images that may or may not be part of your deployment:
  
 Diagnostics and Bootstrap Docker images:
 * https://github.com/ArkCase/ark_nettest - network testing tools out-of-the-box
-* https://github.com/ArkCase/ark_dbinit - mechanism to render SQL initialization files which can then be consumed by a database container
+* https://github.com/ArkCase/ark_dbinit - mechanism to render DB initialization files which can then be consumed by a database container
 
+## What's deployed in Arkcase Helm Chart
 
-ark_helm_charts
-===============
+When you deploy Content Services, a number of containers are started.
 
-Collection of Helm charts for ArkCase.
+* Case Management (Arkcase):
+  * Configuration Server
+  * Reporting Server
+  * Messaging Server
+  * Viewer Server
+  * Search Server
+* PostgreSQL Database Server
+* DB initialization 
 
-How to update the repo?
------------------------
+## Prerequisites
 
-Whenever you add a new Helm chart or make changes to an existing one,
-you need to update the repo. In order to do that, you need to clone
-this repo on your local computer and run the following (you need to
-have `helm` installed on your local computer):
+If you are deploying only a portion of the stack to Kubernetes, please verify the combation of Virtual Machine based infrastructure and products are compatable with the Container based containers with Arkcase Support Team.
 
-  1. Create a branch
-  2. If creating a new chart, add the new chart to
-     [the charts directory](charts)
-  3. Run `$ helm package charts/*`
-  4. Run `$ helm repo index --url https://arkcase.github.io/ark_helm_charts/ .`
-  5. Commit the tarball(s) that helm created and the `index.yaml` file
-  6. Run `$ git push`
-  7. The new Helm chart (or changes to existing Helm charts) will be
-     available once the PR is accepted and merged into the `develop`
-     branch
+### Helm charts
+
+To deploy Content Services using Helm charts, you need to install the following software:
+
+* [AWS CLI](https://github.com/aws/aws-cli#installation) - the command line interface for Amazon Web Services.
+* [Kubectl](https://kubernetes.io/docs/tasks/tools/) - the command line tool for Kubernetes.
+* [Helm](https://github.com/helm/helm#install) - the tool for installing and managing Kubernetes applications.
+  * There are Helm charts that allow you to deploy Content Services in a Kubernetes cluster, for example, on AWS.
+
+See [Install using Helm]({% link content-services/latest/install/containers/helm.md %}) for more.
