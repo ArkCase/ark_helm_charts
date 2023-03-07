@@ -34,6 +34,12 @@ When you have many containers making up your solution, such as with Content Serv
 
 A **Dockerfile** is a script containing a successive series of instructions, directions, and commands which are run to form a new Docker image. Each command translates to a new layer in the image, forming the end product. The Dockerfile replaces the process of doing everything manually and repeatedly. When a Dockerfile finishes building, the end result is a new image, which you can use to start a new Docker container.
 
+### Kubernetes
+Also known as K8s, is an open-source system for automating deployment, scaling, and management of containerized applications.  (https://kubernetes.io/)
+
+### HELM
+Helm helps you manage Kubernetes applications — Helm Charts help you define, install, and upgrade even the most complex Kubernetes application. (https://helm.sh/)
+
 ### Difference between containers and virtual machines
 
 It's important to understand the difference between using containers and using VMs. Here's a comparison from the Docker site - [What is a Container](https://www.docker.com/resources/what-container):
