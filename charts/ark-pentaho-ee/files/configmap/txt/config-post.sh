@@ -151,7 +151,7 @@ install_report() {
 		[[ "${F}" =~ ^(.*):///:(.*)$ ]]
 		local P="${BASH_REMATCH[1]}"
 		F="${BASH_REMATCH[2]}"
-		say "Intalling the report from [${F}]${ARCHIVE_INFO}..."
+		say "Installing the report from [${F}]${ARCHIVE_INFO}..."
 		local UPLOAD_LOG_FILE="${LOGS_DIR}/uploads-$(date -u +%Y%m%d-%H%M%S)Z.log"
 		CMD=(
 			"${REPORT_INSTALLER}"
@@ -168,13 +168,17 @@ install_report() {
 			--retainOwnership=true
 		)
 		${DEBUG} && say "\t${CMD[@]@Q}"
-		OUT="$("${CMD[@]}" 2>&1)"
+		(
+			say "# Installing the report from [${F}]${ARCHIVE_INFO}..."
+			say "COMMAND: ${CMD[@]@Q}"
+			say "--------------------------------------------------------------------------------"
+			exec "${CMD[@]}"
+		) &> "${UPLOAD_LOG_FILE}"
 		if grep -iq "Import was successful" "${UPLOAD_LOG_FILE}" ; then
+			say "\tReport installed successfully"
 			rm -f "${UPLOAD_LOG_FILE}" &>/dev/null
 		else
-			err "\tFailed to install the report from [${F}]${ARCHIVE_INFO} (rc=${RC})\n$(cat "${UPLOAD_LOG_FILE}")"
-			# To assist in debugging
-			echo -e "\n${CMD[@]@Q}" >> "${UPLOAD_LOG_FILE}"
+			err "\tFailed to install the report from [${F}]${ARCHIVE_INFO}\n$(cat "${UPLOAD_LOG_FILE}")"
 			return ${?}
 		fi
 	done
