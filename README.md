@@ -60,6 +60,7 @@ Additional Docker images that may or may not be part of your deployment:
 Diagnostics and Bootstrap Docker images:
 * https://github.com/ArkCase/ark_nettest - network testing tools out-of-the-box
 * https://github.com/ArkCase/ark_dbinit - mechanism to render DB initialization files which can then be consumed by a database container
+* ark_common - common framework of utlity tools including provisioning PVCs
 
 ## What's deployed in Arkcase Helm Chart
 
