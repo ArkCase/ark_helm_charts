@@ -132,13 +132,26 @@ Once you've created your custom image, you can either change the default values 
 
 Parameters bundled in helm are most infrastructure parameters, with the larger configuration bundled within the .Arkcase bundle.
 
+### Light Weight Directory Protocal (LDAP) Configuration
+
 | Parameter | Description |
 | --------- | ----------- |
-| parameter1 | description
-| parameter2 | description
-| parameter3 | description
-| parameter4 | description
-| parameter5 | description
+| domain | Fully Qualifyed Domain Name for LDAP Domain
+| url | LDAP URL for LDAP/LDAPS Server
+| baseDn | base Distinguished Name
+| bind dn | Bind Account's Distinguished Name
+| bind password | Bind Account's Password
+| admin dn | Arkcase Administrator's Distinguished Name
+| admin role | Arkcase Administrator's Role
+| search users base  | Organization Unit containing Users
+| search users attribute | Directory attribute for User Name
+| search users filter | User Filter
+| search users allFilter | Group Filter
+| search users membership | Membership Filter
+| search users ignoreCase | Toggle to ignore case sensitivity
+| search users subtree | Enable Subtree in LDAP
+| search users rolePrefix | Prefix for roles
+| search users prefix | Prefix for users
 
 
 ## Troubleshooting
