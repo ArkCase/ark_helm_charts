@@ -46,8 +46,8 @@ It's important to understand the difference between using containers and using V
 
 The main difference is that when you run a container, you are not starting a complete new OS instance. This makes containers much more lightweight and quicker to start. A container also takes up much less space on your hard-disk as it doesn't have to ship the whole OS.
 
-## Arkcase Docker images
-The Arkcase Docker images are available in the Amazon Elastic Container Registry (ECR). 
+## Arkcase Container images
+The Arkcase Container images are available in the Amazon Elastic Container Registry (ECR). 
 
 The following Docker images relate to Arkcase:
 * https://github.com/arkcase/ark_arkcase_core - Case Management Core Product (Arkcase)
