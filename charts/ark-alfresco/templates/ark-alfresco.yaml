@@ -1,0 +1,313 @@
+{{- if (include "arkcase.subsystem.enabled" .) }}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: activemq
+  namespace: {{ .Release.Namespace | quote }}
+  labels: {{- include "common.labels" . | nindent 4 }}
+    {{- with (.Values.labels).common }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with (.Values.annotations).common }}
+  annotations: {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {{- include "common.labels.matchLabels" . | nindent 6 }}
+  serviceName: ...?
+  updateStrategy:
+    type: {{ .Values.updateStrategy }}
+    {{- if (eq "Recreate" .Values.updateStrategy) }}
+    rollingUpdate: null
+    {{- else if .Values.rollingUpdatePartition }}
+    rollingUpdate:
+      partition: {{ .Values.rollingUpdatePartition }}
+    {{- end }}
+  template:
+    metadata:
+      name: {{ include "common.name" . | quote }}
+      namespace: {{ .Release.Namespace | quote }}
+      labels: {{- include "common.labels" . | nindent 8 }}
+        {{- with (.Values.labels).common }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      annotations:
+        # NB: Both these annotation values must be of type "string"
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9100"
+        timestamp: {{ date "20060102150405" now | quote }}
+        {{- with (.Values.annotations).common }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      imagePullSecrets:
+        - name: aws-arkcase-pull
+      containers:
+        - name: activemq
+          image: 345280441424.dkr.ecr.ap-south-1.amazonaws.com/ark_alfresco_activemq:5.17.1
+          ports:
+            - containerPort: 5672
+            - containerPort: 8161
+            - containerPort: 61613
+            - containerPort: 61616
+          resources:
+            limits:
+              memory: "1Gi"
+      restartPolicy: Always
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  namespace: {{ .Release.Namespace | quote }}
+  name: transform-router
+spec:
+  replicas: 1
+  template:
+    spec:
+      imagePullSecrets:
+        - name: aws-arkcase-pull
+      containers:
+        - name: transform-router
+          image: 345280441424.dkr.ecr.ap-south-1.amazonaws.com/alfresco_transform_router:2.0.0
+          env:
+            - name: ACTIVEMQ_URL
+              value: nio://activemq:61616
+            - name: CORE_AIO_URL
+              value: http://transform-core-aio:8090
+            - name: FILE_STORE_URL
+              value: http://shared-file-store:8099/alfresco/api/-default-/private/sfs/versions/1/file
+            - name: JAVA_OPTS
+              value: >-
+                -XX:MinRAMPercentage=50
+                -XX:MaxRAMPercentage=80
+          ports:
+            - containerPort: 8095
+          resources:
+            limits:
+              memory: "512m"
+      restartPolicy: Always
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  namespace: {{ .Release.Namespace | quote }}
+  name: transform-core-aio
+spec:
+  replicas: 3
+  template:
+    spec:
+      imagePullSecrets:
+        - name: aws-arkcase-pull
+      containers:
+        - name: transform-core-aio
+          image: 345280441424.dkr.ecr.ap-south-1.amazonaws.com/alfresco_transform_core:3.0.0
+          env:
+            - name: ACTIVEMQ_URL
+              value: nio://activemq:61616
+            - name: CORE_AIO_URL
+              value: http://transform-core-aio:8090
+            - name: FILE_STORE_URL
+              value: http://shared-file-store:8099/alfresco/api/-default-/private/sfs/versions/1/file
+            - name: JAVA_OPTS
+              value: >-
+                -XX:MinRAMPercentage=50
+                -XX:MaxRAMPercentage=80
+          ports:
+            - containerPort: 8090
+          resources:
+            limits:
+              memory: "1536m"
+      restartPolicy: Always
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  namespace: {{ .Release.Namespace | quote }}
+  name: content
+spec:
+  replicas: 1
+  template:
+    spec:
+      imagePullSecrets:
+        - name: aws-arkcase-pull
+      containers:
+        - name: content
+          image: 345280441424.dkr.ecr.ap-south-1.amazonaws.com/ark_alfresco_ee_content:7.3.1
+          env:
+            - name: JAVA_TOOL_OPTIONS
+              value: >-
+                -Dencryption.keystore.type=JCEKS
+                -Dencryption.cipherAlgorithm=DESede/CBC/PKCS5Padding
+                -Dencryption.keyAlgorithm=DESede
+                -Dencryption.keystore.location=/usr/local/tomcat/shared/classes/alfresco/extension/keystore/keystore
+                -Dmetadata-keystore.password=mp6yc0UD9e
+                -Dmetadata-keystore.aliases=metadata
+                -Dmetadata-keystore.metadata.password=oKIWzVdEdA
+                -Dmetadata-keystore.metadata.algorithm=DESede
+            - name: CATALINA_OPTS
+              value: >-
+                -server
+                -Ddir.root=/alf_data
+                -Ddb.driver=org.postgresql.Driver
+                -Ddb.username=alfresco
+                -Ddb.password="nie7yaiX0ahm9aec"
+                -Ddb.url="jdbc:postgresql://postgres:5432/alfresco"
+                -Dsolr.host=search
+                -Dsolr.port=8983
+                -Dsolr.secureComms=secret
+                -Dsolr.sharedSecret=secret
+                -Dsolr.base.url=/solr
+                -Dindex.subsystem.name=solr6
+                -Dshare.host=this-is-used-to-render-the-clickable-share-URL
+                -Dshare.port=80
+                -Dalfresco.host=localhost
+                -Dalfresco.port=8080
+                -Daos.baseUrlOverwrite=http://localhost:8080/alfresco/aos
+                -Dmessaging.broker.url="failover:(nio://activemq:61616)?timeout=3000&jms.useCompression=true"
+                -Ddeployment.method=DOCKER_COMPOSE
+                -Dtransform.service.enabled=true
+                -Dtransform.service.url=http://transform-router:8095
+                -Dsfs.url=http://shared-file-store:8099/
+                -DlocalTransform.core-aio.url=http://transform-core-aio:8090/
+                -Dcsrf.filter.enabled=false
+                -Ddsync.service.uris=http://localhost:9090/alfresco
+                -XX:MinRAMPercentage=50
+                -XX:MaxRAMPercentage=80
+                -Dcom.sun.management.jmxremote
+          ports:
+            - containerPort: 8080
+          resources:
+            limits:
+              memory: "2Gi"
+          volumeMounts:
+            - name: &contentRepository content-repository
+              mountPath: "/usr/local/tomcat/alf_data"
+            - name: &licenseFile license-file
+              mountPath: "/usr/local/tomcat/shared/classes/alfresco/extension/license/armedia.lic"
+      volumes:
+        - name: *contentRepository
+          hostPath:
+            path: /opt/app/alfresco/data/repo
+        - name: *licenseFile
+          hostPath:
+            path: /opt/app/alfresco/lib/armedia.lic
+      restartPolicy: Always
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  namespace: {{ .Release.Namespace | quote }}
+  name: share
+spec:
+  replicas: 1
+  template:
+    spec:
+      imagePullSecrets:
+        - name: aws-arkcase-pull
+      containers:
+        - name: share
+          image: 345280441424.dkr.ecr.ap-south-1.amazonaws.com/ark_alfresco_ee_share:7.3.1
+          env:
+            - name: REPO_HOST
+              value: content
+            - name: REPO_PORT
+              value: "8080"
+            - name: JAVA_OPTS
+              value: >-
+                -Dalfresco.protocol=http
+                -Dalfresco.host=content
+                -Dalfresco.port=8080
+                -Dalfresco.context=alfresco
+                -Dcsrf.filter.enabled=false
+                -XX:MinRAMPercentage=50
+                -XX:MaxRAMPercentage=80
+            # - name: CSRF_FILTER_REFERER
+            #   value: "^.*$"
+            # - name: CSRF_FILTER_ORIGIN
+            #   value: "^.*$"
+          resources:
+            limits:
+              memory: "1Gi"
+      restartPolicy: Always
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  namespace: {{ .Release.Namespace | quote }}
+  name: shared-file-store
+spec:
+  replicas: 1
+  template:
+    spec:
+      imagePullSecrets:
+        - name: aws-arkcase-pull
+      containers:
+        - name: shared-file-store
+          image: 345280441424.dkr.ecr.ap-south-1.amazonaws.com/ark_alfresco_fileshare:2.0.0
+          env:
+            - name: JAVA_OPTS
+              value: >-
+                -XX:MinRAMPercentage=50
+                -XX:MaxRAMPercentage=80
+            - name: scheduler.content.age.millis
+              value: "86400000"
+            - name: scheduler.cleanup.interval
+              value: "86400000"
+          ports:
+            - containerPort: 8099
+          resources:
+            limits:
+              memory: "512Mi"
+          volumeMounts:
+            - name: &sharedFileStore shared-file-store
+              mountPath: /tmp/Alfresco
+      volumes:
+        - name: *sharedFileStore
+          hostPath:
+            path: /opt/app/alfresco/data/shared
+      restartPolicy: Always
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  namespace: {{ .Release.Namespace | quote }}
+  name: search
+spec:
+  replicas: 1
+  template:
+    spec:
+      imagePullSecrets:
+        - name: aws-arkcase-pull
+      containers:
+        - name: search
+          image: 345280441424.dkr.ecr.ap-south-1.amazonaws.com/ark_alfresco_search:2.0.5
+          env:
+            - name: SOLR_ALFRESCO_HOST
+              value: "content"
+            - name: SOLR_ALFRESCO_PORT
+              value: "8080"
+            - name: SOLR_SOLR_HOST
+              value: "search"
+            - name: SOLR_SOLR_PORT
+              value: "8983"
+            - name: SOLR_CREATE_ALFRESCO_DEFAULTS
+              value: "alfresco,archive"
+            - name: ALFRESCO_SECURE_COMMS
+              value: "secret"
+            - name: JAVA_TOOL_OPTIONS
+              value: >-
+                -Dalfresco.secureComms.secret=secret
+            - name: SOLR_JAVA_MEM
+              value: >-
+                -Xms2g
+                -Xmx2g
+              #   -XX:MinRAMPercentage=50
+              #   -XX:MaxRAMPercentage=80
+          ports:
+            - containerPort: 8983
+          resources:
+            limits:
+              memory: "2Gi"
+      restartPolicy: Always

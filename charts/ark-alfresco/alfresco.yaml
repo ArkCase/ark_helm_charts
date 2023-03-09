@@ -2,123 +2,116 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  annotations:
-    kompose.cmd: kompose convert --volumes hostPath --out k8s
-    kompose.version: 1.28.0 (c4137012e)
-  creationTimestamp: null
-  labels:
-    io.kompose.service: activemq
   namespace: alfresco
   name: activemq
 spec:
   replicas: 1
-  selector:
-    matchLabels:
-      io.kompose.service: activemq
   template:
-    metadata:
-      annotations:
-        kompose.cmd: kompose convert --volumes hostPath --out k8s
-        kompose.version: 1.28.0 (c4137012e)
-      creationTimestamp: null
-      labels:
-        io.kompose.network/alfresco-default: "true"
-        io.kompose.service: activemq
     spec:
       imagePullSecrets:
         - name: aws-arkcase-pull
       containers:
-        - image: alfresco/alfresco-activemq:5.15.8
-          name: activemq
+        - name: activemq
+          image: 345280441424.dkr.ecr.ap-south-1.amazonaws.com/ark_alfresco_activemq:5.17.1
           ports:
-            - containerPort: 8161
             - containerPort: 5672
-            - containerPort: 61616
+            - containerPort: 8161
             - containerPort: 61613
+            - containerPort: 61616
           resources:
             limits:
               memory: "1Gi"
       restartPolicy: Always
-status: {}
 ---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  annotations:
-    kompose.cmd: kompose convert --volumes hostPath --out k8s
-    kompose.version: 1.28.0 (c4137012e)
-  creationTimestamp: null
-  labels:
-    io.kompose.service: alfresco-pdf-renderer
   namespace: alfresco
-  name: alfresco-pdf-renderer
+  name: transform-router
 spec:
   replicas: 1
-  selector:
-    matchLabels:
-      io.kompose.service: alfresco-pdf-renderer
   template:
-    metadata:
-      annotations:
-        kompose.cmd: kompose convert --volumes hostPath --out k8s
-        kompose.version: 1.28.0 (c4137012e)
-      creationTimestamp: null
-      labels:
-        io.kompose.network/alfresco-default: "true"
-        io.kompose.service: alfresco-pdf-renderer
     spec:
       imagePullSecrets:
         - name: aws-arkcase-pull
       containers:
-        - image: quay.io/alfresco/alfresco-pdf-renderer:2.1.0
-          name: alfresco-pdf-renderer
+        - name: transform-router
+          image: 345280441424.dkr.ecr.ap-south-1.amazonaws.com/alfresco_transform_router:2.0.0
           env:
             - name: ACTIVEMQ_URL
               value: nio://activemq:61616
+            - name: CORE_AIO_URL
+              value: http://transform-core-aio:8090
             - name: FILE_STORE_URL
               value: http://shared-file-store:8099/alfresco/api/-default-/private/sfs/versions/1/file
             - name: JAVA_OPTS
-              value: ' -Xms256m -Xmx512m'
+              value: >-
+                -XX:MinRAMPercentage=50
+                -XX:MaxRAMPercentage=80
+          ports:
+            - containerPort: 8095
+          resources:
+            limits:
+              memory: "512m"
+      restartPolicy: Always
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  namespace: alfresco
+  name: transform-core-aio
+spec:
+  replicas: 3
+  template:
+    spec:
+      imagePullSecrets:
+        - name: aws-arkcase-pull
+      containers:
+        - name: transform-core-aio
+          image: 345280441424.dkr.ecr.ap-south-1.amazonaws.com/alfresco_transform_core:3.0.0
+          env:
+            - name: ACTIVEMQ_URL
+              value: nio://activemq:61616
+            - name: CORE_AIO_URL
+              value: http://transform-core-aio:8090
+            - name: FILE_STORE_URL
+              value: http://shared-file-store:8099/alfresco/api/-default-/private/sfs/versions/1/file
+            - name: JAVA_OPTS
+              value: >-
+                -XX:MinRAMPercentage=50
+                -XX:MaxRAMPercentage=80
           ports:
             - containerPort: 8090
           resources:
             limits:
-              memory: "1Gi"
+              memory: "1536m"
       restartPolicy: Always
-status: {}
 ---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  annotations:
-    kompose.cmd: kompose convert --volumes hostPath --out k8s
-    kompose.version: 1.28.0 (c4137012e)
-  creationTimestamp: null
-  labels:
-    io.kompose.service: content
   namespace: alfresco
   name: content
 spec:
   replicas: 1
-  selector:
-    matchLabels:
-      io.kompose.service: content
   template:
-    metadata:
-      annotations:
-        kompose.cmd: kompose convert --volumes hostPath --out k8s
-        kompose.version: 1.28.0 (c4137012e)
-      creationTimestamp: null
-      labels:
-        io.kompose.network/alfresco-default: "true"
-        io.kompose.service: content
     spec:
       imagePullSecrets:
         - name: aws-arkcase-pull
       containers:
-        - image: alfresco/alfresco-content-repository:6.2.0
-          name: content
+        - name: content
+          image: 345280441424.dkr.ecr.ap-south-1.amazonaws.com/ark_alfresco_ee_content:7.3.1
           env:
+            - name: JAVA_TOOL_OPTIONS
+              value: >-
+                -Dencryption.keystore.type=JCEKS
+                -Dencryption.cipherAlgorithm=DESede/CBC/PKCS5Padding
+                -Dencryption.keyAlgorithm=DESede
+                -Dencryption.keystore.location=/usr/local/tomcat/shared/classes/alfresco/extension/keystore/keystore
+                -Dmetadata-keystore.password=mp6yc0UD9e
+                -Dmetadata-keystore.aliases=metadata
+                -Dmetadata-keystore.metadata.password=oKIWzVdEdA
+                -Dmetadata-keystore.metadata.algorithm=DESede
             - name: CATALINA_OPTS
               value: >-
                 -server
@@ -127,57 +120,39 @@ spec:
                 -Ddb.username=alfresco
                 -Ddb.password="nie7yaiX0ahm9aec"
                 -Ddb.url="jdbc:postgresql://postgres:5432/alfresco"
-                -Dsolr.host=solr6
+                -Dsolr.host=search
                 -Dsolr.port=8983
-                -Dsolr.secureComms=none
+                -Dsolr.secureComms=secret
+                -Dsolr.sharedSecret=secret
                 -Dsolr.base.url=/solr
                 -Dindex.subsystem.name=solr6
-                -Dshare.host=iad032-1san01.appdev.armedia.com
+                -Dshare.host=this-is-used-to-render-the-clickable-share-URL
                 -Dshare.port=80
-                -Dalfresco.host=content.alfresco.svc.cluster.local
+                -Dalfresco.host=localhost
                 -Dalfresco.port=8080
-                -Daos.baseUrlOverwrite=https://iad032-1san01.appdev.armedia.com/alfresco/aos
+                -Daos.baseUrlOverwrite=http://localhost:8080/alfresco/aos
                 -Dmessaging.broker.url="failover:(nio://activemq:61616)?timeout=3000&jms.useCompression=true"
                 -Ddeployment.method=DOCKER_COMPOSE
                 -Dtransform.service.enabled=true
                 -Dtransform.service.url=http://transform-router:8095
                 -Dsfs.url=http://shared-file-store:8099/
-                -Dlocal.transform.service.enabled=true
-                -DlocalTransform.pdfrenderer.url=http://alfresco-pdf-renderer:8090/
-                -DlocalTransform.imagemagick.url=http://imagemagick:8090/
-                -DlocalTransform.libreoffice.url=http://libreoffice:8090/
-                -DlocalTransform.tika.url=http://tika:8090/
-                -DlocalTransform.misc.url=http://transform-misc:8090/
-                -Dlegacy.transform.service.enabled=true
-                -Dalfresco-pdf-renderer.url=http://alfresco-pdf-renderer:8090/
-                -Djodconverter.url=http://libreoffice:8090/
-                -Dimg.url=http://imagemagick:8090/
-                -Dtika.url=http://tika:8090/
-                -Dtransform.misc.url=http://transform-misc:8090/
+                -DlocalTransform.core-aio.url=http://transform-core-aio:8090/
                 -Dcsrf.filter.enabled=false
-                -Ddsync.service.uris=http://sync-service.alfresco.svc.cluster.local:9090/alfresco
-                -Xms8192m
-                -Xmx8192m
+                -Ddsync.service.uris=http://localhost:9090/alfresco
+                -XX:MinRAMPercentage=50
+                -XX:MaxRAMPercentage=80
                 -Dcom.sun.management.jmxremote
-                -Dalfresco.jmx.connector.enabled=true
-                -Dalfresco.rmi.services.port=50500
-                -Dcsrf.filter.enabled=false
           ports:
             - containerPort: 8080
           resources:
             limits:
-              memory: "4Gi"
+              memory: "2Gi"
           volumeMounts:
-            - name: &webapp webapp
-              mountPath: /usr/local/tomcat/webapps/alfresco
             - name: &contentRepository content-repository
-              mountPath: /alf_data
+              mountPath: "/usr/local/tomcat/alf_data"
             - name: &licenseFile license-file
-              mountPath: /usr/local/tomcat/shared/classes/alfresco/extension/license/armedia.lic
+              mountPath: "/usr/local/tomcat/shared/classes/alfresco/extension/license/armedia.lic"
       volumes:
-        - name: *webapp
-          hostPath:
-            path: /opt/app/alfresco/webapps/alfresco
         - name: *contentRepository
           hostPath:
             path: /opt/app/alfresco/data/repo
@@ -185,334 +160,66 @@ spec:
           hostPath:
             path: /opt/app/alfresco/lib/armedia.lic
       restartPolicy: Always
-status: {}
 ---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  annotations:
-    kompose.cmd: kompose convert --volumes hostPath --out k8s
-    kompose.version: 1.28.0 (c4137012e)
-  creationTimestamp: null
-  labels:
-    io.kompose.service: digital-workspace
-  namespace: alfresco
-  name: digital-workspace
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      io.kompose.service: digital-workspace
-  template:
-    metadata:
-      annotations:
-        kompose.cmd: kompose convert --volumes hostPath --out k8s
-        kompose.version: 1.28.0 (c4137012e)
-      creationTimestamp: null
-      labels:
-        io.kompose.network/alfresco-default: "true"
-        io.kompose.service: digital-workspace
-    spec:
-      imagePullSecrets:
-        - name: aws-arkcase-pull
-      containers:
-        - image: quay.io/alfresco/alfresco-digital-workspace:1.3.0
-          name: digital-workspace
-          env:
-            - name: BASE_PATH
-              value: ./
-          resources:
-            limits:
-              memory: "128Mi"
-          ports:
-            - containerPort: 8080
-      restartPolicy: Always
-status: {}
----
-apiVersion: apps/v1
-kind: StatefulSet
-metadata:
-  annotations:
-    kompose.cmd: kompose convert --volumes hostPath --out k8s
-    kompose.version: 1.28.0 (c4137012e)
-  creationTimestamp: null
-  labels:
-    io.kompose.service: imagemagick
-  namespace: alfresco
-  name: imagemagick
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      io.kompose.service: imagemagick
-  template:
-    metadata:
-      annotations:
-        kompose.cmd: kompose convert --volumes hostPath --out k8s
-        kompose.version: 1.28.0 (c4137012e)
-      creationTimestamp: null
-      labels:
-        io.kompose.network/alfresco-default: "true"
-        io.kompose.service: imagemagick
-    spec:
-      imagePullSecrets:
-        - name: aws-arkcase-pull
-      containers:
-        - image: quay.io/alfresco/alfresco-imagemagick:2.1.0
-          name: imagemagick
-          env:
-            - name: ACTIVEMQ_URL
-              value: nio://activemq:61616
-            - name: FILE_STORE_URL
-              value: http://shared-file-store:8099/alfresco/api/-default-/private/sfs/versions/1/file
-            - name: JAVA_OPTS
-              value: ' -Xms256m -Xmx512m'
-          ports:
-            - containerPort: 8090
-          resources:
-            limits:
-              memory: "1Gi"
-      restartPolicy: Always
-status: {}
----
-apiVersion: apps/v1
-kind: StatefulSet
-metadata:
-  annotations:
-    kompose.cmd: kompose convert --volumes hostPath --out k8s
-    kompose.version: 1.28.0 (c4137012e)
-  creationTimestamp: null
-  labels:
-    io.kompose.service: libreoffice
-  namespace: alfresco
-  name: libreoffice
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      io.kompose.service: libreoffice
-  template:
-    metadata:
-      annotations:
-        kompose.cmd: kompose convert --volumes hostPath --out k8s
-        kompose.version: 1.28.0 (c4137012e)
-      creationTimestamp: null
-      labels:
-        io.kompose.network/alfresco-default: "true"
-        io.kompose.service: libreoffice
-    spec:
-      imagePullSecrets:
-        - name: aws-arkcase-pull
-      containers:
-        - image: quay.io/alfresco/alfresco-libreoffice:2.1.0
-          name: libreoffice
-          env:
-            - name: ACTIVEMQ_URL
-              value: nio://activemq:61616
-            - name: FILE_STORE_URL
-              value: http://shared-file-store:8099/alfresco/api/-default-/private/sfs/versions/1/file
-            - name: JAVA_OPTS
-              value: ' -Xms256m -Xmx512m'
-          ports:
-            - containerPort: 8090
-          resources:
-            limits:
-              memory: "1Gi"
-      restartPolicy: Always
-status: {}
----
-apiVersion: apps/v1
-kind: StatefulSet
-metadata:
-  annotations:
-    kompose.cmd: kompose convert --volumes hostPath --out k8s
-    kompose.version: 1.28.0 (c4137012e)
-  creationTimestamp: null
-  labels:
-    io.kompose.service: postgres
-  namespace: alfresco
-  name: postgres
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      io.kompose.service: postgres
-  template:
-    metadata:
-      annotations:
-        kompose.cmd: kompose convert --volumes hostPath --out k8s
-        kompose.version: 1.28.0 (c4137012e)
-      creationTimestamp: null
-      labels:
-        io.kompose.network/alfresco-default: "true"
-        io.kompose.service: postgres
-    spec:
-      imagePullSecrets:
-        - name: aws-arkcase-pull
-      containers:
-        - image: postgres:13
-          name: db
-          env:
-            - name: POSTGRES_DB
-              value: "alfresco"
-            - name: POSTGRES_USER
-              value: "alfresco"
-            - name: POSTGRES_PASSWORD
-              value: "nie7yaiX0ahm9aec"
-          ports:
-            - containerPort: 5432
-          resources: {}
-          volumeMounts:
-            - name: &postgresData postgres-data
-              mountPath: /var/lib/postgresql/data
-      restartPolicy: Always
-      volumes:
-        - name: *postgresData
-          hostPath:
-            path: /opt/app/alfresco/data/postgres
-status: {}
----
-apiVersion: apps/v1
-kind: StatefulSet
-metadata:
-  annotations:
-    kompose.cmd: kompose convert --volumes hostPath --out k8s
-    kompose.version: 1.28.0 (c4137012e)
-  creationTimestamp: null
-  labels:
-    io.kompose.service: proxy
-  namespace: alfresco
-  name: proxy
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      io.kompose.service: proxy
-  template:
-    metadata:
-      annotations:
-        kompose.cmd: kompose convert --volumes hostPath --out k8s
-        kompose.version: 1.28.0 (c4137012e)
-      creationTimestamp: null
-      labels:
-        io.kompose.network/alfresco-default: "true"
-        io.kompose.service: proxy
-    spec:
-      imagePullSecrets:
-        - name: aws-arkcase-pull
-      containers:
-        - image: alfresco/alfresco-acs-nginx:3.0.1
-          name: proxy
-          env:
-            - name: REPO_URL
-              value: http://content:8080
-          ports:
-            - containerPort: 8080
-          resources:
-            limits:
-              memory: "128Mi"
-      restartPolicy: Always
-status: {}
----
-apiVersion: apps/v1
-kind: StatefulSet
-metadata:
-  annotations:
-    kompose.cmd: kompose convert --volumes hostPath --out k8s
-    kompose.version: 1.28.0 (c4137012e)
-  creationTimestamp: null
-  labels:
-    io.kompose.service: share
   namespace: alfresco
   name: share
 spec:
   replicas: 1
-  selector:
-    matchLabels:
-      io.kompose.service: share
   template:
-    metadata:
-      annotations:
-        kompose.cmd: kompose convert --volumes hostPath --out k8s
-        kompose.version: 1.28.0 (c4137012e)
-      creationTimestamp: null
-      labels:
-        io.kompose.network/alfresco-default: "true"
-        io.kompose.service: share
     spec:
       imagePullSecrets:
         - name: aws-arkcase-pull
       containers:
-        - image: alfresco/alfresco-share:6.2.0
-          name: share
+        - name: share
+          image: 345280441424.dkr.ecr.ap-south-1.amazonaws.com/ark_alfresco_ee_share:7.3.1
           env:
-            - name: JAVA_OPTS
-              value: >-
-                -Xms500m
-                -Xmx500m
-                -Dalfresco.host=content
-                -Dalfresco.port=8080
-                -Dalfresco.context=alfresco
-                -Dalfresco.protocol=http
-                -Dcsrf.filter.enabled=false
             - name: REPO_HOST
               value: content
             - name: REPO_PORT
               value: "8080"
-            - name: CSRF_FILTER_REFERER
-              value: "^.*$"
-            - name: CSRF_FILTER_ORIGIN
-              value: "^.*$"
+            - name: JAVA_OPTS
+              value: >-
+                -Dalfresco.protocol=http
+                -Dalfresco.host=content
+                -Dalfresco.port=8080
+                -Dalfresco.context=alfresco
+                -Dcsrf.filter.enabled=false
+                -XX:MinRAMPercentage=50
+                -XX:MaxRAMPercentage=80
+            # - name: CSRF_FILTER_REFERER
+            #   value: "^.*$"
+            # - name: CSRF_FILTER_ORIGIN
+            #   value: "^.*$"
           resources:
             limits:
               memory: "1Gi"
-          volumeMounts:
-            - name: &webapp webapp
-              mountPath: /usr/local/tomcat/webapps/share
-      volumes:
-        - name: *webapp
-          hostPath:
-            path: /opt/app/alfresco/webapps/share
       restartPolicy: Always
-status: {}
 ---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  annotations:
-    kompose.cmd: kompose convert --volumes hostPath --out k8s
-    kompose.version: 1.28.0 (c4137012e)
-  creationTimestamp: null
-  labels:
-    io.kompose.service: shared-file-store
   namespace: alfresco
   name: shared-file-store
 spec:
   replicas: 1
-  selector:
-    matchLabels:
-      io.kompose.service: shared-file-store
   template:
-    metadata:
-      annotations:
-        kompose.cmd: kompose convert --volumes hostPath --out k8s
-        kompose.version: 1.28.0 (c4137012e)
-      creationTimestamp: null
-      labels:
-        io.kompose.network/alfresco-default: "true"
-        io.kompose.service: shared-file-store
     spec:
       imagePullSecrets:
         - name: aws-arkcase-pull
       containers:
-        - image: alfresco/alfresco-shared-file-store:0.5.3
-          name: shared-file-store
+        - name: shared-file-store
+          image: 345280441424.dkr.ecr.ap-south-1.amazonaws.com/ark_alfresco_fileshare:2.0.0
           env:
             - name: JAVA_OPTS
-              value: ' -Xms256m -Xmx512m'
-            - name: scheduler.cleanup.interval
-              value: "86400000"
+              value: >-
+                -XX:MinRAMPercentage=50
+                -XX:MaxRAMPercentage=80
             - name: scheduler.content.age.millis
+              value: "86400000"
+            - name: scheduler.cleanup.interval
               value: "86400000"
           ports:
             - containerPort: 8099
@@ -521,277 +228,59 @@ spec:
               memory: "512Mi"
           volumeMounts:
             - name: &sharedFileStore shared-file-store
-              mountPath: /tmp/Alfresco/sfs
-      restartPolicy: Always
+              mountPath: /tmp/Alfresco
       volumes:
         - name: *sharedFileStore
           hostPath:
             path: /opt/app/alfresco/data/shared
-status: {}
+      restartPolicy: Always
 ---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  annotations:
-    kompose.cmd: kompose convert --volumes hostPath --out k8s
-    kompose.version: 1.28.0 (c4137012e)
-  creationTimestamp: null
-  labels:
-    io.kompose.service: solr6
   namespace: alfresco
-  name: solr6
+  name: search
 spec:
   replicas: 1
-  selector:
-    matchLabels:
-      io.kompose.service: solr6
   template:
-    metadata:
-      annotations:
-        kompose.cmd: kompose convert --volumes hostPath --out k8s
-        kompose.version: 1.28.0 (c4137012e)
-      creationTimestamp: null
-      labels:
-        io.kompose.network/alfresco-default: "true"
-        io.kompose.service: solr6
     spec:
       imagePullSecrets:
         - name: aws-arkcase-pull
       containers:
-        - image: alfresco/alfresco-search-services:1.4.0
-          name: solr6
+        - name: search
+          image: 345280441424.dkr.ecr.ap-south-1.amazonaws.com/ark_alfresco_search:2.0.5
           env:
-            - name: ALFRESCO_SECURE_COMMS
-              value: none
             - name: SOLR_ALFRESCO_HOST
-              value: content
+              value: "content"
             - name: SOLR_ALFRESCO_PORT
               value: "8080"
-            - name: SOLR_CREATE_ALFRESCO_DEFAULTS
-              value: alfresco,archive
-            - name: SOLR_JAVA_MEM
-              value: -Xms2g -Xmx2g
             - name: SOLR_SOLR_HOST
-              value: solr6
+              value: "search"
             - name: SOLR_SOLR_PORT
               value: "8983"
+            - name: SOLR_CREATE_ALFRESCO_DEFAULTS
+              value: "alfresco,archive"
+            - name: ALFRESCO_SECURE_COMMS
+              value: "secret"
+            - name: JAVA_TOOL_OPTIONS
+              value: >-
+                -Dalfresco.secureComms.secret=secret
+            - name: SOLR_JAVA_MEM
+              value: >-
+                -Xms2g
+                -Xmx2g
+              #   -XX:MinRAMPercentage=50
+              #   -XX:MaxRAMPercentage=80
           ports:
             - containerPort: 8983
           resources:
             limits:
               memory: "2Gi"
       restartPolicy: Always
-status: {}
----
-apiVersion: apps/v1
-kind: StatefulSet
-metadata:
-  annotations:
-    kompose.cmd: kompose convert --volumes hostPath --out k8s
-    kompose.version: 1.28.0 (c4137012e)
-  creationTimestamp: null
-  labels:
-    io.kompose.service: sync-service
-  namespace: alfresco
-  name: sync-service
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      io.kompose.service: sync-service
-  template:
-    metadata:
-      annotations:
-        kompose.cmd: kompose convert --volumes hostPath --out k8s
-        kompose.version: 1.28.0 (c4137012e)
-      creationTimestamp: null
-      labels:
-        io.kompose.network/alfresco-default: "true"
-        io.kompose.service: sync-service
-    spec:
-      imagePullSecrets:
-        - name: aws-arkcase-pull
-      containers:
-        - image: quay.io/alfresco/service-sync:3.2.0
-          name: sync-service
-          env:
-            - name: JAVA_OPTS
-              value: >-
-                -Ddb.driver=org.postgresql.Driver
-                -Ddb.username=alfresco
-                -Ddb.password="nie7yaiX0ahm9aec"
-                -Ddb.url="jdbc:postgresql://postgres:5432/alfresco"
-                -Dmessaging.broker.host=activemq
-                -Drepo.hostname=content
-                -Drepo.port=8080
-                -Ddw.server.applicationConnectors[0].type=http
-                -Xms1000m
-                -Xmx1000m
-          ports:
-            - containerPort: 9090
-          resources:
-            limits:
-              memory: "1Gi"
-      restartPolicy: Always
-status: {}
----
-apiVersion: apps/v1
-kind: StatefulSet
-metadata:
-  annotations:
-    kompose.cmd: kompose convert --volumes hostPath --out k8s
-    kompose.version: 1.28.0 (c4137012e)
-  creationTimestamp: null
-  labels:
-    io.kompose.service: tika
-  namespace: alfresco
-  name: tika
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      io.kompose.service: tika
-  template:
-    metadata:
-      annotations:
-        kompose.cmd: kompose convert --volumes hostPath --out k8s
-        kompose.version: 1.28.0 (c4137012e)
-      creationTimestamp: null
-      labels:
-        io.kompose.network/alfresco-default: "true"
-        io.kompose.service: tika
-    spec:
-      imagePullSecrets:
-        - name: aws-arkcase-pull
-      containers:
-        - image: quay.io/alfresco/alfresco-tika:2.1.0
-          name: tika
-          env:
-            - name: ACTIVEMQ_URL
-              value: nio://activemq:61616
-            - name: FILE_STORE_URL
-              value: http://shared-file-store:8099/alfresco/api/-default-/private/sfs/versions/1/file
-            - name: JAVA_OPTS
-              value: ' -Xms256m -Xmx512m'
-          ports:
-            - containerPort: 8090
-          resources:
-            limits:
-              memory: "1Gi"
-      restartPolicy: Always
-status: {}
----
-apiVersion: apps/v1
-kind: StatefulSet
-metadata:
-  annotations:
-    kompose.cmd: kompose convert --volumes hostPath --out k8s
-    kompose.version: 1.28.0 (c4137012e)
-  creationTimestamp: null
-  labels:
-    io.kompose.service: transform-misc
-  namespace: alfresco
-  name: transform-misc
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      io.kompose.service: transform-misc
-  template:
-    metadata:
-      annotations:
-        kompose.cmd: kompose convert --volumes hostPath --out k8s
-        kompose.version: 1.28.0 (c4137012e)
-      creationTimestamp: null
-      labels:
-        io.kompose.network/alfresco-default: "true"
-        io.kompose.service: transform-misc
-    spec:
-      imagePullSecrets:
-        - name: aws-arkcase-pull
-      containers:
-        - image: alfresco/alfresco-transform-misc:2.1.0
-          name: transform-misc
-          env:
-            - name: ACTIVEMQ_URL
-              value: nio://activemq:61616
-            - name: FILE_STORE_URL
-              value: http://shared-file-store:8099/alfresco/api/-default-/private/sfs/versions/1/file
-            - name: JAVA_OPTS
-              value: ' -Xms256m -Xmx512m'
-          ports:
-            - containerPort: 8090
-          resources:
-            limits:
-              memory: "1Gi"
-      restartPolicy: Always
-status: {}
----
-apiVersion: apps/v1
-kind: StatefulSet
-metadata:
-  annotations:
-    kompose.cmd: kompose convert --volumes hostPath --out k8s
-    kompose.version: 1.28.0 (c4137012e)
-  creationTimestamp: null
-  labels:
-    io.kompose.service: transform-router
-  namespace: alfresco
-  name: transform-router
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      io.kompose.service: transform-router
-  template:
-    metadata:
-      annotations:
-        kompose.cmd: kompose convert --volumes hostPath --out k8s
-        kompose.version: 1.28.0 (c4137012e)
-      creationTimestamp: null
-      labels:
-        io.kompose.network/alfresco-default: "true"
-        io.kompose.service: transform-router
-    spec:
-      imagePullSecrets:
-        - name: aws-arkcase-pull
-      containers:
-        - image: quay.io/alfresco/alfresco-transform-router:1.1.0
-          name: transform-router
-          env:
-            - name: ACTIVEMQ_URL
-              value: nio://activemq:61616
-            - name: FILE_STORE_URL
-              value: http://shared-file-store:8099/alfresco/api/-default-/private/sfs/versions/1/file
-            - name: IMAGEMAGICK_URL
-              value: http://imagemagick:8090
-            - name: JAVA_OPTS
-              value: ' -Xms256m -Xmx512m'
-            - name: LIBREOFFICE_URL
-              value: http://libreoffice:8090
-            - name: MISC_URL
-              value: http://transform-misc:8090
-            - name: PDF_RENDERER_URL
-              value: http://alfresco-pdf-renderer:8090
-            - name: TIKA_URL
-              value: http://tika:8090
-          ports:
-            - containerPort: 8095
-          resources:
-            limits:
-              memory: "1Gi"
-      restartPolicy: Always
-status: {}
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  annotations:
-    kompose.cmd: kompose convert --volumes hostPath --out k8s
-    kompose.version: 1.28.0 (c4137012e)
-  creationTimestamp: null
-  labels:
-    io.kompose.service: activemq
   namespace: alfresco
   name: activemq
 spec:

@@ -222,7 +222,7 @@ spec:
           {{- if (((.Values.persistence).repository).claim).name }}
           claimName: {{ .Values.persistence.repository.claim.name | quote }}
           {{- else }}
-          claimName: {{ template "common.fullname" . }}-repository
+          claimName: {{ template "arkcase.fullname" . }}-repository
           {{- end }}
         {{- else }}
         emptyDir: {}

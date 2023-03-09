@@ -101,7 +101,7 @@ spec:
             {{- if (((.Values.persistence).filestore).claim).name }}
             claimName: {{ .Values.persistence.filestore.claim.name | quote }}
             {{- else }}
-            claimName: {{ template "common.fullname" . }}-filestore
+            claimName: {{ template "arkcase.fullname" . }}-filestore
             {{- end }}
           {{- else }}
           emptyDir: {}
