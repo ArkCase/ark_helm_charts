@@ -2,8 +2,8 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ include "common.fullname" . | quote}}
-  labels: {{- include "common.labels" . | nindent 4 }}
+  name: {{ include "arkcase.fullname" . | quote}}
+  labels: {{- include "arkcase.labels" . | nindent 4 }}
     {{- with (.Values.labels).common }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
@@ -15,8 +15,8 @@ spec:
   replicas: {{ .Values.replicaCount | default 1 }}
   {{- end }}
   selector:
-    matchLabels: {{- include "common.labels.matchLabels" . | nindent 6 }}
-  serviceName: {{ include "common.fullname" . | quote }}
+    matchLabels: {{- include "arkcase.labels.matchLabels" . | nindent 6 }}
+  serviceName: {{ include "arkcase.fullname" . | quote }}
   updateStrategy:
     type: {{ .Values.updateStrategy }}
     {{- if (eq "Recreate" .Values.updateStrategy) }}
@@ -25,13 +25,13 @@ spec:
     rollingUpdate:
       partition: {{ .Values.rollingUpdatePartition }}
     {{- end }}
-  serviceName: {{ include "common.fullname" . }}
+  serviceName: {{ include "arkcase.fullname" . }}
   template:
     metadata:
     metadata:
       name: {{ include "common.name" . | quote }}
       namespace: {{ .Release.Namespace | quote }}
-      labels: {{- include "common.labels" . | nindent 8 }}
+      labels: {{- include "arkcase.labels" . | nindent 8 }}
         {{- with (.Values.labels).common }}
         {{- toYaml . | nindent 8 }}
         {{- end }}

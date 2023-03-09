@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "common.fullname" . }}-mysql-conf
+  name: {{ include "arkcase.fullname" . }}-mysql-conf
   labels: {{- include "common.selectorLabels" . | nindent 4 }}
   annotations:
     timestamp: "{{ date "20060102150405" now }}"

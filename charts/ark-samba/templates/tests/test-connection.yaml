@@ -2,9 +2,9 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: {{ printf "%s-test" (include "common.fullname" .) | quote }}
+  name: {{ printf "%s-test" (include "arkcase.fullname" .) | quote }}
   namespace: {{ .Release.Namespace | quote }}
-  labels: {{- include "common.labels" . | nindent 4 }}
+  labels: {{- include "arkcase.labels" . | nindent 4 }}
     {{- with (.Values.labels).common }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
@@ -24,14 +24,14 @@ spec:
     - name: openldap
       image: bitnami/openldap
       command: [ "/opt/bitnami/openldap/bin/ldapsearch" ]
-      args: [ "-H", "ldaps://{{ include "common.fullname" . }}", "-D", "{{ include "common.samba.realm" .Values.configuration.domain.name }}\administrator", "-w", {{ .Values.configuration.domain.password | quote }}, "-b", {{ include "common.samba.dc" .Values.configuration.domain.name | quote }}, "(objectClass=user)", "dn" ]
+      args: [ "-H", "ldaps://{{ include "arkcase.fullname" . }}", "-D", "{{ include "common.samba.realm" .Values.configuration.domain.name }}\administrator", "-w", {{ .Values.configuration.domain.password | quote }}, "-b", {{ include "common.samba.dc" .Values.configuration.domain.name | quote }}, "(objectClass=user)", "dn" ]
       env: {{- include "arkcase.tools.baseEnv" . | nindent 8 }}
         - name: LDAPTLS_REQCERT
           value: "never"
         - name: ADMIN_PASS
           valueFrom:
             secretKeyRef:
-              name: {{ include "common.fullname" . | quote }}
+              name: {{ include "arkcase.fullname" . | quote }}
               key: DOMAIN_PASSWORD
   restartPolicy: Never
 {{- end }}

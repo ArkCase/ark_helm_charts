@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "common.fullname" . }}-ldap-configmap
+  name: {{ include "arkcase.fullname" . }}-ldap-configmap
   labels: {{- include "common.selectorLabels" . | nindent 4 }}
   annotations:
     timestamp: "{{ date "20060102150405" now }}"

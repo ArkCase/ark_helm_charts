@@ -7,7 +7,7 @@
 apiVersion: v1
 kind: Secret
 metadata:
-  name: {{ include "common.fullname" . | quote }}
+  name: {{ include "arkcase.fullname" . | quote }}
   namespace: {{ .Release.Namespace | quote }}
   labels: {{- include "common.labels" . | nindent 4 }}
   {{- with (.Values.labels).common }}
@@ -34,7 +34,7 @@ data:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "common.fullname" . | quote }}
+  name: {{ include "arkcase.fullname" . | quote }}
   namespace: {{ .Release.Namespace | quote }}
   labels: {{- include "common.labels" . | nindent 4 }}
 {{- with (.Values.labels).common }}
@@ -62,6 +62,6 @@ spec:
         number: {{ (((.Values.configuration).ingress).service).port | default 80 | toString | atoi }}
 {{- if $hasTLS }}
   tls:
-    - secretName: {{ include "common.fullname" . | quote }}
+    - secretName: {{ include "arkcase.fullname" . | quote }}
 {{- end }}
 {{- end }}

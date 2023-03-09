@@ -7,5 +7,5 @@ Samba Domain specs:
 
 Check that LDAPS is running by using the following command:
 
-    $ LDAPTLS_REQCERT=never ldapsearch -H ldaps://{{ template "common.fullname" . }} -D '{{ include "common.samba.realm" .Values.configuration.domain.name }}\administrator' -w {{ .Values.configuration.domain.password | quote }} -b {{ include "common.samba.dc" .Values.configuration.domain.name | quote }} '(objectClass=user)' dn
+    $ LDAPTLS_REQCERT=never ldapsearch -H ldaps://{{ template "arkcase.fullname" . }} -D '{{ include "common.samba.realm" .Values.configuration.domain.name }}\administrator' -w {{ .Values.configuration.domain.password | quote }} -b {{ include "common.samba.dc" .Values.configuration.domain.name | quote }} '(objectClass=user)' dn
 {{- end -}}
