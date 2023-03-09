@@ -1,3 +1,131 @@
+{{/* vim: set filetype=mustache: */}}
+
+{{- /* Output the full name, optionally supporting a subcomponent name for charts with mutliple components */ -}}
+{{- define "arkcase.fullname" -}}
+  {{- $ctx := . -}}
+  {{- $subname := "" -}}
+  {{- if (hasKey $ctx "ctx") -}}
+    {{- $ctx = .ctx -}}
+    {{- /* Next, make sure we have a value to seek out */ -}}
+    {{- if .name -}}
+      {{- $subname = .name -}}
+      {{- if not (kindIs "string" $subname) -}}
+        {{- fail "The 'name' parameter must be a string" -}}
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
+
+  {{- if not (kindIs "map" $ctx) -}}
+    {{- fail "The given context parameter is not a map" -}}
+  {{- end -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "Incorrect context given - either submit the root context as the only parameter, or a 'ctx' parameter pointing to it" -}}
+  {{- end -}}
+
+  {{- $fullname := (include "common.fullname" $ctx) -}}
+  {{- if $subname -}}
+    {{- $fullname = (printf "%s-%s" $fullname $subname) -}}
+  {{- end -}}
+  {{- $fullname | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
+{{- /* Check to see if the given object is the top-level context map */ -}}
+{{- define "arkcase.isRootContext" -}}
+  {{- if and (hasKey . "Values") (hasKey . "Chart") (hasKey . "Release") (hasKey . "Files") (hasKey . "Capabilities") (hasKey . "Template") -}}
+    {{- true -}}
+  {{- end -}}
+{{- end -}}
+
+{{- define "arkcase.labels" -}}
+  {{- $ctx := . -}}
+  {{- $subname := "" -}}
+  {{- if (hasKey $ctx "ctx") -}}
+    {{- $ctx = .ctx -}}
+    {{- /* Next, make sure we have a value to seek out */ -}}
+    {{- if .name -}}
+      {{- $subname = .name -}}
+      {{- if not (kindIs "string" $subname) -}}
+        {{- fail "The 'name' parameter must be a string" -}}
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
+
+  {{- if not (kindIs "map" $ctx) -}}
+    {{- fail "The given context parameter is not a map" -}}
+  {{- end -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "Incorrect context given - either submit the root context as the only parameter, or a 'ctx' parameter pointing to it" -}}
+  {{- end -}}
+{{ include "arkcase.labels.standard" (dict "ctx" $ctx "name" $subname) }}
+{{- if $ctx.Chart.AppVersion }}
+app.kubernetes.io/version: {{ $ctx.Chart.AppVersion | quote }}
+{{- end }}
+app: {{ $ctx.Chart.Name | quote }}
+version: {{ $ctx.Chart.AppVersion | quote }}
+{{- end -}}
+
+{{- define "arkcase.selectorLabels" -}}
+  {{- include "arkcase.labels.matchLabels" . -}}
+{{- end }}
+
+{{/*
+Kubernetes standard labels
+*/}}
+{{- define "arkcase.labels.standard" -}}
+  {{- $ctx := . -}}
+  {{- $subname := "" -}}
+  {{- if (hasKey $ctx "ctx") -}}
+    {{- $ctx = .ctx -}}
+    {{- /* Next, make sure we have a value to seek out */ -}}
+    {{- if .name -}}
+      {{- $subname = .name -}}
+      {{- if not (kindIs "string" $subname) -}}
+        {{- fail "The 'name' parameter must be a string" -}}
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
+
+  {{- if not (kindIs "map" $ctx) -}}
+    {{- fail "The given context parameter is not a map" -}}
+  {{- end -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "Incorrect context given - either submit the root context as the only parameter, or a 'ctx' parameter pointing to it" -}}
+  {{- end -}}
+{{ include "arkcase.selectorLabels" (dict "ctx" $ctx "name" $subname) }}
+app.kubernetes.io/managed-by: {{ $ctx.Release.Service }}
+helm.sh/chart: {{ include "common.names.chart" $ctx }}
+{{- end -}}
+
+{{/*
+Labels to use on deploy.spec.selector.matchLabels and svc.spec.selector
+*/}}
+{{- define "arkcase.labels.matchLabels" -}}
+  {{- $ctx := . -}}
+  {{- $subname := "" -}}
+  {{- if (hasKey $ctx "ctx") -}}
+    {{- $ctx = .ctx -}}
+    {{- /* Next, make sure we have a value to seek out */ -}}
+    {{- if .name -}}
+      {{- $subname = .name -}}
+      {{- if not (kindIs "string" $subname) -}}
+        {{- fail "The 'name' parameter must be a string" -}}
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
+
+  {{- if not (kindIs "map" $ctx) -}}
+    {{- fail "The given context parameter is not a map" -}}
+  {{- end -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "Incorrect context given - either submit the root context as the only parameter, or a 'ctx' parameter pointing to it" -}}
+  {{- end -}}
+app.kubernetes.io/instance: {{ $ctx.Release.Name }}
+app.kubernetes.io/name: {{ include "common.names.name" $ctx }}
+  {{- if $subname }}
+app.kubernetes.io/subname: {{ $subname }}
+  {{- end }}
+{{- end -}}
+
 {{- /*
 Outputs "true" if the given parameter is a string that matches an IPv4 address (4 dot-separated octets between 0 and 255). If the string submitted is not an IPv4 address, the empty string will be output.
 
@@ -434,7 +562,7 @@ Render the image name taking into account the registry, repository, image name, 
     {{- fail "The 'ctx' parameter is required and must be a non-empty map" -}}
   {{- end -}}
   {{- $ctx := .ctx -}}
-  {{- if or (not (hasKey $ctx "Values")) (not (hasKey $ctx "Chart")) (not (hasKey $ctx "Release")) -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "You must supply the 'ctx' parameter, pointing to the root context that contains 'Values' et al." -}}
   {{- end -}}
   {{- if or (not (hasKey . "name")) (not (kindIs "string" .name)) (empty .name) -}}
@@ -580,7 +708,7 @@ return either the value if correct, or the empty string if not.
   {{- if not (kindIs "map" $ctx) -}}
     {{- fail "The context given ('ctx' parameter) must be a map" -}}
   {{- end -}}
-  {{- if or (not (hasKey $ctx "Values")) (not (hasKey $ctx "Chart")) (not (hasKey $ctx "Release")) -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "The context given (either the parameter map, or the 'ctx' value within) is not the top-level context" -}}
   {{- end -}}
 

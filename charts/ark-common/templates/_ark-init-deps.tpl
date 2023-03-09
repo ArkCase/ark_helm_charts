@@ -200,7 +200,7 @@ in JSON format
   {{- end -}}
   {{- $crap := set $ "InitDependencies" $masterCache -}}
 
-  {{- $chartName := (include "common.fullname" $) -}}
+  {{- $chartName := (include "arkcase.fullname" $) -}}
   {{- if not (hasKey $masterCache $chartName) -}}
     {{- $obj := dict -}}
     {{- $enabled := (and (hasKey .Values "initDependencies") (kindIs "map" .Values.initDependencies) (not (empty .Values.initDependencies))) -}}
@@ -260,7 +260,7 @@ that checks the boot order (remember to |bool the outcome!)
     {{- $ctx = $ -}}
   {{- end -}}
 
-  {{- if or (not (hasKey $ctx "Values")) (not (hasKey $ctx "Chart")) (not (hasKey $ctx "Release")) -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "You must supply the 'ctx' parameter, pointing to the root context that contains 'Values' et al." -}}
   {{- end -}}
 

@@ -58,7 +58,7 @@ Render a volumes: entry for a given volume, as per the persistence model
   {{- $volumeName := .name -}}
 - name: {{ $volumeName | quote }}
   {{- if (include "arkcase.persistence.enabled" .ctx) -}}
-    {{- $claimName := (printf "%s-%s" (include "common.fullname" .ctx) $volumeName ) -}}
+    {{- $claimName := (printf "%s-%s" (include "arkcase.fullname" .ctx) $volumeName ) -}}
     {{- $explicitClaimName := (include "arkcase.tools.get" (dict "ctx" .ctx "name" (printf ".Values.persistence.%s.claim.name" $volumeName) )) -}}
     {{- if $explicitClaimName -}}
       {{- $claimName = $explicitClaimName -}}
@@ -85,7 +85,7 @@ Render the PersistentVolume and PersistentVolumeClaim objects for a given volume
 
   {{- if (include "arkcase.persistence.enabled" $ctx) -}}
 
-    {{- $objectName := (printf "%s-%s" (include "common.fullname" $ctx) $volumeName) -}}
+    {{- $objectName := (printf "%s-%s" (include "arkcase.fullname" $ctx) $volumeName) -}}
     {{- $volumeObjectName := (printf "%s-%s" $ctx.Release.Namespace $objectName) -}}
     {{- $volumeData := dict -}}
     {{- if (include "arkcase.tools.check" (dict "ctx" $ctx "name" (printf ".Values.persistence.%s" $volumeName))) -}}

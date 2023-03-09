@@ -13,7 +13,7 @@ that checks the boot order
 
   {{- $dbInit := dict -}}
   {{- $secretEntries := dict -}}
-  {{- $secret := (dict "name" (printf "%s-database-init" (include "common.fullname" .))) -}}
+  {{- $secret := (dict "name" (printf "%s-database-init" (include "arkcase.fullname" .))) -}}
 
   {{- /* Sanitize the admin object */ -}}
   {{- $admin := dict -}}
@@ -225,7 +225,7 @@ in JSON format
   {{- end -}}
   {{- $crap := set $ "InitDatabase" $masterCache -}}
 
-  {{- $chartName := (include "common.fullname" $) -}}
+  {{- $chartName := (include "arkcase.fullname" $) -}}
   {{- if not (hasKey $masterCache $chartName) -}}
     {{- $obj := get (include "arkcase.initDatabase.render" . | fromYaml) "result" -}}
     {{- if not $obj -}}
@@ -295,7 +295,7 @@ that checks the boot order (remember to |bool the outcome!)
     {{- $ctx = $ -}}
   {{- end -}}
 
-  {{- if or (not (hasKey $ctx "Values")) (not (hasKey $ctx "Chart")) (not (hasKey $ctx "Release")) -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "You must supply the 'ctx' parameter, pointing to the root context that contains 'Values' et al." -}}
   {{- end -}}
 
@@ -343,7 +343,7 @@ that checks the boot order (remember to |bool the outcome!)
   {{- else -}}
     {{- $ctx = $ -}}
   {{- end -}}
-  {{- if or (not (hasKey $ctx "Values")) (not (hasKey $ctx "Chart")) (not (hasKey $ctx "Release")) -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "You must supply the 'ctx' parameter, pointing to the root context that contains 'Values' et al." -}}
   {{- end -}}
 
@@ -381,7 +381,7 @@ that checks the boot order (remember to |bool the outcome!)
   {{- else -}}
     {{- $ctx = $ -}}
   {{- end -}}
-  {{- if or (not (hasKey $ctx "Values")) (not (hasKey $ctx "Chart")) (not (hasKey $ctx "Release")) -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "You must supply the 'ctx' parameter, pointing to the root context that contains 'Values' et al." -}}
   {{- end -}}
 
