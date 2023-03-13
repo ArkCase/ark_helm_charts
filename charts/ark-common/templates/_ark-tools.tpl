@@ -29,6 +29,35 @@
   {{- $fullname | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 
+{{- /* Output the short name, optionally supporting a subcomponent name for charts with mutliple components */ -}}
+{{- define "arkcase.name" -}}
+  {{- $ctx := . -}}
+  {{- $subname := "" -}}
+  {{- if (hasKey $ctx "ctx") -}}
+    {{- $ctx = .ctx -}}
+    {{- /* Next, make sure we have a value to seek out */ -}}
+    {{- if .name -}}
+      {{- $subname = .name -}}
+      {{- if not (kindIs "string" $subname) -}}
+        {{- fail "The 'name' parameter must be a string" -}}
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
+
+  {{- if not (kindIs "map" $ctx) -}}
+    {{- fail "The given context parameter is not a map" -}}
+  {{- end -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "Incorrect context given - either submit the root context as the only parameter, or a 'ctx' parameter pointing to it" -}}
+  {{- end -}}
+
+  {{- $name := (include "common.name" $ctx) -}}
+  {{- if $subname -}}
+    {{- $name = (printf "%s-%s" $name $subname) -}}
+  {{- end -}}
+  {{- $name | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
 {{- /* Check to see if the given object is the top-level context map */ -}}
 {{- define "arkcase.isRootContext" -}}
   {{- if and (hasKey . "Values") (hasKey . "Chart") (hasKey . "Release") (hasKey . "Files") (hasKey . "Capabilities") (hasKey . "Template") -}}
