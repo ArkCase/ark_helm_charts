@@ -102,7 +102,7 @@ replicaCount: 1
 
 platform: ""
 image:
-  registry: "345280441424.dkr.ecr.ap-south-1.amazonaws.com"
+  registry: "207428623785.dkr.ecr.us-east-1.amazonaws.com"
   # Overrides the image tag whose default is the chart appVersion.
   # If required, for tweaking setperm
   # setperm:
@@ -112,7 +112,7 @@ image:
   pullPolicy: IfNotPresent
   config:
     # repository: "ark_cloudconfig"
-    tag: &arkcaseVersion "2021.03.25-01"
+    tag: &arkcaseVersion "2021.03.25"
   arkcase:
     # repository: "ark_core"
     tag: *arkcaseVersion
