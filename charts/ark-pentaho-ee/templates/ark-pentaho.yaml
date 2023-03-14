@@ -57,7 +57,7 @@ spec:
       {{- end }}
       initContainers:
         - name: set-permissions
-          image: {{ include "arkcase.tools.subimage" (dict "ctx" . "name" "setperm" "image" "ark_setperm") | quote }}
+          image: {{ include "arkcase.tools.subimage" (dict "ctx" . "name" "setperm" "image" "arkcase/setperm") | quote }}
           env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
             - name: JOBS
               value: |
@@ -156,10 +156,6 @@ spec:
               subPath: &configPostSh "config-post.sh"
               readOnly: true
             - name: *configMap
-              mountPath: "/app/pentaho/pentaho-server/start-pentaho.sh"
-              subPath: &startPentahoSh "start-pentaho.sh"
-              readOnly: true
-            - name: *configMap
               mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/arkcase-preauth.xml"
               subPath: &arkcasePreauthXml "arkcase-preauth.xml"
               readOnly: true
@@ -186,10 +182,6 @@ spec:
             - name: *configMap
               mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/hibernate/hibernate-settings.xml"
               subPath: &hibernateSettingsXml "hibernate-settings.xml"
-              readOnly: true
-            - name: *configMap
-              mountPath: "/app/pentaho/pentaho-server/tomcat/conf/logging.properties"
-              subPath: &loggingProperties "logging.properties"
               readOnly: true
             - name: *configMap
               mountPath: "/app/pentaho/pentaho-server/tomcat/conf/server.xml"
@@ -237,8 +229,6 @@ spec:
                 path: *securityProperties
               - key: *serverProperties
                 path: *serverProperties
-              - key: *loggingProperties
-                path: *loggingProperties
               - key: *serverXml
                 path: *serverXml
               - key: *log4j2Xml
@@ -257,9 +247,6 @@ spec:
                 mode: 0555
               - key: *configPostSh
                 path: *configPostSh
-                mode: 0555
-              - key: *startPentahoSh
-                path: *startPentahoSh
                 mode: 0555
       {{- with .Values.nodeSelector }}
       nodeSelector: {{- toYaml . | nindent 8 }}
