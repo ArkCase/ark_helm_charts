@@ -59,7 +59,7 @@ spec:
       initContainers:
         {{- if (include "arkcase.samba.step" .) }}
         - name: set-permissions
-          image: {{ include "arkcase.tools.subimage" (dict "ctx" . "name" "setperm" "image" "ark_setperm") | quote }}
+          image: {{ include "arkcase.tools.subimage" (dict "ctx" . "name" "setperm" "image" "arkcase/setperm") | quote }}
           env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
             - name: JOBS
               value: |
@@ -134,7 +134,7 @@ spec:
               readOnly: true
           {{- if (include "arkcase.samba.step" .) }}
         - name: step
-          image: {{ include "arkcase.tools.subimage" (dict "ctx" . "name" "step" "image" "ark_step_ca") | quote }}
+          image: {{ include "arkcase.tools.subimage" (dict "ctx" . "name" "step" "image" "arkcase/step-ca") | quote }}
           imagePullPolicy: {{ include "arkcase.tools.imagePullPolicy" . | quote }}
           env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
             - name: DOCKER_STEPCA_INIT_NAME

@@ -26,14 +26,14 @@ replicaCount: 1
 
 platform: ""
 image:
-  registry: "345280441424.dkr.ecr.ap-south-1.amazonaws.com"
-  repository: "ark_samba"
+  registry: "207428623785.dkr.ecr.us-east-1.amazonaws.com"
+  repository: "arkcase/samba"
   # Overrides the image tag whose default is the chart appVersion.
   tag: "latest"
   pullPolicy: IfNotPresent
-  step:
-    repository: "ark_step_ca"
-    # tag: "latest"
+  # step:
+  #   repository: "arkcase/step-ca"
+  #   tag: "latest"
 
 imagePullSecrets:
   - name: aws-arkcase-pull
