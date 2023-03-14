@@ -268,7 +268,7 @@ that checks the boot order (remember to |bool the outcome!)
     {{- $yaml := (include "arkcase.initDependencies.yaml" $ctx | fromYaml) -}}
     {{- if $yaml -}}
 - name: {{ $containerName | quote }}
-  image: {{ include "arkcase.tools.subimage" (dict "ctx" $ctx "name" "nettest" "image" "ark_nettest") | quote }}
+  image: {{ include "arkcase.tools.subimage" (dict "ctx" $ctx "name" "nettest" "image" "arkcase/nettest") | quote }}
   command: [ "/wait-for-ports" ]
   env: {{- include "arkcase.tools.baseEnv" $ctx | nindent 4 }}
     - name: INIT_DEPENDENCIES
