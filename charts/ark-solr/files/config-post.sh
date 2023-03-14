@@ -27,8 +27,9 @@ trap cleanup EXIT
 set -euo pipefail
 
 [ -v BASE_DIR ] || BASE_DIR="/app"
+[ -v DATA_DIR ] || DATA_DIR="${BASE_DIR}/data"
 
-[ -v LOGS_DIR ] || LOGS_DIR="${BASE_DIR}/logs"
+[ -v LOGS_DIR ] || LOGS_DIR="${DATA_DIR}/logs"
 if [ -d "${LOGS_DIR}" ] ; then
 	LOG_FILE="${LOGS_DIR}/config-post.log"
 	exec >> >(/usr/bin/tee -a "${LOG_FILE}")

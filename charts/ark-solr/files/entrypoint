@@ -32,7 +32,7 @@ else
 	touch "${RUN_MARKER}"
 fi
 
-[ -v SOLR_LOGS_DIR ] || SOLR_LOGS_DIR="${DATA_DIR}/logs"
+[ -v SOLR_LOGS_DIR ] || export SOLR_LOGS_DIR="${DATA_DIR}/logs"
 [ -d "${SOLR_LOGS_DIR}" ] || mkdir -p "${SOLR_LOGS_DIR}" || say "WARNING: Failed to find and create the log directory at [${SOLR_LOGS_DIR}]"
 
 ZK_FLAGS=()
