@@ -69,18 +69,16 @@ spec:
                   - ownership: "1997:1997"
                     permissions: "u=rwX,g=rX,o="
                     flags: [ "recurse", "noforced", "create", "changes" ]
-                    targets: [ "/app/conf", "/app/data", "/app/home" ]
+                    targets: [ "/app/conf", "/app/home", "/app/logs" ]
           volumeMounts:
-            - name: &homeVolume "home"
-              mountPath: &homeDir "/app/home"
             - name: &initVolume "init"
               mountPath: &initDir "/app/init"
+            - name: &homeVolume "home"
+              mountPath: &homeDir "/app/home"
             - name: &confVolume "conf"
               mountPath: &confDir "/app/conf"
-            - name: &dataVolume "data"
-              mountPath: &dataDir "/app/data"
             - name: &logsVolume "logs"
-              mountPath: &logsDir "/app/home/logs"
+              mountPath: &logsDir "/app/logs"
         {{- include "arkcase.initDependencies.container" (dict "ctx" . "name" "init-dependencies") | nindent 8 }}
       containers:
         - name: arkcase
@@ -90,14 +88,12 @@ spec:
           image: {{ include "arkcase.tools.subimage" (dict "ctx" . "name" "arkcase" "image" "ark_core") | quote }}
           imagePullPolicy: {{ include "arkcase.tools.imagePullPolicy" . | quote }}
           env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
-            - name: CONF_DIR
-              value: *confDir
-            - name: DATA_DIR
-              value: *dataDir
-            - name: HOME_DIR
-              value: *homeDir
             - name: INIT_DIR
               value: *initDir
+            - name: HOME_DIR
+              value: *homeDir
+            - name: CONF_DIR
+              value: *confDir
             - name: LOGS_DIR
               value: *logsDir
             {{- with ((.Values.configuration).arkcase).env }}
@@ -114,18 +110,16 @@ spec:
           securityContext: {{- toYaml . | nindent 12 }}
           {{- end }}
           volumeMounts:
-            - name: *homeVolume
-              mountPath: *homeDir
             - name: *initVolume
               mountPath: *initDir
+            - name: *homeVolume
+              mountPath: *homeDir
             - name: *confVolume
               mountPath: "/app/home/.arkcase"
             - name: &secrets "secrets"
               mountPath: "/app/home/.arkcase/acm/acm-config-server-repo/ldap/ldap.yaml"
               subPath: &ldapYaml "ldap.yaml"
               readOnly: true
-            - name: *dataVolume
-              mountPath: *dataDir
             - name: *logsVolume
               mountPath: *logsDir
         - name: config
@@ -135,11 +129,11 @@ spec:
           image: {{ include "arkcase.tools.subimage" (dict "ctx" . "name" "config" "image" "ark_cloudconfig") | quote }}
           imagePullPolicy: {{ include "arkcase.tools.imagePullPolicy" . | quote }}
           env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
-            - name: DATA_DIR
-              value: *confDir
             {{- with ((.Values.configuration).config).env }}
               {{- toYaml . | nindent 12 }}
             {{- end }}
+            - name: DATA_DIR
+              value: *confDir
           {{- include "arkcase.subsystem.ports" (.Values.service).config | nindent 10 }}
           {{- with (.Values.command).config }}
           command: {{- toYaml . | nindent 12 }}
@@ -170,14 +164,12 @@ spec:
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "home") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "init") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "conf") | nindent 8 }}
-        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "logs") | nindent 8 }}
 
 {{- if (include "arkcase.persistence.enabled" .) }}
 {{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "home") | indent 0 }}
 {{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "init") | indent 0 }}
 {{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "conf") | indent 0 }}
-{{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "data") | indent 0 }}
 {{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "logs") | indent 0 }}
 {{- end }}
 
