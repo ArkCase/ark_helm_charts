@@ -85,7 +85,7 @@ spec:
           {{- with (.Values.securityContext).arkcase }}
           securityContext: {{- toYaml . | nindent 12 }}
           {{- end }}
-          image: {{ include "arkcase.tools.subimage" (dict "ctx" . "name" "arkcase" "image" "ark_core") | quote }}
+          image: {{ include "arkcase.tools.subimage" (dict "ctx" . "name" "arkcase" "image" "arkcase/core") | quote }}
           imagePullPolicy: {{ include "arkcase.tools.imagePullPolicy" . | quote }}
           env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
             - name: INIT_DIR
@@ -126,7 +126,7 @@ spec:
           {{- with (.Values.securityContext).config }}
           securityContext: {{- toYaml . | nindent 12 }}
           {{- end }}
-          image: {{ include "arkcase.tools.subimage" (dict "ctx" . "name" "config" "image" "ark_cloudconfig") | quote }}
+          image: {{ include "arkcase.tools.subimage" (dict "ctx" . "name" "config" "image" "arkcase/cloudconfig") | quote }}
           imagePullPolicy: {{ include "arkcase.tools.imagePullPolicy" . | quote }}
           env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
             {{- with ((.Values.configuration).config).env }}
