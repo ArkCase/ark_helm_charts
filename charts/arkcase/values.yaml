@@ -230,6 +230,9 @@ core:
   configuration:
     ldap:
       <<: *ldapConfig
+    arkcase:
+       adminUsername: *arkcaseAdminUsername
+       adminPassword: *arkcaseAdminPassword
 
   initDependencies:
     <<: *initDependencies
