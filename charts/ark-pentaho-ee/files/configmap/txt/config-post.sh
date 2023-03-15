@@ -65,7 +65,7 @@ say "Starting the polling cycle"
 while true ; do
 	/usr/bin/curl -Lk -m 5 "${ADMIN_URL}" &>/dev/null && break
 	say "\tURL is not up yet at [${ADMIN_URL}]"
-	 NOW="$(date +%s)"
+	NOW="$(date +%s)"
 	[ $(( NOW - START )) -ge ${INIT_MAX_WAIT} ] && fail "Timed out waiting for the URL [${ADMIN_URL}] to come up"
 	# If sleep didn't succeed, it means it got signaled, which
 	# Means we need to stop what we're doing and puke out
