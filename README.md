@@ -49,6 +49,8 @@ The main difference is that when you run a container, you are not starting a com
 ## Arkcase Container images
 The Arkcase Container images are available in the Amazon Elastic Container Registry (ECR). 
 
+The images are based on Rocky 8.7 ( https://github.com/ArkCase/ark_base ) which is interchangle with Red Hat Universal Base Image 8, "OCI-compliant container base operating system images with complementary runtime languages and packages that are freely redistributable."  ( https://catalog.redhat.com/software/container-stacks/detail/5ec53f50ef29fd35586d9a56 )
+
 The following Docker images relate to Arkcase:
 * https://github.com/arkcase/ark_arkcase_core - Case Management Core Product (Arkcase)
 * https://github.com/ArkCase/ark_cloudconfig - Configuration Server
