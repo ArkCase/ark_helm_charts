@@ -1,4 +1,4 @@
-# Default values for ark-core.
+# Default values for ark-cloudconfig.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
@@ -10,79 +10,18 @@
 #
 configuration:
 
-  db:
-    dialect: "postgres"
-    hostname: "rdbms"
-    port: 5432
-    database: "alfresco"
-    username: "alfresco"
-    password: "alfresco"
-
-  # TODO: This must be read from *somewhere* and provided to us
-  ldap:
-    domain: "appdev.armedia.com"
-    url: "ldaps://ldap.appdev.armedia.com:636"
-    baseDn: &baseDn "OU=ArkCase Techlogix,OU=Clients,DC=appdev,DC=armedia,DC=com"
-    bind:
-      dn: "CN=svc.ark.tlx.ldap,OU=Service,OU=ArkCase Techlogix,OU=Clients,DC=appdev,DC=armedia,DC=com"
-      password: "x9eBLMITdUQfeacKzpbn"
-    admin:
-      dn: "CN=450.arkcase-admin"
-      role: "CN=450.ARKCASE_ADMINISTRATOR"
-    search:
-      base: *baseDn
-      users:
-        base: "OU=Dev, OU=Users"
-        attribute: "sAMAccountName"
-        filter: "(&(objectClass=user)(sAMAccountName={0}))"
-        allFilter: "(objectClass=user)"
-      groups:
-        base: "OU=Dev, OU=Groups"
-        attribute: "cn"
-        filter: "(&(objectClass=group)(cn={0}))"
-        allFilter: "(objectClass=group)"
-        membership: "(&(objectClass=group)(member={0}))"
-        ignoreCase: "false"
-        subtree: "true"
-        rolePrefix: ""
-
-command:
-  # TODO: This command is intended for debugging purposes *ONLY*
-  # alfresco: [ "sleep", "infinity" ]
-
 initDependencies:
-  enabled: true
+  enabled: false
   mode: all
   template:
-    # Any of the required ports are enough to succeed
     mode: any
     initialDelay: 10
     delay: 5
     attempts: 12
   dependencies:
-    ldap:
-      ports:
-        - 389
-        - 636
     messaging:
       ports:
-        - 61613
         - 61616
-    rdbms:
-      ports:
-        # In case of SQLServer
-        - 1443
-        # In case of Oracle
-        - 1521
-        # In case of MySQL/MariaDB
-        - 3306
-        # In case of PostgreSQL
-        - 5432
-    search:
-      ports:
-        - 80
-        - 443
-        - 8983
 
 # Please leave the `replicaCount` to 1 for the time being. Clustering is not
 # supported yet.
@@ -90,20 +29,16 @@ replicaCount: 1
 
 platform: ""
 image:
-  registry: "345280441424.dkr.ecr.ap-south-1.amazonaws.com"
+  registry: "207428623785.dkr.ecr.us-east-1.amazonaws.com"
+  repository: "ark_cloudconfig"
   # Overrides the image tag whose default is the chart appVersion.
+  tag: "2021.03.25"
   # If required, for tweaking setperm
   # setperm:
   #   registry: "alternate-registry"
   #   repository: "alternate-image"
   #   tag: "alternate-tag"
   pullPolicy: IfNotPresent
-  config:
-    # repository: "ark_cloudconfig"
-    tag: &arkcaseVersion "2021.03.25-01"
-  arkcase:
-    # repository: "ark_core"
-    tag: *arkcaseVersion
 
 imagePullSecrets:
   - name: aws-arkcase-pull
@@ -139,22 +74,14 @@ securityContext:
     # case). Any random number will do.
     fsGroup: &fsGroup 1997
     fsGroupChangePolicy: OnRootMismatch
-  config:
+  cloudconfig:
     # capabilities:
     #   drop:
     #   - ALL
     # readOnlyRootFilesystem: true
-    # runAsNonRoot: true
-    # runAsUser: &runAsUser 1997
-    # runAsGroup: *fsGroup
-  arkcase:
-    # capabilities:
-    #   drop:
-    #   - ALL
-    # readOnlyRootFilesystem: true
-    # runAsNonRoot: true
-    # runAsUser: &runAsUser 1997
-    # runAsGroup: *fsGroup
+    runAsNonRoot: true
+    runAsUser: &runAsUser 1997
+    runAsGroup: *fsGroup
 resources:
   # We usually recommend not to specify default resources and to leave this as a conscious
   # choice for the user. This also increases chances charts run on environments with little
@@ -196,52 +123,52 @@ persistence:
 # Use this instance of localPath when you want a specific directory for this volume
     # localPath: "/opt/app/arkcase/config"
 # The "volume" should match the contents of PersistenceVolume.spec
-#     volume:
-#       storageClassName: "manual"
-#       persistentVolumeReclaimPolicy: Retain
-#       accessModes:
-#         - "ReadWriteOnce"
-#       capacity:
-#         storage: "10Gi"
-#       hostPath:
-#         path: /tmp/samba/data
+#    volume:
+#      storageClassName: "manual"
+#      persistentVolumeReclaimPolicy: Retain
+#      accessModes:
+#        - "ReadWriteOnce"
+#      capacity:
+#        storage: "10Gi"
+#      hostPath:
+#        path: /tmp/samba/data
 #
-#   claim:
+    claim:
 # "name" is the name of an existing volume claim to be re-used, can't be used if "claim" is present
-#     name: "name-of-the-claim-to-consume"
+#      name: "name-of-the-claim-to-consume"
 # "spec" should match the contents of PersistenceVolumeClaim.spec, can't be used if "name" is present
-#     spec: 
-#       storageClassName: ""
-#       volumeName: the-volume-to-claim
-#       accessModes:
-#         - "ReadWriteOnce"
-#       resources:
-#         limits: ""
-#         requests: ""
-#       selector:
-#         matchExpressions:
-#           - values:
-#               - ""
-#               - ""
-#               - ""
-#               ...
-#             operator: "In"|"NotIn"|"Exists"|"DoesNotExist"
-#             key: "labelKey"
-#           - values:
-#               - ""
-#               - ""
-#               - ""
-#               ...
-#             operator: "In"|"NotIn"|"Exists"|"DoesNotExist"
-#             key: "labelKey"
-#         matchLabels: "....."
+#      spec: 
+#        storageClassName: ""
+#        volumeName: the-volume-to-claim
+#        accessModes:
+#          - "ReadWriteOnce"
+#        resources:
+#          limits: ""
+#          requests: ""
+#        selector:
+#          matchExpressions:
+#            - values:
+#                - ""
+#                - ""
+#                - ""
+#                ...
+#              operator: "In"|"NotIn"|"Exists"|"DoesNotExist"
+#              key: "labelKey"
+#            - values:
+#                - ""
+#                - ""
+#                - ""
+#                ...
+#              operator: "In"|"NotIn"|"Exists"|"DoesNotExist"
+#              key: "labelKey"
+#          matchLabels: "....."
 
 service:
-  config:
-    ports:
-      - name: config
-        protocol: TCP
-        port: &configPort 9999
+  #external: "192.168.3.54"
+  ports:
+    - name: http
+      protocol: TCP
+      port: &servicePort 9999
 ##
 ## Configure extra options for containers' liveness and readiness probes
 ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/#configure-probes
@@ -252,31 +179,14 @@ service:
 ## @param service.probes.spec.failureThreshold Failure threshold for liveness and readiness probes
 ## @param service.probes.spec.successThreshold Success threshold for liveness and readiness probes
 ##
-    probes:
-      enabled: true
-      spec:
-        httpGet:
-          path: "/actuator/health"
-          port: *configPort
-        initialDelaySeconds: 0
-        periodSeconds: 1
-        timeoutSeconds: 1
-        failureThreshold: 60
-        successThreshold: 1
-
-  arkcase:
-    ports:
-      - name: arkcase
-        protocol: TCP
-        port: &arkcasePort 8080
-#    probes:
-#      enabled: true
-#      spec:
-#        httpGet:
-#          path: "/"
-#          port: *arkcasePort
-#        initialDelaySeconds: 30
-#        periodSeconds: 1
-#        timeoutSeconds: 1
-#        failureThreshold: 150
-#        successThreshold: 1
+  probes:
+    enabled: true
+    spec:
+      httpGet:
+        path: "/actuator/health"
+        port: *servicePort
+      initialDelaySeconds: 0
+      periodSeconds: 1
+      timeoutSeconds: 1
+      failureThreshold: 60
+      successThreshold: 1

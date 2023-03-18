@@ -3,20 +3,27 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: activemq
+  name: &componentName {{ include "arkcase.fullname" (dict "ctx" . "name" "content") | quote }}
   namespace: {{ .Release.Namespace | quote }}
   labels: {{- include "common.labels" . | nindent 4 }}
     {{- with (.Values.labels).common }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
-  {{- with (.Values.annotations).common }}
-  annotations: {{- toYaml . | nindent 4 }}
-  {{- end }}
+    {{- with (.Values.labels).content }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  annotations:
+    {{- with (.Values.annotations).common }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- with (.Values.annotations).content }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
 spec:
   replicas: 1
   selector:
     matchLabels: {{- include "common.labels.matchLabels" . | nindent 6 }}
-  serviceName: ...?
+  serviceName: *componentName
   updateStrategy:
     type: {{ .Values.updateStrategy }}
     {{- if (eq "Recreate" .Values.updateStrategy) }}

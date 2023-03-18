@@ -1,0 +1,164 @@
+{{- if (include "arkcase.subsystem.enabled" .) }}
+{{- $component := "content" -}}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "arkcase.fullname" (dict "ctx" . "name" $component) | quote }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels: {{- include "common.labels" . | nindent 4 }}
+    {{- with (.Values.labels).common }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- with (.Values.labels).content }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  annotations:
+    {{- with (.Values.annotations).common }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- with (.Values.annotations).content }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  {{- if not (.Values.autoscaling).enabled }}
+  replicas: {{ .Values.replicaCount | default 1 }}
+  {{- end }}
+  selector:
+    matchLabels: {{- include "common.labels.matchLabels" . | nindent 6 }}
+  serviceName: {{ include "arkcase.fullname" (dict "ctx" . "name" $component) | quote }}
+  updateStrategy:
+    type: {{ .Values.updateStrategy }}
+    {{- if (eq "Recreate" .Values.updateStrategy) }}
+    rollingUpdate: null
+    {{- else if .Values.rollingUpdatePartition }}
+    rollingUpdate:
+      partition: {{ .Values.rollingUpdatePartition }}
+    {{- end }}
+  template:
+    metadata:
+      name: {{ include "arkcase.name" (dict "ctx" . "name" $component) | quote }}
+      namespace: {{ .Release.Namespace | quote }}
+      labels: {{- include "common.labels" . | nindent 8 }}
+        {{- with (.Values.labels).common }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- with (.Values.labels).content }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      annotations:
+        # NB: Both these annotation values must be of type "string"
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9100"
+        timestamp: {{ date "20060102150405" now | quote }}
+        {{- with (.Values.annotations).common }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- with (.Values.annotations).content }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.hostAliases }}
+      hostAliases: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.schedulerName }}
+      schedulerName: {{ .Values.schedulerName | quote }}
+      {{- end }}
+      serviceAccountName: {{ include "common.serviceAccountName" . }}
+      {{- with (.Values.securityContext).template }}
+      securityContext: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      initContainers:
+        - name: set-permissions
+          image: {{ include "arkcase.tools.subimage" (dict "ctx" . "name" "setperm" "image" "ark_setperm") | quote }}
+          env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
+            - name: JOBS
+              value: |
+                jobs:
+                  # We know the ActiveMQ image uses user 998 (centos), 1998 (rocky)
+                  - ownership: {{ coalesce (.Values.persistence).ownership "33000:1000" | quote }}
+                    permissions: "u=rwX,g=rX,o="
+                    flags: [ "recurse", "noforced", "create", "changes" ]
+                    targets: [ "/data" ]
+          volumeMounts:
+            - name: "data"
+              mountPath: "/data"
+        {{- include "arkcase.initDependencies.container" . | nindent 8 }}
+      containers:
+        - name: {{ include "arkcase.name" (dict "ctx" . "name" $component) | quote }}
+          {{- with (.Values.securityContext).content }}
+          securityContext: {{- toYaml . | nindent 12 }}
+          {{- end }}
+          image: {{ include "arkcase.tools.subimage" (dict "ctx" . "name" "content" "image" "ark_alfresco_content") | quote }}
+          imagePullPolicy: {{ include "arkcase.tools.imagePullPolicy" . | quote }}
+          env:
+            - name: JAVA_TOOL_OPTIONS
+              value: >-
+                -Dencryption.keystore.type=JCEKS
+                -Dencryption.cipherAlgorithm=DESede/CBC/PKCS5Padding
+                -Dencryption.keyAlgorithm=DESede
+                -Dencryption.keystore.location=/usr/local/tomcat/shared/classes/alfresco/extension/keystore/keystore
+                -Dmetadata-keystore.password=mp6yc0UD9e
+                -Dmetadata-keystore.aliases=metadata
+                -Dmetadata-keystore.metadata.password=oKIWzVdEdA
+                -Dmetadata-keystore.metadata.algorithm=DESede
+            - name: CATALINA_OPTS
+              value: >-
+                -server
+                -Ddir.root=/alf_data
+                -Ddb.driver={{ include "arkcase.jdbc.driver" . | quote }}
+                -Ddb.username={{ include "arkcase.jdbc.username" . | quote }}
+                -Ddb.password={{ include "arkcase.jdbc.password" . | quote }}
+                -Ddb.url={{ include "arkcase.jdbc.url" . | quote }}
+                -Dsolr.host=alfresco-search
+                -Dsolr.port=8983
+                -Dsolr.secureComms=secret
+                -Dsolr.sharedSecret={{ include "arkcase.alfresco.searchSecret" . | quote }}
+                -Dsolr.base.url=/solr
+                -Dindex.subsystem.name=solr6
+                -Dshare.host=alfresco-share
+                -Dshare.port=8080
+                -Dalfresco.host=alfresco-content
+                -Dalfresco.port=8080
+                -Daos.baseUrlOverwrite=http://localhost:8080/alfresco/aos
+                -Dmessaging.broker.url="failover:(nio://alfresco-mq:61616)?timeout=3000&jms.useCompression=true"
+                -Ddeployment.method=HELM
+                -Dtransform.service.enabled=true
+                -Dtransform.service.url=http://alfresco-xform:8095
+                -Dsfs.url=http://alfresco-sfs:8099/
+                -DlocalTransform.core-aio.url=http://alfresco-xform-aio:8090/
+                -Dcsrf.filter.enabled=false
+                -Ddsync.service.uris=http://localhost:9090/alfresco
+                -XX:MinRAMPercentage=50
+                -XX:MaxRAMPercentage=80
+                -Dcom.sun.management.jmxremote
+          ports:
+            - containerPort: 8080
+          {{- with (.Values.resources).content }}
+          resources: {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: "data"
+              mountPath: "/usr/local/tomcat/alf_data"
+      volumes:
+        {{- include "arkcase.persistence.volume" (dict "name" "data" "ctx" $) | nindent 8 }}
+        - name: secrets
+          secret:
+            secretName: {{ include "arkcase.fullname" . | quote }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations: {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+{{- if (include "arkcase.persistence.enabled" .) }}
+{{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "data") | indent 0 }}
+{{- end }}
+{{- end }}
