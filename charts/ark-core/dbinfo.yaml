@@ -1,0 +1,30 @@
+mariadb:
+  jdbc:
+    driver: org.mariadb.jdbc.Driver
+    format: "jdbc:mariadb://${HOSTNAME}:${PORT}/${DATABASE}"
+
+mysql:
+  jdbc:
+    driver: com.mysql.cj.jdbc.Driver
+    format: "jdbc:mysql://${HOSTNAME}:${PORT}/${DATABASE}"
+
+oracle:
+  jdbc:
+    driver: oracle.jdbc.driver.OracleDriver
+    format: "jdbc:oracle:thin:@${HOSTNAME}:${PORT}:${DATABASE}"
+
+postgresql:
+  jdbc:
+    driver: org.postgresql.Driver
+    format: "jdbc:postgresql://${HOSTNAME}:${PORT}/${DATABASE}"
+  aliases:
+    - psql
+    - postgres
+
+sqlserver:
+  jdbc:
+    driver: com.microsoft.sqlserver.jdbc.SQLServerDriver
+    instance: "\\${INSTANCE}"
+    format: "jdbc:sqlserver://${HOSTNAME}${INSTANCE}:${PORT};DatabaseName=${DATABASE}"
+  aliases:
+    - mssql

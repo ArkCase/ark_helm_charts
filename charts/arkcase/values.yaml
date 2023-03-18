@@ -4,7 +4,7 @@
 hostname: &hostname "application.arkcase.test"
 # backendName: &backendName "iad032-1san01.appdev.armedia.com"
 adminUsername: &arkcaseAdminUsername "arkcase-admin"
-adminPassword: &arkcaseAdminPassword "AcMd3v$AcMd3v$"
+adminPassword: &arkcaseAdminPassword "$arkcase-admin$"
 
 #
 # This should group all application-specific configurations
@@ -17,10 +17,10 @@ configuration:
     url: "ldaps://ldap:636"
     baseDn: &baseDn "dc=arkcase,dc=test"
     bind:
-      dn: "cn=arkcase-admin,cn=Users,dc=arkcase,dc=test"
+      dn: "cn=ArkCase Administrator,cn=Users,dc=arkcase,dc=test"
       password: *arkcaseAdminPassword
     admin:
-      dn: "cn=arkcase-admin"
+      dn: "cn=ArkCase Administrator"
       role: "cn=ARKCASE_ADMINISTRATOR"
     search:
       base: *baseDn
@@ -245,6 +245,11 @@ core:
       viewer:
         ports:
           - 8080
+      ldap:
+        ports:
+          - 380
+          - 636
+          - 9000
       rdbms:
         ports:
           - 1433
@@ -292,6 +297,12 @@ reports:
           - 1521
           - 3306
           - 5432
+
+      ldap:
+        ports:
+          - 389
+          - 636
+          - 9000
 
 # Please leave the `replicaCount` to 1 for the time being. Clustering is not
 # supported yet.
