@@ -1,7 +1,7 @@
 #
 #
 #
-hostname: &hostname "application.arkcase.test"
+hostname: &hostname "application.dev.arkcase.com"
 # backendName: &backendName "iad032-1san01.appdev.armedia.com"
 adminUsername: &arkcaseAdminUsername "arkcase-admin"
 adminPassword: &arkcaseAdminPassword "$arkcase-admin$"
@@ -13,11 +13,11 @@ configuration:
 
   # This *should* propagate downward via the map references, below
   ldap: &ldapConfig
-    domain: &ldapDomain "arkcase.test"
+    domain: &ldapDomain "dev.arkcase.com"
     url: "ldaps://ldap:636"
-    baseDn: &baseDn "dc=arkcase,dc=test"
+    baseDn: &baseDn "dc=dev,dc=arkcase,dc=com"
     bind:
-      dn: "cn=ArkCase Administrator,cn=Users,dc=arkcase,dc=test"
+      dn: "cn=ArkCase Administrator,cn=Users,dc=dev,dc=arkcase,dc=com"
       password: *arkcaseAdminPassword
     admin:
       dn: "cn=ArkCase Administrator"
