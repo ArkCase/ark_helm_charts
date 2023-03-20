@@ -42,15 +42,3 @@ confs:
         ProxyPass           "http://search:8983/solr/"
         ProxyPassReverse    "http://search:8983/solr/"
     </Location>
-
-  ark-viewer: |
-    ProxyPreserveHost On
-    Redirect "/viewer" "/viewer/"
-    <Location "/viewer/">
-        ProxyPass           "http://viewer:8080/VirtualViewerJavaHTML5/"
-        ProxyPassReverse    "http://viewer:8080/VirtualViewerJavaHTML5/"
-        ProxyHTMLEnable     On
-        ProxyHTMLExtended   On
-        ProxyHTMLURLMap     "http://viewer:8080/VirtualViewerJavaHTML5/" "/viewer/"
-        ProxyHTMLURLMap     "/VirtualViewerJavaHTML5/"                   "/viewer/"
-    </Location>

@@ -131,21 +131,6 @@ gateway:
           - url: "http://search:8983/solr/"
             path: "/search"
 
-      # Snowbound
-      ark-viewer:
-        preserveHosts: true
-        locations:
-          - url: &viewerUrl "http://viewer:8080/VirtualViewerJavaHTML5/"
-            path: "/viewer"
-            html:
-              enabled: true
-              extended: true
-              urlMap:
-                - from: *viewerUrl
-                  to: "/viewer/"
-                - from: "/VirtualViewerJavaHTML5/"
-                  to: "/viewer/"
-
       # Pentaho
       ark-reports:
         preserveHosts: true
@@ -205,10 +190,6 @@ search:
   service:
     # external: ["192.168.3.33", "12.13.14.15"]
 
-viewer:
-  service:
-    # external: www.viewer.com
-
 rdbms:
   # command: [ "sleep", "infinity" ]
   dbinit:
@@ -242,9 +223,6 @@ core:
       search:
         ports:
           - 8983
-      viewer:
-        ports:
-          - 8080
       ldap:
         ports:
           - 380
