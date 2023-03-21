@@ -3,19 +3,10 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   namespace: alfresco
-  name: &itemName activemq
-  labels: &labels
-    arkcase/component: alfresco.activemq
+  name: activemq
 spec:
   replicas: 1
-  selector:
-    matchLabels:
-      <<: *labels
-  serviceName: *itemName
   template:
-    metadata:
-      labels:
-        <<: *labels
     spec:
       imagePullSecrets:
         - name: aws-arkcase-pull
@@ -36,19 +27,10 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   namespace: alfresco
-  name: &itemName transform-router
-  labels: &labels
-    arkcase/component: alfresco.transform-router
+  name: transform-router
 spec:
   replicas: 1
-  selector:
-    matchLabels:
-      <<: *labels
-  serviceName: *itemName
   template:
-    metadata:
-      labels:
-        <<: *labels
     spec:
       imagePullSecrets:
         - name: aws-arkcase-pull
@@ -70,26 +52,17 @@ spec:
             - containerPort: 8095
           resources:
             limits:
-              memory: "512Mi"
+              memory: "512m"
       restartPolicy: Always
 ---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   namespace: alfresco
-  name: &itemName transform-core-aio
-  labels: &labels
-    arkcase/component: alfresco.transform-core-aio
+  name: transform-core-aio
 spec:
   replicas: 3
-  selector:
-    matchLabels:
-      <<: *labels
-  serviceName: *itemName
   template:
-    metadata:
-      labels:
-        <<: *labels
     spec:
       imagePullSecrets:
         - name: aws-arkcase-pull
@@ -111,26 +84,17 @@ spec:
             - containerPort: 8090
           resources:
             limits:
-              memory: "1536Mi"
+              memory: "1536m"
       restartPolicy: Always
 ---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   namespace: alfresco
-  name: &itemName content
-  labels: &labels
-    arkcase/component: alfresco.content
+  name: content
 spec:
   replicas: 1
-  selector:
-    matchLabels:
-      <<: *labels
-  serviceName: *itemName
   template:
-    metadata:
-      labels:
-        <<: *labels
     spec:
       imagePullSecrets:
         - name: aws-arkcase-pull
@@ -183,37 +147,28 @@ spec:
           resources:
             limits:
               memory: "2Gi"
-#              volumeMounts:
-#                - name: &contentRepository content-repository
-#                  mountPath: "/usr/local/tomcat/alf_data"
-#                - name: &licenseFile license-file
-#                  mountPath: "/usr/local/tomcat/shared/classes/alfresco/extension/license/armedia.lic"
-#          volumes:
-#            - name: *contentRepository
-#              hostPath:
-#                path: /opt/app/alfresco/data/repo
-#            - name: *licenseFile
-#              hostPath:
-#                path: /opt/app/alfresco/lib/armedia.lic
+          volumeMounts:
+            - name: &contentRepository content-repository
+              mountPath: "/usr/local/tomcat/alf_data"
+            - name: &licenseFile license-file
+              mountPath: "/usr/local/tomcat/shared/classes/alfresco/extension/license/armedia.lic"
+      volumes:
+        - name: *contentRepository
+          hostPath:
+            path: /opt/app/alfresco/data/repo
+        - name: *licenseFile
+          hostPath:
+            path: /opt/app/alfresco/lib/armedia.lic
       restartPolicy: Always
 ---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   namespace: alfresco
-  name: &itemName share
-  labels: &labels
-    arkcase/component: alfresco.share
+  name: share
 spec:
   replicas: 1
-  selector:
-    matchLabels:
-      <<: *labels
-  serviceName: *itemName
   template:
-    metadata:
-      labels:
-        <<: *labels
     spec:
       imagePullSecrets:
         - name: aws-arkcase-pull
@@ -247,19 +202,10 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   namespace: alfresco
-  name: &itemName shared-file-store
-  labels: &labels
-    arkcase/component: alfresco.shared-file-store
+  name: shared-file-store
 spec:
   replicas: 1
-  selector:
-    matchLabels:
-      <<: *labels
-  serviceName: *itemName
   template:
-    metadata:
-      labels:
-        <<: *labels
     spec:
       imagePullSecrets:
         - name: aws-arkcase-pull
@@ -280,35 +226,23 @@ spec:
           resources:
             limits:
               memory: "512Mi"
-#              volumeMounts:
-#                - name: &sharedFileStore shared-file-store
-#                  mountPath: /tmp/Alfresco
-#          volumes:
-#            - name: *sharedFileStore
-#              hostPath:
-#                path: /opt/app/alfresco/data/shared
+          volumeMounts:
+            - name: &sharedFileStore shared-file-store
+              mountPath: /tmp/Alfresco
+      volumes:
+        - name: *sharedFileStore
+          hostPath:
+            path: /opt/app/alfresco/data/shared
       restartPolicy: Always
 ---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   namespace: alfresco
-  name: &itemName search
-  labels: &labels
-    arkcase/component: alfresco.shared-file-store
+  name: search
 spec:
   replicas: 1
-  selector:
-    matchLabels:
-      <<: *labels
-  serviceName: *itemName
-  selector:
-    matchLabels:
-      <<: *labels
   template:
-    metadata:
-      labels:
-        <<: *labels
     spec:
       imagePullSecrets:
         - name: aws-arkcase-pull

@@ -1,10 +1,9 @@
 {{- if (include "arkcase.subsystem.enabled" .) }}
-{{- $component := "content" -}}
 ---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ include "arkcase.fullname" (dict "ctx" . "name" $component) | quote }}
+  name: {{ include "alfresco.fullname" | quote }}
   namespace: {{ .Release.Namespace | quote }}
   labels: {{- include "common.labels" . | nindent 4 }}
     {{- with (.Values.labels).common }}
@@ -26,7 +25,7 @@ spec:
   {{- end }}
   selector:
     matchLabels: {{- include "common.labels.matchLabels" . | nindent 6 }}
-  serviceName: {{ include "arkcase.fullname" (dict "ctx" . "name" $component) | quote }}
+  serviceName: {{ include "alfresco.serviceName" . | quote }}
   updateStrategy:
     type: {{ .Values.updateStrategy }}
     {{- if (eq "Recreate" .Values.updateStrategy) }}
