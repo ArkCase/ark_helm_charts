@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: &commonFullName {{ include "arkcase.fullname" . | quote }}
+  name: {{ include "arkcase.fullname" . | quote }}
   namespace: {{ .Release.Namespace | quote }}
   labels: {{- include "common.labels" . | nindent 4 }}
     {{- with (.Values.labels).common }}
@@ -16,7 +16,7 @@ spec:
   {{- end }}
   selector:
     matchLabels: {{- include "common.labels.matchLabels" . | nindent 6 }}
-  serviceName: *commonFullName
+  serviceName: {{ include "arkcase.name" . | quote }}
   updateStrategy:
     type: {{ .Values.updateStrategy }}
     {{- if (eq "Recreate" .Values.updateStrategy) }}
@@ -27,9 +27,9 @@ spec:
     {{- end }}
   template:
     metadata:
-      name: {{ include "common.name" . | quote }}
+      name: {{ include "arkcase.fullname" . | quote }}
       namespace: {{ .Release.Namespace | quote }}
-      labels: {{- include "common.labels" . | nindent 8 }}
+      labels: {{- include "arkcase.labels" . | nindent 8 }}
         {{- with (.Values.labels).common }}
         {{- toYaml . | nindent 8 }}
         {{- end }}

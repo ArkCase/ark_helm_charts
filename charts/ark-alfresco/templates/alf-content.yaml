@@ -3,20 +3,20 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ include "alfresco.fullname" | quote }}
+  name: {{ include "arkcase.fullname" . | quote }}
   namespace: {{ .Release.Namespace | quote }}
-  labels: {{- include "common.labels" . | nindent 4 }}
+  labels: {{- include "arkcase.labels" . | nindent 4 }}
     {{- with (.Values.labels).common }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
-    {{- with (.Values.labels).content }}
+    {{- with (.Values.labels).main }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
   annotations:
     {{- with (.Values.annotations).common }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
-    {{- with (.Values.annotations).content }}
+    {{- with (.Values.annotations).main }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
 spec:
@@ -24,8 +24,8 @@ spec:
   replicas: {{ .Values.replicaCount | default 1 }}
   {{- end }}
   selector:
-    matchLabels: {{- include "common.labels.matchLabels" . | nindent 6 }}
-  serviceName: {{ include "alfresco.serviceName" . | quote }}
+    matchLabels: {{- include "arkcase.labels.matchLabels" . | nindent 6 }}
+  serviceName: {{ include "arkcase.name" . | quote }}
   updateStrategy:
     type: {{ .Values.updateStrategy }}
     {{- if (eq "Recreate" .Values.updateStrategy) }}
@@ -36,9 +36,9 @@ spec:
     {{- end }}
   template:
     metadata:
-      name: {{ include "arkcase.name" (dict "ctx" . "name" $component) | quote }}
+      name: {{ include "arkcase.fullname" . | quote }}
       namespace: {{ .Release.Namespace | quote }}
-      labels: {{- include "common.labels" . | nindent 8 }}
+      labels: {{- include "arkcase.labels" . | nindent 8 }}
         {{- with (.Values.labels).common }}
         {{- toYaml . | nindent 8 }}
         {{- end }}

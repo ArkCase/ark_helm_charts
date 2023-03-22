@@ -2,7 +2,8 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ include "arkcase.fullname" . | quote}}
+  name: {{ include "arkcase.fullname" . | quote }}
+  namespace: {{ .Release.Namespace | quote }}
   labels: {{- include "arkcase.labels" . | nindent 4 }}
     {{- with (.Values.labels).common }}
     {{- toYaml . | nindent 4 }}
@@ -16,7 +17,7 @@ spec:
   {{- end }}
   selector:
     matchLabels: {{- include "arkcase.labels.matchLabels" . | nindent 6 }}
-  serviceName: {{ include "arkcase.fullname" . | quote }}
+  serviceName: {{ include "arkcase.name" . | quote }}
   updateStrategy:
     type: {{ .Values.updateStrategy }}
     {{- if (eq "Recreate" .Values.updateStrategy) }}
@@ -25,11 +26,9 @@ spec:
     rollingUpdate:
       partition: {{ .Values.rollingUpdatePartition }}
     {{- end }}
-  serviceName: {{ include "arkcase.fullname" . }}
   template:
     metadata:
-    metadata:
-      name: {{ include "common.name" . | quote }}
+      name: {{ include "arkcase.fullname" . | quote }}
       namespace: {{ .Release.Namespace | quote }}
       labels: {{- include "arkcase.labels" . | nindent 8 }}
         {{- with (.Values.labels).common }}
@@ -37,8 +36,9 @@ spec:
         {{- end }}
       annotations:
         # NB: Both these annotation values must be of type "string"
-        prometheus.io/scrape: "false"
+        prometheus.io/scrape: "true"
         prometheus.io/port: "9100"
+        timestamp: {{ date "20060102150405" now | quote }}
         {{- with (.Values.annotations).common }}
         {{- toYaml . | nindent 8 }}
         {{- end }}

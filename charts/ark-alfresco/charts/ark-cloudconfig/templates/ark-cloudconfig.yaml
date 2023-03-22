@@ -17,7 +17,7 @@ spec:
   {{- end }}
   selector:
     matchLabels: {{- include "arkcase.labels.matchLabels" . | nindent 6 }}
-  serviceName: {{ include "arkcase.fullname" . | quote }}
+  serviceName: {{ include "arkcase.name" . | quote }}
   updateStrategy:
     type: {{ .Values.updateStrategy }}
     {{- if (eq "Recreate" .Values.updateStrategy) }}
@@ -28,7 +28,7 @@ spec:
     {{- end }}
   template:
     metadata:
-      name: {{ include "common.name" . | quote }}
+      name: {{ include "arkcase.fullname" . | quote }}
       namespace: {{ .Release.Namespace | quote }}
       labels: {{- include "arkcase.labels" . | nindent 8 }}
         {{- with (.Values.labels).common }}
