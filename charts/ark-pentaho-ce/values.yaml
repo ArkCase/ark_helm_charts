@@ -9,14 +9,89 @@
 # This should group all application-specific configurations
 #
 configuration:
+
   # Console username and password: Please set a secure password
-  rootPassword: admin
+  adminUsername: &adminUsername "admin"
+  adminPassword: *adminUsername
 
-  # Limit, in GiB, of how big the KahaDB store can grow
-  maxStoreUsageGb: 50
+  # Use the default journal type. The other type is mem (or memory)
+  journalType: db
 
-  # Limit, in GiB, of how much temporary storage MariaDB can use
-  maxTempUsageGb: 10
+  db: 
+    # Uncomment the correct one
+    # dialect: "mysql5"
+    # dialect: "oracle10g"
+    # dialect: "sqlserver"
+    dialect: "postgresql"
+
+    hostname: "rdbms"
+    port: 5432
+    username: "postgres"
+    # Unfortunately this is required to run the DB initializer scripts
+    password: "adminPassword"
+
+  jdbc:
+    acm3:
+      database: "arkcase"
+      username: "arkcase"
+      password: "arkcase"
+
+    quartz:
+      database: "quartz"
+      username: "pentaho_user"
+      password: "password"
+
+    jackrabbit:
+      database: "jackrabbit"
+      username: "jcr_user"
+      password: "password"
+
+    hibernate: &hibernate
+      database: "hibernate"
+      username: "hibuser"
+      password: "password"
+
+    audit:
+      <<: *hibernate
+
+    pdiOperationsMart:
+      <<: *hibernate
+
+    pentahoOperationsMart:
+      <<: *hibernate
+
+    liveLogging:
+      <<: *hibernate
+
+  # TODO: This must be read from *somewhere* and provided to us
+  ldap:
+    domain: "dev.arkcase.com"
+    url: "ldaps://ldap:636"
+    baseDn: &baseDn "dc=dev,dc=arkcase,dc=com"
+    bind:
+      dn: "cn=ArkCase Administrator,cn=Users,dc=dev,dc=arkcase,dc=com"
+      password: "$arkcase-admin$"
+    admin:
+      dn: "cn=ArkCase Administrator"
+      role: "cn=ARKCASE_ADMINISTRATOR"
+    search:
+      base: *baseDn
+      users:
+        base: "cn=Users"
+        attribute: "sAMAccountName"
+        filter: "(&(objectClass=user)(sAMAccountName={0}))"
+        allFilter: "(objectClass=user)"
+        prefix: ""
+      groups:
+        base: "cn=Users"
+        attribute: "cn"
+        filter: "(&(objectClass=group)(cn={0}))"
+        allFilter: "(objectClass=group)"
+        membership: "(&(objectClass=group)(member={0}))"
+        ignoreCase: "false"
+        subtree: "true"
+        rolePrefix: ""
+        prefix: ""
 
 # Please leave the `replicaCount` to 1 for the time being. Clustering is not
 # supported yet.
@@ -25,9 +100,9 @@ replicaCount: 1
 platform: ""
 image:
   registry: "207428623785.dkr.ecr.us-east-1.amazonaws.com"
-  repository: "arkcase/pentaho"
+  repository: "arkcase/pentaho-ce"
   # Overrides the image tag whose default is the chart appVersion.
-  # tag: "20210716-45b2fb2"
+  # tag: "9.4.0.0-343"
   pullPolicy: IfNotPresent
 
 imagePullSecrets:
@@ -58,17 +133,18 @@ serviceAccount:
   name: ""
 
 securityContext:
-  template:
+  # template:
     # You must specify an `fsGroup` to allow MariaDB write access to mounted
     # volumes (as long as MariaDB runs as a non-root user, which should be the
     # case). Any random number will do.
-    fsGroup: 22
-    fsGroupChangePolicy: OnRootMismatch
-  mariadb:
+    # fsGroup: 996
+    # fsGroupChangePolicy: OnRootMismatch
+  # pentaho:
     # capabilities:
     #   drop:
     #   - ALL
     # readOnlyRootFilesystem: true
+
 resources:
   # We usually recommend not to specify default resources and to leave this as a conscious
   # choice for the user. This also increases chances charts run on environments with little
@@ -170,13 +246,19 @@ service:
 ## @param service.probes.spec.successThreshold Success threshold for liveness and readiness probes
 ##
   probes:
-    enabled: true
+    enabled: false
+    startup:
+      enabled: true
+    liveness:
+      enabled: false
+    readiness:
+      enabled: false
     spec:
       httpGet:
         path: "/pentaho/Login"
         port: *http
-      initialDelaySeconds: 0
-      periodSeconds: 1
+      initialDelaySeconds: 30
+      periodSeconds: 10
       timeoutSeconds: 1
       failureThreshold: 60
       successThreshold: 1
