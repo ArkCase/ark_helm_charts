@@ -101,89 +101,19 @@ Parameter: either the root context (i.e. "." or "$"), or
              - subsystem = a string with the name of the subsystem to query
 */ -}}
 {{- define "arkcase.subsystem.enabledOrExternal" }}
-  {{- $root := . }}
-  {{- $topLevel := true }}
-  {{- if and .ctx (kindIs "map" .ctx) (hasKey . "data") }}
-    {{- $root = get . "ctx" }}
-    {{- $topLevel = false }}
-  {{- end }}
-  {{- $map := (include "arkcase.subsystem" $root | fromYaml) }}
+  {{- $map := (include "arkcase.subsystem" . | fromYaml) }}
   {{- $data := ($map.ctx.Values.service | default dict) }}
-  {{- if not $topLevel }}
-    {{- $data = .data }}
-  {{- end }}
   {{- if (or ($map.data.enabled) ($data.external)) }}
     {{- true }}
   {{- end }}
 {{- end }}
 
-{{- define "arkcase.subsystem.service.name.render" -}}
-  {{- $ctx := .ctx -}}
-  {{- $data := .data -}}
-  {{- $name := "" -}}
-  {{- if (include "arkcase.subsystem.enabledOrExternal" (dict "ctx" $ctx "data" $data)) -}}
-    {{- $name = ($data.name | default "") | toString -}}
-    {{- if not $name -}}
-      {{- $name =  (include "common.name" $ctx) -}}
-      {{- if .name -}}
-        {{- $name = (printf "%s-%s" $name .name) -}}
-      {{- end -}}
-    {{- end -}}
-  {{- end -}}
-  {{- if $name -}}
-    {{- $name -}}
-  {{- end -}}
-{{- end -}}
-
-{{- define "arkcase.subsystem.service.name" -}}
-  {{- $ctx := . -}}
-  {{- $split := false -}}
-  {{- $container := "" -}}
-  {{- if and (hasKey $ctx "ctx") (or (hasKey $ctx "split") (hasKey $ctx "container")) -}}
-    {{- $ctx = .ctx -}}
-    {{- if hasKey . "container" -}}
-      {{- $container = (.container | toString) -}}
-      {{- $split = false -}}
-    {{- else if hasKey . "split" -}}
-      {{- $split = .split -}}
-      {{- if not (kindIs "bool" $split) -}}
-        {{- $split = eq "true" (.split | toString | lower) -}}
-      {{- end -}}
-    {{- else -}}
-      {{- $split = true -}}
-    {{- end -}}
-  {{- end -}}
-
-  {{- /* Gather the global ports */ -}}
-  {{- $global := pick $ctx.Values.service "ports" "type" "probes" "external" -}}
-  {{- $globalPorts := list -}}
-  {{- if $global.ports -}}
-    {{- if (not (kindIs "slice" $global.ports)) -}}
-      {{- fail (printf "The declaration for .Values.service.ports must be a list of ports (maps) (%s)" (kindOf $global.ports)) -}}
-    {{- end -}}
-    {{- $globalPorts = $global.ports -}}
-  {{- end -}}
-
-  {{- $containers := omit $ctx.Values.service "ports" "type" "probes" "external" -}}
-
-  {{- if $container -}}
-    {{- $spec := (get $containers $container) -}}
-    {{- if not $split -}}
-      {{- $container = "" -}}
-    {{- end -}}
-    {{- include "arkcase.subsystem.service.name.render" (dict "ctx" $ctx "data" $spec "name" $container) -}}
-  {{- else -}}
-    {{- $data := pick $global "type" "external" -}}
-    {{- include "arkcase.subsystem.service.name.render" (dict "ctx" $ctx "data" $data "name" "") -}}
-  {{- end -}}
-{{- end -}}
-
-
 {{- define "arkcase.subsystem.service.render" }}
   {{- $ctx := .ctx }}
   {{- $data := .data }}
-  {{- if (include "arkcase.subsystem.enabledOrExternal" (dict "ctx" $ctx "data" $data)) }}
-    {{- $external := (coalesce $data.external "") }}
+  {{- $global := .global }}
+  {{- if (include "arkcase.subsystem.enabledOrExternal" $ctx) }}
+    {{- $external := (coalesce $data.external $ctx.Values.service.external "") }}
 
     {{- $ports := (coalesce $data.ports list) }}
     {{- $type := (coalesce $data.type "ClusterIP") }}
@@ -198,13 +128,14 @@ Parameter: either the root context (i.e. "." or "$"), or
         {{- $name = (printf "%s-%s" $name .name) }}
       {{- end }}
     {{- end }}
+
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ $name | quote }}
+  name: {{ include "arkcase.name" $ctx | quote }}
   namespace: {{ $ctx.Release.Namespace | quote }}
-  labels: {{- include "common.labels" $ctx | nindent 4 }}
+  labels: {{- include "arkcase.labels" $ctx | nindent 4 }}
     {{- with $ctx.Values.labels }}
       {{- toYaml . | nindent 4 }}
     {{- end }}
@@ -237,7 +168,7 @@ spec:
       nodePort: {{ int .nodePort }}
         {{- end }}
       {{- end }}
-  selector: {{ include "common.labels.matchLabels" $ctx | nindent 4 }}
+  selector: {{ include "arkcase.labels.matchLabels" $ctx | nindent 4 }}
     {{- else }}
   # This is an external service, but using a hostname. This will cause a CNAME to
   # be created to route service requests to the external hostname
@@ -253,9 +184,9 @@ spec:
 apiVersion: v1
 kind: Endpoints
 metadata:
-  name: {{ $name | quote }}
+  name: {{ include "arkcase.name" $ctx | quote }}
   namespace: {{ $ctx.Release.Namespace | quote }}
-  labels: {{- include "common.labels" $ctx | nindent 4 }}
+  labels: {{- include "arkcase.labels" $ctx | nindent 4 }}
       {{- with $ctx.Values.labels }}
         {{- toYaml . | nindent 4 }}
       {{- end }}
@@ -293,68 +224,52 @@ Render subsystem service declarations based on whether an external host declarat
 Parameter: the root context (i.e. "." or "$")
 */ -}}
 {{- define "arkcase.subsystem.service" }}
+  {{- $partname := (include "arkcase.partname" .) -}}
   {{- $ctx := . }}
-  {{- $split := false }}
-  {{- $container := "" }}
-  {{- if and (hasKey $ctx "ctx") (or (hasKey $ctx "split") (hasKey $ctx "container")) }}
-    {{- $ctx = .ctx }}
-    {{- if hasKey . "container" }}
-      {{- $container = (.container | toString) }}
-      {{- $split = false }}
-    {{- else if hasKey . "split" }}
-      {{- $split = .split }}
-      {{- if not (kindIs "bool" $split) }}
-        {{- $split = eq "true" (.split | toString | lower) }}
-      {{- end }}
-    {{- else }}
-      {{- $split = true }}
-    {{- end }}
-  {{- end }}
+  {{- if hasKey . "ctx" -}}
+    {{- $ctx = .ctx -}}
+    {{- if hasKey . "subname" -}}
+      {{- $partname = (.subname | toString | lower) -}}
+      {{- $explicit = true -}}
+    {{- end -}}
+  {{- end -}}
+
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "Incorrect context given - either submit the root context as the only parameter, or a 'ctx' parameter pointing to it" -}}
+  {{- end -}}
 
   {{- /* Gather the global ports */ -}}
   {{- $global := pick $ctx.Values.service "ports" "type" "probes" "external" }}
   {{- $globalPorts := list }}
   {{- if $global.ports }}
-    {{- if (not (kindIs "slice" $global.ports)) }}
+    {{- if not (kindIs "slice" $global.ports) }}
       {{- fail (printf "The declaration for .Values.service.ports must be a list of ports (maps) (%s)" (kindOf $global.ports)) }}
     {{- end }}
     {{- $globalPorts = $global.ports }}
   {{- end }}
 
-  {{- $containers := omit $ctx.Values.service "ports" "type" "probes" "external" }}
+  {{- if (include "arkcase.subsystem.enabledOrExternal" $ctx) }}
+    {{- $parts := omit $ctx.Values.service "ports" "type" "probes" "external" }}
+    {{- $external := ($global.external | default "") -}}
 
-  {{- /* Render the work to be performed */ -}}
-  {{- $work := list }}
-  {{- if $split }}
-    {{- /* Render the per-container work items, as necessary */ -}}
-    {{- range $container, $spec := $containers }}
-      {{- $work = append $work (dict "ctx" $ctx "data" $spec "name" $container) }}
-    {{- end }}
-  {{- else if $container }}
-    {{- /* Render a single container as the global service, as necessary */ -}}
-    {{- if hasKey $containers $container }}
-      {{- /* The single-container option supplants the global service */ -}}
-      {{- $work = append $work (dict "ctx" $ctx "data" (get $containers $container) "name" "") }}
-    {{- end }}
-  {{- else }}
-    {{- /* Render a global service with all declared ports, as necessary */ -}}
-    {{- $containerPorts := list }}
-    {{- range $container, $spec := $containers }}
-      {{- if and (kindIs "map" $spec) $spec.ports }}
-        {{- if (not (kindIs "slice" $spec.ports)) }}
-          {{- fail (printf "The declaration for .Values.service.%s.ports must be a list of ports (maps) (%s)" $container (kindOf $spec.ports)) }}
-        {{- end }}
-        {{- $containerPorts = concat $containerPorts $spec.ports }}
+    {{- /* Render the work to be performed */ -}}
+    {{- $work := list }}
+    {{- if $partname }}
+      {{- /* Render a single part as the global service, as necessary */ -}}
+      {{- if hasKey $parts $partname }}
+        {{- /* The single-part option supplants the global service */ -}}
+        {{- $work = append $work (dict "ctx" $ctx "data" (get $parts $partname) "global" $global "subname" $partname) }}
       {{- end }}
+    {{- else }}
+      {{- /* Render a global service with only the global ports */ -}}
+      {{- $data := pick $global "type" "external" }}
+      {{- $data = set $data "ports" $globalPorts }}
+      {{- /* Add the work item */ -}}
+      {{- $work = append $work (dict "ctx" $ctx "data" $data "subname" $partname) }}
     {{- end }}
-    {{- /* It will fall to the values author to avoid duplication */ -}}
-    {{- $data := pick $global "type" "external" }}
-    {{- $data = set $data "ports" (concat $globalPorts $containerPorts) }}
-    {{- /* Add the work item */ -}}
-    {{- $work = append $work (dict "ctx" $ctx "data" $data "name" "") }}
-  {{- end }}
-  {{- range $item := $work }}
-    {{- include "arkcase.subsystem.service.render" . }}
+    {{- range $work }}
+      {{- include "arkcase.subsystem.service.render" . }}
+    {{- end }}
   {{- end }}
 {{- end }}
 
@@ -403,16 +318,33 @@ Render container port declarations based on what's declared in the values file. 
 Parameter: the root context (i.e. "." or "$"), or a map which descibes the ports and probes
 */ -}}
 {{- define "arkcase.subsystem.ports" }}
-  {{- $root := . -}}
-  {{- if $root -}}
-    {{- if not (kindIs "map" $root) -}}
-      {{- fail "The parameter given must be a map" -}}
+  {{- $partname := (include "arkcase.partname" .) -}}
+  {{- $ctx := . }}
+  {{- if hasKey . "ctx" -}}
+    {{- $ctx = .ctx -}}
+    {{- if hasKey . "subname" -}}
+      {{- $partname = (.subname | toString | lower) -}}
+      {{- $explicit = true -}}
     {{- end -}}
-    {{- /* This is a simple detection of whether we were given the root, or a specific map */ -}}
-    {{- if (($root.Values).service | default dict).ports -}}
-      {{- $root = $root.Values.service -}}
+  {{- end -}}
+
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "Incorrect context given - either submit the root context as the only parameter, or a 'ctx' parameter pointing to it" -}}
+  {{- end -}}
+
+  {{- $service := $ctx.Values.service -}}
+  {{- $global := pick $service "ports" "type" "probes" "external" }}
+  {{- $parts := omit $service "ports" "type" "probes" "external" }}
+
+  {{- if $partname -}}
+    {{- if not (hasKey $service $partname) -}}
+      {{- fail (printf "No part named [%s] found in the Values.service declaration" $partname) -}}
     {{- end -}}
-    {{- with $root }}
+    {{- $service = get $ctx.Values.service $partname -}}
+  {{- end -}}
+
+  {{- if (include "arkcase.subsystem.enabledOrExternal" $ctx) }}
+    {{- with $service }}
       {{- with .ports -}}
 ports:
         {{- range . }}

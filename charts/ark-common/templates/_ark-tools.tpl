@@ -1,91 +1,104 @@
 {{/* vim: set filetype=mustache: */}}
 
-{{- /* Output the full name, optionally supporting a subcomponent name for charts with mutliple components */ -}}
-{{- define "arkcase.fullname" -}}
+{{- define "arkcase.toBoolean" -}}
+  {{- $v := (. | toString | lower) -}}
+  {{- if eq "true" $v -}}
+    {{- true -}}
+  {{- end -}}
+{{- end -}}
+
+{{- define "arkcase.partname" -}}
   {{- $ctx := . -}}
-  {{- $subname := "" -}}
-  {{- if (hasKey $ctx "ctx") -}}
+  {{- $explicit := false -}}
+  {{- $partname := "" -}}
+
+  {{- if hasKey . "ctx" -}}
     {{- $ctx = .ctx -}}
-    {{- /* Next, make sure we have a value to seek out */ -}}
-    {{- if .name -}}
-      {{- $subname = .name -}}
-      {{- if not (kindIs "string" $subname) -}}
-        {{- fail "The 'name' parameter must be a string" -}}
-      {{- end -}}
+    {{- if hasKey . "subname" -}}
+      {{- $partname = (.subname | toString | lower) -}}
+      {{- $explicit = true -}}
     {{- end -}}
   {{- end -}}
 
-  {{- if not (kindIs "map" $ctx) -}}
-    {{- fail "The given context parameter is not a map" -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "Incorrect context given - either submit the root context as the only parameter, or a 'ctx' parameter pointing to it" -}}
   {{- end -}}
+
+  {{- if not $explicit -}}
+    {{- $template := ($ctx.Template.Name | base | lower) -}}
+    {{- $template = (trimSuffix (ext $template) $template) -}}
+
+    {{- /* Does it match our required expression? */ -}}
+    {{- if regexMatch "^ark-[a-z0-9]+-[a-z0-9]+$" $template -}}
+      {{- $partname = (regexReplaceAll "^(ark-[a-z0-9]+-)" $template "") -}}
+    {{- end -}}
+  {{- end -}}
+
+  {{- if and $partname (regexMatch "^[a-z0-9]+$" $partname) -}}
+    {{- $partname -}}
+  {{- end -}}
+{{- end -}}
+
+{{- /* Output the full name, optionally supporting a subcomponent name for charts with mutliple components */ -}}
+{{- define "arkcase.fullname" -}}
+  {{- $partname := (include "arkcase.partname" .) -}}
+  {{- $ctx := . -}}
+
+  {{- if (hasKey $ctx "ctx") -}}
+    {{- $ctx = .ctx -}}
+  {{- end -}}
+
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "Incorrect context given - either submit the root context as the only parameter, or a 'ctx' parameter pointing to it" -}}
   {{- end -}}
 
   {{- $fullname := (include "common.fullname" $ctx) -}}
-  {{- if $subname -}}
-    {{- $fullname = (printf "%s-%s" $fullname $subname) -}}
+  {{- if $partname -}}
+    {{- $fullname = (printf "%s-%s" $fullname $partname) -}}
   {{- end -}}
   {{- $fullname | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 
 {{- /* Output the short name, optionally supporting a subcomponent name for charts with mutliple components */ -}}
 {{- define "arkcase.name" -}}
+  {{- $partname := (include "arkcase.partname" .) -}}
   {{- $ctx := . -}}
-  {{- $subname := "" -}}
+
   {{- if (hasKey $ctx "ctx") -}}
     {{- $ctx = .ctx -}}
-    {{- /* Next, make sure we have a value to seek out */ -}}
-    {{- if .name -}}
-      {{- $subname = .name -}}
-      {{- if not (kindIs "string" $subname) -}}
-        {{- fail "The 'name' parameter must be a string" -}}
-      {{- end -}}
-    {{- end -}}
   {{- end -}}
 
-  {{- if not (kindIs "map" $ctx) -}}
-    {{- fail "The given context parameter is not a map" -}}
-  {{- end -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "Incorrect context given - either submit the root context as the only parameter, or a 'ctx' parameter pointing to it" -}}
   {{- end -}}
 
   {{- $name := (include "common.name" $ctx) -}}
-  {{- if $subname -}}
-    {{- $name = (printf "%s-%s" $name $subname) -}}
+  {{- if $partname -}}
+    {{- $name = (printf "%s-%s" $name $partname) -}}
   {{- end -}}
   {{- $name | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 
 {{- /* Check to see if the given object is the top-level context map */ -}}
 {{- define "arkcase.isRootContext" -}}
-  {{- if and (hasKey . "Values") (hasKey . "Chart") (hasKey . "Release") (hasKey . "Files") (hasKey . "Capabilities") (hasKey . "Template") -}}
+  {{- if and (kindIs "map" .) (hasKey . "Values") (hasKey . "Chart") (hasKey . "Release") (hasKey . "Files") (hasKey . "Capabilities") (hasKey . "Template") -}}
     {{- true -}}
   {{- end -}}
 {{- end -}}
 
 {{- define "arkcase.labels" -}}
+  {{- $partname := (include "arkcase.partname" .) -}}
   {{- $ctx := . -}}
-  {{- $subname := "" -}}
+
   {{- if (hasKey $ctx "ctx") -}}
     {{- $ctx = .ctx -}}
-    {{- /* Next, make sure we have a value to seek out */ -}}
-    {{- if .name -}}
-      {{- $subname = .name -}}
-      {{- if not (kindIs "string" $subname) -}}
-        {{- fail "The 'name' parameter must be a string" -}}
-      {{- end -}}
-    {{- end -}}
   {{- end -}}
 
-  {{- if not (kindIs "map" $ctx) -}}
-    {{- fail "The given context parameter is not a map" -}}
-  {{- end -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "Incorrect context given - either submit the root context as the only parameter, or a 'ctx' parameter pointing to it" -}}
   {{- end -}}
-{{ include "arkcase.labels.standard" (dict "ctx" $ctx "name" $subname) }}
+
+{{ include "arkcase.labels.standard" . }}
 {{- if $ctx.Chart.AppVersion }}
 app.kubernetes.io/version: {{ $ctx.Chart.AppVersion | quote }}
 {{- end }}
@@ -101,26 +114,18 @@ version: {{ $ctx.Chart.AppVersion | quote }}
 Kubernetes standard labels
 */}}
 {{- define "arkcase.labels.standard" -}}
+  {{- $partname := (include "arkcase.partname" .) -}}
   {{- $ctx := . -}}
-  {{- $subname := "" -}}
+
   {{- if (hasKey $ctx "ctx") -}}
     {{- $ctx = .ctx -}}
-    {{- /* Next, make sure we have a value to seek out */ -}}
-    {{- if .name -}}
-      {{- $subname = .name -}}
-      {{- if not (kindIs "string" $subname) -}}
-        {{- fail "The 'name' parameter must be a string" -}}
-      {{- end -}}
-    {{- end -}}
   {{- end -}}
 
-  {{- if not (kindIs "map" $ctx) -}}
-    {{- fail "The given context parameter is not a map" -}}
-  {{- end -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "Incorrect context given - either submit the root context as the only parameter, or a 'ctx' parameter pointing to it" -}}
   {{- end -}}
-{{ include "arkcase.selectorLabels" (dict "ctx" $ctx "name" $subname) }}
+
+{{ include "arkcase.selectorLabels" . }}
 app.kubernetes.io/managed-by: {{ $ctx.Release.Service }}
 helm.sh/chart: {{ include "common.names.chart" $ctx }}
 {{- end -}}
@@ -129,29 +134,21 @@ helm.sh/chart: {{ include "common.names.chart" $ctx }}
 Labels to use on deploy.spec.selector.matchLabels and svc.spec.selector
 */}}
 {{- define "arkcase.labels.matchLabels" -}}
+  {{- $partname := (include "arkcase.partname" .) -}}
   {{- $ctx := . -}}
-  {{- $subname := "" -}}
+
   {{- if (hasKey $ctx "ctx") -}}
     {{- $ctx = .ctx -}}
-    {{- /* Next, make sure we have a value to seek out */ -}}
-    {{- if .name -}}
-      {{- $subname = .name -}}
-      {{- if not (kindIs "string" $subname) -}}
-        {{- fail "The 'name' parameter must be a string" -}}
-      {{- end -}}
-    {{- end -}}
   {{- end -}}
 
-  {{- if not (kindIs "map" $ctx) -}}
-    {{- fail "The given context parameter is not a map" -}}
-  {{- end -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "Incorrect context given - either submit the root context as the only parameter, or a 'ctx' parameter pointing to it" -}}
   {{- end -}}
+
 app.kubernetes.io/instance: {{ $ctx.Release.Name }}
 app.kubernetes.io/name: {{ include "common.names.name" $ctx }}
-  {{- if $subname }}
-app.kubernetes.io/subname: {{ $subname }}
+  {{- if $partname }}
+app.kubernetes.io/part: {{ $partname }}
   {{- end }}
 {{- end -}}
 

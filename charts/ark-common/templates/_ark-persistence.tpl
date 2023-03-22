@@ -82,6 +82,7 @@ Render the PersistentVolume and PersistentVolumeClaim objects for a given volume
   {{- if not $volumeName -}}
     {{- fail "Must provide the 'name' of the volume objects to declare" -}}
   {{- end -}}
+  {{- $partname := (include "arkcase.partname" $ctx) -}}
 
   {{- if (include "arkcase.persistence.enabled" $ctx) -}}
 
@@ -122,7 +123,7 @@ kind: PersistentVolume
 metadata:
   name: {{ $volumeObjectName | quote }}
   namespace: {{ $ctx.Release.Namespace | quote }}
-  labels: {{- include "common.labels" $ctx | nindent 4 }}
+  labels: {{- include "arkcase.labels" $ctx | nindent 4 }}
     {{- with $ctx.Values.labels }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
@@ -167,6 +168,9 @@ spec:
     {{- $localPath := $volumeData.localPath -}}
     {{- if not $localPath -}}
       {{- $localPath = coalesce ($ctx.Values.persistence).localPath (($ctx.Values.global).persistence).localPath "/opt/app/arkcase" -}}
+      {{- if $partname -}}
+        {{- $volumeName = (printf "%s-%s" $partname $volumeName) -}}
+      {{- end -}}
       {{- $localPath = (printf "%s/%s/%s" $localPath (include "arkcase.subsystem.name" $ctx) $volumeName) -}}
     {{- end }}
     path: {{ $localPath | quote }}
@@ -199,7 +203,7 @@ apiVersion: v1
 metadata:
   name: {{ $objectName | quote }}
   namespace: {{ $ctx.Release.Namespace | quote }}
-  labels: {{- include "common.labels" $ctx | nindent 4 }}
+  labels: {{- include "arkcase.labels" $ctx | nindent 4 }}
     {{- with $ctx.Values.labels }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
