@@ -168,7 +168,7 @@ spec:
       nodePort: {{ int .nodePort }}
         {{- end }}
       {{- end }}
-  selector: {{ include "arkcase.labels.matchLabels" $ctx | nindent 4 }}
+  selector: {{- include "arkcase.labels.matchLabels" $ctx | nindent 4 }}
     {{- else }}
   # This is an external service, but using a hostname. This will cause a CNAME to
   # be created to route service requests to the external hostname
@@ -238,17 +238,17 @@ Parameter: the root context (i.e. "." or "$")
     {{- fail "Incorrect context given - either submit the root context as the only parameter, or a 'ctx' parameter pointing to it" -}}
   {{- end -}}
 
-  {{- /* Gather the global ports */ -}}
-  {{- $global := pick $ctx.Values.service "ports" "type" "probes" "external" }}
-  {{- $globalPorts := list }}
-  {{- if $global.ports }}
-    {{- if not (kindIs "slice" $global.ports) }}
-      {{- fail (printf "The declaration for .Values.service.ports must be a list of ports (maps) (%s)" (kindOf $global.ports)) }}
-    {{- end }}
-    {{- $globalPorts = $global.ports }}
-  {{- end }}
-
   {{- if (include "arkcase.subsystem.enabledOrExternal" $ctx) }}
+    {{- /* Gather the global ports */ -}}
+    {{- $global := pick $ctx.Values.service "ports" "type" "probes" "external" }}
+    {{- $globalPorts := list }}
+    {{- if $global.ports }}
+      {{- if not (kindIs "slice" $global.ports) }}
+        {{- fail (printf "The declaration for .Values.service.ports must be a list of ports (maps) (%s)" (kindOf $global.ports)) }}
+      {{- end }}
+      {{- $globalPorts = $global.ports }}
+    {{- end }}
+
     {{- $parts := omit $ctx.Values.service "ports" "type" "probes" "external" }}
     {{- $external := ($global.external | default "") -}}
 
@@ -261,8 +261,11 @@ Parameter: the root context (i.e. "." or "$")
         {{- $work = append $work (dict "ctx" $ctx "data" (get $parts $partname) "global" $global "subname" $partname) }}
       {{- end }}
     {{- else }}
-      {{- /* Render a global service with only the global ports */ -}}
+      {{- /* Render a global service with all the ports */ -}}
       {{- $data := pick $global "type" "external" }}
+      {{- range $pn, $p := $parts -}}
+        {{- $globalPorts = concat $globalPorts $p.ports -}}
+      {{- end -}}
       {{- $data = set $data "ports" $globalPorts }}
       {{- /* Add the work item */ -}}
       {{- $work = append $work (dict "ctx" $ctx "data" $data "subname" $partname) }}
@@ -318,66 +321,63 @@ Render container port declarations based on what's declared in the values file. 
 Parameter: the root context (i.e. "." or "$"), or a map which descibes the ports and probes
 */ -}}
 {{- define "arkcase.subsystem.ports" }}
-  {{- $partname := (include "arkcase.partname" .) -}}
-  {{- $ctx := . }}
-  {{- if hasKey . "ctx" -}}
-    {{- $ctx = .ctx -}}
-    {{- if hasKey . "subname" -}}
-      {{- $partname = (.subname | toString | lower) -}}
-      {{- $explicit = true -}}
+  {{- $service := . -}}
+  {{- if (include "arkcase.isRootContext" .) -}}
+    {{- /* No parameters given, so deduce everything */ -}}
+    {{- $partname := (include "arkcase.partname" .) -}}
+    {{- $ctx := . }}
+    {{- if not (include "arkcase.isRootContext" $ctx) -}}
+      {{- fail "Incorrect context given - either submit the root context as the only parameter, or a 'ctx' parameter pointing to it" -}}
+    {{- end -}}
+    {{- $service = pick $ctx.Values.service "ports" "type" "probes" "external" -}}
+    {{- $parts := omit $ctx.Values.service "ports" "type" "probes" "external" }}
+    {{- if $partname -}}
+      {{- if not (hasKey $parts $partname) -}}
+        {{- fail (printf "No part named [%s] found in the Values.service declaration" $partname) -}}
+      {{- end -}}
+      {{- $service = get $parts $partname -}}
+    {{- else -}}
+      {{- $ports := $service.ports -}}
+      {{- range $partname, $p := $parts -}}
+        {{- $ports = concat $ports $p.ports -}}
+      {{- end -}}
+      {{- $service = set $service "ports" $ports -}}
     {{- end -}}
   {{- end -}}
 
-  {{- if not (include "arkcase.isRootContext" $ctx) -}}
-    {{- fail "Incorrect context given - either submit the root context as the only parameter, or a 'ctx' parameter pointing to it" -}}
-  {{- end -}}
-
-  {{- $service := $ctx.Values.service -}}
-  {{- $global := pick $service "ports" "type" "probes" "external" }}
-  {{- $parts := omit $service "ports" "type" "probes" "external" }}
-
-  {{- if $partname -}}
-    {{- if not (hasKey $service $partname) -}}
-      {{- fail (printf "No part named [%s] found in the Values.service declaration" $partname) -}}
-    {{- end -}}
-    {{- $service = get $ctx.Values.service $partname -}}
-  {{- end -}}
-
-  {{- if (include "arkcase.subsystem.enabledOrExternal" $ctx) }}
-    {{- with $service }}
-      {{- with .ports -}}
+  {{- with $service }}
+    {{- with .ports -}}
 ports:
-        {{- range . }}
+      {{- range . }}
   - name: {{ (required "Port specifications must contain a name" .name) | quote }}
     protocol: {{ coalesce .protocol "TCP" }}
     containerPort: {{ required (printf "Port [%s] doesn't have a port number" .name) .port }}
+      {{- end }}
+    {{- end }}
+    {{- $probes := (coalesce .probes dict) }}
+    {{- $common := (coalesce $probes.spec dict) }}
+    {{- $startup := (coalesce $probes.startup dict) }}
+    {{- $readiness := (coalesce $probes.readiness dict) }}
+    {{- $liveness := (coalesce $probes.liveness dict) }}
+    {{- if or ($probes.enabled) (not (hasKey $probes "enabled")) }}
+      {{- if or ($startup.enabled) (not (hasKey $startup "enabled")) -}}
+        {{- with (mergeOverwrite $common $startup) }}
+          {{- if (include "arkcase.subsystem.probeIsValid" .) }}
+startupProbe: {{- toYaml (unset . "enabled") | nindent 2 }}
+          {{- end -}}
         {{- end }}
       {{- end }}
-      {{- $probes := (coalesce .probes dict) }}
-      {{- $common := (coalesce $probes.spec dict) }}
-      {{- $startup := (coalesce $probes.startup dict) }}
-      {{- $readiness := (coalesce $probes.readiness dict) }}
-      {{- $liveness := (coalesce $probes.liveness dict) }}
-      {{- if or ($probes.enabled) (not (hasKey $probes "enabled")) }}
-        {{- if or ($startup.enabled) (not (hasKey $startup "enabled")) -}}
-          {{- with (mergeOverwrite $common $startup) }}
-            {{- if (include "arkcase.subsystem.probeIsValid" .) }}
-startupProbe: {{- toYaml (unset . "enabled") | nindent 2 }}
-            {{- end -}}
-          {{- end }}
-        {{- end }}
-        {{- if or ($readiness.enabled) (not (hasKey $readiness "enabled")) -}}
-          {{- with (mergeOverwrite $common $readiness) }}
-            {{- if (include "arkcase.subsystem.probeIsValid" .) }}
+      {{- if or ($readiness.enabled) (not (hasKey $readiness "enabled")) -}}
+        {{- with (mergeOverwrite $common $readiness) }}
+          {{- if (include "arkcase.subsystem.probeIsValid" .) }}
 readinessProbe: {{- toYaml (unset . "enabled") | nindent 2 }}
-            {{- end }}
           {{- end }}
         {{- end }}
-        {{- if or ($liveness.enabled) (not (hasKey $liveness "enabled")) -}}
-          {{- with (mergeOverwrite $common $liveness) }}
-            {{- if (include "arkcase.subsystem.probeIsValid" .) }}
+      {{- end }}
+      {{- if or ($liveness.enabled) (not (hasKey $liveness "enabled")) -}}
+        {{- with (mergeOverwrite $common $liveness) }}
+          {{- if (include "arkcase.subsystem.probeIsValid" .) }}
 livenessProbe: {{- toYaml (unset . "enabled") | nindent 2 }}
-            {{- end }}
           {{- end }}
         {{- end }}
       {{- end }}
