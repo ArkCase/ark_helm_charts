@@ -123,7 +123,7 @@ spec:
                 -Dcsrf.filter.enabled=false
                 -Ddsync.service.uris=http://localhost:9090/alfresco
           {{- with (include "arkcase.values" (dict "ctx" . "base" "command") | fromYaml) }}
-          command: {{- toYaml .value | nindent 12 }}
+          command: {{ toJson .value }}
           {{- end }}
           {{- $resources := (include "arkcase.values" (dict "ctx" . "base" "resources") | fromYaml) }}
           {{- if $resources }}
