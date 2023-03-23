@@ -7,11 +7,11 @@ metadata:
   namespace: {{ .Release.Namespace | quote }}
   labels: {{- include "arkcase.labels" . | nindent 4 }}
     {{- with (include "arkcase.values" (dict "ctx" . "base" "labels") | fromYaml) }}
-      {{- toYaml . | nindent 4 }}
+      {{- toYaml .value | nindent 4 }}
     {{- end }}
   annotations:
     {{- with (include "arkcase.values" (dict "ctx" . "base" "annotations") | fromYaml) }}
-      {{- toYaml . | nindent 4 }}
+      {{- toYaml .value | nindent 4 }}
     {{- end }}
 spec:
   {{- if not (.Values.autoscaling).enabled }}
@@ -33,29 +33,33 @@ spec:
       name: {{ include "arkcase.fullname" . | quote }}
       namespace: {{ .Release.Namespace | quote }}
       labels: {{- include "arkcase.labels" . | nindent 8 }}
-        {{- include "arkcase.values" (dict "ctx" . "base" "labels") | nindent 8 }}
+        {{- with (include "arkcase.values" (dict "ctx" . "base" "labels") | fromYaml) }}
+          {{- .value | toYaml | nindent 8 }}
+        {{- end }}
       annotations:
         # NB: Both these annotation values must be of type "string"
         prometheus.io/scrape: "true"
         prometheus.io/port: "9100"
         timestamp: {{ date "20060102150405" now | quote }}
-        {{- include "arkcase.values" (dict "ctx" . "base" "labels") | nindent 8 }}
+        {{- with (include "arkcase.values" (dict "ctx" . "base" "annotations") | fromYaml) }}
+          {{- .values | toYaml | nindent 8 }}
+        {{- end }}
     spec:
-      {{- with (include "arkcase.values" (dict "ctx" . "base" "imagePullSecrets")) }}
-      imagePullSecrets: {{- . | nindent 8 }}
+      {{- with (include "arkcase.values" (dict "ctx" . "base" "imagePullSecrets") | fromYaml) }}
+      imagePullSecrets: {{- .value | nindent 8 }}
       {{- end }}
-      {{- with (include "arkcase.values" (dict "ctx" . "base" "hostAliases")) }}
-      hostAliases: {{- . | nindent 8 }}
+      {{- with (include "arkcase.values" (dict "ctx" . "base" "hostAliases") | fromYaml) }}
+      hostAliases: {{- .value | nindent 8 }}
       {{- end }}
-      {{- with (include "arkcase.values" (dict "ctx" . "base" "schedulerName")) }}
-      schedulerName: {{ . | quote }}
+      {{- with (include "arkcase.values" (dict "ctx" . "base" "schedulerName") | fromYaml) }}
+      schedulerName: {{ .value | quote }}
       {{- end }}
-      {{- with (include "arkcase.values" (dict "ctx" . "base" "serviceAccountName")) }}
-      serviceAccountName: {{ . | quote }}
+      {{- with (include "arkcase.values" (dict "ctx" . "base" "serviceAccountName") | fromYaml) }}
+      serviceAccountName: {{ .value | quote }}
       {{- end }}
       {{- with (include "arkcase.values" (dict "ctx" . "base" "securityContext") | fromYaml) }}
         {{- with .template }}
-      securityContext: {{- toYaml . | nindent 8 }}
+      securityContext: {{- toYaml .value | nindent 8 }}
         {{- end }}
       {{- end }}
       containers:
@@ -73,24 +77,24 @@ spec:
               value: >-
                 -XX:MinRAMPercentage=50
                 -XX:MaxRAMPercentage=80
-          {{- with (include "arkcase.values" (dict "ctx" . "base" "command")) }}
+          {{- with (include "arkcase.values" (dict "ctx" . "base" "command") | fromYaml) }}
           command: {{- . | nindent 12 }}
           {{- end }}
           {{- $resources := (include "arkcase.values" (dict "ctx" . "base" "resources") | fromYaml) }}
           {{- if $resources }}
-          resources: {{- toYaml $resources | nindent 12 }}
+          resources: {{- toYaml $resources.value | nindent 12 }}
           {{- else }}
           resources:
             limits:
               memory: "1536Mi"
           {{- end }}
       {{- with (include "arkcase.values" (dict "ctx" . "base" "nodeSelector") | fromYaml) }}
-      nodeSelector: {{- toYaml . | nindent 8 }}
+      nodeSelector: {{- toYaml .value | nindent 8 }}
       {{- end }}
       {{- with (include "arkcase.values" (dict "ctx" . "base" "affinity") | fromYaml) }}
-      affinity: {{- toYaml . | nindent 8 }}
+      affinity: {{- toYaml .value | nindent 8 }}
       {{- end }}
       {{- with (include "arkcase.values" (dict "ctx" . "base" "tolerations") | fromYaml) }}
-      tolerations: {{- toYaml . | nindent 8 }}
+      tolerations: {{- toYaml .value | nindent 8 }}
       {{- end }}
 {{- end }}
