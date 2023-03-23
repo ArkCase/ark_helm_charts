@@ -548,10 +548,10 @@ Render the image name taking into account the registry, repository, image name, 
   {{- $repositoryName := "" -}}
   {{- $tag := "" -}}
   {{- $explicit := false -}}
-  {{- if not $ctx.Values -}}
-    {{- $ctx = (required "No 'ctx' parameter was given pointing to the root context" .ctx) -}}
-    {{- if not $ctx.Values -}}
-      {{- fail ("The 'ctx' parameter does not appear to point to the root context") -}}
+  {{- if not (include "arkcase.isRootContext" . -}}
+    {{- $ctx = .ctx -}}
+    {{- if not (include "arkcase.isRootContext" $ctx -}}
+      {{- fail "The given 'ctx' parameter is not the root context" -}}
     {{- end -}}
     {{- $registryName = .registry -}}
     {{- $repositoryName = .repository -}}
