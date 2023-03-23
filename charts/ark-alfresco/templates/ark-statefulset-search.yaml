@@ -1,0 +1,43 @@
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  namespace: alfresco
+  name: search
+spec:
+  replicas: 1
+  template:
+    spec:
+      imagePullSecrets:
+        - name: aws-arkcase-pull
+      containers:
+        - name: search
+          image: 345280441424.dkr.ecr.ap-south-1.amazonaws.com/ark_alfresco_search:2.0.5
+          env:
+            - name: SOLR_ALFRESCO_HOST
+              value: "content"
+            - name: SOLR_ALFRESCO_PORT
+              value: "8080"
+            - name: SOLR_SOLR_HOST
+              value: "search"
+            - name: SOLR_SOLR_PORT
+              value: "8983"
+            - name: SOLR_CREATE_ALFRESCO_DEFAULTS
+              value: "alfresco,archive"
+            - name: ALFRESCO_SECURE_COMMS
+              value: "secret"
+            - name: JAVA_TOOL_OPTIONS
+              value: >-
+                -Dalfresco.secureComms.secret=secret
+            - name: SOLR_JAVA_MEM
+              value: >-
+                -Xms2g
+                -Xmx2g
+              #   -XX:MinRAMPercentage=50
+              #   -XX:MaxRAMPercentage=80
+          ports:
+            - containerPort: 8983
+          resources:
+            limits:
+              memory: "2Gi"
+      restartPolicy: Always

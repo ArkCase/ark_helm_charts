@@ -1,0 +1,24 @@
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  namespace: alfresco
+  name: activemq
+spec:
+  replicas: 1
+  template:
+    spec:
+      imagePullSecrets:
+        - name: aws-arkcase-pull
+      containers:
+        - name: activemq
+          image: 345280441424.dkr.ecr.ap-south-1.amazonaws.com/ark_alfresco_activemq:5.17.1
+          ports:
+            - containerPort: 5672
+            - containerPort: 8161
+            - containerPort: 61613
+            - containerPort: 61616
+          resources:
+            limits:
+              memory: "1Gi"
+      restartPolicy: Always

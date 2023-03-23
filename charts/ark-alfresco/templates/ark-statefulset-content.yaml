@@ -1,98 +1,18 @@
-{{- if (include "arkcase.subsystem.enabled" .) }}
 ---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ include "arkcase.fullname" . | quote }}
-  namespace: {{ .Release.Namespace | quote }}
-  labels: {{- include "arkcase.labels" . | nindent 4 }}
-    {{- with (.Values.labels).common }}
-    {{- toYaml . | nindent 4 }}
-    {{- end }}
-    {{- with (.Values.labels).main }}
-    {{- toYaml . | nindent 4 }}
-    {{- end }}
-  annotations:
-    {{- with (.Values.annotations).common }}
-    {{- toYaml . | nindent 4 }}
-    {{- end }}
-    {{- with (.Values.annotations).main }}
-    {{- toYaml . | nindent 4 }}
-    {{- end }}
+  namespace: alfresco
+  name: content
 spec:
-  {{- if not (.Values.autoscaling).enabled }}
-  replicas: {{ .Values.replicaCount | default 1 }}
-  {{- end }}
-  selector:
-    matchLabels: {{- include "arkcase.labels.matchLabels" . | nindent 6 }}
-  serviceName: {{ include "arkcase.name" . | quote }}
-  updateStrategy:
-    type: {{ .Values.updateStrategy }}
-    {{- if (eq "Recreate" .Values.updateStrategy) }}
-    rollingUpdate: null
-    {{- else if .Values.rollingUpdatePartition }}
-    rollingUpdate:
-      partition: {{ .Values.rollingUpdatePartition }}
-    {{- end }}
+  replicas: 1
   template:
-    metadata:
-      name: {{ include "arkcase.fullname" . | quote }}
-      namespace: {{ .Release.Namespace | quote }}
-      labels: {{- include "arkcase.labels" . | nindent 8 }}
-        {{- with (.Values.labels).common }}
-        {{- toYaml . | nindent 8 }}
-        {{- end }}
-        {{- with (.Values.labels).content }}
-        {{- toYaml . | nindent 8 }}
-        {{- end }}
-      annotations:
-        # NB: Both these annotation values must be of type "string"
-        prometheus.io/scrape: "true"
-        prometheus.io/port: "9100"
-        timestamp: {{ date "20060102150405" now | quote }}
-        {{- with (.Values.annotations).common }}
-        {{- toYaml . | nindent 8 }}
-        {{- end }}
-        {{- with (.Values.annotations).content }}
-        {{- toYaml . | nindent 8 }}
-        {{- end }}
     spec:
-      {{- with .Values.imagePullSecrets }}
-      imagePullSecrets: {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.hostAliases }}
-      hostAliases: {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- if .Values.schedulerName }}
-      schedulerName: {{ .Values.schedulerName | quote }}
-      {{- end }}
-      serviceAccountName: {{ include "common.serviceAccountName" . }}
-      {{- with (.Values.securityContext).template }}
-      securityContext: {{- toYaml . | nindent 8 }}
-      {{- end }}
-      initContainers:
-        - name: set-permissions
-          image: {{ include "arkcase.tools.subimage" (dict "ctx" . "name" "setperm" "image" "ark_setperm") | quote }}
-          env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
-            - name: JOBS
-              value: |
-                jobs:
-                  # We know the ActiveMQ image uses user 998 (centos), 1998 (rocky)
-                  - ownership: {{ coalesce (.Values.persistence).ownership "33000:1000" | quote }}
-                    permissions: "u=rwX,g=rX,o="
-                    flags: [ "recurse", "noforced", "create", "changes" ]
-                    targets: [ "/data" ]
-          volumeMounts:
-            - name: "data"
-              mountPath: "/data"
-        {{- include "arkcase.initDependencies.container" . | nindent 8 }}
+      imagePullSecrets:
+        - name: aws-arkcase-pull
       containers:
-        - name: {{ include "arkcase.name" (dict "ctx" . "name" $component) | quote }}
-          {{- with (.Values.securityContext).content }}
-          securityContext: {{- toYaml . | nindent 12 }}
-          {{- end }}
-          image: {{ include "arkcase.tools.subimage" (dict "ctx" . "name" "content" "image" "ark_alfresco_content") | quote }}
-          imagePullPolicy: {{ include "arkcase.tools.imagePullPolicy" . | quote }}
+        - name: content
+          image: 345280441424.dkr.ecr.ap-south-1.amazonaws.com/ark_alfresco_ee_content:7.3.1
           env:
             - name: JAVA_TOOL_OPTIONS
               value: >-
@@ -108,27 +28,27 @@ spec:
               value: >-
                 -server
                 -Ddir.root=/alf_data
-                -Ddb.driver={{ include "arkcase.jdbc.driver" . | quote }}
-                -Ddb.username={{ include "arkcase.jdbc.username" . | quote }}
-                -Ddb.password={{ include "arkcase.jdbc.password" . | quote }}
-                -Ddb.url={{ include "arkcase.jdbc.url" . | quote }}
-                -Dsolr.host=alfresco-search
+                -Ddb.driver=org.postgresql.Driver
+                -Ddb.username=alfresco
+                -Ddb.password="nie7yaiX0ahm9aec"
+                -Ddb.url="jdbc:postgresql://postgres:5432/alfresco"
+                -Dsolr.host=search
                 -Dsolr.port=8983
                 -Dsolr.secureComms=secret
-                -Dsolr.sharedSecret={{ include "arkcase.alfresco.searchSecret" . | quote }}
+                -Dsolr.sharedSecret=secret
                 -Dsolr.base.url=/solr
                 -Dindex.subsystem.name=solr6
-                -Dshare.host=alfresco-share
-                -Dshare.port=8080
-                -Dalfresco.host=alfresco-content
+                -Dshare.host=this-is-used-to-render-the-clickable-share-URL
+                -Dshare.port=80
+                -Dalfresco.host=localhost
                 -Dalfresco.port=8080
                 -Daos.baseUrlOverwrite=http://localhost:8080/alfresco/aos
-                -Dmessaging.broker.url="failover:(nio://alfresco-mq:61616)?timeout=3000&jms.useCompression=true"
-                -Ddeployment.method=HELM
+                -Dmessaging.broker.url="failover:(nio://activemq:61616)?timeout=3000&jms.useCompression=true"
+                -Ddeployment.method=DOCKER_COMPOSE
                 -Dtransform.service.enabled=true
-                -Dtransform.service.url=http://alfresco-xform:8095
-                -Dsfs.url=http://alfresco-sfs:8099/
-                -DlocalTransform.core-aio.url=http://alfresco-xform-aio:8090/
+                -Dtransform.service.url=http://transform-router:8095
+                -Dsfs.url=http://shared-file-store:8099/
+                -DlocalTransform.core-aio.url=http://transform-core-aio:8090/
                 -Dcsrf.filter.enabled=false
                 -Ddsync.service.uris=http://localhost:9090/alfresco
                 -XX:MinRAMPercentage=50
@@ -136,28 +56,19 @@ spec:
                 -Dcom.sun.management.jmxremote
           ports:
             - containerPort: 8080
-          {{- with (.Values.resources).content }}
-          resources: {{- toYaml . | nindent 12 }}
-          {{- end }}
+          resources:
+            limits:
+              memory: "2Gi"
           volumeMounts:
-            - name: "data"
+            - name: &contentRepository content-repository
               mountPath: "/usr/local/tomcat/alf_data"
+            - name: &licenseFile license-file
+              mountPath: "/usr/local/tomcat/shared/classes/alfresco/extension/license/armedia.lic"
       volumes:
-        {{- include "arkcase.persistence.volume" (dict "name" "data" "ctx" $) | nindent 8 }}
-        - name: secrets
-          secret:
-            secretName: {{ include "arkcase.fullname" . | quote }}
-      {{- with .Values.nodeSelector }}
-      nodeSelector: {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.affinity }}
-      affinity: {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.tolerations }}
-      tolerations: {{- toYaml . | nindent 8 }}
-      {{- end }}
-
-{{- if (include "arkcase.persistence.enabled" .) }}
-{{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "data") | indent 0 }}
-{{- end }}
-{{- end }}
+        - name: *contentRepository
+          hostPath:
+            path: /opt/app/alfresco/data/repo
+        - name: *licenseFile
+          hostPath:
+            path: /opt/app/alfresco/lib/armedia.lic
+      restartPolicy: Always

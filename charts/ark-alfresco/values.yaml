@@ -236,47 +236,77 @@ persistence:
 #             key: "labelKey"
 #         matchLabels: "....."
 
-service:
-  config:
-    ports:
-      - name: config
-        protocol: TCP
-        port: &configPort 9999
-##
-## Configure extra options for containers' liveness and readiness probes
-## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/#configure-probes
-## @param service.probes.enabled Enable liveness and readiness probes
-## @param service.probes.spec.initialDelaySeconds Initial delay seconds for liveness and readiness probes
-## @param service.probes.spec.periodSeconds Period seconds for liveness and readiness probes
-## @param service.probes.spec.timeoutSeconds Timeout seconds for liveness and readiness probes
-## @param service.probes.spec.failureThreshold Failure threshold for liveness and readiness probes
-## @param service.probes.spec.successThreshold Success threshold for liveness and readiness probes
-##
-    probes:
-      enabled: true
-      spec:
-        httpGet:
-          path: "/actuator/health"
-          port: *configPort
-        initialDelaySeconds: 0
-        periodSeconds: 1
-        timeoutSeconds: 1
-        failureThreshold: 60
-        successThreshold: 1
+serviceTemplates: &serviceTemplate
+  probes: &probesTemplate
+    enabled: true
+    spec: &probesSpecTemplate
+      initialDelaySeconds: 5
+      periodSeconds: 5
+      timeoutSeconds: 1
+      failureThreshold: 60
+      successThreshold: 1
 
-  arkcase:
+  ports: &ports {}
+
+service:
+
+  content:
+    <<: *serviceTemplate
     ports:
-      - name: arkcase
+      - name: "http"
         protocol: TCP
-        port: &arkcasePort 8080
-#    probes:
-#      enabled: true
-#      spec:
-#        httpGet:
-#          path: "/"
-#          port: *arkcasePort
-#        initialDelaySeconds: 30
-#        periodSeconds: 1
-#        timeoutSeconds: 1
-#        failureThreshold: 150
-#        successThreshold: 1
+        port: 8080
+
+  share:
+    <<: *serviceTemplate
+    ports:
+      - name: "http"
+        protocol: TCP
+        port: 8080
+  
+  shared-file-store:
+    <<: *serviceTemplate
+    ports:
+      - name: "http"
+        protocol: TCP
+        port: 8099
+  
+  activemq:
+    <<: *serviceTemplate
+    ports:
+      - name: "amqp"
+        protocol: TCP
+        port: 5672
+  
+      - name: "console"
+        protocol: TCP
+        port: 8161
+  
+      - name: "stomp"
+        protocol: TCP
+        port: 61613
+  
+      - name: "openwire"
+        protocol: TCP
+        port: 61616
+  
+  search:
+    <<: *serviceTemplate
+    ports:
+      - name: "http"
+        protocol: TCP
+        port: 8983
+  
+  transform-router:
+    <<: *serviceTemplate
+    ports:
+      - name: "http"
+        protocol: TCP
+        port: 8095
+  
+  transform-core-aio:
+    <<: *serviceTemplate
+    ports:
+      - name: "http"
+        protocol: TCP
+        port: 8090

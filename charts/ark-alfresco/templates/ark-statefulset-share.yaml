@@ -1,0 +1,37 @@
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  namespace: alfresco
+  name: share
+spec:
+  replicas: 1
+  template:
+    spec:
+      imagePullSecrets:
+        - name: aws-arkcase-pull
+      containers:
+        - name: share
+          image: 345280441424.dkr.ecr.ap-south-1.amazonaws.com/ark_alfresco_ee_share:7.3.1
+          env:
+            - name: REPO_HOST
+              value: content
+            - name: REPO_PORT
+              value: "8080"
+            - name: JAVA_OPTS
+              value: >-
+                -Dalfresco.protocol=http
+                -Dalfresco.host=content
+                -Dalfresco.port=8080
+                -Dalfresco.context=alfresco
+                -Dcsrf.filter.enabled=false
+                -XX:MinRAMPercentage=50
+                -XX:MaxRAMPercentage=80
+            # - name: CSRF_FILTER_REFERER
+            #   value: "^.*$"
+            # - name: CSRF_FILTER_ORIGIN
+            #   value: "^.*$"
+          resources:
+            limits:
+              memory: "1Gi"
+      restartPolicy: Always

@@ -1,0 +1,37 @@
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  namespace: alfresco
+  name: shared-file-store
+spec:
+  replicas: 1
+  template:
+    spec:
+      imagePullSecrets:
+        - name: aws-arkcase-pull
+      containers:
+        - name: shared-file-store
+          image: 345280441424.dkr.ecr.ap-south-1.amazonaws.com/ark_alfresco_fileshare:2.0.0
+          env:
+            - name: JAVA_OPTS
+              value: >-
+                -XX:MinRAMPercentage=50
+                -XX:MaxRAMPercentage=80
+            - name: scheduler.content.age.millis
+              value: "86400000"
+            - name: scheduler.cleanup.interval
+              value: "86400000"
+          ports:
+            - containerPort: 8099
+          resources:
+            limits:
+              memory: "512Mi"
+          volumeMounts:
+            - name: &sharedFileStore shared-file-store
+              mountPath: /tmp/Alfresco
+      volumes:
+        - name: *sharedFileStore
+          hostPath:
+            path: /opt/app/alfresco/data/shared
+      restartPolicy: Always
