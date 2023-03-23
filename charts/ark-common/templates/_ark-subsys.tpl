@@ -224,7 +224,7 @@ Render subsystem service declarations based on whether an external host declarat
 Parameter: the root context (i.e. "." or "$")
 */ -}}
 {{- define "arkcase.subsystem.service" }}
-  {{- $partname := (include "arkcase.partname" .) -}}
+  {{- $partname := (include "arkcase.part.name" .) -}}
   {{- $ctx := . }}
   {{- if hasKey . "ctx" -}}
     {{- $ctx = .ctx -}}
@@ -324,7 +324,7 @@ Parameter: the root context (i.e. "." or "$"), or a map which descibes the ports
   {{- $service := . -}}
   {{- if (include "arkcase.isRootContext" .) -}}
     {{- /* No parameters given, so deduce everything */ -}}
-    {{- $partname := (include "arkcase.partname" .) -}}
+    {{- $partname := (include "arkcase.part.name" .) -}}
     {{- $ctx := . }}
     {{- if not (include "arkcase.isRootContext" $ctx) -}}
       {{- fail "Incorrect context given - either submit the root context as the only parameter, or a 'ctx' parameter pointing to it" -}}

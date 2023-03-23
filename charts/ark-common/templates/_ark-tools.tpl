@@ -7,41 +7,9 @@
   {{- end -}}
 {{- end -}}
 
-{{- define "arkcase.partname" -}}
-  {{- $ctx := . -}}
-  {{- $explicit := false -}}
-  {{- $partname := "" -}}
-
-  {{- if hasKey . "ctx" -}}
-    {{- $ctx = .ctx -}}
-    {{- if hasKey . "subname" -}}
-      {{- $partname = (.subname | toString | lower) -}}
-      {{- $explicit = true -}}
-    {{- end -}}
-  {{- end -}}
-
-  {{- if not (include "arkcase.isRootContext" $ctx) -}}
-    {{- fail "Incorrect context given - either submit the root context as the only parameter, or a 'ctx' parameter pointing to it" -}}
-  {{- end -}}
-
-  {{- if not $explicit -}}
-    {{- $template := ($ctx.Template.Name | base | lower) -}}
-    {{- $template = (trimSuffix (ext $template) $template) -}}
-
-    {{- /* Does it match our required expression? */ -}}
-    {{- if regexMatch "^ark-[a-z0-9]+-.*$" $template -}}
-      {{- $partname = (regexReplaceAll "^(ark-[a-z0-9]+-)" $template "") -}}
-    {{- end -}}
-  {{- end -}}
-
-  {{- if and $partname (regexMatch "^([a-z][a-z0-9-]*)?[a-z]$" $partname) -}}
-    {{- $partname -}}
-  {{- end -}}
-{{- end -}}
-
 {{- /* Output the full name, optionally supporting a subcomponent name for charts with mutliple components */ -}}
 {{- define "arkcase.fullname" -}}
-  {{- $partname := (include "arkcase.partname" .) -}}
+  {{- $partname := (include "arkcase.part.name" .) -}}
   {{- $ctx := . -}}
 
   {{- if (hasKey $ctx "ctx") -}}
@@ -61,7 +29,7 @@
 
 {{- /* Output the short name, optionally supporting a subcomponent name for charts with mutliple components */ -}}
 {{- define "arkcase.name" -}}
-  {{- $partname := (include "arkcase.partname" .) -}}
+  {{- $partname := (include "arkcase.part.name" .) -}}
   {{- $ctx := . -}}
 
   {{- if (hasKey $ctx "ctx") -}}
@@ -87,7 +55,7 @@
 {{- end -}}
 
 {{- define "arkcase.labels" -}}
-  {{- $partname := (include "arkcase.partname" .) -}}
+  {{- $partname := (include "arkcase.part.name" .) -}}
   {{- $ctx := . -}}
 
   {{- if (hasKey $ctx "ctx") -}}
@@ -114,7 +82,7 @@ version: {{ $ctx.Chart.AppVersion | quote }}
 Kubernetes standard labels
 */}}
 {{- define "arkcase.labels.standard" -}}
-  {{- $partname := (include "arkcase.partname" .) -}}
+  {{- $partname := (include "arkcase.part.name" .) -}}
   {{- $ctx := . -}}
 
   {{- if (hasKey $ctx "ctx") -}}
@@ -134,7 +102,7 @@ helm.sh/chart: {{ include "common.names.chart" $ctx }}
 Labels to use on deploy.spec.selector.matchLabels and svc.spec.selector
 */}}
 {{- define "arkcase.labels.matchLabels" -}}
-  {{- $partname := (include "arkcase.partname" .) -}}
+  {{- $partname := (include "arkcase.part.name" .) -}}
   {{- $ctx := . -}}
 
   {{- if (hasKey $ctx "ctx") -}}
@@ -562,12 +530,12 @@ Render the image name taking into account the registry, repository, image name, 
     {{- $explicit = true -}}
   {{- end -}}
   {{- $image := (required "No image information was found in the Values object" $ctx.Values.image) -}}
-  {{- $partname := include "arkcase.partname" $ctx -}}
+  {{- $partname := include "arkcase.part.name" $ctx -}}
   {{- if $partname -}}
     {{- if not (hasKey $image $partname) -}}
       {{- fail (printf "No image information found for part '%s'" $partname) -}}
     {{- end -}}
-    {{- $image = merge (get $image $partname) (pick $image "registry" "repository" "tag") -}}
+    {{- $image = merge (get $image $partname) (pick $image "registry" "repository" "tag" "pullPolicy") -}}
   {{- end -}}
   {{- $global := (default dict $ctx.Values.global) -}}
   {{- if or (hasKey $global "imageRegistry") ($global.imageRegistry) -}}
@@ -661,7 +629,14 @@ Render the image registry name taking into account global values as well
 Render the image pull policy taking into account the global value as well
 */ -}}
 {{- define "arkcase.tools.imagePullPolicy" -}}
+  {{- $partname := (include "arkcase.part.name" .) -}}
   {{- $image := (required "No image information was found in the Values object" .Values.image) -}}
+  {{- if $partname -}}
+    {{- if not (hasKey $image $partname) -}}
+      {{- fail (printf "No image information found for part '%s'" $partname) -}}
+    {{- end -}}
+    {{- $image = merge (get $image $partname) (pick $image "registry" "repository" "tag" "pullPolicy") -}}
+  {{- end -}}
   {{- $global := (default dict .Values.global) -}}
   {{- $tag := (toString (default "" $image.tag)) -}}
   {{- $pullPolicy := (toString (default "" $image.pullPolicy)) -}}

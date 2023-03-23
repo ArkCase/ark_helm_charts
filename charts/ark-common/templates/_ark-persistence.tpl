@@ -82,7 +82,7 @@ Render the PersistentVolume and PersistentVolumeClaim objects for a given volume
   {{- if not $volumeName -}}
     {{- fail "Must provide the 'name' of the volume objects to declare" -}}
   {{- end -}}
-  {{- $partname := (include "arkcase.partname" $ctx) -}}
+  {{- $partname := (include "arkcase.part.name" $ctx) -}}
 
   {{- if (include "arkcase.persistence.enabled" $ctx) -}}
 
