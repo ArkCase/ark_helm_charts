@@ -29,12 +29,12 @@
     {{- $template = (trimSuffix (ext $template) $template) -}}
 
     {{- /* Does it match our required expression? */ -}}
-    {{- if regexMatch "^ark-[a-z0-9]+-[a-z0-9]+$" $template -}}
+    {{- if regexMatch "^ark-[a-z0-9]+-.*$" $template -}}
       {{- $partname = (regexReplaceAll "^(ark-[a-z0-9]+-)" $template "") -}}
     {{- end -}}
   {{- end -}}
 
-  {{- if and $partname (regexMatch "^[a-z0-9]+$" $partname) -}}
+  {{- if and $partname (regexMatch "^([a-z][a-z0-9-]*)?[a-z]$" $partname) -}}
     {{- $partname -}}
   {{- end -}}
 {{- end -}}

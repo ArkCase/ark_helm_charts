@@ -1,8 +1,25 @@
 #!/bin/bash
-helm repo update && \
+SCRIPT="$(readlink -f "${BASH_SOURCE:-${0}}")"
+BASEDIR="$(dirname "${SCRIPT}")"
+
+HELM_REPO_URL="https://arkcase.github.io/ark_helm_charts/"
+
+set -euo pipefail
+
+cd "${BASEDIR}"
+
+#
+# First things first, package the file
+#
+OUT="$(helm package charts/ark-common)"
+helm repo index --url "${HELM_REPO_URL}" .
+
+SRC="$(echo -n "${OUT}" | sed -e 's;^.*and saved it to: ;;g')"
 find charts -type f -name 'ark-common-*.tgz'| while read f ; do
-	D="$(dirname "${f}")"
-	D="$(dirname "${D}")"
-	echo "${D}"
-	helm dependency update --skip-refresh "${D}" || break
+	CHARTSDIR="$(dirname "${f}")"
+	MAINDIR="$(dirname "${CHARTSDIR}")"
+	echo "${MAINDIR}"
+	rm -fv "${f}"
+	cp -vf "${SRC}" "${CHARTSDIR}"
+	helm package "${MAINDIR}"
 done
