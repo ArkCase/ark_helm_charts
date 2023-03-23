@@ -71,9 +71,11 @@
         {{- end -}}
       {{- else if $part -}}
         {{- $base = $part -}}
-      {{- else if $common -}}
+      {{- else -}}
         {{- $base = $common -}}
       {{- end -}}
+    {{- else -}}
+      {{- $base = $common -}}
     {{- end -}}
   {{- end -}}
   {{- if $base -}}
