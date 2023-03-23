@@ -92,6 +92,8 @@ spec:
                 -Dmetadata-keystore.metadata.algorithm=DESede
             - name: CATALINA_OPTS
               value: >-
+                -XX:MinRAMPercentage=50
+                -XX:MaxRAMPercentage=80
                 -Ddir.root=/app/data
                 -Ddb.driver={{ include "arkcase.jdbc.driver" . | quote }}
                 -Ddb.username={{ include "arkcase.jdbc.username" . | quote }}
@@ -116,9 +118,6 @@ spec:
                 -DlocalTransform.core-aio.url=http://{{- include "arkcase.alfresco.service" (dict "ctx" . "name" "transform-core-aio") -}}:8090/
                 -Dcsrf.filter.enabled=false
                 -Ddsync.service.uris=http://localhost:9090/alfresco
-                -XX:MinRAMPercentage=50
-                -XX:MaxRAMPercentage=80
-
           {{- with (include "arkcase.values" (dict "ctx" . "base" "command")) }}
           command: {{- . | nindent 12 }}
           {{- end }}
@@ -128,7 +127,7 @@ spec:
           {{- else }}
           resources:
             limits:
-              memory: "1Gi"
+              memory: "1500Mi"
           {{- end }}
           volumeMounts:
             - name: *dataVolume
