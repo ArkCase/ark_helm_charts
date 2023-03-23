@@ -54,7 +54,6 @@
     {{- $partname := (include "arkcase.part.name" $ctx) -}}
     {{- if and $partname (hasKey $base $partname) -}}
       {{- $part := get $base $partname -}}
-      {{- fail (printf "PART = %s" $part) -}}
       {{- /* If both $part and $common are not "empty" (non-null), then */ -}}
       {{- /* they must be of the same type. Otherwise this is an error */ -}}
       {{- /* and we cannot proceed. */ -}}
@@ -78,6 +77,9 @@
     {{- end -}}
   {{- end -}}
   {{- if $base -}}
-    {{- $base | toYaml -}}
+    {{- $base = (dict "value" $base) -}}
+  {{- else -}}
+    {{- $base = dict -}}
   {{- end -}}
+  {{- $base | toYaml -}}
 {{- end -}}
