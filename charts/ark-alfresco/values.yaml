@@ -90,7 +90,7 @@ replicaCount: 1
 
 platform: ""
 image:
-  registry: "345280441424.dkr.ecr.ap-south-1.amazonaws.com"
+  registry: "207428623785.dkr.ecr.us-east-1.amazonaws.com"
   # Overrides the image tag whose default is the chart appVersion.
   # If required, for tweaking setperm
   # setperm:
@@ -98,12 +98,29 @@ image:
   #   repository: "alternate-image"
   #   tag: "alternate-tag"
   pullPolicy: IfNotPresent
-  config:
-    # repository: "ark_cloudconfig"
-    tag: &arkcaseVersion "2021.03.25-01"
-  arkcase:
-    # repository: "ark_core"
-    tag: *arkcaseVersion
+  activemq:
+    repository: "ark_alfresco_activemq"
+    tag: "5.17.1"
+  content:
+    repository: "ark_alfresco_ee_content"
+    # repository: "ark_alfresco_ce_content"
+    # tag: "7.3.1"
+  share:
+    repository: "ark_alfresco_ee_share"
+    # repository: "ark_alfresco_ce_share"
+    # tag: "7.3.1"
+  shared-file-store:
+    repository: "ark_alfresco_ee_fileshare"
+    tag: "2.0.0"
+  transform-router:
+    repository: "ark_alfresco_ee_transform_router"
+    tag: "2.0.0"
+  search:
+    repository: "ark_alfresco_search"
+    tag: "2.0.5"
+  transform-core-aio:
+    repository: "ark_alfresco_transform_core"
+    tag: "3.0.0"
 
 imagePullSecrets:
   - name: aws-arkcase-pull

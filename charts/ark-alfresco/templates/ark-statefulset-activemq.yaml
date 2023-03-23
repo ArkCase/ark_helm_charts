@@ -1,24 +1,86 @@
+{{- if (include "arkcase.subsystem.enabled" .) }}
 ---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  namespace: alfresco
-  name: activemq
+  name: {{ include "arkcase.fullname" . | quote }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels: {{- include "arkcase.labels" . | nindent 4 }}
+    {{- with (include "arkcase.values" (dict "ctx" . "base" "labels") | fromYaml) }}
+      {{- toYaml . | nindent 4 }}
+    {{- end }}
+  annotations:
+    {{- with (include "arkcase.values" (dict "ctx" . "base" "annotations") | fromYaml) }}
+      {{- toYaml . | nindent 4 }}
+    {{- end }}
 spec:
-  replicas: 1
+  {{- if not (.Values.autoscaling).enabled }}
+  replicas: {{ .Values.replicaCount | default 1 }}
+  {{- end }}
+  selector:
+    matchLabels: {{- include "arkcase.labels.matchLabels" . | nindent 6 }}
+  serviceName: {{ include "arkcase.name" . | quote }}
+  updateStrategy:
+    type: {{ .Values.updateStrategy }}
+    {{- if (eq "Recreate" .Values.updateStrategy) }}
+    rollingUpdate: null
+    {{- else if .Values.rollingUpdatePartition }}
+    rollingUpdate:
+      partition: {{ .Values.rollingUpdatePartition }}
+    {{- end }}
   template:
+    metadata:
+      name: {{ include "arkcase.fullname" . | quote }}
+      namespace: {{ .Release.Namespace | quote }}
+      labels: {{- include "arkcase.labels" . | nindent 8 }}
+        {{- include "arkcase.values" (dict "ctx" . "base" "labels") | nindent 8 }}
+      annotations:
+        # NB: Both these annotation values must be of type "string"
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9100"
+        timestamp: {{ date "20060102150405" now | quote }}
+        {{- include "arkcase.values" (dict "ctx" . "base" "labels") | nindent 8 }}
     spec:
-      imagePullSecrets:
-        - name: aws-arkcase-pull
+      {{- with (include "arkcase.values" (dict "ctx" . "base" "imagePullSecrets")) }}
+      imagePullSecrets: {{- . | nindent 8 }}
+      {{- end }}
+      {{- with (include "arkcase.values" (dict "ctx" . "base" "hostAliases")) }}
+      hostAliases: {{- . | nindent 8 }}
+      {{- end }}
+      {{- with (include "arkcase.values" (dict "ctx" . "base" "schedulerName")) }}
+      schedulerName: {{ . | quote }}
+      {{- end }}
+      {{- with (include "arkcase.values" (dict "ctx" . "base" "serviceAccountName")) }}
+      serviceAccountName: {{ . | quote }}
+      {{- end }}
+      {{- with (include "arkcase.values" (dict "ctx" . "base" "securityContext") | fromYaml) }}
+        {{- with .template }}
+      securityContext: {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- end }}
       containers:
-        - name: activemq
-          image: 345280441424.dkr.ecr.ap-south-1.amazonaws.com/ark_alfresco_activemq:5.17.1
-          ports:
-            - containerPort: 5672
-            - containerPort: 8161
-            - containerPort: 61613
-            - containerPort: 61616
+        - name: {{ include "arkcase.part.name" . | quote }}
+          image: {{ include "arkcase.tools.image" . | quote }}
+          imagePullPolicy: {{ include "arkcase.tools.imagePullPolicy" . | quote }}
+          {{- include "arkcase.subsystem.ports" . | nindent 10 }}
+          {{- with (include "arkcase.values" (dict "ctx" . "base" "command")) }}
+          command: {{- . | nindent 12 }}
+          {{- end }}
+          {{- $resources := (include "arkcase.values" (dict "ctx" . "base" "resources") | fromYaml) }}
+          {{- if $resources }}
+          resources: {{- toYaml $resources | nindent 12 }}
+          {{- else }}
           resources:
             limits:
               memory: "1Gi"
-      restartPolicy: Always
+          {{- end }}
+      {{- with (include "arkcase.values" (dict "ctx" . "base" "nodeSelector") | fromYaml) }}
+      nodeSelector: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with (include "arkcase.values" (dict "ctx" . "base" "affinity") | fromYaml) }}
+      affinity: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with (include "arkcase.values" (dict "ctx" . "base" "tolerations") | fromYaml) }}
+      tolerations: {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

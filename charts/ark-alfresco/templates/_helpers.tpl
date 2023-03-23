@@ -14,3 +14,9 @@
   {{- end -}}
   {{- $secretKey -}}
 {{- end -}}
+
+{{- define "arkcase.alfresco.service" -}}
+  {{- $ctx := .ctx -}}
+  {{- $name := .name -}}
+  {{- printf "%s-%s" (include "common.name" $ctx) $name -}}
+{{- end -}}
