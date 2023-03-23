@@ -34,7 +34,7 @@ spec:
       namespace: {{ .Release.Namespace | quote }}
       labels: {{- include "arkcase.labels" . | nindent 8 }}
         {{- with (include "arkcase.values" (dict "ctx" . "base" "labels") | fromYaml) }}
-          {{- .value | toYaml | nindent 8 }}
+          {{- toYaml .value | nindent 8 }}
         {{- end }}
       annotations:
         # NB: Both these annotation values must be of type "string"
@@ -42,14 +42,14 @@ spec:
         prometheus.io/port: "9100"
         timestamp: {{ date "20060102150405" now | quote }}
         {{- with (include "arkcase.values" (dict "ctx" . "base" "annotations") | fromYaml) }}
-          {{- .values | toYaml | nindent 8 }}
+          {{- toYaml .value | nindent 8 }}
         {{- end }}
     spec:
       {{- with (include "arkcase.values" (dict "ctx" . "base" "imagePullSecrets") | fromYaml) }}
-      imagePullSecrets: {{- .value | nindent 8 }}
+      imagePullSecrets: {{- toYaml .value | nindent 8 }}
       {{- end }}
       {{- with (include "arkcase.values" (dict "ctx" . "base" "hostAliases") | fromYaml) }}
-      hostAliases: {{- .value | nindent 8 }}
+      hostAliases: {{- toYaml .value | nindent 8 }}
       {{- end }}
       {{- with (include "arkcase.values" (dict "ctx" . "base" "schedulerName") | fromYaml) }}
       schedulerName: {{ .value | quote }}
@@ -78,7 +78,7 @@ spec:
                 -XX:MinRAMPercentage=50
                 -XX:MaxRAMPercentage=80
           {{- with (include "arkcase.values" (dict "ctx" . "base" "command") | fromYaml) }}
-          command: {{- . | nindent 12 }}
+          command: {{- toYaml .value | nindent 12 }}
           {{- end }}
           {{- $resources := (include "arkcase.values" (dict "ctx" . "base" "resources") | fromYaml) }}
           {{- if $resources }}
