@@ -1,18 +1,83 @@
+{{- if (include "arkcase.subsystem.enabled" .) }}
 ---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  namespace: alfresco
-  name: shared-file-store
+  name: {{ include "arkcase.fullname" . | quote }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels: {{- include "arkcase.labels" . | nindent 4 }}
+    {{- with (include "arkcase.values" (dict "ctx" . "base" "labels") | fromYaml) }}
+      {{- toYaml . | nindent 4 }}
+    {{- end }}
+  annotations:
+    {{- with (include "arkcase.values" (dict "ctx" . "base" "annotations") | fromYaml) }}
+      {{- toYaml . | nindent 4 }}
+    {{- end }}
 spec:
-  replicas: 1
+  {{- if not (.Values.autoscaling).enabled }}
+  replicas: {{ .Values.replicaCount | default 1 }}
+  {{- end }}
+  selector:
+    matchLabels: {{- include "arkcase.labels.matchLabels" . | nindent 6 }}
+  serviceName: {{ include "arkcase.name" . | quote }}
+  updateStrategy:
+    type: {{ .Values.updateStrategy }}
+    {{- if (eq "Recreate" .Values.updateStrategy) }}
+    rollingUpdate: null
+    {{- else if .Values.rollingUpdatePartition }}
+    rollingUpdate:
+      partition: {{ .Values.rollingUpdatePartition }}
+    {{- end }}
   template:
+    metadata:
+      name: {{ include "arkcase.fullname" . | quote }}
+      namespace: {{ .Release.Namespace | quote }}
+      labels: {{- include "arkcase.labels" . | nindent 8 }}
+        {{- include "arkcase.values" (dict "ctx" . "base" "labels") | nindent 8 }}
+      annotations:
+        # NB: Both these annotation values must be of type "string"
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9100"
+        timestamp: {{ date "20060102150405" now | quote }}
+        {{- include "arkcase.values" (dict "ctx" . "base" "labels") | nindent 8 }}
     spec:
-      imagePullSecrets:
-        - name: aws-arkcase-pull
+      {{- with (include "arkcase.values" (dict "ctx" . "base" "imagePullSecrets")) }}
+      imagePullSecrets: {{- . | nindent 8 }}
+      {{- end }}
+      {{- with (include "arkcase.values" (dict "ctx" . "base" "hostAliases")) }}
+      hostAliases: {{- . | nindent 8 }}
+      {{- end }}
+      {{- with (include "arkcase.values" (dict "ctx" . "base" "schedulerName")) }}
+      schedulerName: {{ . | quote }}
+      {{- end }}
+      {{- with (include "arkcase.values" (dict "ctx" . "base" "serviceAccountName")) }}
+      serviceAccountName: {{ . | quote }}
+      {{- end }}
+      {{- with (include "arkcase.values" (dict "ctx" . "base" "securityContext") | fromYaml) }}
+        {{- with .template }}
+      securityContext: {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- end }}
+      initContainers:
+        - name: set-permissions
+          image: {{ include "arkcase.tools.subimage" (dict "ctx" . "name" "setperm" "image" "arkcase/setperm") | quote }}
+          env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
+            - name: JOBS
+              value: |
+                jobs:
+                  # We know the image uses user 33000:1000
+                  - ownership: {{ coalesce (.Values.persistence).ownership "33030:1000" | quote }}
+                    permissions: "u=rwX,g=rX,o="
+                    flags: [ "recurse", "noforced", "create", "changes" ]
+                    targets: [ "/app/data" ]
+          volumeMounts:
+            - name: &dataVolume "data"
+              mountPath: &dataDir "/app/data"
       containers:
-        - name: shared-file-store
-          image: 345280441424.dkr.ecr.ap-south-1.amazonaws.com/ark_alfresco_fileshare:2.0.0
+        - name: {{ include "arkcase.part.name" . | quote }}
+          image: {{ include "arkcase.tools.image" . | quote }}
+          imagePullPolicy: {{ include "arkcase.tools.imagePullPolicy" . | quote }}
+          {{- include "arkcase.subsystem.ports" . | nindent 10 }}
           env:
             - name: JAVA_OPTS
               value: >-
@@ -22,16 +87,33 @@ spec:
               value: "86400000"
             - name: scheduler.cleanup.interval
               value: "86400000"
-          ports:
-            - containerPort: 8099
+          {{- with (include "arkcase.values" (dict "ctx" . "base" "command")) }}
+          command: {{- . | nindent 12 }}
+          {{- end }}
+          {{- $resources := (include "arkcase.values" (dict "ctx" . "base" "resources") | fromYaml) }}
+          {{- if $resources }}
+          resources: {{- toYaml $resources | nindent 12 }}
+          {{- else }}
           resources:
             limits:
               memory: "512Mi"
+          {{- end }}
           volumeMounts:
-            - name: &sharedFileStore shared-file-store
-              mountPath: /tmp/Alfresco
+            - name: *dataVolume
+              mountPath: *dataDir
       volumes:
-        - name: *sharedFileStore
-          hostPath:
-            path: /opt/app/alfresco/data/shared
-      restartPolicy: Always
+        {{- include "arkcase.persistence.volume" (dict "name" "data" "ctx" $) | nindent 8 }}
+      {{- with (include "arkcase.values" (dict "ctx" . "base" "nodeSelector") | fromYaml) }}
+      nodeSelector: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with (include "arkcase.values" (dict "ctx" . "base" "affinity") | fromYaml) }}
+      affinity: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with (include "arkcase.values" (dict "ctx" . "base" "tolerations") | fromYaml) }}
+      tolerations: {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+{{- if (include "arkcase.persistence.enabled" .) }}
+{{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "data") | indent 0 }}
+{{- end }}
+{{- end }}

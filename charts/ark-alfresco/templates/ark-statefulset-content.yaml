@@ -65,7 +65,7 @@ spec:
             - name: JOBS
               value: |
                 jobs:
-                  # We know the ActiveMQ image uses user 33000:1000
+                  # We know the image uses user 33000:1000
                   - ownership: {{ coalesce (.Values.persistence).ownership "33000:1000" | quote }}
                     permissions: "u=rwX,g=rX,o="
                     flags: [ "recurse", "noforced", "create", "changes" ]
@@ -127,7 +127,7 @@ spec:
           {{- else }}
           resources:
             limits:
-              memory: "1500Mi"
+              memory: "1536Mi"
           {{- end }}
           volumeMounts:
             - name: *dataVolume
