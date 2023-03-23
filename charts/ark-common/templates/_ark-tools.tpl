@@ -548,9 +548,9 @@ Render the image name taking into account the registry, repository, image name, 
   {{- $repositoryName := "" -}}
   {{- $tag := "" -}}
   {{- $explicit := false -}}
-  {{- if not (include "arkcase.isRootContext" . -}}
+  {{- if not (include "arkcase.isRootContext" .) -}}
     {{- $ctx = .ctx -}}
-    {{- if not (include "arkcase.isRootContext" $ctx -}}
+    {{- if not (include "arkcase.isRootContext" $ctx) -}}
       {{- fail "The given 'ctx' parameter is not the root context" -}}
     {{- end -}}
     {{- $registryName = .registry -}}
@@ -562,6 +562,13 @@ Render the image name taking into account the registry, repository, image name, 
     {{- $explicit = true -}}
   {{- end -}}
   {{- $image := (required "No image information was found in the Values object" $ctx.Values.image) -}}
+  {{- $partname := include "arkcase.partname" $ctx -}}
+  {{- if $partname -}}
+    {{- if not (hasKey $image $partname) -}}
+      {{- fail (printf "No image information found for part '%s'" $partname) -}}
+    {{- end -}}
+    {{- $image = merge (get $image $partname) (pick $image "registry" "repository" "tag") -}}
+  {{- end -}}
   {{- $global := (default dict $ctx.Values.global) -}}
   {{- if or (hasKey $global "imageRegistry") ($global.imageRegistry) -}}
     {{- /* Global registry trumps everything */ -}}
