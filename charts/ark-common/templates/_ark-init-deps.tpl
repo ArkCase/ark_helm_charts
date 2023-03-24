@@ -200,7 +200,7 @@ in JSON format
   {{- end -}}
   {{- $crap := set $ "InitDependencies" $masterCache -}}
 
-  {{- $chartName := (include "arkcase.fullname" $) -}}
+  {{- $chartName := (include "common.fullname" $) -}}
   {{- if not (hasKey $masterCache $chartName) -}}
     {{- $obj := dict -}}
     {{- $enabled := (and (hasKey .Values "initDependencies") (kindIs "map" .Values.initDependencies) (not (empty .Values.initDependencies))) -}}
@@ -215,7 +215,13 @@ in JSON format
     {{- end -}}
     {{- $crap := set $masterCache $chartName $obj -}}
   {{- end -}}
-  {{- get $masterCache $chartName | toYaml -}}
+  {{- $result := get $masterCache $chartName -}}
+  {{- $partname := (include "arkcase.part.name" .) -}}
+  {{- if or (hasKey $result "common") (and $partname (hasKey $result $partname)) -}}
+    {{- include "arkcase.values" (dict "ctx" . "base" $result) -}}
+  {{- else -}}
+    {{- $result | toYaml -}}
+  {{- end -}}
 {{- end -}}
 
 {{- define "arkcase.initDependencies.yaml" -}}
