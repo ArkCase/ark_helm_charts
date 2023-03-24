@@ -1,19 +1,23 @@
 mariadb:
+  port: 3306
   jdbc:
     driver: org.mariadb.jdbc.Driver
     format: "jdbc:mariadb://${HOSTNAME}:${PORT}/${DATABASE}"
 
 mysql:
+  port: 3306
   jdbc:
     driver: com.mysql.cj.jdbc.Driver
     format: "jdbc:mysql://${HOSTNAME}:${PORT}/${DATABASE}"
 
 oracle:
+  port: 1521
   jdbc:
     driver: oracle.jdbc.driver.OracleDriver
     format: "jdbc:oracle:thin:@${HOSTNAME}:${PORT}:${DATABASE}"
 
 postgresql:
+  port: 5432
   jdbc:
     driver: org.postgresql.Driver
     format: "jdbc:postgresql://${HOSTNAME}:${PORT}/${DATABASE}"
@@ -22,6 +26,7 @@ postgresql:
     - postgres
 
 sqlserver:
+  port: 1433
   jdbc:
     driver: com.microsoft.sqlserver.jdbc.SQLServerDriver
     instance: "\\${INSTANCE}"

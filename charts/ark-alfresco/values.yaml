@@ -13,31 +13,31 @@ configuration:
   db:
     dialect: "postgres"
     hostname: "rdbms"
-    port: 5432
-    database: "alfresco"
-    username: "alfresco"
-    password: "alfresco"
+    database: "content"
+    username: "content"
+    password: "content"
 
   # TODO: This must be read from *somewhere* and provided to us
   ldap:
-    domain: "appdev.armedia.com"
-    url: "ldaps://ldap.appdev.armedia.com:636"
-    baseDn: &baseDn "OU=ArkCase Techlogix,OU=Clients,DC=appdev,DC=armedia,DC=com"
+    domain: "dev.arkcase.com"
+    url: "ldaps://ldap:636"
+    baseDn: &baseDn "dc=dev,dc=arkcase,dc=com"
     bind:
-      dn: "CN=svc.ark.tlx.ldap,OU=Service,OU=ArkCase Techlogix,OU=Clients,DC=appdev,DC=armedia,DC=com"
-      password: "x9eBLMITdUQfeacKzpbn"
+      dn: "cn=ArkCase Administrator,cn=Users,dc=dev,dc=arkcase,dc=com"
+      password: "$arkcase-admin$"
     admin:
-      dn: "CN=450.arkcase-admin"
-      role: "CN=450.ARKCASE_ADMINISTRATOR"
+      dn: "cn=ArkCase Administrator"
+      role: "cn=ARKCASE_ADMINISTRATOR"
     search:
       base: *baseDn
       users:
-        base: "OU=Dev, OU=Users"
+        base: "cn=Users"
         attribute: "sAMAccountName"
         filter: "(&(objectClass=user)(sAMAccountName={0}))"
         allFilter: "(objectClass=user)"
+        prefix: ""
       groups:
-        base: "OU=Dev, OU=Groups"
+        base: "cn=Users"
         attribute: "cn"
         filter: "(&(objectClass=group)(cn={0}))"
         allFilter: "(objectClass=group)"
@@ -45,6 +45,7 @@ configuration:
         ignoreCase: "false"
         subtree: "true"
         rolePrefix: ""
+        prefix: ""
 
 command:
   # TODO: This command is intended for debugging purposes *ONLY*

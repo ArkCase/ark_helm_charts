@@ -1,5 +1,6 @@
 mysql: &mysql
   dialect: mysql5
+  port: 3306
   scripts: mysql
   quartz: StdJdbcDelegate
   jdbc:
@@ -13,6 +14,7 @@ mysql: &mysql
 
 oracle10g: &oracle10g
   dialect: oracle10g
+  port: 1521
   quartz: oracle.OracleDelegate
   jdbc:
     driver: oracle.jdbc.driver.OracleDriver
@@ -24,7 +26,7 @@ oracle10g: &oracle10g
     - orcl10
     - orcl10g
     - oracle10
-  
+
 oracle12c:
   <<: *oracle10g
   scripts: oracle12c
@@ -35,6 +37,7 @@ oracle12c:
 
 postgresql:
   dialect: postgresql
+  port: 5432
   quartz: PostgreSQLDelegate
   jdbc:
     driver: org.postgresql.Driver
@@ -46,6 +49,7 @@ postgresql:
 
 sqlserver:
   dialect: sqlserver
+  port: 1433
   quartz: MSSQLDelegate
   jcr: mssql
   jdbc:

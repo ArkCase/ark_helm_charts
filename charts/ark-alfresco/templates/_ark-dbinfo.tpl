@@ -19,6 +19,7 @@
         {{- $dbInfo = set $dbInfo $alias $db -}}
       {{- end -}}
     {{- end -}}
+    {{- $db = set $db "name" $key -}}
     {{- $dbInfo = set $dbInfo $key $db -}}
   {{- end -}}
 
@@ -132,12 +133,18 @@
     {{- $instance = ($dbInfo.jdbc.instance | replace "${INSTANCE}" $instance) -}}
   {{- end -}}
 
+  {{- $port := coalesce $data.port $dbInfo.port -}}
+  {{- if not $port -}}
+    {{- fail (printf "There is no port specification for the database (%s)" $dbInfo.name) -}}
+  {{- end -}}
+  {{- $data = set $data "port" $port -}}
+
   {{- $format := $dbInfo.jdbc.format -}}
   {{- /* Output the result */ -}}
   {{-
     $format
       | replace "${HOSTNAME}" ($data.hostname | toString)
-      | replace "${PORT}" ($data.port | toString)
+      | replace "${PORT}" ($port | toString)
       | replace "${DATABASE}" ($database | toString)
       | replace "${INSTANCE}" ($instance | toString)
   -}}
