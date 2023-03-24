@@ -1,14 +1,14 @@
 # Containers overview
 
-The following sections help you to understand what containerized deployment is, and the deployment options available for Arkcase when using containers.
+The following sections help you to understand what containerized deployment is, and the deployment options available for ArkCase when using containers.
 
 ## Deployment concepts
 
-In addition to the standard deployment methods for non-containerized deployment, Arkcase provides case management packaged in the form of Docker containers, for companies who choose to use containerized and orchestrated deployment tools. While this is a much more advanced approach to deployment, it is expected that customers who choose this approach have the necessary skills to manage its complexity.
+In addition to the standard deployment methods for non-containerized deployment, ArkCase provides case management packaged in the form of Docker containers, for companies who choose to use containerized and orchestrated deployment tools. While this is a much more advanced approach to deployment, it is expected that customers who choose this approach have the necessary skills to manage its complexity.
 
-You can start Arkcase from a number of Docker images. These images are available in the Amazon Elastic Container Registery (ECR). However, starting individual Docker containers based on these images, and configuring them to work together can be complicated. To make things easier, a **Helm Chart**  is available to quickly start Arkcase.  These charts are a deployment template which can be used as the basis for your specific deployment needs. 
+You can start ArkCase from a number of Docker images. These images are available in the Amazon Elastic Container Registery (ECR). However, starting individual Docker containers based on these images, and configuring them to work together can be complicated. To make things easier, a **Helm Chart**  is available to quickly start ArkCase.  These charts are a deployment template which can be used as the basis for your specific deployment needs. 
 
-The following is a list of concepts and technologies that you'll need to understand as part of deploying and using containerized Arkcase. If you know all about Docker, then you can skip this part.
+The following is a list of concepts and technologies that you'll need to understand as part of deploying and using containerized ArkCase. If you know all about Docker, then you can skip this part.
 
 ### Virtual Machine Monitor (Hypervisor)
 
@@ -16,7 +16,7 @@ A Hypervisor is used to run other OS instances on your local host machine. Typic
 
 ### Image
 
-An image is a number of layers that can be used to instantiate a container. This could be, for example, Java and Apache Tomcat. You can find all kinds of Docker images on the public repository [Docker Hub](https://hub.docker.com/){:target="_blank"}. There are also private image repositories (for things like commercial enterprise images), such as the one Arkcase uses called Amazon ECR.
+An image is a number of layers that can be used to instantiate a container. This could be, for example, Java and Apache Tomcat. You can find all kinds of Docker images on the public repository [Docker Hub](https://hub.docker.com/){:target="_blank"}. There are also private image repositories (for things like commercial enterprise images), such as the one ArkCase uses called Amazon ECR.
 
 ### Container
 
@@ -46,13 +46,13 @@ It's important to understand the difference between using containers and using V
 
 The main difference is that when you run a container, you are not starting a complete new OS instance. This makes containers much more lightweight and quicker to start. A container also takes up much less space on your hard-disk as it doesn't have to ship the whole OS.
 
-## Arkcase Container images
-The Arkcase Container images are available in the Amazon Elastic Container Registry (ECR). 
+## ArkCase Container images
+The ArkCase Container images are available in the Amazon Elastic Container Registry (ECR). 
 
-The images are based on Rocky 8.7 ( https://github.com/ArkCase/ark_base ) which is interchangle with Red Hat Universal Base Image 8, "OCI-compliant container base operating system images with complementary runtime languages and packages that are freely redistributable."  ( https://catalog.redhat.com/software/container-stacks/detail/5ec53f50ef29fd35586d9a56 )
+The images are based on the Rocky Linux 8.x release, currently 8.7 ( https://github.com/ArkCase/ark_base ) which is interchangle with Red Hat Universal Base Image 8, "OCI-compliant container base operating system images with complementary runtime languages and packages that are freely redistributable."  ( https://catalog.redhat.com/software/container-stacks/detail/5ec53f50ef29fd35586d9a56 )
 
-The following Docker images relate to Arkcase:
-* https://github.com/arkcase/ark_arkcase_core - Case Management Core Product (Arkcase)
+The following Docker images relate to ArkCase:
+* https://github.com/ArkCase/ark_ArkCase_core - Case Management Core Product (ArkCase)
 * https://github.com/ArkCase/ark_cloudconfig - Configuration Server
 * https://github.com/ArkCase/ark_pentaho_ee - Reporting Server
 * https://github.com/ArkCase/ark_activemq - Messaging Server
@@ -70,11 +70,11 @@ Diagnostics and Bootstrap Docker images:
 * https://github.com/ArkCase/ark_dbinit - mechanism to render DB initialization files which can then be consumed by a database container
 * ark_common - common framework of utlity tools including provisioning PVCs
 
-## What's deployed in Arkcase Helm Chart
+## What's deployed in ArkCase Helm Chart
 
 When you deploy Content Services, a number of containers are started.
 
-* Case Management (Arkcase):
+* Case Management (ArkCase):
   * Configuration Server
   * Reporting Server
   * Messaging Server
@@ -85,7 +85,7 @@ When you deploy Content Services, a number of containers are started.
 
 ## Prerequisites
 
-If you are deploying only a portion of the stack to Kubernetes, please verify the combation of Virtual Machine based infrastructure and products are compatable with the Container based containers with Arkcase Support Team.
+If you are deploying only a portion of the stack to Kubernetes, please verify the combation of Virtual Machine based infrastructure and products are compatable with the Container based containers with ArkCase Support Team.
 
 ### Helm charts
 
@@ -98,7 +98,7 @@ To deploy Content Services using Helm charts, you need to install the following 
 
 # Install using Helm
 
-Arkcase provides tested Helm charts as a "deployment template" for customers who want to take advantage of the container orchestration benefits of Kubernetes. These Helm charts are undergoing continual development and improvement, and shouldn't be used "as is" for your production environments, but should help you save time and effort deploying Content Services for your organization.
+ArkCase provides tested Helm charts as a "deployment template" for customers who want to take advantage of the container orchestration benefits of Kubernetes. These Helm charts are undergoing continual development and improvement, and shouldn't be used "as is" for your production environments, but should help you save time and effort deploying Content Services for your organization.
 
 The Helm charts in this repository provide a PostgreSQL database in a Docker container and don't configure any logging. This design was chosen so that you can install them in a Kubernetes cluster without changes, and they're flexible enough for adopting to your actual environment.
 
@@ -120,11 +120,11 @@ Once you've created your custom image, you can either change the default values 
 
 ## DNS
 
-1. Create a FQDN Arkcase will utilize
+1. Create a FQDN ArkCase will utilize
 
 2. Create a public certificate for the hosted services. 
 
-3. Update the .Arkcase configuration bundle
+3. Update the .ArkCase configuration bundle
 
 4. Configure Ingress Controller if necessary
 
@@ -132,13 +132,13 @@ Once you've created your custom image, you can either change the default values 
 
 6. Install Helm Chart
 
-## .Arkcase 
+## .ArkCase 
 
-.Arkcase is a configuration bundle for Case Management application
+.ArkCase is a configuration bundle for Case Management application
 
 ## HELM Configuration options
 
-Parameters bundled in helm are most infrastructure parameters, with the larger configuration bundled within the .Arkcase bundle.
+Parameters bundled in helm are most infrastructure parameters, with the larger configuration bundled within the .ArkCase bundle.
 
 ### Overall Configuration
 | Parameter | Description |
@@ -157,8 +157,8 @@ Parameters bundled in helm are most infrastructure parameters, with the larger c
 | baseDn | base Distinguished Name
 | bind dn | Bind Account's Distinguished Name
 | bind password | Bind Account's Password
-| admin dn | Arkcase Administrator's Distinguished Name
-| admin role | Arkcase Administrator's Role
+| admin dn | ArkCase Administrator's Distinguished Name
+| admin role | ArkCase Administrator's Role
 | search users base  | Organization Unit containing Users
 | search users attribute | Directory attribute for User Name
 | search users filter | User Filter
@@ -198,7 +198,7 @@ This block pulls in from ldapConfig with one additional parameter
 
 ## Initilization Dependencies (initDependencies)
       
-This block contains the dependency checking (and which ports) must be available before the next container is allowed to start.  Consult Arkcase Support if you need assistance modifying this block.
+This block contains the dependency checking (and which ports) must be available before the next container is allowed to start.  Consult ArkCase Support if you need assistance modifying this block.
 
 ## Reports:
 | Parameter | Description |
