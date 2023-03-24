@@ -71,16 +71,9 @@ initDependencies:
     mode: any
     initialDelay: 10
     delay: 5
+    timeout: 5
     attempts: 12
   dependencies:
-    ldap:
-      ports:
-        - 389
-        - 636
-    messaging:
-      ports:
-        - 61613
-        - 61616
     rdbms:
       ports:
         # In case of SQLServer
@@ -91,6 +84,16 @@ initDependencies:
         - 3306
         # In case of PostgreSQL
         - 5432
+    ldap:
+      ports:
+        - 389
+        - 636
+        - 9000
+    messaging:
+      ports:
+        - 61613
+        - 61614
+        - 61616
     search:
       ports:
         - 80
