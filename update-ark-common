@@ -16,7 +16,7 @@ helm repo index --url "${HELM_REPO_URL}" .
 
 SRC="$(echo -n "${OUT}" | sed -e 's;^.*and saved it to: ;;g')"
 ARCHIVES=()
-find charts -type f -name 'ark-common-*.tgz'| while read f ; do
+while read f ; do
 	CHARTSDIR="$(dirname "${f}")"
 	MAINDIR="$(dirname "${CHARTSDIR}")"
 	echo "${MAINDIR}"
@@ -24,4 +24,10 @@ find charts -type f -name 'ark-common-*.tgz'| while read f ; do
 	cp -vf "${SRC}" "${CHARTSDIR}"
 	OUT="$(helm package "${MAINDIR}")"
 	ARCHIVES+=("$(echo -n "${OUT}" | sed -e 's;^.*and saved it to: ;;g')")
-done
+done < <(find charts -type f -name "ark-common-*.tgz")
+
+ARKCASE="charts/arkcase"
+while read f ; do
+	F="$(basename "${f}")"
+	cp -vf "${F}" "${ARKCASE}/charts"
+done < <(find "${ARKCASE}/charts" -type f -name "*.tgz")
