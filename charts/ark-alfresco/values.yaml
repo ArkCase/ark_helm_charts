@@ -48,7 +48,7 @@ configuration:
 
 command:
   # TODO: This command is intended for debugging purposes *ONLY*
-  content: [ "sleep", "infinity" ]
+  # content: [ "sleep", "infinity" ]
 
 initDependencies:
   enabled: true
@@ -60,14 +60,6 @@ initDependencies:
     delay: 5
     attempts: 12
   dependencies:
-    ldap:
-      ports:
-        - 389
-        - 636
-    messaging:
-      ports:
-        - 61613
-        - 61616
     rdbms:
       ports:
         # In case of SQLServer
@@ -78,11 +70,6 @@ initDependencies:
         - 3306
         # In case of PostgreSQL
         - 5432
-    search:
-      ports:
-        - 80
-        - 443
-        - 8983
 
 # Please leave the `replicaCount` to 1 for the time being. Clustering is not
 # supported yet.

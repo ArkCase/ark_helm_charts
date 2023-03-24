@@ -207,7 +207,17 @@ rdbms:
       # jcr: &jcrDb "jcr"
       # quartz: &quartzDb "quartz"
 
+content:
+  configuration:
+    db:
+      username: *contentDb
+      password: *contentDbPassword
+      database: *contentDb
+    ldap:
+      <<: *ldapConfig
+
 core:
+  enabled: false
   configuration:
     ldap:
       <<: *ldapConfig
