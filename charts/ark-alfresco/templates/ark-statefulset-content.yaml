@@ -106,7 +106,7 @@ spec:
                 -Dsolr.host={{ include "arkcase.alfresco.service" (dict "ctx" . "name" "search") | quote }}
                 -Dsolr.port=8983
                 -Dsolr.secureComms=secret
-                -Dsolr.sharedSecret={{ include "arkcase.alfresco.searchSecret" . | quote }}
+                -Dsolr.sharedSecret={{ include "arkcase.alfresco.searchSecret" . }}
                 -Dsolr.base.url=/solr
                 -Dindex.subsystem.name=solr6
                 -Dshare.host={{ include "arkcase.alfresco.service" (dict "ctx" . "name" "share") | quote }}
