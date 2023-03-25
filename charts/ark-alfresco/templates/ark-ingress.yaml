@@ -27,21 +27,21 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: {{ include "arkcase.alfresco.service" (dict "ctx" $ "name" "main") }}
+                name: {{ include "arkcase.alfresco.service" (dict "ctx" $ "name" "main") | quote }}
                 port:
                   number: 8080
           - path: /api-explorer
             pathType: Prefix
             backend:
               service:
-                name: {{ include "arkcase.alfresco.service" (dict "ctx" $ "name" "share") }}
+                name: {{ include "arkcase.alfresco.service" (dict "ctx" $ "name" "share") | quote }}
                 port:
                   number: 8080
           - path: /share
             pathType: Prefix
             backend:
               service:
-                name: {{ include "arkcase.alfresco.service" (dict "ctx" $ "name" "share") }}
+                name: {{ include "arkcase.alfresco.service" (dict "ctx" $ "name" "share") | quote }}
                 port:
                   number: 8080
       {{- if .hostName }}
