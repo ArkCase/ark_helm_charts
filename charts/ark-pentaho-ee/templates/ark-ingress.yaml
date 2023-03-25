@@ -1,0 +1,44 @@
+{{- if and (include "arkcase.subsystem.enabled" .) }}
+  {{- $ingress := (.Values.configuration).ingress }}
+  {{- if and $ingress $ingress.enabled }}
+    {{- with $ingress }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "arkcase.fullname" $ | quote }}
+  namespace: {{ $.Release.Namespace | quote }}
+  labels: {{- include "arkcase.labels" $ | nindent 4 }}
+    {{- with (include "arkcase.values" (dict "ctx" $ "base" "labels") | fromYaml) }}
+      {{- toYaml .value | nindent 4 }}
+    {{- end }}
+  annotations:
+    {{- with (include "arkcase.values" (dict "ctx" $ "base" "annotations") | fromYaml) }}
+      {{- toYaml .value | nindent 4 }}
+    {{- end }}
+spec:
+    {{- if .className }}
+  ingressClassName: {{ .className | quote }}
+    {{- end }}
+  rules:
+      http:
+        paths:
+          - path: /pentaho
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "arkcase.name" $ | quote }}
+                port:
+                  number: 8080
+      {{- if .hostName }}
+      host: &ingressHostName {{ .hostName | quote }}
+      {{- end }}
+      {{- if and .hostName .tls }}
+  tls:
+    - secretName: {{ .tls | quote }}
+      hosts:
+        - *ingressHostName
+      {{- end }}
+    {{- end }}
+  {{- end }}
+{{- end }}

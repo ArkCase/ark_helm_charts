@@ -10,6 +10,12 @@
 #
 configuration:
 
+  ingress:
+    enabled: false
+    className: haproxy
+    # hostName: my.host.name
+    # tls: my-secret-name
+
   # Console username and password: Please set a secure password
   adminUsername: &adminUsername "admin"
   adminPassword: *adminUsername
