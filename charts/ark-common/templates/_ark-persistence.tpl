@@ -167,7 +167,7 @@ spec:
   {{- end }}
     {{- $localPath := $volumeData.localPath -}}
     {{- if not $localPath -}}
-      {{- $localPath = coalesce ($ctx.Values.persistence).localPath (($ctx.Values.global).persistence).localPath "/opt/app/arkcase" -}}
+      {{- $localPath = coalesce (($ctx.Values.global).persistence).localPath ($ctx.Values.persistence).localPath (printf "/opt/app/%s" $ctx.Release.Name) -}}
       {{- if $partname -}}
         {{- $volumeName = (printf "%s-%s" $partname $volumeName) -}}
       {{- end -}}
