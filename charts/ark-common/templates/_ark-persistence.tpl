@@ -83,6 +83,7 @@ Render the PersistentVolume and PersistentVolumeClaim objects for a given volume
     {{- fail "Must provide the 'name' of the volume objects to declare" -}}
   {{- end -}}
   {{- $partname := (include "arkcase.part.name" $ctx) -}}
+  {{- $rootPath := (printf "/opt/app/%s/%s" $ctx.Release.Namespace $ctx.Release.Name) -}}
 
   {{- if (include "arkcase.persistence.enabled" $ctx) -}}
 
@@ -167,7 +168,7 @@ spec:
   {{- end }}
     {{- $localPath := $volumeData.localPath -}}
     {{- if not $localPath -}}
-      {{- $localPath = coalesce (($ctx.Values.global).persistence).localPath ($ctx.Values.persistence).localPath (printf "/opt/app/%s" $ctx.Release.Name) -}}
+      {{- $localPath = coalesce (($ctx.Values.global).persistence).localPath ($ctx.Values.persistence).localPath $rootPath -}}
       {{- if $partname -}}
         {{- $volumeName = (printf "%s-%s" $partname $volumeName) -}}
       {{- end -}}
