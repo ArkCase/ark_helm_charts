@@ -10,6 +10,11 @@
 #
 configuration:
 
+  # ingress:
+  #   className: haproxy
+  #   hostName: my.host.name
+  #   tls: my-secret-name
+
   db:
     dialect: "postgres"
     hostname: "rdbms"
@@ -49,7 +54,7 @@ configuration:
 
 command:
   # TODO: This command is intended for debugging purposes *ONLY*
-  # content: [ "sleep", "infinity" ]
+  # main: [ "sleep", "infinity" ]
 
 initDependencies:
   enabled: true
@@ -89,7 +94,7 @@ image:
   activemq:
     repository: "arkcase/alfresco-activemq"
     tag: "5.17.1"
-  content:
+  main:
     repository: "arkcase/alfresco-ee-content"
     # repository: "arkcase/alfresco-ce-content"
     # tag: "7.3.1"
@@ -255,7 +260,7 @@ serviceTemplates: &serviceTemplate
 
 service:
 
-  content:
+  main:
     <<: *serviceTemplate
     ports:
       - name: "http"

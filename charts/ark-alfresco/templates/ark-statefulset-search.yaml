@@ -69,7 +69,7 @@ spec:
           {{- include "arkcase.subsystem.ports" . | nindent 10 }}
           env:
             - name: SOLR_ALFRESCO_HOST
-              value: {{ include "arkcase.alfresco.service" (dict "ctx" . "name" "content") | quote }}
+              value: {{ include "arkcase.alfresco.service" (dict "ctx" . "name" "main") | quote }}
             - name: SOLR_ALFRESCO_PORT
               value: "8080"
             - name: SOLR_SOLR_HOST

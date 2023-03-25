@@ -72,7 +72,7 @@ spec:
               value: >-
                 -XX:MinRAMPercentage=50
                 -XX:MaxRAMPercentage=80
-                -Dalfresco.host={{ include "arkcase.alfresco.service" (dict "ctx" . "name" "content") | quote }}
+                -Dalfresco.host={{ include "arkcase.alfresco.service" (dict "ctx" . "name" "main") | quote }}
                 -Dalfresco.port=8080
                 -Dalfresco.context=alfresco
                 -Dalfresco.protocol=http
