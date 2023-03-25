@@ -73,8 +73,10 @@ spec:
                   - ownership: {{ coalesce (.Values.persistence).ownership "33000:1000" | quote }}
                     permissions: "u=rwX,g=rX,o="
                     flags: [ "recurse", "noforced", "create", "changes" ]
-                    targets: [ "/app/data" ]
+                    targets: [ "/app/data", "/app/init" ]
           volumeMounts:
+            - name: &initVolume "init"
+              mountPath: &initDir "/app/init"
             - name: &dataVolume "data"
               mountPath: &dataDir "/app/data"
         {{- include "arkcase.initDependencies.container" . | nindent 8 }}
@@ -136,7 +138,10 @@ spec:
           volumeMounts:
             - name: *dataVolume
               mountPath: *dataDir
+            - name: *initVolume
+              mountPath: *initDir
       volumes:
+        {{- include "arkcase.persistence.volume" (dict "name" "init" "ctx" $) | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "name" "data" "ctx" $) | nindent 8 }}
       {{- with (include "arkcase.values" (dict "ctx" . "base" "nodeSelector") | fromYaml) }}
       nodeSelector: {{- toYaml .value | nindent 8 }}
@@ -149,6 +154,7 @@ spec:
       {{- end }}
 
 {{- if (include "arkcase.persistence.enabled" .) }}
+{{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "init") | indent 0 }}
 {{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "data") | indent 0 }}
 {{- end }}
 {{- end }}
