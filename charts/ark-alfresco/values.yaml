@@ -10,10 +10,11 @@
 #
 configuration:
 
-  # ingress:
-  #   className: haproxy
-  #   hostName: my.host.name
-  #   tls: my-secret-name
+  ingress:
+    enabled: false
+    className: haproxy
+    # hostName: my.host.name
+    # tls: my-secret-name
 
   db:
     dialect: "postgres"

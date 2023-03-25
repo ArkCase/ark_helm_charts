@@ -1,5 +1,7 @@
 {{- if and (include "arkcase.subsystem.enabled" .) }}
-  {{- with (.Values.configuration).ingress }}
+  {{- $ingress := (.Values.configuration).ingress }}
+  {{- if and $ingress $ingress.enabled }}
+    {{- with $ingress }}
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -42,14 +44,15 @@ spec:
                 name: {{ include "arkcase.alfresco.service" (dict "ctx" $ "name" "share") }}
                 port:
                   number: 8080
-    {{- if .hostName }}
+      {{- if .hostName }}
       host: &ingressHostName {{ .hostName | quote }}
-    {{- end }}
-    {{- if and .hostName .tls }}
+      {{- end }}
+      {{- if and .hostName .tls }}
   tls:
     - secretName: {{ .tls | quote }}
       hosts:
         - *ingressHostName
+      {{- end }}
     {{- end }}
   {{- end }}
 {{- end }}
