@@ -76,8 +76,8 @@ spec:
               mountPath: &initDir "/app/init"
             - name: &homeVolume "home"
               mountPath: &homeDir "/app/home"
-            - name: *confVolume
-              mountPath: *confDir
+            - name: &confVolume "conf"
+              mountPath: &confDir "/app/conf"
             - name: &logsVolume "logs"
               mountPath: &logsDir "/app/logs"
         {{- include "arkcase.initDependencies.container" (dict "ctx" . "name" "init-dependencies") | nindent 8 }}
