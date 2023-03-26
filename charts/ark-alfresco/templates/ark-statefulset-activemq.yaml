@@ -66,6 +66,11 @@ spec:
         - name: {{ include "arkcase.part.name" . | quote }}
           image: {{ include "arkcase.tools.image" . | quote }}
           imagePullPolicy: {{ include "arkcase.tools.imagePullPolicy" . | quote }}
+          env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
+            - name: JAVA_TOOL_OPTIONS
+              value: >-
+                -XX:MinRAMPercentage=50
+                -XX:MaxRAMPercentage=80
           {{- include "arkcase.subsystem.ports" . | nindent 10 }}
           {{- with (include "arkcase.values" (dict "ctx" . "base" "command") | fromYaml) }}
           command: {{ toJson .value }}

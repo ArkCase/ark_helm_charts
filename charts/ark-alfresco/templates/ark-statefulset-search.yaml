@@ -82,6 +82,8 @@ spec:
               value: "secret"
             - name: JAVA_TOOL_OPTIONS
               value: >-
+                -XX:MinRAMPercentage=50
+                -XX:MaxRAMPercentage=80
                 -Dalfresco.secureComms.secret={{ include "arkcase.alfresco.searchSecret" . }}
           {{- with (include "arkcase.values" (dict "ctx" . "base" "command") | fromYaml) }}
           command: {{ toJson .value }}

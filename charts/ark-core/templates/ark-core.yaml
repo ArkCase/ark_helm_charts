@@ -60,6 +60,7 @@ spec:
       initContainers:
         - name: set-permissions
           image: {{ include "arkcase.tools.subimage" (dict "ctx" . "name" "setperm" "image" "arkcase/setperm") | quote }}
+          imagePullPolicy: {{ include "arkcase.tools.imagePullPolicy" . | quote }}
           env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
             - name: JOBS
               value: |
@@ -75,8 +76,8 @@ spec:
               mountPath: &initDir "/app/init"
             - name: &homeVolume "home"
               mountPath: &homeDir "/app/home"
-            - name: &confVolume "conf"
-              mountPath: &confDir "/app/conf"
+            - name: *confVolume
+              mountPath: *confDir
             - name: &logsVolume "logs"
               mountPath: &logsDir "/app/logs"
         {{- include "arkcase.initDependencies.container" (dict "ctx" . "name" "init-dependencies") | nindent 8 }}
@@ -99,6 +100,12 @@ spec:
             {{- with ((.Values.configuration).arkcase).env }}
               {{- toYaml . | nindent 12 }}
             {{- end }}
+            - name: CATALINA_OPTS
+              # For Java 8, these percentages must be given as doubles. The JVM may
+              # choke if the ".0" isn't provided at the end
+              value: >-
+                -XX:MinRAMPercentage=50.0
+                -XX:MaxRAMPercentage=80.0
           {{- include "arkcase.subsystem.ports" (.Values.service).arkcase | nindent 10 }}
           {{- with (.Values.command).arkcase }}
           command: {{- toYaml . | nindent 12 }}
@@ -134,6 +141,10 @@ spec:
             {{- end }}
             - name: DATA_DIR
               value: *confDir
+            - name: JAVA_TOOL_OPTIONS
+              value: >-
+                -XX:MinRAMPercentage=50
+                -XX:MaxRAMPercentage=80
           {{- include "arkcase.subsystem.ports" (.Values.service).config | nindent 10 }}
           {{- with (.Values.command).config }}
           command: {{- toYaml . | nindent 12 }}
