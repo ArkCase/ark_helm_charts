@@ -1,19 +1,23 @@
 mariadb:
+  quartz: StdJdbcDelegate
   jdbc:
     driver: org.mariadb.jdbc.Driver
     format: "jdbc:mariadb://${HOSTNAME}:${PORT}/${DATABASE}"
 
 mysql:
+  quartz: StdJdbcDelegate
   jdbc:
     driver: com.mysql.cj.jdbc.Driver
     format: "jdbc:mysql://${HOSTNAME}:${PORT}/${DATABASE}"
 
 oracle:
+  quartz: oracle.OracleDelegate
   jdbc:
     driver: oracle.jdbc.driver.OracleDriver
     format: "jdbc:oracle:thin:@${HOSTNAME}:${PORT}:${DATABASE}"
 
 postgresql:
+  quartz: PostgreSQLDelegate
   jdbc:
     driver: org.postgresql.Driver
     format: "jdbc:postgresql://${HOSTNAME}:${PORT}/${DATABASE}"
@@ -22,6 +26,7 @@ postgresql:
     - postgres
 
 sqlserver:
+  quartz: MSSQLDelegate
   jdbc:
     driver: com.microsoft.sqlserver.jdbc.SQLServerDriver
     instance: "\\${INSTANCE}"

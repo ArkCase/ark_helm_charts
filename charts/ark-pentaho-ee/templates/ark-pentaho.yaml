@@ -91,7 +91,7 @@ spec:
             - name: LOGS_DIR
               value: *logsPath
             - name: DB_DIALECT
-              value: {{ include "arkcase.pentaho.db.dialect" . | quote }}
+              value: {{ include "arkcase.db.dialect" . | quote }}
             - name: DB_SCRIPTS
               value: {{ include "arkcase.pentaho.db.scripts" . | quote }}
             - name: ADMIN_USERNAME
