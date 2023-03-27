@@ -68,6 +68,10 @@ spec:
           imagePullPolicy: {{ include "arkcase.tools.imagePullPolicy" . | quote }}
           {{- include "arkcase.subsystem.ports" . | nindent 10 }}
           env:
+            - name: REPO_HOST
+              value: {{ include "arkcase.alfresco.service" (dict "ctx" . "name" "main") | quote }}
+            - name: REPO_PORT
+              value: "8080"
             - name: CATALINA_OPTS
               value: >-
                 -XX:MinRAMPercentage=50
