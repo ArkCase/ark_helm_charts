@@ -25,5 +25,5 @@
 {{- end -}}
 
 {{- define "arkcase.core.db.platform" -}}
-  {{- include "arkcase.db.jdbc.param" (dict "ctx" . "param" "platform") -}}
+  {{- include "arkcase.db.param" (dict "ctx" . "param" "platform") -}}
 {{- end -}}
