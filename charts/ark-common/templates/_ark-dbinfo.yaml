@@ -29,12 +29,31 @@
   {{- get $dbInfo $db | toYaml -}}
 {{- end -}}
 
+{{- define "arkcase.db.param" -}}
+  {{- if not (kindIs "map" .) -}}
+    {{- fail "The parameter must be a map" -}}
+  {{- end -}}
+  {{- $ctx := . -}}
+  {{- if (hasKey . "ctx") -}}
+    {{- $ctx = .ctx | default dict -}}
+  {{- end -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "The context given must be the root context" -}}
+  {{- end -}}
+
+  {{- if not .param -}}
+    {{- fail "Must provide a 'param' parameter to indicate which value to fetch" -}}
+  {{- end -}}
+
+  {{- get ((include "arkcase.db.info" $ctx) | fromYaml) (.param | toString) -}}
+{{- end -}}
+
 {{- define "arkcase.db.dialect" -}}
-  {{- get ((include "arkcase.db.info" .) | fromYaml) "dialect" -}}
+  {{- include "arkcase.db.param" (dict "ctx" . "param" "dialect") -}}
 {{- end -}}
 
 {{- define "arkcase.db.quartz.delegateClass" -}}
-  {{- get ((include "arkcase.db.info" .) | fromYaml) "quartz" -}}
+  {{- include "arkcase.db.param" (dict "ctx" . "param" "quartz") -}}
 {{- end -}}
 
 {{- define "arkcase.db.jdbc.driver" -}}
