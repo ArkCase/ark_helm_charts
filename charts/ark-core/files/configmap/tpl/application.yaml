@@ -8,8 +8,8 @@ logging.file: /dev/stdout
 logging.level.com.armedia.acm.configserver: debug
 logging.level.org.springframework.cloud.config: debug
 jms.message.buffer.window: "1"
-spring.activemq.broker-url: {{ ((Values.configuration).messaging).url | default "tcp://messaging:61616" | quote }}
-acm.activemq.broker-url: {{ ((Values.configuration).messaging).url | default "tcp://messaging:61616" | quote }}
+spring.activemq.broker-url: {{ ((.Values.configuration).messaging).url | default "tcp://messaging:61616" | quote }}
+acm.activemq.broker-url: {{ ((.Values.configuration).messaging).url | default "tcp://messaging:61616" | quote }}
 acm.activemq.default-destination: configuration.changed
 acm.activemq.labels-destination: labels.changed
 acm.activemq.ldap-destination: ldap.changed

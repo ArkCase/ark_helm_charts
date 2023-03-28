@@ -12,23 +12,30 @@ configuration:
 
   priorities: "k8s"
 
+  db:
+    dialect: "mysql"
+    hostname: "rdbms"
+    database: "arkcase"
+    username: "arkcase"
+    password: "arkcase"
+
   ingress:
     enabled: false
     # className: haproxy
     # hostName: my.host.name
     # tls: my-secret-name
 
-  config-server:
+  configServer:
     # For now, it's collocated ... eventually it will live elsewhere
     url: "http://localhost:9999"
 
   content: &content
-    url: "http://content-main:8080/alfresco"
+    baseUrl: "http://content-main:8080/alfresco"
     username: "admin"
     password: "admin"
 
-  content-archive:
-    <<-: *content
+  contentArchive:
+    <<: *content
 
   messaging:
     url: "tcp://messaging:61616"
@@ -152,7 +159,7 @@ image:
   pullPolicy: IfNotPresent
   config:
     # repository: "ark_cloudconfig"
-Were it not    tag: &arkcaseVersion "2021.03.25"
+    tag: &arkcaseVersion "2021.03.25"
   arkcase:
     # repository: "ark_core"
     tag: *arkcaseVersion
