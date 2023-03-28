@@ -58,6 +58,15 @@ spec:
       securityContext: {{- toYaml . | nindent 8 }}
       {{- end }}
       initContainers:
+        - name: initialize-configuration
+          image: {{ include "arkcase.tools.subimage" (dict "ctx" . "name" "dot-arkcase" "image" "arkcase/config") | quote }}
+          imagePullPolicy: {{ include "arkcase.tools.imagePullPolicy" . | quote }}
+          env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
+            - name: CONF_DIR
+              value: &confDir "/app/conf"
+          volumeMounts:
+            - name: &confVolume "conf"
+              mountPath: *confDir
         - name: set-permissions
           image: {{ include "arkcase.tools.subimage" (dict "ctx" . "name" "setperm" "image" "arkcase/setperm") | quote }}
           imagePullPolicy: {{ include "arkcase.tools.imagePullPolicy" . | quote }}
@@ -76,8 +85,8 @@ spec:
               mountPath: &initDir "/app/init"
             - name: &homeVolume "home"
               mountPath: &homeDir "/app/home"
-            - name: &confVolume "conf"
-              mountPath: &confDir "/app/conf"
+            - name: *confVolume
+              mountPath: *confDir
             - name: &logsVolume "logs"
               mountPath: &logsDir "/app/logs"
         {{- include "arkcase.initDependencies.container" (dict "ctx" . "name" "init-dependencies") | nindent 8 }}
