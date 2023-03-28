@@ -96,18 +96,6 @@ configuration:
     env:
       - name: DEVELOPMENT
         value: "true"
-      - name: LD_LIBRARY_PATH
-        value: "/app/home/.arkcase/libraries"
-      - name: CATALINA_OPTS
-        value: >-
-          -Dacm.configurationserver.propertyfile=/app/home/.arkcase/acm/conf.yml
-          -Dconfiguration.client.spring.path=spring
-          -Dspring.profiles.active=ldap
-          -Duser.home=/app/home
-#           -Xms1g
-#           -Xmx2g
-#           -Xdebug
-#           -Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=0.0.0.0:8888
 
   ldap:
     domain: "dev.arkcase.com"

@@ -109,12 +109,30 @@ spec:
             {{- with ((.Values.configuration).arkcase).env }}
               {{- toYaml . | nindent 12 }}
             {{- end }}
+            - name: LD_LIBRARY_PATH
+              value: "/app/home/.arkcase/libraries"
             - name: CATALINA_OPTS
               # For Java 8, these percentages must be given as doubles. The JVM may
               # choke if the ".0" isn't provided at the end
               value: >-
                 -XX:MinRAMPercentage=50.0
                 -XX:MaxRAMPercentage=80.0
+                -Dacm.configurationserver.propertyfile=/app/home/.arkcase/acm/conf.yml
+                -Dconfiguration.client.spring.path=spring
+                -Dspring.profiles.active=ldap
+                -Duser.home=/app/home
+              {{- if (.Values.debug).enabled }}
+                {{- $debugSuspend := "n" }}
+                {{- if (.Values.debug).suspend }}
+                  {{- $debugSuspend = "y" }}
+                {{- end }}
+                {{- $debugPort := 8888 }}
+                {{- if (.Values.debug).port }}
+                  {{- $debugPort = ((.Values.debug).port | int) }}
+                {{- end }}
+                -Xdebug
+                -Xrunjdwp:transport=dt_socket,server=y,suspend={{ $debugSuspend }},address=0.0.0.0:{{ $debugPort }}
+              {{- end }}
           {{- include "arkcase.subsystem.ports" (.Values.service).arkcase | nindent 10 }}
           {{- with (.Values.command).arkcase }}
           command: {{- toYaml . | nindent 12 }}
@@ -132,7 +150,7 @@ spec:
               mountPath: *homeDir
             - name: *confVolume
               mountPath: "/app/home/.arkcase"
-            - name: &configMap "configMap"
+            - name: &configMap "config-map"
               mountPath: "/app/home/.arkcase/acm/acm-config-server-repo/application.yaml"
               subPath: &applicationYaml "application.yaml"
               readOnly: true
