@@ -23,3 +23,7 @@
     {{- $priority -}}
   {{- end -}}
 {{- end -}}
+
+{{- define "arkcase.core.db.platform" -}}
+  {{- include "arkcase.db.jdbc.param" (dict "ctx" . "param" "platform") -}}
+{{- end -}}

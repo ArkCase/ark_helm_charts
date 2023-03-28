@@ -111,6 +111,7 @@
 
   {{- $database := (include "arkcase.db.jdbc.param" (set $param "param" "database")) -}}
   {{- $instance := (include "arkcase.db.jdbc.param" (set $param "param" "instance")) -}}
+  {{- $urlParameters := (include "arkcase.db.jdbc.param" (set $param "param" "urlParameters")) -}}
 
   {{- $dbInfo := ((include "arkcase.db.info" $ctx) | fromYaml) -}}
   {{- $data := mustDeepCopy $ctx.Values.configuration.db -}}
@@ -144,6 +145,7 @@
       | replace "${PORT}" ($data.port | toString)
       | replace "${DATABASE}" ($database | toString)
       | replace "${INSTANCE}" ($instance | toString)
+      | replace "${URL_PARAMETERS}" ($urlParameters | toString)
   -}}
 {{- end -}}
 

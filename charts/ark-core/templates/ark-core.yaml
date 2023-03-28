@@ -140,6 +140,10 @@ spec:
               subPath: &springConfigProxyXml "spring-config-proxy.xml"
               readOnly: true
             - name: &secrets "secrets"
+              mountPath: "/app/home/.arkcase/acm/acm-config-server-repo/arkcase-k8s.yaml"
+              subPath: &arkcaseK8sYaml "arkcase-k8s.yaml"
+              readOnly: true
+            - name: *secrets
               mountPath: "/app/home/.arkcase/acm/acm-config-server-repo/arkcase-activemq.yaml"
               subPath: &arkcaseActivemqYaml "arkcase-activemq.yaml"
               readOnly: true
@@ -214,6 +218,8 @@ spec:
             secretName: {{ include "arkcase.fullname" . | quote }}
             defaultMode: 0444
             items:
+              - key: *arkcaseK8sYaml
+                path: *arkcaseK8sYaml
               - key: *ldapYaml
                 path: *ldapYaml
               - key: *camelConfigAlfrescoCmisProperties

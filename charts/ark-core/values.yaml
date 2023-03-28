@@ -10,6 +10,8 @@
 #
 configuration:
 
+  baseUrl: "http://server.dev.arkcase.com:8080/arkcase"
+
   priorities: "k8s"
 
   db:
@@ -24,6 +26,35 @@ configuration:
     # className: haproxy
     # hostName: my.host.name
     # tls: my-secret-name
+
+  ldap:
+    domain: "dev.arkcase.com"
+    url: "ldaps://ldap:636"
+    baseDn: &baseDn "dc=dev,dc=arkcase,dc=com"
+    bind:
+      dn: "cn=ArkCase Administrator,cn=Users,dc=dev,dc=arkcase,dc=com"
+      password: "$arkcase-admin$"
+    admin:
+      dn: "cn=ArkCase Administrator"
+      role: "cn=ARKCASE_ADMINISTRATOR"
+    search:
+      base: *baseDn
+      users:
+        base: "cn=Users"
+        attribute: "sAMAccountName"
+        filter: "(&(objectClass=user)(sAMAccountName={0}))"
+        allFilter: "(objectClass=user)"
+        prefix: ""
+      groups:
+        base: "cn=Users"
+        attribute: "cn"
+        filter: "(&(objectClass=group)(cn={0}))"
+        allFilter: "(objectClass=group)"
+        membership: "(&(objectClass=group)(member={0}))"
+        ignoreCase: "false"
+        subtree: "true"
+        rolePrefix: ""
+        prefix: ""
 
   configServer:
     # For now, it's collocated ... eventually it will live elsewhere
@@ -42,14 +73,21 @@ configuration:
     username: "guest"
     password: "ENC(U2FsdGVkX1+SMOIdK/h2Cy5ONteYLksBQnHZllFZcKs=)"
 
-  proxy:
-    reports:
-      url: "http://reports:8080"
-      scheme: "https"
+  stomp:
+    url: "tcp://messaging:61613"
+    username: "arkcase"
+    password: "arkcase"
 
-    weather:
-      url: "https://api.openweathermap.org/data/2.5"
-      scheme: "https"
+  reports:
+    url: "http://reports:8080"
+    scheme: "https"
+
+  search:
+    url: "http://search:8983"
+
+  weather:
+    url: "https://api.openweathermap.org/data/2.5"
+    scheme: "https"
 
   # Add configurations here
   config:

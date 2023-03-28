@@ -1,23 +1,31 @@
 mariadb:
+  platform: MySQL
   quartz: StdJdbcDelegate
+  port: 3306
   jdbc:
     driver: org.mariadb.jdbc.Driver
     format: "jdbc:mariadb://${HOSTNAME}:${PORT}/${DATABASE}"
 
 mysql:
+  platform: MySQL
   quartz: StdJdbcDelegate
+  port: 3306
   jdbc:
     driver: com.mysql.cj.jdbc.Driver
     format: "jdbc:mysql://${HOSTNAME}:${PORT}/${DATABASE}"
 
 oracle:
+  platform: Oracle
   quartz: oracle.OracleDelegate
+  port: 1521
   jdbc:
     driver: oracle.jdbc.driver.OracleDriver
     format: "jdbc:oracle:thin:@${HOSTNAME}:${PORT}:${DATABASE}"
 
 postgresql:
+  platform: PostgreSQL
   quartz: PostgreSQLDelegate
+  port: 5432
   jdbc:
     driver: org.postgresql.Driver
     format: "jdbc:postgresql://${HOSTNAME}:${PORT}/${DATABASE}"
@@ -26,7 +34,9 @@ postgresql:
     - postgres
 
 sqlserver:
+  platform: SQLServer
   quartz: MSSQLDelegate
+  port: 1433
   jdbc:
     driver: com.microsoft.sqlserver.jdbc.SQLServerDriver
     instance: "\\${INSTANCE}"

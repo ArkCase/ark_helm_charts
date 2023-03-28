@@ -729,3 +729,60 @@ return either the value if correct, or the empty string if not.
     {{- include "arkcase.tools.get" (dict "ctx" $ldap "name" (.value | toString)) -}}
   {{- end -}}
 {{- end -}}
+
+{{- define "arkcase.tools.parseUrl" -}}
+  {{- $url := . -}}
+  {{- $data := urlParse $url -}}
+
+  {{- if hasKey $data "host" -}}
+    {{- /* Host may be of the form (host)?(:port)? */ -}}
+    {{- $hostInfo := split ":" $data.host -}}
+
+    {{- /* Purify the host information */ -}}
+    {{- $host := "" -}}
+    {{- if $hostInfo._0 -}}
+      {{- $host = $hostInfo._0 -}}
+    {{- end -}}
+    {{- $data = set $data "host" $host -}}
+
+    {{- /* Purify the port information */ -}}
+    {{- $port := 0 -}}
+    {{- if $hostInfo._1 -}}
+      {{- $port = ($hostInfo._1 | int) -}}
+    {{- else if eq "https" $data.scheme -}}
+      {{- $port = 443 -}}
+    {{- else if eq "http" $data.scheme -}}
+      {{- $port := 80 -}}
+    {{- else if eq "ftp" $data.scheme -}}
+      {{- $port := 21 -}}
+    {{- else if eq "ftps" $data.scheme -}}
+      {{- $port := 990 -}}
+    {{- else if eq "sftp" $data.scheme -}}
+      {{- $port := 22 -}}
+    {{- end -}}
+    {{- $data = set $data "port" $port -}}
+  {{- end -}}
+
+  {{- if hasKey $data "path" -}}
+    {{- /* Pick out the context */ -}}
+    {{- $path := splitList "/" $data.path -}}
+    {{- if gt (len $path) 0 -}}
+      {{- $path := (first $path) -}}
+    {{- else -}}
+      {{- $path := "" -}}
+    {{- end -}}
+    {{- $data = set $data "context" $path -}}
+  {{- end -}}
+
+  {{- if hasKey $data "query" -}}
+    {{- /* Pick out the query parameters */ -}}
+    {{- $data = set $data "parameters" (splitList "&" $data.query) -}}
+  {{- else -}}
+    {{- $data = set $data "parameters" list -}}
+  {{- end -}}
+
+  {{- $data = set $data "url" $url -}}
+
+  {{- /* Return the nice result */ -}}
+  {{- $data | toYaml -}}
+{{- end -}}
