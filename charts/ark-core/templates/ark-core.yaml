@@ -235,6 +235,10 @@ spec:
               subPath: *arkcaseActivemqYaml
               readOnly: true
             - name: *secrets
+              mountPath: "/app/conf/arkcase-k8s.yaml"
+              subPath: *arkcaseK8sYaml
+              readOnly: true
+            - name: *secrets
               mountPath: "/app/conf/ldap/ldap.yaml"
               subPath: *ldapYaml
               readOnly: true
