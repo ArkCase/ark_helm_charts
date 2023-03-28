@@ -8,25 +8,28 @@ report:
     PENTAHO_SERVER_INTERNAL_URL: "http://reports"
     PENTAHO_SERVER_INTERNAL_PORT: 8080
 
+{{- $alfrescoUrl := (((.Values).configuration).content).url | default "http://content-main:8080/alfresco" -}}
+{{- $alfresco := urlParse $alfrescoUrl -}}
+
 alfresco:
   admin:
-    baseurl: "{{- alfresco base url -}}/s/enterprise/admin/admin-sync"
-    username: "admin"
-    password: "admin"
+    baseurl: "{{- $alfrescoUrl -}}/s/enterprise/admin/admin-sync"
+    username: {{ (((.Values).configuration).content).username | quote }}
+    password: {{ (((.Values).configuration).content).password | quote }}
 
   sync:
-    host: "{{- alfresco host name -}}"
-    port: "{{- alfresco host port -}}"
-    protocol: "{{- alfresco host protocol -}}"
-    username: "admin"
-    password: "admin"
+    protocol: &alfrescoScheme {{ $alfresco.scheme | quote }}
+    host: &alfrescoHost {{ $alfresco.host | quote }}
+    port: &alfrescoPort {{ $alfresco.port }}
+    username: &alfrescoUsername {{ (((.Values).configuration).content).username | quote }}
+    password: &alfrescoPassword {{ (((.Values).configuration).content).password | quote }}
 
-alfresco_host: "proxy.alfresco.svc.cluster.local"
-alfresco_port: 8080
-alfresco_user: "admin"
-alfresco_password: "admin"
+alfresco_protocol: *alfrescoScheme
+alfresco_host: *alfrescoHost
+alfresco_port: *alfrescoPort
+alfresco_user: *alfrescoUsername
+alfresco_password: *alfrescoPassword
 alfresco_contextRoot: "alfresco"
-alfresco_protocol: "http"
 
 application:
   properties:
@@ -41,7 +44,7 @@ database:
  encryption_supported: true
 
 acm:
-  driverClassName: "org.mariadb.jdbc.Driver"
+  driverClassName: {{ include "arkcase.db.jdbc.url" . | quote }}
   schema: "arkcase"
   url: "jdbc:postgresql://rdbms:5432/arkcase?sslmode=disable"
   schema: "public"

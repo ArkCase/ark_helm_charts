@@ -101,10 +101,10 @@ spec:
                 -XX:MinRAMPercentage=50
                 -XX:MaxRAMPercentage=80
                 -Ddir.root=/app/data
-                -Ddb.driver={{ include "arkcase.jdbc.driver" . | quote }}
-                -Ddb.username={{ include "arkcase.jdbc.username" . | quote }}
-                -Ddb.password={{ include "arkcase.jdbc.password" . | quote }}
-                -Ddb.url={{ include "arkcase.jdbc.url" . | quote }}
+                -Ddb.driver={{ include "arkcase.db.jdbc.driver" . | quote }}
+                -Ddb.username={{ include "arkcase.db.jdbc.username" . | quote }}
+                -Ddb.password={{ include "arkcase.db.jdbc.password" . | quote }}
+                -Ddb.url={{ include "arkcase.db.jdbc.url" . | quote }}
                 -Dsolr.host={{ include "arkcase.alfresco.service" (dict "ctx" . "name" "search") | quote }}
                 -Dsolr.port=8983
                 -Dsolr.secureComms=secret

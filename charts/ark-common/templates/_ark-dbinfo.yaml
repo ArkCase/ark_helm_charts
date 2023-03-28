@@ -60,21 +60,13 @@
   {{- if not (kindIs "map" .) -}}
     {{- fail "The parameter must be a map" -}}
   {{- end -}}
-  {{- if not (hasKey . "ctx") -}}
-    {{- fail "Must provide the root context as the 'ctx' parameter value" -}}
+  {{- $ctx := . -}}
+  {{- if (hasKey . "ctx") -}}
+    {{- $ctx = .ctx | default dict -}}
   {{- end -}}
-  {{- $ctx := .ctx -}}
-  {{- if not (kindIs "map" $ctx) -}}
-    {{- fail "The context given ('ctx' parameter) must be a map" -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "The context given must be the root context" -}}
   {{- end -}}
-  {{- if or (not (hasKey $ctx "Values")) (not (hasKey $ctx "Chart")) (not (hasKey $ctx "Release")) -}}
-    {{- fail "The context given (either the parameter map, or the 'ctx' value within) is not the top-level context" -}}
-  {{- end -}}
-
-  {{- if not .target -}}
-    {{- fail "Must provide a 'target' parameter to indicate which parameter to fetch" -}}
-  {{- end -}}
-  {{- $target := .target | toString -}}
 
   {{- if not .param -}}
     {{- fail "Must provide a 'param' parameter to indicate which value to fetch" -}}
@@ -82,11 +74,15 @@
   {{- $param := .param | toString -}}
 
   {{- $jdbc := $ctx.Values.configuration.jdbc -}}
-  {{- if not (hasKey $jdbc $target) -}}
-    {{- fail (printf "No JDBC instance named '%s' - must be one of %s" $target (keys $jdbc)) -}}
+
+  {{- $target := .target -}}
+  {{- if $target -}}
+    {{- if not (hasKey $jdbc $target) -}}
+      {{- fail (printf "No JDBC instance named '%s' - must be one of %s" $target (keys $jdbc)) -}}
+    {{- end -}}
+    {{- $jdbc = get $jdbc $target -}}
   {{- end -}}
 
-  {{- $jdbc = get $jdbc $target -}}
   {{- $value := "" -}}
   {{- if (hasKey $jdbc $param) -}}
     {{- $value = (get $jdbc $param) -}}
@@ -101,19 +97,20 @@
   {{- if not (kindIs "map" .) -}}
     {{- fail "The parameter must be a map" -}}
   {{- end -}}
-  {{- if not (hasKey . "ctx") -}}
-    {{- fail "Must provide the root context as the 'ctx' parameter value" -}}
+  {{- $ctx := . -}}
+  {{- if (hasKey . "ctx") -}}
+    {{- $ctx = .ctx | default dict -}}
   {{- end -}}
-  {{- $ctx := .ctx -}}
-  {{- if not (kindIs "map" $ctx) -}}
-    {{- fail "The context given ('ctx' parameter) must be a map" -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "The context given must be the root context" -}}
   {{- end -}}
-  {{- if or (not (hasKey $ctx "Values")) (not (hasKey $ctx "Chart")) (not (hasKey $ctx "Release")) -}}
-    {{- fail "The context given (either the parameter map, or the 'ctx' value within) is not the top-level context" -}}
+  {{- $param := dict "ctx" $ctx -}}
+  {{- if and (hasKey . "target") .target -}}
+    {{- $param = set $param "target" .target -}}
   {{- end -}}
 
-  {{- $database := (include "arkcase.db.jdbc.param" (set . "param" "database")) -}}
-  {{- $instance := (include "arkcase.db.jdbc.param" (set . "param" "instance")) -}}
+  {{- $database := (include "arkcase.db.jdbc.param" (set $param "param" "database")) -}}
+  {{- $instance := (include "arkcase.db.jdbc.param" (set $param "param" "instance")) -}}
 
   {{- $dbInfo := ((include "arkcase.db.info" $ctx) | fromYaml) -}}
   {{- $data := mustDeepCopy $ctx.Values.configuration.db -}}
@@ -151,9 +148,19 @@
 {{- end -}}
 
 {{- define "arkcase.db.jdbc.username" -}}
-  {{- include "arkcase.db.jdbc.param" (set . "param" "username") -}}
+  {{- $param := . -}}
+  {{- if (include "arkcase.isRootContext" .) -}}
+    {{- $param = dict "ctx" . -}}
+  {{- end -}}
+  {{- $param = set $param "param" "username" -}}
+  {{- include "arkcase.db.jdbc.param" $param -}}
 {{- end -}}
 
 {{- define "arkcase.db.jdbc.password" -}}
-  {{- include "arkcase.db.jdbc.param" (set . "param" "password") -}}
+  {{- $param := . -}}
+  {{- if (include "arkcase.isRootContext" .) -}}
+    {{- $param = dict "ctx" . -}}
+  {{- end -}}
+  {{- $param = set $param "param" "password" -}}
+  {{- include "arkcase.db.jdbc.param" $param -}}
 {{- end -}}
