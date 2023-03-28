@@ -146,6 +146,21 @@ gateway:
           - url: &reportsUrl "http://reports:8080/pentaho/"
             path: "/pentaho"
 
+      # Alfresco
+      ark-content:
+        preserveHosts: true
+        locations:
+          - url: "http://content-main:8080/alfresco/"
+            path: "/alfresco"
+            html:
+              enabled: true
+              extended: true
+          - url: "http://content-share:8080/share/"
+            path: "/share"
+            html:
+              enabled: true
+              extended: true
+
 messaging:
   service:
     # external: "www.activemq.com"
@@ -212,7 +227,6 @@ content:
       database: *contentDb
 
 core:
-  enabled: false
   configuration:
     db:
       <<: *dbConfig
