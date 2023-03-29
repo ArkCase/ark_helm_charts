@@ -31,12 +31,14 @@ KEY_LDAP_GROUP_PREFIX = "groupPrefix"
 KEY_LDAP_DEFAULT_PASSWORD = "defaultPassword"
 
 KEY_SECRET_DOMAIN_NAME = "NAME"
+KEY_SECRET_DOMAIN_ROOT_DN = "ROOT_DN"
 KEY_SECRET_DOMAIN_REALM = "REALM"
-KEY_SECRETS = [ KEY_SECRET_DOMAIN_NAME, KEY_SECRET_DOMAIN_REALM ]
+KEY_SECRETS = [ KEY_SECRET_DOMAIN_NAME, KEY_SECRET_DOMAIN_ROOT_DN, KEY_SECRET_DOMAIN_REALM ]
 
 KEY_USERS = "users"
 KEY_PASSWORD = "password"
 KEY_EXPIRATION_DAYS = "expirationDays"
+KEY_ADMINISTRATOR = "administrator"
 USER_ATTRIBUTES = {
 	"firstName" : "given-name",
 	"lastName" : "surname",
@@ -97,9 +99,10 @@ for s in KEY_SECRETS:
 	except Exception as e:
 		fail(f"Failed to read a required secret [{f}]: {e}")
 
-DOMAIN_ROOT_DN = SECRETS[KEY_SECRET_DOMAIN_ROOT_DN]
+DOMAIN_NAME = SECRETS[KEY_SECRET_DOMAIN_NAME]
 DOMAIN_REALM = SECRETS[KEY_SECRET_DOMAIN_REALM]
-DOMAIN_USER_GROUP_BASE = f"cn=Users,{DOMAIN_REALM}"
+DOMAIN_ROOT_DN = SECRETS[KEY_SECRET_DOMAIN_ROOT_DN]
+DOMAIN_USER_GROUP_BASE = f"cn=Users,{DOMAIN_ROOT_DN}"
 
 def get_config_value(conf, confName, args, argName, envName, default = None):
 	if hasattr(args, argName):
@@ -180,10 +183,10 @@ def run_command(command):
 	if DEBUG:
 		logging.info(f"\tCommand = {command}")
 		command = "true"
-	return subprocess.run(command)
+	return subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
 def samba_tool(flags):
-	return run_command([ EXE_SAMBA_TOOL ] + render_auth_info() + flags).returncode
+	return run_command([ EXE_SAMBA_TOOL ] + render_auth_info() + flags)
 
 def render_user_id(userId):
 	return f"{USER_PREFIX}{userId}"
@@ -208,7 +211,7 @@ def create_user(userId, userData):
 			command += [ f"--{attFlag}={userData[attName]}" ]
 
 	result = samba_tool(command)
-	if result != 0:
+	if result.returncode != 0:
 		fail("Failed to create the user '{userId}' (rc={result})")
 
 	# b) set the user's password
@@ -220,11 +223,11 @@ def create_user(userId, userData):
 	if not password:
 		password = f"${userId}$"
 
-	logging.info(f"Setting the password for '{userId}' to [{password}]")
+	logging.info(f"\tSetting the password for '{userId}' to [{password}]")
 	command = [ "user", "setpassword", userId, f"--newpassword={password}" ]
 
 	result = samba_tool(command)
-	if result != 0:
+	if result.returncode != 0:
 		fail("Failed to set the password for '{userId}' (rc={result})")
 
 	if KEY_EXPIRATION_DAYS in userData:
@@ -246,11 +249,11 @@ def create_user(userId, userData):
 			expiration = f"--noexpiry"
 			expirationDesc = "never expire"
 
-		logging.info(f"Setting the password for '{userId}' to {expirationDesc}")
+		logging.info(f"\tSetting the password for '{userId}' to {expirationDesc}")
 		command = [ "user", "setexpiry", userId, expiration ]
 
 		result = samba_tool(command)
-		if result != 0:
+		if result.returncode != 0:
 			fail(f"Failed to set the password expiration for '{userId}' (rc={result})")
 
 	# Finally, if appropriate, apply the admin permissions
@@ -267,16 +270,18 @@ def create_user(userId, userData):
 			if result.returncode != 0:
 				fail(f"Failed to get the SID for LDAP administrator {userId}")
 
-			m = SID_RE.match(result.stdout)
+			output = result.stdout.decode("utf-8")
+			m = SID_RE.match(output)
 			if not m:
-				fail(f"Unrecognized net command output looking for {userId}'s SID: [{result.stdout}]")
+				fail(f"Unrecognized net command output looking for {userId}'s SID: [{output}]")
 
 			# The SID is the last string that contains no spaces
 			sid = m.group(1)
-			result = samba_tool(["dsacl", "set", "--action=allow", "--sddl=(A;OICI;GA;;;{sid})", "--objectdn={DOMAIN_USER_GROUP_BASE}"])
-			if result != 0:
-				fail(f"Failed to set LDAP administrative permissions for {userId} on branch {DOMAIN_USER_GROUP_BASE}")
-			logging.info(f"Granted administrative priviliges to '{userId}' on branch [{DOMAIN_USER_GROUP_BASE}]")
+			result = samba_tool(["dsacl", "set", "--action=allow", f"--sddl=(A;OICI;GA;;;{sid})", f"--objectdn={DOMAIN_USER_GROUP_BASE}"])
+			if result.returncode != 0:
+				output = result.stdout.decode("utf-8")
+				fail(f"Failed to set LDAP administrative permissions for {userId} on branch {DOMAIN_USER_GROUP_BASE}:\n{output}")
+			logging.info(f"\tGranted administrative priviliges to '{userId}' on branch [{DOMAIN_USER_GROUP_BASE}]")
 
 	return userId
 
@@ -304,7 +309,7 @@ def create_group(groupId, groupData):
 			command += [ f"--{attFlag}={groupData[attName]}" ]
 
 	result = samba_tool(command)
-	if result != 0:
+	if result.returncode != 0:
 		fail("Failed to create the group '{groupId}' (rc={result})")
 
 	return groupId
@@ -316,7 +321,7 @@ def apply_memberships(groupId, members):
 	command = [ "group", "addmembers", groupId, ",".join(members) ]
 
 	result = samba_tool(command)
-	if result != 0:
+	if result.returncode != 0:
 		fail("Failed to apply the memberships for group '{groupId}' (rc={result})")
 
 serverInfo = {}
