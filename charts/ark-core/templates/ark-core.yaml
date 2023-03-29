@@ -151,10 +151,6 @@ spec:
             - name: *confVolume
               mountPath: "/app/home/.arkcase"
             - name: &configMap "config-map"
-              mountPath: "/app/home/.arkcase/acm/acm-config-server-repo/application.yaml"
-              subPath: &applicationYaml "application.yaml"
-              readOnly: true
-            - name: *configMap
               mountPath: "/app/home/.arkcase/acm/acm-config-server-repo/spring/quartz.properties"
               subPath: &quartzProperties "quartz.properties"
               readOnly: true
@@ -167,6 +163,10 @@ spec:
               subPath: &springConfigProxyXml "spring-config-proxy.xml"
               readOnly: true
             - name: &secrets "secrets"
+              mountPath: "/app/home/.arkcase/acm/acm-config-server-repo/application.yaml"
+              subPath: &applicationYaml "application.yaml"
+              readOnly: true
+            - name: *secrets
               mountPath: "/app/home/.arkcase/acm/acm-config-server-repo/arkcase-k8s.yaml"
               subPath: &arkcaseK8sYaml "arkcase-k8s.yaml"
               readOnly: true
@@ -223,12 +223,12 @@ spec:
               mountPath: *confDir
               subPath: "acm/acm-config-server-repo"
             - name: *configMap
-              mountPath: "/app/conf/application.yaml"
-              subPath: *applicationYaml
-              readOnly: true
-            - name: *configMap
               mountPath: "/app/conf/spring/quartz.properties"
               subPath: *quartzProperties
+              readOnly: true
+            - name: *secrets
+              mountPath: "/app/conf/application.yaml"
+              subPath: *applicationYaml
               readOnly: true
             - name: *secrets
               mountPath: "/app/conf/arkcase-activemq.yaml"
@@ -249,6 +249,8 @@ spec:
             secretName: {{ include "arkcase.fullname" . | quote }}
             defaultMode: 0444
             items:
+              - key: *applicationYaml
+                path: *applicationYaml
               - key: *arkcaseK8sYaml
                 path: *arkcaseK8sYaml
               - key: *ldapYaml
@@ -267,8 +269,6 @@ spec:
             name: {{ include "arkcase.fullname" . | quote }}
             defaultMode: 0444
             items:
-              - key: *applicationYaml
-                path: *applicationYaml
               - key: *quartzProperties
                 path: *quartzProperties
               - key: *springConfigProxyXml
