@@ -765,13 +765,18 @@ return either the value if correct, or the empty string if not.
 
   {{- if hasKey $data "path" -}}
     {{- /* Pick out the context */ -}}
-    {{- $path := splitList "/" $data.path -}}
-    {{- if gt (len $path) 0 -}}
-      {{- $path := (first $path) -}}
-    {{- else -}}
-      {{- $path := "" -}}
+    {{- $path := list -}}
+    {{- range $p := (splitList "/" $data.path) -}}
+      {{- if $p -}}
+        {{- $path = append $path $p -}}
+      {{- end -}}
     {{- end -}}
-    {{- $data = set $data "context" $path -}}
+    {{- $context := "" -}}
+    {{- if gt (len $path) 0 -}}
+      {{- $context = (first $path) -}}
+    {{- end -}}
+    {{- $data = set $data "context" $context -}}
+    {{- $data = set $data "pathElements" $path -}}
   {{- end -}}
 
   {{- if hasKey $data "query" -}}

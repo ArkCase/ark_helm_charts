@@ -19,3 +19,6 @@ SECRET:
 VOLUME:
 {{ include "arkcase.initDatabase.secretVolume" . }}
 --- END OF FILE ---
+
+{{- $url := "http://www.test.com:9324/ctx/pathcrap/rest?query=value&value2=r2#MarkerCrap" -}}
+{{- (include "arkcase.tools.parseUrl" $url) -}}
