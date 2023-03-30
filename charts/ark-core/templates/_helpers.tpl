@@ -29,5 +29,5 @@
 {{- end -}}
 
 {{- define "arkcase.core.db.activiti" -}}
-  {{- include "arkcase.db.param" (dict "ctx" . "param" "name") -}}
+  {{- include "arkcase.db.param" (dict "ctx" . "param" "activiti") -}}
 {{- end -}}

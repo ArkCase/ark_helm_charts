@@ -1,6 +1,7 @@
 mariadb:
   platform: MySQL
   quartz: StdJdbcDelegate
+  activiti: mysql
   port: 3306
   jdbc:
     driver: org.mariadb.jdbc.Driver
@@ -9,6 +10,7 @@ mariadb:
 mysql:
   platform: MySQL
   quartz: StdJdbcDelegate
+  activiti: mysql
   port: 3306
   jdbc:
     driver: com.mysql.cj.jdbc.Driver
@@ -17,6 +19,8 @@ mysql:
 oracle:
   platform: Oracle
   quartz: oracle.OracleDelegate
+  # Is this correct?
+  activiti: oracle
   port: 1521
   jdbc:
     driver: oracle.jdbc.driver.OracleDriver
@@ -25,6 +29,7 @@ oracle:
 postgresql:
   platform: PostgreSQL
   quartz: PostgreSQLDelegate
+  activiti: postgres
   port: 5432
   jdbc:
     driver: org.postgresql.Driver
@@ -36,6 +41,8 @@ postgresql:
 sqlserver:
   platform: SQLServer
   quartz: MSSQLDelegate
+  # Is this correct?
+  activiti: sqlserver
   port: 1433
   jdbc:
     driver: com.microsoft.sqlserver.jdbc.SQLServerDriver
