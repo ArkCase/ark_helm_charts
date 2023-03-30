@@ -27,3 +27,7 @@
 {{- define "arkcase.core.db.platform" -}}
   {{- include "arkcase.db.param" (dict "ctx" . "param" "platform") -}}
 {{- end -}}
+
+{{- define "arkcase.core.db.activiti" -}}
+  {{- include "arkcase.db.param" (dict "ctx" . "param" "name") -}}
+{{- end -}}
