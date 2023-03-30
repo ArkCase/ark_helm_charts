@@ -33,18 +33,16 @@ Verify that the persistence configuration is good
 Check if persistence is enabled, assuming a missing setting defaults to true
 */ -}}
 {{- define "arkcase.persistence.enabled" -}}
+  {{- if not (include "arkcase.isRootContext" .) -}}
+    {{- fail "The parameter must be the root context (. or $)" -}}
+  {{- end -}}
   {{- /* First check to see what the local flag says (defaults to true if not set) */ -}}
-  {{- $localSet := (include "arkcase.tools.check" (dict "ctx" $ "name" ".Values.persistence.enabled")) -}}
-  {{- $localEnabled := true -}}
-  {{- if $localSet -}}
-    {{- $localEnabled = (eq "true" (include "arkcase.tools.get" (dict "ctx" $ "name" ".Values.persistence.enabled") | lower)) -}}
-  {{- end -}}
-  {{- /* Now check to see what the global flag says (defaults to true if not set) */ -}}
-  {{- $globalSet := (include "arkcase.tools.check" (dict "ctx" $ "name" ".Values.global.persistence.enabled")) -}}
-  {{- $globalEnabled := true -}}
-  {{- if $globalSet -}}
-    {{- $globalEnabled = (eq "true" (include "arkcase.tools.get" (dict "ctx" $ "name" ".Values.global.persistence.enabled") | lower)) -}}
-  {{- end -}}
+  {{- $localMap := (.Values.persistence | default dict) -}}
+  {{- $localEnabled := (or (not (hasKey $localMap "enabled")) (eq "true" ($localMap.enabled | toString | lower))) -}}
+
+  {{- $globalMap := ((.Values.global).persistence | default dict) -}}
+  {{- $globalEnabled := (or (not (hasKey $globalMap "enabled")) (eq "true" ($globalMap.enabled | toString | lower))) -}}
+
   {{- /* Persistence is only enabled if the local and global flags agree that it should be */ -}}
   {{- if (and $localEnabled $globalEnabled) -}}
     {{- true -}}
@@ -55,11 +53,15 @@ Check if persistence is enabled, assuming a missing setting defaults to true
 Render a volumes: entry for a given volume, as per the persistence model
 */ -}}
 {{- define "arkcase.persistence.volume" -}}
+  {{- $ctx := .ctx -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "The 'ctx' parameter must be the root context (. or $)" -}}
+  {{- end -}}
   {{- $volumeName := .name -}}
 - name: {{ $volumeName | quote }}
-  {{- if (include "arkcase.persistence.enabled" .ctx) -}}
-    {{- $claimName := (printf "%s-%s" (include "arkcase.fullname" .ctx) $volumeName ) -}}
-    {{- $explicitClaimName := (include "arkcase.tools.get" (dict "ctx" .ctx "name" (printf ".Values.persistence.%s.claim.name" $volumeName) )) -}}
+  {{- if (include "arkcase.persistence.enabled" $ctx) -}}
+    {{- $claimName := (printf "%s-%s" (include "arkcase.fullname" $ctx) $volumeName ) -}}
+    {{- $explicitClaimName := (include "arkcase.tools.get" (dict "ctx" $ctx "name" (printf ".Values.persistence.%s.claim.name" $volumeName) )) -}}
     {{- if $explicitClaimName -}}
       {{- $claimName = $explicitClaimName -}}
     {{- end }}
@@ -75,13 +77,15 @@ Render the PersistentVolume and PersistentVolumeClaim objects for a given volume
 */ -}}
 {{- define "arkcase.persistence.declareObjects" -}}
   {{- $ctx := .ctx -}}
-  {{- if not $ctx -}}
-    {{- fail "Must provide the 'ctx' context to find the configuration data" -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "The 'ctx' parameter must be the root context" -}}
   {{- end -}}
+
   {{- $volumeName := .name -}}
   {{- if not $volumeName -}}
     {{- fail "Must provide the 'name' of the volume objects to declare" -}}
   {{- end -}}
+
   {{- $partname := (include "arkcase.part.name" $ctx) -}}
   {{- $rootPath := (printf "/opt/app/%s/%s" $ctx.Release.Namespace $ctx.Release.Name) -}}
 
