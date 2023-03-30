@@ -64,6 +64,8 @@ spec:
           env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
             - name: CONF_DIR
               value: &confDir "/app/conf"
+            - name: REALM_FIX
+              value: {{ printf "arkcase.org=%s" ((.Values.configuration).ldap).domain | quote }}
           volumeMounts:
             - name: &confVolume "conf"
               mountPath: *confDir
