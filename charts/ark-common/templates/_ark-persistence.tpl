@@ -1,4 +1,26 @@
 {{- /*
+Check if persistence is enabled, assuming a missing setting defaults to true
+*/ -}}
+{{- define "arkcase.persistence.enabled" -}}
+  {{- if not (include "arkcase.isRootContext" .) -}}
+    {{- fail "The parameter must be the root context (. or $)" -}}
+  {{- end -}}
+
+  {{- /* First check to see what the local flag says (defaults to true if not set) */ -}}
+  {{- $localMap := (.Values.persistence | default dict) -}}
+  {{- $localEnabled := (or (not (hasKey $localMap "enabled")) (eq "true" ($localMap.enabled | toString | lower))) -}}
+
+  {{- /* Next, check to see what the global flag says (defaults to true if not set) */ -}}
+  {{- $globalMap := ((.Values.global).persistence | default dict) -}}
+  {{- $globalEnabled := (or (not (hasKey $globalMap "enabled")) (eq "true" ($globalMap.enabled | toString | lower))) -}}
+
+  {{- /* Persistence is only enabled if the local and global flags agree that it should be */ -}}
+  {{- if (and $localEnabled $globalEnabled) -}}
+    {{- true -}}
+  {{- end -}}
+{{- end -}}
+
+{{- /*
 Verify that the persistence configuration is good
 */ -}}
 {{- define "arkcase.persistence.validateVolumeConfig" -}}
@@ -26,26 +48,6 @@ Verify that the persistence configuration is good
        {{- $message := printf "The persistence definition for [%s] has both a claim definition and volume specifictions, choose only one" $name -}}
        {{- fail $message -}}
     {{- end -}}
-  {{- end -}}
-{{- end -}}
-
-{{- /*
-Check if persistence is enabled, assuming a missing setting defaults to true
-*/ -}}
-{{- define "arkcase.persistence.enabled" -}}
-  {{- if not (include "arkcase.isRootContext" .) -}}
-    {{- fail "The parameter must be the root context (. or $)" -}}
-  {{- end -}}
-  {{- /* First check to see what the local flag says (defaults to true if not set) */ -}}
-  {{- $localMap := (.Values.persistence | default dict) -}}
-  {{- $localEnabled := (or (not (hasKey $localMap "enabled")) (eq "true" ($localMap.enabled | toString | lower))) -}}
-
-  {{- $globalMap := ((.Values.global).persistence | default dict) -}}
-  {{- $globalEnabled := (or (not (hasKey $globalMap "enabled")) (eq "true" ($globalMap.enabled | toString | lower))) -}}
-
-  {{- /* Persistence is only enabled if the local and global flags agree that it should be */ -}}
-  {{- if (and $localEnabled $globalEnabled) -}}
-    {{- true -}}
   {{- end -}}
 {{- end -}}
 
