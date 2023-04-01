@@ -212,7 +212,15 @@
   {{- $data := .data -}}
   {{- $volumeName := .volumeName -}}
   {{- /* Must be a path ... only valid in development mode */ -}}
-  {{- dict "volume" true "claim" true "hostPath" (clean (printf "/%s" $data)) | toYaml -}}
+  {{- if isAbs $data -}}
+    {{- $data = (include "arkcase.tools.normalizePath" $data) -}}
+  {{- else -}}
+    {{- $data = (include "arkcase.tools.normalizePath" $data) -}}
+    {{- if not $data -}}
+      {{- fail (printf "The given relative path [%s] for volume '%s' overflows containment (too many '..' components)" .data $volumeName) -}}
+    {{- end -}}
+  {{- end -}}
+  {{- dict "volume" true "claim" true "hostPath" $data | toYaml -}}
 {{- end -}}
 
 {{- define "arkcase.persistence.buildVolume.parseVolumeString" -}}
@@ -254,23 +262,33 @@ Parse a volume declaration and return a map that contains the following (possibl
     {{- $volume = (include "arkcase.persistence.buildVolume.parseVolumeString" (dict "data" $data "volumeName" $volumeName) | fromYaml) -}}
   {{- else if kindIs "map" $data -}}
     {{- /* May be a map that has "path", "claim", or "volume" ... but only one! */ -}}
-    {{- $data = pick "path" "claim" "volume" -}}
+    {{- $data = pick $data "path" "claim" "volume" -}}
     {{- if gt (len (keys $data)) 1 -}}
       {{- fail (printf "The volume declaration for %s may only have one of the keys 'path', 'claim', or 'volume': %s" $volumeName (keys $data)) -}}
     {{- end -}}
     {{- if $data.claim -}}
       {{- if kindIs "string" $data.claim -}}
-        {{- $volume = (include "arkcase.persistence.buildVolume.parseVolumeString.pvc" (dict "data" $data.claim "volumeName" $volumeName) | fromYaml) -}}
+        {{- $claimStr := $data.claim -}}
+        {{- if not (hasPrefix "pvc://" $claimStr) -}}
+          {{- $volume = dict "volume" false "claim" false "claimName" $claimStr -}}
+        {{- else -}}
+          {{- $volume = (include "arkcase.persistence.buildVolume.parseVolumeString.pvc" (dict "data" $claimStr "volumeName" $volumeName) | fromYaml) -}}
+        {{- end -}}
       {{- else if kindIs "map" $data.claim -}}
-        {{- $volume = $data.claim -}}
+        {{- $volume = (dict "volume" false "claim" true "spec" $data.claim) -}}
       {{- else -}}
         {{- fail (printf "The 'claim' value for the volume '%s' must be either a dict or a string (%s)" $volumeName (kindOf $data.claim)) -}}
       {{- end -}}
     {{- else if $data.volume -}}
       {{- if kindIs "string" $data.volume -}}
-        {{- $volume = (include "arkcase.persistence.buildVolume.parseVolumeString.pv" (dict "data" $data.volume "volumeName" $volumeName) | fromYaml) -}}
+        {{- if hasPrefix "pv://" $data.volume -}}
+          {{- $volume = (include "arkcase.persistence.buildVolume.parseVolumeString.pv" (dict "data" $data.volume "volumeName" $volumeName) | fromYaml) -}}
+        {{- else -}}
+          {{- $volume = (include "arkcase.persistence.buildVolume.parseVolumeString.path" (dict "data" $data.volume "volumeName" $volumeName) | fromYaml) -}}
+        {{- end -}}
       {{- else if kindIs "map" $data.volume -}}
-        {{- $volume = $data.volume -}}
+        {{- /* The map is a volume spec, so use it */ -}}
+        {{- $volume = (dict "volume" true "claim" true "spec" $data.volume) -}}
       {{- else -}}
         {{- fail (printf "The 'volume' value for the volume '%s' must be either a dict or a string (%s)" $volumeName (kindOf $data.volume)) -}}
       {{- end -}}
