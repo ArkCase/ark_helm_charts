@@ -137,6 +137,84 @@
   {{- $result | toYaml -}}
 {{- end -}}
 
+{{- define "arkcase.persistence.buildVolume.parseVolumeString.pv" -}}
+  {{- /* pv://[${storageClass}]/${capacity}#${accessModes} */ -}}
+  {{- $data := .data -}}
+  {{- $volumeName := .volumeName -}}
+  {{- $pv := urlParse $data -}}
+  {{- /* Perform QC: may have a storageClass, must have a capacity and accessModes */ -}}
+  {{- $storageClass := $pv.host | default "" -}}
+  {{- $cap := $pv.path | default "" -}}
+  {{- $mode := $pv.fragment | default "" -}}
+  {{- if or (not $cap) (not $mode) -}}
+    {{- fail (printf "The pv:// volume declaration for '%s' must be of the form: pv://[${storageClass}]/${capacity}#${accessModes} where only the ${storageClass} portion is optional: [%s]" $volumeName $data) -}}
+  {{- end -}}
+  {{- $mode = (include "arkcase.persistence.buildVolume.parseAccessModes" $mode | fromYaml) -}}
+  {{- if $mode.errors -}}
+    {{- fail (printf "Invalid access modes %s given for volume spec '%s': [%s]" $mode.errors $volumeName $data) -}}
+  {{- end -}}
+  {{- $cap = (clean $cap | trimPrefix "/") -}}
+  {{- $capacity := (include "arkcase.persistence.buildVolume.parseStorageSize" $cap | fromYaml) -}}
+  {{- if or (not $capacity) $capacity.max -}}
+    {{- fail (printf "Invalid capacity specification %s for volume '%s': [%s]" $cap $volumeName $data) -}}
+  {{- end -}}
+  {{- dict "volume" true "claim" true "storageClass" $storageClass "capacity" $capacity.min "accessModes" $mode.modes | toYaml -}}
+{{- end -}}
+
+{{- define "arkcase.persistence.buildVolume.parseVolumeString.pvc" -}}
+  {{- /* pvc://[${storageClass}]/[${minSize}][-${maxSize}]#${accessModes} */ -}}
+  {{- /* pvc://volumeName#${accessModes} */ -}}
+  {{- /* pvc://pvcName */ -}}
+  {{- $data := .data -}}
+  {{- $volumeName := .volumeName -}}
+  {{- $pvc := urlParse $data -}}
+  {{- if or $pvc.query $pvc.userinfo $pvc.opaque -}}
+    {{- fail (printf "Malformed URI for volume '%s': [%s] - may not have userInfo, query, or opaque data" $volumeName $data) -}}
+  {{- end -}}
+
+  {{- $mode := dict -}}
+  {{- if $pvc.fragment -}}
+    {{- $mode = (include "arkcase.persistence.buildVolume.parseAccessModes" $pvc.fragment | fromYaml) -}}
+    {{- if $mode.errors -}}
+      {{- fail (printf "Invalid access modes %s given for volume spec '%s': [%s]" $mode.errors $volumeName $data) -}}
+    {{- end -}}
+  {{- end -}}
+
+  {{- if and $pvc.host (not (regexMatch "^([a-z0-9][-a-z0-9]*)?[a-z0-9]$" ($pvc.host | lower))) -}}
+    {{- fail (printf "Volume '%s' has an invalid first component: [%s]" $volumeName $pvc.host) -}}
+  {{- end -}}
+
+  {{- /* If we have a path, then we can only be creating a new claim b/c it's the size spec */ -}}
+  {{- $volume := dict -}}
+  {{- if $pvc.path -}}
+    {{- /* pvc://[${storageClass}]/[${minSize}][-${maxSize}]#${accessModes} */ -}}
+    {{- $limitsRequests := (clean $pvc.path | trimPrefix "/") -}}
+    {{- $size := (include "arkcase.persistence.buildVolume.parseStorageSize" $limitsRequests | fromYaml) -}}
+    {{- if not $size -}}
+      {{- fail (printf "Invalid limits-requests specification '%s' for volume '%s': [%s]" $limitsRequests $volumeName $data) -}}
+    {{- end -}}
+    {{- $resources := dict "requests" (dict "storage" $size.min) -}}
+    {{- if $size.max -}}
+      {{- $resources = set $resources "limits" (dict "storage" $size.max) -}}
+    {{- end -}}
+    {{- $volume = dict "volume" false "claim" true "storageClassName" $pvc.host "accessModes" $mode.modes "resources" $resources -}}
+  {{- else if $pvc.fragment -}}
+    {{- /* pvc://volumeName#${accessModes} */ -}}
+    {{- $volume = dict "volume" false "claim" true "volumeName" $volume "accessModes" $mode.modes -}}
+  {{- else -}}
+    {{- /* pvc://pvcName */ -}}
+    {{- $volume = dict "volume" false "claim" false "claimName" $pvc.host -}}
+  {{- end -}}
+  {{- $volume | toYaml -}}
+{{- end -}}
+
+{{- define "arkcase.persistence.buildVolume.parseVolumeString.path" -}}
+  {{- $data := .data -}}
+  {{- $volumeName := .volumeName -}}
+  {{- /* Must be a path ... only valid in development mode */ -}}
+  {{- dict "volume" true "claim" true "hostPath" (clean (printf "/%s" $data)) | toYaml -}}
+{{- end -}}
+
 {{- define "arkcase.persistence.buildVolume.parseVolumeString" -}}
   {{- /* Must be a pv://, pvc://, or path ... the empty string renders a default volume */ -}}
   {{- $data := .data -}}
@@ -144,68 +222,11 @@
   {{- $volume := dict -}}
   {{- if $data -}}
     {{- if hasPrefix "pv://" $data -}}
-      {{- /* pv://[${storageClass}]/${capacity}#${accessModes} */ -}}
-      {{- $pv := urlParse $data -}}
-      {{- /* Perform QC: may have a storageClass, must have a capacity and accessModes */ -}}
-      {{- $storageClass := $pv.host | default "" -}}
-      {{- $cap := $pv.path | default "" -}}
-      {{- $mode := $pv.fragment | default "" -}}
-      {{- if or (not $cap) (not $mode) -}}
-        {{- fail (printf "The pv:// volume declaration for '%s' must be of the form: pv://[${storageClass}]/${capacity}#${accessModes} where only the ${storageClass} portion is optional: [%s]" $volumeName $data) -}}
-      {{- end -}}
-      {{- $mode = (include "arkcase.persistence.buildVolume.parseAccessModes" $mode | fromYaml) -}}
-      {{- if $mode.errors -}}
-        {{- fail (printf "Invalid access modes %s given for volume spec '%s': [%s]" $mode.errors $volumeName $data) -}}
-      {{- end -}}
-      {{- $capacity := (include "arkcase.persistence.buildVolume.parseStorageSize" (clean $cap | replace "/" " " | trim) | fromYaml) -}}
-      {{- if or (not $capacity) $capacity.max -}}
-        {{- fail (printf "Invalid capacity specification %s for volume '%s': [%s]" $cap $volumeName $data) -}}
-      {{- end -}}
-      {{- $volume = dict "volume" true "claim" true "storageClass" $storageClass "capacity" $capacity.min "accessModes" $mode.modes -}}
+      {{- $volume = (include "arkcase.persistence.buildVolume.parseVolumeString.pv" . | fromYaml) -}}
     {{- else if hasPrefix "pvc://" $data -}}
-      {{- /* pvc://[${storageClass}]/[${minSize}][-${maxSize}]#${accessModes} */ -}}
-      {{- /* pvc://volumeName#${accessModes} */ -}}
-      {{- /* pvc://pvcName */ -}}
-      {{- $pvc := urlParse $data -}}
-      {{- if or $pvc.query $pvc.userinfo $pvc.opaque -}}
-        {{- fail (printf "Malformed URI for volume '%s': [%s] - may not have userInfo, query, or opaque data" $volumeName $data) -}}
-      {{- end -}}
-
-      {{- $mode := dict -}}
-      {{- if $pvc.fragment -}}
-        {{- $mode = (include "arkcase.persistence.buildVolume.parseAccessModes" $pvc.fragment | fromYaml) -}}
-        {{- if $mode.errors -}}
-          {{- fail (printf "Invalid access modes %s given for volume spec '%s': [%s]" $mode.errors $volumeName $data) -}}
-        {{- end -}}
-      {{- end -}}
-
-      {{- if and $pvc.host (not (regexMatch "^([a-z0-9][-a-z0-9]*)?[a-z0-9]$" ($pvc.host | lower))) -}}
-        {{- fail (printf "Volume '%s' has an invalid first component: [%s]" $volumeName $pvc.host) -}}
-      {{- end -}}
-
-      {{- /* If we have a path, then we can only be creating a new claim b/c it's the size spec */ -}}
-      {{- if $pvc.path -}}
-        {{- /* pvc://[${storageClass}]/[${minSize}][-${maxSize}]#${accessModes} */ -}}
-        {{- $limitsRequests := (clean $pvc.path | trimPrefix "/") -}}
-        {{- $size := (include "arkcase.persistence.buildVolume.parseStorageSize" $limitsRequests | fromYaml) -}}
-        {{- if not $size -}}
-          {{- fail (printf "Invalid limits-requests specification '%s' for volume '%s': [%s]" $limitsRequests $volumeName $data) -}}
-        {{- end -}}
-        {{- $resources := dict "requests" (dict "storage" $size.min) -}}
-        {{- if $size.max -}}
-          {{- $resources = set $resources "limits" (dict "storage" $size.max) -}}
-        {{- end -}}
-        {{- $volume = dict "volume" false "claim" true "storageClassName" $pvc.host "accessModes" $mode.modes "resources" $resources -}}
-      {{- else if $pvc.fragment -}}
-        {{- /* pvc://volumeName#${accessModes} */ -}}
-        {{- $volume = dict "volume" false "claim" true "volumeName" $volume "accessModes" $mode.modes -}}
-      {{- else -}}
-        {{- /* pvc://pvcName */ -}}
-        {{- $volume = dict "volume" false "claim" false "claimName" $pvc.host -}}
-      {{- end -}}
+      {{- $volume = (include "arkcase.persistence.buildVolume.parseVolumeString.pvc" . | fromYaml) -}}
     {{- else -}}
-      {{- /* Must be a path ... only valid in development mode */ -}}
-      {{- $volume = dict "volume" true "claim" true "hostPath" (clean (printf "/%s" $data)) -}}
+      {{- $volume = (include "arkcase.persistence.buildVolume.parseVolumeString.path" . | fromYaml) -}}
     {{- end -}}
   {{- end -}}
   {{- $volume | toYaml -}}
@@ -234,13 +255,27 @@ Parse a volume declaration and return a map that contains the following (possibl
   {{- else if kindIs "map" $data -}}
     {{- /* May be a map that has "path", "claim", or "volume" ... but only one! */ -}}
     {{- $data = pick "path" "claim" "volume" -}}
-    {{- if $data -}}
-      {{- if gt (len (keys $data)) 1 -}}
-        {{- fail (printf "The volume declaration dict for %s may only have one of the keys 'path', 'claim', or 'volume'" $volumeName) -}}
+    {{- if gt (len (keys $data)) 1 -}}
+      {{- fail (printf "The volume declaration for %s may only have one of the keys 'path', 'claim', or 'volume': %s" $volumeName (keys $data)) -}}
+    {{- end -}}
+    {{- if $data.claim -}}
+      {{- if kindIs "string" $data.claim -}}
+        {{- $volume = (include "arkcase.persistence.buildVolume.parseVolumeString.pvc" (dict "data" $data.claim "volumeName" $volumeName) | fromYaml) -}}
+      {{- else if kindIs "map" $data.claim -}}
+        {{- $volume = $data.claim -}}
+      {{- else -}}
+        {{- fail (printf "The 'claim' value for the volume '%s' must be either a dict or a string (%s)" $volumeName (kindOf $data.claim)) -}}
       {{- end -}}
-    {{- else -}}
-      {{- /* Render a "default" volume or PVC as required */ -}}
-      {{- $volume = "DEFAULT VOLUME OR PVC RENDERING (2)" -}}
+    {{- else if $data.volume -}}
+      {{- if kindIs "string" $data.volume -}}
+        {{- $volume = (include "arkcase.persistence.buildVolume.parseVolumeString.pv" (dict "data" $data.volume "volumeName" $volumeName) | fromYaml) -}}
+      {{- else if kindIs "map" $data.volume -}}
+        {{- $volume = $data.volume -}}
+      {{- else -}}
+        {{- fail (printf "The 'volume' value for the volume '%s' must be either a dict or a string (%s)" $volumeName (kindOf $data.volume)) -}}
+      {{- end -}}
+    {{- else if $data.path -}}
+      {{- $volume = (include "arkcase.persistence.buildVolume.parseVolumeString.path" (dict "data" $data.path "volumeName" $volumeName) | fromYaml) -}}
     {{- end -}}
   {{- else -}}
     {{- fail (printf "The volume declaration for %s must be either a string or a map (%s)" $volumeName (kindOf $data)) -}}
