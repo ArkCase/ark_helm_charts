@@ -477,6 +477,15 @@ usage: ( include "arkcase.tools.check" (dict "ctx" $ "name" "some.name.to.find")
 {{- end -}}
 
 {{- /*
+Check if persistence is enabled, assuming a missing setting defaults to true
+*/ -}}
+{{- define "arkcase.tools.checkEnabledFlag" -}}
+  {{- if (and (kindIs "map" .) (or (not (hasKey . "enabled")) (eq "true" (.enabled | toString | lower)))) -}}
+    {{- true -}}
+  {{- end -}}
+{{- end -}}
+
+{{- /*
 Check to see if the "enabled" value is set to "true", or is not set (which causes it to default to "true")
 */ -}}
 {{- define "arkcase.tools.enabled" -}}
