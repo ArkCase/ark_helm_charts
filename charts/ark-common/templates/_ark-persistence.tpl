@@ -1,3 +1,27 @@
+{{- define "arkcase.persistence.getSetting" -}}
+  {{- $ctx := .ctx -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "The 'ctx' parameter must be the root context (. or $)" -}}
+  {{- end -}}
+  {{- $name := .name -}}
+  {{- if or (not $name) (not (kindIs "string" $name)) -}}
+    {{- fail "The 'name' parameter must be the name of the setting to retrieve" -}}
+  {{- end -}}
+  {{- $result := dict -}}
+
+  {{- $global :=(($ctx.Values.global).persistence | default dict) -}}
+  {{- if (hasKey $global $name) -}}
+    {{- $result = set $result "global" (get $global $name) -}}
+  {{- end -}}
+
+  {{- $local := ($ctx.Values.persistence | default dict) -}}
+  {{- if (hasKey $local $name) -}}
+    {{- $result = set $result "local" (get $local $name) -}}
+  {{- end -}}
+
+  {{- $result | toYaml -}}
+{{- end -}}
+
 {{- /* Check if persistence is enabled, assuming a missing setting defaults to true */ -}}
 {{- define "arkcase.persistence.enabled" -}}
   {{- if not (include "arkcase.isRootContext" .) -}}
@@ -18,45 +42,25 @@
   {{- if not (include "arkcase.isRootContext" .) -}}
     {{- fail "The parameter must be the root context (. or $)" -}}
   {{- end -}}
-  {{- $local := (.Values.persistence | default dict) -}}
-  {{- $global :=((.Values.global).persistence | default dict) -}}
-  {{- $rootPath := "" -}}
-  {{- if and (not $rootPath) (hasKey $global "rootPath") -}}
-    {{- $rootPath = $global.rootPath -}}
-    {{- if and $rootPath (not (hasPrefix "/" $rootPath)) -}}
-      {{- fail (printf "The value global.persistence.rootPath must be an absolute path: [%s]" $rootPath) -}}
-    {{- end -}}
-  {{- end -}}
-  {{- if and (not $rootPath) (hasKey $local "rootPath") -}}
-    {{- $rootPath = $local.rootPath -}}
-    {{- if and $rootPath (not (hasPrefix "/" $rootPath)) -}}
-      {{- fail (printf "The value persistence.rootPath must be an absolute path: [%s]" $rootPath) -}}
-    {{- end -}}
-  {{- end -}}
-  {{- if not $rootPath -}}
-    {{- /* If it's not set anywhere, then use a default value, which MUST be an absolute path */ -}}
-    {{- $rootPath = "/opt/app" -}}
-  {{- end -}}
-  {{- $rootPath -}}
+  {{- $rootPath := (include "arkcase.persistence.getSetting" (dict "ctx" . "name" "rootPath") | fromYaml) -}}
+  {{- coalesce $rootPath.global $rootPath.local "/opt/app" -}}
 {{- end -}}
-
 
 {{- /* Get the storageClass value that should be used for everything */ -}}
 {{- define "arkcase.persistence.storageClass" -}}
   {{- if not (include "arkcase.isRootContext" .) -}}
     {{- fail "The parameter must be the root context (. or $)" -}}
   {{- end -}}
-  {{- $local := (.Values.persistence | default dict) -}}
-  {{- $global :=((.Values.global).persistence | default dict) -}}
+  {{- $values := (include "arkcase.persistence.getSetting" (dict "ctx" . "name" "storageClass") | fromYaml) -}}
   {{- $storageClass := "" -}}
-  {{- if and (not $storageClass) (hasKey $global "storageClass") -}}
-    {{- $storageClass = $global.storageClass -}}
+  {{- if hasKey $values "global" -}}
+    {{- $storageClass = $values.global -}}
     {{- if and $storageClass (not (regexMatch "^([a-z0-9][-a-z0-9]*)?[a-z0-9]$" ($storageClass | lower))) -}}
       {{- fail (printf "The value global.persistence.storageClass must be a valid storage class name: [%s]" $storageClass) -}}
     {{- end -}}
   {{- end -}}
-  {{- if and (not $storageClass) (hasKey $local "storageClass") -}}
-    {{- $storageClass = $local.storageClass -}}
+  {{- if hasKey $values "local" -}}
+    {{- $storageClass = $values.local -}}
     {{- if and $storageClass (not (regexMatch "^([a-z0-9][-a-z0-9]*)?[a-z0-9]$" ($storageClass | lower))) -}}
       {{- fail (printf "The value persistence.storageClass must be a valid storage class name: [%s]" $storageClass) -}}
     {{- end -}}
@@ -64,6 +68,66 @@
   {{- /* Only output a value if one is set */ -}}
   {{- if $storageClass -}}
     {{- $storageClass -}}
+  {{- end -}}
+{{- end -}}
+
+{{- define "arkcase.persistence.persistentVolumeReclaimPolicy" -}}
+  {{- if not (include "arkcase.isRootContext" .) -}}
+    {{- fail "The parameter must be the root context (. or $)" -}}
+  {{- end -}}
+  {{- $values := (include "arkcase.persistence.getSetting" (dict "ctx" . "name" "persistentVolumeReclaimPolicy") | fromYaml) -}}
+  {{- $policy := "" -}}
+  {{- if hasKey $values "global" -}}
+    {{- $policy = $values.global -}}
+    {{- if and $policy (not (regexMatch "^(retain|recycle|delete)$" ($policy | lower))) -}}
+      {{- fail (printf "The value global.persistence.persistentVolumeReclaimPolicy must be a valid persistent volume reclaim policy (Retain/Recycle/Delete): [%s]" $policy) -}}
+    {{- end -}}
+  {{- end -}}
+  {{- if hasKey $values "local" -}}
+    {{- $policy = $values.local -}}
+    {{- if and $policy (not (regexMatch "^(retain|recycle|delete)$" ($policy | lower))) -}}
+      {{- fail (printf "The value persistence.persistentVolumeReclaimPolicy must be a valid persistent volume reclaim policy (Retain/Recycle/Delete): [%s]" $policy) -}}
+    {{- end -}}
+  {{- end -}}
+  {{- if $policy -}}
+    {{- $policy | lower | title -}}
+  {{- end -}}
+{{- end -}}
+
+{{- define "arkcase.persistence.accessModes" -}}
+  {{- if not (include "arkcase.isRootContext" .) -}}
+    {{- fail "The parameter must be the root context (. or $)" -}}
+  {{- end -}}
+  {{- $values := (include "arkcase.persistence.getSetting" (dict "ctx" . "name" "accessModes") | fromYaml) -}}
+  {{- $modes := dict -}}
+  {{- if hasKey $values "global" -}}
+    {{- $accessModes = $values.global -}}
+    {{- $str := "" -}}
+    {{- if kindIs "slice" $accessModes -}}
+      {{- $str = join "," $accessModes -}}
+    {{- else -}}
+      {{- $str := ($accessModes | toString) -}}
+    {{- end -}}
+    {{- $modes = (include "arkcase.persistence.buildVolume.parseAccessModes" $str) -}}
+    {{- if $modes.errors -}}
+      {{- fail (printf "Invalid access modes found in the value global.persistence.accessModes: %s" $modes.errors) -}}
+    {{- end -}}
+  {{- end -}}
+  {{- if hasKey $values "local" -}}
+    {{- $accessModes = $values.local -}}
+    {{- $str := "" -}}
+    {{- if kindIs "slice" $accessModes -}}
+      {{- $str = join "," $accessModes -}}
+    {{- else -}}
+      {{- $str := ($accessModes | toString) -}}
+    {{- end -}}
+    {{- $modes = (include "arkcase.persistence.buildVolume.parseAccessModes" $str) -}}
+    {{- if $modes.errors -}}
+      {{- fail (printf "Invalid access modes found in the value persistence.accessModes: %s" $modes.errors) -}}
+    {{- end -}}
+  {{- end -}}
+  {{- if $modes.modes -}}
+    {{- $modes.modes | compact | join "," -}}
   {{- end -}}
 {{- end -}}
 
@@ -86,9 +150,22 @@
   {{- /* We specifically don't use arkcase.fullname here b/c we don't care about part names for this */ -}}
   {{- $chartName := (include "common.fullname" .) -}}
   {{- if not (hasKey $masterCache $chartName) -}}
-    {{- $enabled := (include "arkcase.persistence.enabled" .) -}}
+    {{- $enabled := (eq "true" (include "arkcase.persistence.enabled" . | trim | lower)) -}}
     {{- $rootPath := (include "arkcase.persistence.rootPath" .) -}}
     {{- $storageClass := (include "arkcase.persistence.storageClass" .) -}}
+    {{- $persistentVolumeReclaimPolicy := (include "arkcase.persistence.persistentVolumeReclaimPolicy" .) -}}
+    {{- if not $persistentVolumeReclaimPolicy -}}
+      {{- $persistentVolumeReclaimPolicy = "Retain" -}}
+    {{- end -}}
+    {{- $accessModes := (include "arkcase.persistence.accessModes" .) -}}
+    {{- if $accessModes -}}
+      {{- $accessModes = splitList "," $accessModes | compact -}}
+    {{- end -}}
+    {{- if not $accessModes -}}
+      {{- /* If no access modes are given by default, use ReadWriteOnce */ -}}
+      {{- $accessModes = list "ReadWriteOnce" -}}
+    {{- end -}}
+
     {{- $mode := "ephemeral" -}}
     {{- if $enabled -}}
       {{- if $storageClass -}}
@@ -97,10 +174,29 @@
         {{- $mode = "development" -}}
       {{- end -}}
     {{- end -}}
-    {{- $obj := dict "rootPath" $rootPath "storageClass" $storageClass "enabled" $enabled "mode" $mode -}}
+    {{-
+      $obj := dict 
+        "enabled" $enabled
+        "rootPath" $rootPath
+        "storageClass" $storageClass
+        "persistentVolumeReclaimPolicy" $persistentVolumeReclaimPolicy
+        "accessModes" $accessModes
+        "mode" $mode
+    -}}
     {{- $masterCache = set $masterCache $chartName $obj -}}
   {{- end -}}
   {{- get $masterCache $chartName | toYaml -}}
+{{- end -}}
+
+{{- define "arkcase.persistence.buildVolume.sanitizeAccessMode" -}}
+  {{- $M := (. | upper) -}}
+  {{- if or (eq "RWO" $M) (eq "READWRITEONCE" $M) -}}
+    {{- "ReadWriteOnce" -}}
+  {{- else if or (eq "RWM" $M) (eq "READWRITEMANY" $M) -}}
+    {{- "ReadWriteMany" -}}
+  {{- else if or (eq "ROM" $M) (eq "READONLYMANY" $M) -}}
+    {{- "ReadOnlyMany" -}}
+  {{- end -}}
 {{- end -}}
 
 {{- define "arkcase.persistence.buildVolume.parseAccessModes" -}}
@@ -108,13 +204,13 @@
   {{- $errors := dict -}}
   {{- $modeMap := dict -}}
   {{- range $m := splitList "," . -}}
-    {{- $M := trim $m | upper -}}
-    {{- if regexMatch "^R(WO|WM|OM)$" $M -}}
+    {{- $M := (include "arkcase.persistence.buildVolume.sanitizeAccessMode" (trim $m)) -}}
+    {{- if $M -}}
       {{- if not (hasKey $modeMap $M) -}}
         {{- $modes = append $modes $M -}}
         {{- $modeMap = set $modeMap $M $M -}}
       {{- end -}}
-    {{- else if $M -}}
+    {{- else if $m -}}
       {{- $errors = set $errors $m $m -}}
     {{- end -}}
   {{- end -}}
@@ -363,12 +459,12 @@ Render a volumes: entry for a given volume, as per the persistence model
     {{- fail "The 'ctx' parameter must be the root context (. or $)" -}}
   {{- end -}}
   {{- $volumeName := .name -}}
+  {{- $volume := (include "arkcase.persistence.buildVolume" (pick . "ctx" "name") | fromYaml) -}}
 - name: {{ $volumeName | quote }}
   {{- if (include "arkcase.persistence.enabled" $ctx) -}}
-    {{- $claimName := (printf "%s-%s" (include "arkcase.fullname" $ctx) $volumeName ) -}}
-    {{- $explicitClaimName := (include "arkcase.tools.get" (dict "ctx" $ctx "name" (printf ".Values.persistence.%s.claim.name" $volumeName) )) -}}
-    {{- if $explicitClaimName -}}
-      {{- $claimName = $explicitClaimName -}}
+    {{- $claimName := $volume.render.name -}}
+    {{- if $volume.claimName -}}
+      {{- $claimName = $volume.claimName -}}
     {{- end }}
   persistentVolumeClaim:
     claimName: {{ $claimName | quote }}
@@ -391,18 +487,14 @@ Render the PersistentVolume and PersistentVolumeClaim objects for a given volume
     {{- fail "Must provide the 'name' of the volume objects to declare" -}}
   {{- end -}}
 
-  {{- $partname := (include "arkcase.part.name" $ctx) -}}
-  {{- $rootPath := (printf "/opt/app/%s/%s" $ctx.Release.Namespace $ctx.Release.Name) -}}
-
   {{- if (include "arkcase.persistence.enabled" $ctx) -}}
+    {{- $partname := (include "arkcase.part.name" $ctx) -}}
+    {{- $settings := (include "arkcase.persistence.settings" $ctx | fromYaml) -}}
+    {{- $volumeData := (include "arkcase.persistence.buildVolume" (pick . "ctx" "name") | fromYaml) -}}
+    {{- $rootPath := $settings.rootPath -}}
 
-    {{- $objectName := (printf "%s-%s" (include "arkcase.fullname" $ctx) $volumeName) -}}
+    {{- $objectName := $volumeData.render.name -}}
     {{- $volumeObjectName := (printf "%s-%s" $ctx.Release.Namespace $objectName) -}}
-    {{- $volumeData := dict -}}
-    {{- if (include "arkcase.tools.check" (dict "ctx" $ctx "name" (printf ".Values.persistence.%s" $volumeName))) -}}
-      {{- $volumeData = (include "arkcase.tools.get" (dict "ctx" $ctx "name" (printf ".Values.persistence.%s" $volumeName)) | fromYaml) -}}
-    {{- end -}}
-    {{- include "arkcase.persistence.validateVolumeConfig" ( dict "vol" $volumeData "ctx" $ctx "name" $volumeName ) -}}
 
     {{- $globalDefaults := (include "arkcase.tools.get" (dict "ctx" $ctx "name" ".Values.global.persistence.defaults") | fromYaml | default dict) -}}
     {{- $localDefaults := (include "arkcase.tools.get" (dict "ctx" $ctx "name" ".Values.persistence.defaults") | fromYaml | default dict) -}}
