@@ -67,25 +67,23 @@
   {{- end -}}
 {{- end -}}
 
-{{- define "arkcase.persistence.mode" -}}
-{{- end -}}
-
 {{- /* Get or define the shared persistence settings for this chart */ -}}
 {{- define "arkcase.persistence.settings" -}}
   {{- if not (include "arkcase.isRootContext" .) -}}
     {{- fail "The parameter must be the root context (. or $)" -}}
   {{- end -}}
 
+  {{- $cacheKey := "PersistenceSettings" -}}
   {{- $masterCache := dict -}}
-  {{- if (hasKey . "PersistenceSettings") -}}
-    {{- $masterCache = .PersistenceSettings -}}
+  {{- if (hasKey . $cacheKey) -}}
+    {{- $masterCache = get . $cacheKey -}}
     {{- if and $masterCache (not (kindIs "map" $masterCache)) -}}
       {{- $masterCache = dict -}}
     {{- end -}}
   {{- end -}}
-  {{- $crap := set . "PersistenceSettings" $masterCache -}}
+  {{- $crap := set . $cacheKey $masterCache -}}
 
-  {{- /* We specifically don't use partnames here b/c we don't care about that for this */ -}}
+  {{- /* We specifically don't use arkcase.fullname here b/c we don't care about part names for this */ -}}
   {{- $chartName := (include "common.fullname" .) -}}
   {{- if not (hasKey $masterCache $chartName) -}}
     {{- $enabled := (include "arkcase.persistence.enabled" .) -}}
@@ -245,7 +243,7 @@ Parse a volume declaration and return a map that contains the following (possibl
   claim: the PVC that must be rendered, or the name of the PVC that must be used
   volume: the PV that must be rendered
 */ -}}
-{{- define "arkcase.persistence.buildVolume" -}}
+{{- define "arkcase.persistence.buildVolume.cached" -}}
   {{- $ctx := .ctx -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "The 'ctx' parameter must be the root context (. or $)" -}}
@@ -298,7 +296,33 @@ Parse a volume declaration and return a map that contains the following (possibl
   {{- else -}}
     {{- fail (printf "The volume declaration for %s must be either a string or a map (%s)" $volumeName (kindOf $data)) -}}
   {{- end -}}
-  {{- $volume | toYaml -}}
+  {{- set $volume "render" (set $volume.render "name" $volumeName) | toYaml -}}
+{{- end -}}
+
+{{- define "arkcase.persistence.buildVolume" -}}
+  {{- $ctx := .ctx -}}
+  {{- $name := .name -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "The 'ctx' parameter must be the root context (. or $)" -}}
+  {{- end -}}
+
+  {{- $cacheKey := "PersistenceVolumes" -}}
+  {{- $masterCache := dict -}}
+  {{- if (hasKey $ctx $cacheKey) -}}
+    {{- $masterCache = get $ctx $cacheKey -}}
+    {{- if and $masterCache (not (kindIs "map" $masterCache)) -}}
+      {{- $masterCache = dict -}}
+    {{- end -}}
+  {{- end -}}
+  {{- $ctx = set $ctx $cacheKey $masterCache -}}
+
+  {{- /* We specifically don't use partnames here b/c we don't care about that for this */ -}}
+  {{- $volumeName := (printf "%s-%s" (include "arkcase.fullname" .) $name) -}}
+  {{- if not (hasKey $masterCache $volumeName) -}}
+    {{- $obj := (include "arkcase.persistence.buildVolume.cached" (pick . "ctx" "name") | fromYaml) -}}
+    {{- $masterCache = set $masterCache $volumeName $obj -}}
+  {{- end -}}
+  {{- get $masterCache $volumeName | toYaml -}}
 {{- end -}}
 
 {{- /* Verify that the persistence configuration is good */ -}}
