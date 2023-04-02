@@ -223,11 +223,11 @@
 
 {{- define "arkcase.persistence.buildVolume.sanitizeAccessMode" -}}
   {{- $M := (. | upper) -}}
-  {{- if or (eq "RWO" $M) (eq "READWRITEONCE" $M) -}}
+  {{- if or (eq "RWO" $M) (eq "RW" $M) (eq "READWRITEONCE" $M) -}}
     {{- "ReadWriteOnce" -}}
-  {{- else if or (eq "RWM" $M) (eq "READWRITEMANY" $M) -}}
+  {{- else if or (eq "RWM" $M) (eq "RW+" $M) (eq "READWRITEMANY" $M) -}}
     {{- "ReadWriteMany" -}}
-  {{- else if or (eq "ROM" $M) (eq "READONLYMANY" $M) -}}
+  {{- else if or (eq "ROM" $M) (eq "RO" $M) (eq "RO+" $M) (eq "READONLYMANY" $M) -}}
     {{- "ReadOnlyMany" -}}
   {{- end -}}
 {{- end -}}
@@ -264,34 +264,10 @@
   {{- $result | toYaml -}}
 {{- end -}}
 
-{{- define "arkcase.persistence.buildVolume.parseVolumeString.pv" -}}
-  {{- /* pv://[${storageClass}]/${capacity}#${accessModes} */ -}}
-  {{- $data := .data -}}
-  {{- $volumeName := .volumeName -}}
-  {{- $pv := urlParse $data -}}
-  {{- /* Perform QC: may have a storageClass, must have a capacity and accessModes */ -}}
-  {{- $storageClass := $pv.host | default "" -}}
-  {{- $cap := $pv.path | default "" -}}
-  {{- $mode := $pv.fragment | default "" -}}
-  {{- if or (not $cap) (not $mode) -}}
-    {{- fail (printf "The pv:// volume declaration for '%s' must be of the form: pv://[${storageClass}]/${capacity}#${accessModes} where only the ${storageClass} portion is optional: [%s]" $volumeName $data) -}}
-  {{- end -}}
-  {{- $mode = (include "arkcase.persistence.buildVolume.parseAccessModes" $mode | fromYaml) -}}
-  {{- if $mode.errors -}}
-    {{- fail (printf "Invalid access modes %s given for volume spec '%s': [%s]" $mode.errors $volumeName $data) -}}
-  {{- end -}}
-  {{- $cap = (clean $cap | trimPrefix "/") -}}
-  {{- $capacity := (include "arkcase.persistence.buildVolume.parseStorageSize" $cap | fromYaml) -}}
-  {{- if or (not $capacity) $capacity.max -}}
-    {{- fail (printf "Invalid capacity specification %s for volume '%s': [%s]" $cap $volumeName $data) -}}
-  {{- end -}}
-  {{- dict "render" (dict "volume" true "claim" true) "storageClass" $storageClass "capacity" $capacity.min "accessModes" $mode.modes | toYaml -}}
-{{- end -}}
-
 {{- define "arkcase.persistence.buildVolume.parseVolumeString.pvc" -}}
   {{- /* pvc://[${storageClass}]/[${minSize}][-${maxSize}]#${accessModes} */ -}}
-  {{- /* pvc://volumeName#${accessModes} */ -}}
-  {{- /* pvc://pvcName */ -}}
+  {{- /* pvc://${volumeName}#${accessModes} */ -}}
+  {{- /* pvc://${existingPvcName} */ -}}
   {{- $data := .data -}}
   {{- $volumeName := .volumeName -}}
   {{- $pvc := urlParse $data -}}
@@ -326,10 +302,10 @@
     {{- end -}}
     {{- $volume = dict "render" (dict "volume" false "claim" true) "storageClassName" $pvc.host "accessModes" $mode.modes "resources" $resources -}}
   {{- else if $pvc.fragment -}}
-    {{- /* pvc://volumeName#${accessModes} */ -}}
-    {{- $volume = dict "render" (dict "volume" false "claim" true) "volumeName" $volume "accessModes" $mode.modes -}}
+    {{- /* pvc://${volumeName}#${accessModes} */ -}}
+    {{- $volume = dict "render" (dict "volume" false "claim" true) "volumeName" $pvc.host "accessModes" $mode.modes -}}
   {{- else -}}
-    {{- /* pvc://pvcName */ -}}
+    {{- /* pvc://${existingPvcName} */ -}}
     {{- $volume = dict "render" (dict "volume" false "claim" false) "claimName" $pvc.host -}}
   {{- end -}}
   {{- $volume | toYaml -}}
@@ -351,14 +327,12 @@
 {{- end -}}
 
 {{- define "arkcase.persistence.buildVolume.parseVolumeString" -}}
-  {{- /* Must be a pv://, pvc://, or path ... the empty string renders a default volume */ -}}
+  {{- /* Must be a pvc:// or a path ... the empty string renders a default volume */ -}}
   {{- $data := .data -}}
   {{- $volumeName := .volumeName -}}
   {{- $volume := dict -}}
   {{- if $data -}}
-    {{- if hasPrefix "pv://" $data -}}
-      {{- $volume = (include "arkcase.persistence.buildVolume.parseVolumeString.pv" . | fromYaml) -}}
-    {{- else if hasPrefix "pvc://" $data -}}
+    {{- if hasPrefix "pvc://" $data -}}
       {{- $volume = (include "arkcase.persistence.buildVolume.parseVolumeString.pvc" . | fromYaml) -}}
     {{- else -}}
       {{- $volume = (include "arkcase.persistence.buildVolume.parseVolumeString.path" . | fromYaml) -}}
@@ -413,11 +387,7 @@ Parse a volume declaration and return a map that contains the following (possibl
       {{- end -}}
     {{- else if $data.volume -}}
       {{- if kindIs "string" $data.volume -}}
-        {{- if hasPrefix "pv://" $data.volume -}}
-          {{- $volume = (include "arkcase.persistence.buildVolume.parseVolumeString.pv" (dict "data" $data.volume "volumeName" $volumeName) | fromYaml) -}}
-        {{- else -}}
-          {{- $volume = (include "arkcase.persistence.buildVolume.parseVolumeString.path" (dict "data" $data.volume "volumeName" $volumeName) | fromYaml) -}}
-        {{- end -}}
+        {{- $volume = (include "arkcase.persistence.buildVolume.parseVolumeString.path" (dict "data" $data.volume "volumeName" $volumeName) | fromYaml) -}}
       {{- else if kindIs "map" $data.volume -}}
         {{- /* The map is a volume spec, so use it */ -}}
         {{- $volume = (dict "render" (dict "volume" true "claim" true) "spec" $data.volume) -}}
@@ -531,34 +501,18 @@ Render the PersistentVolume and PersistentVolumeClaim objects for a given volume
     {{- $partname := (include "arkcase.part.name" $ctx) -}}
     {{- $settings := (include "arkcase.persistence.settings" $ctx | fromYaml) -}}
     {{- $volumeData := (include "arkcase.persistence.buildVolume" (pick . "ctx" "name") | fromYaml) -}}
-    {{- $rootPath := $settings.rootPath -}}
+    {{- $render := (get $volumeData "render") -}}
+    {{- $volumeData = omit $volumeData "render" -}}
 
-    {{- $objectName := $volumeData.render.name -}}
+    {{- $rootPath := $settings.rootPath -}}
+    {{- $objectName := $render.name -}}
     {{- $volumeObjectName := (printf "%s-%s" $ctx.Release.Namespace $objectName) -}}
 
-    {{- $globalDefaults := (include "arkcase.tools.get" (dict "ctx" $ctx "name" ".Values.global.persistence.defaults") | fromYaml | default dict) -}}
-    {{- $localDefaults := (include "arkcase.tools.get" (dict "ctx" $ctx "name" ".Values.persistence.defaults") | fromYaml | default dict) -}}
+    {{- $accessModes := $settings.accessModes -}}
+    {{- $capacity := $settings.capacity -}}
+    {{- $storageClassName := $settings.storageClass -}}
 
-    {{- /* Overlay localDefaults on top of globalDefaults */ -}}
-    {{- $defaults := mergeOverwrite $globalDefaults $localDefaults -}}
-    {{- $defaultSize := (include "arkcase.tools.get" (dict "ctx" $defaults "name" "size") | default "1Gi") -}}
-    {{- $defaultReclaimPolicy := (include "arkcase.tools.get" (dict "ctx" $defaults "name" "persistentVolumeReclaimPolicy") | default "Retain") -}}
-    {{- $defaultStorageClassName := (include "arkcase.tools.get" (dict "ctx" $defaults "name" "storageClassName") | default "manual") -}}
-    {{- $defaultAccessModes := (include "arkcase.tools.get" (dict "ctx" $defaults "name" "accessModes")) -}}
-    {{- if not $defaultAccessModes -}}
-      {{- $defaultAccessModes = (list "ReadWriteOnce") -}}
-    {{- end -}}
-
-    {{- $claimName := (default "" ($volumeData.claim).name) -}}
-    {{- $claimSpec := (default dict ($volumeData.claim).spec) -}}
-    {{- $volumeSpec := (default dict $volumeData.spec) -}}
-
-    {{- $storageClassName := $defaultStorageClassName -}}
-    {{- $accessModes := $defaultAccessModes -}}
-    {{- $storageSize := $defaultSize -}}
-
-    {{- if not $claimName -}}
-    {{- if not $claimSpec -}}
+    {{- if $render.volume -}}
 ---
 apiVersion: v1
 kind: PersistentVolume
@@ -581,64 +535,51 @@ metadata:
     {{- toYaml . | nindent 4 }}
     {{- end }}
 spec:
-{{- if ($volumeSpec) }}
-  {{- if $volumeSpec.accessModes -}}
-    {{- $accessModes = $volumeSpec.accessModes -}}
-  {{- end -}}
-  {{- if ($volumeSpec.capacity).storage -}}
-    {{- $storageSize = $volumeSpec.capacity.storage -}}
-  {{- end -}}
-  {{- if $volumeSpec.storageClassName -}}
-    {{- $storageClassName = $volumeSpec.storageClassName -}}
-  {{- end -}}
-  {{- toYaml $volumeSpec | nindent 2 -}}
-{{- else }}
-  {{- /* Use "local-storage" when we've figured out the folder creation thing */ -}}
-  {{- $storageClassName = "manual" }}
+      {{- if hasKey $volumeData "spec" }}
+        {{- /* We were given a volume declaration, so quote it */ -}}
+        {{- $volumeSpec := $volumeData.spec -}}
+        {{- if $volumeSpec.accessModes -}}
+          {{- $accessModes = $volumeSpec.accessModes -}}
+        {{- end -}}
+        {{- if ($volumeSpec.capacity).storage -}}
+          {{- $capacity = $volumeSpec.capacity.storage -}}
+        {{- end -}}
+        {{- if $volumeSpec.storageClassName -}}
+          {{- $storageClassName = $volumeSpec.storageClassName -}}
+        {{- end -}}
+        {{- toYaml $volumeSpec | nindent 2 -}}
+      {{- else -}}
+        {{- /* This is a local filesystem spec ... should be in development mode! */ -}}
+        {{- if ne $settings.mode "development" -}}
+          {{- fail (printf "Local paths are only supported in development mode (volume [%s])" $volumeName) -}}
+        {{- end -}}
+        {{- $storageClassName = "manual" }}
+        {{- $localPath := $volumeData.hostPath -}}
+        {{- if not $localPath -}}
+          {{- if $partname -}}
+            {{- $volumeName = (printf "%s-%s" $partname $volumeName) -}}
+          {{- end -}}
+          {{- $localPath = (printf "%s/%s" (include "arkcase.subsystem.name" $ctx) $volumeName) -}}
+        {{- end -}}
+        {{- if not (isAbs $localPath) -}}
+          {{- $localPath = (printf "%s/%s" $settings.rootPath $localPath) -}}
+        {{- end }}
   storageClassName: {{ $storageClassName | quote }}
-  persistentVolumeReclaimPolicy: {{ $defaultReclaimPolicy | quote }}
+  persistentVolumeReclaimPolicy: {{ $settings.persistentVolumeReclaimPolicy | quote }}
   accessModes: {{- toYaml $accessModes | nindent 4 }}
   capacity:
-    storage: {{ $storageSize | quote }}
-  {{- if (eq "local-storage" $storageClassName) }}
-  # Use "local:" when using "local-storage" as the storage class
-  local:
-  {{- else }}
-  # Use "hostPath:" when using "manual" as the storage class
+    storage: {{ $capacity | quote }}
   hostPath:
-  {{- end }}
-    {{- $localPath := $volumeData.localPath -}}
-    {{- if not $localPath -}}
-      {{- $localPath = coalesce (($ctx.Values.global).persistence).localPath ($ctx.Values.persistence).localPath $rootPath -}}
-      {{- if $partname -}}
-        {{- $volumeName = (printf "%s-%s" $partname $volumeName) -}}
-      {{- end -}}
-      {{- $localPath = (printf "%s/%s/%s" $localPath (include "arkcase.subsystem.name" $ctx) $volumeName) -}}
-    {{- end }}
     path: {{ $localPath | quote }}
     type: DirectoryOrCreate
-  {{- if (eq "local-storage" $storageClassName) }}
-  # Node affinity is required when using "local-storage" as the storage class
-  nodeAffinity:
-    # TODO: Could eventually match kubernetes.io/hostname=$(hostname) ... must use kustomize or somesuch
-    # TODO: This should probably be revised ... should work for now
-    required:
-      nodeSelectorTerms:
-        - matchExpressions:
-            - key: kubernetes.io/os
-              operator: In
-              values:
-                - linux
-  {{- end }}
   claimRef:
     apiVersion: v1
     kind: PersistentVolumeClaim
     name: {{ $objectName | quote }}
     namespace: {{ $ctx.Release.Namespace | quote }}
-{{- end }}
-
-    {{- end }}
-
+      {{- end -}}
+    {{- end -}}
+    {{- if $render.claim }}
 ---
 kind: PersistentVolumeClaim
 apiVersion: v1
@@ -646,24 +587,35 @@ metadata:
   name: {{ $objectName | quote }}
   namespace: {{ $ctx.Release.Namespace | quote }}
   labels: {{- include "arkcase.labels" $ctx | nindent 4 }}
-    {{- with $ctx.Values.labels }}
-    {{- toYaml . | nindent 4 }}
-    {{- end }}
-    {{- with $volumeData.labels }}
-    {{- toYaml . | nindent 4 }}
-    {{- end }}
+      {{- with $ctx.Values.labels }}
+        {{- toYaml . | nindent 4 }}
+      {{- end }}
+      {{- with $volumeData.labels }}
+        {{- toYaml . | nindent 4 }}
+      {{- end }}
     arkcase/persistentVolumeClaim: {{ $objectName | quote }}
   annotations:
-    {{- with $ctx.Values.annotations  }}
-    {{- toYaml . | nindent 4 }}
-    {{- end }}
-    {{- with $volumeData.annotations  }}
-    {{- toYaml . | nindent 4 }}
-    {{- end }}
+      {{- with $ctx.Values.annotations  }}
+        {{- toYaml . | nindent 4 }}
+      {{- end }}
+      {{- with $volumeData.annotations  }}
+        {{- toYaml . | nindent 4 }}
+      {{- end }}
 spec:
-{{- if ($claimSpec) -}}
-  {{- $claimSpec | toYaml | nindent 2 }}
-{{- else }}
+      {{- if hasKey $volumeData "spec" }}
+        {{- /* We were given a claim declaration, so quote it */ -}}
+        {{- $claimSpec := $volumeData.spec -}}
+        {{- if $claimSpec.accessModes -}}
+          {{- $accessModes = $claimSpec.accessModes -}}
+        {{- end -}}
+        {{- if ($claimSpec.capacity).storage -}}
+          {{- $capacity = $claimSpec.capacity.storage -}}
+        {{- end -}}
+        {{- if $claimSpec.storageClassName -}}
+          {{- $storageClassName = $claimSpec.storageClassName -}}
+        {{- end -}}
+        {{- toYaml $claimSpec | nindent 2 -}}
+      {{- else if $render.volume }}
   volumeName: {{ $volumeObjectName | quote }}
   selector:
     matchLabels:
@@ -672,10 +624,28 @@ spec:
   accessModes: {{- toYaml $accessModes | nindent 4 }}
   resources:
     requests:
-      storage: {{ $storageSize | quote }}
-{{- end }}
+      storage: {{ $capacity | quote }}
+      {{- else -}}
+        {{- /* This is the product of a pvc:// URI, so do the thing! */ -}}
+        {{- if $volumeData.accessModes -}}
+          {{- $accessModes = $volumeData.accessModes -}}
+        {{- end -}}
+        {{- if $volumeData.resources -}}
+          {{- $capacity = $volumeData.resources -}}
+        {{- else -}}
+          {{- $capacity = dict "requests" (dict "storage" $capacity) -}}
+        {{- end -}}
+        {{- if $volumeData.storageClassName -}}
+          {{- $storageClassName = $volumeData.storageClassName -}}
+        {{- end }}
+        {{- if $volumeData.volumeName }}
+  volumeName: {{ $volumeData.volumeName | quote }}
+          {{- $storageClassName = "" -}}
+        {{- end }}
+  storageClassName: {{ $storageClassName | quote }}
+  accessModes: {{- toYaml $accessModes | nindent 4 }}
+  resources: {{- toYaml $capacity | nindent 4 }}
+      {{- end }}
     {{- end -}}
-
   {{- end -}}
-
 {{- end -}}
