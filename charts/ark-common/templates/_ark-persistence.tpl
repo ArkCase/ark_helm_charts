@@ -53,17 +53,20 @@
   {{- end -}}
   {{- $values := (include "arkcase.persistence.getSetting" (dict "ctx" . "name" "storageClass") | fromYaml) -}}
   {{- $storageClass := "" -}}
-  {{- if hasKey $values "global" -}}
+  {{- $storageClassSet := false -}}
+  {{- if and (not $storageClassSet) (hasKey $values "global") -}}
     {{- $storageClass = $values.global -}}
     {{- if and $storageClass (not (regexMatch "^([a-z0-9][-a-z0-9]*)?[a-z0-9]$" ($storageClass | lower))) -}}
       {{- fail (printf "The value global.persistence.storageClass must be a valid storage class name: [%s]" $storageClass) -}}
     {{- end -}}
+    {{- $storageClassSet = true -}}
   {{- end -}}
-  {{- if hasKey $values "local" -}}
+  {{- if and (not $storageClassSet) (hasKey $values "local") -}}
     {{- $storageClass = $values.local -}}
     {{- if and $storageClass (not (regexMatch "^([a-z0-9][-a-z0-9]*)?[a-z0-9]$" ($storageClass | lower))) -}}
       {{- fail (printf "The value persistence.storageClass must be a valid storage class name: [%s]" $storageClass) -}}
     {{- end -}}
+    {{- $storageClassSet = true -}}
   {{- end -}}
   {{- /* Only output a value if one is set */ -}}
   {{- if $storageClass -}}
@@ -77,13 +80,13 @@
   {{- end -}}
   {{- $values := (include "arkcase.persistence.getSetting" (dict "ctx" . "name" "persistentVolumeReclaimPolicy") | fromYaml) -}}
   {{- $policy := "" -}}
-  {{- if hasKey $values "global" -}}
+  {{- if and (not $policy) (hasKey $values "global") -}}
     {{- $policy = $values.global -}}
     {{- if and $policy (not (regexMatch "^(retain|recycle|delete)$" ($policy | lower))) -}}
       {{- fail (printf "The value global.persistence.persistentVolumeReclaimPolicy must be a valid persistent volume reclaim policy (Retain/Recycle/Delete): [%s]" $policy) -}}
     {{- end -}}
   {{- end -}}
-  {{- if hasKey $values "local" -}}
+  {{- if and (not $policy) (hasKey $values "local") -}}
     {{- $policy = $values.local -}}
     {{- if and $policy (not (regexMatch "^(retain|recycle|delete)$" ($policy | lower))) -}}
       {{- fail (printf "The value persistence.persistentVolumeReclaimPolicy must be a valid persistent volume reclaim policy (Retain/Recycle/Delete): [%s]" $policy) -}}
@@ -100,7 +103,7 @@
   {{- end -}}
   {{- $values := (include "arkcase.persistence.getSetting" (dict "ctx" . "name" "accessModes") | fromYaml) -}}
   {{- $modes := dict -}}
-  {{- if hasKey $values "global" -}}
+  {{- if and (not $modes) (hasKey $values "global") -}}
     {{- $accessModes = $values.global -}}
     {{- $str := "" -}}
     {{- if kindIs "slice" $accessModes -}}
@@ -113,7 +116,7 @@
       {{- fail (printf "Invalid access modes found in the value global.persistence.accessModes: %s" $modes.errors) -}}
     {{- end -}}
   {{- end -}}
-  {{- if hasKey $values "local" -}}
+  {{- if and (not $modes) (hasKey $values "local") -}}
     {{- $accessModes = $values.local -}}
     {{- $str := "" -}}
     {{- if kindIs "slice" $accessModes -}}
@@ -128,6 +131,31 @@
   {{- end -}}
   {{- if $modes.modes -}}
     {{- $modes.modes | compact | join "," -}}
+  {{- end -}}
+{{- end -}}
+
+{{- define "arkcase.persistence.capacity" -}}
+  {{- if not (include "arkcase.isRootContext" .) -}}
+    {{- fail "The parameter must be the root context (. or $)" -}}
+  {{- end -}}
+  {{- $values := (include "arkcase.persistence.getSetting" (dict "ctx" . "name" "capacity") | fromYaml) -}}
+  {{- $capacity := "" -}}
+  {{- if and (not $capacity) (hasKey $values "global") -}}
+    {{- $capacity = (include "arkcase.persistence.buildVolume.parseStorageSize" $values.global | fromYaml) -}}
+    {{- if not $capacity -}}
+      {{- fail (printf "The value global.persistence.capacity must be a valid persistent volume capacity: [%s]" $values.global) -}}
+    {{- end -}}
+    {{- $capacity = $values.global -}}
+  {{- end -}}
+  {{- if and (not $capacity) (hasKey $values "local") -}}
+    {{- $capacity = (include "arkcase.persistence.buildVolume.parseStorageSize" $values.local | fromYaml) -}}
+    {{- if not $capacity -}}
+      {{- fail (printf "The value persistence.capacity must be a valid persistent volume capacity: [%s]" $values.local) -}}
+    {{- end -}}
+    {{- $capacity = $values.local -}}
+  {{- end -}}
+  {{- if $capacity -}}
+    {{- $capacity -}}
   {{- end -}}
 {{- end -}}
 
@@ -165,6 +193,10 @@
       {{- /* If no access modes are given by default, use ReadWriteOnce */ -}}
       {{- $accessModes = list "ReadWriteOnce" -}}
     {{- end -}}
+    {{- $capacity := (include "arkcase.persistence.capacity" .) -}}
+    {{- if not $capacity -}}
+      {{- $capacity = "1Gi" -}}
+    {{- end -}}
 
     {{- $mode := "ephemeral" -}}
     {{- if $enabled -}}
@@ -178,6 +210,7 @@
       $obj := dict 
         "enabled" $enabled
         "rootPath" $rootPath
+        "capacity" $capacity
         "storageClass" $storageClass
         "persistentVolumeReclaimPolicy" $persistentVolumeReclaimPolicy
         "accessModes" $accessModes
