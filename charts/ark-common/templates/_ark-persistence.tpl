@@ -350,7 +350,12 @@ Parse a volume declaration and return a map that contains the following (possibl
   {{- /* The volume's name will be of the form "[${part}-]$name" ($part is optional) */ -}}
   {{- $name := .name -}}
   {{- $volumeName := (printf "%s-%s" (include "arkcase.fullname" $ctx) $name) -}}
-  {{- $data := get ($ctx.Values.persistence | default dict) $name | default "" -}}
+  {{- $persistence := ($ctx.Values.persistence | default dict) -}}
+  {{- $persistenceVolumes := ($persistence.volumes | default dict) -}}
+  {{- $data := dict -}}
+  {{- if hasKey $persistenceVolumes $name -}}
+    {{- $data = get $persistenceVolumes $name -}}
+  {{- end -}}
   {{- $volume := dict -}}
   {{- if kindIs "string" $data -}}
     {{- $volume = (include "arkcase.persistence.buildVolume.parseVolumeString" (dict "data" $data "volumeName" $volumeName) | fromYaml) -}}
@@ -388,6 +393,8 @@ Parse a volume declaration and return a map that contains the following (possibl
       {{- end -}}
     {{- else if $data.path -}}
       {{- $volume = (include "arkcase.persistence.buildVolume.parseVolumeString.path" (dict "data" $data.path "volumeName" $volumeName) | fromYaml) -}}
+    {{- else -}}
+      {{- $volume = (dict "render" (dict "volume" true "claim" true)) -}}
     {{- end -}}
   {{- else -}}
     {{- fail (printf "The volume declaration for %s must be either a string or a map (%s)" $volumeName (kindOf $data)) -}}
