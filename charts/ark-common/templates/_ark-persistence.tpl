@@ -644,6 +644,7 @@ spec:
       {{- else -}}
         {{- $localPath := "" -}}
         {{- if or (not $volumeData) (hasKey $volumeData "hostPath") -}}
+          {{- $localPath = ($volumeData.hostPath | default "") -}}
           {{- if or (not $storageClassName) (hasKey $volumeData "hostPath") -}}
             {{- /* This is a local filesystem spec ... should be in development mode! */ -}}
             {{- if ne $settings.mode "development" -}}
@@ -657,7 +658,7 @@ spec:
               {{- $localPath = (printf "%s/%s" (include "arkcase.subsystem.name" $ctx) $volumeName) -}}
             {{- end -}}
             {{- if not (isAbs $localPath) -}}
-              {{- $localPath = (printf "%s/%s" $settings.rootPath $localPath) -}}
+              {{- $localPath = (printf "%s/%s/%s/%s" $settings.rootPath $ctx.Release.Namespace $ctx.Release.Name $localPath) -}}
             {{- end -}}
           {{- end -}}
         {{- else -}}
