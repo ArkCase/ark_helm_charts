@@ -443,7 +443,8 @@ Parse a volume declaration and return a map that contains the following (possibl
   {{- $persistence := ($ctx.Values.persistence | default dict) -}}
   {{- $persistenceVolumes := ($persistence.volumes | default dict) -}}
   {{- $data := dict -}}
-  {{- $mustRender := (not (empty (include "arkcase.persistence.enabled" $ctx))) -}}
+  {{- $enabled := (not (empty (include "arkcase.persistence.enabled" $ctx))) -}}
+  {{- $mustRender := $enabled -}}
   {{- if hasKey $persistenceVolumes $name -}}
     {{- $data = get $persistenceVolumes $name -}}
     {{- $mustRender = true -}}
@@ -477,6 +478,8 @@ Parse a volume declaration and return a map that contains the following (possibl
     {{- else -}}
       {{- $volume = (dict "render" (dict "volume" true "claim" true)) -}}
     {{- end -}}
+  {{- else if (kindIs "invalid" $data) -}}
+    {{- $volume = (dict "render" (dict "volume" true "claim" true)) -}}
   {{- else -}}
     {{- fail (printf "The volume declaration for %s must be either a string or a map (%s)" $volumeName (kindOf $data)) -}}
   {{- end -}}
