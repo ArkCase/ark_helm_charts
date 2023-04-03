@@ -443,10 +443,10 @@ Parse a volume declaration and return a map that contains the following (possibl
   {{- $persistence := ($ctx.Values.persistence | default dict) -}}
   {{- $persistenceVolumes := ($persistence.volumes | default dict) -}}
   {{- $data := dict -}}
-  {{- $declared := false -}}
+  {{- $mustRender := (not (empty (include "arkcase.persistence.enabled" $ctx))) -}}
   {{- if hasKey $persistenceVolumes $name -}}
     {{- $data = get $persistenceVolumes $name -}}
-    {{- $declared = true -}}
+    {{- $mustRender = true -}}
   {{- end -}}
   {{- $volume := dict -}}
   {{- if kindIs "string" $data -}}
@@ -480,7 +480,7 @@ Parse a volume declaration and return a map that contains the following (possibl
   {{- else -}}
     {{- fail (printf "The volume declaration for %s must be either a string or a map (%s)" $volumeName (kindOf $data)) -}}
   {{- end -}}
-  {{- set $volume "render" (merge $volume.render (dict "name" $volumeName "declared" $declared)) | toYaml -}}
+  {{- set $volume "render" (merge $volume.render (dict "name" $volumeName "mustRender" $mustRender)) | toYaml -}}
 {{- end -}}
 
 {{- define "arkcase.persistence.buildVolume" -}}
@@ -550,7 +550,7 @@ Render a volumes: entry for a given volume, as per the persistence model
   {{- $volume := (include "arkcase.persistence.buildVolume" (pick . "ctx" "name") | fromYaml) -}}
 - name: {{ $volumeName | quote }}
   {{- /* We render the volume if persistence is enabled, OR the volume is explicitly declared */ -}}
-  {{- if (include "arkcase.persistence.enabled" $ctx) -}}
+  {{- if $volume.render.mustRender -}}
     {{- $claimName := $volume.render.name -}}
     {{- if $volume.claimName -}}
       {{- $claimName = $volume.claimName -}}
@@ -576,11 +576,11 @@ Render the PersistentVolume and PersistentVolumeClaim objects for a given volume
     {{- fail "Must provide the 'name' of the volume objects to declare" -}}
   {{- end -}}
 
-  {{- if (include "arkcase.persistence.enabled" $ctx) -}}
+  {{- $volumeData := (include "arkcase.persistence.buildVolume" (pick . "ctx" "name") | fromYaml) -}}
+  {{- $render := (get $volumeData "render") -}}
+  {{- if $render.mustRender -}}
     {{- $partname := (include "arkcase.part.name" $ctx) -}}
     {{- $settings := (include "arkcase.persistence.settings" $ctx | fromYaml) -}}
-    {{- $volumeData := (include "arkcase.persistence.buildVolume" (pick . "ctx" "name") | fromYaml) -}}
-    {{- $render := (get $volumeData "render") -}}
     {{- $volumeData = omit $volumeData "render" -}}
 
     {{- $rootPath := $settings.rootPath -}}
