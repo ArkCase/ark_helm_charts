@@ -44,11 +44,22 @@
   {{- end -}}
   {{- $mode := "development" -}}
   {{- if (include "arkcase.persistence.enabled" .) -}}
+    {{- $storageClass := (include "arkcase.persistence.getSetting" (dict "ctx" . "name" "storageClass") | fromYaml) -}}
+    {{- $storageClass = (coalesce $storageClass.global $storageClass.local | default "" | lower) -}}
+
     {{- $modes := (include "arkcase.persistence.getSetting" (dict "ctx" . "name" "mode") | fromYaml) -}}
-    {{- $mode = (coalesce $modes.global $modes.local "dev" | lower) -}}
+    {{- if or $modes.global $modes.local -}}
+      {{- $mode = (coalesce $modes.global $modes.local | lower) -}}
+    {{- else if $storageClass -}}
+      {{- $mode = "prod" -}}
+    {{- else -}}
+      {{- $mode = "dev" -}}
+    {{- end -}}
+
     {{- if and (ne $mode "dev") (ne $mode "development") (ne $mode "prod") (ne $mode "production") -}}
       {{- fail (printf "Unknown development mode '%s' for persistence (l:%s, g:%s)" $mode $modes.local $modes.global) -}}
     {{- end -}}
+
     {{- if hasPrefix "dev" $mode -}}
       {{- $mode = "development" -}}
     {{- else -}}
@@ -620,32 +631,34 @@ spec:
       {{- if hasKey $volumeData "spec" }}
         {{- /* We were given a volume declaration, so quote it */ -}}
         {{- $volumeSpec := $volumeData.spec -}}
-        {{- if $volumeSpec.accessModes -}}
-          {{- $accessModes = $volumeSpec.accessModes -}}
+        {{- if $volumeSpec.storageClassName -}}
+          {{- $storageClassName = $volumeSpec.storageClassName -}}
         {{- end -}}
         {{- if ($volumeSpec.capacity).storage -}}
           {{- $capacity = $volumeSpec.capacity.storage -}}
         {{- end -}}
-        {{- if $volumeSpec.storageClassName -}}
-          {{- $storageClassName = $volumeSpec.storageClassName -}}
+        {{- if $volumeSpec.accessModes -}}
+          {{- $accessModes = $volumeSpec.accessModes -}}
         {{- end -}}
         {{- toYaml $volumeSpec | nindent 2 -}}
       {{- else -}}
         {{- $localPath := "" -}}
         {{- if or (not $volumeData) (hasKey $volumeData "hostPath") -}}
-          {{- /* This is a local filesystem spec ... should be in development mode! */ -}}
-          {{- if ne $settings.mode "development" -}}
-            {{- fail (printf "Local paths are only supported in development mode (volume [%s])" $volumeName) -}}
-          {{- end -}}
-          {{- $storageClassName = "manual" }}
-          {{- if not $localPath -}}
-            {{- if $partname -}}
-              {{- $volumeName = (printf "%s-%s" $partname $volumeName) -}}
+          {{- if or (not $storageClassName) (hasKey $volumeData "hostPath") -}}
+            {{- /* This is a local filesystem spec ... should be in development mode! */ -}}
+            {{- if ne $settings.mode "development" -}}
+              {{- fail (printf "Local paths are only supported in development mode (volume [%s])" $volumeName) -}}
             {{- end -}}
-            {{- $localPath = (printf "%s/%s" (include "arkcase.subsystem.name" $ctx) $volumeName) -}}
-          {{- end -}}
-          {{- if not (isAbs $localPath) -}}
-            {{- $localPath = (printf "%s/%s" $settings.rootPath $localPath) -}}
+            {{- $storageClassName = "manual" }}
+            {{- if not $localPath -}}
+              {{- if $partname -}}
+                {{- $volumeName = (printf "%s-%s" $partname $volumeName) -}}
+              {{- end -}}
+              {{- $localPath = (printf "%s/%s" (include "arkcase.subsystem.name" $ctx) $volumeName) -}}
+            {{- end -}}
+            {{- if not (isAbs $localPath) -}}
+              {{- $localPath = (printf "%s/%s" $settings.rootPath $localPath) -}}
+            {{- end -}}
           {{- end -}}
         {{- else -}}
           {{- if $volumeData.storageClass -}}
@@ -663,11 +676,11 @@ spec:
   accessModes: {{- toYaml $accessModes | nindent 4 }}
   capacity:
     storage: {{ $capacity | quote }}
-       {{- if $localPath }}
+        {{- if $localPath }}
   hostPath:
     path: {{ $localPath | quote }}
     type: DirectoryOrCreate
-       {{- end }}
+        {{- end }}
   claimRef:
     apiVersion: v1
     kind: PersistentVolumeClaim
