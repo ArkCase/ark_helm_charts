@@ -120,6 +120,35 @@ app.kubernetes.io/part: {{ $partname }}
   {{- end }}
 {{- end -}}
 
+{{- define "arkcase.tools.normalizePath" -}}
+  {{- $path := . -}}
+  {{- if not (kindIs "string" $path) -}}
+    {{- fail "The parameter must be a string value (%s = %s)" (kindOf $path) ($path | toString) -}}
+  {{- end -}}
+  {{- $stack := list -}}
+  {{- range $e := (splitList "/" $path | compact) -}}
+    {{- if (eq "." $e) -}}
+      {{- /* Do nothing ... this path component can be ignored */ -}}
+    {{- else if eq ".." $e -}}
+      {{- if not $stack -}}
+        {{- fail (printf "The path string [%s] contains too many '..' components" $path) -}}
+      {{- end -}}
+      {{- $stack = rest $stack -}}
+    {{- else -}}
+      {{- $stack = prepend $stack $e -}}
+    {{- end -}}
+  {{- end -}}
+  {{- if isAbs $path -}}
+    {{- /* This will cause the leading slash to be added */ -}}
+    {{- if $stack -}}
+      {{- $stack = append $stack "" -}}
+    {{- else -}}
+      {{- $stack = list "" "" -}}
+    {{- end -}}
+  {{- end -}}
+  {{- reverse $stack | join "/" -}}
+{{- end -}}
+
 {{- /*
 Outputs "true" if the given parameter is a string that matches an IPv4 address (4 dot-separated octets between 0 and 255). If the string submitted is not an IPv4 address, the empty string will be output.
 
@@ -474,6 +503,15 @@ usage: ( include "arkcase.tools.check" (dict "ctx" $ "name" "some.name.to.find")
   {{- $crap := unset . "required" -}}
   {{- $crap = set . "test" "true" -}}
   {{- include "arkcase.tools.get" . -}}
+{{- end -}}
+
+{{- /*
+Check if persistence is enabled, assuming a missing setting defaults to true
+*/ -}}
+{{- define "arkcase.tools.checkEnabledFlag" -}}
+  {{- if (and (kindIs "map" .) (or (not (hasKey . "enabled")) (eq "true" (.enabled | toString | lower)))) -}}
+    {{- true -}}
+  {{- end -}}
 {{- end -}}
 
 {{- /*

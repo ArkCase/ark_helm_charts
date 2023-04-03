@@ -93,57 +93,11 @@ persistence:
   # are ignored.
   enabled: true
 
-# Use this when not using other persistent volumes, to point to the root location
-# where the directories need to be created
-#   localPath: "/opt/app/arkcase"
-
-#
-# There is 1 volume supported: data
-#
-  data:
-# Use this instance of localPath when you want a specific directory for this volume
-#    localPath: "/....."
-# The "spec" should match the contents of PersistenceVolume.spec
-    spec:
-#      storageClassName: "manual"
-#      persistentVolumeReclaimPolicy: Retain
-#      accessModes:
-#        - "ReadWriteOnce"
-#      capacity:
-#        storage: "10Gi"
-#      hostPath:
-#        path: /tmp/samba/data
-#
-    claim:
-# "name" is the name of an existing volume claim to be re-used, can't be used if "claim" is present
-#      name: "name-of-the-claim-to-consume"
-# "spec" should match the contents of PersistenceVolumeClaim.spec, can't be used if "name" is present
-#      spec: 
-#        storageClassName: ""
-#        volumeName: the-volume-to-claim
-#        accessModes:
-#          - "ReadWriteOnce"
-#        resources:
-#          limits: ""
-#          requests: ""
-#        selector:
-#          matchExpressions:
-#            - values:
-#                - ""
-#                - ""
-#                - ""
-#                ...
-#              operator: "In"|"NotIn"|"Exists"|"DoesNotExist"
-#              key: "labelKey"
-#            - values:
-#                - ""
-#                - ""
-#                - ""
-#                ...
-#              operator: "In"|"NotIn"|"Exists"|"DoesNotExist"
-#              key: "labelKey"
-#          matchLabels: "....."
-
+#  The volumes for persistent data
+  volumes:
+# The volume where the data will be stored (RTFM for more info on how to
+# properly declare volumes)
+#     data:
 
 service:
   #external: host-or-IP
