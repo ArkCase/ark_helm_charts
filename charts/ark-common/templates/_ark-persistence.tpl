@@ -37,6 +37,27 @@
   {{- end -}}
 {{- end -}}
 
+{{- /* Get the mode of operation value that should be used for everything */ -}}
+{{- define "arkcase.persistence.mode" -}}
+  {{- if not (include "arkcase.isRootContext" .) -}}
+    {{- fail "The parameter must be the root context (. or $)" -}}
+  {{- end -}}
+  {{- $mode := "development" -}}
+  {{- if (include "arkcase.persistence.enabled" .) -}}
+    {{- $modes := (include "arkcase.persistence.getSetting" (dict "ctx" . "name" "mode") | fromYaml) -}}
+    {{- $mode = (coalesce $modes.global $modes.local "dev" | lower) -}}
+    {{- if and (ne $mode "dev") (ne $mode "development") (ne $mode "prod") (ne $mode "production") -}}
+      {{- fail (printf "Unknown development mode '%s' for persistence (l:%s, g:%s)" $mode $modes.local $modes.global) -}}
+    {{- end -}}
+    {{- if hasPrefix "dev" $mode -}}
+      {{- $mode = "development" -}}
+    {{- else -}}
+      {{- $mode = "production" -}}
+    {{- end -}}
+  {{- end -}}
+  {{- $mode -}}
+{{- end -}}
+
 {{- /* Get the rootPath value that should be used for everything */ -}}
 {{- define "arkcase.persistence.rootPath" -}}
   {{- if not (include "arkcase.isRootContext" .) -}}
@@ -198,14 +219,7 @@
       {{- $capacity = "1Gi" -}}
     {{- end -}}
 
-    {{- $mode := "ephemeral" -}}
-    {{- if $enabled -}}
-      {{- if $storageClass -}}
-        {{- $mode = "production" -}}
-      {{- else -}}
-        {{- $mode = "development" -}}
-      {{- end -}}
-    {{- end -}}
+    {{- $mode := (include "arkcase.persistence.mode" .) -}}
     {{-
       $obj := dict 
         "enabled" $enabled
@@ -404,6 +418,8 @@
     {{- else -}}
       {{- $volume = (include "arkcase.persistence.buildVolume.parseVolumeString.pv" . | fromYaml) -}}
     {{- end -}}
+  {{- else -}}
+    {{- $volume = (dict "render" (dict "volume" true "claim" true)) -}}
   {{- end -}}
   {{- $volume | toYaml -}}
 {{- end -}}
@@ -427,8 +443,10 @@ Parse a volume declaration and return a map that contains the following (possibl
   {{- $persistence := ($ctx.Values.persistence | default dict) -}}
   {{- $persistenceVolumes := ($persistence.volumes | default dict) -}}
   {{- $data := dict -}}
+  {{- $declared := false -}}
   {{- if hasKey $persistenceVolumes $name -}}
     {{- $data = get $persistenceVolumes $name -}}
+    {{- $declared = true -}}
   {{- end -}}
   {{- $volume := dict -}}
   {{- if kindIs "string" $data -}}
@@ -456,15 +474,13 @@ Parse a volume declaration and return a map that contains the following (possibl
       {{- else -}}
         {{- fail (printf "The 'volume' value for the volume '%s' must be either a dict or a string (%s)" $volumeName (kindOf $data.volume)) -}}
       {{- end -}}
-    {{- else if $data.path -}}
-      {{- $volume = (include "arkcase.persistence.buildVolume.parseVolumeString.path" (dict "data" $data.path "volumeName" $volumeName) | fromYaml) -}}
     {{- else -}}
       {{- $volume = (dict "render" (dict "volume" true "claim" true)) -}}
     {{- end -}}
   {{- else -}}
     {{- fail (printf "The volume declaration for %s must be either a string or a map (%s)" $volumeName (kindOf $data)) -}}
   {{- end -}}
-  {{- set $volume "render" (set $volume.render "name" $volumeName) | toYaml -}}
+  {{- set $volume "render" (merge $volume.render (dict "name" $volumeName "declared" $declared)) | toYaml -}}
 {{- end -}}
 
 {{- define "arkcase.persistence.buildVolume" -}}
@@ -533,6 +549,7 @@ Render a volumes: entry for a given volume, as per the persistence model
   {{- $volumeName := .name -}}
   {{- $volume := (include "arkcase.persistence.buildVolume" (pick . "ctx" "name") | fromYaml) -}}
 - name: {{ $volumeName | quote }}
+  {{- /* We render the volume if persistence is enabled, OR the volume is explicitly declared */ -}}
   {{- if (include "arkcase.persistence.enabled" $ctx) -}}
     {{- $claimName := $volume.render.name -}}
     {{- if $volume.claimName -}}
