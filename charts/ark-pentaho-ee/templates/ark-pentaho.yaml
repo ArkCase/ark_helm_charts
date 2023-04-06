@@ -144,6 +144,10 @@ spec:
               mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/applicationContext-security-ldap.properties"
               subPath: &applicationContextSecurityLdapProperties "applicationContext-security-ldap.properties"
               readOnly: true
+            - name: *secrets
+              mountPath: "/app/lb/run-liquibase-updates"
+              subPath: &runLiquibaseUpdates "run-liquibase-updates"
+              readOnly: true
             - name: &configMap "config-map"
               mountPath: "/entrypoint"
               subPath: &entrypoint "entrypoint"
@@ -214,6 +218,9 @@ spec:
                 path: *repositoryXml
               - key: *applicationContextSecurityLdapProperties
                 path: *applicationContextSecurityLdapProperties
+              - key: *runLiquibaseUpdates
+                path: *runLiquibaseUpdates
+                mode: 0555
         - name: *configMap
           configMap:
             optional: false

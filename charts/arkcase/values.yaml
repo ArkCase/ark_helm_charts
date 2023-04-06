@@ -209,15 +209,15 @@ rdbms:
     users:
       arkcase: &arkcaseDbPassword "ho!aKaeyoh-zo1do"
       content: &contentDbPassword "eth3be.ox4phah!W"
-      # pentaho: &pentahoDbPassword "faiv>a[gheeP3Cai"
-      # jcr: &jcrDbPassword "ong>oo0Ocha~up^e"
-      # quartz: &quartzDbPassword "lie't+ahra6aiShu"
+      pentaho: &pentahoDbPassword "faiv>a[gheeP3Cai"
+      jcr: &jcrDbPassword "ong>oo0Ocha~up^e"
+      quartz: &quartzDbPassword "lie't+ahra6aiShu"
     databases:
       arkcase: &arkcaseDb "arkcase"
       content: &contentDb "content"
-      # pentaho: &pentahoDb "pentaho"
-      # jcr: &jcrDb "jcr"
-      # quartz: &quartzDb "quartz"
+      pentaho: &pentahoDb "pentaho"
+      jcr: &jcrDb "jcr"
+      quartz: &quartzDb "quartz"
 
 content:
   configuration:
@@ -263,6 +263,27 @@ reports:
         username: *arkcaseDb
         password: *arkcaseDbPassword
         database: *arkcaseDb
+      quartz:
+        database: *quartzDb
+        username: *quartzDb
+        password: *quartzDbPassword
+      jackrabbit:
+        database: *jcrDb
+        username: *jcrDb
+        password: *jcrDbPassword
+      hibernate: &hibernate
+        database: *pentahoDb
+        username: *pentahoDb
+        password: *pentahoDbPassword
+      audit:
+        <<: *hibernate
+      pdiOperationsMart:
+        <<: *hibernate
+      pentahoOperationsMart:
+        <<: *hibernate
+      liveLoggint:
+        <<: *hibernate
+
 #     tomcat:
 #       proxy:
 #         name: *backendName

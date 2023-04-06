@@ -9,38 +9,9 @@ fail() {
 	exit ${EXIT_CODE:-1}
 }
 
-initRequired()
-{
-	# TODO: How to properly identify if initialization is actually required?
-	case "${1,,}" in
-		mysql5 )
-			export LAUNCH_COMMAND=""
-			;;
-		oracle10g )
-			;;
-		postgresql )
-			;;
-		sqlserver )
-			;;
-	esac
-	return 1
-}
-
-renderPasswordScript() {
-	local SCRIPT="${1}"
-	# TODO: Render the password update script based on the database information
-	return 0
-}
-
-runScript() {
-	local SCRIPT="${1}"
-	say "Running the script [${SCRIPT}] (from the ${DB_SCRIPTS} dialect)"
-	# TODO: Run the given SQL script ...
-	return 0
-}
-
 set -euo pipefail
 
+[ -v BASE_DIR ] || BASE_DIR="/app"
 [ -v INIT_DIR ] || INIT_DIR="${BASE_DIR}/init"
 
 [ -v DBCONFIG ] || DBCONFIG="/dbconfig.json"
@@ -49,20 +20,6 @@ set -euo pipefail
 [ -r "${DBCONFIG}" ] || fail "The Database configuration file ${DBCONFIG} is not readable, cannot continue."
 
 OUT="$(jq -r . < "${DBCONFIG}" 2>&1)" || fail "The Database configuration ${DBCONFIG} is malformed JSON, cannot continue:\n${OUT}"
-
-[ -v DB_DIALECT ] || DB_DIALECT="$(jq -r '.db.dialect // ""' < "${DBCONFIG}")"
-[ -n "${DB_DIALECT}" ] || fail "No dialect is set in the DB configuration file ${DBCONFIG}, cannot continue"
-say "The database dialect is [${DB_DIALECT}]..."
-
-[ -v DB_SCRIPTS ] || DB_SCRIPTS="$(jq -r '.db.scripts // ""' < "${DBCONFIG}")"
-
-# Just for safety
-if [ -z "${DB_SCRIPTS}" ] ; then
-	say "\tNo scripts dialect provided, so using the same database dialect"
-	DB_SCRIPTS="${DB_DIALECT}"
-else
-	say "The script dialect is [${DB_DIALECT}]..."
-fi
 
 say "Initializing the Pentaho database configurations at [${PENTAHO_SERVER}]..."
 
@@ -73,16 +30,8 @@ TGT_AUDIT_XML="${PENTAHO_SERVER}/pentaho-solutions/system/audit_sql.xml"
 say "Setting the audit_xml file for dialect ${DB_DIALECT}..."
 cp -vf "${SRC_AUDIT_XML}" "${TGT_AUDIT_XML}"
 
-if initRequired "${DB_DIALECT}" ; then
-	# Run the correct scripts (but how?!?! We don't have the DBInit clients)
-	SQL_DIR="${PENTAHO_SERVER}/data/${DB_SCRIPTS}"
-	[ -d "${SQL_DIR}" ] || fail "There are no SQL initialization scripts for dialect [${DB_SCRIPTS}], cannot continue"
-	pushd "${SQL_DIR}"
-	runScript "${n}" || fail "Failed to initialize the database"
-	renderPasswordScript "fix-passwords.sql" || fail "Failed to render the password update script"
-	runScript "fix-passwords.sql" || fail "Failed to update the passwords as required"
-	popd
-else
-	say "No database initialization is required"
-fi
+[ -v LB_DIR ] || LB_DIR="${BASE_DIR}/lb"
+say "Running the Liquibase DB updates"
+"${LB_DIR}/run-liquibase-updates"
+
 exit 0

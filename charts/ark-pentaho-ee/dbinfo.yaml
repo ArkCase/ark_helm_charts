@@ -19,7 +19,7 @@ oracle10g: &oracle10g
   jdbc:
     driver: oracle.jdbc.driver.OracleDriver
     type: oracle
-    format: "jdbc:oracle:thin:@${HOSTNAME}:${PORT}:${DATABASE}"
+    format: "jdbc:oracle:thin:@${HOSTNAME}:${PORT}:${INSTANCE}"
   aliases:
     - orcl
     - oracle
