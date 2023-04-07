@@ -197,10 +197,6 @@ spec:
               mountPath: "/app/pentaho/pentaho-server/tomcat/webapps/pentaho/WEB-INF/classes/log4j2.xml"
               subPath: &log4j2Xml "log4j2.xml"
               readOnly: true
-            - name: *configMap
-              mountPath: "/app/init/reports/000-arkcase-base-reports.tar.gz"
-              subPath: &arkcaseBaseReportsTarGz {{ printf "%s-arkcase-base-reports.tar.gz" (required "Must provide a value for .configuration.db.dialect" ((.Values.configuration).db).dialect) | quote }}
-              readOnly: true
       volumes:
         {{- include "arkcase.persistence.volume" (dict "name" "data" "ctx" $) | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "name" "init" "ctx" $) | nindent 8 }}
@@ -247,8 +243,6 @@ spec:
                 path: *quartzProperties
               - key: *arkcasePreauthXml
                 path: *arkcasePreauthXml
-              - key: *arkcaseBaseReportsTarGz
-                path: *arkcaseBaseReportsTarGz
               - key: *entrypoint
                 path: *entrypoint
                 mode: 0555
