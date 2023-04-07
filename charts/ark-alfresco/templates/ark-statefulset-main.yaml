@@ -136,11 +136,19 @@ spec:
               memory: "1536Mi"
           {{- end }}
           volumeMounts:
+            {{- include "arkcase.alfresco.license.volumeMounts" (dict "ctx" . "volume" "secrets" "path" "/usr/local/tomcat/shared/classes/alfresco/extension/license") | nindent 12 }}
             - name: *dataVolume
               mountPath: *dataDir
             - name: *initVolume
               mountPath: *initDir
       volumes:
+        - name: "secrets"
+          secret:
+            optional: false
+            secretName: {{ include "arkcase.fullname" . | quote }}
+            defaultMode: 0444
+            items:
+              {{- include "arkcase.alfresco.license.volumes" . | nindent 14 }}
         {{- include "arkcase.persistence.volume" (dict "name" "init" "ctx" $) | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "name" "data" "ctx" $) | nindent 8 }}
       {{- with (include "arkcase.values" (dict "ctx" . "base" "nodeSelector") | fromYaml) }}

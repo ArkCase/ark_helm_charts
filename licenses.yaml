@@ -1,0 +1,80 @@
+################################################################################
+#
+# The licenses must be contained within global.licenses
+#
+#   * Binary licenses must be base-64 encoded, like so:
+#
+#     licenseValue: |-
+#       zLuYdMwvj78MlCGk5A6zlA8O2FZ4I5KNBG8qvDEwU9Q4XQ0YEOLm09HqiSRzuq4Y7QqsXeZy6j9B
+#       Vg4dGBlMNFJiiuvO4d3QLP//qfBNygdXyasE16xcp/HiVBhlBGaDmgHfxIaEKIdOL9Z+zi2b/u+G
+#       ...
+#
+#   * Text-style licenses should be encoded as text, since it's likely that this is
+#     how they will be consumed
+#
+# Always resort to the documentation for clarity regarding how the licenses must
+# be provided for consumption by their required components.
+#
+# Remember that in YAML...
+#
+#    |   -> preserve line endings in the value, keep a single newline at the end
+#    |-  -> preserve line endings in the value, no newline at the end
+#    |+  -> preserve line endings in the value, keep all newlines at the end
+#
+#    >   -> replace line endings with spaces in the value, keep a single newline at the end
+#    >-  -> replace line endings with spaces in the value, no newline at the end
+#    >+  -> replace line endings with spaces in the value, keep all newlines at the end
+#
+################################################################################
+global:
+  licenses:
+    
+    ########################################
+    # For PDFNet we only provide the actual
+    # license string
+    ########################################
+    pdfnet: |-
+      some:pdfnet:license:string:...asd.fas.f.asdf..f.a.f.as.df.asf.a.fds
+
+    ########################################
+    # The Alfresco license is provided as
+    # a base64 blob
+    ########################################
+    alfresco: |-
+      zLuYdMwvj78MlCGk5A6zlA8O2FZ4I5KNBG8qvDEwU9Q4XQ0YEOLm09HqiSRzuq4Y7QqsXeZy6j9B
+      XVFXEff8Ao0rdRtNgp5tQJ5i3YtqD6es8NEoeWPNNgCUHVUUT/yq6/2zAsvzM1gXDbViYdiblWU3
+      zrG9Xw7f0Ly+
+ 
+    ########################################
+    # The licenses for Pentaho are provided
+    # as an array of binary objects. Their
+    # names don't really matter
+    ########################################
+    pentaho:
+
+      # Pentaho Analysis Enterprise Edition.lic
+      - |-
+        qXqA0ty4oH2ow6Ibjk0+qZH+e4T+csgee41Lg2dIa3a4oXJOE9smbL5g8cTIMeuVd78avurHjrtx
+        7D2C6pGaRDX+2VUc2SQuj0b2mk713SqeJJlbGmERmx6U3gSdHz3rlIOCT0ghc73+CGn8XcaOLdOf
+        8E34bpOKt30fIr3WpJkCqbqAKTxZO919t9qOJ5wEHFuionUy
+
+      # Pentaho BI Platform Enterprise Edition.lic
+      - |-
+        apNlzpnsdAKe2Orzf8ykeResYXfvGCEblVNKUS+0nlIvnV70/I8nX128pAdLb4me4IGFQZFkSVa2
+        8xAxwn+Gg7Uyg9IXsxdd7cy8/06r0rDATdzRfnFgITvcGG6+JziTjfhWV9k=
+
+      # Pentaho Dashboard Designer.lic
+      - |-
+        ntg8dy/go/5vTdE5LyL9NgF9+E92UuvlEoxHgoAtqCfR+nXNX/ee+9cxG0aABsucm0V43rUEI/WD
+        v2REZbiYGFfODwkfYmTbN6kvQiYH58ti8+49Jw==
+
+      # Pentaho PDI Enterprise Edition.lic
+      - |-
+        bj9xfGaW7e/JPnjVHQu+mRSqkT9svvRK+3Cg0w2s5O2wIOzqg2MSiVRwI2FyVbe8w1Ijg217k5g7
+        dr/m+rDfGMR0iDb6IFVyl/ZhQ68jDj3K4+HVYkoeVv1x47rbC/wsjNQ+9kt2/P2JTmC1r/FXtJa0
+        ip7xmOa75sZJLQqFAwjXpsvP2yg27w7i4XLlSw==
+
+      # Pentaho Reporting Enterprise Edition.lic
+      - |-
+        +49FC+6CC/yEEuwJ59pzpshe/UXUOlVTlqNepwkNnM7LkNM45aOjl5Y514rgU4Rtx4X/LmnpeFRF
+        xLZCByWEiI6VcgdGHtzw/hxuh8gWeUyKZtMBCkY+wSqwVsPy

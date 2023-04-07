@@ -122,6 +122,7 @@ spec:
           resources: {{- toYaml . | nindent 12 }}
           {{- end }}
           volumeMounts:
+            {{- include "arkcase.pentaho.license.volumeMounts" (dict "ctx" . "volume" "secrets" "path" "/app/init/licenses") | nindent 12 }}
             - name: *dataVol
               mountPath: *dataPath
             - name: *initVol
@@ -210,6 +211,7 @@ spec:
             secretName: {{ include "arkcase.fullname" . | quote }}
             defaultMode: 0444
             items:
+              {{- include "arkcase.pentaho.license.volumes" . | nindent 14 }}
               - key: *contextXml
                 path: *contextXml
               - key: *dbconfigJson

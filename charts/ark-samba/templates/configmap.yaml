@@ -32,5 +32,8 @@ binaryData:
   #
   # Process binary files
   #
-  {{- (.Files.Glob "files/configmap/bin/*").AsSecrets | nindent 2 }}
+  {{- $bin := (.Files.Glob "files/secrets/bin/*") }}
+  {{- if $bin }}
+    {{- (.Files.Glob "files/secrets/bin/*").AsSecrets | nindent 2 }}
+  {{- end }}
 {{- end }}
