@@ -192,6 +192,10 @@ spec:
               mountPath: "/app/home/.arkcase/acm/conf.yml"
               subPath: &confYaml "conf.yml"
               readOnly: true
+            - name: *secrets
+              mountPath: "/app/home/.arkcase/acm/licenses/pdfnet_sdk_license.txt"
+              subPath: &pdfnetSdkLicenseTxt "pdfnet_sdk_license.txt"
+              readOnly: true
             - name: *logsVolume
               mountPath: *logsDir
         - name: config
@@ -265,6 +269,8 @@ spec:
                 path: *arkcaseActivemqYaml
               - key: *confYaml
                 path: *confYaml
+              - key: *pdfnetSdkLicenseTxt
+                path: *pdfnetSdkLicenseTxt
         - name: *configMap
           configMap:
             optional: false
