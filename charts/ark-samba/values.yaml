@@ -143,8 +143,8 @@ service:
       exec:
         command: [ "/test-live.sh" ]
     spec:
-      initialDelaySeconds: 0
-      periodSeconds: 1
+      initialDelaySeconds: 10
+      periodSeconds: 5
       timeoutSeconds: 1
       failureThreshold: 60
       successThreshold: 1
