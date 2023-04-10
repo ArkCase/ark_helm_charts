@@ -199,7 +199,7 @@ spec:
               readOnly: true
             - name: *configMap
               mountPath: "/app/init/reports/000-arkcase-base-reports.tar.gz"
-              subPath: &baseReportsTarGz {{ printf "base-reports-%s.tar.gz" (include "arkcase.pentaho.db.reports" .) | quote }}
+              subPath: &baseReportsTarGz {{ printf "base-reports.%s.tar.gz" (include "arkcase.pentaho.db.reports" .) | quote }}
               readOnly: true
       volumes:
         {{- include "arkcase.persistence.volume" (dict "name" "data" "ctx" $) | nindent 8 }}
