@@ -43,6 +43,7 @@ trap cleanup EXIT
 set -euo pipefail
 
 [ -v BASE_DIR ] || BASE_DIR="/app"
+[ -v DATA_DIR ] || DATA_DIR="${BASE_DIR}/data"
 
 [ -v LOGS_DIR ] || LOGS_DIR="${BASE_DIR}/logs"
 if [ -d "${LOGS_DIR}" ] ; then
@@ -117,6 +118,35 @@ extract_archive() {
 	return 0
 }
 
+is_report_installed() {
+	local DEST="${1}"
+	local HASH="${2}"
+
+	local REPORTS_DB="${DATA_DIR}/.installedReports"
+
+	# Is it listed in the reports database file? (only consider the last entry)
+	local EXISTING="$(egrep "^([0-9a-f]{64})=${DEST}$" "${REPORTS_DB}" | tail -1)" || return 1
+
+	# Does the record in the database file match our expected pattern?
+	[[ "${EXISTING,,}" =~ ^([0-9a-f]{64})=(.*)$ ]] || return 1
+
+	# Does the hash match our expected hash?
+	[ "${BASH_REMATCH[0],,}" != "${HASH,,}" ] || return 1
+
+	# Does the filename match exactly? (just for paranoia's sake)
+	[ "${BASH_REMATCH[1]}" != "${DEST}" ] || return 1
+
+	# Everything matches, the report is already installed
+	return 0
+}
+
+mark_report_installed() {
+	local DEST="${1}"
+	local HASH="${2}"
+	local REPORTS_DB="${DATA_DIR}/.installedReports"
+	echo "${HASH}=${DEST}" >> "${REPORTS_DB}"
+}
+
 install_report() {
 	local SRC_FILE="${1}"
 
@@ -147,10 +177,19 @@ install_report() {
 	local ARCHIVE_INFO=""
 	[ -z "${ARCHIVE_TYPE}" ] || ARCHIVE_INFO=" extracted from the archive [${SRC_FILE}]"
 	local CMD=()
+	local HASH=""
 	for F in "${REPORTS[@]}" ; do
 		[[ "${F}" =~ ^(.*):///:(.*)$ ]]
 		local P="${BASH_REMATCH[1]}"
 		F="${BASH_REMATCH[2]}"
+
+		read HASH rest < <(sha256sum "${F}")
+
+		if is_report_installed "${P}" "${HASH}" ; then
+			say "The report for [${P}]${ARCHIVE_INFO} is already installed."
+			continue
+		fi
+
 		say "Installing the report from [${F}]${ARCHIVE_INFO}..."
 		local UPLOAD_LOG_FILE="${LOGS_DIR}/uploads-$(date -u +%Y%m%d-%H%M%S)Z.log"
 		CMD=(
@@ -175,6 +214,7 @@ install_report() {
 			exec "${CMD[@]}"
 		) &> "${UPLOAD_LOG_FILE}"
 		if grep -iq "Import was successful" "${UPLOAD_LOG_FILE}" ; then
+			mark_report_installed "${HASH}" "${P}"
 			say "\tReport installed successfully"
 			rm -f "${UPLOAD_LOG_FILE}" &>/dev/null
 		else
@@ -194,9 +234,6 @@ list_reports() {
 		sort
 }
 
-#
-# TODO: How do we populate these? (especially the password)
-#
 [ -v ADMIN_USERNAME ] || ADMIN_USERNAME="admin"
 [ -v ADMIN_PASSWORD ] || ADMIN_PASSWORD="password"
 
