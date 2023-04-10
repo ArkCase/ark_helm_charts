@@ -23,6 +23,14 @@ set -euo pipefail
 
 OUT="$(jq -r . < "${DBCONFIG}" 2>&1)" || fail "The Database configuration ${DBCONFIG} is malformed JSON, cannot continue:\n${OUT}"
 
+[ -v LOGS_DIR ] || LOGS_DIR="${BASE_DIR}/logs"
+if [ -d "${LOGS_DIR}" ] ; then
+	LOG_FILE="${LOGS_DIR}/config-pre.log"
+	exec >> >(/usr/bin/tee -a "${LOG_FILE}")
+	exec 2>&1
+	say "Logs redirected to [${LOG_FILE}]"
+fi
+
 say "Initializing the Pentaho database configurations at [${PENTAHO_SERVER}]..."
 
 # Set the correct audit_sql ... no harm in doing this every time (right?)
