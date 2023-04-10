@@ -2,15 +2,15 @@
 #
 # The licenses must be contained within global.licenses
 #
-#   * Binary licenses must be base-64 encoded, like so:
+#   * All licenses must be base-64 encoded, like so:
 #
 #     licenseValue: |-
-#       zLuYdMwvj78MlCGk5A6zlA8O2FZ4I5KNBG8qvDEwU9Q4XQ0YEOLm09HqiSRzuq4Y7QqsXeZy6j9B
-#       Vg4dGBlMNFJiiuvO4d3QLP//qfBNygdXyasE16xcp/HiVBhlBGaDmgHfxIaEKIdOL9Z+zi2b/u+G
+#       Yf39fES+xgnSd60b8dtr2ciOoAaJcVPbt4UbDdxrTWfKO4YJRTsQxqN6yIrkmrrSbWrhM0H1MWOS
+#       xQhsjME1rclEEYgYMpUejOuPN02pDsfofsmWyf4EML3epNIrbWvxSKr6sZe7yKvYNQIF1E4FNxyZ
 #       ...
 #
-#   * Text-style licenses should be encoded as text, since it's likely that this is
-#     how they will be consumed
+#   * Text-style licenses should also be base-64 encoded, and it will be up to the
+#     charts that consume them to perform the decoding.
 #
 # Always resort to the documentation for clarity regarding how the licenses must
 # be provided for consumption by their required components.
@@ -30,20 +30,42 @@ global:
   licenses:
     
     ########################################
-    # For PDFNet we only provide the actual
-    # license string
+    # There are 3 licenses required for
+    # PDFTron: for the document viewer, for
+    # the audio/video viewer, and for the
+    # PDFNet backend library. The Helm
+    # templates will do the Base64 decoding
+    # of the values.
     ########################################
-    pdfnet: |-
-      some:pdfnet:license:string:...asd.fas.f.asdf..f.a.f.as.df.asf.a.fds
+    pdftron:
+
+      viewer: |-
+        Yf39fES+xgnSd60b8dtr2ciOoAaJcVPbt4UbDdxrTWfKO4YJRTsQxqN6yIrkmrrSbWrhM0H1MWOS
+        xQhsjME1rclEEYgYMpUejOuPN02pDsfofsmWyf4EML3epNIrbWvxSKr6sZe7yKvYNQIF1E4FNxyZ
+        # ...
+        ip7xmOa75sZJLQqFAwjXpsvP2yg27w7i4XLlSw==
+
+      audioVideo: |-
+        Yf39fES+xgnSd60b8dtr2ciOoAaJcVPbt4UbDdxrTWfKO4YJRTsQxqN6yIrkmrrSbWrhM0H1MWOS
+        xQhsjME1rclEEYgYMpUejOuPN02pDsfofsmWyf4EML3epNIrbWvxSKr6sZe7yKvYNQIF1E4FNxyZ
+        # ...
+        ip7xmOa75sZJLQqFAwjXpsvP2yg27w7i4XLlSw==
+
+      pdfnet: |-
+        Yf39fES+xgnSd60b8dtr2ciOoAaJcVPbt4UbDdxrTWfKO4YJRTsQxqN6yIrkmrrSbWrhM0H1MWOS
+        xQhsjME1rclEEYgYMpUejOuPN02pDsfofsmWyf4EML3epNIrbWvxSKr6sZe7yKvYNQIF1E4FNxyZ
+        # ...
+        ip7xmOa75sZJLQqFAwjXpsvP2yg27w7i4XLlSw==
 
     ########################################
     # The Alfresco license is provided as
     # a base64 blob
     ########################################
     alfresco: |-
-      zLuYdMwvj78MlCGk5A6zlA8O2FZ4I5KNBG8qvDEwU9Q4XQ0YEOLm09HqiSRzuq4Y7QqsXeZy6j9B
-      XVFXEff8Ao0rdRtNgp5tQJ5i3YtqD6es8NEoeWPNNgCUHVUUT/yq6/2zAsvzM1gXDbViYdiblWU3
-      zrG9Xw7f0Ly+
+      Yf39fES+xgnSd60b8dtr2ciOoAaJcVPbt4UbDdxrTWfKO4YJRTsQxqN6yIrkmrrSbWrhM0H1MWOS
+      xQhsjME1rclEEYgYMpUejOuPN02pDsfofsmWyf4EML3epNIrbWvxSKr6sZe7yKvYNQIF1E4FNxyZ
+      # ...
+      ip7xmOa75sZJLQqFAwjXpsvP2yg27w7i4XLlSw==
  
     ########################################
     # The licenses for Pentaho are provided
@@ -54,27 +76,35 @@ global:
 
       # Pentaho Analysis Enterprise Edition.lic
       - |-
-        qXqA0ty4oH2ow6Ibjk0+qZH+e4T+csgee41Lg2dIa3a4oXJOE9smbL5g8cTIMeuVd78avurHjrtx
-        7D2C6pGaRDX+2VUc2SQuj0b2mk713SqeJJlbGmERmx6U3gSdHz3rlIOCT0ghc73+CGn8XcaOLdOf
-        8E34bpOKt30fIr3WpJkCqbqAKTxZO919t9qOJ5wEHFuionUy
+        Yf39fES+xgnSd60b8dtr2ciOoAaJcVPbt4UbDdxrTWfKO4YJRTsQxqN6yIrkmrrSbWrhM0H1MWOS
+        xQhsjME1rclEEYgYMpUejOuPN02pDsfofsmWyf4EML3epNIrbWvxSKr6sZe7yKvYNQIF1E4FNxyZ
+        # ...
+        ip7xmOa75sZJLQqFAwjXpsvP2yg27w7i4XLlSw==
 
       # Pentaho BI Platform Enterprise Edition.lic
       - |-
-        apNlzpnsdAKe2Orzf8ykeResYXfvGCEblVNKUS+0nlIvnV70/I8nX128pAdLb4me4IGFQZFkSVa2
-        8xAxwn+Gg7Uyg9IXsxdd7cy8/06r0rDATdzRfnFgITvcGG6+JziTjfhWV9k=
+        Yf39fES+xgnSd60b8dtr2ciOoAaJcVPbt4UbDdxrTWfKO4YJRTsQxqN6yIrkmrrSbWrhM0H1MWOS
+        xQhsjME1rclEEYgYMpUejOuPN02pDsfofsmWyf4EML3epNIrbWvxSKr6sZe7yKvYNQIF1E4FNxyZ
+        # ...
+        ip7xmOa75sZJLQqFAwjXpsvP2yg27w7i4XLlSw==
 
       # Pentaho Dashboard Designer.lic
       - |-
-        ntg8dy/go/5vTdE5LyL9NgF9+E92UuvlEoxHgoAtqCfR+nXNX/ee+9cxG0aABsucm0V43rUEI/WD
-        v2REZbiYGFfODwkfYmTbN6kvQiYH58ti8+49Jw==
+        Yf39fES+xgnSd60b8dtr2ciOoAaJcVPbt4UbDdxrTWfKO4YJRTsQxqN6yIrkmrrSbWrhM0H1MWOS
+        xQhsjME1rclEEYgYMpUejOuPN02pDsfofsmWyf4EML3epNIrbWvxSKr6sZe7yKvYNQIF1E4FNxyZ
+        # ...
+        ip7xmOa75sZJLQqFAwjXpsvP2yg27w7i4XLlSw==
 
       # Pentaho PDI Enterprise Edition.lic
       - |-
-        bj9xfGaW7e/JPnjVHQu+mRSqkT9svvRK+3Cg0w2s5O2wIOzqg2MSiVRwI2FyVbe8w1Ijg217k5g7
-        dr/m+rDfGMR0iDb6IFVyl/ZhQ68jDj3K4+HVYkoeVv1x47rbC/wsjNQ+9kt2/P2JTmC1r/FXtJa0
+        Yf39fES+xgnSd60b8dtr2ciOoAaJcVPbt4UbDdxrTWfKO4YJRTsQxqN6yIrkmrrSbWrhM0H1MWOS
+        xQhsjME1rclEEYgYMpUejOuPN02pDsfofsmWyf4EML3epNIrbWvxSKr6sZe7yKvYNQIF1E4FNxyZ
+        # ...
         ip7xmOa75sZJLQqFAwjXpsvP2yg27w7i4XLlSw==
 
       # Pentaho Reporting Enterprise Edition.lic
       - |-
-        +49FC+6CC/yEEuwJ59pzpshe/UXUOlVTlqNepwkNnM7LkNM45aOjl5Y514rgU4Rtx4X/LmnpeFRF
-        xLZCByWEiI6VcgdGHtzw/hxuh8gWeUyKZtMBCkY+wSqwVsPy
+        Yf39fES+xgnSd60b8dtr2ciOoAaJcVPbt4UbDdxrTWfKO4YJRTsQxqN6yIrkmrrSbWrhM0H1MWOS
+        xQhsjME1rclEEYgYMpUejOuPN02pDsfofsmWyf4EML3epNIrbWvxSKr6sZe7yKvYNQIF1E4FNxyZ
+        # ...
+        ip7xmOa75sZJLQqFAwjXpsvP2yg27w7i4XLlSw==
