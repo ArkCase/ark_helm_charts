@@ -14,6 +14,10 @@
   {{- get ((include "arkcase.db.info" .) | fromYaml) "scripts" -}}
 {{- end -}}
 
+{{- define "arkcase.pentaho.db.reports" -}}
+  {{- get ((include "arkcase.db.info" .) | fromYaml) "reports" -}}
+{{- end -}}
+
 {{- define "arkcase.pentaho.jcr.fileSystem" -}}
   {{- $ctx := required "Must provide the 'ctx' parameter" .ctx -}}
   {{- if not (kindIs "map" $ctx) -}}

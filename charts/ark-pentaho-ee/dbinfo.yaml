@@ -1,5 +1,6 @@
 mysql: &mysql
-  dialect: mysql5
+  dialect: &dialect mysql5
+  reports: *dialect
   port: 3306
   scripts: mysql
   quartz: StdJdbcDelegate
@@ -14,6 +15,7 @@ mysql: &mysql
 
 oracle10g: &oracle10g
   dialect: oracle10g
+  reports: oracle
   port: 1521
   quartz: oracle.OracleDelegate
   jdbc:
@@ -36,7 +38,8 @@ oracle12c:
     - oracle12
 
 postgresql:
-  dialect: postgresql
+  dialect: &dialect postgresql
+  reports: *dialect
   port: 5432
   quartz: PostgreSQLDelegate
   jdbc:
@@ -48,7 +51,8 @@ postgresql:
     - postgres
 
 sqlserver:
-  dialect: sqlserver
+  dialect: &dialect sqlserver
+  reports: *dialect
   port: 1433
   quartz: MSSQLDelegate
   jcr: mssql
