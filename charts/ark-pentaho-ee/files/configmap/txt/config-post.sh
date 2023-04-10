@@ -214,7 +214,7 @@ install_report() {
 			exec "${CMD[@]}"
 		) &> "${UPLOAD_LOG_FILE}"
 		if grep -iq "Import was successful" "${UPLOAD_LOG_FILE}" ; then
-			mark_report_installed "${HASH}" "${P}"
+			mark_report_installed "${P}" "${HASH}"
 			say "\tReport installed successfully"
 			rm -f "${UPLOAD_LOG_FILE}" &>/dev/null
 		else
