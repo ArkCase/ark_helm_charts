@@ -184,8 +184,9 @@ install_report() {
 		F="${BASH_REMATCH[2]}"
 
 		read HASH rest < <(sha256sum "${F}")
+		B="${F##*/}"
 
-		if is_report_installed "${P}" "${HASH}" ; then
+		if is_report_installed "${P}/${B}" "${HASH}" ; then
 			say "The report for [${P}]${ARCHIVE_INFO} is already installed."
 			continue
 		fi
@@ -214,7 +215,7 @@ install_report() {
 			exec "${CMD[@]}"
 		) &> "${UPLOAD_LOG_FILE}"
 		if grep -iq "Import was successful" "${UPLOAD_LOG_FILE}" ; then
-			mark_report_installed "${P}" "${HASH}"
+			mark_report_installed "${P}/${B}" "${HASH}"
 			say "\tReport installed successfully"
 			rm -f "${UPLOAD_LOG_FILE}" &>/dev/null
 		else
