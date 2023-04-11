@@ -162,6 +162,10 @@ spec:
               subPath: &configPostSh "config-post.sh"
               readOnly: true
             - name: *configMap
+              mountPath: "/install-reports"
+              subPath: &installReports "install-reports"
+              readOnly: true
+            - name: *configMap
               mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/arkcase-preauth.xml"
               subPath: &arkcasePreauthXml "arkcase-preauth.xml"
               readOnly: true
@@ -255,6 +259,9 @@ spec:
                 mode: 0555
               - key: *configPostSh
                 path: *configPostSh
+                mode: 0555
+              - key: *installReports
+                path: *installReports
                 mode: 0555
               - key: *baseReportsTarGz
                 path: *baseReportsTarGz
