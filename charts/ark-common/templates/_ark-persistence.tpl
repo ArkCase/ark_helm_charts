@@ -33,7 +33,7 @@
     {{- fail "The 'name' parameter must be the name of the setting to retrieve" -}}
   {{- end -}}
 
-  {{- $defaults := (include "arkcase.persistence.getBaseSetting" (set . "name" "defaults") | fromYaml) -}}
+  {{- $defaults := (include "arkcase.persistence.getBaseSetting" (set . "name" "default") | fromYaml) -}}
 
   {{- $result := dict -}}
 
@@ -219,6 +219,29 @@
   {{- end -}}
 {{- end -}}
 
+{{- define "arkcase.persistence.volumeMode" -}}
+  {{- if not (include "arkcase.isRootContext" .) -}}
+    {{- fail "The parameter must be the root context (. or $)" -}}
+  {{- end -}}
+  {{- $values := (include "arkcase.persistence.getDefaultSetting" (dict "ctx" . "name" "volumeMode") | fromYaml) -}}
+  {{- $volumeMode := "" -}}
+  {{- if and (not $volumeMode) (hasKey $values "global") -}}
+    {{- $volumeMode = (include "arkcase.persistence.buildVolume.parseVolumeMode" $values.global) -}}
+    {{- if not $volumeMode -}}
+      {{- fail (printf "The value global.persistence.volumeMode must be a valid persistent volume mode: [%s]" $values.global) -}}
+    {{- end -}}
+  {{- end -}}
+  {{- if and (not $volumeMode) (hasKey $values "local") -}}
+    {{- $volumeMode = (include "arkcase.persistence.buildVolume.parseVolumeMode" $values.local) -}}
+    {{- if not $volumeMode -}}
+      {{- fail (printf "The value persistence.volumeMode must be a valid persistent volume volume mode: [%s]" $values.local) -}}
+    {{- end -}}
+  {{- end -}}
+  {{- if $volumeMode -}}
+    {{- $volumeMode -}}
+  {{- end -}}
+{{- end -}}
+
 {{- /* Get or define the shared persistence settings for this chart */ -}}
 {{- define "arkcase.persistence.settings" -}}
   {{- if not (include "arkcase.isRootContext" .) -}}
@@ -257,6 +280,10 @@
     {{- if not $capacity -}}
       {{- $capacity = "1Gi" -}}
     {{- end -}}
+    {{- $volumeMode := (include "arkcase.persistence.volumeMode" .) -}}
+    {{- if not $volumeMode -}}
+      {{- $volumeMode = "Filesystem" -}}
+    {{- end -}}
 
     {{- $mode := (include "arkcase.persistence.mode" .) -}}
     {{-
@@ -267,6 +294,7 @@
         "storageClassName" $storageClassName
         "persistentVolumeReclaimPolicy" $persistentVolumeReclaimPolicy
         "accessModes" $accessModes
+        "volumeMode" $volumeMode
         "mode" $mode
     -}}
     {{- $masterCache = set $masterCache $chartName $obj -}}
@@ -315,6 +343,13 @@
     {{- $result = dict "min" $min "max" $max -}}
   {{- end -}}
   {{- $result | toYaml -}}
+{{- end -}}
+
+{{- define "arkcase.persistence.buildVolume.parseVolumeMode" -}}
+  {{- $mode := (. | toString | lower) -}}
+  {{- if or (eq "filesystem" $mode) (eq "block" $mode) -}}
+    {{- title $mode -}}
+  {{- end -}}
 {{- end -}}
 
 {{- define "arkcase.persistence.buildVolume.parseVolumeString.path" -}}
@@ -668,9 +703,20 @@ Render the PersistentVolume and PersistentVolumeClaim objects for a given volume
     {{- $accessModes := $settings.accessModes -}}
     {{- $capacity := $settings.capacity -}}
     {{- $storageClassName := $settings.storageClassName -}}
+    {{- $volumeMode := $settings.volumeMode -}}
 
-    {{- /* Volume is only rendered if it has a spec, or it's a hostPath */ -}}
-    {{- if $render.volume -}}
+    {{- if and (eq $settings.mode "production") (not $storageClassName) -}}
+      {{- fail "For production use you must set a default storageClassName value for the persistence layer to use" -}}
+    {{- end -}}
+
+    {{- /* if we're in production mode and we lack a default storageClassName, this is a misconfiguration */ -}}
+    {{- /* if we're in production mode and we have a default storageClassName, then... */ -}}
+    {{- /*   - if the volume is not a hostPath volume, render everything normally */ -}}
+    {{- /*   - if the volume is a hostPath volume, then /* -}}
+    {{- /*       - render only the PVC using the set default values (adjusted) */ -}}
+    {{- /* otherwise, render normally */ -}}
+    {{- $renderVolume := and $render.volume (or (ne $render.mode "hostPath") (ne $settings.mode "production")) -}}
+    {{- if $renderVolume -}}
 ---
 apiVersion: v1
 kind: PersistentVolume
@@ -737,21 +783,22 @@ spec:
             {{- $accessModes = $volumeData.accessModes -}}
           {{- end -}}
         {{- end }}
-  storageClassName: {{ $storageClassName | quote }}
-  persistentVolumeReclaimPolicy: {{ $settings.persistentVolumeReclaimPolicy | quote }}
   accessModes: {{- toYaml $accessModes | nindent 4 }}
   capacity:
     storage: {{ $capacity | quote }}
-        {{- if $localPath }}
-  hostPath:
-    path: {{ $localPath | quote }}
-    type: DirectoryOrCreate
-        {{- end }}
   claimRef:
     apiVersion: v1
     kind: PersistentVolumeClaim
     name: {{ $objectName | quote }}
     namespace: {{ $ctx.Release.Namespace | quote }}
+        {{- if $localPath }}
+  hostPath:
+    path: {{ $localPath | quote }}
+    type: DirectoryOrCreate
+        {{- end }}
+  persistentVolumeReclaimPolicy: {{ $settings.persistentVolumeReclaimPolicy | quote }}
+  storageClassName: {{ $storageClassName | quote }}
+  volumeMode: {{ $volumeMode | quote }}
       {{- end -}}
     {{- end -}}
     {{- if $render.claim }}
@@ -790,7 +837,7 @@ spec:
           {{- $storageClassName = $claimSpec.storageClassName -}}
         {{- end -}}
         {{- toYaml $claimSpec | nindent 2 -}}
-      {{- else if $render.volume }}
+      {{- else if $renderVolume }}
   volumeName: {{ $volumeObjectName | quote }}
   selector:
     matchLabels:
@@ -817,9 +864,10 @@ spec:
   volumeName: {{ $volumeData.volumeName | quote }}
           {{- $storageClassName = "" -}}
         {{- end }}
-  storageClassName: {{ $storageClassName | quote }}
   accessModes: {{- toYaml $accessModes | nindent 4 }}
   resources: {{- toYaml $capacity | nindent 4 }}
+  storageClassName: {{ $storageClassName | quote }}
+  volumeMode: {{ $volumeMode | quote }}
       {{- end }}
     {{- end -}}
   {{- end -}}
