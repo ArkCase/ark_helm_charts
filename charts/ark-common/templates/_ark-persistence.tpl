@@ -1,4 +1,4 @@
-{{- define "arkcase.persistence.getSetting" -}}
+{{- define "arkcase.persistence.getBaseSetting" -}}
   {{- $ctx := .ctx -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "The 'ctx' parameter must be the root context (. or $)" -}}
@@ -7,6 +7,7 @@
   {{- if or (not $name) (not (kindIs "string" $name)) -}}
     {{- fail "The 'name' parameter must be the name of the setting to retrieve" -}}
   {{- end -}}
+
   {{- $result := dict -}}
 
   {{- $global :=(($ctx.Values.global).persistence | default dict) -}}
@@ -15,6 +16,33 @@
   {{- end -}}
 
   {{- $local := ($ctx.Values.persistence | default dict) -}}
+  {{- if (hasKey $local $name) -}}
+    {{- $result = set $result "local" (get $local $name) -}}
+  {{- end -}}
+
+  {{- $result | toYaml -}}
+{{- end -}}
+
+{{- define "arkcase.persistence.getDefaultSetting" -}}
+  {{- $ctx := .ctx -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "The 'ctx' parameter must be the root context (. or $)" -}}
+  {{- end -}}
+  {{- $name := .name -}}
+  {{- if or (not $name) (not (kindIs "string" $name)) -}}
+    {{- fail "The 'name' parameter must be the name of the setting to retrieve" -}}
+  {{- end -}}
+
+  {{- $defaults := (include "arkcase.persistence.getBaseSetting" (set . "name" "defaults") | fromYaml) -}}
+
+  {{- $result := dict -}}
+
+  {{- $global := ($defaults.global | default dict) -}}
+  {{- if (hasKey $global $name) -}}
+    {{- $result = set $result "global" (get $global $name) -}}
+  {{- end -}}
+
+  {{- $local := ($defaults.local | default dict) -}}
   {{- if (hasKey $local $name) -}}
     {{- $result = set $result "local" (get $local $name) -}}
   {{- end -}}
@@ -44,13 +72,13 @@
   {{- end -}}
   {{- $mode := "development" -}}
   {{- if (include "arkcase.persistence.enabled" .) -}}
-    {{- $storageClass := (include "arkcase.persistence.getSetting" (dict "ctx" . "name" "storageClass") | fromYaml) -}}
-    {{- $storageClass = (coalesce $storageClass.global $storageClass.local | default "" | lower) -}}
+    {{- $storageClassName := (include "arkcase.persistence.getDefaultSetting" (dict "ctx" . "name" "storageClassName") | fromYaml) -}}
+    {{- $storageClassName = (coalesce $storageClassName.global $storageClassName.local | default "" | lower) -}}
 
-    {{- $modes := (include "arkcase.persistence.getSetting" (dict "ctx" . "name" "mode") | fromYaml) -}}
+    {{- $modes := (include "arkcase.persistence.getBaseSetting" (dict "ctx" . "name" "mode") | fromYaml) -}}
     {{- if or $modes.global $modes.local -}}
       {{- $mode = (coalesce $modes.global $modes.local | lower) -}}
-    {{- else if $storageClass -}}
+    {{- else if $storageClassName -}}
       {{- $mode = "prod" -}}
     {{- else -}}
       {{- $mode = "dev" -}}
@@ -74,35 +102,35 @@
   {{- if not (include "arkcase.isRootContext" .) -}}
     {{- fail "The parameter must be the root context (. or $)" -}}
   {{- end -}}
-  {{- $rootPath := (include "arkcase.persistence.getSetting" (dict "ctx" . "name" "rootPath") | fromYaml) -}}
+  {{- $rootPath := (include "arkcase.persistence.getDefaultSetting" (dict "ctx" . "name" "rootPath") | fromYaml) -}}
   {{- coalesce $rootPath.global $rootPath.local "/opt/app" -}}
 {{- end -}}
 
-{{- /* Get the storageClass value that should be used for everything */ -}}
-{{- define "arkcase.persistence.storageClass" -}}
+{{- /* Get the storageClassName value that should be used for everything */ -}}
+{{- define "arkcase.persistence.storageClassName" -}}
   {{- if not (include "arkcase.isRootContext" .) -}}
     {{- fail "The parameter must be the root context (. or $)" -}}
   {{- end -}}
-  {{- $values := (include "arkcase.persistence.getSetting" (dict "ctx" . "name" "storageClass") | fromYaml) -}}
-  {{- $storageClass := "" -}}
+  {{- $values := (include "arkcase.persistence.getDefaultSetting" (dict "ctx" . "name" "storageClassName") | fromYaml) -}}
+  {{- $storageClassName := "" -}}
   {{- $storageClassSet := false -}}
   {{- if and (not $storageClassSet) (hasKey $values "global") -}}
-    {{- $storageClass = $values.global -}}
-    {{- if and $storageClass (not (regexMatch "^([a-z0-9][-a-z0-9]*)?[a-z0-9]$" ($storageClass | lower))) -}}
-      {{- fail (printf "The value global.persistence.storageClass must be a valid storage class name: [%s]" $storageClass) -}}
+    {{- $storageClassName = $values.global -}}
+    {{- if and $storageClassName (not (regexMatch "^([a-z0-9][-a-z0-9]*)?[a-z0-9]$" ($storageClassName | lower))) -}}
+      {{- fail (printf "The value global.persistence.storageClassName must be a valid storage class name: [%s]" $storageClassName) -}}
     {{- end -}}
     {{- $storageClassSet = true -}}
   {{- end -}}
   {{- if and (not $storageClassSet) (hasKey $values "local") -}}
-    {{- $storageClass = $values.local -}}
-    {{- if and $storageClass (not (regexMatch "^([a-z0-9][-a-z0-9]*)?[a-z0-9]$" ($storageClass | lower))) -}}
-      {{- fail (printf "The value persistence.storageClass must be a valid storage class name: [%s]" $storageClass) -}}
+    {{- $storageClassName = $values.local -}}
+    {{- if and $storageClassName (not (regexMatch "^([a-z0-9][-a-z0-9]*)?[a-z0-9]$" ($storageClassName | lower))) -}}
+      {{- fail (printf "The value persistence.storageClassName must be a valid storage class name: [%s]" $storageClassName) -}}
     {{- end -}}
     {{- $storageClassSet = true -}}
   {{- end -}}
   {{- /* Only output a value if one is set */ -}}
-  {{- if $storageClass -}}
-    {{- $storageClass -}}
+  {{- if $storageClassName -}}
+    {{- $storageClassName -}}
   {{- end -}}
 {{- end -}}
 
@@ -110,7 +138,7 @@
   {{- if not (include "arkcase.isRootContext" .) -}}
     {{- fail "The parameter must be the root context (. or $)" -}}
   {{- end -}}
-  {{- $values := (include "arkcase.persistence.getSetting" (dict "ctx" . "name" "persistentVolumeReclaimPolicy") | fromYaml) -}}
+  {{- $values := (include "arkcase.persistence.getDefaultSetting" (dict "ctx" . "name" "persistentVolumeReclaimPolicy") | fromYaml) -}}
   {{- $policy := "" -}}
   {{- if and (not $policy) (hasKey $values "global") -}}
     {{- $policy = $values.global -}}
@@ -133,7 +161,7 @@
   {{- if not (include "arkcase.isRootContext" .) -}}
     {{- fail "The parameter must be the root context (. or $)" -}}
   {{- end -}}
-  {{- $values := (include "arkcase.persistence.getSetting" (dict "ctx" . "name" "accessModes") | fromYaml) -}}
+  {{- $values := (include "arkcase.persistence.getDefaultSetting" (dict "ctx" . "name" "accessModes") | fromYaml) -}}
   {{- $modes := dict -}}
   {{- if and (not $modes) (hasKey $values "global") -}}
     {{- $accessModes = $values.global -}}
@@ -170,7 +198,7 @@
   {{- if not (include "arkcase.isRootContext" .) -}}
     {{- fail "The parameter must be the root context (. or $)" -}}
   {{- end -}}
-  {{- $values := (include "arkcase.persistence.getSetting" (dict "ctx" . "name" "capacity") | fromYaml) -}}
+  {{- $values := (include "arkcase.persistence.getDefaultSetting" (dict "ctx" . "name" "capacity") | fromYaml) -}}
   {{- $capacity := "" -}}
   {{- if and (not $capacity) (hasKey $values "global") -}}
     {{- $capacity = (include "arkcase.persistence.buildVolume.parseStorageSize" $values.global | fromYaml) -}}
@@ -212,7 +240,7 @@
   {{- if not (hasKey $masterCache $chartName) -}}
     {{- $enabled := (eq "true" (include "arkcase.persistence.enabled" . | trim | lower)) -}}
     {{- $rootPath := (include "arkcase.persistence.rootPath" .) -}}
-    {{- $storageClass := (include "arkcase.persistence.storageClass" .) -}}
+    {{- $storageClassName := (include "arkcase.persistence.storageClassName" .) -}}
     {{- $persistentVolumeReclaimPolicy := (include "arkcase.persistence.persistentVolumeReclaimPolicy" .) -}}
     {{- if not $persistentVolumeReclaimPolicy -}}
       {{- $persistentVolumeReclaimPolicy = "Retain" -}}
@@ -236,7 +264,7 @@
         "enabled" $enabled
         "rootPath" $rootPath
         "capacity" $capacity
-        "storageClass" $storageClass
+        "storageClassName" $storageClassName
         "persistentVolumeReclaimPolicy" $persistentVolumeReclaimPolicy
         "accessModes" $accessModes
         "mode" $mode
@@ -301,28 +329,28 @@
       {{- fail (printf "The given relative path [%s] for volume '%s' overflows containment (too many '..' components)" .data $volumeName) -}}
     {{- end -}}
   {{- end -}}
-  {{- dict "render" (dict "volume" true "claim" true) "hostPath" $data | toYaml -}}
+  {{- dict "render" (dict "volume" true "claim" true "mode" "hostPath") "hostPath" $data | toYaml -}}
 {{- end -}}
 
 {{- define "arkcase.persistence.buildVolume.parseVolumeString.pv" -}}
-  {{- /* pv://[${storageClass}]/${capacity}#${accessModes} */ -}}
+  {{- /* pv://[${storageClassName}]/${capacity}#${accessModes} */ -}}
   {{- /* /an/absolute/path */ -}}
   {{- /* some/relative/path */ -}}
   {{- $data := .data -}}
   {{- $volumeName := .volumeName -}}
   {{- $volume := dict -}}
   {{- if hasPrefix "pv://" ($data | lower) -}}
-    {{- /* pv://[${storageClass}]/${capacity}#${accessModes} */ -}}
+    {{- /* pv://[${storageClassName}]/${capacity}#${accessModes} */ -}}
     {{- $pv := urlParse $data -}}
-    {{- /* Perform QC: may have a storageClass, must have a capacity and accessModes */ -}}
-    {{- $storageClass := $pv.host | default "" -}}
-    {{- if and $storageClass (not (regexMatch "^([a-z0-9][-a-z0-9]*)?[a-z0-9]$" ($storageClass | lower))) -}}
-      {{- fail (printf "Invalid storage class in pv:// URL for volume '%s': [%s]" $volumeName $storageClass) -}}
+    {{- /* Perform QC: may have a storageClassName, must have a capacity and accessModes */ -}}
+    {{- $storageClassName := $pv.host | default "" -}}
+    {{- if and $storageClassName (not (regexMatch "^([a-z0-9][-a-z0-9]*)?[a-z0-9]$" ($storageClassName | lower))) -}}
+      {{- fail (printf "Invalid storage class in pv:// URL for volume '%s': [%s]" $volumeName $storageClassName) -}}
     {{- end -}}
     {{- $cap := $pv.path | default "" -}}
     {{- $mode := $pv.fragment | default "" -}}
     {{- if or (not $cap) (not $mode) -}}
-      {{- fail (printf "The pv:// volume declaration for '%s' must be of the form: pv://[${storageClass}]/${capacity}#${accessModes} where only the ${storageClass} portion is optional: [%s]" $volumeName $data) -}}
+      {{- fail (printf "The pv:// volume declaration for '%s' must be of the form: pv://[${storageClassName}]/${capacity}#${accessModes} where only the ${storageClassName} portion is optional: [%s]" $volumeName $data) -}}
     {{- end -}}
     {{- $mode = (include "arkcase.persistence.buildVolume.parseAccessModes" $mode | fromYaml) -}}
     {{- if $mode.errors -}}
@@ -333,18 +361,20 @@
     {{- if or (not $capacity) $capacity.max -}}
       {{- fail (printf "Invalid capacity specification '%s' for volume '%s': [%s]" $cap $volumeName $data) -}}
     {{- end -}}
-    {{- $volume = dict "render" (dict "volume" true "claim" true) "storageClass" $storageClass "capacity" $capacity.min "accessModes" $mode.modes -}}
+    {{- $volume = dict "render" (dict "volume" true "claim" true "mode" "volume") "storageClassName" $storageClassName "capacity" $capacity.min "accessModes" $mode.modes -}}
   {{- else -}}
-    {{- /* /an/absolute/path */ -}}
-    {{- /* some/relative/path */ -}}
-    {{- $volume = (include "arkcase.persistence.buildVolume.parseVolumeString.path" (dict "data" $data "volumeName" $volumeName) | fromYaml) -}}
+    {{- /* Punt this to a pvc's vol:// parse */ -}}
+    {{- if not (hasPrefix "vol://" ($data | lower)) -}}
+      {{- $data = (printf "vol://%s" $data) -}}
+    {{- end -}}
+    {{- $volume = (include "arkcase.persistence.buildVolume.parseVolumeString.pvc" (dict "data" $data "volumeName" $volumeName) | fromYaml) -}}
   {{- end -}}
   {{- $volume | toYaml -}}
 {{- end -}}
 
 {{- define "arkcase.persistence.buildVolume.parseVolumeString.pvc" -}}
   {{- /* vol://${volumeName}#${accessModes} */ -}}
-  {{- /* pvc://[${storageClass}]/${minSize}[-${maxSize}][#${accessModes}] */ -}}
+  {{- /* pvc://[${storageClassName}]/${minSize}[-${maxSize}][#${accessModes}] */ -}}
   {{- /* pvc:${existingPvcName} */ -}}
   {{- /* ${existingPvcName} */ -}}
   {{- $data := .data -}}
@@ -353,7 +383,7 @@
   {{- $volume := dict -}}
   {{- if or (hasPrefix "vol://" ($data | lower)) (hasPrefix "pvc:" ($data | lower)) -}}
     {{- /* vol://${volumeName}#${accessModes} */ -}}
-    {{- /* pvc://[${storageClass}]/${minSize}[-${maxSize}][#${accessModes}] */ -}}
+    {{- /* pvc://[${storageClassName}]/${minSize}[-${maxSize}][#${accessModes}] */ -}}
     {{- /* pvc:${existingPvcName} */ -}}
     {{- $pvc := urlParse $data -}}
     {{- if or $pvc.query $pvc.userinfo -}}
@@ -380,10 +410,10 @@
       {{- if not $pvc.host -}}
         {{- fail (printf "Must provide the name of the volume to connect the PVC to for volume '%s': [%s]" $volumeName $data) -}}
       {{- end -}}
-      {{- $volume = dict "render" (dict "volume" false "claim" true) "volumeName" $pvc.host "accessModes" $mode.modes -}}
+      {{- $volume = dict "render" (dict "volume" false "claim" true "mode" "claim") "volumeName" $pvc.host "accessModes" $mode.modes -}}
     {{- else if eq "pvc" ($pvc.scheme | lower) -}}
       {{- if hasPrefix "pvc://" ($data | lower) -}}
-        {{- /* pvc://[${storageClass}]/${minSize}[-${maxSize}][#${accessModes}] */ -}}
+        {{- /* pvc://[${storageClassName}]/${minSize}[-${maxSize}][#${accessModes}] */ -}}
         {{- $limitsRequests := (clean $pvc.path) -}}
         {{- if eq "." $limitsRequests -}}
           {{- fail (printf "No limits-requests specification given for volume '%s': [%s]" $volumeName $data) -}}
@@ -397,13 +427,13 @@
         {{- if $size.max -}}
           {{- $resources = set $resources "limits" (dict "storage" $size.max) -}}
         {{- end -}}
-        {{- $volume = dict "render" (dict "volume" false "claim" true) "storageClassName" $pvc.host "accessModes" $mode.modes "resources" $resources -}}
+        {{- $volume = dict "render" (dict "volume" false "claim" true "mode" "claim") "storageClassName" $pvc.host "accessModes" $mode.modes "resources" $resources -}}
       {{- else -}}
         {{- /* pvc:${existingPvcName} */ -}}
         {{- if not $pvc.opaque -}}
           {{- fail (printf "Must provide the name of the existing PVC to connect to for volume '%s': [%s]" $volumeName $data) -}}
         {{- end -}}
-        {{- $volume = dict "render" (dict "volume" false "claim" false) "claimName" $pvc.opaque -}}
+        {{- $volume = dict "render" (dict "volume" false "claim" false "mode" "claim") "claimName" $pvc.opaque -}}
       {{- end -}}
     {{- end -}}
   {{- else if $data -}}
@@ -411,7 +441,7 @@
     {{- if not (regexMatch "^([a-z0-9][-a-z0-9]*)?[a-z0-9]$" ($data | lower)) -}}
       {{- fail (printf "The PVC name '%s' for volume '%s' is not valid" $data $volumeName) -}}
     {{- end -}}
-    {{- $volume = dict "render" (dict "volume" false "claim" false) "claimName" $data -}}
+    {{- $volume = dict "render" (dict "volume" false "claim" false "mode" "claim") "claimName" $data -}}
   {{- else -}}
     {{- fail (printf "The PVC string for volume '%s' cannot be empty" $volumeName) -}}
   {{- end -}}
@@ -426,40 +456,21 @@
   {{- if $data -}}
     {{- if or (hasPrefix "pvc:" ($data | lower)) (hasPrefix "vol://" ($data | lower)) -}}
       {{- $volume = (include "arkcase.persistence.buildVolume.parseVolumeString.pvc" . | fromYaml) -}}
-    {{- else -}}
+    {{- else if (hasPrefix "pv:" ($data | lower)) -}}
       {{- $volume = (include "arkcase.persistence.buildVolume.parseVolumeString.pv" . | fromYaml) -}}
+    {{- else -}}
+      {{- $volume = (include "arkcase.persistence.buildVolume.parseVolumeString.path" . | fromYaml) -}}
     {{- end -}}
   {{- else -}}
-    {{- $volume = (dict "render" (dict "volume" true "claim" true)) -}}
+    {{- $volume = (dict "render" (dict "volume" true "claim" true "mode" "hostPath")) -}}
   {{- end -}}
   {{- $volume | toYaml -}}
 {{- end -}}
 
-{{- /*
-Parse a volume declaration and return a map that contains the following (possible) keys:
-  claim: the PVC that must be rendered, or the name of the PVC that must be used
-  volume: the PV that must be rendered
-*/ -}}
-{{- define "arkcase.persistence.buildVolume.cached" -}}
-  {{- $ctx := .ctx -}}
-  {{- if not (include "arkcase.isRootContext" $ctx) -}}
-    {{- fail "The 'ctx' parameter must be the root context (. or $)" -}}
-  {{- end -}}
-  {{- if not (hasKey . "name") -}}
-    {{- fail "Must provide the 'name' parameter for the volume to be built" -}}
-  {{- end -}}
-  {{- /* The volume's name will be of the form "[${part}-]$name" ($part is optional) */ -}}
-  {{- $name := .name -}}
-  {{- $volumeName := (printf "%s-%s" (include "arkcase.fullname" $ctx) $name) -}}
-  {{- $persistence := ($ctx.Values.persistence | default dict) -}}
-  {{- $persistenceVolumes := ($persistence.volumes | default dict) -}}
-  {{- $data := dict -}}
-  {{- $enabled := (not (empty (include "arkcase.persistence.enabled" $ctx))) -}}
-  {{- $mustRender := $enabled -}}
-  {{- if hasKey $persistenceVolumes $name -}}
-    {{- $data = get $persistenceVolumes $name -}}
-    {{- $mustRender = true -}}
-  {{- end -}}
+{{- define "arkcase.persistence.buildVolume.render" -}}
+  {{- $volumeName := .volumeName -}}
+  {{- $data := .data -}}
+  {{- $mustRender := .mustRender -}}
   {{- $volume := dict -}}
   {{- if kindIs "string" $data -}}
     {{- $volume = (include "arkcase.persistence.buildVolume.parseVolumeString" (dict "data" $data "volumeName" $volumeName) | fromYaml) -}}
@@ -477,6 +488,7 @@ Parse a volume declaration and return a map that contains the following (possibl
       {{- else -}}
         {{- fail (printf "The 'claim' value for the volume '%s' must be either a dict or a string (%s)" $volumeName (kindOf $data.claim)) -}}
       {{- end -}}
+      {{- $volume = set $volume "render" (set $volume.render "mode" "claim") -}}
     {{- else if $data.volume -}}
       {{- if kindIs "string" $data.volume -}}
         {{- $volume = (include "arkcase.persistence.buildVolume.parseVolumeString.pv" (dict "data" $data.volume "volumeName" $volumeName) | fromYaml) -}}
@@ -486,15 +498,68 @@ Parse a volume declaration and return a map that contains the following (possibl
       {{- else -}}
         {{- fail (printf "The 'volume' value for the volume '%s' must be either a dict or a string (%s)" $volumeName (kindOf $data.volume)) -}}
       {{- end -}}
+      {{- $volume = set $volume "render" (set $volume.render "mode" "volume") -}}
     {{- else -}}
-      {{- $volume = (dict "render" (dict "volume" true "claim" true)) -}}
+      {{- if $data.path -}}
+        {{- $volume = (include "arkcase.persistence.buildVolume.parseVolumeString.path" (dict "data" $data.path "volumeName" $volumeName) | fromYaml) -}}
+      {{- else -}}
+        {{- $volume = (dict "render" (dict "volume" true "claim" true "mode" "hostPath")) -}}
+      {{- end -}}
     {{- end -}}
   {{- else if (kindIs "invalid" $data) -}}
-    {{- $volume = (dict "render" (dict "volume" true "claim" true)) -}}
+    {{- $volume = (dict "render" (dict "volume" true "claim" true "mode" "hostPath")) -}}
   {{- else -}}
     {{- fail (printf "The volume declaration for %s must be either a string or a map (%s)" $volumeName (kindOf $data)) -}}
   {{- end -}}
   {{- set $volume "render" (merge $volume.render (dict "name" $volumeName "mustRender" $mustRender)) | toYaml -}}
+{{- end -}}
+
+{{- /*
+Parse a volume declaration and return a map that contains the following (possible) keys:
+  claim: the PVC that must be rendered, or the name of the PVC that must be used
+  volume: the PV that must be rendered
+*/ -}}
+{{- define "arkcase.persistence.buildVolume.cached" -}}
+  {{- $ctx := .ctx -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "The 'ctx' parameter must be the root context (. or $)" -}}
+  {{- end -}}
+  {{- if not (hasKey . "name") -}}
+    {{- fail "Must provide the 'name' parameter for the volume to be built" -}}
+  {{- end -}}
+  {{- /* The volume's name will be of the form "[${part}-]$name" ($part is optional) */ -}}
+  {{- $name := .name -}}
+  {{- $globalName := (printf "%s-%s" $ctx.Chart.Name $name) -}}
+  {{- $volumeName := (printf "%s-%s" $ctx.Release.Name $globalName) -}}
+  {{- $persistence := ($ctx.Values.persistence | default dict) -}}
+  {{- $persistenceVolumes := ($persistence.volumes | default dict) -}}
+
+  {{- $globalPersistence := ($ctx.Values.global.persistence | default dict) -}}
+  {{- $globalPersistenceVolumes := ($globalPersistence.volumes | default dict) -}}
+
+  {{- $enabled := (not (empty (include "arkcase.persistence.enabled" $ctx))) -}}
+  {{- $mustRender := $enabled -}}
+
+  {{- $data := dict -}}
+  {{- if hasKey $persistenceVolumes $name -}}
+    {{- $data = get $persistenceVolumes $name -}}
+    {{- $mustRender = true -}}
+  {{- end -}}
+
+  {{- $result := dict -}}
+  {{- if hasKey $globalPersistenceVolumes $ctx.Chart.Name -}}
+    {{- $globalVolumes := get $globalPersistenceVolumes $ctx.Chart.Name -}}
+    {{- if and $globalVolumes (kindIs "map" $globalVolumes) (hasKey $globalVolumes $name) -}}
+      {{- $result = (include "arkcase.persistence.buildVolume.render" (dict "volumeName" $volumeName "data" (get $globalVolumes $name) "mustRender" true) | fromYaml) -}}
+    {{- end -}}
+  {{- end -}}
+
+  {{- /* If we didn't get an override from the global data, we use the local data */ -}}
+  {{- if not $result -}}
+    {{- $result = (include "arkcase.persistence.buildVolume.render" (dict "volumeName" $volumeName "data" $data "mustRender" $mustRender) | fromYaml) -}}
+  {{- end -}}
+
+  {{- $result | toYaml -}}
 {{- end -}}
 
 {{- define "arkcase.persistence.buildVolume" -}}
@@ -514,7 +579,6 @@ Parse a volume declaration and return a map that contains the following (possibl
   {{- end -}}
   {{- $ctx = set $ctx $cacheKey $masterCache -}}
 
-  {{- /* We specifically don't use partnames here b/c we don't care about that for this */ -}}
   {{- $volumeName := (printf "%s-%s" (include "arkcase.fullname" .) $name) -}}
   {{- if not (hasKey $masterCache $volumeName) -}}
     {{- $obj := (include "arkcase.persistence.buildVolume.cached" (pick . "ctx" "name") | fromYaml) -}}
@@ -603,8 +667,9 @@ Render the PersistentVolume and PersistentVolumeClaim objects for a given volume
 
     {{- $accessModes := $settings.accessModes -}}
     {{- $capacity := $settings.capacity -}}
-    {{- $storageClassName := $settings.storageClass -}}
+    {{- $storageClassName := $settings.storageClassName -}}
 
+    {{- /* Volume is only rendered if it has a spec, or it's a hostPath */ -}}
     {{- if $render.volume -}}
 ---
 apiVersion: v1
@@ -648,7 +713,7 @@ spec:
           {{- if or (not $storageClassName) (hasKey $volumeData "hostPath") -}}
             {{- /* This is a local filesystem spec ... should be in development mode! */ -}}
             {{- if ne $settings.mode "development" -}}
-              {{- fail (printf "Local paths are only supported in development mode (volume [%s])" $volumeName) -}}
+              {{- fail (printf "Local paths are only supported in development mode (volume [%s] for chart %s)" $volumeName $ctx.Chart.Name) -}}
             {{- end -}}
             {{- $storageClassName = "manual" }}
             {{- if not $localPath -}}
@@ -662,8 +727,8 @@ spec:
             {{- end -}}
           {{- end -}}
         {{- else -}}
-          {{- if $volumeData.storageClass -}}
-            {{- $storageClassName = $volumeData.storageClass -}}
+          {{- if $volumeData.storageClassName -}}
+            {{- $storageClassName = $volumeData.storageClassName -}}
           {{- end -}}
           {{- if $volumeData.capacity -}}
             {{- $capacity = $volumeData.capacity -}}
