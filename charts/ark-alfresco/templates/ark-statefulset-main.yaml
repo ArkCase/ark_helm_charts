@@ -141,14 +141,26 @@ spec:
               mountPath: *dataDir
             - name: *initVolume
               mountPath: *initDir
+            - name: &secrets "secrets"
+              mountPath: "/usr/local/tomcat/shared/classes/alfresco-global.properties"
+              subPath: &alfrescoGlobalProperties "alfresco-global.properties"
+              readOnly: true
+            - name: *secrets
+              mountPath: "/usr/local/tomcat/shared/classes/alfresco/extension/subsystems/Authentication/ldap-ad/ldap1/ldap-ad.properties"
+              subPath: &ldapAdProperties "ldap-ad.properties"
+              readOnly: true
       volumes:
-        - name: "secrets"
+        - name: *secrets
           secret:
             optional: false
             secretName: {{ include "arkcase.fullname" . | quote }}
             defaultMode: 0444
             items:
               {{- include "arkcase.alfresco.license.volumes" . | nindent 14 }}
+              - key: *alfrescoGlobalProperties
+                path: *alfrescoGlobalProperties
+              - key: *ldapAdProperties
+                path: *ldapAdProperties
         {{- include "arkcase.persistence.volume" (dict "name" "init" "ctx" $) | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "name" "data" "ctx" $) | nindent 8 }}
       {{- with (include "arkcase.values" (dict "ctx" . "base" "nodeSelector") | fromYaml) }}
