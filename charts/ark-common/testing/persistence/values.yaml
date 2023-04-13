@@ -1,0 +1,55 @@
+## bitnami/common
+## It is required by CI/CD tools and processes.
+## @skip exampleValue
+##
+exampleValue: common-chart
+
+global:
+  persistence:
+    default:
+      storageClassName: "global-storage-class-name"
+    volumes:
+      ark-common:
+        claim-spec-A:
+          claim:
+            storageClassName: "claim-spec-A"
+            otherStuff: "more-settings-claim-spec-A"
+            # Add more properties here that would be
+            # part of the PersistentVolumeClaimSpec
+            # you want rendered
+
+        claim-str-A:
+          claim: "claim-str-A"
+        claim-str-B:
+          claim: "pvc://claim-str-B/1Gi"
+        claim-str-C:
+          claim: "vol://claim-str-C"
+
+        path-A:
+          path: "path-A"
+        path-B:
+          path: "/path/B"
+
+        str-A: "str-A"
+        str-B: "/str/B"
+        str-C: "pvc://str-C/4Gi"
+        str-D: "pv://str-D/1Gi#RWM"
+        str-E: "vol://str-E"
+
+        vol-spec-A:
+          volume:
+            storageClassName: "vol-spec-A"
+            evenMoarStuf: "more-settings-vol-spec-A"
+            # Add more properties here that would be
+            # part of the PersistentVolumeSpec you
+            # want rendered
+
+        vol-str-A:
+          volume: "vol-str-A"
+
+        vol-str-B:
+          volume: "pv://vol-str-B/1Gi#RO,RWO,RWM"
+
+persistence:
+  default:
+    # storageClassName: "localSC"

@@ -1,0 +1,40 @@
+{{- $p := .Values.global.persistence.volumes }}
+{{- $m := get $p $.Chart.Name }}
+KEY|CLAIM|VOLUME|MODE
+{{- range (keys $m | sortAlpha) }}
+  {{- $name := . | toString }}
+  {{- $src := (get $m .) }}
+  {{- $data := (include "arkcase.persistence.buildVolume" (dict "ctx" $ "name" .) | fromYaml) }}
+{{ . }}|{{ $data.render.claim }}|{{ $data.render.volume }}|{{ $data.render.mode }}
+{{- end }}
+
+#
+########################################
+#
+
+{{- range (keys $m | sortAlpha) }}
+  {{- $data := (include "arkcase.persistence.buildVolume" (dict "ctx" $ "name" .) | fromYaml) }}
+{{ . }}: {{ $data | toYaml | nindent 2 }}
+{{- end }}
+
+#
+########################################
+#
+
+{{ include "arkcase.persistence.getDefaultSetting" (dict "ctx" $ "name" "storageClassName") }}
+
+
+#
+########################################
+#
+
+{{- range (keys $m | sortAlpha) }}
+{{ . }}:
+  volumes:{{- include "arkcase.persistence.volume" (dict "ctx" $ "name" .) | nindent 4 }}
+{{- include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" .) | indent 2 }}
+{{- end }}
+
+
+unset:
+  volumes:{{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "unset") | nindent 4 }}
+{{- include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "unset") | indent 2 }}
