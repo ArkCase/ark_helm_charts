@@ -717,10 +717,6 @@ Render the PersistentVolume and PersistentVolumeClaim objects for a given volume
     {{- $renderVolume := $render.volume -}}
     {{- if $renderVolume -}}
       {{- if eq $settings.mode "production" -}}
-        {{- if not $storageClassName -}}
-          {{- fail "For production use you must set a default storageClassName value for the persistence layer to use" -}}
-        {{- end -}}
-
         {{- /* If it's a hostPath volume, avoid rendering the PV object, and only render a PVC with default settings */ -}}
         {{- $renderVolume = (ne $render.mode "hostPath") -}}
       {{- else -}}
@@ -811,7 +807,9 @@ spec:
     type: DirectoryOrCreate
         {{- end }}
   persistentVolumeReclaimPolicy: {{ $settings.persistentVolumeReclaimPolicy | quote }}
+        {{- if $storageClassName }}
   storageClassName: {{ $storageClassName | quote }}
+        {{- end }}
   volumeMode: {{ $volumeMode | quote }}
       {{- end -}}
     {{- end -}}
@@ -856,7 +854,9 @@ spec:
   selector:
     matchLabels:
       arkcase/persistentVolume: {{ $volumeObjectName | quote }}
+        {{- if $storageClassName }}
   storageClassName: {{ $storageClassName | quote }}
+        {{- end }}
   accessModes: {{- toYaml $accessModes | nindent 4 }}
   resources:
     requests:
@@ -880,7 +880,9 @@ spec:
         {{- end }}
   accessModes: {{- toYaml $accessModes | nindent 4 }}
   resources: {{- toYaml $capacity | nindent 4 }}
+        {{- if $storageClassName }}
   storageClassName: {{ $storageClassName | quote }}
+        {{- end }}
   volumeMode: {{ $volumeMode | quote }}
       {{- end }}
     {{- end -}}
