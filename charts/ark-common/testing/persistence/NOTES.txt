@@ -31,10 +31,10 @@ KEY|CLAIM|VOLUME|MODE
 {{- range (keys $m | sortAlpha) }}
 {{ . }}:
   volumes:{{- include "arkcase.persistence.volume" (dict "ctx" $ "name" .) | nindent 4 }}
-{{- include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" .) | indent 2 }}
+{{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" .) | indent 2 }}
 {{- end }}
 
 
 unset:
   volumes:{{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "unset") | nindent 4 }}
-{{- include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "unset") | indent 2 }}
+{{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "unset") | indent 2 }}

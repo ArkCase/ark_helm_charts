@@ -706,24 +706,19 @@ Render the PersistentVolume and PersistentVolumeClaim objects for a given volume
     {{- $volumeMode := $settings.volumeMode -}}
 
     {{- $renderVolume := $render.volume -}}
-    {{- if eq $settings.mode "production" -}}
-      {{- /* if we're in production mode and we lack a default storageClassName, this is a misconfiguration */ -}}
-      {{- if not $storageClassName -}}
-        {{- fail "For production use you must set a default storageClassName value for the persistence layer to use" -}}
-      {{- end -}}
+    {{- if $renderVolume -}}
+      {{- if eq $settings.mode "production" -}}
+        {{- if not $storageClassName -}}
+          {{- fail "For production use you must set a default storageClassName value for the persistence layer to use" -}}
+        {{- end -}}
 
-      {{- /* If we're in production mode and we're using an explicit path setting, this is an error */ -}}
-      {{- /* implicit (automatic) hostPath volumes will result in only the PVC being rendered with default settings */ -}}
-      {{- if and (eq $render.mode "hostPath") $volumeData.hostPath -}}
-        {{- fail (printf "You may not use hostPath volumes in production mode (volume [%s] for chart %s)" $volumeName $ctx.Chart.Name) -}}
+        {{- /* If it's a hostPath volume, avoid rendering the PV object, and only render a PVC with default settings */ -}}
+        {{- $renderVolume = (ne $render.mode "hostPath") -}}
+      {{- else -}}
+        {{- /* In development mode, we only render a volume for hostPath volumes if we have */ -}}
+        {{- /* an explicit path set, or we don't have a default storage class set */ -}}
+        {{- $renderVolume = (or (hasKey $volumeData "hostPath") (not $storageClassName)) -}}
       {{- end -}}
-
-      {{- /* if we're in production mode and we have a default storageClassName, then... */ -}}
-      {{- /*   - if the volume is not a hostPath volume, render everything normally */ -}}
-      {{- /*   - if the volume is a hostPath volume, then /* -}}
-      {{- /*       - render only the PVC using the set default values (adjusted) */ -}}
-      {{- /* otherwise, render normally */ -}}
-      {{- $renderVolume = and $renderVolume (ne $render.mode "hostPath") -}}
     {{- end -}}
 
     {{- if $renderVolume -}}
