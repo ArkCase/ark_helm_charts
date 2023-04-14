@@ -569,7 +569,7 @@ Parse a volume declaration and return a map that contains the following (possibl
   {{- $persistence := ($ctx.Values.persistence | default dict) -}}
   {{- $persistenceVolumes := ($persistence.volumes | default dict) -}}
 
-  {{- $globalPersistence := ($ctx.Values.global.persistence | default dict) -}}
+  {{- $globalPersistence := (($ctx.Values.global).persistence | default dict) -}}
   {{- $globalPersistenceVolumes := ($globalPersistence.volumes | default dict) -}}
 
   {{- $enabled := (not (empty (include "arkcase.persistence.enabled" $ctx))) -}}
@@ -599,9 +599,18 @@ Parse a volume declaration and return a map that contains the following (possibl
 
 {{- define "arkcase.persistence.buildVolume" -}}
   {{- $ctx := .ctx -}}
-  {{- $name := .name -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "The 'ctx' parameter must be the root context (. or $)" -}}
+  {{- end -}}
+
+  {{- $name := .name -}}
+  {{- if not $name -}}
+    {{- fail "The volume name may not be empty" -}}
+  {{- end -}}
+
+  {{- $partname := (include "arkcase.part.name" $ctx) -}}
+  {{- if $partname -}}
+    {{- $name = (printf "%s-%s" $partname $name) -}}
   {{- end -}}
 
   {{- $cacheKey := "PersistenceVolumes" -}}
@@ -616,7 +625,7 @@ Parse a volume declaration and return a map that contains the following (possibl
 
   {{- $volumeName := (printf "%s-%s" (include "arkcase.fullname" .) $name) -}}
   {{- if not (hasKey $masterCache $volumeName) -}}
-    {{- $obj := (include "arkcase.persistence.buildVolume.cached" (pick . "ctx" "name") | fromYaml) -}}
+    {{- $obj := (include "arkcase.persistence.buildVolume.cached" (set . "name" $name) | fromYaml) -}}
     {{- $masterCache = set $masterCache $volumeName $obj -}}
   {{- end -}}
   {{- get $masterCache $volumeName | toYaml -}}
