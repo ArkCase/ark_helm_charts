@@ -97,13 +97,13 @@
   {{- $mode -}}
 {{- end -}}
 
-{{- /* Get the rootPath value that should be used for everything */ -}}
-{{- define "arkcase.persistence.rootPath" -}}
+{{- /* Get the hostPathRoot value that should be used for everything */ -}}
+{{- define "arkcase.persistence.hostPathRoot" -}}
   {{- if not (include "arkcase.isRootContext" .) -}}
     {{- fail "The parameter must be the root context (. or $)" -}}
   {{- end -}}
-  {{- $rootPath := (include "arkcase.persistence.getDefaultSetting" (dict "ctx" . "name" "rootPath") | fromYaml) -}}
-  {{- coalesce $rootPath.global $rootPath.local "/opt/app" -}}
+  {{- $hostPathRoot := (include "arkcase.persistence.getDefaultSetting" (dict "ctx" . "name" "hostPathRoot") | fromYaml) -}}
+  {{- coalesce $hostPathRoot.global $hostPathRoot.local "/opt/app" -}}
 {{- end -}}
 
 {{- /* Get the storageClassName value that should be used for everything */ -}}
@@ -262,7 +262,7 @@
   {{- $chartName := (include "common.fullname" .) -}}
   {{- if not (hasKey $masterCache $chartName) -}}
     {{- $enabled := (eq "true" (include "arkcase.persistence.enabled" . | trim | lower)) -}}
-    {{- $rootPath := (include "arkcase.persistence.rootPath" .) -}}
+    {{- $hostPathRoot := (include "arkcase.persistence.hostPathRoot" .) -}}
     {{- $storageClassName := (include "arkcase.persistence.storageClassName" .) -}}
     {{- $persistentVolumeReclaimPolicy := (include "arkcase.persistence.persistentVolumeReclaimPolicy" .) -}}
     {{- if not $persistentVolumeReclaimPolicy -}}
@@ -289,7 +289,7 @@
     {{-
       $obj := dict 
         "enabled" $enabled
-        "rootPath" $rootPath
+        "hostPathRoot" $hostPathRoot
         "capacity" $capacity
         "storageClassName" $storageClassName
         "persistentVolumeReclaimPolicy" $persistentVolumeReclaimPolicy
@@ -705,7 +705,7 @@ Render the PersistentVolume and PersistentVolumeClaim objects for a given volume
     {{- $settings := (include "arkcase.persistence.settings" $ctx | fromYaml) -}}
     {{- $volumeData = omit $volumeData "render" -}}
 
-    {{- $rootPath := $settings.rootPath -}}
+    {{- $hostPathRoot := $settings.hostPathRoot -}}
     {{- $objectName := $render.name -}}
     {{- $volumeObjectName := (printf "%s-%s" $ctx.Release.Namespace $objectName) -}}
 
@@ -783,7 +783,7 @@ spec:
               {{- $localPath = (printf "%s/%s" (include "arkcase.subsystem.name" $ctx) $volumeName) -}}
             {{- end -}}
             {{- if not (isAbs $localPath) -}}
-              {{- $localPath = (printf "%s/%s/%s/%s" $settings.rootPath $ctx.Release.Namespace $ctx.Release.Name $localPath) -}}
+              {{- $localPath = (printf "%s/%s/%s/%s" $settings.hostPathRoot $ctx.Release.Namespace $ctx.Release.Name $localPath) -}}
             {{- end -}}
           {{- end -}}
         {{- else -}}
