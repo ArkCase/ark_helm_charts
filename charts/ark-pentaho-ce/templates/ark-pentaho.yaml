@@ -58,7 +58,7 @@ spec:
       {{- end }}
       initContainers:
         - name: set-permissions
-          image: {{ include "arkcase.tools.subimage" (dict "ctx" . "name" "setperm" "image" "arkcase/setperm") | quote }}
+          image: {{ include "arkcase.tools.subimage" (dict "ctx" $ "name" "setperm" "image" "arkcase/setperm") | quote }}
           env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
             - name: JOBS
               value: |
@@ -197,9 +197,9 @@ spec:
               subPath: &arkcaseBaseReportsTarGz {{ printf "%s-arkcase-base-reports.tar.gz" (required "Must provide a value for .configuration.db.dialect" ((.Values.configuration).db).dialect) | quote }}
               readOnly: true
       volumes:
-        {{- include "arkcase.persistence.volume" (dict "name" "data" "ctx" $) | nindent 8 }}
-        {{- include "arkcase.persistence.volume" (dict "name" "init" "ctx" $) | nindent 8 }}
-        {{- include "arkcase.persistence.volume" (dict "name" "logs" "ctx" $) | nindent 8 }}
+        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
+        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "init") | nindent 8 }}
+        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "logs") | nindent 8 }}
         - name: *secrets
           secret:
             optional: false
@@ -258,11 +258,15 @@ spec:
       {{- with .Values.tolerations }}
       tolerations: {{- toYaml . | nindent 8 }}
       {{- end }}
+  volumeClaimTemplates:
+    {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "data") | nindent 4 }}
+    {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "init") | nindent 4 }}
+    {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "logs") | nindent 4 }}
 
-{{- if (include "arkcase.persistence.enabled" .) }}
-{{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "data") | indent 0 }}
-{{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "init") | indent 0 }}
-{{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "logs") | indent 0 }}
-{{- end }}
+  {{- if (include "arkcase.persistence.enabled" .) }}
+    {{- include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "data") | nindent 0 }}
+    {{- include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "init") | nindent 0 }}
+    {{- include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "logs") | nindent 0 }}
+  {{- end }}
 
 {{- end }}

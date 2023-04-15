@@ -59,7 +59,7 @@ spec:
       {{- end }}
       initContainers:
         - name: set-permissions
-          image: {{ include "arkcase.tools.subimage" (dict "ctx" . "name" "setperm" "image" "arkcase/setperm") | quote }}
+          image: {{ include "arkcase.tools.subimage" (dict "ctx" $ "name" "setperm" "image" "arkcase/setperm") | quote }}
           env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
             - name: JOBS
               value: |
@@ -73,7 +73,7 @@ spec:
           volumeMounts:
             - name: "data"
               mountPath: &dataDir "/app/data"
-        {{- include "arkcase.initDependencies.container" (dict "ctx" . "name" "init-dependencies") | nindent 8 }}
+        {{- include "arkcase.initDependencies.container" (dict "ctx" $ "name" "init-dependencies") | nindent 8 }}
       containers:
         - name: config
           {{- with (.Values.securityContext).config }}
@@ -98,10 +98,11 @@ spec:
             - name: "data"
               mountPath: *dataDir
       volumes:
-        {{- include "arkcase.persistence.volume" (dict "name" "data" "ctx" $) | nindent 8 }}
+        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
+  volumeClaimTemplates:
+    {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "data") | nindent 4 }}
 
-{{- if (include "arkcase.persistence.enabled" .) }}
-{{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "data") | indent 0 }}
-{{- end }}
-
+  {{- if (include "arkcase.persistence.enabled" .) }}
+    {{- include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "data") | nindent 0 }}
+  {{- end }}
 {{- end }}

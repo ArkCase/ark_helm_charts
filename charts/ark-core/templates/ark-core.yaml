@@ -59,7 +59,7 @@ spec:
       {{- end }}
       initContainers:
         - name: initialize-configuration
-          image: {{ include "arkcase.tools.subimage" (dict "ctx" . "name" "dot-arkcase" "image" "arkcase/config") | quote }}
+          image: {{ include "arkcase.tools.subimage" (dict "ctx" $ "name" "dot-arkcase" "image" "arkcase/config") | quote }}
           imagePullPolicy: {{ include "arkcase.tools.imagePullPolicy" . | quote }}
           env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
             - name: CONF_DIR
@@ -70,7 +70,7 @@ spec:
             - name: &confVolume "conf"
               mountPath: *confDir
         - name: set-permissions
-          image: {{ include "arkcase.tools.subimage" (dict "ctx" . "name" "setperm" "image" "arkcase/setperm") | quote }}
+          image: {{ include "arkcase.tools.subimage" (dict "ctx" $ "name" "setperm" "image" "arkcase/setperm") | quote }}
           imagePullPolicy: {{ include "arkcase.tools.imagePullPolicy" . | quote }}
           env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
             - name: JOBS
@@ -91,13 +91,13 @@ spec:
               mountPath: *confDir
             - name: &logsVolume "logs"
               mountPath: &logsDir "/app/logs"
-        {{- include "arkcase.initDependencies.container" (dict "ctx" . "name" "init-dependencies") | nindent 8 }}
+        {{- include "arkcase.initDependencies.container" (dict "ctx" $ "name" "init-dependencies") | nindent 8 }}
       containers:
         - name: arkcase
           {{- with (.Values.securityContext).arkcase }}
           securityContext: {{- toYaml . | nindent 12 }}
           {{- end }}
-          image: {{ include "arkcase.tools.subimage" (dict "ctx" . "name" "arkcase" "image" "arkcase/core") | quote }}
+          image: {{ include "arkcase.tools.subimage" (dict "ctx" $ "name" "arkcase" "image" "arkcase/core") | quote }}
           imagePullPolicy: {{ include "arkcase.tools.imagePullPolicy" . | quote }}
           env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
             - name: INIT_DIR
@@ -202,7 +202,7 @@ spec:
           {{- with (.Values.securityContext).config }}
           securityContext: {{- toYaml . | nindent 12 }}
           {{- end }}
-          image: {{ include "arkcase.tools.subimage" (dict "ctx" . "name" "config" "image" "arkcase/cloudconfig") | quote }}
+          image: {{ include "arkcase.tools.subimage" (dict "ctx" $ "name" "config" "image" "arkcase/cloudconfig") | quote }}
           imagePullPolicy: {{ include "arkcase.tools.imagePullPolicy" . | quote }}
           env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
             {{- with ((.Values.configuration).config).env }}
@@ -283,16 +283,21 @@ spec:
                 path: *springConfigProxyXml
               - key: *log4j2Xml
                 path: *log4j2Xml
-        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "home") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "init") | nindent 8 }}
+        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "home") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "conf") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "logs") | nindent 8 }}
+  volumeClaimTemplates:
+    {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "init") | nindent 4 }}
+    {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "home") | nindent 4 }}
+    {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "conf") | nindent 4 }}
+    {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "logs") | nindent 4 }}
 
-{{- if (include "arkcase.persistence.enabled" .) }}
-{{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "home") | indent 0 }}
-{{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "init") | indent 0 }}
-{{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "conf") | indent 0 }}
-{{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "logs") | indent 0 }}
-{{- end }}
+  {{- if (include "arkcase.persistence.enabled" .) }}
+    {{- include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "init") | nindent 0 }}
+    {{- include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "home") | nindent 0 }}
+    {{- include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "conf") | nindent 0 }}
+    {{- include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "logs") | nindent 0 }}
+  {{- end }}
 
 {{- end }}

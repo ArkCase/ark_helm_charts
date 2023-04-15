@@ -60,7 +60,7 @@ spec:
       initContainers:
         {{- if (include "arkcase.samba.step" .) }}
         - name: set-permissions
-          image: {{ include "arkcase.tools.subimage" (dict "ctx" . "name" "setperm" "image" "arkcase/setperm") | quote }}
+          image: {{ include "arkcase.tools.subimage" (dict "ctx" $ "name" "setperm" "image" "arkcase/setperm") | quote }}
           env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
             - name: JOBS
               value: |
@@ -135,7 +135,7 @@ spec:
               readOnly: true
           {{- if (include "arkcase.samba.step" .) }}
         - name: step
-          image: {{ include "arkcase.tools.subimage" (dict "ctx" . "name" "step" "image" "arkcase/step-ca") | quote }}
+          image: {{ include "arkcase.tools.subimage" (dict "ctx" $ "name" "step" "image" "arkcase/step-ca") | quote }}
           imagePullPolicy: {{ include "arkcase.tools.imagePullPolicy" . | quote }}
           env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
             - name: DOCKER_STEPCA_INIT_NAME
@@ -156,12 +156,12 @@ spec:
               mountPath: "/home/step"
           {{- end }}
       volumes:
-        {{- include "arkcase.persistence.volume" (dict "name" "init" "ctx" $) | nindent 8 }}
-        {{- include "arkcase.persistence.volume" (dict "name" "conf" "ctx" $) | nindent 8 }}
-        {{- include "arkcase.persistence.volume" (dict "name" "data" "ctx" $) | nindent 8 }}
-        {{- include "arkcase.persistence.volume" (dict "name" "logs" "ctx" $) | nindent 8 }}
+        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "init") | nindent 8 }}
+        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "conf") | nindent 8 }}
+        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
+        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "logs") | nindent 8 }}
         {{- if (include "arkcase.samba.step" .) }}
-        {{- include "arkcase.persistence.volume" (dict "name" "step" "ctx" $) | nindent 8 }}
+          {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "step") | nindent 8 }}
         {{- end }}
         - name: *secrets
           secret:
@@ -186,15 +186,23 @@ spec:
       {{- with .Values.tolerations }}
       tolerations: {{- toYaml . | nindent 8 }}
       {{- end }}
+  volumeClaimTemplates:
+    {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "init") | nindent 4 }}
+    {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "conf") | nindent 4 }}
+    {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "data") | nindent 4 }}
+    {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "logs") | nindent 4 }}
+    {{- if (include "arkcase.samba.step" .) }}
+      {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "step") | nindent 4 }}
+    {{- end }}
 
-{{- if (include "arkcase.persistence.enabled" .) }}
-{{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "init") | indent 0 }}
-{{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "conf") | indent 0 }}
-{{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "data") | indent 0 }}
-{{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "logs") | indent 0 }}
-{{- if (include "arkcase.samba.step" .) }}
-{{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "step") | indent 0 }}
-{{- end }}
-{{- end }}
+  {{- if (include "arkcase.persistence.enabled" .) }}
+    {{- include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "init") | nindent 0 }}
+    {{- include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "conf") | nindent 0 }}
+    {{- include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "data") | nindent 0 }}
+    {{- include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "logs") | nindent 0 }}
+    {{- if (include "arkcase.samba.step" .) }}
+      {{- include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "step") | nindent 0 }}
+    {{- end }}
+  {{- end }}
 
 {{- end }}

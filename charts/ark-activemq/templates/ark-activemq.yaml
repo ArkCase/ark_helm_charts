@@ -100,7 +100,7 @@ spec:
               mountPath: "/app/conf"
               readOnly: true
       volumes:
-        {{- include "arkcase.persistence.volume" (dict "name" "data" "ctx" $) | nindent 8 }}
+        {{- include "arkcase.persistence.volume" (dict "ctx" . "name" "data") | nindent 8 }}
         - name: secrets
           secret:
             secretName: {{ include "arkcase.subsystem.name" . | quote }}
@@ -113,8 +113,10 @@ spec:
       {{- with .Values.tolerations }}
       tolerations: {{- toYaml . | nindent 8 }}
       {{- end }}
+  volumeClaimTemplates:
+    {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" . "name" "data") | nindent 4 }}
 
-{{- if (include "arkcase.persistence.enabled" .) }}
-{{ include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "data") | indent 0 }}
-{{- end }}
+  {{- if (include "arkcase.persistence.enabled" .) }}
+    {{- include "arkcase.persistence.declareObjects" (dict "ctx" . "name" "data") | nindent 0 }}
+  {{- end }}
 {{- end }}
