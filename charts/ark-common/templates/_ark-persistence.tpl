@@ -743,37 +743,15 @@ Render the PersistentVolume and PersistentVolumeClaim objects for a given volume
     {{- $storageClassName := $settings.storageClassName -}}
     {{- $volumeMode := $settings.volumeMode -}}
 
-    {{- $renderVolume := $render.volume -}}
-    {{- if $renderVolume -}}
-      {{- if eq $settings.mode "production" -}}
-        {{- /* If it's a hostPath volume, avoid rendering the PV object, and only render a PVC with default settings */ -}}
-        {{- $renderVolume = (ne $render.mode "hostPath") -}}
-      {{- else -}}
-        {{- /* In development mode, we only render a volume for hostPath volumes if we have */ -}}
-        {{- /* an explicit path set, or we don't have a default storage class set */ -}}
-        {{- $renderVolume = (or (hasKey $volumeData "hostPath") (not $storageClassName)) -}}
-      {{- end -}}
-    {{- end -}}
-    {{- if $render.claim -}}
+    {{- if and $render.claim (ne $render.mode "hostPath") -}}
 - metadata:
     name: {{ $objectName | quote }}
     labels:
       arkcase/persistentVolumeClaim: {{ $objectName | quote }}
   spec:
       {{- if hasKey $volumeData "spec" }}
-        {{- /* We were given a claim declaration, so quote it */ -}}
-        {{- $claimSpec := $volumeData.spec -}}
-        {{- if $claimSpec.accessModes -}}
-          {{- $accessModes = $claimSpec.accessModes -}}
-        {{- end -}}
-        {{- if ($claimSpec.capacity).storage -}}
-          {{- $capacity = $claimSpec.capacity.storage -}}
-        {{- end -}}
-        {{- if $claimSpec.storageClassName -}}
-          {{- $storageClassName = $claimSpec.storageClassName -}}
-        {{- end -}}
-        {{- toYaml $claimSpec | nindent 2 -}}
-      {{- else if $renderVolume }}
+        {{- toYaml $volumeData.spec | nindent 4 }}
+      {{- else if $render.volume }}
     volumeName: {{ $volumeObjectName | quote }}
     selector:
       matchLabels:
@@ -800,13 +778,12 @@ Render the PersistentVolume and PersistentVolumeClaim objects for a given volume
         {{- end }}
         {{- if $volumeData.volumeName }}
     volumeName: {{ $volumeData.volumeName | quote }}
-          {{- $storageClassName = "" -}}
-        {{- end }}
-    accessModes: {{- toYaml $accessModes | nindent 4 }}
-    resources: {{- toYaml $capacity | nindent 4 }}
-        {{- if $storageClassName }}
+    storageClassName: ""
+        {{- else if $storageClassName }}
     storageClassName: {{ $storageClassName | quote }}
         {{- end }}
+    accessModes: {{- toYaml $accessModes | nindent 6 }}
+    resources: {{- toYaml $capacity | nindent 6 }}
     volumeMode: {{ $volumeMode | quote }}
       {{- end }}
     {{- end -}}

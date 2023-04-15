@@ -6,8 +6,8 @@ exampleValue: common-chart
 
 global:
   persistence:
-    default:
-      storageClassName: "global-storage-class-name"
+    # default:
+    #   storageClassName: "global-storage-class-name"
     volumes:
       ark-common:
         claim-spec-A:
@@ -19,7 +19,7 @@ global:
             # you want rendered
 
         claim-str-A:
-          claim: "claim-str-A"
+          claim: "pvc-for-claim-str-A"
         claim-str-B:
           claim: "pvc://claim-str-B/1Gi"
         claim-str-C:
@@ -35,6 +35,7 @@ global:
         str-C: "pvc://str-C/4Gi"
         str-D: "pv://str-D/1Gi#RWM"
         str-E: "vol://str-E"
+        str-F: "pvc:pvc-for-str-F"
 
         vol-spec-A:
           volume:
