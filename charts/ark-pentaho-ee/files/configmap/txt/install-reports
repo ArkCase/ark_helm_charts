@@ -93,9 +93,9 @@ is_report_installed() {
 	local DEST="${1}"
 	local HASH="${2}"
 
-	local REPORTS_DB="${DATA_DIR}/.installedReports"
 
 	# Is it listed in the reports database file? (only consider the last entry)
+	[ -f "${REPORTS_DB}" ] || return 1
 	local EXISTING="$(egrep "^([0-9a-f]{64})=${DEST}$" "${REPORTS_DB}" | tail -1)" || return 1
 
 	# Does the record in the database file match our expected pattern?
@@ -114,7 +114,6 @@ is_report_installed() {
 mark_report_installed() {
 	local DEST="${1}"
 	local HASH="${2}"
-	local REPORTS_DB="${DATA_DIR}/.installedReports"
 	echo "${HASH}=${DEST}" >> "${REPORTS_DB}"
 }
 
@@ -211,6 +210,8 @@ list_reports() {
 
 [ -v PENTAHO_HOME ] || PENTAHO_HOME="${BASE_DIR}/pentaho"
 [ -v REPORT_INSTALLER ] || REPORT_INSTALLER="${PENTAHO_HOME}/pentaho-server/import-export.sh"
+
+REPORTS_DB="${DATA_DIR}/.installedReports"
 
 if ${DEBUG} || [ -x "${REPORT_INSTALLER}" ] ; then
 	#
