@@ -123,7 +123,7 @@ app.kubernetes.io/part: {{ $partname }}
 {{- define "arkcase.tools.normalizePath" -}}
   {{- $path := . -}}
   {{- if not (kindIs "string" $path) -}}
-    {{- fail "The parameter must be a string value (%s = %s)" (kindOf $path) ($path | toString) -}}
+    {{- fail (printf "The parameter must be a string value (%s = %s)" (kindOf $path) ($path | toString)) -}}
   {{- end -}}
   {{- $stack := list -}}
   {{- range $e := (splitList "/" $path | compact) -}}
