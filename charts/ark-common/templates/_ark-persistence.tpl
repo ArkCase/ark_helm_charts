@@ -706,12 +706,12 @@ Render the entries for volumes:, per configurations
           {{- end -}}
           {{- $hostPath = $volume.hostPath -}}
         {{- else -}}
+          {{- $hostPath = $volumeName -}}
           {{- $partname := (include "arkcase.part.name" $ctx) -}}
           {{- if $partname -}}
-            {{- $volumeName = (printf "%s-%s" $partname $volumeName) -}}
+            {{- $hostPath = (printf "%s-%s" $partname $hostPath) -}}
           {{- end -}}
-          {{- $hostPath = (printf "%s/%s" $subsystem $volumeName) -}}
-          {{- $hostPath = (printf "%s/%s/%s" $ctx.Release.Namespace $ctx.Release.Name $hostPath) -}}
+          {{- $hostPath = (printf "%s/%s/%s/%s" $ctx.Release.Namespace $ctx.Release.Name $subsystem $hostPath) -}}
         {{- end -}}
         {{- if not (isAbs $hostPath) -}}
           {{- $hostPath = printf "%s/%s" $settings.hostPathRoot $hostPath -}}
