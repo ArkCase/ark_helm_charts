@@ -12,11 +12,18 @@ global:
       ark-common:
         claim-spec-A:
           claim:
-            storageClassName: "claim-spec-A"
-            otherStuff: "more-settings-claim-spec-A"
-            # Add more properties here that would be
-            # part of the PersistentVolumeClaimSpec
-            # you want rendered
+            # The claim template must contain a spec: stanza, and may contain
+            # a metadata: stanza ... the name and namespace will be overridden,
+            # and a label will be added
+            metadata:
+              labels:
+                "some-other-label": "some-other-label-s-value"
+            spec:
+              storageClassName: "claim-spec-A"
+              otherStuff: "more-settings-claim-spec-A"
+              # Add more properties here that would be
+              # part of the PersistentVolumeClaimSpec
+              # you want rendered
 
         claim-str-A:
           claim: "pvc-for-claim-str-A"
