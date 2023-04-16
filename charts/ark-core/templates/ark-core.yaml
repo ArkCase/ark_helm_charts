@@ -293,11 +293,9 @@ spec:
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "conf") | nindent 4 }}
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "logs") | nindent 4 }}
 
-  {{- if (include "arkcase.persistence.enabled" .) }}
-    {{- include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "init") | nindent 0 }}
-    {{- include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "home") | nindent 0 }}
-    {{- include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "conf") | nindent 0 }}
-    {{- include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "logs") | nindent 0 }}
-  {{- end }}
+  {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "init") | nindent 0 }}
+  {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "home") | nindent 0 }}
+  {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "conf") | nindent 0 }}
+  {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "logs") | nindent 0 }}
 
 {{- end }}

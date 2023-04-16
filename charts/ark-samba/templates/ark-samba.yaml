@@ -195,14 +195,12 @@ spec:
       {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "step") | nindent 4 }}
     {{- end }}
 
-  {{- if (include "arkcase.persistence.enabled" .) }}
-    {{- include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "init") | nindent 0 }}
-    {{- include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "conf") | nindent 0 }}
-    {{- include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "data") | nindent 0 }}
-    {{- include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "logs") | nindent 0 }}
-    {{- if (include "arkcase.samba.step" .) }}
-      {{- include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "step") | nindent 0 }}
-    {{- end }}
+  {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "init") | nindent 0 }}
+  {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "conf") | nindent 0 }}
+  {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "data") | nindent 0 }}
+  {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "logs") | nindent 0 }}
+  {{- if (include "arkcase.samba.step" .) }}
+    {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "step") | nindent 0 }}
   {{- end }}
 
 {{- end }}

@@ -114,9 +114,7 @@ spec:
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "init") | nindent 4 }}
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "data") | nindent 4 }}
 
-  {{- if (include "arkcase.persistence.enabled" .) }}
-    {{- include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "init") | nindent 0 }}
-    {{- include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "data") | nindent 0 }}
-  {{- end }}
+  {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "init") | nindent 0 }}
+  {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "data") | nindent 0 }}
 
 {{- end }}

@@ -80,7 +80,7 @@ spec:
             {{- end }}
             - name: "logs"
               mountPath: "/var/log/apache2"
-            - name: "modules"
+            - name: "mods"
               mountPath: "/modules"
             - name: "conf"
               mountPath: "/conf"
@@ -111,7 +111,7 @@ spec:
           {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "www") | nindent 8 }}
         {{- end }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "logs") | nindent 8 }}
-        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "modules") | nindent 8 }}
+        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "mods") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "conf") | nindent 8 }}
         - name: "config-yaml"
           configMap:
@@ -157,16 +157,14 @@ spec:
       {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "www") | nindent 4 }}
     {{- end }}
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "logs") | nindent 4 }}
-    {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "modules") | nindent 4 }}
+    {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "mods") | nindent 4 }}
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "conf") | nindent 4 }}
 
-{{- if (include "arkcase.persistence.enabled" .) }}
-  {{- if (.Values.configuration).customDocumentRoot }}
-    {{- include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "www") | nindent 0 }}
-  {{- end }}
-  {{- include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "logs") | nindent 0 }}
-  {{- include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "modules") | nindent 0 }}
-  {{- include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" "conf") | nindent 0 }}
+{{- if (.Values.configuration).customDocumentRoot }}
+  {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "www") | nindent 0 }}
 {{- end }}
+{{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "logs") | nindent 0 }}
+{{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "mods") | nindent 0 }}
+{{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "conf") | nindent 0 }}
 
 {{- end }}
