@@ -364,7 +364,7 @@
       {{- fail (printf "The given relative path [%s] for volume '%s' overflows containment (too many '..' components)" .data $volumeName) -}}
     {{- end -}}
   {{- end -}}
-  {{- dict "render" (dict "volume" true "claim" true "mode" "hostPath") "hostPath" $data | toYaml -}}
+  {{- dict "render" (dict "volume" true "claim" true "mode" "hostPath") "hostPath" $data "undescribed" false | toYaml -}}
 {{- end -}}
 
 {{- define "arkcase.persistence.buildVolume.parseVolumeString.pv" -}}
@@ -483,6 +483,11 @@
   {{- $volume | toYaml -}}
 {{- end -}}
 
+{{- define "arkcase.persistence.buildVolume.renderUndescribed" -}}
+  {{- /* This is an undescribed volume */ -}}
+  {{- dict "render" (dict "volume" true "claim" true "mode" "hostPath" "undescribed" true) | toYaml -}}
+{{- end -}}
+
 {{- define "arkcase.persistence.buildVolume.parseVolumeString" -}}
   {{- /* Must be a pv:// or a path ... the empty string renders a default volume */ -}}
   {{- $data := .data -}}
@@ -497,15 +502,16 @@
       {{- $volume = (include "arkcase.persistence.buildVolume.parseVolumeString.path" . | fromYaml) -}}
     {{- end -}}
   {{- else -}}
-    {{- $volume = (dict "render" (dict "volume" true "claim" true "mode" "hostPath")) -}}
+    {{- $volume = (include "arkcase.persistence.buildVolume.renderUndescribed" . | fromYaml) -}}
   {{- end -}}
   {{- $volume | toYaml -}}
 {{- end -}}
 
-{{- define "arkcase.persistence.buildVolume.render" -}}
+{{- define "arkcase.persistence.buildVolume.renderForCache" -}}
   {{- $volumeName := .volumeName -}}
   {{- $data := .data -}}
   {{- $mustRender := .mustRender -}}
+
   {{- $volume := dict -}}
   {{- if kindIs "string" $data -}}
     {{- $volume = (include "arkcase.persistence.buildVolume.parseVolumeString" (dict "data" $data "volumeName" $volumeName) | fromYaml) -}}
@@ -513,12 +519,13 @@
     {{- /* May be a map that has "path", "claim", or "volume" ... but only one! */ -}}
     {{- $data = pick $data "path" "claim" "volume" -}}
     {{- if gt (len (keys $data)) 1 -}}
-      {{- fail (printf "The volume declaration for %s may only have one of the keys 'path', 'claim', or 'volume': %s" $volumeName (keys $data)) -}}
+      {{- fail (printf "The volume declaration for %s may only have one of the keys 'path', 'claim', or 'volume': keys = %s" $volumeName (keys $data)) -}}
     {{- end -}}
     {{- if $data.claim -}}
       {{- if kindIs "string" $data.claim -}}
         {{- $volume = (include "arkcase.persistence.buildVolume.parseVolumeString.pvc" (dict "data" $data.claim "volumeName" $volumeName) | fromYaml) -}}
       {{- else if kindIs "map" $data.claim -}}
+        {{- /* The map is a claim spec, so use it */ -}}
         {{- $volume = (dict "render" (dict "volume" false "claim" true) "spec" $data.claim) -}}
       {{- else -}}
         {{- fail (printf "The 'claim' value for the volume '%s' must be either a dict or a string (%s)" $volumeName (kindOf $data.claim)) -}}
@@ -538,11 +545,11 @@
       {{- if $data.path -}}
         {{- $volume = (include "arkcase.persistence.buildVolume.parseVolumeString.path" (dict "data" $data.path "volumeName" $volumeName) | fromYaml) -}}
       {{- else -}}
-        {{- $volume = (dict "render" (dict "volume" true "claim" true "mode" "hostPath")) -}}
+        {{- $volume = (include "arkcase.persistence.buildVolume.renderUndescribed" . | fromYaml) -}}
       {{- end -}}
     {{- end -}}
   {{- else if (kindIs "invalid" $data) -}}
-    {{- $volume = (dict "render" (dict "volume" true "claim" true "mode" "hostPath")) -}}
+    {{- $volume = (include "arkcase.persistence.buildVolume.renderUndescribed" . | fromYaml) -}}
   {{- else -}}
     {{- fail (printf "The volume declaration for %s must be either a string or a map (%s)" $volumeName (kindOf $data)) -}}
   {{- end -}}
@@ -559,9 +566,11 @@ Parse a volume declaration and return a map that contains the following (possibl
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "The 'ctx' parameter must be the root context (. or $)" -}}
   {{- end -}}
+
   {{- if not (hasKey . "name") -}}
     {{- fail "Must provide the 'name' parameter for the volume to be built" -}}
   {{- end -}}
+
   {{- /* The volume's name will be of the form "[${part}-]$name" ($part is optional) */ -}}
   {{- $name := .name -}}
   {{- $globalName := (printf "%s-%s" $ctx.Chart.Name $name) -}}
@@ -585,16 +594,13 @@ Parse a volume declaration and return a map that contains the following (possibl
   {{- if hasKey $globalPersistenceVolumes $ctx.Chart.Name -}}
     {{- $globalVolumes := get $globalPersistenceVolumes $ctx.Chart.Name -}}
     {{- if and $globalVolumes (kindIs "map" $globalVolumes) (hasKey $globalVolumes $name) -}}
-      {{- $result = (include "arkcase.persistence.buildVolume.render" (dict "volumeName" $volumeName "data" (get $globalVolumes $name) "mustRender" true) | fromYaml) -}}
+      {{- /* The global declaration clobbers the local one */ -}}
+      {{- $data = (get $globalVolumes $name) -}}
+      {{- $mustRender = true -}}
     {{- end -}}
   {{- end -}}
 
-  {{- /* If we didn't get an override from the global data, we use the local data */ -}}
-  {{- if not $result -}}
-    {{- $result = (include "arkcase.persistence.buildVolume.render" (dict "volumeName" $volumeName "data" $data "mustRender" $mustRender) | fromYaml) -}}
-  {{- end -}}
-
-  {{- $result | toYaml -}}
+  {{- include "arkcase.persistence.buildVolume.renderForCache" (dict "volumeName" $volumeName "data" $data "mustRender" $mustRender) -}}
 {{- end -}}
 
 {{- define "arkcase.persistence.buildVolume" -}}
