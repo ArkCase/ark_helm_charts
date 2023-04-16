@@ -769,7 +769,10 @@ Render the entries for volumeClaimTemplates:, per configurations
       {{- if $renderVolume -}}
         {{- /* Render a template using the default settings */ -}}
         {{- $requests := dict "requests" (dict "storage" $settings.capacity) -}}
-        {{- $spec := dict "accessModes" $settings.accessModes "storageClassName" $settings.storageClassName "resources" $requests "volumeMode" $settings.volumeMode -}}
+        {{- $spec := dict "accessModes" $settings.accessModes "resources" $requests "volumeMode" $settings.volumeMode -}}
+        {{- if $settings.storageClassName -}}
+          {{- $spec = set $spec "storageClassName" $settings.storageClassName -}}
+        {{- end -}}
         {{- $decl = dict "metadata" $metadata "spec" $spec -}}
       {{- end -}}
     {{- else if hasKey $volume "volumeName" -}}
