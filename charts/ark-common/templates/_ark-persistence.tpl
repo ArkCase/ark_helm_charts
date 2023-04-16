@@ -803,7 +803,7 @@ Render the entries for volumeClaimTemplates:, per configurations
           {{- $metadata = set $metadata "labels" (mergeOverwrite $specLabels $labels) -}}
         {{- end -}}
         {{- if or (not (hasKey $spec "spec")) (not (kindIs "map" $spec.spec)) -}}
-          {{- fail (printf "The volume description must contain a spec: stanz (volume %s, chart %s)" $volumeName $ctx.Chart.Name) -}}
+          {{- fail (printf "The volume description must contain a spec: stanza (volume %s, chart %s)" $volumeName $ctx.Chart.Name) -}}
         {{- end -}}
         {{- $decl = dict "metadata" $metadata "spec" $spec.spec -}}
       {{- else -}}
