@@ -11,14 +11,17 @@ KEY|CLAIM|VOLUME|MODE
 {{- end }}
 
 ########################################
+
+SETTINGS: {{- include "arkcase.persistence.settings" $ | nindent 2 }}
+
+########################################
 {{- range (append (keys $m | sortAlpha) "undeclared") }}
 
 {{ . }}:
   rawData: {{- include "arkcase.persistence.buildVolume" (dict "ctx" $ "name" .) | nindent 4 }}
-  volumes:{{- include "arkcase.persistence.volume" (dict "ctx" $ "name" .) | nindent 4 }}
-  volumeClaimTemplates:
-    {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" .) | nindent 4 }}
-  declaredObjects: {{- include "arkcase.persistence.declareObjects" (dict "ctx" $ "name" .) | nindent 4 }}
+  volumes: {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" .) | nindent 4 }}
+  volumeClaimTemplates: {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" .) | nindent 4 }}
+  declaredObjects: {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" .) | nindent 4 }}
 
 ########################################
 {{- end }}
