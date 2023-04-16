@@ -791,7 +791,21 @@ Render the entries for volumeClaimTemplates:, per configurations
       {{- else if hasKey $volume "spec" -}}
         {{- /* The claim template is fully described */ -}}
         {{- $renderVolume = true -}}
-        {{- $decl = dict "metadata" $metadata "spec" $volume.spec -}}
+        {{- $spec := $volume.spec -}}
+        {{- if and (hasKey $spec "metadata") (kindIs "map" $spec.metadata) -}}
+          {{- /* We need to merge the metadata set, and preserve the name, namespace, and one label */ -}}
+          {{- $specMD := (omit $spec.metadata "name" "namespace") -}}
+          {{- $metadata = merge (omit $spec.metadata "name" "namespace") $metadata -}}
+          {{- $specLabels := $metadata.labels -}}
+          {{- if not (kindIs "map" $specLabels) -}}
+            {{- $specLabels = dict -}}
+          {{- end -}}
+          {{- $metadata = set $metadata "labels" (mergeOverwrite $specLabels $labels) -}}
+        {{- end -}}
+        {{- if or (not (hasKey $spec "spec")) (not (kindIs "map" $spec.spec)) -}}
+          {{- fail (printf "The volume description must contain a spec: stanz (volume %s, chart %s)" $volumeName $ctx.Chart.Name) -}}
+        {{- end -}}
+        {{- $decl = dict "metadata" $metadata "spec" $spec.spec -}}
       {{- else -}}
         {{- /* We were given some of the settings */ -}}
         {{- $renderVolume = true -}}
