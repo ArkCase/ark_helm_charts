@@ -745,7 +745,7 @@ Render the PersistentVolume and PersistentVolumeClaim objects for a given volume
 
     {{- /* The claim template only gets rendered if persistence is enabled, and we're either in */ -}}
     {{- /* production mode, or this isn't a hostPath volume. */ -}}
-    {{- if and $settings.enabled (or (eq $settings.mode "production") (ne $render.mode "hostPath")) -}}
+    {{- if and $settings.enabled $render.claim (or (eq $settings.mode "production") (ne $render.mode "hostPath")) -}}
 - metadata:
     name: {{ $volumeName | quote }}
     labels:
