@@ -227,7 +227,9 @@ Render the image's pull policy
 */ -}}
 {{- define "arkcase.image.pullPolicy" -}}
   {{- $imageInfo := (include "arkcase.image.info" . | fromYaml) -}}
-  {{- $imageInfo.pullPolicy -}}
+  {{- if $imageInfo.pullPolicy -}}
+imagePullPolicy: {{ $imageInfo.pullPolicy }}
+  {{- end -}}
 {{- end -}}
 
 {{- /*
@@ -235,5 +237,7 @@ Render the pull secret
 */ -}}
 {{- define "arkcase.image.pullSecrets" -}}
   {{- $imageInfo := (include "arkcase.image.info" . | fromYaml) -}}
-  {{- $imageInfo.pullSecrets | toYaml -}}
+  {{- if $imageInfo.pullSecrets -}}
+imagePullSecrets: {{ $imageInfo.pullSecrets | toYaml | nindent 0 }}
+  {{- end -}}
 {{- end -}}
