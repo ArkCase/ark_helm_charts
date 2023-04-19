@@ -30,31 +30,32 @@
     {{-
       $candidates = concat $candidates (
         list
-          (printf "global.%s" $value)
-          (printf "global.%s.%s" $value $edition)
+          (printf "global.image.%s" $value)
+          (printf "global.image.%s.%s" $value $edition)
       )
     -}}
   {{- end -}}
 
   {{-
-    $detailed := list
+    $detailed := compact (
+      list
         $value
         (printf "%s.%s" $value $edition)
         (and $image (ne $value "pullSecrets") | ternary (printf "%s.%s" $image $value) "")
         (printf "%s.%s" $edition $value)
         (and $image (ne $value "pullSecrets") | ternary (printf "%s.%s.%s" $edition $image $value) "")
+    )
   -}}
 
   {{- /* Render the global candidate values */ -}}
-  {{- $globalPrefix := (printf "global.%s" $chart) -}}
+  {{- $globalPrefix := (printf "global.%s.image" $chart) -}}
   {{- range $d := $detailed -}}
-    {{- if $d -}}
-      {{- $candidates = append $candidates (printf "%s.%s" $globalPrefix $d) -}}
-    {{- end -}}
+    {{- $candidates = append $candidates (printf "%s.%s" $globalPrefix $d) -}}
   {{- end -}}
 
   {{- /* The local values go in exact reverse order to the global */ -}}
   {{- $localPrefix := "local" -}}
+  {{- $candidates = list -}}
   {{- range $d := (reverse $detailed) -}}
     {{- if $d -}}
       {{- $candidates = append $candidates (printf "%s.%s" $localPrefix $d) -}}
@@ -75,6 +76,7 @@
       {{- end -}}
     {{- end -}}
   {{- end -}}
+
   {{- dict "value" $v "position" $p | toYaml -}}
 {{- end -}}
 
@@ -100,9 +102,7 @@ community) in order to choose the correct image.
 
   {{- /* First things first: do we have any global overrides? */ -}}
   {{- $global := $ctx.Values.global -}}
-  {{- if and $global (hasKey $global "image") $global.image (kindIs "map" $global.image) -}}
-    {{- $global = $global.image -}}
-  {{- else -}}
+  {{- if or (not $global) (not (kindIs "map" $global)) -}}
     {{- $global = dict -}}
   {{- end -}}
 
