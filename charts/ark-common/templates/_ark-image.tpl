@@ -90,6 +90,8 @@ community) in order to choose the correct image.
   {{- end -}}
 
   {{- $name := .name -}}
+  {{- $repository := .repository -}}
+  {{- $tag := .tag -}}
 
   {{- if not (hasKey . "enterprise") -}}
     {{- fail "The enterprise flag must be set" -}}
@@ -131,18 +133,31 @@ community) in order to choose the correct image.
         {{- if (kindIs "string" $v) -}}
           {{- $v = splitList "," $v -}}
         {{- end -}}
-        {{- if not (kindIs "slice" $v) -}}
-          {{- fail (printf "Invalid pull secret list at %s - must be a string or a list" $r.position) -}}
-        {{- end -}}
-        {{- /* remove empty strings */ -}}
-        {{- $v = compact $v -}}
+        {{- $d := dict -}}
+        {{- $f := list -}}
         {{- range $v -}}
-          {{- /* Made sure sure it's a valid pull secret name */ -}}
-          {{- if not (include "arkcase.tools.hostnamePart" .) -}}
-            {{- fail (printf "Invalid pull secret name [%s] - must be a valid RFC-1123 hostname part (from %s)" . $r.position) -}}
+          {{- /* Each element is either a string, or a map for whom only the "name:" key will be consumed */ -}}
+          {{- /* if it's anything else, this is an error */ -}}
+          {{- $s := "" -}}
+          {{- if and (kindIs "string" .) . -}}
+            {{- $s = . -}}
+          {{- else if and (kindIs "map" .) .name -}}
+            {{- $s = (.name | toString) -}}
+          {{- else -}}
+            {{- fail (printf "Invalid pull secret type %s - must be a valid RFC-1123 hostname part (from %s)" (kindOf .) $r.position) -}}
+          {{- end -}}
+
+          {{- /* Deduplicate */ -}}
+          {{- if and $s (not (hasKey $d $s)) -}}
+            {{- /* Made sure sure it's a valid pull secret name */ -}}
+            {{- if not (include "arkcase.tools.hostnamePart" $s) -}}
+              {{- fail (printf "Invalid pull secret name [%s] - must be a valid RFC-1123 hostname part (from %s)" $s $r.position) -}}
+            {{- end -}}
+            {{- $d = set $d $s $s -}}
+            {{- $f = append $f (dict "name" $s) -}}
           {{- end -}}
         {{- end -}}
-        {{- $r = $v -}}
+        {{- $r = $f -}}
       {{- else -}}
         {{- $r = $r.value -}}
       {{- end -}}
@@ -151,15 +166,24 @@ community) in order to choose the correct image.
   {{- end -}}
 
   {{- /* Make sure we have a repository for the image */ -}}
-  {{- if not $result.repository -}}
+  {{- $finalRepository := $result.repository -}}
+  {{- if not $finalRepository -}}
+    {{- $finalRepository = $repository -}}
+  {{- end -}}
+  {{- if not $finalRepository -}}
     {{- fail (printf "Failed to find a repository value for image [%s], chart [%s] (%s)" $name $chart $edition) -}}
   {{- end -}}
-  {{- $result = set $result "image" $result.repository -}}
+  {{- $result = set $result "image" $finalRepository -}}
 
   {{- /* Append the tag, if necessary */ -}}
-  {{- if $result.tag -}}
-    {{- $result = set $result "image" (printf "%s:%s" $result.image $result.tag) -}}
+  {{- $finalTag := $result.tag -}}
+  {{- if not $finalTag -}}
+    {{- $finalTag = $tag -}}
   {{- end -}}
+  {{- if $finalTag -}}
+    {{- $result = set $result "image" (printf "%s:%s" $result.image $finalTag) -}}
+  {{- end -}}
+
   {{- /* Append the registry, if necessary */ -}}
   {{- if $result.registry -}}
     {{- $result = set $result "image" (printf "%s/%s" $result.registry $result.image) -}}
@@ -173,6 +197,8 @@ Fetch and compute if necessary the image information for the named image
 {{- define "arkcase.image.info" -}}
   {{- $ctx := . -}}
   {{- $name := "" -}}
+  {{- $repository := "" -}}
+  {{- $tag := "" -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- $ctx = .ctx -}}
     {{- if not (include "arkcase.isRootContext" $ctx) -}}
@@ -183,6 +209,8 @@ Fetch and compute if necessary the image information for the named image
     {{- if not $name -}}
       {{- fail "The given 'name' parameter must be present and not be the empty string" -}}
     {{- end -}}
+    {{- $repository = .repository -}}
+    {{- $tag = .tag -}}
   {{- end -}}
 
   {{- if not $name -}}
@@ -190,7 +218,7 @@ Fetch and compute if necessary the image information for the named image
     {{- $name = default (include "arkcase.part.name" $ctx) "" -}}
   {{- end -}}
 
-  {{- $mode := (include "arkcase.deployment.mode" $ctx | fromYaml) -}}
+  {{- $enterprise := (not (empty (include "arkcase.enterprise" $ctx))) -}}
 
   {{- $cacheKey := "ContainerImages" -}}
   {{- $masterCache := dict -}}
@@ -206,7 +234,7 @@ Fetch and compute if necessary the image information for the named image
   {{- $imageName := (printf "%s-%s-%s" (include "common.fullname" $ctx) $name) -}}
   {{- $yamlResult := "" -}}
   {{- if not (hasKey $masterCache $imageName) -}}
-    {{- $yamlResult = include "arkcase.image.info.cached" (set (pick . "ctx" "name") "enterprise" $mode.enterprise) -}}
+    {{- $yamlResult = include "arkcase.image.info.cached" (dict "ctx" $ctx "name" $name "enterprise" $enterprise "repository" $repository "tag" $tag) -}}
     {{- $masterCache = set $masterCache $imageName ($yamlResult | fromYaml) -}}
   {{- else -}}
     {{- $yamlResult = get $masterCache $imageName | toYaml -}}
@@ -238,6 +266,6 @@ Render the pull secret
 {{- define "arkcase.image.pullSecrets" -}}
   {{- $imageInfo := (include "arkcase.image.info" . | fromYaml) -}}
   {{- if $imageInfo.pullSecrets -}}
-imagePullSecrets: {{ $imageInfo.pullSecrets | toYaml | nindent 0 }}
+imagePullSecrets: {{- $imageInfo.pullSecrets | toYaml | nindent 2 }}
   {{- end -}}
 {{- end -}}

@@ -303,7 +303,8 @@ that checks the boot order (remember to |bool the outcome!)
     {{- $yaml := (include "arkcase.initDatabase.cached" $ctx | fromYaml) -}}
     {{- if $yaml -}}
 - name: {{ $containerName | quote }}
-  image: {{ include "arkcase.tools.subimage" (dict "ctx" $ctx "name" "dbinit" "image" "arkcase/dbinit") | quote }}
+  image: {{ include "arkcase.image" (dict "ctx" $ctx "name" "dbinit" "repository" "arkcase/dbinit") | quote }}
+  {{- include "arkcase.image.pullPolicy" (dict "ctx" $ctx "name" "dbinit") | nindent 2 }}
   env: {{- include "arkcase.tools.baseEnv" $ctx | nindent 4 }}
     - name: INIT_DB_TYPE
       value: {{ $dbType | quote }}

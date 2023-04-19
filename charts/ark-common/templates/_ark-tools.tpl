@@ -723,8 +723,6 @@ return either the value if correct, or the empty string if not.
   {{- $value := "development" -}}
   {{- $valueSet := false -}}
 
-  {{- /* For now, default to the community edition */ -}}
-  {{- $enterprise := false -}}
   {{- if $global -}}
     {{- /* Get the explicitly set value, if any */ -}}
     {{- if and (hasKey $global "mode") $global.mode -}}
@@ -738,9 +736,33 @@ return either the value if correct, or the empty string if not.
         {{- fail (printf "Unknown deployment mode [%s] (.Values.global.mode) - must be either 'development' (or 'develop', or 'devel' or 'dev') or 'production' (or 'prod')" $m) -}}
       {{- end -}}
     {{- end -}}
-    {{- if (hasKey $global "enterprise") -}}
-      {{- $enterprise = (eq "true" ($global.enterprise | toString | trim | lower)) -}}
-    {{- end -}}
   {{- end -}}
-  {{- dict "value" $value "set" $valueSet "enterprise" $enterprise | toYaml -}}
+  {{- dict "value" $value "set" $valueSet | toYaml -}}
+{{- end -}}
+
+{{- define "arkcase.enterprise" -}}
+  {{- $ctx := . -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "The parameter must be the root context (. or $)" -}}
+  {{- end -}}
+
+  {{- /* For now, default to the community edition */ -}}
+  {{- $enterprise := false -}}
+
+  {{- $local := $ctx.Values -}}
+  {{- $localSet := hasKey $local "enterprise" -}}
+  {{- $global := ($ctx.Values.global | default dict) -}}
+  {{- $globalSet := hasKey $global "enterprise" -}}
+
+  {{- if $localSet -}}
+    {{- $enterprise = $local.enterprise -}}
+  {{- else if $globalSet -}}
+    {{- $enterprise = $global.enterprise -}}
+  {{- end -}}
+
+  {{- /* Sanitize to a boolean value */ -}}
+  {{- $enterprise = (kindIs "bool" $enterprise) | ternary $enterprise (eq "true" ($enterprise | toString | lower)) -}}
+
+  {{- /* Output the result */ -}}
+  {{- $enterprise | ternary $enterprise "" -}}
 {{- end -}}
