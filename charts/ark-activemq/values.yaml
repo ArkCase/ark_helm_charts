@@ -26,6 +26,9 @@ replicaCount: 1
 
 platform: ""
 image:
+  pullSecrets:
+    - name: aws-arkcase-pull
+
   registry: "207428623785.dkr.ecr.us-east-1.amazonaws.com"
   repository: "arkcase/activemq"
   # Overrides the image tag whose default is the chart appVersion.
@@ -36,9 +39,6 @@ image:
   #   repository: "alternate-image"
   #   tag: "alternate-tag"
   pullPolicy: IfNotPresent
-
-imagePullSecrets:
-  - name: aws-arkcase-pull
 
 # You generally shouldn't mess with these. These exist to support some name-generation templates
 nameOverride: ""

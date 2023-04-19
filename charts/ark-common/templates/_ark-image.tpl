@@ -40,9 +40,9 @@
     $detailed := list
         $value
         (printf "%s.%s" $value $edition)
-        (and $image (ne $value "pullSecret") | ternary (printf "%s.%s" $image $value) "")
+        (and $image (ne $value "pullSecrets") | ternary (printf "%s.%s" $image $value) "")
         (printf "%s.%s" $edition $value)
-        (and $image (ne $value "pullSecret") | ternary (printf "%s.%s.%s" $edition $image $value) "")
+        (and $image (ne $value "pullSecrets") | ternary (printf "%s.%s.%s" $edition $image $value) "")
   -}}
 
   {{- /* Render the global candidate values */ -}}
@@ -63,17 +63,19 @@
 
   {{- /* Now compute the values */ -}}
   {{- $v := "" -}}
+  {{- $p := "" -}}
   {{- range $c := $candidates -}}
     {{- /* First non-blank wins! If the value is set to non-blank, */ -}}
     {{- /* or the candidate is blank, we skip this iteration */ -}}
-    {{- if (not $v) -}}
+    {{- if (not $p) -}}
       {{- $r := (include "arkcase.tools.get" (dict "ctx" $data "name" $c) | fromYaml) -}}
-      {{- if and $r $r.value (kindIs "string" $r.value) -}}
+      {{- if and $r $r.value (not (kindIs "map" $r.value)) -}}
         {{- $v = $r.value -}}
+        {{- $p = $c -}}
       {{- end -}}
     {{- end -}}
   {{- end -}}
-  {{- $v -}}
+  {{- dict "value" $v "position" $p | toYaml -}}
 {{- end -}}
 
 {{- /*
@@ -114,15 +116,35 @@ community) in order to choose the correct image.
   {{- $chart := $ctx.Chart.Name -}}
   {{- $data := dict "local" $local "global" $global -}}
   {{- $result := dict -}}
-  {{- range $value := list "pullPolicy" "pullSecret" "repository" "registry" "tag" -}}
-    {{- $r := (include "arkcase.image.info.getValue" (dict "chart" $chart "image" $name "edition" $edition "value" $value "data" $data)) -}}
-    {{- if $r -}}
+  {{- range $value := list "pullPolicy" "pullSecrets" "repository" "registry" "tag" -}}
+    {{- $r := (include "arkcase.image.info.getValue" (dict "chart" $chart "image" $name "edition" $edition "value" $value "data" $data) | fromYaml) -}}
+    {{- if and $r $r.value -}}
       {{- if eq $value "pullPolicy" -}}
         {{- /* Make sure it's a valid pull policy value */ -}}
-        {{- $r = (include "arkcase.image.info.parsePullPolicy" $r) -}}
-      {{- else if and (eq $value "pullSecret") (not (include "arkcase.tools.hostnamePart" $r)) -}}
-        {{- /* Made sure sure it's a valid pull secret name */ -}}
-        {{- fail (printf "Invalid pull secret name [%s] - must be a valid RFC-1123 hostname part" $r) -}}
+        {{- if not (kindIs "string" $r.value) -}}
+          {{- fail (printf "The pull policy value must be a string (%s) - at %s" (kindOf $r.value) $r.position) -}}
+        {{- end -}}
+        {{- $r = (include "arkcase.image.info.parsePullPolicy" $r.value) -}}
+      {{- else if and (eq $value "pullSecrets") -}}
+        {{- /* We support a single string, a CSV string, or a list ... the string gets converted to a list */ -}}
+        {{- $v := $r.value -}}
+        {{- if (kindIs "string" $v) -}}
+          {{- $v = splitList "," $v -}}
+        {{- end -}}
+        {{- if not (kindIs "slice" $v) -}}
+          {{- fail (printf "Invalid pull secret list at %s - must be a string or a list" $r.position) -}}
+        {{- end -}}
+        {{- /* remove empty strings */ -}}
+        {{- $v = compact $v -}}
+        {{- range $v -}}
+          {{- /* Made sure sure it's a valid pull secret name */ -}}
+          {{- if not (include "arkcase.tools.hostnamePart" .) -}}
+            {{- fail (printf "Invalid pull secret name [%s] - must be a valid RFC-1123 hostname part (from %s)" . $r.position) -}}
+          {{- end -}}
+        {{- end -}}
+        {{- $r = $v -}}
+      {{- else -}}
+        {{- $r = $r.value -}}
       {{- end -}}
       {{- $result = set $result $value $r -}}
     {{- end -}}
@@ -211,7 +233,7 @@ Render the image's pull policy
 {{- /*
 Render the pull secret
 */ -}}
-{{- define "arkcase.image.pullSecret" -}}
+{{- define "arkcase.image.pullSecrets" -}}
   {{- $imageInfo := (include "arkcase.image.info" . | fromYaml) -}}
-  {{- $imageInfo.pullSecret -}}
+  {{- $imageInfo.pullSecrets -}}
 {{- end -}}
