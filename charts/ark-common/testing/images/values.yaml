@@ -1,0 +1,47 @@
+## bitnami/common
+## It is required by CI/CD tools and processes.
+## @skip exampleValue
+##
+exampleValue: common-chart
+
+global:
+
+  enterprise: true
+
+  image:
+    registry:
+      community: "global-community-registry"
+      enterprise: "global-enterprise-registry"
+
+    # pullPolicy: "IfNotPresent"
+
+    pullSecret:
+      community: "global-pull-secret"
+      enterprise: "global-pull-secret"
+
+    ark-common:
+      bravo:
+        # repository: "global-bravo-repository"
+
+image:
+  pullSecret: "local-pull-secret"
+
+  pullPolicy:
+    community: "IfNotPresent"
+    enterprise: "Always"
+
+  registry: "local-registry"
+
+  enterprise:
+    alpha:
+      repository: "local-alpha-enterprise-repository"
+
+    bravo:
+      pullPolicy: "Never"
+      repository: "local-bravo-enterprise-repository"
+
+  alpha:
+    tag: "local-alpha-tag"
+
+  bravo:
+    registry: "local-bravo-registry"
