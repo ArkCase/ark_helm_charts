@@ -235,5 +235,5 @@ Render the pull secret
 */ -}}
 {{- define "arkcase.image.pullSecrets" -}}
   {{- $imageInfo := (include "arkcase.image.info" . | fromYaml) -}}
-  {{- $imageInfo.pullSecrets -}}
+  {{- $imageInfo.pullSecrets | toYaml -}}
 {{- end -}}
