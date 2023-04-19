@@ -39,25 +39,23 @@
   {{- $pending := deepCopy $attributes -}}
   {{- $result := dict -}}
 
-  {{- if $image -}}
+  {{- /* First, search on the maps that have the image's name
+  {{- range $s := $search -}}
+    {{- /* Small optimization - don't search if there's nothing missing */ -}}
+    {{- if $pending -}}
+      {{- $r := (include "arkcase.tools.get" (dict "ctx" $data "name" $s) | fromYaml) -}}
+      {{- if and $r.value (kindIs "map" $r.value) -}}
+        {{- /* Find the remaining attributes */ -}}
+        {{- range $key := (keys $pending) -}}
+          {{- if and (not (hasKey $result $key)) (hasKey $r.value $key) -}}
+            {{- $value := get $r.value $key -}}
 
-    {{- range $s := $search -}}
-      {{- /* Small optimization - don't search if there's nothing missing */ -}}
-      {{- if $pending -}}
-        {{- $r := (include "arkcase.tools.get" (dict "ctx" $data "name" $s) | fromYaml) -}}
-        {{- if and $r.value (kindIs "map" $r.value) -}}
-          {{- /* Find the remaining attributes */ -}}
-          {{- range $key := (keys $pending) -}}
-            {{- if and (not (hasKey $result $key)) (hasKey $r.value $key) -}}
-              {{- $value := get $r.value $key -}}
-  
-              {{- /* We only take into account strings */ -}}
-              {{- if and $value (kindIs "string" $value) -}}
-                {{- $result = set $result $key $value -}}
-  
-                {{- /* Mark the found attribute as ... well ... found! */ -}}
-                {{- $pending = omit $pending $key -}}
-              {{- end -}}
+            {{- /* We only take into account strings */ -}}
+            {{- if and $value (kindIs "string" $value) -}}
+              {{- $result = set $result $key $value -}}
+
+              {{- /* Mark the found attribute as ... well ... found! */ -}}
+              {{- $pending = omit $pending $key -}}
             {{- end -}}
           {{- end -}}
         {{- end -}}
