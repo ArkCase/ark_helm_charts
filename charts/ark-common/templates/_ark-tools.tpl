@@ -188,6 +188,22 @@ result: either "" or "true"
 {{- end -}}
 
 {{- /*
+Outputs "true" if the given parameter is a hostname part that matches an RFC-1123. If the string submitted is not an RFC-1123 hostname part, nothing will be output.
+
+usage: ( include "arkcase.tools.hostnamePart" "some-hostname-part-to-check" )
+result: either "" or the value
+*/ -}}
+{{- define "arkcase.tools.hostnamePart" -}}
+  {{- $part := (default "" .) -}}
+  {{- if not (kindIs "string" $part) -}}
+    {{- $part = (toString $part) -}}
+  {{- end -}}
+  {{- if (regexMatch "^([a-z0-9][-a-z0-9]*)?[a-z0-9]$" (lower $part)) -}}
+    {{- $part -}}
+  {{- end -}}
+{{- end -}}
+
+{{- /*
 Outputs "true" if the given parameter is a string that matches an RFC-1123 host or domain name. If the string submitted is not an RFC-1123 host or domain name, the empty string will be output.
 
 usage: ( include "arkcase.tools.checkHostname" "some.hostname.to.check" )
@@ -437,26 +453,27 @@ usage: ( include "arkcase.tools.get" (dict "ctx" $ "name" "some.name.to.find" "r
   {{- $name = (regexReplaceAll "[.]+" $name ".") -}}
   {{- /* Remove leading and trailing dots */ -}}
   {{- $name = (regexReplaceAll "^[.]?(.*?)[.]?$" $name "${1}") -}}
-  {{- if or (eq "." $name) (empty $name) -}}
+  {{- if or (eq "." $name) (not $name) -}}
     {{- fail (printf "The string [%s] is not allowed as the name to search for (resolves as [%s])" $origName $name) -}}
   {{- end -}}
 
-  {{- $test := (and (hasKey . "test") (get . "test")) -}}
+  {{- $test := (and (hasKey . "test") (eq "true" (.test | toString | trim | lower))) -}}
+  {{- $yaml := (and (hasKey . "yaml") (eq "true" (.yaml | toString | trim | lower))) -}}
 
-  {{- $currentMap := $ctx -}}
+  {{- $current := $ctx -}}
   {{- $currentKey := list -}}
   {{- $parts := (splitList "." $name) -}}
   {{- $failed := "" -}}
   {{- range $parts -}}
     {{- if not $failed -}}
-      {{- if not (hasKey $currentMap .) -}}
-        {{- $failed = (printf "Failed to find the name [%s] - got as far as [%s], which is a %s" $name ($currentKey | join ".") (kindOf $currentMap)) -}}
+      {{- if not (hasKey $current .) -}}
+        {{- $failed = (printf "Failed to find the name [%s] - got as far as [%s], which is a %s" $name ($currentKey | join ".") (kindOf $current)) -}}
       {{- else -}}
-        {{- $next := get $currentMap . -}}
+        {{- $next := get $current . -}}
         {{- if or (kindIs "map" $next) (eq (len $currentKey) (sub (len $parts) 1)) -}}
           {{- /* If this is the last element, then it's OK for it to not be a map */ -}}
           {{- $currentKey = (append $currentKey .) -}}
-          {{- $currentMap = $next -}}
+          {{- $current = $next -}}
         {{- else -}}
           {{- $currentKey = (append $currentKey .) -}}
           {{- $failed = (printf "Failed to resolve the name [%s] - got as far as [%s], which is a %s" $name ($currentKey | join ".") (kindOf $next)) -}}
@@ -466,27 +483,27 @@ usage: ( include "arkcase.tools.get" (dict "ctx" $ "name" "some.name.to.find" "r
   {{- end -}}
 
   {{- /* Collect the return value */ -}}
-  {{- $value := $currentMap -}}
-  {{- if $test -}}
-    {{- $value = "true" -}}
-  {{- end -}}
+  {{- $value := ($test | ternary true $current) -}}
   {{- if $failed -}}
     {{- if (.required) -}}
       {{- fail $failed -}}
-    {{- else -}}
-      {{- $value = "" -}}
     {{- end -}}
-  {{- else -}}
-    {{- if not $test -}}
-      {{- /* If the value is a scalar, then just spit it out, otherwise toYaml it for consumption on the other end */ -}}
-      {{- $kind := (kindOf $value) -}}
-      {{- if not (or (eq "string" $kind) (eq "bool" $kind) (eq "int" $kind) (eq "float64" $kind)) -}}
-        {{- $value = ($value | toYaml | nindent 0) -}}
-      {{- end -}}
-    {{- end -}}
+    {{- $value = "" -}}
   {{- end -}}
 
   {{- /* Output the return value */ -}}
+  {{- if $yaml -}}
+    {{- /* If we've been asked to return the value as YAML, we only encode it */ -}}
+    {{- /* as YAML if it's a structure. Otherwise, we output it verbatim */ -}}
+    {{- $kind := kindOf $value -}}
+    {{- if or (eq $kind "slice") (eq $kind "map") -}}
+      {{- $value = $value | toYaml -}}
+    {{- end -}}
+  {{- else -}}
+    {{- /* If we don't want to encode the value directly, we wrap it in a map */ -}}
+    {{- /* and encode it all as YAML so it can be decoded using fromYaml */ -}}
+    {{- $value = dict "value" $value | toYaml -}}
+  {{- end -}}
   {{- $value -}}
 {{- end -}}
 
@@ -496,13 +513,15 @@ Check for the existence of a mapped value in dot-separated notation, returning "
 Parameter: a dict with two keys:
              - ctx = the root context (either "." or "$")
              - name = a string with the dot-separated name/path of the value to fetch
+             - test = a string with the dot-separated name/path of the value to fetch
 
 usage: ( include "arkcase.tools.check" (dict "ctx" $ "name" "some.name.to.find") )
 */ -}}
 {{- define "arkcase.tools.check" -}}
-  {{- $crap := unset . "required" -}}
-  {{- $crap = set . "test" "true" -}}
-  {{- include "arkcase.tools.get" . -}}
+  {{- $result := (include "arkcase.tools.get" (set (omit . "required") "test" "true") | fromYaml) -}}
+  {{- if $result.value -}}
+    {{- true -}}
+  {{- end -}}
 {{- end -}}
 
 {{- /*
@@ -543,149 +562,6 @@ Create the environment variables to facilitate detecting the Pod's IP, name, nam
   valueFrom:
     fieldRef:
       fieldPath: status.hostIP
-{{- end -}}
-
-{{- /*
-Render the image name taking into account the registry, repository, image name, and tag.
-*/ -}}
-{{- define "arkcase.tools.image" -}}
-  {{- $ctx := . -}}
-  {{- $registryName := "" -}}
-  {{- $repositoryName := "" -}}
-  {{- $tag := "" -}}
-  {{- $explicit := false -}}
-  {{- if not (include "arkcase.isRootContext" .) -}}
-    {{- $ctx = .ctx -}}
-    {{- if not (include "arkcase.isRootContext" $ctx) -}}
-      {{- fail "The given 'ctx' parameter is not the root context" -}}
-    {{- end -}}
-    {{- $registryName = .registry -}}
-    {{- $repositoryName = .repository -}}
-    {{- if (hasKey . "tag") -}}
-      {{- /* Make sure we use the tag given here - empty tags = "latest" */ -}}
-      {{- $tag = (coalesce .tag $ctx.Chart.AppVersion "latest") -}}
-    {{- end -}}
-    {{- $explicit = true -}}
-  {{- end -}}
-  {{- $image := (required "No image information was found in the Values object" $ctx.Values.image) -}}
-  {{- $partname := include "arkcase.part.name" $ctx -}}
-  {{- if $partname -}}
-    {{- if not (hasKey $image $partname) -}}
-      {{- fail (printf "No image information found for part '%s'" $partname) -}}
-    {{- end -}}
-    {{- $image = merge (get $image $partname) (pick $image "registry" "repository" "tag" "pullPolicy") -}}
-  {{- end -}}
-  {{- $global := (default dict $ctx.Values.global) -}}
-  {{- if or (hasKey $global "imageRegistry") ($global.imageRegistry) -}}
-    {{- /* Global registry trumps everything */ -}}
-    {{- $registryName = $global.imageRegistry -}}
-  {{- else if and (not $registryName) (or (not $explicit) (not (hasKey . "registry"))) -}}
-    {{- /* If we don't yet have a registry name, and we weren't given one explicitly, then use the "default" */ -}}
-    {{- $registryName = $image.registry -}}
-  {{- end -}}
-  {{- if not $repositoryName -}}
-    {{- $repositoryName = (required "No repository (image) name was given" $image.repository) -}}
-  {{- end -}}
-  {{- if not $tag -}}
-    {{- $tag = (toString (coalesce $image.tag $ctx.Chart.AppVersion "latest")) -}}
-  {{- end -}}
-  {{- if $registryName -}}
-    {{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}
-  {{- else -}}
-    {{- printf "%s:%s" $repositoryName $tag -}}
-  {{- end -}}
-{{- end -}}
-
-{{- define "arkcase.tools.subimage" -}}
-  {{- if or (not (hasKey . "ctx")) (not (kindIs "map" .ctx)) (empty .ctx) -}}
-    {{- fail "The 'ctx' parameter is required and must be a non-empty map" -}}
-  {{- end -}}
-  {{- $ctx := .ctx -}}
-  {{- if not (include "arkcase.isRootContext" $ctx) -}}
-    {{- fail "You must supply the 'ctx' parameter, pointing to the root context that contains 'Values' et al." -}}
-  {{- end -}}
-  {{- if or (not (hasKey . "name")) (not (kindIs "string" .name)) (empty .name) -}}
-    {{- fail "The 'name' parameter is required and must be a non-empty string" -}}
-  {{- end -}}
-  {{- $name := .name | trim -}}
-  {{- if or (not (hasKey . "image")) (not (kindIs "string" .image)) (empty .image) -}}
-    {{- fail "The 'image' parameter is required and must be a non-empty string" -}}
-  {{- end -}}
-  {{- $image := .image | trim -}}
-
-  {{- $imageMap := (coalesce $ctx.Values.image dict) -}}
-  {{- $subimageMap := dict -}}
-  {{- if and (hasKey $imageMap $name) -}}
-    {{- $subimageMap = get $imageMap $name -}}
-  {{- end -}}
-  {{- if not (and (kindIs "map" $subimageMap) (not (empty $subimageMap))) -}}
-    {{- $subimageMap = dict -}}
-  {{- end -}}
-
-  {{- $registry := "" -}}
-  {{- if and (hasKey $subimageMap "registry") (kindIs "string" $subimageMap.registry) (not (empty $subimageMap.registry)) -}}
-    {{- $registry = $subimageMap.registry -}}
-  {{- else -}}
-    {{- $registry = ($ctx.Values.image).registry -}}
-  {{- end -}}
-
-  {{- $repository := "" -}}
-  {{- if and (hasKey $subimageMap "repository") (kindIs "string" $subimageMap.repository) (not (empty $subimageMap.repository)) -}}
-    {{- $repository = $subimageMap.repository -}}
-  {{- else -}}
-    {{- $repository = $image -}}
-  {{- end -}}
-
-  {{- $tag := "" -}}
-  {{- if and (hasKey $subimageMap "tag") (kindIs "string" $subimageMap.tag) (not (empty $subimageMap.tag)) -}}
-    {{- $tag = $subimageMap.tag -}}
-  {{- else -}}
-    {{- $tag = "latest" -}}
-  {{- end -}}
-
-  {{- $params := dict "ctx" $ctx "registry" $registry "repository" $repository "tag" $tag -}}
-
-  {{- include "arkcase.tools.image" $params -}}
-{{- end -}}
-
-{{- /*
-Render the image registry name taking into account global values as well
-*/ -}}
-{{- define "arkcase.tools.imageRegistry" -}}
-  {{- $image := (required "No image information was found in the Values object" .Values.image) -}}
-  {{- $global := (default dict .Values.global) -}}
-  {{- $registryName := $image.registry -}}
-  {{- if $global -}}
-    {{- if $global.imageRegistry -}}
-      {{- $registryName = $global.imageRegistry -}}
-    {{- end -}}
-  {{- end -}}
-  {{- $registryName -}}
-{{- end -}}
-
-{{- /*
-Render the image pull policy taking into account the global value as well
-*/ -}}
-{{- define "arkcase.tools.imagePullPolicy" -}}
-  {{- $partname := (include "arkcase.part.name" .) -}}
-  {{- $image := (required "No image information was found in the Values object" .Values.image) -}}
-  {{- if $partname -}}
-    {{- if not (hasKey $image $partname) -}}
-      {{- fail (printf "No image information found for part '%s'" $partname) -}}
-    {{- end -}}
-    {{- $image = merge (get $image $partname) (pick $image "registry" "repository" "tag" "pullPolicy") -}}
-  {{- end -}}
-  {{- $global := (default dict .Values.global) -}}
-  {{- $tag := (toString (default "" $image.tag)) -}}
-  {{- $pullPolicy := (toString (default "" $image.pullPolicy)) -}}
-  {{- if (empty $pullPolicy) -}}
-    {{- if or (empty $tag) (eq $tag "latest") -}}
-      {{- $pullPolicy = "Always" -}}
-    {{- else -}}
-      {{- $pullPolicy = "IfNotPresent" -}}
-    {{- end -}}
-  {{- end -}}
-  {{- $pullPolicy -}}
 {{- end -}}
 
 {{- /*
@@ -764,7 +640,7 @@ return either the value if correct, or the empty string if not.
 
   {{- $ldap := ($ctx.Values.configuration).ldap -}}
   {{- if $ldap -}}
-    {{- include "arkcase.tools.get" (dict "ctx" $ldap "name" (.value | toString)) -}}
+    {{- include "arkcase.tools.get" (dict "ctx" $ldap "yaml" true "name" (.value | toString)) -}}
   {{- end -}}
 {{- end -}}
 
@@ -828,4 +704,43 @@ return either the value if correct, or the empty string if not.
 
   {{- /* Return the nice result */ -}}
   {{- $data | toYaml -}}
+{{- end -}}
+
+{{- /* Get the mode of operation value that should be used for everything */ -}}
+{{- define "arkcase.deployment.mode" -}}
+  {{- $ctx := . -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "The parameter must be the root context (. or $)" -}}
+  {{- end -}}
+
+  {{- /* Get the global map, if defined */ -}}
+  {{- $global := $ctx.Values.global | default dict -}}
+  {{- if not (kindIs "map" $global) -}}
+    {{- $global = dict -}}
+  {{- end -}}
+
+  {{- /* For now, default to development mode */ -}}
+  {{- $value := "development" -}}
+  {{- $valueSet := false -}}
+
+  {{- /* For now, default to the community edition */ -}}
+  {{- $enterprise := false -}}
+  {{- if $global -}}
+    {{- /* Get the explicitly set value, if any */ -}}
+    {{- if and (hasKey $global "mode") $global.mode -}}
+      {{- $m := ($global.mode | toString | trim | lower) -}}
+      {{- $valueSet = true -}}
+      {{- if or (eq $m "development") (eq $m "develop") (eq $m "devel") (eq $m "dev") -}}
+        {{- $value = "development" -}}
+      {{- else if or (eq $m "production") (eq $m "prod") -}}
+        {{- $value = "production" -}}
+      {{- else -}}
+        {{- fail (printf "Unknown deployment mode [%s] (.Values.global.mode) - must be either 'development' (or 'develop', or 'devel' or 'dev') or 'production' (or 'prod')" $m) -}}
+      {{- end -}}
+    {{- end -}}
+    {{- if (hasKey $global "enterprise") -}}
+      {{- $enterprise = (eq "true" ($global.enterprise | toString | trim | lower)) -}}
+    {{- end -}}
+  {{- end -}}
+  {{- dict "value" $value "set" $valueSet "enterprise" $enterprise | toYaml -}}
 {{- end -}}

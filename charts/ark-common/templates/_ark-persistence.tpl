@@ -70,29 +70,26 @@
   {{- if not (include "arkcase.isRootContext" .) -}}
     {{- fail "The parameter must be the root context (. or $)" -}}
   {{- end -}}
-  {{- $mode := "development" -}}
+  {{- $mode := (include "arkcase.deployment.mode" . | fromYaml) -}}
   {{- if (include "arkcase.persistence.enabled" .) -}}
     {{- $storageClassName := (include "arkcase.persistence.getDefaultSetting" (dict "ctx" . "name" "storageClassName") | fromYaml) -}}
     {{- $storageClassName = (coalesce $storageClassName.global $storageClassName.local | default "" | lower) -}}
-
-    {{- $modes := (include "arkcase.persistence.getBaseSetting" (dict "ctx" . "name" "mode") | fromYaml) -}}
-    {{- if or $modes.global $modes.local -}}
-      {{- $mode = (coalesce $modes.global $modes.local | lower) -}}
+    {{- if $mode.set -}}
+      {{- /* If the mode is explicitly set, then use it */ -}}
+      {{- $mode = $mode.value -}}
     {{- else if $storageClassName -}}
-      {{- $mode = "prod" -}}
-    {{- else -}}
-      {{- $mode = "dev" -}}
-    {{- end -}}
-
-    {{- if and (ne $mode "dev") (ne $mode "development") (ne $mode "prod") (ne $mode "production") -}}
-      {{- fail (printf "Unknown development mode '%s' for persistence (l:%s, g:%s)" $mode $modes.local $modes.global) -}}
-    {{- end -}}
-
-    {{- if hasPrefix "dev" $mode -}}
-      {{- $mode = "development" -}}
-    {{- else -}}
+      {{- /* If the mode is not explicitly set, but we have a storageClass, we default to production mode */ -}}
       {{- $mode = "production" -}}
+    {{- else -}}
+      {{- /* If the mode is not explicitly set, but we lack a storageClass, we default to development mode */ -}}
+      {{- $mode = "development" -}}
     {{- end -}}
+  {{- else if $mode.set -}}
+    {{- /* If the mode is explicitly set, then use it */ -}}
+    {{- $mode = $mode.value -}}
+  {{- else -}}
+    {{- /* No mode is explicitly set, and persistence is disabled, so we're in development mode */ -}}
+    {{- $mode = "development" -}}
   {{- end -}}
   {{- $mode -}}
 {{- end -}}
