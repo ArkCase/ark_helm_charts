@@ -15,52 +15,117 @@
   {{- $v -}}
 {{- end -}}
 
-{{- define "arkcase.image.info.getValue" -}}
+{{- define "arkcase.image.info.definition" -}}
   {{- $chart := .chart -}}
   {{- $image := .image -}}
   {{- $edition := .edition -}}
-  {{- $value := .value -}}
+  {{- $data := .data -}}
+
+  {{- $attributes := dict "registry" "" "repository" "" "tag" "" "pullPolicy" "" -}}
+
+  {{- $search := list -}}
+  {{-
+    $search = ( list
+        ((not (empty $image)) | ternary (printf "local.%s.%s" $edition $image) "")
+        (printf "local.%s" $edition)
+        ((not (empty $image)) | ternary (printf "local.%s" $image) "")
+        "local"
+    ) | compact
+  -}}
+
+  {{- fail ($search | toString) -}}
+
+  {{- $candidates := list -}}
+  {{- $pending := deepCopy $attributes -}}
+  {{- $result := dict -}}
+
+  {{- if $image -}}
+
+    {{- range $s := $search -}}
+      {{- /* Small optimization - don't search if there's nothing missing */ -}}
+      {{- if $pending -}}
+        {{- $r := (include "arkcase.tools.get" (dict "ctx" $data "name" $s) | fromYaml) -}}
+        {{- if and $r.value (kindIs "map" $r.value) -}}
+          {{- /* Find the remaining attributes */ -}}
+          {{- range $key := (keys $pending) -}}
+            {{- if and (not (hasKey $result $key)) (hasKey $r.value $key) -}}
+              {{- $value := get $r.value $key -}}
+  
+              {{- /* We only take into account strings */ -}}
+              {{- if and $value (kindIs "string" $value) -}}
+                {{- $result = set $result $key $value -}}
+  
+                {{- /* Mark the found attribute as ... well ... found! */ -}}
+                {{- $pending = omit $pending $key -}}
+              {{- end -}}
+            {{- end -}}
+          {{- end -}}
+        {{- end -}}
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
+
+  {{- /* Now we have the map with the explicitly set data. */ -}}
+  {{- /* We must now found any pending overrides, and apply them */ -}}
+  {{- /* using the correct order of precedence. */ -}}
+
+  {{-
+    $search = (
+      list
+        "global.image"
+        (printf "global.%s.image" $chart)
+        ((not (empty $image)) | ternary (printf "global.%s.image.%s" $chart $image) "")
+        (printf "global.%s.image.%s" $chart $edition)
+        ((not (empty $image)) | ternary (printf "global.%s.image.%s.%s" $chart $edition $image) "")
+    ) | compact
+  -}}
+  {{- $pending = deepCopy $attributes -}}
+  {{- $override := dict -}}
+  {{- range $s := $search -}}
+    {{- /* Small optimization - don't search if there's nothing missing */ -}}
+    {{- if $pending -}}
+      {{- $r := (include "arkcase.tools.get" (dict "ctx" $data "name" $s) | fromYaml) -}}
+      {{- if and $r.value (kindIs "map" $r.value) -}}
+        {{- /* Find the remaining attributes */ -}}
+        {{- range $key := (keys $pending) -}}
+          {{- if and (not (hasKey $override $key)) (hasKey $r.value $key) -}}
+            {{- $value := get $r.value $key -}}
+
+            {{- /* We only take into account strings */ -}}
+            {{- if and $value (kindIs "string" $value) -}}
+              {{- $override = set $override $key $value -}}
+
+              {{- /* Mark the found attribute as ... well ... found! */ -}}
+              {{- $pending = omit $pending $key -}}
+            {{- end -}}
+          {{- end -}}
+        {{- end -}}
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
+
+  {{- merge $override $result | toYaml -}}
+{{- end -}}
+
+{{- define "arkcase.image.info.pullSecrets" -}}
+  {{- $chart := .chart -}}
+  {{- $edition := .edition -}}
   {{- $data := .data -}}
 
   {{- $candidates := list -}}
 
   {{- /* First things first: the first two candidates are the "super global" values, but */ -}}
   {{- /* they don't apply for repository or tag */ -}}
-  {{- if and (ne $value "tag") (ne $value "repository") -}}
-    {{-
-      $candidates = concat $candidates (
-        list
-          (printf "global.image.%s" $value)
-          (printf "global.image.%s.%s" $value $edition)
-      )
-    -}}
-  {{- end -}}
-
   {{-
-    $detailed := compact (
+    $candidates = concat $candidates (
       list
-        $value
-        (printf "%s.%s" $value $edition)
-        (and $image (ne $value "pullSecrets") | ternary (printf "%s.%s" $image $value) "")
-        (printf "%s.%s" $edition $value)
-        (and $image (ne $value "pullSecrets") | ternary (printf "%s.%s.%s" $edition $image $value) "")
+        (printf "global.%s.image.%s.pullSecrets" $chart $edition)
+        (printf "global.image.%s.pullSecrets" $edition)
+        "global.image.pullSecrets"
+        (printf "local.%s.pullSecrets" $edition)
+        "local.pullSecrets"
     )
   -}}
-
-  {{- /* Render the global candidate values */ -}}
-  {{- $globalPrefix := (printf "global.%s.image" $chart) -}}
-  {{- range $d := $detailed -}}
-    {{- $candidates = append $candidates (printf "%s.%s" $globalPrefix $d) -}}
-  {{- end -}}
-
-  {{- /* The local values go in exact reverse order to the global */ -}}
-  {{- $localPrefix := "local" -}}
-  {{- $candidates = list -}}
-  {{- range $d := (reverse $detailed) -}}
-    {{- if $d -}}
-      {{- $candidates = append $candidates (printf "%s.%s" $localPrefix $d) -}}
-    {{- end -}}
-  {{- end -}}
 
   {{- /* Now compute the values */ -}}
   {{- $v := "" -}}
@@ -77,7 +142,7 @@
     {{- end -}}
   {{- end -}}
 
-  {{- dict "value" $v "position" $p | toYaml -}}
+  {{- dict "value" $v "location" $p | toYaml -}}
 {{- end -}}
 
 {{- /*
@@ -117,78 +182,68 @@ community) in order to choose the correct image.
   {{- /* The keys on this map are the images in the local repository */ -}}
   {{- $chart := $ctx.Chart.Name -}}
   {{- $data := dict "local" $local "global" $global -}}
-  {{- $result := dict -}}
-  {{- range $value := list "pullPolicy" "pullSecrets" "repository" "registry" "tag" -}}
-    {{- $r := (include "arkcase.image.info.getValue" (dict "chart" $chart "image" $name "edition" $edition "value" $value "data" $data) | fromYaml) -}}
-    {{- if and $r $r.value -}}
-      {{- if eq $value "pullPolicy" -}}
-        {{- /* Make sure it's a valid pull policy value */ -}}
-        {{- if not (kindIs "string" $r.value) -}}
-          {{- fail (printf "The pull policy value must be a string (%s) - at %s" (kindOf $r.value) $r.position) -}}
-        {{- end -}}
-        {{- $r = (include "arkcase.image.info.parsePullPolicy" $r.value) -}}
-      {{- else if and (eq $value "pullSecrets") -}}
-        {{- /* We support a single string, a CSV string, or a list ... the string gets converted to a list */ -}}
-        {{- $v := $r.value -}}
-        {{- if (kindIs "string" $v) -}}
-          {{- $v = splitList "," $v -}}
-        {{- end -}}
-        {{- $d := dict -}}
-        {{- $f := list -}}
-        {{- range $v -}}
-          {{- /* Each element is either a string, or a map for whom only the "name:" key will be consumed */ -}}
-          {{- /* if it's anything else, this is an error */ -}}
-          {{- $s := "" -}}
-          {{- if and (kindIs "string" .) . -}}
-            {{- $s = . -}}
-          {{- else if and (kindIs "map" .) .name -}}
-            {{- $s = (.name | toString) -}}
-          {{- else -}}
-            {{- fail (printf "Invalid pull secret type %s - must be a valid RFC-1123 hostname part (from %s)" (kindOf .) $r.position) -}}
-          {{- end -}}
 
-          {{- /* Deduplicate */ -}}
-          {{- if and $s (not (hasKey $d $s)) -}}
-            {{- /* Made sure sure it's a valid pull secret name */ -}}
-            {{- if not (include "arkcase.tools.hostnamePart" $s) -}}
-              {{- fail (printf "Invalid pull secret name [%s] - must be a valid RFC-1123 hostname part (from %s)" $s $r.position) -}}
-            {{- end -}}
-            {{- $d = set $d $s $s -}}
-            {{- $f = append $f (dict "name" $s) -}}
-          {{- end -}}
-        {{- end -}}
-        {{- $r = $f -}}
-      {{- else -}}
-        {{- $r = $r.value -}}
-      {{- end -}}
-      {{- $result = set $result $value $r -}}
+  {{- $image := (include "arkcase.image.info.definition" (dict "chart" $chart "image" $name "edition" $edition "data" $data) | fromYaml) -}}
+
+  {{- $r := (include "arkcase.image.info.pullSecrets" (dict "chart" $chart "edition" $edition "data" $data) | fromYaml) -}}
+  {{- if and $r $r.value -}}
+    {{- /* We support a single string, a CSV string, or a list ... the string gets converted to a list */ -}}
+    {{- $v := $r.value -}}
+    {{- if (kindIs "string" $v) -}}
+      {{- $v = splitList "," $v -}}
     {{- end -}}
+    {{- $d := dict -}}
+    {{- $f := list -}}
+    {{- range $v -}}
+      {{- /* Each element is either a string, or a map for whom only the "name:" key will be consumed */ -}}
+      {{- /* if it's anything else, this is an error */ -}}
+      {{- $s := "" -}}
+      {{- if and (kindIs "string" .) . -}}
+        {{- $s = . -}}
+      {{- else if and (kindIs "map" .) .name -}}
+        {{- $s = (.name | toString) -}}
+      {{- else -}}
+        {{- fail (printf "Invalid pull secret type %s - must be a valid RFC-1123 hostname part (from %s)" (kindOf .) $r.location) -}}
+      {{- end -}}
+
+      {{- /* Deduplicate */ -}}
+      {{- if and $s (not (hasKey $d $s)) -}}
+        {{- /* Made sure sure it's a valid pull secret name */ -}}
+        {{- if not (include "arkcase.tools.hostnamePart" $s) -}}
+          {{- fail (printf "Invalid pull secret name [%s] - must be a valid RFC-1123 hostname part (from %s)" $s $r.location) -}}
+        {{- end -}}
+        {{- $d = set $d $s $s -}}
+        {{- $f = append $f (dict "name" $s) -}}
+      {{- end -}}
+    {{- end -}}
+    {{- $r = $f -}}
   {{- end -}}
+  {{- $image = set $image "pullSecrets" $r -}}
 
   {{- /* Make sure we have a repository for the image */ -}}
-  {{- $finalRepository := $result.repository -}}
+  {{- $finalRepository := $image.repository -}}
   {{- if not $finalRepository -}}
     {{- $finalRepository = $repository -}}
   {{- end -}}
   {{- if not $finalRepository -}}
     {{- fail (printf "Failed to find a repository value for image [%s], chart [%s] (%s)" $name $chart $edition) -}}
   {{- end -}}
-  {{- $result = set $result "image" $finalRepository -}}
+  {{- $image = set $image "image" $finalRepository -}}
 
   {{- /* Append the tag, if necessary */ -}}
-  {{- $finalTag := $result.tag -}}
+  {{- $finalTag := $image.tag -}}
   {{- if not $finalTag -}}
     {{- $finalTag = $tag -}}
   {{- end -}}
   {{- if $finalTag -}}
-    {{- $result = set $result "image" (printf "%s:%s" $result.image $finalTag) -}}
+    {{- $image = set $image "image" (printf "%s:%s" $image.image $finalTag) -}}
   {{- end -}}
 
   {{- /* Append the registry, if necessary */ -}}
-  {{- if $result.registry -}}
-    {{- $result = set $result "image" (printf "%s/%s" $result.registry $result.image) -}}
+  {{- if $image.registry -}}
+    {{- $image = set $image "image" (printf "%s/%s" $image.registry $image.image) -}}
   {{- end -}}
-  {{- $result | toYaml -}}
+  {{- $image | toYaml -}}
 {{- end -}}
 
 {{- /*

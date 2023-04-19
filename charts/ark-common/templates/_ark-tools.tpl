@@ -502,7 +502,7 @@ usage: ( include "arkcase.tools.get" (dict "ctx" $ "name" "some.name.to.find" "r
   {{- else -}}
     {{- /* If we don't want to encode the value directly, we wrap it in a map */ -}}
     {{- /* and encode it all as YAML so it can be decoded using fromYaml */ -}}
-    {{- $value = dict "value" $value | toYaml -}}
+    {{- $value = dict "value" $value "type" (kindOf $value) "name" .name "search" (join "." $currentKey) | toYaml -}}
   {{- end -}}
   {{- $value -}}
 {{- end -}}
@@ -764,5 +764,5 @@ return either the value if correct, or the empty string if not.
   {{- $enterprise = (kindIs "bool" $enterprise) | ternary $enterprise (eq "true" ($enterprise | toString | lower)) -}}
 
   {{- /* Output the result */ -}}
-  {{- $enterprise | ternary $enterprise "" -}}
+  {{- $enterprise | ternary "true" "" -}}
 {{- end -}}
