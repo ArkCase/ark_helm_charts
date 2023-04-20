@@ -132,10 +132,16 @@ image:
   pullSecrets:
     - name: aws-arkcase-pull
 
-  registry: "207428623785.dkr.ecr.us-east-1.amazonaws.com"
-  repository: "arkcase/pentaho-ee"
-  # Overrides the image tag whose default is the chart appVersion.
-  # tag: "9.4.0.0-343"
+  registry: "public.ecr.aws"
+
+  community:
+    repository: "arkcase/pentaho-ce"
+    # tag: &pentahoVersion "9.4.0.0-343"
+
+  enterprise:
+    registry: "207428623785.dkr.ecr.us-east-1.amazonaws.com"
+    repository: "arkcase/pentaho-ee"
+    # tag: *pentahoVersion
 
 # You generally shouldn't mess with these. These exist to support some name-generation templates
 nameOverride: ""
