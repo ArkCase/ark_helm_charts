@@ -45,7 +45,6 @@
   {{- $imageSuffix := ((not (empty $image)) | ternary (printf ".%s" $image) "") -}}
 
   {{- /* First, search on the maps that have the image's name */ -}}
-  {{- $ready := false -}}
   {{- range $s := $search -}}
     {{- /* Small optimization - don't search if there's nothing missing */ -}}
     {{- if $pending -}}
@@ -53,32 +52,12 @@
       {{- if and $r.value (kindIs "map" $r.value) -}}
         {{- /* Find the remaining attributes */ -}}
         {{- range $key := $attributes -}}
-          {{- /* We only capture the value if we haven't already filled its position */ -}}
-          {{- if not (hasKey $result $key) -}}
-            {{- $value := "" -}}
+          {{- if and (not (hasKey $result $key)) (hasKey $r.value $key) -}}
+            {{- $value := get $r.value $key -}}
 
-            {{- /* If this candidate map has a value, then take note of it */ -}}
-            {{- if (hasKey $r.value $key) -}}
-              {{- /* We only take into account strings */ -}}
-              {{- $v := get $r.value $key -}}
-              {{- $value = (and $v (kindIs "string" $v) | ternary $v "") -}}
-            {{- end -}} 
-
-            {{- /* This is a bit complicated ... if we haven't yet found a repository */ -}}
-            {{- /* for the named image, and we're in the last search path, then we */ -}}
-            {{- /* fall back to the repository we were given (if any). */ -}}
-            {{- if and (not $ready) (eq $key "repository") (eq "local" $s) (not $value) -}}
-              {{- $value = $repository -}}
-            {{- end -}}
-
-            {{- /* Another somewhat complex bit ... we only start tracking values when */ -}}
-            {{- /* we find an explicit map for the image (i.e. "local.image.MyImage"), */ -}}
-            {{- /* or when we find the first instance of the "repository" value. */ -}}
-            {{- /* This allows us to have a "scope", if you will, within the configurations */ -}}
-            {{- /* such that an image configuration will not be completed with values from */ -}}
-            {{- /* "deeper" scopes. Read the docs for a cleaner explanation fo this model. */ -}}
-            {{- $ready = (or $ready $result (not $imageSuffix) (hasSuffix $imageSuffix $s) (eq $key "repository")) -}}
-            {{- if and $ready $value -}}
+            {{- /* We only take into account strings */ -}}
+            {{- $ready := (or $result (not $imageSuffix) (hasSuffix $imageSuffix $s) (eq $key "repository")) -}}
+            {{- if and $ready $value (kindIs "string" $value) -}}
               {{- $result = set $result $key $value -}}
 
               {{- /* Mark the found attribute as ... well ... found! */ -}}
@@ -86,6 +65,18 @@
             {{- end -}}
           {{- end -}}
         {{- end -}}
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
+
+  {{- /* If we didn't find an image, but we were given a fallback repository, */ -}}
+  {{- /* then we render it as if it were a top-level image. */ -}}
+  {{- if and (not $result) $repository -}}
+    {{- $result = dict "repository" $repository -}}
+    {{- range (without $attributes "repository") -}} 
+      {{- $v := get $data.local . -}}
+      {{- if and $v (kindIs "string" $v) -}}
+        {{- $result = set $result . $v -}}
       {{- end -}}
     {{- end -}}
   {{- end -}}
