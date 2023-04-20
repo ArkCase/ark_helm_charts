@@ -1,11 +1,11 @@
-{{- if (include "arkcase.subsystem.enabled" .) }}
+{{- if (include "arkcase.subsystem.enabled" $) }}
 ---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ include "arkcase.fullname" . | quote }}
-  namespace: {{ .Release.Namespace | quote }}
-  labels: {{- include "arkcase.labels" . | nindent 4 }}
+  name: {{ include "arkcase.fullname" $ | quote }}
+  namespace: {{ $.Release.Namespace | quote }}
+  labels: {{- include "arkcase.labels" $ | nindent 4 }}
     {{- with (include "arkcase.values" (dict "ctx" $ "base" "labels") | fromYaml) }}
       {{- toYaml .value | nindent 4 }}
     {{- end }}
@@ -14,25 +14,25 @@ metadata:
       {{- toYaml .value | nindent 4 }}
     {{- end }}
 spec:
-  {{- if not (.Values.autoscaling).enabled }}
-  replicas: {{ .Values.replicaCount | default 1 }}
+  {{- if not ($.Values.autoscaling).enabled }}
+  replicas: {{ $.Values.replicaCount | default 1 }}
   {{- end }}
   selector:
-    matchLabels: {{- include "arkcase.labels.matchLabels" . | nindent 6 }}
-  serviceName: {{ include "arkcase.name" . | quote }}
+    matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
+  serviceName: {{ include "arkcase.name" $ | quote }}
   updateStrategy:
-    type: {{ .Values.updateStrategy }}
-    {{- if (eq "Recreate" .Values.updateStrategy) }}
+    type: {{ $.Values.updateStrategy }}
+    {{- if (eq "Recreate" $.Values.updateStrategy) }}
     rollingUpdate: null
-    {{- else if .Values.rollingUpdatePartition }}
+    {{- else if $.Values.rollingUpdatePartition }}
     rollingUpdate:
-      partition: {{ .Values.rollingUpdatePartition }}
+      partition: {{ $.Values.rollingUpdatePartition }}
     {{- end }}
   template:
     metadata:
-      name: {{ include "arkcase.fullname" . | quote }}
-      namespace: {{ .Release.Namespace | quote }}
-      labels: {{- include "arkcase.labels" . | nindent 8 }}
+      name: {{ include "arkcase.fullname" $ | quote }}
+      namespace: {{ $.Release.Namespace | quote }}
+      labels: {{- include "arkcase.labels" $ | nindent 8 }}
         {{- with (include "arkcase.values" (dict "ctx" $ "base" "labels") | fromYaml) }}
           {{- toYaml .value | nindent 8 }}
         {{- end }}
@@ -45,7 +45,7 @@ spec:
           {{- toYaml .value | nindent 8 }}
         {{- end }}
     spec:
-      {{- include "arkcase.image.pullSecrets" . | nindent 6 }}
+      {{- include "arkcase.image.pullSecrets" $ | nindent 6 }}
       {{- with (include "arkcase.values" (dict "ctx" $ "base" "hostAliases") | fromYaml) }}
       hostAliases: {{- toYaml .value | nindent 8 }}
       {{- end }}
@@ -62,14 +62,13 @@ spec:
       {{- end }}
       initContainers:
         - name: set-permissions
-          image: {{ include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | quote }}
-          {{- include "arkcase.image.pullPolicy" (dict "ctx" $ "name" "setperm") | nindent 10 }}
-          env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
+          {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
+          env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             - name: JOBS
               value: |
                 jobs:
                   # We know the image uses user 33000:1000
-                  - ownership: {{ coalesce (.Values.persistence).ownership "33000:1000" | quote }}
+                  - ownership: {{ coalesce ($.Values.persistence).ownership "33000:1000" | quote }}
                     permissions: "u=rwX,g=rX,o="
                     flags: [ "recurse", "noforced", "create", "changes" ]
                     targets: [ "/app/data", "/app/init" ]
@@ -78,12 +77,11 @@ spec:
               mountPath: &initDir "/app/init"
             - name: &dataVolume "data"
               mountPath: &dataDir "/app/data"
-        {{- include "arkcase.initDependencies.container" . | nindent 8 }}
+        {{- include "arkcase.initDependencies.container" $ | nindent 8 }}
       containers:
-        - name: {{ include "arkcase.part.name" . | quote }}
-          image: {{ include "arkcase.image" . | quote }}
-          {{- include "arkcase.image.pullPolicy" . | nindent 10 }}
-          {{- include "arkcase.subsystem.ports" . | nindent 10 }}
+        - name: {{ include "arkcase.part.name" $ | quote }}
+          {{- include "arkcase.image" $ | nindent 10 }}
+          {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
           env:
             - name: JAVA_TOOL_OPTIONS
               value: >-
@@ -100,14 +98,14 @@ spec:
                 -XX:MinRAMPercentage=50
                 -XX:MaxRAMPercentage=80
                 -Ddir.root=/app/data
-                -Ddb.driver={{ include "arkcase.db.jdbc.driver" . | quote }}
-                -Ddb.username={{ include "arkcase.db.jdbc.username" . | quote }}
-                -Ddb.password={{ include "arkcase.db.jdbc.password" . | quote }}
-                -Ddb.url={{ include "arkcase.db.jdbc.url" . | quote }}
+                -Ddb.driver={{ include "arkcase.db.jdbc.driver" $ | quote }}
+                -Ddb.username={{ include "arkcase.db.jdbc.username" $ | quote }}
+                -Ddb.password={{ include "arkcase.db.jdbc.password" $ | quote }}
+                -Ddb.url={{ include "arkcase.db.jdbc.url" $ | quote }}
                 -Dsolr.host={{ include "arkcase.alfresco.service" (dict "ctx" $ "name" "search") | quote }}
                 -Dsolr.port=8983
                 -Dsolr.secureComms=secret
-                -Dsolr.sharedSecret={{ include "arkcase.alfresco.searchSecret" . }}
+                -Dsolr.sharedSecret={{ include "arkcase.alfresco.searchSecret" $ }}
                 -Dsolr.base.url=/solr
                 -Dsolr.http.connection.timeout=1000
                 -Dindex.subsystem.name=solr6
@@ -120,7 +118,7 @@ spec:
                 -Ddeployment.method=DOCKER_COMPOSE
                 -Dcsrf.filter.enabled=false
                 -DlocalTransform.core-aio.url=http://{{- include "arkcase.alfresco.service" (dict "ctx" $ "name" "transform-core-aio") -}}:8090/
-              {{- if (include "arkcase.enterprise" .) }}
+              {{- if (include "arkcase.enterprise" $) }}
                 -Dsfs.url=http://{{- include "arkcase.alfresco.service" (dict "ctx" $ "name" "sfs") -}}:8099/
                 -Dtransform.service.enabled=true
                 -Dtransform.service.url=http://{{- include "arkcase.alfresco.service" (dict "ctx" $ "name" "transform-router") -}}:8095
@@ -155,10 +153,10 @@ spec:
         - name: *secrets
           secret:
             optional: false
-            secretName: {{ include "arkcase.fullname" . | quote }}
+            secretName: {{ include "arkcase.fullname" $ | quote }}
             defaultMode: 0444
             items:
-              {{- include "arkcase.alfresco.license.volumes" . | nindent 14 }}
+              {{- include "arkcase.alfresco.license.volumes" $ | nindent 14 }}
               - key: *alfrescoGlobalProperties
                 path: *alfrescoGlobalProperties
               - key: *ldapAdProperties

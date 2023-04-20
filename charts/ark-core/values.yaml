@@ -91,7 +91,7 @@ configuration:
     scheme: "https"
 
   # Add configurations here
-  config:
+  cloudconfig:
     # Settings for config
 
   arkcase:
@@ -175,27 +175,32 @@ initDependencies:
 replicaCount: 1
 
 platform: ""
+
 image:
-  registry: "207428623785.dkr.ecr.us-east-1.amazonaws.com"
+
+  # pullPolicy: IfNotPresent
+
+  registry: "public.ecr.aws"
+
   # Overrides the image tag whose default is the chart appVersion.
-  # If required, for tweaking setperm
-  # setperm:
-  #   registry: "alternate-registry"
-  #   repository: "alternate-image"
-  #   tag: "alternate-tag"
-  pullPolicy: IfNotPresent
+
   config:
-    # repository: "ark_cloudconfig"
+    repository: "arkcase/config"
     tag: &arkcaseVersion "2021.03.26"
-  arkcase:
-    # repository: "ark_core"
-    tag: *arkcaseVersion
-  dot-arkcase:
-    # repository: "ark_core"
+
+  cloudconfig:
+    repository: "arkcase/cloudconfig"
     tag: *arkcaseVersion
 
-imagePullSecrets:
-  - name: aws-arkcase-pull
+  arkcase:
+    repository: "arkcase/core"
+    tag: *arkcaseVersion
+
+  # setperm:
+  #   registry: "alternate-registry"
+  #   repository: "arkcase/setperm"
+  #   tag: "latest"
+
 
 # You generally shouldn't mess with these. These exist to support some name-generation templates
 nameOverride: ""
@@ -228,7 +233,7 @@ securityContext:
     # case). Any random number will do.
     fsGroup: &fsGroup 1997
     fsGroupChangePolicy: OnRootMismatch
-  config:
+  cloudconfig:
     # capabilities:
     #   drop:
     #   - ALL
@@ -281,7 +286,7 @@ persistence:
 #     data:
 
 service:
-  config:
+  cloudconfig:
     ports:
       - name: config
         protocol: TCP

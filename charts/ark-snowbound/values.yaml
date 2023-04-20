@@ -18,15 +18,13 @@ configuration:
 replicaCount: 1
 
 platform: ""
+
 image:
-  registry: "207428623785.dkr.ecr.us-east-1.amazonaws.com"
+  # pullPolicy: IfNotPresent
+  registry: "public.ecr.aws"
   repository: "arkcase/snowbound"
   # Overrides the image tag whose default is the chart appVersion
-  tag: "5.6.2-2021.03"
-  pullPolicy: IfNotPresent
-
-imagePullSecrets:
-  - name: aws-arkcase-pull
+  # tag: "5.6.2-2021.03"
 
 # You generally shouldn't mess with these. These exist to support some name-generation templates
 nameOverride: ""

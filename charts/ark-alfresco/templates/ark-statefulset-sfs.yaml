@@ -1,11 +1,11 @@
-{{- if and (include "arkcase.subsystem.enabled" .) (include "arkcase.enterprise" .) }}
+{{- if and (include "arkcase.subsystem.enabled" $) (include "arkcase.enterprise" $) }}
 ---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ include "arkcase.fullname" . | quote }}
-  namespace: {{ .Release.Namespace | quote }}
-  labels: {{- include "arkcase.labels" . | nindent 4 }}
+  name: {{ include "arkcase.fullname" $ | quote }}
+  namespace: {{ $.Release.Namespace | quote }}
+  labels: {{- include "arkcase.labels" $ | nindent 4 }}
     {{- with (include "arkcase.values" (dict "ctx" $ "base" "labels") | fromYaml) }}
       {{- toYaml .value | nindent 4 }}
     {{- end }}
@@ -14,25 +14,25 @@ metadata:
       {{- toYaml .value | nindent 4 }}
     {{- end }}
 spec:
-  {{- if not (.Values.autoscaling).enabled }}
-  replicas: {{ .Values.replicaCount | default 1 }}
+  {{- if not ($.Values.autoscaling).enabled }}
+  replicas: {{ $.Values.replicaCount | default 1 }}
   {{- end }}
   selector:
-    matchLabels: {{- include "arkcase.labels.matchLabels" . | nindent 6 }}
-  serviceName: {{ include "arkcase.name" . | quote }}
+    matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
+  serviceName: {{ include "arkcase.name" $ | quote }}
   updateStrategy:
-    type: {{ .Values.updateStrategy }}
-    {{- if (eq "Recreate" .Values.updateStrategy) }}
+    type: {{ $.Values.updateStrategy }}
+    {{- if (eq "Recreate" $.Values.updateStrategy) }}
     rollingUpdate: null
-    {{- else if .Values.rollingUpdatePartition }}
+    {{- else if $.Values.rollingUpdatePartition }}
     rollingUpdate:
-      partition: {{ .Values.rollingUpdatePartition }}
+      partition: {{ $.Values.rollingUpdatePartition }}
     {{- end }}
   template:
     metadata:
-      name: {{ include "arkcase.fullname" . | quote }}
-      namespace: {{ .Release.Namespace | quote }}
-      labels: {{- include "arkcase.labels" . | nindent 8 }}
+      name: {{ include "arkcase.fullname" $ | quote }}
+      namespace: {{ $.Release.Namespace | quote }}
+      labels: {{- include "arkcase.labels" $ | nindent 8 }}
         {{- with (include "arkcase.values" (dict "ctx" $ "base" "labels") | fromYaml) }}
           {{- toYaml .value | nindent 8 }}
         {{- end }}
@@ -45,7 +45,7 @@ spec:
           {{- toYaml .value | nindent 8 }}
         {{- end }}
     spec:
-      {{- include "arkcase.image.pullSecrets" . | nindent 6 }}
+      {{- include "arkcase.image.pullSecrets" $ | nindent 6 }}
       {{- with (include "arkcase.values" (dict "ctx" $ "base" "hostAliases") | fromYaml) }}
       hostAliases: {{- toYaml .value | nindent 8 }}
       {{- end }}
@@ -62,14 +62,13 @@ spec:
       {{- end }}
       initContainers:
         - name: set-permissions
-          image: {{ include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | quote }}
-          {{- include "arkcase.image.pullPolicy" (dict "ctx" $ "name" "setperm") | nindent 10 }}
-          env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
+          {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
+          env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             - name: JOBS
               value: |
                 jobs:
                   # We know the image uses user 33000:1000
-                  - ownership: {{ coalesce (.Values.persistence).ownership "33030:1000" | quote }}
+                  - ownership: {{ coalesce ($.Values.persistence).ownership "33030:1000" | quote }}
                     permissions: "u=rwX,g=rX,o="
                     flags: [ "recurse", "noforced", "create", "changes" ]
                     targets: [ "/app/data" ]
@@ -77,10 +76,9 @@ spec:
             - name: &dataVolume "data"
               mountPath: &dataDir "/app/data"
       containers:
-        - name: {{ include "arkcase.part.name" . | quote }}
-          image: {{ include "arkcase.image" . | quote }}
-          {{- include "arkcase.image.pullPolicy" . | nindent 10 }}
-          {{- include "arkcase.subsystem.ports" . | nindent 10 }}
+        - name: {{ include "arkcase.part.name" $ | quote }}
+          {{- include "arkcase.image" $ | nindent 10 }}
+          {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
           env:
             - name: JAVA_OPTS
               value: >-

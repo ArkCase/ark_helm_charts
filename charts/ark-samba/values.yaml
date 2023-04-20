@@ -25,18 +25,20 @@ configuration:
 replicaCount: 1
 
 platform: ""
+
 image:
-  registry: "207428623785.dkr.ecr.us-east-1.amazonaws.com"
-  repository: "arkcase/samba"
-  # Overrides the image tag whose default is the chart appVersion.
-  tag: "latest"
   pullPolicy: IfNotPresent
-  # step:
+
+  registry: "public.ecr.aws"
+  repository: "arkcase/samba"
+
+  step:
+    repository: "arkcase/step-ca"
+
+  # Overrides the image tag whose default is the chart appVersion.
+  # setperm:
   #   repository: "arkcase/step-ca"
   #   tag: "latest"
-
-imagePullSecrets:
-  - name: aws-arkcase-pull
 
 # You generally shouldn't mess with these. These exist to support some name-generation templates
 nameOverride: ""

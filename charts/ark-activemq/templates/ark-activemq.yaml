@@ -3,36 +3,36 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ include "arkcase.fullname" . | quote }}
-  namespace: {{ .Release.Namespace | quote }}
-  labels: {{- include "arkcase.labels" . | nindent 4 }}
-    {{- with (.Values.labels).common }}
+  name: {{ include "arkcase.fullname" $ | quote }}
+  namespace: {{ $.Release.Namespace | quote }}
+  labels: {{- include "arkcase.labels" $ | nindent 4 }}
+    {{- with ($.Values.labels).common }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
-  {{- with (.Values.annotations).common }}
+  {{- with ($.Values.annotations).common }}
   annotations: {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  {{- if not (.Values.autoscaling).enabled }}
-  replicas: {{ .Values.replicaCount | default 1 }}
+  {{- if not ($.Values.autoscaling).enabled }}
+  replicas: {{ $.Values.replicaCount | default 1 }}
   {{- end }}
   selector:
-    matchLabels: {{- include "arkcase.labels.matchLabels" . | nindent 6 }}
-  serviceName: {{ include "arkcase.name" . | quote }}
+    matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
+  serviceName: {{ include "arkcase.name" $ | quote }}
   updateStrategy:
-    type: {{ .Values.updateStrategy }}
-    {{- if (eq "Recreate" .Values.updateStrategy) }}
+    type: {{ $.Values.updateStrategy }}
+    {{- if (eq "Recreate" $.Values.updateStrategy) }}
     rollingUpdate: null
-    {{- else if .Values.rollingUpdatePartition }}
+    {{- else if $.Values.rollingUpdatePartition }}
     rollingUpdate:
-      partition: {{ .Values.rollingUpdatePartition }}
+      partition: {{ $.Values.rollingUpdatePartition }}
     {{- end }}
   template:
     metadata:
-      name: {{ include "arkcase.fullname" . | quote }}
-      namespace: {{ .Release.Namespace | quote }}
-      labels: {{- include "arkcase.labels" . | nindent 8 }}
-        {{- with (.Values.labels).common }}
+      name: {{ include "arkcase.fullname" $ | quote }}
+      namespace: {{ $.Release.Namespace | quote }}
+      labels: {{- include "arkcase.labels" $ | nindent 8 }}
+        {{- with ($.Values.labels).common }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
       annotations:
@@ -40,59 +40,55 @@ spec:
         prometheus.io/scrape: "true"
         prometheus.io/port: "9100"
         timestamp: {{ date "20060102150405" now | quote }}
-        {{- with (.Values.annotations).common }}
+        {{- with ($.Values.annotations).common }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
     spec:
-      {{- with .Values.imagePullSecrets }}
-      imagePullSecrets: {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.hostAliases }}
+      {{- include "arkcase.image.pullSecrets" $ | nindent 6 }}
+      {{- with $.Values.hostAliases }}
       hostAliases: {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- if .Values.schedulerName }}
-      schedulerName: {{ .Values.schedulerName | quote }}
+      {{- if $.Values.schedulerName }}
+      schedulerName: {{ $.Values.schedulerName | quote }}
       {{- end }}
-      serviceAccountName: {{ include "common.serviceAccountName" . }}
-      {{- with (.Values.securityContext).template }}
+      serviceAccountName: {{ include "common.serviceAccountName" $ }}
+      {{- with ($.Values.securityContext).template }}
       securityContext: {{- toYaml . | nindent 8 }}
       {{- end }}
       initContainers:
         - name: set-permissions
-          image: {{ include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | quote }}
-          {{- include "arkcase.image.pullPolicy" (dict "ctx" $ "name" "setperm") | nindent 10 }}
-          env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
+          {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
+          env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             - name: JOBS
               value: |
                 jobs:
                   # We know the ActiveMQ image uses user 998 (centos), 1998 (rocky)
-                  - ownership: {{ coalesce (.Values.persistence).ownership "1998:1998" | quote }}
+                  - ownership: {{ coalesce ($.Values.persistence).ownership "1998:1998" | quote }}
                     permissions: "u=rwX,g=rX,o="
                     flags: [ "recurse", "noforced", "create", "changes" ]
                     targets: [ "/data" ]
           volumeMounts:
             - name: "data"
               mountPath: "/data"
-        {{- include "arkcase.initDependencies.container" . | nindent 8 }}
+        {{- include "arkcase.initDependencies.container" $ | nindent 8 }}
       containers:
         - name: activemq
-          {{- with (.Values.securityContext).activemq }}
+          {{- include "arkcase.image" $ | nindent 10 }}
+          {{- with ($.Values.securityContext).activemq }}
           securityContext: {{- toYaml . | nindent 12 }}
           {{- end }}
-          image: {{ include "arkcase.image" . | quote }}
-          {{ include "arkcase.image.pullPolicy" . | nindent 10 }}
-          env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
+          env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             - name: ACTIVEMQ_ENCRYPTION_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "arkcase.subsystem.name" . | quote }}
+                  name: {{ include "arkcase.subsystem.name" $ | quote }}
                   key: ENCRYPTION_PASSWORD
-          {{- include "arkcase.subsystem.ports" . | nindent 10 }}
-          {{- if .Values.command }}
-          command: {{- .Values.command | toYaml | nindent 12 }}
+          {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
+          {{- with (include "arkcase.values" (dict "ctx" $ "base" "command") | fromYaml) }}
+          command: {{ toJson .value }}
           {{- end }}
-          {{- with .Values.resources }}
-          resources: {{- toYaml . | nindent 12 }}
+          {{- with (include "arkcase.values" (dict "ctx" $ "base" "resources") | fromYaml) }}
+          resources: {{- toYaml .value | nindent 12 }}
           {{- end }}
           volumeMounts:
             - name: "data"
@@ -101,21 +97,21 @@ spec:
               mountPath: "/app/conf"
               readOnly: true
       volumes:
-        {{- include "arkcase.persistence.volume" (dict "ctx" . "name" "data") | nindent 8 }}
+        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
         - name: secrets
           secret:
-            secretName: {{ include "arkcase.subsystem.name" . | quote }}
-      {{- with .Values.nodeSelector }}
+            secretName: {{ include "arkcase.subsystem.name" $ | quote }}
+      {{- with $.Values.nodeSelector }}
       nodeSelector: {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.affinity }}
+      {{- with $.Values.affinity }}
       affinity: {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.tolerations }}
+      {{- with $.Values.tolerations }}
       tolerations: {{- toYaml . | nindent 8 }}
       {{- end }}
   volumeClaimTemplates:
-    {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" . "name" "data") | nindent 4 }}
+    {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "data") | nindent 4 }}
 
-  {{- include "arkcase.persistence.declareResources" (dict "ctx" . "volume" "data") | nindent 0 }}
+  {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "data") | nindent 0 }}
 {{- end }}

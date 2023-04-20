@@ -1,37 +1,37 @@
-{{- if (include "arkcase.subsystem.enabled" .) }}
+{{- if (include "arkcase.subsystem.enabled" $) }}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ include "arkcase.fullname" . | quote }}
-  namespace: {{ .Release.Namespace | quote }}
-  labels: {{- include "arkcase.labels" . | nindent 4 }}
-    {{- with (.Values.labels).common }}
+  name: {{ include "arkcase.fullname" $ | quote }}
+  namespace: {{ $.Release.Namespace | quote }}
+  labels: {{- include "arkcase.labels" $ | nindent 4 }}
+    {{- with ($.Values.labels).common }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
-  {{- with (.Values.annotations).common }}
+  {{- with ($.Values.annotations).common }}
   annotations: {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  {{- if not (.Values.autoscaling).enabled }}
-  replicas: {{ .Values.replicaCount | default 1 }}
+  {{- if not ($.Values.autoscaling).enabled }}
+  replicas: {{ $.Values.replicaCount | default 1 }}
   {{- end }}
   selector: 
-    matchLabels: {{- include "arkcase.labels.matchLabels" . | nindent 6 }}
-  serviceName: {{ include "arkcase.name" . | quote }}
+    matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
+  serviceName: {{ include "arkcase.name" $ | quote }}
   updateStrategy:
-    type: {{ .Values.updateStrategy }}
-    {{- if (eq "Recreate" .Values.updateStrategy) }}
+    type: {{ $.Values.updateStrategy }}
+    {{- if (eq "Recreate" $.Values.updateStrategy) }}
     rollingUpdate: null
-    {{- else if .Values.rollingUpdatePartition }}
+    {{- else if $.Values.rollingUpdatePartition }}
     rollingUpdate:
-      partition: {{ .Values.rollingUpdatePartition }}
+      partition: {{ $.Values.rollingUpdatePartition }}
     {{- end }}
   template:
     metadata:
-      name: {{ include "arkcase.fullname" . | quote }}
-      namespace: {{ .Release.Namespace | quote }}
-      labels: {{- include "arkcase.labels" . | nindent 8 }}
-        {{- with (.Values.labels).common }}
+      name: {{ include "arkcase.fullname" $ | quote }}
+      namespace: {{ $.Release.Namespace | quote }}
+      labels: {{- include "arkcase.labels" $ | nindent 8 }}
+        {{- with ($.Values.labels).common }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
       annotations:
@@ -39,31 +39,29 @@ spec:
         prometheus.io/scrape: "true"
         prometheus.io/port: "9100"
         timestamp: {{ date "20060102150405" now | quote }}
-        {{- with (.Values.annotations).common }}
+        {{- with ($.Values.annotations).common }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
     spec:
-      {{- with .Values.imagePullSecrets }}
-      imagePullSecrets: {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.hostAliases }}
+      {{- include "arkcase.image.pullSecrets" $ | nindent 6 }}
+      {{- with $.Values.hostAliases }}
       hostAliases: {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- if .Values.schedulerName }}
-      schedulerName: {{ .Values.schedulerName | quote }}
+      {{- if $.Values.schedulerName }}
+      schedulerName: {{ $.Values.schedulerName | quote }}
       {{- end }}
-      {{- with (.Values.securityContext).template }}
+      {{- with ($.Values.securityContext).template }}
       securityContext: {{- toYaml . | nindent 8 }}
       {{- end }}
       initContainers:
         - name: set-permissions
-          image: {{ include "arkcase.tools.subimage" (dict "ctx" $ "name" "setperm" "image" "arkcase/setperm") | quote }}
-          env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
+          {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
+          env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             - name: JOBS
               value: |
                 jobs:
                   # We know the ActiveMQ image uses user 998 (centos), 1998 (rocky)
-                  - ownership: {{ coalesce (.Values.persistence).ownership "2000:2000" | quote }}
+                  - ownership: {{ coalesce ($.Values.persistence).ownership "2000:2000" | quote }}
                     permissions: "u=rwX,g=rX,o="
                     flags: [ "recurse", "noforced", "create", "changes" ]
                     targets: [ "/app/data", "/app/init" ]
@@ -72,27 +70,26 @@ spec:
               mountPath: &dataPath "/app/data"
             - name: &initVolume "init"
               mountPath: &initPath "/app/init"
-        {{- include "arkcase.initDependencies.container" . | nindent 8 }}
+        {{- include "arkcase.initDependencies.container" $ | nindent 8 }}
       containers:
         - name: solr
-          {{- with (.Values.securityContext).solr }}
+          {{- with ($.Values.securityContext).solr }}
           securityContext: {{- toYaml . | nindent 12 }}
           {{- end }}
-          image: {{ include "arkcase.tools.image" . | quote }}
-          imagePullPolicy: {{ include "arkcase.tools.imagePullPolicy" . | quote }}
-          env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
+          {{- include "arkcase.image" $ | nindent 10 }}
+          env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             - name: SOLR_OPTS
               value: "-Dsolr.autoSoftCommit.maxTime=1000"
             - name: SOLR_HOME
               value: "/app/data/solr"
             - name: SOLR_CORES
               value: "acmAdvancedSearch=arkcase,acmQuickSearch=arkcase"
-            {{- if .Values.env }}
-            {{- .Values.env | toYaml | nindent 12 }}
+            {{- if $.Values.env }}
+            {{- $.Values.env | toYaml | nindent 12 }}
             {{- end }}
-          {{- include "arkcase.subsystem.ports" . | nindent 10 }}
-          {{- if .Values.command }}
-          command: {{- .Values.command | toYaml | nindent 12 }}
+          {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
+          {{- if $.Values.command }}
+          command: {{ toJson $.Values.command }}
           {{- else }}
           command: [ "/entrypoint" ]
           {{- end }}
@@ -100,8 +97,8 @@ spec:
             postStart:
               exec:
                 command: [ "/config-post.sh" ]
-          {{- if .Values.resources }}
-          resources: {{- toYaml .Values.resources | nindent 12 }}
+          {{- with $.Values.resources }}
+          resources: {{- toYaml . | nindent 12 }}
           {{- end }}
           volumeMounts:
             - name: *dataVolume
@@ -137,7 +134,7 @@ spec:
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "init") | nindent 8 }}
         - name: *configMap
           configMap:
-            name: {{ include "arkcase.fullname" . | quote }}
+            name: {{ include "arkcase.fullname" $ | quote }}
             optional: false
             defaultMode: 0550
             items:

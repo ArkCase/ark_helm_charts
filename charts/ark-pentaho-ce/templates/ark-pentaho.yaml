@@ -1,37 +1,37 @@
-{{- if (include "arkcase.subsystem.enabled" .) }}
+{{- if (include "arkcase.subsystem.enabled" $) }}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ include "arkcase.fullname" . | quote }}
-  namespace: {{ .Release.Namespace | quote }}
-  labels: {{- include "arkcase.labels" . | nindent 4 }}
-    {{- with (.Values.labels).common }}
+  name: {{ include "arkcase.fullname" $ | quote }}
+  namespace: {{ $.Release.Namespace | quote }}
+  labels: {{- include "arkcase.labels" $ | nindent 4 }}
+    {{- with ($.Values.labels).common }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
-  {{- with (.Values.annotations).common }}
+  {{- with ($.Values.annotations).common }}
   annotations: {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  {{- if not (.Values.autoscaling).enabled }}
-  replicas: {{ .Values.replicaCount | default 1 }}
+  {{- if not ($.Values.autoscaling).enabled }}
+  replicas: {{ $.Values.replicaCount | default 1 }}
   {{- end }}
   selector:
-    matchLabels: {{- include "arkcase.labels.matchLabels" . | nindent 6 }}
-  serviceName: {{ include "arkcase.name" . | quote }}
+    matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
+  serviceName: {{ include "arkcase.name" $ | quote }}
   updateStrategy:
-    type: {{ .Values.updateStrategy }}
-    {{- if (eq "Recreate" .Values.updateStrategy) }}
+    type: {{ $.Values.updateStrategy }}
+    {{- if (eq "Recreate" $.Values.updateStrategy) }}
     rollingUpdate: null
-    {{- else if .Values.rollingUpdatePartition }}
+    {{- else if $.Values.rollingUpdatePartition }}
     rollingUpdate:
-      partition: {{ .Values.rollingUpdatePartition }}
+      partition: {{ $.Values.rollingUpdatePartition }}
     {{- end }}
   template:
     metadata:
-      name: {{ include "arkcase.fullname" . | quote }}
-      namespace: {{ .Release.Namespace | quote }}
-      labels: {{- include "arkcase.labels" . | nindent 8 }}
-        {{- with (.Values.labels).common }}
+      name: {{ include "arkcase.fullname" $ | quote }}
+      namespace: {{ $.Release.Namespace | quote }}
+      labels: {{- include "arkcase.labels" $ | nindent 8 }}
+        {{- with ($.Values.labels).common }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
       annotations:
@@ -39,27 +39,25 @@ spec:
         prometheus.io/scrape: "true"
         prometheus.io/port: "9100"
         timestamp: {{ date "20060102150405" now | quote }}
-        {{- with (.Values.annotations).common }}
+        {{- with ($.Values.annotations).common }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
     spec:
-      {{- with .Values.imagePullSecrets }}
-      imagePullSecrets: {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.hostAliases }}
+      {{- include "arkcase.image.pullSecrets" $ | nindent 6 }}
+      {{- with $.Values.hostAliases }}
       hostAliases: {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- if .Values.schedulerName }}
-      schedulerName: {{ .Values.schedulerName | quote }}
+      {{- if $.Values.schedulerName }}
+      schedulerName: {{ $.Values.schedulerName | quote }}
       {{- end }}
-      serviceAccountName: {{ include "common.serviceAccountName" . }}
-      {{- with (.Values.securityContext).template }}
+      serviceAccountName: {{ include "common.serviceAccountName" $ }}
+      {{- with ($.Values.securityContext).template }}
       securityContext: {{- toYaml . | nindent 8 }}
       {{- end }}
       initContainers:
         - name: set-permissions
-          image: {{ include "arkcase.tools.subimage" (dict "ctx" $ "name" "setperm" "image" "arkcase/setperm") | quote }}
-          env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
+          {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
+          env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             - name: JOBS
               value: |
                 jobs:
@@ -75,15 +73,14 @@ spec:
               mountPath: &initPath "/app/init"
             - name: &logsVol "logs"
               mountPath: &logsPath "/app/logs"
-        {{- include "arkcase.initDependencies.container" . | nindent 8 }}
+        {{- include "arkcase.initDependencies.container" $ | nindent 8 }}
       containers:
         - name: pentaho
-          {{- with (.Values.securityContext).pentaho }}
+          {{- with ($.Values.securityContext).pentaho }}
           securityContext: {{- toYaml . | nindent 12 }}
           {{- end }}
-          image: {{ include "arkcase.tools.image" . | quote }}
-          imagePullPolicy: {{ include "arkcase.tools.imagePullPolicy" . | quote }}
-          env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
+          {{- include "arkcase.image" $ | nindent 10 }}
+          env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             - name: DATA_DIR
               value: *dataPath
             - name: INIT_DIR
@@ -91,34 +88,34 @@ spec:
             - name: LOGS_DIR
               value: *logsPath
             - name: DB_DIALECT
-              value: {{ include "arkcase.pentaho.db.dialect" . | quote }}
+              value: {{ include "arkcase.pentaho.db.dialect" $ | quote }}
             - name: DB_SCRIPTS
-              value: {{ include "arkcase.pentaho.db.scripts" . | quote }}
+              value: {{ include "arkcase.pentaho.db.scripts" $ | quote }}
             - name: ADMIN_USERNAME
               valueFrom:
                 secretKeyRef:
-                  name: &secrets {{ include "arkcase.fullname" . | quote }}
+                  name: &secrets {{ include "arkcase.fullname" $ | quote }}
                   key: "adminUsername"
             - name: ADMIN_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: *secrets
                   key: "adminPassword"
-          {{- include "arkcase.subsystem.ports" . | nindent 10 }}
-          {{- if .Values.command }}
-          command: {{- .Values.command | toYaml | nindent 12 }}
+          {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
+          {{- if $.Values.command }}
+          command: {{- $.Values.command | toYaml | nindent 12 }}
           {{- else }}
           command: [ "/entrypoint" ]
           {{- end }}
-          {{- if and (not (.Values.command)) (not (.Values.lifecycle)) }}
+          {{- if and (not ($.Values.command)) (not ($.Values.lifecycle)) }}
           lifecycle:
             postStart:
               exec:
                 command: [ "/config-post.sh" ]
-          {{- else if (.Values.lifecycle) }}
-          lifecycle: {{- .Values.lifecycle | toYaml | nindent 12 }}
+          {{- else if ($.Values.lifecycle) }}
+          lifecycle: {{- $.Values.lifecycle | toYaml | nindent 12 }}
           {{- end }}
-          {{- with .Values.resources }}
+          {{- with $.Values.resources }}
           resources: {{- toYaml . | nindent 12 }}
           {{- end }}
           volumeMounts:
@@ -194,7 +191,7 @@ spec:
               readOnly: true
             - name: *configMap
               mountPath: "/app/init/reports/000-arkcase-base-reports.tar.gz"
-              subPath: &arkcaseBaseReportsTarGz {{ printf "%s-arkcase-base-reports.tar.gz" (required "Must provide a value for .configuration.db.dialect" ((.Values.configuration).db).dialect) | quote }}
+              subPath: &arkcaseBaseReportsTarGz {{ printf "%s-arkcase-base-reports.tar.gz" (required "Must provide a value for .configuration.db.dialect" (($.Values.configuration).db).dialect) | quote }}
               readOnly: true
       volumes:
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
@@ -203,7 +200,7 @@ spec:
         - name: *secrets
           secret:
             optional: false
-            secretName: {{ include "arkcase.fullname" . | quote }}
+            secretName: {{ include "arkcase.fullname" $ | quote }}
             defaultMode: 0444
             items:
               - key: *contextXml
@@ -217,7 +214,7 @@ spec:
         - name: *configMap
           configMap:
             optional: false
-            name: {{ include "arkcase.fullname" . | quote }}
+            name: {{ include "arkcase.fullname" $ | quote }}
             defaultMode: 0444
             items:
               - key: *hibernateSettingsXml
@@ -249,13 +246,13 @@ spec:
               - key: *configPostSh
                 path: *configPostSh
                 mode: 0555
-      {{- with .Values.nodeSelector }}
+      {{- with $.Values.nodeSelector }}
       nodeSelector: {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.affinity }}
+      {{- with $.Values.affinity }}
       affinity: {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.tolerations }}
+      {{- with $.Values.tolerations }}
       tolerations: {{- toYaml . | nindent 8 }}
       {{- end }}
   volumeClaimTemplates:

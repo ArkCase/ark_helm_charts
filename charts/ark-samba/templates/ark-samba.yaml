@@ -1,37 +1,37 @@
-{{- if (include "arkcase.subsystem.enabled" .) }}
+{{- if (include "arkcase.subsystem.enabled" $) }}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ include "arkcase.fullname" . | quote }}
-  namespace: {{ .Release.Namespace | quote }}
-  labels: {{- include "arkcase.labels" . | nindent 4 }}
-    {{- with (.Values.labels).common }}
+  name: {{ include "arkcase.fullname" $ | quote }}
+  namespace: {{ $.Release.Namespace | quote }}
+  labels: {{- include "arkcase.labels" $ | nindent 4 }}
+    {{- with ($.Values.labels).common }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
-  {{- with (.Values.annotations).common }}
+  {{- with ($.Values.annotations).common }}
   annotations: {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  {{- if not (.Values.autoscaling).enabled }}
-  replicas: {{ .Values.replicaCount | default 1 }}
+  {{- if not ($.Values.autoscaling).enabled }}
+  replicas: {{ $.Values.replicaCount | default 1 }}
   {{- end }}
   selector:
-    matchLabels: {{- include "arkcase.labels.matchLabels" . | nindent 6 }}
-  serviceName: {{ include "arkcase.name" . | quote }}
+    matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
+  serviceName: {{ include "arkcase.name" $ | quote }}
   updateStrategy:
-    type: {{ .Values.updateStrategy }}
-    {{- if (eq "Recreate" .Values.updateStrategy) }}
+    type: {{ $.Values.updateStrategy }}
+    {{- if (eq "Recreate" $.Values.updateStrategy) }}
     rollingUpdate: null
-    {{- else if .Values.rollingUpdatePartition }}
+    {{- else if $.Values.rollingUpdatePartition }}
     rollingUpdate:
-      partition: {{ .Values.rollingUpdatePartition }}
+      partition: {{ $.Values.rollingUpdatePartition }}
     {{- end }}
   template:
     metadata:
-      name: {{ include "arkcase.fullname" . | quote }}
-      namespace: {{ .Release.Namespace | quote }}
-      labels: {{- include "arkcase.labels" . | nindent 8 }}
-        {{- with (.Values.labels).common }}
+      name: {{ include "arkcase.fullname" $ | quote }}
+      namespace: {{ $.Release.Namespace | quote }}
+      labels: {{- include "arkcase.labels" $ | nindent 8 }}
+        {{- with ($.Values.labels).common }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
       annotations:
@@ -39,34 +39,31 @@ spec:
         prometheus.io/scrape: "true"
         prometheus.io/port: "9100"
         timestamp: {{ date "20060102150405" now | quote }}
-        {{- with (.Values.annotations).common }}
+        {{- with ($.Values.annotations).common }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
     spec:
-      {{- with .Values.imagePullSecrets }}
-      imagePullSecrets:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.hostAliases }}
+      {{- include "arkcase.image.pullSecrets" $ | nindent 6 }}
+      {{- with $.Values.hostAliases }}
       hostAliases: {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- if .Values.schedulerName }}
-      schedulerName: {{ .Values.schedulerName | quote }}
+      {{- if $.Values.schedulerName }}
+      schedulerName: {{ $.Values.schedulerName | quote }}
       {{- end }}
-      serviceAccountName: {{ include "common.serviceAccountName" . }}
-      {{- with (.Values.securityContext).template }}
+      serviceAccountName: {{ include "common.serviceAccountName" $ }}
+      {{- with ($.Values.securityContext).template }}
       securityContext: {{- toYaml . | nindent 8 }}
       {{- end }}
       initContainers:
-        {{- if (include "arkcase.samba.step" .) }}
+        {{- if (include "arkcase.samba.step" $) }}
         - name: set-permissions
-          image: {{ include "arkcase.tools.subimage" (dict "ctx" $ "name" "setperm" "image" "arkcase/setperm") | quote }}
-          env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
+          {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
+          env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             - name: JOBS
               value: |
                 jobs:
                   # We know the Step image uses user 1000
-                  - ownership: {{ coalesce (.Values.persistence).ownership "1000:1000" | quote }}
+                  - ownership: {{ coalesce ($.Values.persistence).ownership "1000:1000" | quote }}
                     permissions: "u=rwX,g=rX,o="
                     flags: [ "recurse", "noforced", "create", "changes" ]
                     targets: [ "/step" ]
@@ -74,21 +71,20 @@ spec:
             - name: &stepVolume "step"
               mountPath: "/step"
         {{- end }}
-        {{- include "arkcase.initDependencies.container" . | nindent 8 }}
+        {{- include "arkcase.initDependencies.container" $ | nindent 8 }}
       containers:
         - name: samba
-          {{- with (.Values.securityContext).samba }}
+          {{- with ($.Values.securityContext).samba }}
           securityContext: {{- toYaml . | nindent 12 }}
           {{- end }}
-          image: {{ include "arkcase.tools.image" . | quote }}
-          imagePullPolicy: {{ include "arkcase.tools.imagePullPolicy" . | quote }}
-          env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
+          {{- include "arkcase.image" $ | nindent 10 }}
+          env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             - name: DOMAIN
-              value: {{ .Values.configuration.domain.name | quote }}
+              value: {{ $.Values.configuration.domain.name | quote }}
             - name: DOMAINPASS
               valueFrom:
                 secretKeyRef:
-                  name: &secretName {{ include "arkcase.fullname" . | quote }}
+                  name: &secretName {{ include "arkcase.fullname" $ | quote }}
                   key: DOMAIN_PASSWORD
             - name: JOIN
               value: "false"
@@ -103,18 +99,18 @@ spec:
             - name: LDAP_SEED_FILE
               value: "/app/secrets/seeds.yaml"
             - name: SERVICE_NAME
-              value: {{ include "arkcase.name" . | quote }}
-          {{- if (include "arkcase.samba.step" .) }}
+              value: {{ include "arkcase.name" $ | quote }}
+          {{- if (include "arkcase.samba.step" $) }}
             - name: STEP_URL
               value: "https://localhost:9000"
             - name: STEP_PASSWORD_FILE
               value: "/app/secrets/step.password"
           {{- end }}
-          {{- include "arkcase.subsystem.ports" . | nindent 10 }}
-          {{- if .Values.command }}
-          command: {{- .Values.command | toYaml | nindent 12 }}
+          {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
+          {{- if $.Values.command }}
+          command: {{- $.Values.command | toYaml | nindent 12 }}
           {{- end }}
-          {{- with .Values.resources }}
+          {{- with $.Values.resources }}
           resources: {{- toYaml . | nindent 12 }}
           {{- end }}
           volumeMounts:
@@ -133,11 +129,10 @@ spec:
               mountPath: "/app/init/init.d/000-init-seeds"
               subPath: &initSeeds "init-seeds"
               readOnly: true
-          {{- if (include "arkcase.samba.step" .) }}
+          {{- if (include "arkcase.samba.step" $) }}
         - name: step
-          image: {{ include "arkcase.tools.subimage" (dict "ctx" $ "name" "step" "image" "arkcase/step-ca") | quote }}
-          imagePullPolicy: {{ include "arkcase.tools.imagePullPolicy" . | quote }}
-          env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
+          {{- include "arkcase.image" (dict "ctx" $ "name" "step" "repository" "arkcase/step-ca") | nindent 10 }}
+          env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             - name: DOCKER_STEPCA_INIT_NAME
               value: "ArkCase Samba"
             - name: DOCKER_STEPCA_INIT_DNS_NAMES
@@ -160,7 +155,7 @@ spec:
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "conf") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "logs") | nindent 8 }}
-        {{- if (include "arkcase.samba.step" .) }}
+        {{- if (include "arkcase.samba.step" $) }}
           {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "step") | nindent 8 }}
         {{- end }}
         - name: *secrets
@@ -171,19 +166,19 @@ spec:
         - name: *configMap
           configMap:
             optional: false
-            name: {{ include "arkcase.fullname" . | quote }}
+            name: {{ include "arkcase.fullname" $ | quote }}
             defaultMode: 0444
             items:
               - key: *initSeeds
                 path: *initSeeds
                 mode: 0555
-      {{- with .Values.nodeSelector }}
+      {{- with $.Values.nodeSelector }}
       nodeSelector: {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.affinity }}
+      {{- with $.Values.affinity }}
       affinity: {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.tolerations }}
+      {{- with $.Values.tolerations }}
       tolerations: {{- toYaml . | nindent 8 }}
       {{- end }}
   volumeClaimTemplates:
@@ -191,7 +186,7 @@ spec:
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "conf") | nindent 4 }}
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "data") | nindent 4 }}
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "logs") | nindent 4 }}
-    {{- if (include "arkcase.samba.step" .) }}
+    {{- if (include "arkcase.samba.step" $) }}
       {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "step") | nindent 4 }}
     {{- end }}
 
@@ -199,7 +194,7 @@ spec:
   {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "conf") | nindent 0 }}
   {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "data") | nindent 0 }}
   {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "logs") | nindent 0 }}
-  {{- if (include "arkcase.samba.step" .) }}
+  {{- if (include "arkcase.samba.step" $) }}
     {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "step") | nindent 0 }}
   {{- end }}
 

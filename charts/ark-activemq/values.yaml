@@ -27,21 +27,16 @@ replicaCount: 1
 platform: ""
 
 image:
-
-  pullSecrets:
-    - name: aws-arkcase-pull
-
-  pullPolicy: IfNotPresent
-
+  # pullPolicy: IfNotPresent
   registry: "public.ecr.aws"
   repository: "arkcase/activemq"
   # Overrides the image tag whose default is the chart appVersion.
   # tag: "20210716-45b2fb2"
+
   # If required, for tweaking setperm
   # setperm:
-  #   registry: "alternate-registry"
-  #   repository: "alternate-image"
-  #   tag: "alternate-tag"
+  #   repository: "arkcase/setperm"
+  #   tag: "latest"
 
 # You generally shouldn't mess with these. These exist to support some name-generation templates
 nameOverride: ""
@@ -79,6 +74,7 @@ securityContext:
     #   drop:
     #   - ALL
     # readOnlyRootFilesystem: true
+
 resources:
   # We usually recommend not to specify default resources and to leave this as a conscious
   # choice for the user. This also increases chances charts run on environments with little

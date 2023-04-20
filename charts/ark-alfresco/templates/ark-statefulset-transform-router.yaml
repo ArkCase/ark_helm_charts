@@ -1,10 +1,10 @@
-{{- if and (include "arkcase.subsystem.enabled" .) (include "arkcase.enterprise" .) }}
+{{- if and (include "arkcase.subsystem.enabled" $) (include "arkcase.enterprise" $) }}
 ---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: {{ include "arkcase.fullname" $ | quote }}
-  namespace: {{ .Release.Namespace | quote }}
+  namespace: {{ $.Release.Namespace | quote }}
   labels: {{- include "arkcase.labels" $ | nindent 4 }}
     {{- with (include "arkcase.values" (dict "ctx" $ "base" "labels") | fromYaml) }}
       {{- toYaml .value | nindent 4 }}
@@ -14,24 +14,24 @@ metadata:
       {{- toYaml .value | nindent 4 }}
     {{- end }}
 spec:
-  {{- if not (.Values.autoscaling).enabled }}
-  replicas: {{ .Values.replicaCount | default 1 }}
+  {{- if not ($.Values.autoscaling).enabled }}
+  replicas: {{ $.Values.replicaCount | default 1 }}
   {{- end }}
   selector:
     matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
   serviceName: {{ include "arkcase.name" $ | quote }}
   updateStrategy:
-    type: {{ .Values.updateStrategy }}
-    {{- if (eq "Recreate" .Values.updateStrategy) }}
+    type: {{ $.Values.updateStrategy }}
+    {{- if (eq "Recreate" $.Values.updateStrategy) }}
     rollingUpdate: null
-    {{- else if .Values.rollingUpdatePartition }}
+    {{- else if $.Values.rollingUpdatePartition }}
     rollingUpdate:
-      partition: {{ .Values.rollingUpdatePartition }}
+      partition: {{ $.Values.rollingUpdatePartition }}
     {{- end }}
   template:
     metadata:
       name: {{ include "arkcase.fullname" $ | quote }}
-      namespace: {{ .Release.Namespace | quote }}
+      namespace: {{ $.Release.Namespace | quote }}
       labels: {{- include "arkcase.labels" $ | nindent 8 }}
         {{- with (include "arkcase.values" (dict "ctx" $ "base" "labels") | fromYaml) }}
           {{- toYaml .value | nindent 8 }}
@@ -62,8 +62,7 @@ spec:
       {{- end }}
       containers:
         - name: {{ include "arkcase.part.name" $ | quote }}
-          image: {{ include "arkcase.image" $ | quote }}
-          {{- include "arkcase.image.pullPolicy" $ | nindent 10 }}
+          {{- include "arkcase.image" $ | nindent 10 }}
           {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
           env:
             - name: ACTIVEMQ_URL
