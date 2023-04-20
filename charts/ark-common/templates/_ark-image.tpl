@@ -21,7 +21,7 @@
   {{- $edition := .edition -}}
   {{- $data := .data -}}
 
-  {{- $attributes := dict "registry" "" "repository" "" "tag" "" "pullPolicy" "" -}}
+  {{- $attributes := list "repository" "tag" "registry" "pullPolicy" -}}
 
   {{- $search := list -}}
   {{-
@@ -33,25 +33,30 @@
     ) | compact
   -}}
 
-  {{- fail ($search | toString) -}}
-
   {{- $candidates := list -}}
-  {{- $pending := deepCopy $attributes -}}
-  {{- $result := dict -}}
 
-  {{- /* First, search on the maps that have the image's name
+  {{- $pending := dict -}}
+  {{- range $attributes -}}
+     {{- $pending = set $pending . . -}}
+  {{- end -}}
+
+  {{- $result := dict -}}
+  {{- $imageSuffix := ((not (empty $image)) | ternary (printf ".%s" $image) "") -}}
+
+  {{- /* First, search on the maps that have the image's name */ -}}
   {{- range $s := $search -}}
     {{- /* Small optimization - don't search if there's nothing missing */ -}}
     {{- if $pending -}}
       {{- $r := (include "arkcase.tools.get" (dict "ctx" $data "name" $s) | fromYaml) -}}
       {{- if and $r.value (kindIs "map" $r.value) -}}
         {{- /* Find the remaining attributes */ -}}
-        {{- range $key := (keys $pending) -}}
+        {{- range $key := $attributes -}}
           {{- if and (not (hasKey $result $key)) (hasKey $r.value $key) -}}
             {{- $value := get $r.value $key -}}
 
             {{- /* We only take into account strings */ -}}
-            {{- if and $value (kindIs "string" $value) -}}
+            {{- $ready := (or $result (not $imageSuffix) (hasSuffix $imageSuffix $s)) -}}
+            {{- if and $ready $value (kindIs "string" $value) -}}
               {{- $result = set $result $key $value -}}
 
               {{- /* Mark the found attribute as ... well ... found! */ -}}
@@ -77,7 +82,10 @@
         ((not (empty $image)) | ternary (printf "global.%s.image.%s.%s" $chart $edition $image) "")
     ) | compact
   -}}
-  {{- $pending = deepCopy $attributes -}}
+  {{- $pending = dict -}}
+  {{- range $attributes -}}
+     {{- $pending = set $pending . . -}}
+  {{- end -}}
   {{- $override := dict -}}
   {{- range $s := $search -}}
     {{- /* Small optimization - don't search if there's nothing missing */ -}}
@@ -85,7 +93,7 @@
       {{- $r := (include "arkcase.tools.get" (dict "ctx" $data "name" $s) | fromYaml) -}}
       {{- if and $r.value (kindIs "map" $r.value) -}}
         {{- /* Find the remaining attributes */ -}}
-        {{- range $key := (keys $pending) -}}
+        {{- range $key := $attributes -}}
           {{- if and (not (hasKey $override $key)) (hasKey $r.value $key) -}}
             {{- $value := get $r.value $key -}}
 
