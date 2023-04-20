@@ -25,9 +25,13 @@ configuration:
 replicaCount: 1
 
 platform: ""
+
 image:
+
   pullSecrets:
     - name: aws-arkcase-pull
+
+  pullPolicy: IfNotPresent
 
   registry: "public.ecr.aws"
   repository: "arkcase/activemq"
@@ -38,7 +42,6 @@ image:
   #   registry: "alternate-registry"
   #   repository: "alternate-image"
   #   tag: "alternate-tag"
-  pullPolicy: IfNotPresent
 
 # You generally shouldn't mess with these. These exist to support some name-generation templates
 nameOverride: ""
