@@ -62,7 +62,7 @@ spec:
       {{- end }}
       initContainers:
         - name: set-permissions
-          image: {{ include "arkcase.image" (dict "ctx" $ "name" "setperm") | quote }}
+          image: {{ include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | quote }}
           {{- include "arkcase.image.pullPolicy" (dict "ctx" $ "name" "setperm") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
             - name: JOBS
