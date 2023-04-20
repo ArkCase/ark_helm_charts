@@ -403,17 +403,10 @@ Render the image name taking into account the registry, repository, image name, 
 */ -}}
 {{- define "arkcase.image" -}}
   {{- $imageInfo := (include "arkcase.image.info" . | fromYaml) -}}
-  {{- $imageInfo.image -}}
-{{- end -}}
-
-{{- /*
-Render the image's pull policy
-*/ -}}
-{{- define "arkcase.image.pullPolicy" -}}
-  {{- $imageInfo := (include "arkcase.image.info" . | fromYaml) -}}
-  {{- if $imageInfo.pullPolicy -}}
-imagePullPolicy: {{ $imageInfo.pullPolicy }}
-  {{- end -}}
+image: {{ $imageInfo.image | quote }}
+  {{- with $imageInfo.pullPolicy }}
+imagePullPolicy: {{ . }}
+  {{- end }}
 {{- end -}}
 
 {{- /*
@@ -421,7 +414,7 @@ Render the pull secret
 */ -}}
 {{- define "arkcase.image.pullSecrets" -}}
   {{- $imageInfo := (include "arkcase.image.info" . | fromYaml) -}}
-  {{- if $imageInfo.pullSecrets -}}
-imagePullSecrets: {{- $imageInfo.pullSecrets | toYaml | nindent 2 }}
+  {{- with $imageInfo.pullSecrets -}}
+imagePullSecrets: {{- . | toYaml | nindent 2 }}
   {{- end -}}
 {{- end -}}
