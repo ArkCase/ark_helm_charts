@@ -22,8 +22,8 @@
   {{- $repository := .repository -}}
   {{- $data := .data -}}
 
-  {{- $exclusiveAttributes := list "repository" "tag" -}}
-  {{- $shareableAttributes := list "registry" "pullPolicy" -}}
+  {{- $imageAttributes := list "repository" "tag" -}}
+  {{- $commonAttributes := list "registry" "pullPolicy" -}}
 
   {{- $search := list -}}
 
@@ -37,21 +37,21 @@
   -}}
 
   {{- $candidates := list -}}
-  {{- $allAttributes := (concat $exclusiveAttributes $shareableAttributes) -}}
+  {{- $allAttributes := (concat $imageAttributes $commonAttributes) -}}
 
-  {{- if $shareableAttributes -}}
+  {{- if $commonAttributes -}}
     {{- $m := dict -}}
-    {{- range $shareableAttributes -}}
+    {{- range $commonAttributes -}}
       {{- $m = set $m . . -}}
     {{- end -}}
-    {{- $shareableAttributes = $m -}}
+    {{- $commonAttributes = $m -}}
   {{- end -}}
-  {{- if $exclusiveAttributes -}}
+  {{- if $imageAttributes -}}
     {{- $m := dict -}}
-    {{- range $exclusiveAttributes -}}
+    {{- range $imageAttributes -}}
       {{- $m = set $m . . -}}
     {{- end -}}
-    {{- $exclusiveAttributes = $m -}}
+    {{- $imageAttributes = $m -}}
   {{- end -}}
 
 
@@ -61,27 +61,46 @@
   {{- end -}}
 
   {{- $result := dict -}}
+  {{- $resultFrom := dict -}}
   {{- $imageSuffix := ((not (empty $image)) | ternary (printf ".%s" $image) "") -}}
 
-  {{- /* First, search on the maps that have the image's name */ -}}
+  {{- $found := false -}}
   {{- range $s := $search -}}
     {{- /* Small optimization - don't search if there's nothing missing */ -}}
     {{- if $pending -}}
+      {{- /* First things first: make sure the search scope is a non-empty map */ -}}
       {{- $r := (include "arkcase.tools.get" (dict "ctx" $data "name" $s) | fromYaml) -}}
       {{- if and $r.value (kindIs "map" $r.value) -}}
-        {{- /* Find the remaining attributes */ -}}
-        {{- range $att := $allAttributes -}}
-          {{- $examine := (or (hasKey $shareableAttributes $att) (not $image) (and $imageSuffix (hasSuffix $imageSuffix $s))) -}}
-          {{- if and $examine (not (hasKey $result $att)) (hasKey $r.value $att) -}}
-            {{- $value := get $r.value $att -}}
-
-            {{- /* We only take into account strings */ -}}
-            {{- $ready := (or $result (not $imageSuffix) (hasSuffix $imageSuffix $s) (eq $att "repository")) -}}
-            {{- if and $ready $value (kindIs "string" $value) -}}
-              {{- $result = set $result $att $value -}}
-
-              {{- /* Mark the found attribute as ... well ... found! */ -}}
-              {{- $pending = omit $pending $att -}}
+        {{- /* If we've been given an image name, we can only consider the image */ -}}
+        {{- /* attributes from maps that match that given name (i.e. ends with */ -}}
+        {{- /* $imageSuffix. If we don't have an image name, then named scopes will */ -}}
+        {{- /* not be included in the search path possibilities. */ -}}
+        {{- if or (not $image) (hasSuffix $imageSuffix $s) -}}
+          {{- range $att := $imageAttributes -}}
+            {{- if not (hasKey $result $att) -}}
+              {{- $found = (or $found (hasKey $r.value $att)) -}}
+              {{- if $found -}}
+                {{- $value := get $r.value $att -}}
+                {{- if and $value (kindIs "string" $value) -}}
+                  {{- $result = set $result $att $value -}}
+                  {{- $resultFrom = set $resultFrom $att $s -}}
+                  {{- /* Mark the found attribute as ... well ... found! */ -}}
+                  {{- $pending = omit $pending $att -}}
+                {{- end -}}
+              {{- end -}}
+            {{- end -}}
+          {{- end -}}
+        {{- end -}}
+        {{- if $found -}}
+          {{- range $att := $commonAttributes -}}
+            {{- if not (hasKey $result $att) -}}
+              {{- $value := get $r.value $att -}}
+              {{- if and $value (kindIs "string" $value) -}}
+                {{- $result = set $result $att $value -}}
+                {{- $resultFrom = set $resultFrom $att $s -}}
+                {{- /* Mark the found attribute as ... well ... found! */ -}}
+                {{- $pending = omit $pending $att -}}
+              {{- end -}}
             {{- end -}}
           {{- end -}}
         {{- end -}}
@@ -91,12 +110,37 @@
 
   {{- /* If we didn't find an image, but we were given a fallback repository, */ -}}
   {{- /* then we render it as if it were a top-level image. */ -}}
-  {{- if and (not $result) $repository -}}
-    {{- $result = dict "repository" $repository -}}
-    {{- range (without $allAttributes "repository") -}} 
-      {{- $v := get $data.local . -}}
-      {{- if and $v (kindIs "string" $v) -}}
-        {{- $result = set $result . $v -}}
+  {{- if and $repository (not (hasKey $result "repository")) -}}
+    {{- $result = set $result "repository" $repository -}}
+    {{- $pending = omit $pending "repository" -}}
+
+    {{- if and $pending (hasKey $data.local $repository) -}}
+      {{- $scope := get $data.local $repository -}}
+      {{- if and $scope (kindIs "map" $scope) -}}
+        {{- /* Try to get the image attributes from the specifically-named branch */ -}}
+        {{- range $att := $allAttributes -}}
+          {{- if not (hasKey $result $att) -}}
+            {{- $v := get $scope $att -}}
+            {{- if and $v (kindIs "string" $v) -}}
+              {{- $result = set $result $att $v -}}
+              {{- $pending = omit $pending $att -}}
+            {{- end -}}
+          {{- end -}}
+        {{- end -}}
+      {{- end -}}
+    {{- end -}}
+
+    {{- /* Whatever we got above, we only seek out common attributes */ -}}
+    {{- /* from the overarching branch. This avoids collisions with */ -}}
+    {{- /* image attributes for single-image charts. */ -}}
+    {{- if $pending -}}
+      {{- $scope := $data.local -}}
+      {{- range $att := $commonAttributes -}}
+        {{- $v := get $scope $att -}}
+        {{- if and $v (kindIs "string" $v) -}}
+          {{- $result = set $result $att $v -}}
+          {{- $pending = omit $pending $att -}}
+        {{- end -}}
       {{- end -}}
     {{- end -}}
   {{- end -}}
