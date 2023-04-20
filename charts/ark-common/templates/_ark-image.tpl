@@ -286,41 +286,6 @@ community) in order to choose the correct image.
 
   {{- $image := (include "arkcase.image.info.definition" (dict "ctx" $ctx "chart" $chart "image" $name "edition" $edition "repository" $repository "data" $data) | fromYaml) -}}
 
-  {{- $r := (include "arkcase.image.info.pullSecrets" (dict "chart" $chart "edition" $edition "data" $data) | fromYaml) -}}
-  {{- if and $r $r.value -}}
-    {{- /* We support a single string, a CSV string, or a list ... the string gets converted to a list */ -}}
-    {{- $v := $r.value -}}
-    {{- if (kindIs "string" $v) -}}
-      {{- $v = splitList "," $v -}}
-    {{- end -}}
-    {{- $d := dict -}}
-    {{- $f := list -}}
-    {{- range $v -}}
-      {{- /* Each element is either a string, or a map for whom only the "name:" key will be consumed */ -}}
-      {{- /* if it's anything else, this is an error */ -}}
-      {{- $s := "" -}}
-      {{- if and (kindIs "string" .) . -}}
-        {{- $s = . -}}
-      {{- else if and (kindIs "map" .) .name -}}
-        {{- $s = (.name | toString) -}}
-      {{- else -}}
-        {{- fail (printf "Invalid pull secret type %s - must be a valid RFC-1123 hostname part (from %s)" (kindOf .) $r.location) -}}
-      {{- end -}}
-
-      {{- /* Deduplicate */ -}}
-      {{- if and $s (not (hasKey $d $s)) -}}
-        {{- /* Made sure sure it's a valid pull secret name */ -}}
-        {{- if not (include "arkcase.tools.hostnamePart" $s) -}}
-          {{- fail (printf "Invalid pull secret name [%s] - must be a valid RFC-1123 hostname part (from %s)" $s $r.location) -}}
-        {{- end -}}
-        {{- $d = set $d $s $s -}}
-        {{- $f = append $f (dict "name" $s) -}}
-      {{- end -}}
-    {{- end -}}
-    {{- $r = $f -}}
-  {{- end -}}
-  {{- $image = set $image "pullSecrets" $r -}}
-
   {{- /* Make sure we have a repository for the image */ -}}
   {{- $finalRepository := $image.repository -}}
   {{- if not $finalRepository -}}
@@ -413,8 +378,62 @@ imagePullPolicy: {{ . }}
 Render the pull secret
 */ -}}
 {{- define "arkcase.image.pullSecrets" -}}
-  {{- $imageInfo := (include "arkcase.image.info" . | fromYaml) -}}
-  {{- with $imageInfo.pullSecrets -}}
-imagePullSecrets: {{- . | toYaml | nindent 2 }}
+  {{- $ctx := . -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "The  parameter must be the root context (. or $)" -}}
+  {{- end -}}
+
+  {{- $edition := (empty (include "arkcase.enterprise" $ctx) | ternary "community" "enterprise") -}}
+
+  {{- /* First things first: do we have any global overrides? */ -}}
+  {{- $global := $ctx.Values.global -}}
+  {{- if or (not $global) (not (kindIs "map" $global)) -}}
+    {{- $global = dict -}}
+  {{- end -}}
+
+  {{- /* Now get the local values */ -}}
+  {{- $local := $ctx.Values -}}
+  {{- if and $local (hasKey $local "image") $local.image (kindIs "map" $local.image) -}}
+    {{- $local = $local.image -}}
+  {{- else -}}
+    {{- $local = dict -}}
+  {{- end -}}
+
+  {{- /* The keys on this map are the images in the local repository */ -}}
+  {{- $chart := $ctx.Chart.Name -}}
+  {{- $data := dict "local" $local "global" $global -}}
+
+  {{- $r := (include "arkcase.image.info.pullSecrets" (dict "chart" $chart "edition" $edition "data" $data) | fromYaml) -}}
+  {{- if and $r $r.value -}}
+    {{- /* We support a single string, a CSV string, or a list ... the string gets converted to a list */ -}}
+    {{- $v := $r.value -}}
+    {{- if (kindIs "string" $v) -}}
+      {{- $v = splitList "," $v -}}
+    {{- end -}}
+    {{- $d := dict -}}
+    {{- $f := list -}}
+    {{- range $v -}}
+      {{- /* Each element is either a string, or a map for whom only the "name:" key will be consumed */ -}}
+      {{- /* if it's anything else, this is an error */ -}}
+      {{- $s := "" -}}
+      {{- if and (kindIs "string" .) . -}}
+        {{- $s = . -}}
+      {{- else if and (kindIs "map" .) .name -}}
+        {{- $s = (.name | toString) -}}
+      {{- else -}}
+        {{- fail (printf "Invalid pull secret type %s - must be a valid RFC-1123 hostname part (from %s)" (kindOf .) $r.location) -}}
+      {{- end -}}
+
+      {{- /* Deduplicate */ -}}
+      {{- if and $s (not (hasKey $d $s)) -}}
+        {{- /* Made sure sure it's a valid pull secret name */ -}}
+        {{- if not (include "arkcase.tools.hostnamePart" $s) -}}
+          {{- fail (printf "Invalid pull secret name [%s] - must be a valid RFC-1123 hostname part (from %s)" $s $r.location) -}}
+        {{- end -}}
+        {{- $d = set $d $s $s -}}
+        {{- $f = append $f (dict "name" $s) -}}
+      {{- end -}}
+    {{- end -}}
+imagePullSecrets: {{- toYaml $f | nindent 2 }}
   {{- end -}}
 {{- end -}}
