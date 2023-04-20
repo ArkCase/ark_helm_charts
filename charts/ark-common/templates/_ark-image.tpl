@@ -22,9 +22,11 @@
   {{- $repository := .repository -}}
   {{- $data := .data -}}
 
-  {{- $attributes := list "repository" "tag" "registry" "pullPolicy" -}}
+  {{- $exclusiveAttributes := list "repository" "tag" -}}
+  {{- $shareableAttributes := list "registry" "pullPolicy" -}}
 
   {{- $search := list -}}
+
   {{-
     $search = ( list
         ((not (empty $image)) | ternary (printf "local.%s.%s" $edition $image) "")
@@ -35,9 +37,26 @@
   -}}
 
   {{- $candidates := list -}}
+  {{- $allAttributes := (concat $exclusiveAttributes $shareableAttributes) -}}
+
+  {{- if $shareableAttributes -}}
+    {{- $m := dict -}}
+    {{- range $shareableAttributes -}}
+      {{- $m = set $m . . -}}
+    {{- end -}}
+    {{- $shareableAttributes = $m -}}
+  {{- end -}}
+  {{- if $exclusiveAttributes -}}
+    {{- $m := dict -}}
+    {{- range $exclusiveAttributes -}}
+      {{- $m = set $m . . -}}
+    {{- end -}}
+    {{- $exclusiveAttributes = $m -}}
+  {{- end -}}
+
 
   {{- $pending := dict -}}
-  {{- range $attributes -}}
+  {{- range $allAttributes -}}
      {{- $pending = set $pending . . -}}
   {{- end -}}
 
@@ -51,17 +70,18 @@
       {{- $r := (include "arkcase.tools.get" (dict "ctx" $data "name" $s) | fromYaml) -}}
       {{- if and $r.value (kindIs "map" $r.value) -}}
         {{- /* Find the remaining attributes */ -}}
-        {{- range $key := $attributes -}}
-          {{- if and (not (hasKey $result $key)) (hasKey $r.value $key) -}}
-            {{- $value := get $r.value $key -}}
+        {{- range $att := $allAttributes -}}
+          {{- $examine := (or (hasKey $shareableAttributes $att) (not $image) (and $imageSuffix (hasSuffix $imageSuffix $s))) -}}
+          {{- if and $examine (not (hasKey $result $att)) (hasKey $r.value $att) -}}
+            {{- $value := get $r.value $att -}}
 
             {{- /* We only take into account strings */ -}}
-            {{- $ready := (or $result (not $imageSuffix) (hasSuffix $imageSuffix $s) (eq $key "repository")) -}}
+            {{- $ready := (or $result (not $imageSuffix) (hasSuffix $imageSuffix $s) (eq $att "repository")) -}}
             {{- if and $ready $value (kindIs "string" $value) -}}
-              {{- $result = set $result $key $value -}}
+              {{- $result = set $result $att $value -}}
 
               {{- /* Mark the found attribute as ... well ... found! */ -}}
-              {{- $pending = omit $pending $key -}}
+              {{- $pending = omit $pending $att -}}
             {{- end -}}
           {{- end -}}
         {{- end -}}
@@ -73,7 +93,7 @@
   {{- /* then we render it as if it were a top-level image. */ -}}
   {{- if and (not $result) $repository -}}
     {{- $result = dict "repository" $repository -}}
-    {{- range (without $attributes "repository") -}} 
+    {{- range (without $allAttributes "repository") -}} 
       {{- $v := get $data.local . -}}
       {{- if and $v (kindIs "string" $v) -}}
         {{- $result = set $result . $v -}}
@@ -96,7 +116,7 @@
     ) | compact
   -}}
   {{- $pending = dict -}}
-  {{- range $attributes -}}
+  {{- range $allAttributes -}}
      {{- $pending = set $pending . . -}}
   {{- end -}}
   {{- $override := dict -}}
@@ -106,16 +126,16 @@
       {{- $r := (include "arkcase.tools.get" (dict "ctx" $data "name" $s) | fromYaml) -}}
       {{- if and $r.value (kindIs "map" $r.value) -}}
         {{- /* Find the remaining attributes */ -}}
-        {{- range $key := $attributes -}}
-          {{- if and (not (hasKey $override $key)) (hasKey $r.value $key) -}}
-            {{- $value := get $r.value $key -}}
+        {{- range $att := $allAttributes -}}
+          {{- if and (not (hasKey $override $att)) (hasKey $r.value $att) -}}
+            {{- $value := get $r.value $att -}}
 
             {{- /* We only take into account strings */ -}}
             {{- if and $value (kindIs "string" $value) -}}
-              {{- $override = set $override $key $value -}}
+              {{- $override = set $override $att $value -}}
 
               {{- /* Mark the found attribute as ... well ... found! */ -}}
-              {{- $pending = omit $pending $key -}}
+              {{- $pending = omit $pending $att -}}
             {{- end -}}
           {{- end -}}
         {{- end -}}
