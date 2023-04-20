@@ -16,6 +16,7 @@
 {{- end -}}
 
 {{- define "arkcase.image.info.definition" -}}
+  {{- $ctx := .ctx -}}
   {{- $chart := .chart -}}
   {{- $image := .image -}}
   {{- $edition := .edition -}}
@@ -156,6 +157,13 @@
     {{- end -}}
   {{- end -}}
 
+  {{- /* Finally, if this is the "default" image, and doesn't have a tag, */ -}}
+  {{- /* then by default use the chart's appversion value as the image tag. */ -}}
+  {{- if and (not $image) (not (hasKey $result "tag")) -}}
+    {{- $result = set $result "tag" ($ctx.Chart.AppVersion | toString) -}}
+    {{- $pending = omit $pending "tag" -}}
+  {{- end -}}
+
   {{- /* Now we have the map with the explicitly set data. */ -}}
   {{- /* We must now found any pending overrides, and apply them */ -}}
   {{- /* using the correct order of precedence. */ -}}
@@ -276,7 +284,7 @@ community) in order to choose the correct image.
   {{- $chart := $ctx.Chart.Name -}}
   {{- $data := dict "local" $local "global" $global -}}
 
-  {{- $image := (include "arkcase.image.info.definition" (dict "chart" $chart "image" $name "edition" $edition "repository" $repository "data" $data) | fromYaml) -}}
+  {{- $image := (include "arkcase.image.info.definition" (dict "ctx" $ctx "chart" $chart "image" $name "edition" $edition "repository" $repository "data" $data) | fromYaml) -}}
 
   {{- $r := (include "arkcase.image.info.pullSecrets" (dict "chart" $chart "edition" $edition "data" $data) | fromYaml) -}}
   {{- if and $r $r.value -}}
