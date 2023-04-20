@@ -61,7 +61,6 @@
   {{- end -}}
 
   {{- $result := dict -}}
-  {{- $resultFrom := dict -}}
   {{- $imageSuffix := ((not (empty $image)) | ternary (printf ".%s" $image) "") -}}
 
   {{- $found := false -}}
@@ -77,13 +76,14 @@
         {{- /* not be included in the search path possibilities. */ -}}
         {{- if or (not $image) (hasSuffix $imageSuffix $s) -}}
           {{- range $att := $imageAttributes -}}
+            {{- /* Never override values we've already found */ -}}
             {{- if not (hasKey $result $att) -}}
               {{- $found = (or $found (hasKey $r.value $att)) -}}
               {{- if $found -}}
-                {{- $value := get $r.value $att -}}
-                {{- if and $value (kindIs "string" $value) -}}
-                  {{- $result = set $result $att $value -}}
-                  {{- $resultFrom = set $resultFrom $att $s -}}
+                {{- $v := get $r.value $att -}}
+                {{- /* Only accept non-empty strings */ -}}
+                {{- if and $v (kindIs "string" $v) -}}
+                  {{- $result = set $result $att $v -}}
                   {{- /* Mark the found attribute as ... well ... found! */ -}}
                   {{- $pending = omit $pending $att -}}
                 {{- end -}}
@@ -91,13 +91,16 @@
             {{- end -}}
           {{- end -}}
         {{- end -}}
+
+        {{- /* Only proceed if we've found the image "declaration" */ -}}
         {{- if $found -}}
           {{- range $att := $commonAttributes -}}
+            {{- /* Never override values we've already found */ -}}
             {{- if not (hasKey $result $att) -}}
-              {{- $value := get $r.value $att -}}
-              {{- if and $value (kindIs "string" $value) -}}
-                {{- $result = set $result $att $value -}}
-                {{- $resultFrom = set $resultFrom $att $s -}}
+              {{- $v := get $r.value $att -}}
+              {{- /* Only accept non-empty strings */ -}}
+              {{- if and $v (kindIs "string" $v) -}}
+                {{- $result = set $result $att $v -}}
                 {{- /* Mark the found attribute as ... well ... found! */ -}}
                 {{- $pending = omit $pending $att -}}
               {{- end -}}
@@ -119,10 +122,13 @@
       {{- if and $scope (kindIs "map" $scope) -}}
         {{- /* Try to get the image attributes from the specifically-named branch */ -}}
         {{- range $att := $allAttributes -}}
+          {{- /* Never override values we've already found */ -}}
           {{- if not (hasKey $result $att) -}}
             {{- $v := get $scope $att -}}
+            {{- /* Only accept non-empty strings */ -}}
             {{- if and $v (kindIs "string" $v) -}}
               {{- $result = set $result $att $v -}}
+              {{- /* Mark the found attribute as ... well ... found! */ -}}
               {{- $pending = omit $pending $att -}}
             {{- end -}}
           {{- end -}}
@@ -136,10 +142,15 @@
     {{- if $pending -}}
       {{- $scope := $data.local -}}
       {{- range $att := $commonAttributes -}}
-        {{- $v := get $scope $att -}}
-        {{- if and $v (kindIs "string" $v) -}}
-          {{- $result = set $result $att $v -}}
-          {{- $pending = omit $pending $att -}}
+        {{- /* Never override values we've already found */ -}}
+        {{- if not (hasKey $result $att) -}}
+          {{- $v := get $scope $att -}}
+          {{- /* Only accept non-empty strings */ -}}
+          {{- if and $v (kindIs "string" $v) -}}
+            {{- $result = set $result $att $v -}}
+            {{- /* Mark the found attribute as ... well ... found! */ -}}
+            {{- $pending = omit $pending $att -}}
+          {{- end -}}
         {{- end -}}
       {{- end -}}
     {{- end -}}
@@ -172,12 +183,11 @@
         {{- /* Find the remaining attributes */ -}}
         {{- range $att := $allAttributes -}}
           {{- if and (not (hasKey $override $att)) (hasKey $r.value $att) -}}
-            {{- $value := get $r.value $att -}}
+            {{- $v := get $r.value $att -}}
 
-            {{- /* We only take into account strings */ -}}
-            {{- if and $value (kindIs "string" $value) -}}
-              {{- $override = set $override $att $value -}}
-
+            {{- /* Only accept non-empty strings */ -}}
+            {{- if and $v (kindIs "string" $v) -}}
+              {{- $override = set $override $att $v -}}
               {{- /* Mark the found attribute as ... well ... found! */ -}}
               {{- $pending = omit $pending $att -}}
             {{- end -}}
