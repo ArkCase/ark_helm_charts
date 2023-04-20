@@ -28,20 +28,23 @@ initDependencies:
 replicaCount: 1
 
 platform: ""
+
 image:
-  registry: "207428623785.dkr.ecr.us-east-1.amazonaws.com"
-  repository: "ark_cloudconfig"
+  pullSecrets:
+    - name: aws-arkcase-pull
+
+  pullPolicy: IfNotPresent
+
+  registry: "public.ecr.aws"
+  repository: "arkcase/cloudconfig"
   # Overrides the image tag whose default is the chart appVersion.
-  tag: "2021.03.25"
+  tag: "2021.03.26"
+
   # If required, for tweaking setperm
   # setperm:
   #   registry: "alternate-registry"
   #   repository: "alternate-image"
   #   tag: "alternate-tag"
-  pullPolicy: IfNotPresent
-
-imagePullSecrets:
-  - name: aws-arkcase-pull
 
 # You generally shouldn't mess with these. These exist to support some name-generation templates
 nameOverride: ""

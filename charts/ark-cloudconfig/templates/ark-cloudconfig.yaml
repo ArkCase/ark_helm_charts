@@ -59,8 +59,9 @@ spec:
       {{- end }}
       initContainers:
         - name: set-permissions
-          image: {{ include "arkcase.tools.subimage" (dict "ctx" $ "name" "setperm" "image" "arkcase/setperm") | quote }}
-          env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
+          image: {{ include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | quote }}
+          {{- include "arkcase.image.pullPolicy" (dict "ctx" $ "name" "setperm") | nindent 10 }}
+          env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             - name: JOBS
               value: |
                 jobs:
@@ -79,14 +80,14 @@ spec:
           {{- with (.Values.securityContext).config }}
           securityContext: {{- toYaml . | nindent 12 }}
           {{- end }}
-          image: {{ include "arkcase.tools.image" . | quote }}
-          imagePullPolicy: {{ include "arkcase.tools.imagePullPolicy" . | quote }}
-          env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
+          image: {{ include "arkcase.image" $ | quote }}
+          {{- include "arkcase.image.pullPolicy" $ | nindent 10 }}
+          env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             - name: DATA_DIR
               value: "/app/data"
-          {{- include "arkcase.subsystem.ports" . | nindent 10 }}
-          {{- if .Values.command }}
-          command: {{- .Values.command | toYaml | nindent 12 }}
+          {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
+          {{- with .Values.command }}
+          command: {{- . | toYaml | nindent 12 }}
           {{- end }}
           {{- with .Values.resources }}
           resources: {{- toYaml . | nindent 12 }}
