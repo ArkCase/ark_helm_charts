@@ -1,4 +1,4 @@
-{{- if (include "arkcase.subsystem.enabled" .) }}
+{{- if and (include "arkcase.subsystem.enabled" .) (include "arkcase.enterprise" .) }}
 ---
 apiVersion: apps/v1
 kind: StatefulSet

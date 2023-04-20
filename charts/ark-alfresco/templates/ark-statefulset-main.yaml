@@ -109,6 +109,7 @@ spec:
                 -Dsolr.secureComms=secret
                 -Dsolr.sharedSecret={{ include "arkcase.alfresco.searchSecret" . }}
                 -Dsolr.base.url=/solr
+                -Dsolr.http.connection.timeout=1000
                 -Dindex.subsystem.name=solr6
                 -Dshare.host={{ include "arkcase.alfresco.service" (dict "ctx" $ "name" "share") | quote }}
                 -Dshare.port=8080
@@ -117,12 +118,14 @@ spec:
                 -Daos.baseUrlOverwrite=http://localhost:8080/alfresco/aos
                 -Dmessaging.broker.url="failover:(nio://{{- include "arkcase.alfresco.service" (dict "ctx" $ "name" "activemq") -}}:61616)?timeout=3000&jms.useCompression=true"
                 -Ddeployment.method=DOCKER_COMPOSE
+                -Dcsrf.filter.enabled=false
+                -DlocalTransform.core-aio.url=http://{{- include "arkcase.alfresco.service" (dict "ctx" $ "name" "transform-core-aio") -}}:8090/
+              {{- if (include "arkcase.enterprise" .) }}
+                -Dsfs.url=http://{{- include "arkcase.alfresco.service" (dict "ctx" $ "name" "sfs") -}}:8099/
                 -Dtransform.service.enabled=true
                 -Dtransform.service.url=http://{{- include "arkcase.alfresco.service" (dict "ctx" $ "name" "transform-router") -}}:8095
-                -Dsfs.url=http://{{- include "arkcase.alfresco.service" (dict "ctx" $ "name" "sfs") -}}:8099/
-                -DlocalTransform.core-aio.url=http://{{- include "arkcase.alfresco.service" (dict "ctx" $ "name" "transform-core-aio") -}}:8090/
-                -Dcsrf.filter.enabled=false
                 -Ddsync.service.uris=http://localhost:9090/alfresco
+              {{- end }}
           {{- with (include "arkcase.values" (dict "ctx" $ "base" "command") | fromYaml) }}
           command: {{ toJson .value }}
           {{- end }}
