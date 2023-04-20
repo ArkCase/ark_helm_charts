@@ -6,11 +6,11 @@ metadata:
   name: {{ include "arkcase.fullname" . | quote }}
   namespace: {{ .Release.Namespace | quote }}
   labels: {{- include "arkcase.labels" . | nindent 4 }}
-    {{- with (include "arkcase.values" (dict "ctx" . "base" "labels") | fromYaml) }}
+    {{- with (include "arkcase.values" (dict "ctx" $ "base" "labels") | fromYaml) }}
       {{- toYaml .value | nindent 4 }}
     {{- end }}
   annotations:
-    {{- with (include "arkcase.values" (dict "ctx" . "base" "annotations") | fromYaml) }}
+    {{- with (include "arkcase.values" (dict "ctx" $ "base" "annotations") | fromYaml) }}
       {{- toYaml .value | nindent 4 }}
     {{- end }}
 spec:
@@ -33,7 +33,7 @@ spec:
       name: {{ include "arkcase.fullname" . | quote }}
       namespace: {{ .Release.Namespace | quote }}
       labels: {{- include "arkcase.labels" . | nindent 8 }}
-        {{- with (include "arkcase.values" (dict "ctx" . "base" "labels") | fromYaml) }}
+        {{- with (include "arkcase.values" (dict "ctx" $ "base" "labels") | fromYaml) }}
           {{- toYaml .value | nindent 8 }}
         {{- end }}
       annotations:
@@ -41,49 +41,50 @@ spec:
         prometheus.io/scrape: "true"
         prometheus.io/port: "9100"
         timestamp: {{ date "20060102150405" now | quote }}
-        {{- with (include "arkcase.values" (dict "ctx" . "base" "annotations") | fromYaml) }}
+        {{- with (include "arkcase.values" (dict "ctx" $ "base" "annotations") | fromYaml) }}
           {{- toYaml .value | nindent 8 }}
         {{- end }}
     spec:
-      {{- with (include "arkcase.values" (dict "ctx" . "base" "imagePullSecrets") | fromYaml) }}
+      {{- include "arkcase.image.pullSecrets" . | nindent 6 }}
+      {{- with (include "arkcase.values" (dict "ctx" $ "base" "imagePullSecrets") | fromYaml) }}
       imagePullSecrets: {{- toYaml .value | nindent 8 }}
       {{- end }}
-      {{- with (include "arkcase.values" (dict "ctx" . "base" "hostAliases") | fromYaml) }}
+      {{- with (include "arkcase.values" (dict "ctx" $ "base" "hostAliases") | fromYaml) }}
       hostAliases: {{- toYaml .value | nindent 8 }}
       {{- end }}
-      {{- with (include "arkcase.values" (dict "ctx" . "base" "schedulerName") | fromYaml) }}
+      {{- with (include "arkcase.values" (dict "ctx" $ "base" "schedulerName") | fromYaml) }}
       schedulerName: {{ .value | quote }}
       {{- end }}
-      {{- with (include "arkcase.values" (dict "ctx" . "base" "serviceAccountName") | fromYaml) }}
+      {{- with (include "arkcase.values" (dict "ctx" $ "base" "serviceAccountName") | fromYaml) }}
       serviceAccountName: {{ .value | quote }}
       {{- end }}
-      {{- with (include "arkcase.values" (dict "ctx" . "base" "securityContext") | fromYaml) }}
+      {{- with (include "arkcase.values" (dict "ctx" $ "base" "securityContext") | fromYaml) }}
         {{- with .template }}
       securityContext: {{- toYaml .value | nindent 8 }}
         {{- end }}
       {{- end }}
       containers:
         - name: {{ include "arkcase.part.name" . | quote }}
-          image: {{ include "arkcase.tools.image" . | quote }}
-          imagePullPolicy: {{ include "arkcase.tools.imagePullPolicy" . | quote }}
+          image: {{ include "arkcase.image" . | quote }}
+          {{- include "arkcase.image.pullPolicy" . | nindent 10 }}
           {{- include "arkcase.subsystem.ports" . | nindent 10 }}
           env:
             - name: REPO_HOST
-              value: {{ include "arkcase.alfresco.service" (dict "ctx" . "name" "main") | quote }}
+              value: {{ include "arkcase.alfresco.service" (dict "ctx" $ "name" "main") | quote }}
             - name: REPO_PORT
               value: "8080"
             - name: CATALINA_OPTS
               value: >-
                 -XX:MinRAMPercentage=50
                 -XX:MaxRAMPercentage=80
-                -Dalfresco.host={{ include "arkcase.alfresco.service" (dict "ctx" . "name" "main") | quote }}
+                -Dalfresco.host={{ include "arkcase.alfresco.service" (dict "ctx" $ "name" "main") | quote }}
                 -Dalfresco.port=8080
                 -Dalfresco.context=alfresco
                 -Dalfresco.protocol=http
-          {{- with (include "arkcase.values" (dict "ctx" . "base" "command") | fromYaml) }}
+          {{- with (include "arkcase.values" (dict "ctx" $ "base" "command") | fromYaml) }}
           command: {{ toJson .value }}
           {{- end }}
-          {{- $resources := (include "arkcase.values" (dict "ctx" . "base" "resources") | fromYaml) }}
+          {{- $resources := (include "arkcase.values" (dict "ctx" $ "base" "resources") | fromYaml) }}
           {{- if $resources }}
           resources: {{- toYaml $resources.value | nindent 12 }}
           {{- else }}
@@ -91,13 +92,13 @@ spec:
             limits:
               memory: "1Gi"
           {{- end }}
-      {{- with (include "arkcase.values" (dict "ctx" . "base" "nodeSelector") | fromYaml) }}
+      {{- with (include "arkcase.values" (dict "ctx" $ "base" "nodeSelector") | fromYaml) }}
       nodeSelector: {{- toYaml .value | nindent 8 }}
       {{- end }}
-      {{- with (include "arkcase.values" (dict "ctx" . "base" "affinity") | fromYaml) }}
+      {{- with (include "arkcase.values" (dict "ctx" $ "base" "affinity") | fromYaml) }}
       affinity: {{- toYaml .value | nindent 8 }}
       {{- end }}
-      {{- with (include "arkcase.values" (dict "ctx" . "base" "tolerations") | fromYaml) }}
+      {{- with (include "arkcase.values" (dict "ctx" $ "base" "tolerations") | fromYaml) }}
       tolerations: {{- toYaml .value | nindent 8 }}
       {{- end }}
 {{- end }}

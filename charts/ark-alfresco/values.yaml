@@ -82,41 +82,58 @@ initDependencies:
 replicaCount: 1
 
 platform: ""
+
 image:
-  registry: "207428623785.dkr.ecr.us-east-1.amazonaws.com"
-  # Overrides the image tag whose default is the chart appVersion.
-  # If required, for tweaking setperm
-  # setperm:
-  #   registry: "alternate-registry"
-  #   repository: "alternate-image"
-  #   tag: "alternate-tag"
   pullPolicy: IfNotPresent
+
+  pullSecrets:
+    - name: aws-arkcase-pull
+
+  registry: "public.ecr.aws"
+
+  community:
+    main:
+      repository: "arkcase/alfresco-ce-content"
+      tag: &alfrescoVersion "7.3.1"
+
+    share:
+      repository: "arkcase/alfresco-ce-share"
+      tag: *alfrescoVersion
+
+  enterprise: 
+    registry: "207428623785.dkr.ecr.us-east-1.amazonaws.com"
+
+    main:
+      repository: "arkcase/alfresco-ee-content"
+      tag: *alfrescoVersion
+
+    share:
+      repository: "arkcase/alfresco-ee-share"
+      tag: *alfrescoVersion
+
+    sfs:
+      repository: "arkcase/alfresco-ee-fileshare"
+      tag: "2.0.0"
+
+    transform-router:
+      repository: "arkcase/alfresco-ee-transform-router"
+      tag: "2.0.0"
+
   activemq:
     repository: "arkcase/alfresco-activemq"
     tag: "5.17.1"
-  main:
-    repository: "arkcase/alfresco-ee-content"
-    # repository: "arkcase/alfresco-ce-content"
-    # tag: "7.3.1"
-  share:
-    repository: "arkcase/alfresco-ee-share"
-    # repository: "arkcase/alfresco-ce-share"
-    # tag: "7.3.1"
-  sfs:
-    repository: "arkcase/alfresco-ee-fileshare"
-    tag: "2.0.0"
-  transform-router:
-    repository: "arkcase/alfresco-ee-transform-router"
-    tag: "2.0.0"
+
   search:
     repository: "arkcase/alfresco-search"
     tag: "2.0.5"
+
   transform-core-aio:
     repository: "arkcase/alfresco-transform-core"
     tag: "3.0.0"
 
-imagePullSecrets:
-  - name: aws-arkcase-pull
+  setperm:
+    repository: "arkcase/setperm"
+    tag: "1.0.2"
 
 # You generally shouldn't mess with these. These exist to support some name-generation templates
 nameOverride: ""
