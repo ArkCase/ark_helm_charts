@@ -55,7 +55,7 @@
             {{- $value := get $r.value $key -}}
 
             {{- /* We only take into account strings */ -}}
-            {{- $ready := (or $result (not $imageSuffix) (hasSuffix $imageSuffix $s)) -}}
+            {{- $ready := (or $result (not $imageSuffix) (hasSuffix $imageSuffix $s) (eq $key "repository")) -}}
             {{- if and $ready $value (kindIs "string" $value) -}}
               {{- $result = set $result $key $value -}}
 
