@@ -6,30 +6,26 @@ exampleValue: common-chart
 
 global:
 
-  enterprise: false
+  # enterprise: true
 
   image:
-    registry:
-      community: "global-community-registry"
-      enterprise: "global-enterprise-registry"
+    registry: "global-registry"
 
     # pullPolicy: "IfNotPresent"
-
-    pullSecrets:
-      enterprise:
-        - "global-pull-secret-one"
-        - "global-pull-secret-two"
-
-    ark-common:
+  ark-common:
+    image:
       bravo:
-        # repository: "global-bravo-repository"
+        repository: "global-bravo-repository"
+      enterprise:
+        pullSecrets:
+          - "global-pull-secret-one"
+          - "global-pull-secret-two"
+
 
 image:
   pullSecrets: "local-pull-secret-1,lps-2,lps-3"
 
-  pullPolicy:
-    community: "IfNotPresent"
-    enterprise: "Always"
+  pullPolicy: "Always"
 
   registry: "local-registry"
 
@@ -53,3 +49,4 @@ image:
 
   bravo:
     registry: "local-bravo-registry"
+    pullPolicy: "IfNotPresent"
