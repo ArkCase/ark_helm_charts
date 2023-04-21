@@ -740,24 +740,39 @@ return either the value if correct, or the empty string if not.
   {{- dict "value" $value "set" $valueSet | toYaml -}}
 {{- end -}}
 
-{{- define "arkcase.enterprise" -}}
+{{- define "arkcase.enterprise.compute" -}}
   {{- $ctx := . -}}
-  {{- if not (include "arkcase.isRootContext" $ctx) -}}
-    {{- fail "The parameter must be the root context (. or $)" -}}
-  {{- end -}}
 
   {{- /* For now, default to the community edition */ -}}
   {{- $enterprise := false -}}
 
-  {{- $local := $ctx.Values -}}
-  {{- $localSet := hasKey $local "enterprise" -}}
   {{- $global := ($ctx.Values.global | default dict) -}}
   {{- $globalSet := hasKey $global "enterprise" -}}
 
-  {{- if $localSet -}}
-    {{- $enterprise = $local.enterprise -}}
-  {{- else if $globalSet -}}
+  {{- if $globalSet -}}
     {{- $enterprise = $global.enterprise -}}
+  {{- else -}}
+    {{- /* The value is not explicitly set, so try to deduce it */ -}}
+    {{- if and $ctx.Values.licenses $global.licenses -}}
+      {{- $licenseNames := $ctx.Values.licenses -}}
+      {{- $licenseValues := ($global.licenses | default dict) -}}
+      {{- if not (kindIs "map" $licenseValues) -}}
+        {{- $licenseValues = dict -}}
+      {{- end -}}
+      {{- if (kindIs "string" $licenseNames) -}}
+        {{- $licenseNames = (splitList "," $licenseNames | compact) -}}
+      {{- else if (kindIs "map" $licenseNames) -}}
+        {{- $licenseNames = (keys $licenseNames | sortAlpha) -}}
+      {{- end -}}
+      {{- range $l := $licenseNames -}}
+        {{- if not $enterprise -}}
+          {{- $l = ($l | toString) -}}
+          {{- if and $l (hasKey $licenseValues $l) (get $licenseValues $l) -}}
+            {{- $enterprise = true -}}
+          {{- end -}}
+        {{- end -}}
+      {{- end -}}
+    {{- end -}}
   {{- end -}}
 
   {{- /* Sanitize to a boolean value */ -}}
@@ -766,3 +781,31 @@ return either the value if correct, or the empty string if not.
   {{- /* Output the result */ -}}
   {{- $enterprise | ternary "true" "" -}}
 {{- end -}}
+
+{{- define "arkcase.enterprise" -}}
+  {{- $ctx := . -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "The parameter must be the root context (. or $)" -}}
+  {{- end -}}
+
+  {{- $cacheKey := "EnterpriseMode" -}}
+  {{- $masterCache := dict -}}
+  {{- if (hasKey $ctx $cacheKey) -}}
+    {{- $masterCache = get $ctx $cacheKey -}}
+    {{- if and $masterCache (not (kindIs "map" $masterCache)) -}}
+      {{- $masterCache = dict -}}
+    {{- end -}}
+  {{- end -}}
+  {{- $ctx = set $ctx $cacheKey $masterCache -}}
+
+  {{- $cacheKey = (include "common.fullname" $ctx) -}}
+  {{- $result := "" -}}
+  {{- if not (hasKey $masterCache $cacheKey) -}}
+    {{- $result = (include "arkcase.enterprise.compute" $ctx) -}}
+    {{- $masterCache = set $masterCache $cacheKey $result -}}
+  {{- else -}}
+    {{- $result = get $masterCache $cacheKey -}}
+  {{- end -}}
+  {{- $result -}}
+{{- end -}}
+
