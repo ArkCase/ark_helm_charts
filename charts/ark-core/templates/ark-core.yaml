@@ -1,37 +1,37 @@
-{{- if (include "arkcase.subsystem.enabled" .) }}
+{{- if (include "arkcase.subsystem.enabled" $) }}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ include "arkcase.fullname" . | quote }}
-  namespace: {{ .Release.Namespace | quote }}
-  labels: {{- include "arkcase.labels" . | nindent 4 }}
-    {{- with (.Values.labels).common }}
+  name: {{ include "arkcase.fullname" $ | quote }}
+  namespace: {{ $.Release.Namespace | quote }}
+  labels: {{- include "arkcase.labels" $ | nindent 4 }}
+    {{- with ($.Values.labels).common }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
-  {{- with (.Values.annotations).common }}
+  {{- with ($.Values.annotations).common }}
   annotations: {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  {{- if not (.Values.autoscaling).enabled }}
-  replicas: {{ .Values.replicaCount | default 1 }}
+  {{- if not ($.Values.autoscaling).enabled }}
+  replicas: {{ $.Values.replicaCount | default 1 }}
   {{- end }}
   selector:
-    matchLabels: {{- include "arkcase.labels.matchLabels" . | nindent 6 }}
-  serviceName: {{ include "arkcase.name" . | quote }}
+    matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
+  serviceName: {{ include "arkcase.name" $ | quote }}
   updateStrategy:
-    type: {{ .Values.updateStrategy }}
-    {{- if (eq "Recreate" .Values.updateStrategy) }}
+    type: {{ $.Values.updateStrategy }}
+    {{- if (eq "Recreate" $.Values.updateStrategy) }}
     rollingUpdate: null
-    {{- else if .Values.rollingUpdatePartition }}
+    {{- else if $.Values.rollingUpdatePartition }}
     rollingUpdate:
-      partition: {{ .Values.rollingUpdatePartition }}
+      partition: {{ $.Values.rollingUpdatePartition }}
     {{- end }}
   template:
     metadata:
-      name: {{ include "arkcase.fullname" . | quote }}
-      namespace: {{ .Release.Namespace | quote }}
-      labels: {{- include "arkcase.labels" . | nindent 8 }}
-        {{- with (.Values.labels).common }}
+      name: {{ include "arkcase.fullname" $ | quote }}
+      namespace: {{ $.Release.Namespace | quote }}
+      labels: {{- include "arkcase.labels" $ | nindent 8 }}
+        {{- with ($.Values.labels).common }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
       annotations:
@@ -39,35 +39,35 @@ spec:
         prometheus.io/scrape: "true"
         prometheus.io/port: "9100"
         timestamp: {{ date "20060102150405" now | quote }}
-        {{- with (.Values.annotations).common }}
+        {{- with ($.Values.annotations).common }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
     spec:
-      {{- include "arkcase.image.pullSecrets" . | nindent 6 }}
-      {{- with .Values.hostAliases }}
+      {{- include "arkcase.image.pullSecrets" $ | nindent 6 }}
+      {{- with $.Values.hostAliases }}
       hostAliases: {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- if .Values.schedulerName }}
-      schedulerName: {{ .Values.schedulerName | quote }}
+      {{- if $.Values.schedulerName }}
+      schedulerName: {{ $.Values.schedulerName | quote }}
       {{- end }}
-      serviceAccountName: {{ include "common.serviceAccountName" . }}
-      {{- with (.Values.securityContext).template }}
+      serviceAccountName: {{ include "common.serviceAccountName" $ }}
+      {{- with ($.Values.securityContext).template }}
       securityContext: {{- toYaml . | nindent 8 }}
       {{- end }}
       initContainers:
         - name: initialize-configuration
-          {{- include "arkcase.image" (dict "ctx" $ "name" "config" "repository" "arkcase/config") | nindent 10 }}
-          env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
-            - name: CONF_DIR
-              value: &confDir "/app/conf"
+          {{- include "arkcase.image" . | nindent 10 }}
+          env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             - name: REALM_FIX
-              value: {{ printf "arkcase.org=%s" ((.Values.configuration).ldap).domain | quote }}
+              value: {{ printf "arkcase.org=%s" (($.Values.configuration).ldap).domain | quote }}
           volumeMounts:
-            - name: &confVolume "conf"
-              mountPath: *confDir
+            - name: "conf"
+              mountPath: "/app/conf"
+            - name: "war"
+              mountPath: "/app/war"
         - name: set-permissions
           {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
-          env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
+          env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             - name: JOBS
               value: |
                 jobs:
@@ -76,24 +76,26 @@ spec:
                   - ownership: "1997:1997"
                     permissions: "u=rwX,g=rX,o="
                     flags: [ "recurse", "noforced", "create", "changes" ]
-                    targets: [ "/app/conf", "/app/home", "/app/logs" ]
+                    targets: [ "/app/home", "/app/conf", "/app/war", "/app/logs" ]
           volumeMounts:
-            - name: &initVolume "init"
+            - name: &initVolume "home"
               mountPath: &initDir "/app/init"
             - name: &homeVolume "home"
               mountPath: &homeDir "/app/home"
-            - name: *confVolume
-              mountPath: *confDir
+            - name: &confVolume "conf"
+              mountPath: &confDir "/app/conf"
+            - name: &warVolume "war"
+              mountPath: &warDir "/app/war"
             - name: &logsVolume "logs"
               mountPath: &logsDir "/app/logs"
         {{- include "arkcase.initDependencies.container" (dict "ctx" $ "name" "init-dependencies") | nindent 8 }}
       containers:
         - name: arkcase
-          {{- with (.Values.securityContext).arkcase }}
+          {{- with ($.Values.securityContext).arkcase }}
           securityContext: {{- toYaml . | nindent 12 }}
           {{- end }}
-          {{- include "arkcase.image" (dict "ctx" $ "name" "arkcase") | nindent 10 }}
-          env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
+          {{- include "arkcase.image" (dict "ctx" $ "name" "arkcase" "repository" "arkcase/core") | nindent 10 }}
+          env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             - name: INIT_DIR
               value: *initDir
             - name: HOME_DIR
@@ -102,7 +104,7 @@ spec:
               value: *confDir
             - name: LOGS_DIR
               value: *logsDir
-            {{- with ((.Values.configuration).arkcase).env }}
+            {{- with (($.Values.configuration).arkcase).env }}
               {{- toYaml . | nindent 12 }}
             {{- end }}
             - name: LD_LIBRARY_PATH
@@ -117,26 +119,26 @@ spec:
                 -Dconfiguration.client.spring.path=spring
                 -Dspring.profiles.active=ldap
                 -Duser.home=/app/home
-              {{- if (.Values.debug).enabled }}
+              {{- if ($.Values.debug).enabled }}
                 {{- $debugSuspend := "n" }}
-                {{- if (.Values.debug).suspend }}
+                {{- if ($.Values.debug).suspend }}
                   {{- $debugSuspend = "y" }}
                 {{- end }}
                 {{- $debugPort := 8888 }}
-                {{- if (.Values.debug).port }}
-                  {{- $debugPort = ((.Values.debug).port | int) }}
+                {{- if ($.Values.debug).port }}
+                  {{- $debugPort = (($.Values.debug).port | int) }}
                 {{- end }}
                 -Xdebug
                 -Xrunjdwp:transport=dt_socket,server=y,suspend={{ $debugSuspend }},address=0.0.0.0:{{ $debugPort }}
               {{- end }}
-          {{- include "arkcase.subsystem.ports" (.Values.service).arkcase | nindent 10 }}
-          {{- with (.Values.command).arkcase }}
-          command: {{ toJson . }}
+          {{- include "arkcase.subsystem.ports" ($.Values.service).arkcase | nindent 10 }}
+          {{- with ($.Values.command).arkcase }}
+          command: {{ toJson $ }}
           {{- end }}
-          {{- with (.Values.resources).arkcase }}
+          {{- with ($.Values.resources).arkcase }}
           resources: {{- toYaml . | nindent 12 }}
           {{- end }}
-          {{- with (.Values.securityContext).arkcase }}
+          {{- with ($.Values.securityContext).arkcase }}
           securityContext: {{- toYaml . | nindent 12 }}
           {{- end }}
           volumeMounts:
@@ -146,6 +148,8 @@ spec:
               mountPath: *homeDir
             - name: *confVolume
               mountPath: "/app/home/.arkcase"
+            - name: *warVolume
+              mountPath: "/app/tomcat/webapps/arkcase"
             - name: &configMap "config-map"
               mountPath: "/app/home/.arkcase/acm/acm-config-server-repo/spring/quartz.properties"
               subPath: &quartzProperties "quartz.properties"
@@ -193,12 +197,12 @@ spec:
             - name: *logsVolume
               mountPath: *logsDir
         - name: cloudconfig
-          {{- with (.Values.securityContext).cloudconfig }}
+          {{- with ($.Values.securityContext).cloudconfig }}
           securityContext: {{- toYaml . | nindent 12 }}
           {{- end }}
-          {{- include "arkcase.image" (dict "ctx" $ "name" "cloudconfig") | nindent 10 }}
-          env: {{- include "arkcase.tools.baseEnv" . | nindent 12 }}
-            {{- with ((.Values.configuration).cloudconfig).env }}
+          {{- include "arkcase.image" (dict "ctx" $ "name" "cloudconfig" "repository" "arkcase/cloudconfig") | nindent 10 }}
+          env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            {{- with (($.Values.configuration).cloudconfig).env }}
               {{- toYaml . | nindent 12 }}
             {{- end }}
             - name: DATA_DIR
@@ -207,14 +211,14 @@ spec:
               value: >-
                 -XX:MinRAMPercentage=50
                 -XX:MaxRAMPercentage=80
-          {{- include "arkcase.subsystem.ports" (.Values.service).cloudconfig | nindent 10 }}
-          {{- with (.Values.command).cloudconfig }}
+          {{- include "arkcase.subsystem.ports" ($.Values.service).cloudconfig | nindent 10 }}
+          {{- with ($.Values.command).cloudconfig }}
           command: {{ toJson . }}
           {{- end }}
-          {{- with (.Values.resources).cloudconfig }}
+          {{- with ($.Values.resources).cloudconfig }}
           resources: {{- toYaml . | nindent 12 }}
           {{- end }}
-          {{- with (.Values.securityContext).cloudconfig }}
+          {{- with ($.Values.securityContext).cloudconfig }}
           securityContext: {{- toYaml . | nindent 12 }}
           {{- end }}
           volumeMounts:
@@ -245,7 +249,7 @@ spec:
         - name: *secrets
           secret:
             optional: false
-            secretName: {{ include "arkcase.fullname" . | quote }}
+            secretName: {{ include "arkcase.fullname" $ | quote }}
             defaultMode: 0444
             items:
               - key: *applicationYaml
@@ -267,7 +271,7 @@ spec:
         - name: *configMap
           configMap:
             optional: false
-            name: {{ include "arkcase.fullname" . | quote }}
+            name: {{ include "arkcase.fullname" $ | quote }}
             defaultMode: 0444
             items:
               - key: *quartzProperties
@@ -279,16 +283,19 @@ spec:
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "init") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "home") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "conf") | nindent 8 }}
+        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "war" ) | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "logs") | nindent 8 }}
   volumeClaimTemplates:
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "init") | nindent 4 }}
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "home") | nindent 4 }}
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "conf") | nindent 4 }}
+    {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "war" ) | nindent 4 }}
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "logs") | nindent 4 }}
 
   {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "init") | nindent 0 }}
   {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "home") | nindent 0 }}
   {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "conf") | nindent 0 }}
+  {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "war" ) | nindent 0 }}
   {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "logs") | nindent 0 }}
 
 {{- end }}
