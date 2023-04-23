@@ -418,6 +418,14 @@ result: "SOME"
   {{- (index $parts 0) -}}
 {{- end -}}
 
+{{- define "arkcase.tools.normalizeDots" -}}
+  {{- $v := . -}}
+  {{- /* Remove consecutive dots */ -}}
+  {{- $v = (regexReplaceAll "[.]+" $v ".") -}}
+  {{- /* Remove leading and trailing dots */ -}}
+  {{- (regexReplaceAll "^[.]?(.*?)[.]?$" $v "${1}") -}}
+{{- end -}}
+
 {{- /*
 Retrieve a mapped value in dot-separated notation, returning an empty string if the value isn't found, or any of the intermediate steps isn't found.  If the "required" parameter is set to "true", then a missing value will cause a fail() to be triggered indicating what portion(s) of the path could not be resolved. If the "check" parameter is set to "true", only the existence of the value will be checked for and "true" will be returned if it exists, with the empty string being returned if it does not (the "required" value will still be respected).
 
@@ -449,10 +457,7 @@ usage: ( include "arkcase.tools.get" (dict "ctx" $ "name" "some.name.to.find" "r
   {{- end -}}
 
   {{- $origName := $name -}}
-  {{- /* Remove consecutive dots */ -}}
-  {{- $name = (regexReplaceAll "[.]+" $name ".") -}}
-  {{- /* Remove leading and trailing dots */ -}}
-  {{- $name = (regexReplaceAll "^[.]?(.*?)[.]?$" $name "${1}") -}}
+  {{- $name = (include "arkcase.tools.normalizeDots" $name) -}}
   {{- if or (eq "." $name) (not $name) -}}
     {{- fail (printf "The string [%s] is not allowed as the name to search for (resolves as [%s])" $origName $name) -}}
   {{- end -}}
@@ -619,33 +624,59 @@ return either the value if correct, or the empty string if not.
   {{- $result -}}
 {{- end -}}
 
-{{- define "arkcase.tools.ldap" -}}
-  {{- if not (kindIs "map" .) -}}
-    {{- fail "The parameter must be a map" -}}
-  {{- end -}}
-  {{- if not (hasKey . "ctx") -}}
-    {{- fail "Must provide the root context as the 'ctx' parameter value" -}}
-  {{- end -}}
+{{- define "arkcase.tools.conf" -}}
   {{- $ctx := .ctx -}}
-  {{- if not (kindIs "map" $ctx) -}}
-    {{- fail "The context given ('ctx' parameter) must be a map" -}}
-  {{- end -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "The context given (either the parameter map, or the 'ctx' value within) is not the top-level context" -}}
   {{- end -}}
+  {{- $debug := and (hasKey . "debug") .debug -}}
 
-  {{- if not .value -}}
-    {{- fail "Must provide a 'value' parameter to indicate which value to fetch" -}}
+  {{- $value := .value -}}
+  {{- if and $value (not (kindIs "string" $value)) -}}
+    {{- fail (printf "The 'value' parameter must be a string, not a %s" (kindOf $value)) -}}
+  {{- else if not $value -}}
+    {{- $value = "" -}}
   {{- end -}}
 
-  {{- $result := "" -}}
-  {{- range (list ".Values.global.conf.ldap" ".Values.configuration.ldap") -}}
+  {{- $prefix := (.prefix | default "") -}}
+  {{- if and $prefix (kindIs "string" $prefix) -}}
+    {{- $prefix = (include "arkcase.tools.normalizeDots" $prefix | trimPrefix "." | trimSuffix ".") -}}
+  {{- end -}}
+  {{- if and $value $prefix -}}
+    {{- $value = (printf "%s.%s" $prefix $value) -}}
+  {{- else if $prefix -}}
+    {{- $value = $prefix -}}
+  {{- end -}}
+
+  {{- $result := dict -}}
+  {{- $searched := list -}}
+  {{- range (list "Values.global.conf" "Values.configuration") -}}
     {{- if not $result -}}
-      {{- $key := (printf "%s.%s" . ($.value | toString)) -}}
-      {{- $result = (include "arkcase.tools.get" (dict "ctx" $ctx "yaml" true "name" $key)) -}}
+      {{- $key := (empty $value) | ternary . (printf "%s.%s" . $value ) -}}
+      {{- if $debug -}}
+        {{- $searched = append $searched $key -}}
+      {{- end -}}
+      {{- $result = (include "arkcase.tools.get" (dict "ctx" $ctx "name" $key) | fromYaml) -}}
     {{- end -}}
   {{- end -}}
-  {{- $result -}}
+  {{- if $debug -}}
+    {{- fail (dict "result" $result "searched" $searched "global" (dict "conf" (($ctx.Values.global).conf | default dict)) "configuration" ($ctx.Values.configuration | default dict) | toYaml | nindent 0) -}}
+  {{- end -}}
+  {{- $result | toYaml -}}
+{{- end -}}
+
+{{- define "arkcase.tools.ldap" -}}
+  {{- $params := pick . "ctx" "value" "debug" -}}
+
+  {{- $value := "" -}}
+  {{- $result := (include "arkcase.tools.conf" (set $params "prefix" "ldap") | fromYaml) -}}
+  {{- if and $result $result.value -}}
+    {{- $value = $result.value -}}
+    {{- if or (kindIs "map" $value) (kindIs "slice" $value) -}}
+      {{- $value = toYaml $value -}}
+    {{- end -}}
+  {{- end -}}
+  {{- $value -}}
 {{- end -}}
 
 {{- define "arkcase.tools.parseUrl" -}}
