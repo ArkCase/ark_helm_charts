@@ -219,8 +219,6 @@ rdbms:
 
 content:
   configuration:
-    ldap:
-      <<: *ldapConfig
     db:
       <<: *dbConfig
       username: *contentDb
@@ -234,8 +232,6 @@ core:
       username: *arkcaseDb
       password: *arkcaseDbPassword
       database: *arkcaseDb
-    ldap:
-      <<: *ldapConfig
     arkcase:
        adminUsername: *arkcaseAdminUsername
        adminPassword: *arkcaseAdminPassword
@@ -248,8 +244,6 @@ core:
 
 reports:
   configuration:
-    ldap:
-      <<: *ldapConfig
     arkcase:
        adminUsername: *arkcaseAdminUsername
        adminPassword: *arkcaseAdminPassword
