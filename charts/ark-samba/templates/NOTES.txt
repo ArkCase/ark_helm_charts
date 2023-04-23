@@ -1,11 +1,15 @@
 {{- if (include "arkcase.subsystem.enabledOrExternal" .) -}}
 Samba Domain specs:
 
-	Domain: {{ .Values.configuration.domain.name }}
-	Realm: {{ include "common.samba.realm" .Values.configuration.domain.name }}
-	LDAP Base DN: {{ include "common.samba.dc" .Values.configuration.domain.name }}
+    {{- $domain := (include "arkcase.tools.ldap" (dict "ctx" $ "value" "domain")) }}
+    {{- $administrator := (include "arkcase.tools.ldap" (dict "ctx" $ "value" "administrator") | default "administrator") }}
+    {{- $password := (include "arkcase.tools.ldap" (dict "ctx" $ "value" "password")) }}
+    {{- $userBaseDn := (include "arkcase.tools.ldap" (dict "ctx" $ "value" "search.users.base") | default "cn=Users") }}
+	Domain: {{ $domain }}
+	Realm: {{ include "common.samba.realm" $domain }}
+	LDAP Base DN: {{ include "common.samba.dc" $domain }}
 
 Check that LDAPS is running by using the following command:
 
-    $ LDAPTLS_REQCERT=never ldapsearch -H ldaps://{{ template "arkcase.fullname" . }} -D '{{ include "common.samba.realm" .Values.configuration.domain.name }}\administrator' -w {{ .Values.configuration.domain.password | quote }} -b {{ include "common.samba.dc" .Values.configuration.domain.name | quote }} '(objectClass=user)' dn
+    $ LDAPTLS_REQCERT=never ldapsearch -H ldaps://{{ include "arkcase.fullname" $ }} -D {{ include "common.samba.realm" $domain }}\{{ $administrator }} -w {{ $password | quote }} -b {{ include "common.samba.dc" $domain | quote }} {{ $userBaseDn | quote }} dn
 {{- end -}}

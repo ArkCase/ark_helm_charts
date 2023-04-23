@@ -638,10 +638,14 @@ return either the value if correct, or the empty string if not.
     {{- fail "Must provide a 'value' parameter to indicate which value to fetch" -}}
   {{- end -}}
 
-  {{- $ldap := ($ctx.Values.configuration).ldap -}}
-  {{- if $ldap -}}
-    {{- include "arkcase.tools.get" (dict "ctx" $ldap "yaml" true "name" (.value | toString)) -}}
+  {{- $result := "" -}}
+  {{- range (list ".Values.global.conf.ldap" ".Values.configuration.ldap") -}}
+    {{- if not $result -}}
+      {{- $key := (printf "%s.%s" . ($.value | toString)) -}}
+      {{- $result = (include "arkcase.tools.get" (dict "ctx" $ctx "yaml" true "name" $key)) -}}
+    {{- end -}}
   {{- end -}}
+  {{- $result -}}
 {{- end -}}
 
 {{- define "arkcase.tools.parseUrl" -}}

@@ -6,6 +6,43 @@ hostname: &hostname "application.dev.arkcase.com"
 adminUsername: &arkcaseAdminUsername "arkcase-admin"
 adminPassword: &arkcaseAdminPassword "$arkcase-admin$"
 
+global:
+  conf:
+    # Thanks to our use of "arkcase.tools.ldap", we can access all of these
+    # configurations transparently in all charts. This should perhaps be generalized
+    # into "arkcase.tools.config", such that global.conf can mirror the configruation
+    # blocks for each chart ...??
+    ldap:
+      domain: &ldapDomain "dev.arkcase.com"
+      password: "RaL@a5eio:heC3"
+      url: "ldaps://ldap:636"
+      baseDn: &baseDn "dc=dev,dc=arkcase,dc=com"
+      bind:
+        dn: "cn=ArkCase Administrator,cn=Users,dc=dev,dc=arkcase,dc=com"
+        password: *arkcaseAdminPassword
+      admin:
+        dn: "cn=ArkCase Administrator"
+        role: "cn=ARKCASE_ADMINISTRATOR"
+      search:
+        base: *baseDn
+        users:
+          base: "cn=Users"
+          attribute: "sAMAccountName"
+          filter: "(&(objectClass=user)(sAMAccountName={0}))"
+          allFilter: "(objectClass=user)"
+          prefix: ""
+        groups:
+          base: "cn=Users"
+          attribute: "cn"
+          filter: "(&(objectClass=group)(cn={0}))"
+          allFilter: "(objectClass=group)"
+          membership: "(&(objectClass=group)(member={0}))"
+          ignoreCase: "false"
+          subtree: "true"
+          rolePrefix: ""
+          prefix: ""
+
+
 # global:
 #   enterprise: true
 #   persistence:
@@ -18,36 +55,6 @@ adminPassword: &arkcaseAdminPassword "$arkcase-admin$"
 # This should group all application-specific configurations
 #
 configuration:
-
-  # This *should* propagate downward via the map references, below
-  ldap: &ldapConfig
-    domain: &ldapDomain "dev.arkcase.com"
-    url: "ldaps://ldap:636"
-    baseDn: &baseDn "dc=dev,dc=arkcase,dc=com"
-    bind:
-      dn: "cn=ArkCase Administrator,cn=Users,dc=dev,dc=arkcase,dc=com"
-      password: *arkcaseAdminPassword
-    admin:
-      dn: "cn=ArkCase Administrator"
-      role: "cn=ARKCASE_ADMINISTRATOR"
-    search:
-      base: *baseDn
-      users:
-        base: "cn=Users"
-        attribute: "sAMAccountName"
-        filter: "(&(objectClass=user)(sAMAccountName={0}))"
-        allFilter: "(objectClass=user)"
-        prefix: ""
-      groups:
-        base: "cn=Users"
-        attribute: "cn"
-        filter: "(&(objectClass=group)(cn={0}))"
-        allFilter: "(objectClass=group)"
-        membership: "(&(objectClass=group)(member={0}))"
-        ignoreCase: "false"
-        subtree: "true"
-        rolePrefix: ""
-        prefix: ""
 
   db: &dbConfig
     dialect: "postgresql"
@@ -188,16 +195,6 @@ messaging:
         roles: "admin"
       - name: &guestUser "guest"
         password: *guestUser
-
-ldap:
-  configuration:
-    ldap:
-      <<: *ldapConfig
-    domain:
-      name: *ldapDomain
-      password: "RaL@a5eio:heC3"
-  # service:
-    # external: "ldap.appdev.armedia.com"
 
 search:
   service:
