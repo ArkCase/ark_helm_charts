@@ -624,6 +624,26 @@ return either the value if correct, or the empty string if not.
   {{- $result -}}
 {{- end -}}
 
+{{- define "arkcase.tools.conf.isGlobal" -}}
+  {{- $var := . -}}
+  {{- if and $var (not (kindIs "string" $var)) -}}
+    {{- $var = (toString $var) -}}
+  {{- else if not $var -}}
+    {{- $var = "" -}}
+  {{- end -}}
+  {{- (hasPrefix "Values.global.conf." (include "arkcase.tools.normalizeDots" $var)) | ternary "true" "" -}}
+{{- end -}}
+
+{{- define "arkcase.tools.conf.isLocal" -}}
+  {{- $var := . -}}
+  {{- if and $var (not (kindIs "string" $var)) -}}
+    {{- $var = (toString $var) -}}
+  {{- else if not $var -}}
+    {{- $var = "" -}}
+  {{- end -}}
+  {{- (hasPrefix "Values.configuration." (include "arkcase.tools.normalizeDots" $var)) | ternary "true" "" -}}
+{{- end -}}
+
 {{- define "arkcase.tools.conf" -}}
   {{- $ctx := .ctx -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
@@ -650,13 +670,16 @@ return either the value if correct, or the empty string if not.
 
   {{- $result := dict -}}
   {{- $searched := list -}}
-  {{- range (list "Values.global.conf" "Values.configuration") -}}
+  {{- range (list "global.conf" "configuration") -}}
     {{- if not $result -}}
       {{- $key := (empty $value) | ternary . (printf "%s.%s" . $value ) -}}
       {{- if $debug -}}
-        {{- $searched = append $searched $key -}}
+        {{- $searched = append $searched (printf "Values.%s" $key) -}}
       {{- end -}}
-      {{- $result = (include "arkcase.tools.get" (dict "ctx" $ctx "name" $key) | fromYaml) -}}
+      {{- $result = (include "arkcase.tools.get" (dict "ctx" $ctx "name" (printf "Values.%s" $key)) | fromYaml) -}}
+      {{- if $result -}}
+        {{- $result = set $result "global" (hasPrefix "global.conf" $key) -}}
+      {{- end -}}
     {{- end -}}
   {{- end -}}
   {{- if $debug -}}
@@ -843,4 +866,3 @@ return either the value if correct, or the empty string if not.
   {{- end -}}
   {{- $result -}}
 {{- end -}}
-
