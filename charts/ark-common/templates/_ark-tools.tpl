@@ -389,13 +389,13 @@ result: either "" or "true"
 {{- end -}}
 
 {{/*
-Compute the Samba dc=XXX,dc=XXX from a given domain name
+Compute the LDAP dc=XXX,dc=XXX from a given domain name
 
-usage: ( include "arkcase.tools.samba.dc" "some.domain.com" )
+usage: ( include "arkcase.tools.ldap.dc" "some.domain.com" )
 result: "DC=some,DC=domain,DC=com"
 */}}
-{{- define "arkcase.tools.samba.dc" -}}
-  {{- $parts := splitList "." (include "arkcase.tools.mustHostname" . | upper) -}}
+{{- define "arkcase.tools.ldap.dc" -}}
+  {{- $parts := splitList "." (include "arkcase.tools.mustHostname" . | upper) | compact -}}
   {{- $dc := "" -}}
   {{- $sep := "" -}}
   {{- range $parts -}}
@@ -407,23 +407,34 @@ result: "DC=some,DC=domain,DC=com"
   {{- $dc -}}
 {{- end -}}
 
-{{/*
-Compute the Samba REALM name from a given domain name
-
-usage: ( include "arkcase.tools.samba.realm" "some.domain.com" )
-result: "SOME"
-*/}}
-{{- define "arkcase.tools.samba.realm" -}}
-  {{- $parts := splitList "." (include "arkcase.tools.mustHostname" . | upper) -}}
-  {{- (index $parts 0) -}}
+{{- define "arkcase.tools.normalizeDots" -}}
+  {{- splitList "." $ | compact | join "." -}}
 {{- end -}}
 
-{{- define "arkcase.tools.normalizeDots" -}}
-  {{- $v := . -}}
-  {{- /* Remove consecutive dots */ -}}
-  {{- $v = (regexReplaceAll "[.]+" $v ".") -}}
-  {{- /* Remove leading and trailing dots */ -}}
-  {{- (regexReplaceAll "^[.]?(.*?)[.]?$" $v "${1}") -}}
+{{- define "arkcase.tools.ldap.baseDn" -}}
+  {{- $baseDn := (include "arkcase.tools.ldap" (dict "ctx" . "value" "baseDn")) -}}
+  {{- if not $baseDn -}}
+    {{- $baseDn = (include "arkcase.tools.ldap" (dict "ctx" . "value" "domain")) -}}
+    {{- if not $baseDn -}}
+      {{- fail "No LDAP domain is configured - cannot continue" -}}
+    {{- end -}}
+    {{- $baseDn = (include "arkcase.tools.ldap.dc" $baseDn | lower) -}}
+  {{- end -}}
+  {{- $baseDn -}}
+{{- end -}}
+
+{{- define "arkcase.tools.ldap.bindDn" -}}
+  {{- $baseDn := (include "arkcase.tools.ldap.baseDn" $) -}}
+  {{- include "arkcase.tools.ldap" (dict "ctx" $ "value" "bind.dn") | replace "${baseDn}" $baseDn -}}
+{{- end -}}
+
+{{- define "arkcase.tools.ldap.realm" -}}
+  {{- $realm := (include "arkcase.tools.ldap" (dict "ctx" . "value" "domain")) -}}
+  {{- if not $realm -}}
+    {{- fail "No LDAP domain is configured - cannot continue" -}}
+  {{- end -}}
+  {{- $parts := splitList "." (include "arkcase.tools.mustHostname" $realm | upper) -}}
+  {{- (index $parts 0) -}}
 {{- end -}}
 
 {{- /*

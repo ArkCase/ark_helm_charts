@@ -67,15 +67,15 @@ configuration:
   ldap:
     domain: "dev.arkcase.com"
     url: "ldaps://ldap:636"
-    baseDn: &baseDn "dc=dev,dc=arkcase,dc=com"
+    # Don't declare a baseDn unless absolutely necessary
+    # baseDn: ...
     bind:
-      dn: "cn=ArkCase Administrator,cn=Users,dc=dev,dc=arkcase,dc=com"
+      dn: "cn=ArkCase Administrator,cn=Users,${baseDn}"
       password: "$arkcase-admin$"
     admin:
       dn: "cn=ArkCase Administrator"
       role: "cn=ARKCASE_ADMINISTRATOR"
     search:
-      base: *baseDn
       users:
         base: "cn=Users"
         attribute: "sAMAccountName"

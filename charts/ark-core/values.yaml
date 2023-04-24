@@ -31,15 +31,15 @@ configuration:
   ldap:
     domain: "dev.arkcase.com"
     url: "ldaps://ldap:636"
-    baseDn: &baseDn "dc=dev,dc=arkcase,dc=com"
+    # Don't declare a baseDn unless absolutely necessary
+    # baseDn: ...
     bind:
-      dn: "cn=ArkCase Administrator,cn=Users,dc=dev,dc=arkcase,dc=com"
+      dn: "cn=ArkCase Administrator,cn=Users,${baseDn}"
       password: "$arkcase-admin$"
     admin:
       dn: "cn=ArkCase Administrator"
       role: "cn=ARKCASE_ADMINISTRATOR"
     search:
-      base: *baseDn
       users:
         base: "cn=Users"
         attribute: "sAMAccountName"
@@ -99,35 +99,6 @@ configuration:
     env:
       - name: DEVELOPMENT
         value: "true"
-
-  ldap:
-    domain: "dev.arkcase.com"
-    url: "ldaps://ldap:636"
-    baseDn: &baseDn "dc=dev,dc=arkcase,dc=com"
-    bind:
-      dn: "cn=ArkCase Administrator,cn=Users,dc=dev,dc=arkcase,dc=com"
-      password: "$arkcase-admin$"
-    admin:
-      dn: "cn=ArkCase Administrator"
-      role: "cn=ARKCASE_ADMINISTRATOR"
-    search:
-      base: *baseDn
-      users:
-        base: "cn=Users"
-        attribute: "sAMAccountName"
-        filter: "(&(objectClass=user)(sAMAccountName={0}))"
-        allFilter: "(objectClass=user)"
-        prefix: ""
-      groups:
-        base: "cn=Users"
-        attribute: "cn"
-        filter: "(&(objectClass=group)(cn={0}))"
-        allFilter: "(objectClass=group)"
-        membership: "(&(objectClass=group)(member={0}))"
-        ignoreCase: "false"
-        subtree: "true"
-        rolePrefix: ""
-        prefix: ""
 
 command:
   # TODO: This command is intended for debugging purposes *ONLY*
