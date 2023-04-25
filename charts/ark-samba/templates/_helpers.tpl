@@ -7,3 +7,10 @@
   {{- end -}}
   {{- $result -}}
 {{- end -}}
+
+{{- define "arkcase.samba.external" -}}
+  {{- $url := (include "arkcase.tools.conf" (dict "ctx" $ "value" "ldap.url") | fromYaml) -}}
+  {{- if and $url $url.global -}}
+    {{- true -}}
+  {{- end -}}
+{{- end -}}

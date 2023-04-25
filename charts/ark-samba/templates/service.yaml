@@ -1,1 +1,3 @@
-{{- include "arkcase.subsystem.service" . -}}
+{{- if (not (include "arkcase.samba.external" $)) -}}
+  {{- include "arkcase.subsystem.service" $ -}}
+{{- end -}}

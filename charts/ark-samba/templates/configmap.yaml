@@ -1,10 +1,10 @@
-{{- if (include "arkcase.subsystem.enabled" .) }}
+{{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.samba.external" $)) }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "arkcase.fullname" . | quote }}
-  namespace: {{ .Release.Namespace | quote }}
-  labels: {{- include "arkcase.labels" . | nindent 4 }}
+  name: {{ include "arkcase.fullname" $ | quote }}
+  namespace: {{ $.Release.Namespace | quote }}
+  labels: {{- include "arkcase.labels" $ | nindent 4 }}
     {{- with (.Values.labels).common }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
@@ -17,14 +17,14 @@ data:
   #
   # Process static files
   #
-  {{- range $path, $_ := (.Files.Glob "files/configmap/txt/*") }}
+  {{- range $path, $_ := ($.Files.Glob "files/configmap/txt/*") }}
   {{ $path | base }}: |{{- $.Files.Get $path | nindent 4 }}
   {{- end }}
 
   #
   # Process templated files
   #
-  {{- range $path, $_ := (.Files.Glob "files/configmap/tpl/*") }}
+  {{- range $path, $_ := ($.Files.Glob "files/configmap/tpl/*") }}
   {{ $path | base }}: |{{- tpl ($.Files.Get $path) $ | nindent 4 }}
   {{- end }}
 
@@ -32,8 +32,8 @@ binaryData:
   #
   # Process binary files
   #
-  {{- $bin := (.Files.Glob "files/secrets/bin/*") }}
+  {{- $bin := ($.Files.Glob "files/secrets/bin/*") }}
   {{- if $bin }}
-    {{- (.Files.Glob "files/secrets/bin/*").AsSecrets | nindent 2 }}
+    {{- ($.Files.Glob "files/secrets/bin/*").AsSecrets | nindent 2 }}
   {{- end }}
 {{- end }}
