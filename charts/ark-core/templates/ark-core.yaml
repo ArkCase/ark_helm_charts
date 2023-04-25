@@ -56,7 +56,7 @@ spec:
       {{- end }}
       initContainers:
         - name: initialize-configuration
-          {{- include "arkcase.image" . | nindent 10 }}
+          {{- include "arkcase.image" (dict "ctx" $ "name" "deploy") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             - name: REALM_FIX
               value: {{ printf "arkcase.org=%s" (($.Values.configuration).ldap).domain | quote }}
