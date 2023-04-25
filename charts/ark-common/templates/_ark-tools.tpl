@@ -388,55 +388,6 @@ result: either "" or "true"
   {{- end -}}
 {{- end -}}
 
-{{/*
-Compute the LDAP dc=XXX,dc=XXX from a given domain name
-
-usage: ( include "arkcase.tools.ldap.dc" "some.domain.com" )
-result: "DC=some,DC=domain,DC=com"
-*/}}
-{{- define "arkcase.tools.ldap.dc" -}}
-  {{- $parts := splitList "." (include "arkcase.tools.mustHostname" . | upper) | compact -}}
-  {{- $dc := "" -}}
-  {{- $sep := "" -}}
-  {{- range $parts -}}
-    {{- $dc = (printf "%s%sdc=%s" $dc $sep .) -}}
-    {{- if (eq $sep "") -}}
-      {{- $sep = "," -}}
-    {{- end -}}
-  {{- end -}}
-  {{- $dc -}}
-{{- end -}}
-
-{{- define "arkcase.tools.normalizeDots" -}}
-  {{- splitList "." $ | compact | join "." -}}
-{{- end -}}
-
-{{- define "arkcase.tools.ldap.baseDn" -}}
-  {{- $baseDn := (include "arkcase.tools.ldap" (dict "ctx" . "value" "baseDn")) -}}
-  {{- if not $baseDn -}}
-    {{- $baseDn = (include "arkcase.tools.ldap" (dict "ctx" . "value" "domain")) -}}
-    {{- if not $baseDn -}}
-      {{- fail "No LDAP domain is configured - cannot continue" -}}
-    {{- end -}}
-    {{- $baseDn = (include "arkcase.tools.ldap.dc" $baseDn | lower) -}}
-  {{- end -}}
-  {{- $baseDn -}}
-{{- end -}}
-
-{{- define "arkcase.tools.ldap.bindDn" -}}
-  {{- $baseDn := (include "arkcase.tools.ldap.baseDn" $) -}}
-  {{- include "arkcase.tools.ldap" (dict "ctx" $ "value" "bind.dn") | replace "${baseDn}" $baseDn -}}
-{{- end -}}
-
-{{- define "arkcase.tools.ldap.realm" -}}
-  {{- $realm := (include "arkcase.tools.ldap" (dict "ctx" . "value" "domain")) -}}
-  {{- if not $realm -}}
-    {{- fail "No LDAP domain is configured - cannot continue" -}}
-  {{- end -}}
-  {{- $parts := splitList "." (include "arkcase.tools.mustHostname" $realm | upper) -}}
-  {{- (index $parts 0) -}}
-{{- end -}}
-
 {{- /*
 Retrieve a mapped value in dot-separated notation, returning an empty string if the value isn't found, or any of the intermediate steps isn't found.  If the "required" parameter is set to "true", then a missing value will cause a fail() to be triggered indicating what portion(s) of the path could not be resolved. If the "check" parameter is set to "true", only the existence of the value will be checked for and "true" will be returned if it exists, with the empty string being returned if it does not (the "required" value will still be respected).
 
@@ -682,13 +633,13 @@ return either the value if correct, or the empty string if not.
   {{- $result := dict -}}
   {{- $searched := list -}}
   {{- range (list "global.conf" "configuration") -}}
-    {{- if not $result -}}
+    {{- if or (not $result) (not $result.value) -}}
       {{- $key := (empty $value) | ternary . (printf "%s.%s" . $value ) -}}
       {{- if $debug -}}
         {{- $searched = append $searched (printf "Values.%s" $key) -}}
       {{- end -}}
       {{- $result = (include "arkcase.tools.get" (dict "ctx" $ctx "name" (printf "Values.%s" $key)) | fromYaml) -}}
-      {{- if $result -}}
+      {{- if and $result $result.value -}}
         {{- $result = set $result "global" (hasPrefix "global.conf" $key) -}}
       {{- end -}}
     {{- end -}}
@@ -711,6 +662,55 @@ return either the value if correct, or the empty string if not.
     {{- end -}}
   {{- end -}}
   {{- $value -}}
+{{- end -}}
+
+{{/*
+Compute the LDAP dc=XXX,dc=XXX from a given domain name
+
+usage: ( include "arkcase.tools.ldap.dc" "some.domain.com" )
+result: "DC=some,DC=domain,DC=com"
+*/}}
+{{- define "arkcase.tools.ldap.dc" -}}
+  {{- $parts := splitList "." (include "arkcase.tools.mustHostname" . | upper) | compact -}}
+  {{- $dc := "" -}}
+  {{- $sep := "" -}}
+  {{- range $parts -}}
+    {{- $dc = (printf "%s%sdc=%s" $dc $sep .) -}}
+    {{- if (eq $sep "") -}}
+      {{- $sep = "," -}}
+    {{- end -}}
+  {{- end -}}
+  {{- $dc -}}
+{{- end -}}
+
+{{- define "arkcase.tools.normalizeDots" -}}
+  {{- splitList "." $ | compact | join "." -}}
+{{- end -}}
+
+{{- define "arkcase.tools.ldap.baseDn" -}}
+  {{- $baseDn := (include "arkcase.tools.ldap" (dict "ctx" . "value" "baseDn")) -}}
+  {{- if not $baseDn -}}
+    {{- $baseDn = (include "arkcase.tools.ldap" (dict "ctx" . "value" "domain" "debug" true)) -}}
+    {{- if not $baseDn -}}
+      {{- fail "No LDAP domain is configured - cannot continue" -}}
+    {{- end -}}
+    {{- $baseDn = (include "arkcase.tools.ldap.dc" $baseDn | lower) -}}
+  {{- end -}}
+  {{- $baseDn -}}
+{{- end -}}
+
+{{- define "arkcase.tools.ldap.bindDn" -}}
+  {{- $baseDn := (include "arkcase.tools.ldap.baseDn" $) -}}
+  {{- include "arkcase.tools.ldap" (dict "ctx" $ "value" "bind.dn") | replace "${baseDn}" $baseDn -}}
+{{- end -}}
+
+{{- define "arkcase.tools.ldap.realm" -}}
+  {{- $realm := (include "arkcase.tools.ldap" (dict "ctx" . "value" "domain")) -}}
+  {{- if not $realm -}}
+    {{- fail "No LDAP domain is configured - cannot continue" -}}
+  {{- end -}}
+  {{- $parts := splitList "." (include "arkcase.tools.mustHostname" $realm | upper) -}}
+  {{- (index $parts 0) -}}
 {{- end -}}
 
 {{- define "arkcase.tools.parseUrl" -}}

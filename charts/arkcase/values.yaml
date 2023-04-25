@@ -6,55 +6,47 @@ hostname: &hostname "application.dev.arkcase.com"
 adminUsername: &arkcaseAdminUsername "arkcase-admin"
 adminPassword: &arkcaseAdminPassword "$arkcase-admin$"
 
-global:
-  conf:
-    # Thanks to our use of "arkcase.tools.ldap", we can access all of these
-    # configurations transparently in all charts. This should perhaps be generalized
-    # into "arkcase.tools.config", such that global.conf can mirror the configruation
-    # blocks for each chart ...??
-    ldap:
-      domain: &ldapDomain "dev.arkcase.com"
-      password: "RaL@a5eio:heC3"
-      url: "ldaps://ldap:636"
-      # Don't declare a baseDn unless absolutely necessary
-      # baseDn: ...
-      bind:
-        dn: "cn=ArkCase Administrator,cn=Users,${baseDn}"
-        password: *arkcaseAdminPassword
-      admin:
-        dn: "cn=ArkCase Administrator"
-        role: "cn=ARKCASE_ADMINISTRATOR"
-      search:
-        users:
-          base: "cn=Users"
-          attribute: "sAMAccountName"
-          filter: "(&(objectClass=user)(sAMAccountName={0}))"
-          allFilter: "(objectClass=user)"
-          prefix: ""
-        groups:
-          base: "cn=Users"
-          attribute: "cn"
-          filter: "(&(objectClass=group)(cn={0}))"
-          allFilter: "(objectClass=group)"
-          membership: "(&(objectClass=group)(member={0}))"
-          ignoreCase: "false"
-          subtree: "true"
-          rolePrefix: ""
-          prefix: ""
-
 
 # global:
 #   enterprise: true
 #   persistence:
+#     enabled: false
 #     rootPath: "/opt/app"
-
-# persistence:
-#   enabled: false
 
 #
 # This should group all application-specific configurations
 #
 configuration:
+
+  ldap: &ldapConfig
+    domain: "dev.arkcase.com"
+    password: "RaL@a5eio:heC3"
+    url: "ldaps://ldap:636"
+    # Don't declare a baseDn unless absolutely necessary
+    # baseDn: ...
+    bind:
+      dn: "cn=ArkCase Administrator,cn=Users,${baseDn}"
+      password: *arkcaseAdminPassword
+    admin:
+      dn: "cn=ArkCase Administrator"
+      role: "cn=ARKCASE_ADMINISTRATOR"
+    search:
+      users:
+        base: "cn=Users"
+        attribute: "sAMAccountName"
+        filter: "(&(objectClass=user)(sAMAccountName={0}))"
+        allFilter: "(objectClass=user)"
+        prefix: ""
+      groups:
+        base: "cn=Users"
+        attribute: "cn"
+        filter: "(&(objectClass=group)(cn={0}))"
+        allFilter: "(objectClass=group)"
+        membership: "(&(objectClass=group)(member={0}))"
+        ignoreCase: "false"
+        subtree: "true"
+        rolePrefix: ""
+        prefix: ""
 
   db: &dbConfig
     dialect: "postgresql"
@@ -219,14 +211,25 @@ rdbms:
 
 content:
   configuration:
+    ldap:
+      <<: *ldapConfig
+
     db:
       <<: *dbConfig
       username: *contentDb
       password: *contentDbPassword
       database: *contentDb
 
+ldap:
+  configuration:
+    ldap:
+      <<: *ldapConfig
+
 core:
   configuration:
+    ldap:
+      <<: *ldapConfig
+
     db:
       <<: *dbConfig
       username: *arkcaseDb
@@ -248,6 +251,8 @@ reports:
        adminUsername: *arkcaseAdminUsername
        adminPassword: *arkcaseAdminPassword
     serverUrl: "http://reports:8080/pentaho/"
+    ldap:
+      <<: *ldapConfig
     db:
       <<: *dbConfig
     jdbc:
