@@ -20,3 +20,10 @@
   {{- $name := .name -}}
   {{- printf "%s-%s" (include "common.name" $ctx) $name -}}
 {{- end -}}
+
+{{- define "arkcase.content.external" -}}
+  {{- $url := (include "arkcase.tools.conf" (dict "ctx" $ "value" "content.url" "detailed" true) | fromYaml) -}}
+  {{- if and $url $url.global -}}
+    {{- true -}}
+  {{- end -}}
+{{- end -}}

@@ -647,14 +647,21 @@ return either the value if correct, or the empty string if not.
   {{- if $debug -}}
     {{- fail (dict "result" $result "searched" $searched "global" (dict "conf" (($ctx.Values.global).conf | default dict)) "configuration" ($ctx.Values.configuration | default dict) | toYaml | nindent 0) -}}
   {{- end -}}
-  {{- $result | toYaml -}}
+  {{- if .detailed -}}
+    {{- $result | toYaml -}}
+  {{- else -}}
+    {{- $v := $result.value -}}
+    {{- if or (kindIs "map" $v) (kindIs "slice" $v) -}}
+      {{- $v = (toYaml $v) -}}
+    {{- end -}}
+    {{- $v -}}
+  {{- end -}}
 {{- end -}}
 
 {{- define "arkcase.tools.ldap" -}}
-  {{- $params := pick . "ctx" "value" "debug" -}}
-
+  {{- $params := merge (pick $ "ctx" "value" "debug") (dict "detailed" true "prefix" "ldap") -}}
   {{- $value := "" -}}
-  {{- $result := (include "arkcase.tools.conf" (set $params "prefix" "ldap") | fromYaml) -}}
+  {{- $result := (include "arkcase.tools.conf" $params | fromYaml) -}}
   {{- if and $result $result.value -}}
     {{- $value = $result.value -}}
     {{- if or (kindIs "map" $value) (kindIs "slice" $value) -}}
