@@ -690,7 +690,7 @@ result: "DC=some,DC=domain,DC=com"
 {{- define "arkcase.tools.ldap.baseDn" -}}
   {{- $baseDn := (include "arkcase.tools.ldap" (dict "ctx" . "value" "baseDn")) -}}
   {{- if not $baseDn -}}
-    {{- $baseDn = (include "arkcase.tools.ldap" (dict "ctx" . "value" "domain" "debug" true)) -}}
+    {{- $baseDn = (include "arkcase.tools.ldap" (dict "ctx" . "value" "domain")) -}}
     {{- if not $baseDn -}}
       {{- fail "No LDAP domain is configured - cannot continue" -}}
     {{- end -}}
