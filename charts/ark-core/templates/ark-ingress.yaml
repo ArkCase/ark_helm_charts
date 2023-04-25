@@ -1,5 +1,10 @@
-{{- if and (include "arkcase.subsystem.enabled" .) }}
-  {{- $ingress := (.Values.configuration).ingress }}
+{{- if and (include "arkcase.subsystem.enabled" $) }}
+  {{- $ingress := (include "arkcase.tools.conf" (dict "ctx" $ "value" "ingress" "detailed" true) | fromYaml) -}}
+  {{- if $ingress.value -}}
+    {{- $ingress = $ingress.value -}}
+  {{- else -}}
+    {{- $ingress = dict -}}
+  {{- end -}}
   {{- if and $ingress $ingress.enabled }}
     {{- with $ingress }}
 ---

@@ -9,8 +9,8 @@
         <property name="initParameters">
             <props>
                 <!-- TODO: parameterize the URLs -->
-                <prop key="targetUri">{{- (((.Values.configuration).proxy).viewer).url | default "http://reports:8080" -}}</prop>
-                <prop key="relativeRedirectScheme">{{- (((.Values.configuration).proxy).viewer).scheme | default "https" -}}</prop>
+                <prop key="targetUri">{{- include "arkcase.tools.conf" (dict "ctx" $ "value" "proxy.reports.url") -}}</prop>
+                <prop key="relativeRedirectScheme">{{- include "arkcase.tools.conf" (dict "ctx" $ "value" "proxy.reports.scheme") -}}</prop>
                 <prop key="http.protocol.handle-redirects">true</prop>
                 <!-- resource names regex patterns separated with comma "," if multiple.
                 Will be processed and override urls inside the response-->
@@ -48,9 +48,8 @@
         <property name="servletName" value="openweathermap"/>
         <property name="initParameters">
             <props>
-                <!-- TODO: parameterize the URLs -->
-                <prop key="targetUri">{{- (((.Values.configuration).proxy).weather).url | default "https://api.openweathermap.org/data/2.5" -}}</prop>
-                <prop key="relativeRedirectScheme">{{- (((.Values.configuration).proxy).weather).scheme | default "https" -}}</prop>
+                <prop key="targetUri">{{- include "arkcase.tools.conf" (dict "ctx" $ "value" "proxy.weather.url") -}}</prop>
+                <prop key="relativeRedirectScheme">{{- include "arkcase.tools.conf" (dict "ctx" $ "value" "proxy.weather.scheme") -}}</prop>
             </props>
         </property>
     </bean>

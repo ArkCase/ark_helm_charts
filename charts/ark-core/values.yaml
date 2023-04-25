@@ -15,6 +15,15 @@ configuration:
 
   baseUrl: "http://server.dev.arkcase.com:8080/arkcase"
 
+  proxy:
+    reports:
+      url: "http://reports:8080"
+      scheme: "https"
+
+    weather:
+      url: "https://api.openweathermap.org/data/2.5"
+      scheme: "https"
+
   db:
     dialect: "mysql"
     hostname: "rdbms"
@@ -69,13 +78,10 @@ configuration:
   contentArchive:
     <<: *content
 
-  messaging:
-    url: "tcp://messaging:61616"
-    username: "guest"
-    password: "ENC(U2FsdGVkX1+SMOIdK/h2Cy5ONteYLksBQnHZllFZcKs=)"
-
-  stomp:
-    url: "tcp://messaging:61613"
+  messaging: &messaging
+    url: "tcp://messaging"
+    stomp: 61613
+    openwire: 61616
     username: "arkcase"
     password: "arkcase"
 
