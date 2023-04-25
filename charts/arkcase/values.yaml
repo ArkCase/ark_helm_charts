@@ -209,6 +209,11 @@ rdbms:
       jcr: &jcrDb "jcr"
       quartz: &quartzDb "quartz"
 
+ldap:
+  configuration:
+    ldap:
+      <<: *ldapConfig
+
 content:
   configuration:
     ldap:
@@ -219,11 +224,6 @@ content:
       username: *contentDb
       password: *contentDbPassword
       database: *contentDb
-
-ldap:
-  configuration:
-    ldap:
-      <<: *ldapConfig
 
 core:
   configuration:
