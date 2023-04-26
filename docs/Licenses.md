@@ -225,5 +225,52 @@ You may now reference this file using `-f` during a Helm deployment. This may al
 This software package by far requires the most nuance in order to deploy the licenses.  When the licenses are provided, they're done so using a text file that looks somewhat like so:
 
 ```txt
+------------------------------------
+PDFNet Custom SDK Registration Information:
+------------------------------------
+Company: Your Company (yourdomain.com)
+Contact: Johnny Purchasing Manager
+License Model: Direct Purchase
+License Type: PDFNet Custom SDK [PDF Page Manipulation, Redaction, and Save/Merge Annotations]
+Application Name: ArkCase
+Platform(s): Linux
+AMS (Annual Maintenance Subscription): 09/25/2024 (Sep 25, 2024)
+License Key:
+Your Company (yourdomain.com):ABC:ArkCase Enterprise::X-:AMS(20240925):CBB484EA7BC149DBC702A36DCF4371E7E72F90648F9DCF8F2A792A14535FA0055950161EA9
+
+ 
+
+------------------------------------
+To register the Software simply copy the entire License Key (as specified above) and paste it as the parameter in the call to PDFNet.Initialize().
+For example: PDFNet.Initialize("license key");
+Note: Please make sure that the License Key is specified on a single line.
 ```
 
+The important tidbits are immediately after the `License Key:` line. Specifically: this line ***and only this line*** must be base-64-encoded and provided in configuration.
+
+The three licenses for PDFNet are named as follows: `pdfnet`, `viewer`, and `audioVideo`. This is an example of what that YAML looks like:
+
+```yaml
+global:
+  licenses:
+    pdftron:
+      viewer: |-
+        Yf39fES+xgnSd60b8dtr2ciOoAaJcVPbt4UbDdxrTWfKO4YJRTsQxqN6yIrkmrrSbWrhM0H1MWOS
+        xQhsjME1rclEEYgYMpUejOuPN02pDsfofsmWyf4EML3epNIrbWvxSKr6sZe7yKvYNQIF1E4FNxyZ
+        # ...
+        ip7xmOa75sZJLQqFAwjXpsvP2yg27w7i4XLlSw==
+
+      audioVideo: |-
+        Yf39fES+xgnSd60b8dtr2ciOoAaJcVPbt4UbDdxrTWfKO4YJRTsQxqN6yIrkmrrSbWrhM0H1MWOS
+        xQhsjME1rclEEYgYMpUejOuPN02pDsfofsmWyf4EML3epNIrbWvxSKr6sZe7yKvYNQIF1E4FNxyZ
+        # ...
+        ip7xmOa75sZJLQqFAwjXpsvP2yg27w7i4XLlSw==
+
+      pdfnet: |-
+        Yf39fES+xgnSd60b8dtr2ciOoAaJcVPbt4UbDdxrTWfKO4YJRTsQxqN6yIrkmrrSbWrhM0H1MWOS
+        xQhsjME1rclEEYgYMpUejOuPN02pDsfofsmWyf4EML3epNIrbWvxSKr6sZe7yKvYNQIF1E4FNxyZ
+        # ...
+        ip7xmOa75sZJLQqFAwjXpsvP2yg27w7i4XLlSw==
+```
+
+You may now reference this file using `-f` during a Helm deployment. This may also be combined with other licenses into a larger YAML file containing all licenses. This may make your life easier (or not... YMMV).
