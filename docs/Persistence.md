@@ -59,7 +59,7 @@ global:
 
 If the value `global.persistence.enabled` is not set, its value will be defaulted to "true". If it's set, and its string value is equal to `"true"` (case-insensitively), then the persistence layer will be enabled as well.
 
-If the value is explicitly set to any other value, then a value of `"false"` will be assumed and persistence will be ***disabled***. This means that ***all volumes will be rendered as emptyDir volumes***, and thus their data will be lost as soon as the pods go down.
+If the value is explicitly set to any other value, then a value of `"false"` will be assumed and persistence will be ***disabled***. This means that ***all volumes will be rendered as ephemeral (emptyDir) volumes***, and thus their data will be lost as soon as the pods go down.
 
 ## <a name="defaults"></a>Setting Default Values
 
