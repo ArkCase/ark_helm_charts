@@ -7,6 +7,7 @@
 * [Introduction](#introduction)
 * [Deployment Mode (Enterprise vs. Community)](#deployment-mode)
 * [Providing Licenses](#providing-licenses)
+* [Encoding Licenses](#encoding-licenses)
 
 ## <a name="introduction"></a>Introduction
 
@@ -41,7 +42,7 @@ More generally: Enterprise Edition data sets (databases, filesystem files, etc.)
 
 Thus, if you wish to migrate a component that has a persistent data set you want to preserve (most likely Alfresco or Pentaho) from one edition to the other, you must ***manually*** perform said migration before you can safely boot up ArkCase after that up/downgrade.
 
-## <a name="providing-licenses"></a> [Providing Licenses](#providing-licenses)
+## <a name="providing-licenses"></a>Providing Licenses
 
 Licenses are provided in (Base-64)[https://en.wikipedia.org/wiki/Base64] format, to preserve any internal text formatting or binary data. Each component that consumes license data knows the structure of the data it's looking for.
 
@@ -132,3 +133,97 @@ global:
         # ...
         ip7xmOa75sZJLQqFAwjXpsvP2yg27w7i4XLlSw==
 ```
+
+## <a name="encoding-licenses"></a>Encoding Licenses
+
+As mentioned above, licenses are meant to be encoded in Base-64 format. Linux has a tool to execute this encoding, somewhat cryptically named `base64`.  However, some licenses require only part of the license to be provided.  This section describes how to encode licenses for each software product within ArkCase that may require a license.
+
+### Alfresco
+
+Alfresco is fairly straightforward: the license file is a binary file, whose contents will be encoded using `base64`, and listed within the `alfresco:` stanza in the license configuration file.
+
+First, encode the file as base64:
+
+    $ base64 alfresco.lic
+    H4sIANUf7WMCA4WRT2vDMAzF7/0UIuzQrosDg+0Q2GGXjV166P700osXq4kgsYKttCttv/vkLmOD
+    HQYGC/P0ftLz4VBcwpa6EiIKbKhF2fd41w1RbNVgCZfF6TQ5qGqyssGTr8G+8yAwxFQHbtt0i63N
+    5DXaGksVA/mqHRxCVnHXsTe7r9ZoRv2LrTMwb7YdMJreSmOEjTRoqFOLJbOAUkd0Dg435P9xy1V7
+    FtMGrHcwrdiLJR8heyfxtqNCkQF7jiQc9jOYesVMjY4ORxB+lpA2OULAGj8eSD2yPKzXbn5xjI29
+    vrkts9kszbW6Xy6eFo8lLH+21xkFK0EF6/6/ONpQppekOZ1mV9C3aCOCwhGksQKkJ0KUwL5u94pP
+    a6J36iUMdsvk/qYdNWOw0Ad2QyXEHtBvSS20U8xkTn7D0Ij0sSwKx1U0YwpG3YsxGwyxaHiXCxeD
+    8oL+uXf5SMkTJf+lPKerc8F30qlOsX8CQkPmiUQCAAA=
+
+Then, paste the contents into a YAML file, like so:
+
+```yaml
+global:
+  licenses:
+
+    #
+    # The results of the base-64 encoding command, above. MIND THE INDENTATION!!!
+    #
+    alfresco: |-
+      H4sIANUf7WMCA4WRT2vDMAzF7/0UIuzQrosDg+0Q2GGXjV166P700osXq4kgsYKttCttv/vkLmOD
+      HQYGC/P0ftLz4VBcwpa6EiIKbKhF2fd41w1RbNVgCZfF6TQ5qGqyssGTr8G+8yAwxFQHbtt0i63N
+      5DXaGksVA/mqHRxCVnHXsTe7r9ZoRv2LrTMwb7YdMJreSmOEjTRoqFOLJbOAUkd0Dg435P9xy1V7
+      FtMGrHcwrdiLJR8heyfxtqNCkQF7jiQc9jOYesVMjY4ORxB+lpA2OULAGj8eSD2yPKzXbn5xjI29
+      vrkts9kszbW6Xy6eFo8lLH+21xkFK0EF6/6/ONpQppekOZ1mV9C3aCOCwhGksQKkJ0KUwL5u94pP
+      a6J36iUMdsvk/qYdNWOw0Ad2QyXEHtBvSS20U8xkTn7D0Ij0sSwKx1U0YwpG3YsxGwyxaHiXCxeD
+      8oL+uXf5SMkTJf+lPKerc8F30qlOsX8CQkPmiUQCAAA=
+```
+
+You may now reference this file using `-f` during a Helm deployment. This may also be combined with other licenses into a larger YAML file containing all licenses. This may make your life easier (or not... YMMV).
+
+### Pentaho
+
+Pentaho EE licenses are also fairly straightforward, like Alfresco's, but with one difference: there are multiple binary files. Since there is no need to treat those files in distinct ways during deployment, the license structure is just an array of the contents of the requisite files, encoded in `base64`:
+
+First, encode each file as base64:
+
+    $ base64 pentaho-1.lic
+    H4sIANUf7WMCA4WRT2vDMAzF7/0UIuzQrosDg+0Q2GGXjV166P700osXq4kgsYKttCttv/vkLmOD
+    HQYGC/P0ftLz4VBcwpa6EiIKbKhF2fd41w1RbNVgCZfF6TQ5qGqyssGTr8G+8yAwxFQHbtt0i63N
+    5DXaGksVA/mqHRxCVnHXsTe7r9ZoRv2LrTMwb7YdMJreSmOEjTRoqFOLJbOAUkd0Dg435P9xy1V7
+    FtMGrHcwrdiLJR8heyfxtqNCkQF7jiQc9jOYesVMjY4ORxB+lpA2OULAGj8eSD2yPKzXbn5xjI29
+    vrkts9kszbW6Xy6eFo8lLH+21xkFK0EF6/6/ONpQppekOZ1mV9C3aCOCwhGksQKkJ0KUwL5u94pP
+    a6J36iUMdsvk/qYdNWOw0Ad2QyXEHtBvSS20U8xkTn7D0Ij0sSwKx1U0YwpG3YsxGwyxaHiXCxeD
+    8oL+uXf5SMkTJf+lPKerc8F30qlOsX8CQkPmiUQCAAA=
+
+Then, paste the contents into a YAML file, like so:
+
+```yaml
+global:
+  licenses:
+    pentaho:
+      #
+      # The results of the base-64 encoding command, above. MIND THE INDENTATION!!!
+      # One list item per file!
+      #
+      - |-
+        H4sIANUf7WMCA4WRT2vDMAzF7/0UIuzQrosDg+0Q2GGXjV166P700osXq4kgsYKttCttv/vkLmOD
+        HQYGC/P0ftLz4VBcwpa6EiIKbKhF2fd41w1RbNVgCZfF6TQ5qGqyssGTr8G+8yAwxFQHbtt0i63N
+        5DXaGksVA/mqHRxCVnHXsTe7r9ZoRv2LrTMwb7YdMJreSmOEjTRoqFOLJbOAUkd0Dg435P9xy1V7
+        FtMGrHcwrdiLJR8heyfxtqNCkQF7jiQc9jOYesVMjY4ORxB+lpA2OULAGj8eSD2yPKzXbn5xjI29
+        vrkts9kszbW6Xy6eFo8lLH+21xkFK0EF6/6/ONpQppekOZ1mV9C3aCOCwhGksQKkJ0KUwL5u94pP
+        a6J36iUMdsvk/qYdNWOw0Ad2QyXEHtBvSS20U8xkTn7D0Ij0sSwKx1U0YwpG3YsxGwyxaHiXCxeD
+        8oL+uXf5SMkTJf+lPKerc8F30qlOsX8CQkPmiUQCAAA=
+
+      #
+      # Another file ...
+      #
+      - |-
+        H4sIANUf7WMCA4WRT2vDMAzF7/0UIuzQrosDg+0Q2GGXjV166P700osXq4kgsYKttCttv/vkLmOD
+        HQYGC/P0ftLz4VBcwpa6EiIKbKhF2fd41w1RbNVgCZfF6TQ5qGqyssGTr8G+8yAwxFQHbtt0i63N
+        5DXaGksVA/mqHRxCVnHXsTe7r9ZoRv2LrTMwb7YdMJreSmOEjTRoqFOLJbOAUkd0Dg435P9xy1V7
+        ...
+```
+
+You may now reference this file using `-f` during a Helm deployment. This may also be combined with other licenses into a larger YAML file containing all licenses. This may make your life easier (or not... YMMV).
+
+### PDFTron/PDFNet
+
+This software package by far requires the most nuance in order to deploy the licenses.  When the licenses are provided, they're done so using a text file that looks somewhat like so:
+
+```txt
+```
+
