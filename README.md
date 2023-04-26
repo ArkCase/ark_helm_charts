@@ -1,212 +1,124 @@
-# Containers overview
 
-The following sections help you to understand what containerized deployment is, and the deployment options available for ArkCase when using containers.
+# [ArkCase](https://www.arkcase.com/) Helm Chart Library
 
-## Deployment concepts
+***NOTE**: In a rare first, this documentation is slightly ahead of the code it covers. If something described here doesn't work with the current version of the charts, check in within a few days, and it more than likely will. These charts will remain in a constant state of flux until they reach 1.0 status, as we're using them to guide the development roadmap. Adjustments to the docs will be made if/when we find better/cleaner ways to do things on the backend.*
 
-In addition to the standard deployment methods for non-containerized deployment, ArkCase provides case management packaged in the form of Docker containers, for companies who choose to use containerized and orchestrated deployment tools. While this is a much more advanced approach to deployment, it is expected that customers who choose this approach have the necessary skills to manage its complexity.
+Welcome to the [ArkCase](https://www.arkcase.com/) Helm Chart Library!
 
-You can start ArkCase from a number of Docker images. These images are available in the Amazon Elastic Container Registery (ECR). However, starting individual Docker containers based on these images, and configuring them to work together can be complicated. To make things easier, a **Helm Chart**  is available to quickly start ArkCase.  These charts are a deployment template which can be used as the basis for your specific deployment needs. 
+Here's a table of contents so you can quickly reach the documentation section you're most interested in:
 
-The following is a list of concepts and technologies that you'll need to understand as part of deploying and using containerized ArkCase. If you know all about Docker, then you can skip this part.
+ - [Overview](#overview)
+ - [Preparation for Deployment](#preparation)
+ - [Deployment](#deployment)
+   - [Development](#development)
+   - [Production](#production)
+ - [Configuration](#configuration)
+   - [Advanced](#advanced)
+   - [Licenses](#licenses)
+   - [Ingress and SSL/TLS Access](#ingress)
+   - [Persistence Layer](#persistence)
+   - [Externally-provided Services](#external-services)
+   - [Deploying Custom ArkCase Versions](#custom-arkcase)
 
-### Virtual Machine Monitor (Hypervisor)
+## <a name="overview"></a>Overview
 
-A Hypervisor is used to run other OS instances on your local host machine. Typically it's used to run a different OS on your machine, such as Windows on a Mac. When you run another OS on your host it is called a guest OS, and it runs in a Virtual Machine (VM).
+This repository houses the set of Helm charts and supporting library charts for deploying [ArkCase](https://www.arkcase.com/) in a [Kubernetes](https://kubernetes.io/) environment, running on [Linux](https://www.linux.org/) (for now, this is the only supported platform). These charts have only been tested in vanilla Kubernetes and [EKS](https://aws.amazon.com/eks/) environments. However, it's not unreasonable to expect these charts to work OOTB with other stacks such as [OpenShift](https://www.redhat.com/en/technologies/cloud-computing/openshift/kubernetes-engine), [MiniKube](https://minikube.sigs.k8s.io/docs/start/), and [K3s](https://k3s.io/).
 
-### Image
+The charts are designed to facilitate the application's deployment and configuration for (almost) any deployment environment, and are meant to facilitate the deployment of an entire, working stack in a matter of minutes.
 
-An image is a number of layers that can be used to instantiate a container. This could be, for example, Java and Apache Tomcat. You can find all kinds of Docker images on the public repository [Docker Hub](https://hub.docker.com/){:target="_blank"}. There are also private image repositories (for things like commercial enterprise images), such as the one ArkCase uses called Amazon ECR.
+Specifically, the stack is comprised of the following separate components, each covered by its own chart and (set of) container(s):
 
-### Container
+ - [ArkCase](https://www.arkcase.com/), the core application
+ - [Solr](https://solr.apache.org/), for search services
+ - [Samba](https://www.samba.org/), for [Active Directory](https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/get-started/virtual-dc/active-directory-domain-services-overview) LDAP services
+ - [ActiveMQ](https://activemq.apache.org/), for message queue and pub/sub services
+ - [PostgreSQL](https://www.postgresql.org/)/[MariaDB](https://mariadb.org/), for database storage (only one instance is needed)
+ - [Pentaho](https://www.hitachivantara.com/en-us/products/dataops-software/data-integration-analytics.html) (for reporting services)
+ - [Alfresco](https://www.alfresco.com/), for content storage services
 
-An instance of an image is called a container. If you start this image, you have a running container of this image. You can have many running containers of the same image.
+In particular, Pentaho and Alfresco are offered in both Enterprise and Community editions. The edition deployed is automatically selected by the framework, by way of detecting the presence of the [required license data](#licenses) in the configuration at deployment time.
 
-### Docker
+## <a name="preparation"></a>Preparation for Deployment
 
-Docker is one of the most popular container platforms. [Docker](https://www.docker.com/) provides functionality for deploying and running applications in containers based on images.
+This is a very simple, high-level checklist of tasks you should complete before attempting to deploy these charts. Many of these tasks are out-of-scope, and are left as an exercise to the reader, mainly because it is covered by ample tutorial documentation easily accessible all over the internet, written by more qualified authors.
 
-### Docker Compose
+If you find challenges with any of these steps, remember: [Google](https://www.google.com/) (or [Bing](https://www.bing.com/), or [DuckDuckGo](https://duckduckgo.com/)) is your friend. If you still can't figure it out, drop us a line and we'll try to help as best we can.
 
-When you have many containers making up your solution, such as with Content Services, and you need to configure each individual container so that they all work well together, then you need a tool for this. Docker Compose is such a tool for defining and running multi-container Docker applications locally. With Compose, you use a [YAML](https://en.wikipedia.org/wiki/YAML) file to configure your application's services. Then, with a single command, you create and start all the services from your configuration.
+Without further ado ... the steps:
 
-### Dockerfile
+ 1. Deploy a Kubernetes cluster
 
-A **Dockerfile** is a script containing a successive series of instructions, directions, and commands which are run to form a new Docker image. Each command translates to a new layer in the image, forming the end product. The Dockerfile replaces the process of doing everything manually and repeatedly. When a Dockerfile finishes building, the end result is a new image, which you can use to start a new Docker container.
+	 *There are so many variations on how this may be accomplished that we leave it to the reader to figure out this step.*
 
-### Kubernetes
-Also known as K8s, is an open-source system for automating deployment, scaling, and management of containerized applications.  (https://kubernetes.io/)
+ 2. (optional, recommended) Deploy an Ingress Controller to the cluster (in our examples we will use the [HAProxy](https://haproxy-ingress.github.io/) ingress controller with minimum configuration)
 
-### HELM
-Helm helps you manage Kubernetes applications — Helm Charts help you define, install, and upgrade even the most complex Kubernetes application. (https://helm.sh/)
+ 3. Install [Helm](https://helm.sh/docs/intro/install/)
 
-### Difference between containers and virtual machines
+ 4. Add the ArkCase chart repository to Helm's repository list, like so:
 
-It's important to understand the difference between using containers and using VMs. Here's a comparison from the Docker site - [What is a Container](https://www.docker.com/resources/what-container):
+        $ helm repo add arkcase https://arkcase.github.io/ark_helm_charts/
+        $ helm repo update
 
-The main difference is that when you run a container, you are not starting a complete new OS instance. This makes containers much more lightweight and quicker to start. A container also takes up much less space on your hard-disk as it doesn't have to ship the whole OS.
+## <a name="preparation"></a>Deployment
 
-## ArkCase Container images
-The ArkCase Container images are available in the Amazon Elastic Container Registry (ECR). 
+Before you can deploy ArkCase, it's important to understand that it can be deployed in two modes: [*production*](#production) mode, and [*development*](#development) mode. By default, if deployed with no configurations, the charts will build an application in ***development*** mode. This may change in the near future, but for now this is the default mode of operation.
 
-The images are based on the Rocky Linux 8.x release, currently 8.7 ( https://github.com/ArkCase/ark_base ) which is interchangle with Red Hat Universal Base Image 8, "OCI-compliant container base operating system images with complementary runtime languages and packages that are freely redistributable."  ( https://catalog.redhat.com/software/container-stacks/detail/5ec53f50ef29fd35586d9a56 )
+The simplest way to deploy the chart is by using helm, and referencing any additional configuration files you may need (such as licenses, or other configurations):
 
-The following Docker images relate to ArkCase:
-* https://github.com/ArkCase/ark_ArkCase_core - Case Management Core Product (ArkCase)
-* https://github.com/ArkCase/ark_cloudconfig - Configuration Server
-* https://github.com/ArkCase/ark_pentaho_ee - Reporting Server
-* https://github.com/ArkCase/ark_activemq - Messaging Server
-* https://github.com/ArkCase/ark_snowbound - Viewer Server
-* https://github.com/ArkCase/ark_solr - Search Server
+    $ helm install arkcase arckase/arkcase-0.1.0 -f licenses.yaml -f ingress.yaml -f conf.yaml
 
-Additional Docker images that may or may not be part of your deployment:
-* https://github.com/ArkCase/ark_samba - Lightweight Directory Access Protocal (LDAP) Server
-* https://github.com/ArkCase/ark_postgres - PostgreSQL Database Server
-* https://github.com/ArkCase/ark_mariadb - MariaDB (MySQL) Database Server
-* https://github.com/ArkCase/ark_gateway_apache - Reverse Proxy
- 
-Diagnostics and Bootstrap Docker images:
-* https://github.com/ArkCase/ark_nettest - network testing tools out-of-the-box
-* https://github.com/ArkCase/ark_dbinit - mechanism to render DB initialization files which can then be consumed by a database container
-* ark_common - common framework of utlity tools including provisioning PVCs
+The contents of the configuration files are discussed in the [configuration section](#configuration).
 
-## What's deployed in ArkCase Helm Chart
+The above command will result in a deployment of pre-configured containers, interoperating with each other in order to support the included ArkCase instance. The number and types of containers may vary due to configurations. For instance: if you select to use an external LDAP service, then the Samba container will not be started. The same applies for other [external services](#external-services).
 
-When you deploy Content Services, a number of containers are started.
+### <a name="development"></a>Development
 
-* Case Management (ArkCase):
-  * Configuration Server
-  * Reporting Server
-  * Messaging Server
-  * Viewer Server
-  * Search Server
-* PostgreSQL Database Server
-* DB initialization 
+The mode of operation mainly affects the persistence layer. In *development* mode, all persistence is handled via ***hostPath*** volumes. In development mode it's still possible to configure the persistence layer to use a combination of rendered ***hostPath*** volumes, with actual cluster-provided volumes (i.e. [GlusterFS](https://www.gluster.org/), [Ceph](https://docs.ceph.com/en/quincy/), [NFS](https://en.wikipedia.org/wiki/Network_File_System), etc). You can find more details on how to do this [in this document](docs/Persistence.md).
 
-## Prerequisites
+The intent of supporting *development* mode is to facilitate the charts' use by developers in single-cluster environments, where persistence can be provided safely by a single host. This lowers the environment bar required for a developer to get an instance up and running, for testing and development purposes.
 
-If you are deploying only a portion of the stack to Kubernetes, please verify the combation of Virtual Machine based infrastructure and products are compatable with the Container based containers with ArkCase Support Team.
+In the near future, enabling development mode will also enable many other features related to the deployment location for the actual ArkCase WAR file, as well as the configuration directory (a.k.a.: *.arkcase*). Through these features, Developers will be able to deploy the whole stack *except* for ArkCase, and with specific configuration on their environments, make their own ArkCase instance connect to the development stack.
 
-### Helm charts
+### <a name="production"></a>Production
 
-To deploy Content Services using Helm charts, you need to install the following software:
+In *production* mode, things become more ***real***, if you will. No hostPath volumes are rendered, and instead all generated persistence is managed via volume claim templates declared with each Pod or StatefulSet. The particulars of the persistence layer are described [here](#persistence).
 
-* [AWS CLI](https://github.com/aws/aws-cli#installation) - the command line interface for Amazon Web Services.
-* [Kubectl](https://kubernetes.io/docs/tasks/tools/) - the command line tool for Kubernetes.
-* [Helm](https://github.com/helm/helm#install) - the tool for installing and managing Kubernetes applications.
-  * There are Helm charts that allow you to deploy Content Services in a Kubernetes cluster, for example, on AWS.
+To enable production mode ***explicitly***, you'll need to set this configuration value (in YAML syntax):
 
-# Install using Helm
+```yaml
+# Enable production mode
+global.mode: "production"
+```
 
-ArkCase provides tested Helm charts as a "deployment template" for customers who want to take advantage of the container orchestration benefits of Kubernetes. These Helm charts are undergoing continual development and improvement, and shouldn't be used "as is" for your production environments, but should help you save time and effort deploying Content Services for your organization.
+Production mode may also be enabled implicitly by setting a default *storageClassName* for the persistence layer, like so:
 
-The Helm charts in this repository provide a PostgreSQL database in a Docker container and don't configure any logging. This design was chosen so that you can install them in a Kubernetes cluster without changes, and they're flexible enough for adopting to your actual environment.
+```yaml
+# Enable production mode by setting a default storageClassName
+global.persistence.default.storageClassName: "someStorageClassName"
+```
 
-You should use these charts in your environment only as a starting point, and modify them so that Content Services integrates into your infrastructure. You typically want to remove the PostgreSQL container, and connect directly to your database (this might require custom images to get the required JDBC driver in the container).
+If production mode is enabled explicitly, but a default *storageClassName* is not configured, all volume claim templates rendered will lack that stanza and thus will be expected to be provisioned by the cluster with [the default storage class](https://kubernetes.io/docs/tasks/administer-cluster/change-default-storage-class/). Specifically, it is possible to enable *development* mode explicitly even with a default *storageClassName* configured, by explicitly setting the `global.mode` configuration value to `"development"`.
 
-Another typical change is the integration of your company-wide monitoring and logging tools.
+Finally, you may refer to the [documentation on the persistence layer](#persistence) for more details on how to configure that particular aspect of the deployment.
 
-## Customize
+## <a name="configuration"></a>Configuration
 
-To customize the Helm deployment, for example applying AMPs, we recommend following the best practice of creating your own custom Docker image(s). The following customization guidelines walk you through this process.
+### <a name="licenses"></a>Licenses
 
-Any customizations (including major configuration changes) should be done inside the Docker image, resulting in the creation of a new image with a new tag. This approach allows changes to be tracked in the source code (Dockerfile) and rolling updates to the deployment in the Kubernetes cluster.
+The information on how to configure component licenses can be found [in this document](docs/Licenses.md).
 
-The Helm chart configuration customization should only include environment-specific changes (for example DB server connection properties) or altered Docker image names and tags. The configuration changes applied via `--set` will only be reflected in the configuration stored in Kubernetes cluster, a better approach would be to have those in source control i.e. maintain your own values files.
+### <a name="ingress"></a>Ingress and SSL/TLS Access
 
-## Using custom Docker images
+The information on how to configure the ingress, and the SSL/TLS certificates for secure access can be found [in this document](docs/Ingress.md).
 
-Once you've created your custom image, you can either change the default values in the appropriate values file in the HELM Chart, or you can override the values via the `--set` command-line option during the install:
+### <a name="persistence"></a>Persistence
 
-## DNS
+The information on how to configure the persistence layer [in this document](docs/Persistence.md).
 
-1. Create a FQDN ArkCase will utilize
+### <a name="external-services"></a>External Services
 
-2. Create a public certificate for the hosted services. 
+The information on how to configure the stack to consume services provided by external components (i.e. an external database, an external AD instance, etc.) can be found [in this document](docs/External_Services.md).
 
-3. Update the .ArkCase configuration bundle
+### <a name="custom-arkcase"></a>Deploying Custom ArkCase Versions
 
-4. Configure Ingress Controller if necessary
-
-5. Customize Helm Chart if necessary
-
-6. Install Helm Chart
-
-## .ArkCase 
-
-.ArkCase is a configuration bundle for Case Management application
-
-## HELM Configuration options
-
-Parameters bundled in helm are most infrastructure parameters, with the larger configuration bundled within the .ArkCase bundle.
-
-### Overall Configuration
-| Parameter | Description |
-| --------- | ----------- |
-| hostname | User Facing Public Host Name
-| backendName | Back End Services Host Name
-| adminUsername | Application Administrator's Username
-| adminPassword | Application Administrator's Password
-
-### Configuration : Light Weight Directory Protocal (LDAP) Configuration
-
-| Parameter | Description |
-| --------- | ----------- |
-| domain | Fully Qualifyed Domain Name for LDAP Domain
-| url | LDAP URL for LDAP/LDAPS Server
-| baseDn | base Distinguished Name
-| bind dn | Bind Account's Distinguished Name
-| bind password | Bind Account's Password
-| admin dn | ArkCase Administrator's Distinguished Name
-| admin role | ArkCase Administrator's Role
-| search users base  | Organization Unit containing Users
-| search users attribute | Directory attribute for User Name
-| search users filter | User Filter
-| search users allFilter | Group Filter
-| search users membership | Membership Filter
-| search users ignoreCase | Toggle to ignore case sensitivity
-| search users subtree | Enable Subtree in LDAP
-| search users rolePrefix | Prefix for roles
-| search users prefix | Prefix for users
-
-## Messaging
-
-| Parameter | Description |
-| --------- | ----------- |
-| external | External Active MQ URL
-| ownership | User:Group ID numbers for Persistance
-| runAsUser | User ID for container Runtime
-| runAsGroup | Group ID for container Runtime
-| users | List of users, passwords and roles for Messaging
-| users name | Messaging User's name
-| users password | Messaging User's password
-| users roles | Messaging User's role
-
-## Light Weight Directory Protocal (LDAP)
-This block pulls in from ldapConfig with one additional parameter
-
-| Parameter | Description |
-| --------- | ----------- |
-| external | Fully Qualified Domain Name for an External LDAP Server
-
-## Relational Database Management System (rdbms):
-| Parameter | Description |
-| --------- | ----------- |
-| admin | Database Administrator Password
-| Users | List of Users and Passwords
-| Databases | List of Databases with their associated Users
-
-## Initilization Dependencies (initDependencies)
-      
-This block contains the dependency checking (and which ports) must be available before the next container is allowed to start.  Consult ArkCase Support if you need assistance modifying this block.
-
-## Reports:
-| Parameter | Description |
-| --------- | ----------- |
-| serverUrl | End Point for Reporting Server
-| jdbc acm3 url | JDBC End Point for Database
-      
-
-## Troubleshooting
-
-Here's some help for diagnosing and resolving any issues you may encounter.
+The information on how to deploy your custom ArkCase version with this stack can be found [in this document](docs/Custom_Arkcase.md).
