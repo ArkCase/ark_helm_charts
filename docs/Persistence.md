@@ -124,6 +124,8 @@ The path that a volume is stored in will be computed as follows:
 - If a non-empty, relative path is given explicitly, use this formula: `${hostPathRoot}/${relativePath}`
 - If a non-empty, absolute path is given explicitly, use that path directly regardless of any other configurations
 
+Volumes in hostPath mode are specified in mode ***DirectoryOrCreate***, which means that if the target path does not exist, it will be created by the cluster to satisfy the requirements. If this creation fails, the volume bind operation will eventually fail, and the affected pods will fail to boot up.
+
 *Please note that **hostPath** volumes are only supported in **development** mode*
 
 Production mode is enabled when:
