@@ -183,6 +183,10 @@ global.persistence.volumes:
 
   # We use the name "widget" for our example component, for brevity
   widget:
+
+    ################################################################################
+    # FIRST, THE MORE VERBOSE METHODS                                              #
+    ################################################################################
   
     # Apply the full PVC description as a template. The PVC will seek to
     # bind to an nvme volume of at least 16Gi in ReadWriteMany mode
@@ -224,6 +228,10 @@ global.persistence.volumes:
     charlie:
       path: "/var/log/chuck"
 
+    ################################################################################
+    # NEXT, USING THE FANCY STRING SYNTAX                                          #
+    ################################################################################
+
     # Create a PVC template using glusterfs as the storageClassName, and with 8Gi
     # resource requests, in ReadWriteMany or ReadWriteOnce modes, whichever one matches first
     dog: "pvc://glusterfs/8Gi#RWM,ReadWriteOnce"
@@ -247,6 +255,32 @@ global.persistence.volumes:
 
     # This will render a hostPath volume, housed in "/opt/app/j"
     jig: "/opt/app/j"
+
+    ################################################################################
+    # FINALLY, USING THE COMBINATION MAP AND FANCY STRING SYNTAX                   #
+    ################################################################################
+
+    # Similar to the above examples, except the string is tied to the "claim:" stanza
+    king:
+      # claim: "pvc://.../..."
+      # claim: "pvc:queenOfVolumes"
+      
+      # This is identical to "pvc:kingOfAllVolumes"
+      claim: "kingOfAllVolumes"
+
+    # Similar to the above examples, except the string is tied to the "volume:" stanza
+    love:
+      # volume: "pv://.../..."
+      # volume: "vol://volumeIDoNotLove"
+      
+      # This is identical to "vol://loveThisVolume"
+      volume: "loveThisVolume"
+
+    # Similar to the above examples, except the string is tied to the "path:" stanza
+    mike:
+      # volume: "relative/path/for/mike"
+      
+      volume: "/opt/app/michael"
 
 ```
 
