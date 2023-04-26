@@ -6,7 +6,7 @@
 * [Enable or Disable Persistence](#enable-disable)
 * [Setting Default Values](#defaults)
 * [Default Persistence Mode](#default-mode)
-* [Override Volumes](#override-volumes)
+* [Overriding Volumes](#overriding-volumes)
 * [Volume String Syntax](#volume-string-syntax)
 
 ## <a name="introduction"></a>Introduction
@@ -132,7 +132,177 @@ In all other instances, *development* mode will be active.
 
 ***NOTE**: this default behavior **may** change soon, making **production** the default mode, and requiring explicit configuration of **development** mode.*
 
-## <a name="override-volumes"></a>Override Volumes
+## <a name="overriding-volumes"></a>Overriding Volumes
+
+For specific deployments, it may be desirable to override specific volumes. For example: you may want to leverage NVMe storage for ArkCase's NodeJS files, or use gusterfs storage for Alfresco's content store. The point is: for specific deployments, you may want a more nuanced persistence configuration.
+
+This configruation framework gives you enough rope to hang yourself with, and then some. :)
+
+Specifically, you can override ***any*** component's persistence volume configuration using global properties. The general pattern for overriding a component's volume description is as follows:
+
+```yaml
+global:
+  persistence:
+    volumes:
+      # ${component} means the name of the component whose volume this is
+      # i.e. "core", "content", "search", etc.
+      ${component}:
+        # ${volume} means the name of the volume you're seeking to customize
+        ${volume}:
+          # ... actual configuration ...
+```
+
+The `actual configuration` for a volume can either be a string (see [this section for more information on the supported syntax](#volume-string-syntax)), or a map which describes how you wish to override the volume. The string syntax facilitates override specifications because it allows the condensation of information into a single line, using (relatively) easy-to-read statements.
+
+The alternative to using a string is to use a map to describe the override in more detail. The map may contain exactly one of 3 supported keys: `claim`, `volume`, and `path`. Defining more than one results in a Helm error that fails the deployment.  Please note that even at this stage, the `claim:`, `volume:` or `path:` may also be described using a string, for convenience.
+
+As an example, if you wanted to override the ***core*** component's ***home*** volume to be supplied by the ***nvme*** storage class, with a minimum capacity of ***4Gi***, you could achieve that with a configuration similar to this one:
+
+```yaml
+# This is an example of overriding the core component's home volume for NVMe, with at least 4Gi
+# space available
+global:
+  persistence:
+    volumes:
+      core:
+        home:
+          claim:
+            spec:
+              storageClassName: "nvme"
+              resources:
+                requests:
+                  storage: "4Gi"
+```
+
+For brevity and ease of reading in the following examples, we're going to shorten the "global-persistence-volumes" map path to a simpler "global.persistence.volumes", which is still valid in YAML, but most importantly it makes things a bit easier to read.
+
+This configuration snippet attempts to describe all the forms in which a volume override may be described.  Each volume entry will have a brief comment describing what the configuration seeks to accomplish:
+
+```yaml
+global.persistence.volumes:
+
+  # We use the name "widget" for our example component, for brevity
+  widget:
+  
+    # Apply the full PVC description as a template. The PVC will seek to
+    # bind to an nvme volume of at least 16Gi in ReadWriteMany mode
+    able:
+      claim:
+         # ... PersistentVolumeClaim (see doc links, below)
+         metadata:
+           labels:
+             # ... add some labels
+           annotations:
+             # ... add some annotations
+         spec:
+           storageClassName: "nvme"
+           accessModes:
+             - ReadWriteMany
+           resources:
+             requests:
+               storage: "16Gi"
+
+    # Create a new PV, using nfs and of exactly 64Gi size, in ReadWriteOnce mode,
+    # and connecting to the server at 172.17.0.2, on path /data/beta, while also providing
+    # some mount flags
+    bravo:
+      volume:
+         # ... PersistentVolumeSpec (see links, below)
+         storageClassName: "nfs"
+         capacity:
+           storage: "64Gi"
+         accessModes: [ "ReadWriteOnce" ]
+        mountOptions:
+          - hard
+          - nfsvers=4.1
+        nfs:
+          path: /data/beta
+          server: 172.17.0.2
+
+    # Create a hostPath volume (if applicable) for charlie, which mounts the contents
+    # of the path /var/log/chuck as the volume
+    charlie:
+      path: "/var/log/chuck"
+
+    # Create a PVC template using glusterfs as the storageClassName, and with 8Gi
+    # resource requests, in ReadWriteMany or ReadWriteOnce modes, whichever one matches first
+    dog: "pvc://glusterfs/8Gi#RWM,ReadWriteOnce"
+
+    # Create a PVC template using the cluster's default-configured storageClassName, and with 1Gi
+    # resource requests, in ReadWriteOnce mode
+    easy: "pvc:///1Gi#RW"
+
+    # Bind to the specific PVC resource named "myFoxyPvc", which would be managed external to the helm
+    # chart
+    fox: "pvc:myFoxyPvc"
+
+    # Create an nvme volume that's 32Gi in size, and will be mounted in ReadWriteMany mode
+    george: "pv://nvme/32Gi#RWM"
+
+    # Bind this volume to the existing PV resource named "howYouLikeDisVolume"
+    how: "vol://howYouLikeDisVolume"
+
+    # This will render a hostPath volume, housed in ${hostPathRoot}/my-item-volume
+    item: "my-item-volume"
+
+    # This will render a hostPath volume, housed in "/opt/app/j"
+    jig: "/opt/app/j"
+
+```
+
+Some helpful reference docs:
+
+* [PersistentVolumeSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#persistentvolumespec-v1-core)
+* [PersistentVolumeClaim](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#persistentvolumeclaim-v1-core)
+
+The contents of the `claim:` and `volume:` stanzas receive special treatment.
+
+### Persistent Volume Claims
+
+For `claim:`, it's (obviously) treated as a description of either a specific claim that is to be bound to the volume, or the description of the claim template that is to be rendered for the volume.
+
+There are several ways to describe the claim.
+
+```yaml
+global.persistence.volumes:
+  core:
+    # Bind to a PVC similar to the example above: NVMe, with at least 4Gi, in ReadWriteOnce mode
+    # the use of the PVC syntax indicates that the string describes a PVC, so no need to
+    # add a "claim:" stanza under the key.
+    home: "pvc://nvme/4Gi#RWO"
+    
+    # This has the exact same effect as the above example, even if it has a slightly different
+    # YAML structure.
+    # home:
+    #   claim: "pvc://nvme/4Gi#RWO"
+
+    init:
+      # Bind to the PVC named "myArkcaseInitPVC", which must be created externally!
+      claim: "myArkcaseInitPVC"
+
+    logs:
+      # Describe the PVC resource fully, as per the PersistenceVolumeClaim object specification
+      claim:
+        metadata:
+          # We can add labels, annotations, etc., here ... except name and
+          # namespace - both of those values will be removed at render time
+        spec:
+          # We can fully describe the PVC here, as if we were manually creating
+          # a PVC resource ...
+          storageClassName: "glusterfs"
+          resources:
+            requests:
+              storage: "2Gi"
+          accessModes: [ "ReadWriteOnce" ]
+
+    war:
+      claim:
+```
+
+
+
+adfsdf
+
 
 afasfdsdf
 
