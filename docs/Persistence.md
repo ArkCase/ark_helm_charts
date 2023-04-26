@@ -1,4 +1,3 @@
-
 # [ArkCase](https://www.arkcase.com/) Persistence Configuration
 
 ## Table of Contents
@@ -48,7 +47,56 @@ This will result in a similar cluster with production persistence, but relying o
 
 ## <a name="defaults"></a>Setting Default Values
 
-adsfasdfdfs
+The persistence layer supports setting default values that will be used by the volume claim template generator whenever it needs that value, but has no other source for it.
+
+These are some the default values that can be configured, in YAML syntax:
+
+```yaml
+global:
+  # The default value for mode is "development"
+  # Can be set case-insesitively, and must be one of
+  # "production" (prod is equivalent), or
+  # "development" (develop, devel, dev are equivalent)
+  mode: "development"
+
+  persistence:
+    default:
+      # The default value for accessModes is [ "ReadWriteOnce" ]
+      # Can be set case-insensitively, and supports abbreviations
+      # such as RWM, RWO (RW is equivalent), and ROM (RO is equivalent)
+      accessModes: [ "ReadWriteOnce" ]
+
+      # The default value for capacity is 1Gi
+      # Can be set case-insensitively
+      capacity: "4Gi"
+
+      # The default value for hostPathRoot is "/opt/app"
+      hostPathRoot: "/directory/where/relative/hostPath/volumes/will/reside"
+
+      # No default value for persistentVolumeReclaimPolicy
+      # Can be set case-insensitively, and must be one of
+      # Retain, Recycle, or Delete
+      persistentVolumeReclaimPolicy: "retain"
+
+      # No default value for storageClassName
+      storageClassName: "..."
+
+      # The default value for volumeMode is "Filesystem"
+      # Can be set case-insensitively, and must be one of
+      # "Filesystem" or "Block"
+      volumeMode: "Block"
+```
+
+Persistence is enabled by default. The persistence layer can be disabled completely by setting this value:
+
+```yaml
+global:
+  persistence:
+    # Set to false if you wish to disable persistence
+    enabled: true
+```
+
+If the value `global.persistence.enabled` is not set, its value will be defaulted to "true". If it's set, and its value is equal to `"true"` (case-insensitively), then the persistence layer will be enabled. If the value is explicitly set to any other value, then a value of `"false"` will be assumed and persistence will be ***disabled***. This means that ***all volumes will be rendered as emptyDir volumes***, and thus their data will be lost as soon as the pods go down.
 
 ## <a name="default-mode"></a>Default Persistence Mode
 
@@ -141,3 +189,34 @@ This pattern describes the desire to bind the volume to a specific **PersistentV
 If the ArkCase deployment is executed with volume overrides described using this string pattern, then the deployment will only succeed if the named PV resources already exist in the cluster by the time the deployment process tries to bind to them. If they haven't, then some pods will hang indefinitely pending deployment until such a time as they're torn down, or the required PV is created.
 
 In this scenario, the deployer assumes reponsibility for deploying the necessary PV resource(s) ***before*** attempting to deploy ArkCase.
+
+### <a name="otherString"></a>Other String Patterns
+
+Other string patterns are allowed, and their interpretation varies depending on the context in which they're used. They can be used to describe paths, PVC names, or PV names. Here are some examples:
+
+```yaml
+global:
+  persistence:
+    defaults:
+      # Define the location within which relative paths will be housed
+      hostPathRoot: "/data/volumes"
+
+    volumes:
+      # Render the volume 'logs' for pod 'search' as a hostPath,
+      # if applicable, pointing to this specific absolute path
+      search:
+        logs: "/var/log/arkcase-search"
+
+      # Render the volume 'init' for pod 'core' as a hostPath,
+      # if applicable, pointing to the path "/data/volumes/core-initializer"
+      core:
+        init: "core-initializer"
+        # This is equivalent to using vol://volumeWithConfigurations
+        home:
+          volume: "volumeWithConfigurations"
+
+      rdbms:
+        data:
+          # This is equivalent to using pvc:pvcForDatabase
+          claim: "pvcForDatabase"
+```
