@@ -105,12 +105,17 @@ global:
 
 ## <a name="default-mode"></a>Default Persistence Mode
 
-The current default for the helm charts is to deploy ArkCase in ***development*** mode. This means that all volumes will be described as ***hostPath*** volumes, and will be allocated based on the `global.persistence.default.rootPath` configuration (by default this has a value of `/opt/app`).
+The current default for the helm charts is to deploy ArkCase in ***development*** mode. This means that all volumes will be described as ***hostPath*** volumes, and will be allocated based on the `global.persistence.default.hostPathRoot` configuration (by default this has a value of `/opt/app`).
 
 The path that a volume is stored in will be computed as follows:
 
-- If no path is given explicitly (or an empty path is given), then use this formula: `${rootPath}/${namespace}/${releaseName}/${component}/${volumeName}`.
-- If a non-empty, relative path is given explicitly, use this formula: `${rootPath}/${relativePath}`
+- If no path is given explicitly (or an empty path is given), then use this formula: `${hostPathRoot}/${namespace}/${releaseName}/${component}/${volumeName}`.
+  - The value ***hostPathRoot*** will be the value set for `global.persistence.default.hostPathRoot`, or the default value as specified above.
+  - The value ***namespace*** refers to the K8s namespace into which the deployment is being executed
+  - The value ***releaseName*** is the release name given to the Helm release
+  - The value ***component*** is the component that will consume the volume (i.e. *core*, *search*, *reports*, *rdbms*, etc.)
+  - The value ***volumeName*** is the name of the volume, as referenced within the consuming component
+- If a non-empty, relative path is given explicitly, use this formula: `${hostPathRoot}/${relativePath}`
 - If a non-empty, absolute path is given explicitly, use that path directly regardless of any other configurations
 
 *Please note that **hostPath** volumes are only supported in **development** mode*
