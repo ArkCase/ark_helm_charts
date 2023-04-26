@@ -2,8 +2,10 @@
 {{- if and $ingress $ingress.value }}
   {{- $ingress = $ingress.value }}
   {{- with $ingress }}
-    {{- if .enabled }}
-      {{- if and .hostName .tls }}
+    {{- $baseUrl := (include "arkcase.tools.parseUrl" (include "arkcase.tools.conf" (dict "ctx" $ "value" "baseUrl")) | fromYaml) -}}
+    {{- $hostname := $baseUrl.host -}}
+    {{- if and .enabled $hostname }}
+      {{- if .tls }}
 ---
 apiVersion: v1
 kind: Secret
@@ -58,7 +60,7 @@ spec:
       http:
         paths:
       {{- if or (not (hasKey . "core")) .core }}
-          - path: /arkcase
+          - path: {{ $baseUrl.path | default "/" | quote }}
             pathType: Prefix
             backend:
               service:
@@ -67,21 +69,21 @@ spec:
                   number: 8080
       {{- end }}
       {{- if .content }}
-          - path: /alfresco
+          - path: "/alfresco"
             pathType: Prefix
             backend:
               service:
                 name: "content-main"
                 port:
                   number: 8080
-          - path: /api-explorer
+          - path: "/api-explorer"
             pathType: Prefix
             backend:
               service:
                 name: "content-share"
                 port:
                   number: 8080
-          - path: /share
+          - path: "/share"
             pathType: Prefix
             backend:
               service:
@@ -89,14 +91,12 @@ spec:
                 port:
                   number: 8080
       {{- end }}
-      {{- if .hostName }}
-      host: &ingressHostName {{ .hostName | quote }}
-        {{- if .tls }}
+      host: &ingressHostName {{ $hostname | quote }}
+      {{- if .tls }}
   tls:
     - secretName: {{ .tls | quote }}
       hosts:
         - *ingressHostName
-        {{- end }}
       {{- end }}
     {{- end }}
   {{- end }}
