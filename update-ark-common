@@ -12,7 +12,6 @@ cd "${BASEDIR}"
 # First things first, package the file
 #
 OUT="$(helm package charts/ark-common)"
-helm repo index --url "${HELM_REPO_URL}" .
 
 SRC="$(echo -n "${OUT}" | sed -e 's;^.*and saved it to: ;;g')"
 ARCHIVES=()
@@ -31,3 +30,7 @@ while read f ; do
 	F="$(basename "${f}")"
 	cp -vf "${F}" "${ARKCASE}/charts"
 done < <(find "${ARKCASE}/charts" -type f -name "*.tgz")
+
+rm -fv testchart*.tgz
+helm package charts/arkcase
+helm repo index --url "${HELM_REPO_URL}" .
