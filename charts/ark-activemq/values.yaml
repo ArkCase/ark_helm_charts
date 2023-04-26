@@ -19,6 +19,25 @@ configuration:
 
   encryptPassword: "activemq"
 
+  users:
+    arkcase:
+      name: &arkcaseMessagingUser "arkcase"
+      password: *arkcaseMessagingUser
+      roles: *admin
+    cloudconfig:
+      name: &cloudConfigMessagingUser "cloudconfig"
+      password: *cloudConfigMessagingUser
+      roles: *admin
+    guest:
+      name: &guestUser "guest"
+      password: *guestUser
+
+  groups:
+    admins:
+      - *arkcaseMessagingUser
+      - *cloudConfigMessagingUser
+
+
   # Limit, in GiB, of how big the KahaDB store can grow
   maxStoreUsageGb: 50
 
