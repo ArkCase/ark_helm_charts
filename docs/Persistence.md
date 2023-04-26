@@ -1,5 +1,7 @@
 # [ArkCase](https://www.arkcase.com/) Persistence Configuration
 
+***NOTE**: In a rare first, this documentation is slightly ahead of the code it covers. If something described here doesn't work with the current version of the charts, check in within a few days, and it more than likely will. These charts will remain in a constant state of flux until they reach 1.0 status, as we're using them to guide the development roadmap. Adjustments to the docs will be made if/when we find better/cleaner ways to do things on the backend.*
+
 ## Table of Contents
 
 * [Introduction](#introduction)
@@ -11,7 +13,6 @@
 
 ## <a name="introduction"></a>Introduction
 
-***NOTE**: In a rare first, this documentation is slightly ahead of the code it covers. If something described here doesn't work with the current version of the charts, check in within a few days, and it more than likely will. These charts will remain in a constant state of flux until they reach 1.0 status, as we're using them to guide the development roadmap. Adjustments to the docs will be made if/when we find better/cleaner ways to do things on the backend.*
 
 This document describes how to configure the persistence layer for the ArkCase helm charts to suit your needs. Generally speaking, you likely will not need to configure too many parameters on a normal deployment.
 
