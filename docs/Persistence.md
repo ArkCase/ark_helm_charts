@@ -32,9 +32,9 @@ Then deploy, like so:
 
     $ helm install arkcase arkcase/arkcase -f conf.yaml
 
-And that's it. This should yield a fully-working ArkCase stack, with all required components, and with all storage volumes using storage class `glusterfs`.
+And that's it. This should yield a fully-working ArkCase stack, with all required components, and with all storage volumes using storage class `glusterfs`. During deployment, the infrastructure will be expected to fulfill all rendered volume claim templates by automatically provisioning volumes (or attaching to existing ones), or bind the incoming claims to already-existing volumes accordingly.
 
-Alternatively, you can just deploy it explicitly selecting *production* mode, but without setting a default value for *storageClassName*, which will result in the volume claims using [the cluster's default storage class](https://kubernetes.io/docs/tasks/administer-cluster/change-default-storage-class/):
+Alternatively, production deployment can be selected by setting the appropriate mode, but without setting a default value for *storageClassName*, which will result in the volume claims using [the cluster's default storage class](https://kubernetes.io/docs/tasks/administer-cluster/change-default-storage-class/):
 
 ```yaml
 # Example contents of conf.yaml
