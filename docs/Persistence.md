@@ -45,11 +45,24 @@ Then deploy, like so:
 
 This will result in a similar cluster with production persistence, but relying on the cluster's configured default storage class.
 
+## Default Persistence State
+
+Persistence is enabled by default. The persistence layer can be disabled completely by setting this value:
+
+```yaml
+global:
+  persistence:
+    # Set to false if you wish to disable persistence
+    enabled: true
+```
+
+If the value `global.persistence.enabled` is not set, its value will be defaulted to "true". If it's set, and its value is equal to `"true"` (case-insensitively), then the persistence layer will be enabled. If the value is explicitly set to any other value, then a value of `"false"` will be assumed and persistence will be ***disabled***. This means that ***all volumes will be rendered as emptyDir volumes***, and thus their data will be lost as soon as the pods go down.
+
 ## <a name="defaults"></a>Setting Default Values
 
 The persistence layer supports setting default values that will be used by the volume claim template generator whenever it needs that value, but has no other source for it.
 
-These are some the default values that can be configured, in YAML syntax:
+These are the default values that can be configured, in YAML syntax:
 
 ```yaml
 global:
@@ -57,6 +70,8 @@ global:
   # Can be set case-insesitively, and must be one of
   # "production" (prod is equivalent), or
   # "development" (develop, devel, dev are equivalent)
+  #
+  # hostPath volumes are only allowed in development mode
   mode: "development"
 
   persistence:
@@ -86,17 +101,6 @@ global:
       # "Filesystem" or "Block"
       volumeMode: "Block"
 ```
-
-Persistence is enabled by default. The persistence layer can be disabled completely by setting this value:
-
-```yaml
-global:
-  persistence:
-    # Set to false if you wish to disable persistence
-    enabled: true
-```
-
-If the value `global.persistence.enabled` is not set, its value will be defaulted to "true". If it's set, and its value is equal to `"true"` (case-insensitively), then the persistence layer will be enabled. If the value is explicitly set to any other value, then a value of `"false"` will be assumed and persistence will be ***disabled***. This means that ***all volumes will be rendered as emptyDir volumes***, and thus their data will be lost as soon as the pods go down.
 
 ## <a name="default-mode"></a>Default Persistence Mode
 
