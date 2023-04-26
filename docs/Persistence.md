@@ -13,8 +13,7 @@
 
 ## <a name="introduction"></a>Introduction
 
-
-This document describes how to configure the persistence layer for the ArkCase helm charts to suit your needs. Generally speaking, you likely will not need to configure too many parameters on a normal deployment.
+This document describes how to configure the persistence layer for the ArkCase helm charts to suit your needs. Generally speaking, you likely will not need to configure too many parameters on a normal deployment. As with any community-release project, Issues and PRs are always welcome to help move this code further along.
 
 ArkCase relies on **PersistentVolumeClaim** (PVC) templates to access **PersistentVolume** (PV) resources which it (generally) expects the cluster infrastructure (or some other actor) to provision. It may also leverage specifically declared PVC resources, as well as specifically tailored PV resources. However, great effort has gone towards not requiring such manipulations of the persistence layer.
 
