@@ -241,8 +241,9 @@ global.persistence.volumes:
     # resource requests, in ReadWriteMany or ReadWriteOnce modes, whichever one matches first
     dog: "pvc://glusterfs/8Gi#RWM,ReadWriteOnce"
 
-    # Create a PVC template using the cluster's default-configured storageClassName, and with 1Gi
-    # resource requests, in ReadWriteOnce mode
+    # Create a PVC template using the cluster's default-configured storageClassName (or our
+    # specifically configured storageClassName), and with 1Gi resource requests, in
+    # ReadWriteOnce mode
     easy: "pvc:///1Gi#RW"
 
     # Bind to the specific PVC resource named "myFoxyPvc", which would be managed external to the helm
