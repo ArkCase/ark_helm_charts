@@ -295,57 +295,6 @@ Some helpful reference docs:
 * [PersistentVolumeSpec](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#persistentvolumespec-v1-core)
 * [PersistentVolumeClaim](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#persistentvolumeclaim-v1-core)
 
-The contents of the `claim:` and `volume:` stanzas receive special treatment.
-
-### Persistent Volume Claims
-
-For `claim:`, it's (obviously) treated as a description of either a specific claim that is to be bound to the volume, or the description of the claim template that is to be rendered for the volume.
-
-There are several ways to describe the claim.
-
-```yaml
-global.persistence.volumes:
-  core:
-    # Bind to a PVC similar to the example above: NVMe, with at least 4Gi, in ReadWriteOnce mode
-    # the use of the PVC syntax indicates that the string describes a PVC, so no need to
-    # add a "claim:" stanza under the key.
-    home: "pvc://nvme/4Gi#RWO"
-    
-    # This has the exact same effect as the above example, even if it has a slightly different
-    # YAML structure.
-    # home:
-    #   claim: "pvc://nvme/4Gi#RWO"
-
-    init:
-      # Bind to the PVC named "myArkcaseInitPVC", which must be created externally!
-      claim: "myArkcaseInitPVC"
-
-    logs:
-      # Describe the PVC resource fully, as per the PersistenceVolumeClaim object specification
-      claim:
-        metadata:
-          # We can add labels, annotations, etc., here ... except name and
-          # namespace - both of those values will be removed at render time
-        spec:
-          # We can fully describe the PVC here, as if we were manually creating
-          # a PVC resource ...
-          storageClassName: "glusterfs"
-          resources:
-            requests:
-              storage: "2Gi"
-          accessModes: [ "ReadWriteOnce" ]
-
-    war:
-      claim:
-```
-
-
-
-adfsdf
-
-
-afasfdsdf
-
 ## <a name="volume-string-syntax"></a>Volume String Syntax
 
 To facilitate rapid configuration, we've developed a library that allows deployers to describe volume overrides using a fairly simple and direct string syntax, while retaining much of the power of directly customizing volumes via full claim declarations.
