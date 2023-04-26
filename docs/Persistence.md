@@ -80,6 +80,9 @@ global:
       # The default value for accessModes is [ "ReadWriteOnce" ]
       # Can be set case-insensitively, and supports abbreviations
       # such as RWM, RWO (RW is equivalent), and ROM (RO is equivalent)
+      #
+      # Can be specified as a list (JSON or YAML format), or a list of
+      # CSV values (i.e. RWM,RWO,RO).
       accessModes: [ "ReadWriteOnce" ]
 
       # The default value for capacity is 1Gi
