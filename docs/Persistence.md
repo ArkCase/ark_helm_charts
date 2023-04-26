@@ -3,6 +3,7 @@
 ## Table of Contents
 
 * [Introduction](#introduction)
+* [Enable or Disable Persistence](#enable-disable)
 * [Setting Default Values](#defaults)
 * [Default Persistence Mode](#default-mode)
 * [Override Volumes](#override-volumes)
@@ -45,7 +46,7 @@ Then deploy, like so:
 
 This will result in a similar cluster with production persistence, but relying on the cluster's configured default storage class.
 
-## Default Persistence State
+## <a name="enable-disable"></a>Enable or Disable Persistence
 
 Persistence is enabled by default. The persistence layer can be disabled completely by setting this value:
 
