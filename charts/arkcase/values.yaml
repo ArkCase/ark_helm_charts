@@ -177,16 +177,22 @@ messaging:
   #   tag: 5.16.2
   configuration:
     users:
-      - name: &arkcaseMessagingUser "arkcase"
+      arkcase:
+        name: &arkcaseMessagingUser "arkcase"
         password: &arkcaseMessagingPassword "Thoan-aeL[u>u7eC"
-        groups: "admins"
         roles: "admin"
-      - name: &cloudConfigMessagingUser "cloudconfig"
+      cloudconfig:
+        name: &cloudConfigMessagingUser "cloudconfig"
         password: &cloudConfigMessagingPassword "mie|Qu}ai8ahniu|"
-        groups: "admins"
         roles: "admin"
-      - name: &guestUser "guest"
+      guest:
+        name: &guestUser "guest"
         password: *guestUser
+
+    groups:
+      admins:
+        - *arkcaseMessagingUser
+        - *cloudConfigMessagingUser
 
 search:
   service:
