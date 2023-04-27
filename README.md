@@ -13,7 +13,6 @@ Here's a table of contents so you can quickly reach the documentation section yo
    - [Development](#development)
    - [Production](#production)
  - [Configuration](#configuration)
-   - [Advanced](#advanced)
    - [Licenses](#licenses)
    - [Ingress and SSL/TLS Access](#ingress)
    - [Persistence Layer](#persistence)
