@@ -398,7 +398,7 @@ community) in order to choose the correct image.
     {{- $finalTag = $tag -}}
   {{- end -}}
   {{- if and (not $finalTag) $useChartTag -}}
-    {{- $finalTag = $ctx.Chart.Version -}}
+    {{- $finalTag = $ctx.Chart.AppVersion -}}
   {{- end -}}
   {{- if $finalTag -}}
     {{- $image = set $image "image" (printf "%s:%s" $image.image $finalTag) -}}
@@ -419,7 +419,7 @@ Fetch and compute if necessary the image information for the named image
   {{- $name := "" -}}
   {{- $repository := "" -}}
   {{- $tag := "" -}}
-  {{- $useChartTag := true -}}
+  {{- $useChartTag := false -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- $ctx = .ctx -}}
     {{- if not (include "arkcase.isRootContext" $ctx) -}}
@@ -432,7 +432,9 @@ Fetch and compute if necessary the image information for the named image
     {{- end -}}
     {{- $repository = .repository -}}
     {{- $tag = .tag -}}
-    {{- $useChartTag := (eq "true" (.useChartTag | toString | default "false" | lower)) -}}
+    {{- $useChartTag = (eq "true" (.useChartTag | toString | default "false" | lower)) -}}
+  {{- else -}}
+    {{- $useChartTag = true -}}
   {{- end -}}
 
   {{- if not $name -}}
