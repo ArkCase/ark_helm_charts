@@ -113,7 +113,7 @@ The information on how to configure the ingress, and the SSL/TLS certificates fo
 
 ### <a name="persistence"></a>Persistence
 
-The information on how to configure the persistence layer [in this document](docs/Persistence.md).
+The information on how to configure the persistence layer can be found [in this document](docs/Persistence.md).
 
 ### <a name="external-services"></a>External Services
 
