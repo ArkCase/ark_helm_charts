@@ -355,6 +355,7 @@ community) in order to choose the correct image.
   {{- $name := .name -}}
   {{- $repository := .repository -}}
   {{- $tag := .tag -}}
+  {{- $useChartTag := .useChartTag -}}
 
   {{- if not (hasKey . "enterprise") -}}
     {{- fail "The enterprise flag must be set" -}}
@@ -396,6 +397,9 @@ community) in order to choose the correct image.
   {{- if not $finalTag -}}
     {{- $finalTag = $tag -}}
   {{- end -}}
+  {{- if and (not $finalTag) $useChartTag -}}
+    {{- $finalTag = $ctx.Chart.Version -}}
+  {{- end -}}
   {{- if $finalTag -}}
     {{- $image = set $image "image" (printf "%s:%s" $image.image $finalTag) -}}
   {{- end -}}
@@ -415,6 +419,7 @@ Fetch and compute if necessary the image information for the named image
   {{- $name := "" -}}
   {{- $repository := "" -}}
   {{- $tag := "" -}}
+  {{- $useChartTag := true -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- $ctx = .ctx -}}
     {{- if not (include "arkcase.isRootContext" $ctx) -}}
@@ -427,6 +432,7 @@ Fetch and compute if necessary the image information for the named image
     {{- end -}}
     {{- $repository = .repository -}}
     {{- $tag = .tag -}}
+    {{- $useChartTag := (eq "true" (.useChartTag | toString | default "false" | lower)) -}}
   {{- end -}}
 
   {{- if not $name -}}
@@ -450,7 +456,7 @@ Fetch and compute if necessary the image information for the named image
   {{- $imageName := (printf "%s-%s-%s" (include "common.fullname" $ctx) $name) -}}
   {{- $yamlResult := "" -}}
   {{- if not (hasKey $masterCache $imageName) -}}
-    {{- $yamlResult = include "arkcase.image.info.cached" (dict "ctx" $ctx "name" $name "enterprise" $enterprise "repository" $repository "tag" $tag) -}}
+    {{- $yamlResult = include "arkcase.image.info.cached" (dict "ctx" $ctx "name" $name "enterprise" $enterprise "repository" $repository "tag" $tag "useChartTag" $useChartTag) -}}
     {{- $masterCache = set $masterCache $imageName ($yamlResult | fromYaml) -}}
   {{- else -}}
     {{- $yamlResult = get $masterCache $imageName | toYaml -}}
