@@ -1,5 +1,5 @@
 
-# [ArkCase](https://www.arkcase.com/) Ingress and SSL/TLS Access
+# [ArkCase](https://www.arkcase.com/) Ingress and SSL/TLS Access for Helm
 
 ***NOTE**: In a rare first, this documentation is slightly ahead of the code it covers. If something described here doesn't work with the current version of the charts, check in within a few days, and it more than likely will. These charts will remain in a constant state of flux until they reach 1.0 status, as we're using them to guide the development roadmap. Adjustments to the docs will be made if/when we find better/cleaner ways to do things on the backend.*
 
@@ -148,4 +148,6 @@ global:
           # ...
 ```
 
-If the `global.conf.baseUrl` configuration value is an ***https*** URL, then the `global.conf.ingress.secret` configuration is required - in whatever form! This is because it makes no sense to configure an HTTPS ingress with no TLS certificates to match.  Furthermore, if the secret configuration is a map, then the `crt` and `key` values are required. The `ca` value is optional, and generally not needed.
+If the `global.conf.baseUrl` configuration value is an ***https://*** URL, then the `global.conf.ingress.secret` configuration is required - in whatever form! This is because it makes no sense to configure an HTTPS ingress with no TLS certificates to match.  Furthermore, if the secret configuration is a map, then the `crt` and `key` values are required. The `ca` value is optional, and generally not needed.
+
+If the baseUrl is an ***http://*** URL, then the secret information will be ignored, even if provided.
