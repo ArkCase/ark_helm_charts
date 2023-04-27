@@ -3,6 +3,8 @@
 
 ***NOTE**: In a rare first, this documentation is slightly ahead of the code it covers. If something described here doesn't work with the current version of the charts, check in within a few days, and it more than likely will. These charts will remain in a constant state of flux until they reach 1.0 status, as we're using them to guide the development roadmap. Adjustments to the docs will be made if/when we find better/cleaner ways to do things on the backend.*
 
+This document describes the model and configuration for enabling Ingress access to ArkCase as part of the original deployment. As with any community-release project, Issues and PRs are always welcome to help move this code further along.
+
 The ArkCase helm chart supports rendering an `Ingress` resource as part of the deployment procedure. This ingress resource is configured via the `global.conf.ingress` configuration map, and the `global.conf.baseUrl` configuration string.
 
 The Ingress configuration will be activated if the `global.conf.baseUrl` configuration string is present. This string represents the actual URL through which ArkCase will be accessed. If the parameter is not given, the Ingress resource will not be rendered. If the URL is not valid, this will result in a template rendering error.
