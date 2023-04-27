@@ -244,26 +244,31 @@ For example: PDFNet.Initialize("license key");
 Note: Please make sure that the License Key is specified on a single line.
 ```
 
-The important tidbits are immediately after the `License Key:` line. Specifically: this line ***and only this line*** must be base-64-encoded and provided in configuration.
+The important tidbits are immediately after the `License Key:` line. Specifically: this line ***and only this line*** must be base-64-encoded and provided in configuration.  This is an easy way to encode the value, given the above file:
 
-The three licenses for PDFNet are named as follows: `pdfnet`, `viewer`, and `audioVideo`. This is an example of what that YAML looks like:
+    $ grep -A 1 "License Key:" pdfnet-license.txt | tail -1 | base64
+
+Once you have the Base64 value, you can then paste it into the YAML configuration. The three licenses for PDFNet are named as follows: `pdfnet`, `viewer`, and `audioVideo`. This is an example of what that YAML looks like:
 
 ```yaml
 global:
   licenses:
     pdftron:
+      # This is an example value, not a valid PDFTron WebViewer license
       viewer: |-
         Yf39fES+xgnSd60b8dtr2ciOoAaJcVPbt4UbDdxrTWfKO4YJRTsQxqN6yIrkmrrSbWrhM0H1MWOS
         xQhsjME1rclEEYgYMpUejOuPN02pDsfofsmWyf4EML3epNIrbWvxSKr6sZe7yKvYNQIF1E4FNxyZ
         # ...
         ip7xmOa75sZJLQqFAwjXpsvP2yg27w7i4XLlSw==
 
+      # This is an example value, not a valid PDFTron A/V Viewer license
       audioVideo: |-
         Yf39fES+xgnSd60b8dtr2ciOoAaJcVPbt4UbDdxrTWfKO4YJRTsQxqN6yIrkmrrSbWrhM0H1MWOS
         xQhsjME1rclEEYgYMpUejOuPN02pDsfofsmWyf4EML3epNIrbWvxSKr6sZe7yKvYNQIF1E4FNxyZ
         # ...
         ip7xmOa75sZJLQqFAwjXpsvP2yg27w7i4XLlSw==
 
+      # This is an example value, not a valid PDFNet library license
       pdfnet: |-
         Yf39fES+xgnSd60b8dtr2ciOoAaJcVPbt4UbDdxrTWfKO4YJRTsQxqN6yIrkmrrSbWrhM0H1MWOS
         xQhsjME1rclEEYgYMpUejOuPN02pDsfofsmWyf4EML3epNIrbWvxSKr6sZe7yKvYNQIF1E4FNxyZ
