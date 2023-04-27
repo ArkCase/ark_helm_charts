@@ -56,10 +56,10 @@ spec:
       {{- end }}
       initContainers:
         - name: initialize-configuration
-          {{- include "arkcase.image" (dict "ctx" $ "name" "deploy") | nindent 10 }}
+          {{- include "arkcase.image" (dict "ctx" $ "name" "deploy" "useChartTag" true) | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             - name: REALM_FIX
-              value: {{ printf "arkcase.org=%s" (($.Values.configuration).ldap).domain | quote }}
+              value: {{ printf "arkcase.org=%s" (include "arkcase.tools.ldap" (dict "ctx" $ "value" "domain")) | quote }}
           volumeMounts:
             - name: "conf"
               mountPath: "/app/conf"

@@ -632,7 +632,7 @@ return either the value if correct, or the empty string if not.
 
   {{- $result := dict -}}
   {{- $searched := list -}}
-  {{- range (list "global.conf" "configuration") -}}
+  {{- range (list (printf "global.conf.%s" $ctx.Chart.Name) "global.conf" "configuration") -}}
     {{- if or (not $result) (not $result.value) -}}
       {{- $key := (empty $value) | ternary . (printf "%s.%s" . $value ) -}}
       {{- if $debug -}}

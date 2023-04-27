@@ -1,4 +1,4 @@
-{{- if (include "arkcase.subsystem.enabled" .) }}
+{{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.activemq.external" $)) }}
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -81,7 +81,7 @@ spec:
             - name: ACTIVEMQ_ENCRYPTION_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "arkcase.subsystem.name" $ | quote }}
+                  name: {{ include "arkcase.fullname" $ | quote }}
                   key: ENCRYPTION_PASSWORD
           {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
           {{- with (include "arkcase.values" (dict "ctx" $ "base" "command") | fromYaml) }}
@@ -93,14 +93,14 @@ spec:
           volumeMounts:
             - name: "data"
               mountPath: "/app/data"
-            - name: "secrets"
+            - name: &secretVol "secrets"
               mountPath: "/app/conf"
               readOnly: true
       volumes:
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
-        - name: secrets
+        - name: *secretVol
           secret:
-            secretName: {{ include "arkcase.subsystem.name" $ | quote }}
+            secretName: {{ include "arkcase.fullname" $ | quote }}
       {{- with $.Values.nodeSelector }}
       nodeSelector: {{- toYaml . | nindent 8 }}
       {{- end }}

@@ -10,9 +10,33 @@
 #
 configuration:
   # Console username and password: Please set a secure password
-  adminUsername: admin
-  adminPassword: admin
-  # encryptPassword: activemq
+  adminUsername: &admin "admin"
+  adminPassword: *admin
+  adminGroup: "admins"
+  adminRole: *admin
+
+  guestPassword: "password"
+
+  encryptPassword: "activemq"
+
+  users:
+    arkcase:
+      name: &arkcaseMessagingUser "arkcase"
+      password: *arkcaseMessagingUser
+      roles: *admin
+    cloudconfig:
+      name: &cloudConfigMessagingUser "cloudconfig"
+      password: *cloudConfigMessagingUser
+      roles: *admin
+    guest:
+      name: &guestUser "guest"
+      password: *guestUser
+
+  groups:
+    admins:
+      - *arkcaseMessagingUser
+      - *cloudConfigMessagingUser
+
 
   # Limit, in GiB, of how big the KahaDB store can grow
   maxStoreUsageGb: 50
