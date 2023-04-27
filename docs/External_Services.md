@@ -69,7 +69,26 @@ Enabling the above configurations will have a similar effect: all charts/pods th
 
 ## <a name="external-database"></a>External Database
 
-To be written
+To configure an external database, things are a little bit different. Instead of providing a URL, a hostname must be provided, like so:
+
+```yaml
+global:
+  conf:
+    rdbms:
+      server:
+        hostname: "my.database.com"
+        port: 5432
+        dialect: "postgresql"
+        # More settings ...
+```
+
+In the case of the database (`rdbms`) service, it's the `server.hostname` configuration parameter that determines if the database is provided by an external server. Other parameters may need to be provided, such as the dialect (i.e. type of database), and port.
+
+Recall that you must have pre-configured all the necessary database users, passwords, and schemata (tables, etc.) beforehand.
+
+### <a name="external-database-init"></a>Initializing an External Database
+
+***To be written***
 
 ## <a name="ssl"></a>SSL/TLS Considerations
 
