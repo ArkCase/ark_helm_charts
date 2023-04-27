@@ -1,4 +1,4 @@
-# [ArkCase](https://www.arkcase.com/) License Configuration
+# [ArkCase](https://www.arkcase.com/) License Configuration for Helm
 
 ## Table of Contents
 

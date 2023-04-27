@@ -1,4 +1,4 @@
-# [ArkCase](https://www.arkcase.com/) Persistence Configuration
+# [ArkCase](https://www.arkcase.com/) Persistence Configuration for Helm
 
 ## Table of Contents
 

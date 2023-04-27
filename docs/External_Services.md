@@ -1,4 +1,4 @@
-# [ArkCase](https://www.arkcase.com/) External Services Configuration
+# [ArkCase](https://www.arkcase.com/) External Services Configuration for Helm
 
 ## Table of Contents
 
@@ -12,6 +12,8 @@
 This document describes how to configure the an ArkCase deployment built with these helm charts to interface with services provided externally. Essentially every service that can be deployed as part of this stack, can be provided externally, except for ArkCase itself.
 
 In almost all cases, along with an external URL or hostname, you must also provide additional configurations like usernames, passwords, etc.
+
+As with any community-release project, Issues and PRs are always welcome to help move this code further along.
 
 ## <a name="general-pattern"></a>General Pattern
 
