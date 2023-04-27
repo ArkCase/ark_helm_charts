@@ -13,6 +13,8 @@ This document describes how to configure the an ArkCase deployment built with th
 
 In almost all cases, along with an external URL or hostname, you must also provide additional configurations like usernames, passwords, etc.
 
+As with any community-release project, Issues and PRs are always welcome to help move this code further along.
+
 ## <a name="general-pattern"></a>General Pattern
 
 In general, when providing a `url` configuration for a given **service** (i.e. component), the deployment process will interpret this as a desire by the deployer to avoid instantiating the associated, bundled-in services in favor of externally-provided services.
