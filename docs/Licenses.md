@@ -12,7 +12,7 @@
 
 ## <a name="introduction"></a>Introduction
 
-This document describes how to configure the licenses for specific products used as part of the the ArkCase helm charts.
+This document describes how to configure the licenses for specific products used as part of the the ArkCase helm charts. As with any community-release project, Issues and PRs are always welcome to help move this code further along.
 
 ArkCase consumes the following products which require paid licenses to be provided in order to leverage the Enterprise functionalities:
 
