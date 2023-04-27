@@ -1,4 +1,4 @@
-# [ArkCase](https://www.arkcase.com/) External Services Configuration
+# [ArkCase](https://www.arkcase.com/) External Services Configuration for Helm
 
 ## Table of Contents
 
