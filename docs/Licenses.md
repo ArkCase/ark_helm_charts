@@ -6,6 +6,9 @@
 * [Deployment Mode (Enterprise vs. Community)](#deployment-mode)
 * [Providing Licenses](#providing-licenses)
 * [Encoding Licenses](#encoding-licenses)
+  * [Alfresco](#encoding-alfresco)
+  * [Pentaho](#encoding-pentaho)
+  * [PDFTron/PDFNet](#encoding-pdftron)
 
 ## <a name="introduction"></a>Introduction
 
@@ -136,7 +139,7 @@ global:
 
 As mentioned above, licenses are meant to be encoded in Base-64 format. Linux has a tool to execute this encoding, somewhat cryptically named `base64`.  However, some licenses require only part of the license to be provided.  This section describes how to encode licenses for each software product within ArkCase that may require a license.
 
-### Alfresco
+### <a name="#encoding-alfresco"></a>Alfresco
 
 Alfresco is fairly straightforward: the license file is a binary file, whose contents will be encoded using `base64`, and listed within the `alfresco:` stanza in the license configuration file.
 
@@ -172,7 +175,7 @@ global:
 
 You may now reference this file using `-f` during a Helm deployment. This may also be combined with other licenses into a larger YAML file containing all licenses. This may make your life easier (or not... YMMV).
 
-### Pentaho
+### <a name="#encoding-pentaho"></a>Pentaho
 
 Pentaho EE licenses are also fairly straightforward, like Alfresco's, but with one difference: there are multiple binary files. Since there is no need to treat those files in distinct ways during deployment, the license structure is just an array of the contents of the requisite files, encoded in `base64`:
 
@@ -218,7 +221,7 @@ global:
 
 You may now reference this file using `-f` during a Helm deployment. This may also be combined with other licenses into a larger YAML file containing all licenses. This may make your life easier (or not... YMMV).
 
-### PDFTron/PDFNet
+### <a name="#encoding-pdftron"></a>PDFTron/PDFNet
 
 This software package by far requires the most nuance in order to deploy the licenses.  When the licenses are provided, they're done so using a text file that looks somewhat like so:
 
