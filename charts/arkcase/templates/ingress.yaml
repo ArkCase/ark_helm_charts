@@ -3,47 +3,64 @@
   {{- $ingress = $ingress.value }}
   {{- with $ingress }}
     {{- $baseUrl := (include "arkcase.tools.parseUrl" (include "arkcase.tools.conf" (dict "ctx" $ "value" "baseUrl")) | fromYaml) -}}
+    {{- $https := (eq "https" (baseUrl.scheme | lower)) -}}
     {{- $hostname := $baseUrl.host -}}
-    {{- if and .enabled $hostname }}
-      {{- if .tls }}
+    {{- $secretData := .secret -}}
+    {{- if and $https (not $secretData) -}}
+      {{- fail "The base URL is an HTTPS URL, but no information was given regarding the secret to use for the certificates" -}}
+    {{- end -}}
+
+    {{- $secretName := (include "arkcase.fullname" $) -}}
+    {{- if and .enabled $https $hostname }}
+      {{- if $secretData }}
+        {{- if (kindIs "map" $secretData) }}
 ---
 apiVersion: v1
 kind: Secret
 metadata:
-  name: {{ include "arkcase.fullname" $ | quote }}
+  name: {{ $secretName | quote }}
   namespace: {{ $.Release.Namespace | quote }}
   labels: {{- include "arkcase.labels" $ | nindent 4 }}
-        {{- with ($.Values.labels).common }}
-          {{- toYaml . | nindent 4 }}
-        {{- end }}
+          {{- with (include "arkcase.values" (dict "ctx" $ "base" "labels") | fromYaml) }}
+            {{- toYaml . | nindent 4 }}
+          {{- end }}
   annotations:
     timestamp: {{ date "20060102150405" now | quote }}
-        {{- with ($.Values.annotations).common }}
-          {{- toYaml . | nindent 4 }}
-        {{- end }}
-type: kubernetes.io/tls
-data:
-        {{- with .tls }}
-  tls.crt: |- {{ required "Must provide a certificate in the TLS section (label = 'crt')" .crt | nindent 4 }}
-  tls.key: |- {{ required "Must provide a private key in the TLS section (label = 'key')" .key | nindent 4 }}
-          {{- if .ca }}
-  tls.ca: {{ .ca | nindent 4 }}
+          {{- with (include "arkcase.values" (dict "ctx" $ "base" "annotations") | fromYaml) }}
+            {{- toYaml . | nindent 4 }}
           {{- end }}
+type: kubernetes.io/tls
+stringData:
+          {{- with $secretData }}
+  tls.crt: |- {{- .crt | required "Must provide a certificate in the TLS section (label = 'crt')" | nindent 4 }}
+  tls.key: |- {{- .key | required "Must provide a private key in the TLS section (label = 'key')" | nindent 4 }}
+            {{- if .ca }}
+  tls.ca: |- {{- .ca | nindent 4 }}
+            {{- end }}
+          {{- end }}
+        {{- else if (kindIs "string" $secretData) }}
+          {{- $secretName = $secretData }}
+        {{- else }}
+          {{- fail (printf "The ingress secret must either be a string or a map (is a %s)" (kindOf $secretData)) -}}
         {{- end }}
       {{- end }}
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "arkcase.fullname" $ | quote }}
+  name: &fullName {{ include "arkcase.fullname" $ | quote }}
   namespace: {{ $.Release.Namespace | quote }}
   labels: {{- include "arkcase.labels" $ | nindent 4 }}
       {{- with (include "arkcase.values" (dict "ctx" $ "base" "labels") | fromYaml) }}
         {{- toYaml .value | nindent 4 }}
       {{- end }}
   annotations:
+    timestamp: {{ date "20060102150405" now | quote }}
       {{- with (include "arkcase.values" (dict "ctx" $ "base" "annotations") | fromYaml) }}
-        {{- toYaml .value | nindent 4 }}
+        {{- toYaml . | nindent 4 }}
+      {{- end }}
+      {{- with .annotations }}
+        {{- toYaml . | nindent 4 }}
       {{- end }}
 spec:
       {{- if .className }}
@@ -59,7 +76,6 @@ spec:
   rules:
       http:
         paths:
-      {{- if or (not (hasKey . "core")) .core }}
           - path: {{ $baseUrl.path | default "/" | quote }}
             pathType: Prefix
             backend:
@@ -67,7 +83,6 @@ spec:
                 name: "core"
                 port:
                   number: 8080
-      {{- end }}
       {{- if .content }}
           - path: "/alfresco"
             pathType: Prefix
@@ -91,10 +106,19 @@ spec:
                 port:
                   number: 8080
       {{- end }}
+      {{- if .reports }}
+          - path: "/pentaho"
+            pathType: Prefix
+            backend:
+              service:
+                name: "reports"
+                port:
+                  number: 8080
+      {{- end }}
       host: &ingressHostName {{ $hostname | quote }}
-      {{- if .tls }}
+      {{- if and $https .tls }}
   tls:
-    - secretName: {{ .tls | quote }}
+    - secretName: {{ $secretName | quote }}
       hosts:
         - *ingressHostName
       {{- end }}
