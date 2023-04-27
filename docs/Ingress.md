@@ -5,11 +5,17 @@
 
 This document describes the model and configuration for enabling Ingress access to ArkCase as part of the original deployment. As with any community-release project, Issues and PRs are always welcome to help move this code further along.
 
-The ArkCase helm chart supports rendering an `Ingress` resource as part of the deployment procedure. This ingress resource is configured via the `global.conf.ingress` configuration map, and the `global.conf.baseUrl` configuration string.
+The ArkCase helm chart supports rendering an `Ingress` resource as part of the deployment procedure. This ingress resource is configured via the `global.conf.ingress` configuration map, and the `global.conf.baseUrl` configuration string. The ingress will, in turn, reference the ArkCase application itself (through the service named `core`), under the path specified in the given `global.conf.baseUrl` value.
 
-The Ingress configuration will be activated if the `global.conf.baseUrl` configuration string is present. This string represents the actual URL through which ArkCase will be accessed. If the parameter is not given, the Ingress resource will not be rendered. If the URL is not valid, this will result in a template rendering error.
+The Ingress configuration will be activated if the `global.conf.baseUrl` configuration string is present (and non-empty). This string represents the actual URL through which ArkCase will be accessed. If the parameter is not given, the Ingress resource will not be rendered. If the URL is not valid, this will result in a template rendering error.
 
-Finally, if the `global.conf.ingress.tls` section is provided with proper values (i.e. `crt`, `key`, and optionally `ca` values), then SSL/TLS will be enabled for the endpoint.
+Finally, if the `global.conf.ingress.secret` value is provided with proper values, then SSL/TLS will be enabled for the Ingress.  The secret configuration can have two formats:
+
+- a string, which denotes the name of the secret (within the same namespace, and of type `kubernetes.io/tls`) which will be referenced by the Ingress resource in order to obtain the requisite SSL/TLS certificates
+- a map, consisting of the following keys:
+  - crt: the PEM-encoded SSL certificate to use
+  - key:  the PEM-encoded SSL private key to use
+  - ca: (*optional*) the PEM-encoded SSL CA certificate chain to serve up
 
 This is a brief example of what a completely valid ingress configuration (except for the certificates, of course), with SSL/TLS support, would look like:
 
@@ -32,7 +38,9 @@ global:
       
       #
       # These boolean flags enable access to specific via the same URL, should this be
-      # desired
+      # desired. Please note that these will be served via alternate paths (i.e. /alfresco,
+      # /pentaho, etc.). Thus, if the main application is on the root context, these
+      # flags will have no effect.
       #
       content: true
       reports: true
@@ -153,3 +161,9 @@ global:
 If the `global.conf.baseUrl` configuration value is an ***https://*** URL, then the `global.conf.ingress.secret` configuration is required - in whatever form! This is because it makes no sense to configure an HTTPS ingress with no TLS certificates to match.  Furthermore, if the secret configuration is a map, then the `crt` and `key` values are required. The `ca` value is optional, and generally not needed.
 
 If the baseUrl is an ***http://*** URL, then the secret information will be ignored, even if provided.
+
+## Annotations
+
+The `global.conf.ingress.annotations` section is useful for providing additional instruction to the K8s ingress controller. The ingress class is selected by way of the `global.conf.ingress.className` parameter. Some controllers support more nuanced configuration via proprietary annotations, which can be provided in this section.
+
+Documenting the possible values for those configuration annotations is beyond the scope of this document, and is left as an exercise for the reader.
