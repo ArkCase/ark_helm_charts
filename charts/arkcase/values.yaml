@@ -168,14 +168,14 @@ rdbms:
     users:
       arkcase: &arkcaseDbPassword "ho!aKaeyoh-zo1do"
       content: &contentDbPassword "eth3be.ox4phah!W"
-      pentaho: &pentahoDbPassword "faiv>a[gheeP3Cai"
       jcr: &jcrDbPassword "ong>oo0Ocha~up^e"
+      pentaho: &pentahoDbPassword "faiv>a[gheeP3Cai"
       quartz: &quartzDbPassword "lie't+ahra6aiShu"
     databases:
       arkcase: &arkcaseDb "arkcase"
       content: &contentDb "content"
-      pentaho: &pentahoDb "pentaho"
       jcr: &jcrDb "jcr"
+      pentaho: &pentahoDb "pentaho"
       quartz: &quartzDb "quartz"
 
 ldap:
@@ -204,7 +204,7 @@ core:
     db:
       <<: *dbConfig
       schema:
-        arkcase:
+        arkcase: &arkcaseDbConfig
           database: *arkcaseDb
           username: *arkcaseDb
           password: *arkcaseDbPassword
@@ -230,9 +230,7 @@ reports:
       <<: *dbConfig
       schema:
         arkcase:
-          username: *arkcaseDb
-          database: *arkcaseDb
-          password: *arkcaseDbPassword
+          <<: *arkcaseDbConfig
         quartz:
           database: *quartzDb
           username: *quartzDb
@@ -241,18 +239,10 @@ reports:
           database: *jcrDb
           username: *jcrDb
           password: *jcrDbPassword
-        hibernate: &hibernate
+        hibernate:
           database: *pentahoDb
           username: *pentahoDb
           password: *pentahoDbPassword
-        audit:
-          <<: *hibernate
-        pdiOperationsMart:
-          <<: *hibernate
-        pentahoOperationsMart:
-          <<: *hibernate
-        liveLoggint:
-          <<: *hibernate
 
 #     tomcat:
 #       proxy:
