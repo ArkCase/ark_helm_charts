@@ -77,11 +77,10 @@ To configure an external database, things are a little bit different. Instead of
 global:
   conf:
     rdbms:
-      server:
-        hostname: "my.database.com"
-        port: 5432
-        dialect: "postgresql"
-        # More settings ...
+      hostname: "my.database.com"
+      port: 5432
+      dialect: "postgresql"
+      # More settings ...
 ```
 
 In the case of the database (`rdbms`) service, it's the `server.hostname` configuration parameter that determines if the database is provided by an external server. Other parameters may need to be provided, such as the dialect (i.e. type of database), and port. However, these alternate values may be provided while still using a bundled database (i.e. to switch from PostgreSQL to MariaDB, for instance).
