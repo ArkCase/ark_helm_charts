@@ -145,10 +145,66 @@ global.conf.rdbms:
 
 ```
 
+Please refer to the next section for details on the database users and schemas that need to be configured for ArkCase, and how to specify the required configurations for deployment.
 
 ### <a name="external-database-init"></a>Initializing an External Database
 
-***To be written***
+As part of the process of interfacing with an externally-hosted database, the ArkCase application and its components will require "manual" configuration of a number of parameters which in turn reflect actual database configurations that must be in place prior to attempting a deployment.
+
+Currently, the ArkCase ecosystem makes no attempt to execute these creation tasks on external servers, for safety reasons. It falls to the deployment team to prepare the groundwork on the external database in order to support ArkCase.
+
+These are the database schemas that need to be created, organized by the component that requires them. The "name" column is the symbolic name for the schema, as referenced from within the helm charts.
+
+|Name|Components that use it|
+|--|--|
+|arkcase|Core (ArkCase), Reports (Pentaho)|
+|content|Content (Alfresco)|
+|hibernate|Reports (Pentaho)|
+|jackrabbit|Reports (Pentaho)|
+|quartz|Reports (Pentaho)|
+
+As a result, if you wish to interface ArkCase with an external database, you ***must*** provide connection information for each of the above schemata, except for those schemata related to components that won't be rendered (for example if you will be using an external Alfresco instance, then you can ignore creating and configuring the *content* schema since it's assumed that this has already been done as part of the Alfresco deployment).
+
+Here's an example of what that database configuration may end up looking like (assuming a PostgreSQL instance):
+
+```yaml
+global.conf.rdbms:
+
+  # Always required
+  dialect: "postgresql"
+
+  # Always required
+  hostname: "psqldb.my-domain.com"
+
+  # Only required if using a non-default port
+  # port: 15432
+
+  schema:
+    # Always required
+    arkcase:
+      username: "arkcase-db-user"
+      password: "<some-password-value>"
+
+    # Only required if Alfresco is being deployed
+    content:
+      username: "alfresco-db-user"
+      password: "<some-password-value>"
+      
+    # Only required if Pentaho is being deployed
+    hibernate:
+      username: "pentaho-db-user"
+      password: "<some-password-value>"
+
+    # Only required if Pentaho is being deployed
+    jackrabbit:
+      username: "pentaho-jcr-db-user"
+      password: "<some-password-value>"
+
+    # Only required if Pentaho is being deployed
+    quartz:
+      username: "pentaho-quartz-db-user"
+      password: "<some-password-value>"
+```
 
 ## <a name="ssl"></a>SSL/TLS Considerations
 
