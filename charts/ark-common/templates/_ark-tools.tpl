@@ -884,3 +884,7 @@ result: "DC=some,DC=domain,DC=com"
   {{- end -}}
   {{- $result -}}
 {{- end -}}
+
+{{ define "arkcase.tools.xmlAtt" -}}
+{{- . -}}
+{{- end -}}

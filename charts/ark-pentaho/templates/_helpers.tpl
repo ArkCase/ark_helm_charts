@@ -1,23 +1,3 @@
-{{- define "arkcase.pentaho.datasource.params" -}}
-  {{- $ctx := . -}}
-  {{- if or (not $ctx) (not (kindIs "map" $ctx)) -}}
-    {{- $ctx = dict -}}
-  {{- end -}}
-{{- /* This isn't indented to make it easier to render it properly */ -}}
-{{- range $key, $value := $ctx -}}
-{{ $key }}="{{ $value }}"
-{{ end -}}
-{{- /* End unindented block */ -}}
-{{- end -}}
-
-{{- define "arkcase.pentaho.db.scripts" -}}
-  {{- get ((include "arkcase.db.info" .) | fromYaml) "scripts" -}}
-{{- end -}}
-
-{{- define "arkcase.pentaho.db.reports" -}}
-  {{- get ((include "arkcase.db.info" .) | fromYaml) "reports" -}}
-{{- end -}}
-
 {{- define "arkcase.pentaho.jcr.fileSystem" -}}
   {{- $ctx := required "Must provide the 'ctx' parameter" .ctx -}}
   {{- if not (kindIs "map" $ctx) -}}

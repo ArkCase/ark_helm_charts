@@ -25,11 +25,19 @@ configuration:
       scheme: "https"
 
   db:
-    dialect: "mysql"
+    dialect: "postgres"
     hostname: "rdbms"
-    database: "arkcase"
-    username: "arkcase"
-    password: "arkcase"
+    # port: ...
+    # adminUsername: ....
+    # adminPassword: ....
+
+    schema:
+      arkcase:
+        database: "arkcase"
+        # schema: "public"
+        # instance: "..."
+        username: "arkcase"
+        password: "arkcase"
 
   ingress:
     enabled: false

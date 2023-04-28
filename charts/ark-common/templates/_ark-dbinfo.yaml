@@ -1,13 +1,27 @@
-{{- define "arkcase.db.info" -}}
-  {{- $db := (required "Must configure the value for configuration.db.dialect" ((.Values.configuration).db).dialect) -}}
-  {{- if not $db -}}
-    {{- fail "Must provide the name of the database to use in configuration.db.dialect" -}}
+{{- define "arkcase.db.external" -}}
+  {{- $hostname := (include "arkcase.tools.conf" (dict "ctx" $ "value" "db.server.hostname" "detailed" true) | fromYaml) -}}
+  {{- if and $hostname $hostname.global -}}
+    {{- true -}}
   {{- end -}}
-  {{- if not (kindIs "string" $db) -}}
-    {{- $db = toString $db -}}
-  {{- end -}}
-  {{- $db = lower $db -}}
+{{- end -}}
 
+{{- define "arkcase.db.info.compute" -}}
+  {{- $ctx := . -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "The parameter given must be the root context (. or $)" -}}
+  {{- end -}}
+
+  {{- $dialect := (include "arkcase.tools.conf" (dict "ctx" $ctx "value" "db.dialect")) -}}
+  {{- if not $dialect -}}
+    {{- fail "Must provide the name of the database dialect to use in global.conf.db.dialect" -}}
+  {{- end -}}
+
+  {{- if not (kindIs "string" $dialect) -}}
+    {{- $dialect = toString $dialect -}}
+  {{- end -}}
+  {{- $dialect = lower $dialect -}}
+
+  {{- /* Step one: load the common database configurations */ -}}
   {{- $dbInfo := (.Files.Get "dbinfo.yaml" | fromYaml ) -}}
   {{- range $key, $db := $dbInfo -}}
     {{- if not (hasKey $db "scripts") -}}
@@ -22,166 +36,149 @@
     {{- $dbInfo = set $dbInfo $key $db -}}
   {{- end -}}
 
-  {{- if not (hasKey $dbInfo $db) -}}
-    {{- fail (printf "Unsupported database type '%s' - must be one of %s" $db (keys $dbInfo | sortAlpha)) -}}
+  {{- if not (hasKey $dbInfo $dialect) -}}
+    {{- fail (printf "Unsupported database type '%s' - must be one of %s" $dialect (keys $dbInfo | sortAlpha)) -}}
   {{- end -}}
 
-  {{- get $dbInfo $db | toYaml -}}
-{{- end -}}
+  {{- /* Step two: merge in the server and schema definitions */ -}}
+  {{- $dbInfo = get $dbInfo $dialect -}}
+  {{- $dbConf := (include "arkcase.tools.conf" (dict "ctx" $ctx "value" "db" "yaml" true) | fromYaml) -}}
 
-{{- define "arkcase.db.param" -}}
-  {{- if not (kindIs "map" .) -}}
-    {{- fail "The parameter must be a map" -}}
+  {{- /* Make sure there's a hostname */ -}}
+  {{- if not (hasKey $dbConf "hostname") -}}
+    {{- fail "Must provide the server name in the 'hostname' configuration value" -}}
   {{- end -}}
-  {{- $ctx := . -}}
-  {{- if (hasKey . "ctx") -}}
-    {{- $ctx = .ctx | default dict -}}
-  {{- end -}}
-  {{- if not (include "arkcase.isRootContext" $ctx) -}}
-    {{- fail "The context given must be the root context" -}}
-  {{- end -}}
-
-  {{- if not .param -}}
-    {{- fail "Must provide a 'param' parameter to indicate which value to fetch" -}}
-  {{- end -}}
-
-  {{- get ((include "arkcase.db.info" $ctx) | fromYaml) (.param | toString) -}}
-{{- end -}}
-
-{{- define "arkcase.db.dialect" -}}
-  {{- include "arkcase.db.param" (dict "ctx" . "param" "dialect") -}}
-{{- end -}}
-
-{{- define "arkcase.db.quartz.delegateClass" -}}
-  {{- include "arkcase.db.param" (dict "ctx" . "param" "quartz") -}}
-{{- end -}}
-
-{{- define "arkcase.db.jdbc.driver" -}}
-  {{- if not (kindIs "map" .) -}}
-    {{- fail "The parameter must be a map" -}}
-  {{- end -}}
-  {{- $ctx := . -}}
-  {{- if hasKey . "ctx" -}}
-    {{- $ctx = .ctx -}}
-  {{- end -}}
-  {{- if not (kindIs "map" $ctx) -}}
-    {{- fail "The context given (either the parameter map, or the 'ctx' value within) must be a map" -}}
-  {{- end -}}
-  {{- if or (not (hasKey $ctx "Values")) (not (hasKey $ctx "Chart")) (not (hasKey $ctx "Release")) -}}
-    {{- fail "The context given (either the parameter map, or the 'ctx' value within) is not the top-level context" -}}
-  {{- end -}}
-
-  {{- $dbInfo := ((include "arkcase.db.info" $ctx) | fromYaml) -}}
-  {{- $dbInfo.jdbc.driver -}}
-{{- end -}}
-
-{{- define "arkcase.db.jdbc.param" -}}
-  {{- if not (kindIs "map" .) -}}
-    {{- fail "The parameter must be a map" -}}
-  {{- end -}}
-  {{- $ctx := . -}}
-  {{- if (hasKey . "ctx") -}}
-    {{- $ctx = .ctx | default dict -}}
-  {{- end -}}
-  {{- if not (include "arkcase.isRootContext" $ctx) -}}
-    {{- fail "The context given must be the root context" -}}
-  {{- end -}}
-
-  {{- if not .param -}}
-    {{- fail "Must provide a 'param' parameter to indicate which value to fetch" -}}
-  {{- end -}}
-  {{- $param := .param | toString -}}
-
-  {{- $jdbc := $ctx.Values.configuration.jdbc -}}
-
-  {{- $target := .target -}}
-  {{- if $target -}}
-    {{- if not (hasKey $jdbc $target) -}}
-      {{- fail (printf "No JDBC instance named '%s' - must be one of %s" $target (keys $jdbc)) -}}
-    {{- end -}}
-    {{- $jdbc = get $jdbc $target -}}
-  {{- end -}}
-
-  {{- $value := "" -}}
-  {{- if (hasKey $jdbc $param) -}}
-    {{- $value = (get $jdbc $param) -}}
-  {{- else if hasKey $ctx.Values.configuration.db $param -}}
-    {{- $value = (get $ctx.Values.configuration.db $param) -}}
-  {{- end -}}
-
-  {{- $value -}}
-{{- end -}}
-
-{{- define "arkcase.db.jdbc.url" -}}
-  {{- if not (kindIs "map" .) -}}
-    {{- fail "The parameter must be a map" -}}
-  {{- end -}}
-  {{- $ctx := . -}}
-  {{- if (hasKey . "ctx") -}}
-    {{- $ctx = .ctx | default dict -}}
-  {{- end -}}
-  {{- if not (include "arkcase.isRootContext" $ctx) -}}
-    {{- fail "The context given must be the root context" -}}
-  {{- end -}}
-  {{- $param := dict "ctx" $ctx -}}
-  {{- if and (hasKey . "target") .target -}}
-    {{- $param = set $param "target" .target -}}
-  {{- end -}}
-
-  {{- $database := (include "arkcase.db.jdbc.param" (set $param "param" "database")) -}}
-  {{- $instance := (include "arkcase.db.jdbc.param" (set $param "param" "instance")) -}}
-  {{- $urlParameters := (include "arkcase.db.jdbc.param" (set $param "param" "urlParameters")) -}}
-
-  {{- $dbInfo := ((include "arkcase.db.info" $ctx) | fromYaml) -}}
-  {{- $data := mustDeepCopy $ctx.Values.configuration.db -}}
-
-  {{- if not (hasKey $data "hostname") -}}
-    {{- fail "Must provide the server name in the 'hostname' parameter value" -}}
-  {{- end -}}
-  {{- if not (kindIs "string" $data.hostname) -}}
+  {{- if not (kindIs "string" $dbConf.hostname) -}}
     {{- fail "The 'hostname' parameter must be a string" -}}
   {{- end -}}
-  {{- if not ($data.hostname) -}}
-    {{- fail "The 'hostname' parameter may not be an empty string" -}}
-  {{- end -}}
-  {{- /* TODO: Check that it's a valid hostname */ -}}
-
-  {{- if and ($instance) ($dbInfo.jdbc.instance) -}}
-    {{- $instance = ($dbInfo.jdbc.instance | replace "${INSTANCE}" $instance) -}}
+  {{- if not (include "arkcase.tools.checkHostname" $dbConf.hostname) -}}
+    {{- fail (printf "The hostname '%s' is not a valid RFC-1123 hostname" $dbConf.hostname) -}}
   {{- end -}}
 
-  {{- $port := coalesce $data.port $dbInfo.port -}}
-  {{- if not $port -}}
-    {{- fail (printf "There is no port specification for the database (%s)" $dbInfo.name) -}}
-  {{- end -}}
-  {{- $data = set $data "port" $port -}}
+  {{- /* Now we can merge things */ -}}
+  {{- $dbConf = merge $dbConf (omit $dbInfo "aliases") -}}
 
-  {{- $format := $dbInfo.jdbc.format -}}
-  {{- /* Output the result */ -}}
-  {{-
-    $format
-      | replace "${HOSTNAME}" ($data.hostname | toString)
-      | replace "${PORT}" ($data.port | toString)
-      | replace "${DATABASE}" ($database | toString)
-      | replace "${INSTANCE}" ($instance | toString)
-      | replace "${URL_PARAMETERS}" ($urlParameters | toString)
-  -}}
+  {{- /* Make sure there's a valid port */ -}}
+  {{- if not (hasKey $dbConf "port") -}}
+    {{- fail "Must provide the port number in the 'port' configuration value" -}}
+  {{- end -}}
+  {{- $port := ($dbConf.port | default "" | toString) -}}
+  {{- if not (regexMatch "^[1-9][0-9]*" $port) -}}
+    {{- fail (printf "The port number [%s] is not valid" ($port | toString)) -}}
+  {{- end -}}
+  {{- $port = atoi $port -}}
+  {{- if or (lt $port 1) (gt $port 65536) -}}
+    {{- fail (printf "The port number [%d] is not in the acceptable range of [1..65535]" $port) -}}
+  {{- end -}}
+
+  {{- $dbConf = set $dbConf "port" $port -}}
+
+  {{- $debug := list -}}
+
+  {{- $common := omit $dbConf "schema" -}}
+  {{- $schemata := get $dbConf "schema" -}}
+  {{- if and $schemata (kindIs "map" $schemata) -}}
+    {{- $newSchemata := dict -}}
+    {{- range $name, $d := $schemata -}}
+      {{- if kindIs "map" $d -}}
+        {{- /* Sanitize the data */ -}}
+        {{- $data := merge (deepCopy $d) $common -}}
+
+        {{- /* Compute the JDBC URL */ -}}
+        {{- $jdbc := $data.jdbc -}}
+        {{- if and $jdbc (kindIs "map" $jdbc) -}}
+          {{- $instance := $data.instance -}}
+          {{- if and $instance $dbInfo.instance -}}
+            {{- $instance = ($dbInfo.instance | replace "${INSTANCE}" $instance) -}}
+          {{- end -}}
+
+          {{- $jdbc = set $jdbc "url"
+            (
+              $dbInfo.jdbc.format
+              | replace "${HOSTNAME}" ($data.hostname | toString)
+              | replace "${PORT}" ($data.port | toString)
+              | replace "${DATABASE}" ($data.database | toString)
+              | replace "${INSTANCE}" ($instance | toString)
+              | replace "${URL_PARAMETERS}" ($data.urlParameters | toString)
+            )
+          -}}
+
+          {{- $data = set $data "jdbc" $jdbc -}}
+        {{- else -}}
+          {{- $data = omit $data "jdbc" -}}
+        {{- end -}}
+        {{- /* Re-place the sanitized schema */ -}}
+        {{- $newSchemata = set $newSchemata $name (deepCopy $data) -}}
+      {{- end -}}
+    {{- end -}}
+    {{- $schemata = $newSchemata -}}
+  {{- else -}}
+    {{- $schemata = dict -}}
+  {{- end -}}
+  {{- set $dbConf "schema" $schemata | toYaml -}}
 {{- end -}}
 
-{{- define "arkcase.db.jdbc.username" -}}
-  {{- $param := . -}}
-  {{- if (include "arkcase.isRootContext" .) -}}
-    {{- $param = dict "ctx" . -}}
+{{- define "arkcase.db.info" -}}
+  {{- $ctx := . -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "The parameter given must be the root context (. or $)" -}}
   {{- end -}}
-  {{- $param = set $param "param" "username" -}}
-  {{- include "arkcase.db.jdbc.param" $param -}}
+
+  {{- /* First things first: do we have any global overrides? */ -}}
+  {{- $global := $ctx.Values.global -}}
+  {{- if or (not $global) (not (kindIs "map" $global)) -}}
+    {{- $global = dict -}}
+  {{- end -}}
+
+  {{- /* Now get the local values */ -}}
+  {{- $local := $ctx.Values.configuration -}}
+  {{- if or (not $local) (not (kindIs "map" $local)) -}}
+    {{- $local = dict -}}
+  {{- end -}}
+
+  {{- /* The keys on this map are the images in the local repository */ -}}
+  {{- $chart := $ctx.Chart.Name -}}
+  {{- $data := dict "local" $local "global" $global -}}
+
+  {{- $cacheKey := "DBInfo" -}}
+  {{- $masterCache := dict -}}
+  {{- if (hasKey $ctx $cacheKey) -}}
+    {{- $masterCache = get $ctx $cacheKey -}}
+    {{- if and $masterCache (not (kindIs "map" $masterCache)) -}}
+      {{- $masterCache = dict -}}
+    {{- end -}}
+  {{- end -}}
+  {{- $ctx = set $ctx $cacheKey $masterCache -}}
+
+  {{- /* We do not use arkcase.fullname b/c we don't want to deal with partnames */ -}}
+  {{- $chartName := (include "common.fullname" $ctx) -}}
+  {{- $yamlResult := dict -}}
+  {{- if not (hasKey $masterCache $chartName) -}}
+    {{- $yamlResult = (include "arkcase.db.info.compute" $ctx) -}}
+    {{- $masterCache = set $masterCache $chartName ($yamlResult | fromYaml) -}}
+  {{- else -}}
+    {{- $yamlResult = get $masterCache $chartName | toYaml -}}
+  {{- end -}}
+  {{- $yamlResult -}}
 {{- end -}}
 
-{{- define "arkcase.db.jdbc.password" -}}
-  {{- $param := . -}}
-  {{- if (include "arkcase.isRootContext" .) -}}
-    {{- $param = dict "ctx" . -}}
+{{- define "arkcase.db.schema" -}}
+  {{- $ctx := .ctx -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "The 'ctx' parameter given must be the root context (. or $)" -}}
   {{- end -}}
-  {{- $param = set $param "param" "password" -}}
-  {{- include "arkcase.db.jdbc.param" $param -}}
+
+  {{- $schema := .schema -}}
+  {{- if or (not $schema) (not (kindIs "string" $schema)) -}}
+    {{- fail "The 'schema' parameter must be a string" -}}
+  {{- end -}}
+
+  {{- $db := (include "arkcase.db.info" $ctx | fromYaml) -}}
+  {{- $schemata := $db.schema -}}
+  {{- if not $schemata -}}
+    {{- fail "No schemas have been defined in the configuration, cannot continue" -}}
+  {{- else if not (hasKey $schemata $schema) -}}
+    {{- fail (printf "No schema configuration '%s' was found, only %s" $schema (keys $schemata | sortAlpha)) -}}
+  {{- end -}}
+  {{- get $schemata $schema | toYaml -}}
 {{- end -}}

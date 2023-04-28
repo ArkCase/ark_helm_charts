@@ -19,9 +19,17 @@ configuration:
   db:
     dialect: "postgres"
     hostname: "rdbms"
-    database: "content"
-    username: "content"
-    password: "content"
+    # port: ...
+    # adminUsername
+    # adminPassword
+
+    schema:
+      content:
+        database: "content"
+        # schema: "public"
+        # instance: "..."
+        username: "content"
+        password: "content"
 
   ldap:
     domain: "dev.arkcase.com"
