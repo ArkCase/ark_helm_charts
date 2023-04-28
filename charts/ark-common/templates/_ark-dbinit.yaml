@@ -219,7 +219,7 @@ in JSON format
   {{- $cacheKey := "InitDatabase" -}}
   {{- $masterCache := dict -}}
   {{- if (hasKey $ $cacheKey) -}}
-    {{- $masterCache = $.InitDatabase -}}
+    {{- $masterCache = get $ $cacheKey -}}
     {{- if and $masterCache (not (kindIs "map" $masterCache)) -}}
       {{- $masterCache = dict -}}
     {{- end -}}
