@@ -1,5 +1,5 @@
 {{- define "arkcase.db.external" -}}
-  {{- $hostname := (include "arkcase.tools.conf" (dict "ctx" $ "value" "db.server.hostname" "detailed" true) | fromYaml) -}}
+  {{- $hostname := (include "arkcase.tools.conf" (dict "ctx" $ "value" "rdbms.hostname" "detailed" true) | fromYaml) -}}
   {{- if and $hostname $hostname.global -}}
     {{- true -}}
   {{- end -}}
@@ -11,9 +11,12 @@
     {{- fail "The parameter given must be the root context (. or $)" -}}
   {{- end -}}
 
-  {{- $dialect := (include "arkcase.tools.conf" (dict "ctx" $ctx "value" "db.dialect")) -}}
+  {{- $local := (($ctx.Values.configuration).db | default dict) -}}
+  {{- $global := ((($ctx.Values.global).conf).rdbms | default dict) -}}
+
+  {{- $dialect := coalesce $global.dialect $local.dialect -}}
   {{- if not $dialect -}}
-    {{- fail "Must provide the name of the database dialect to use in global.conf.db.dialect" -}}
+    {{- fail "Must provide the name of the database dialect to use in global.conf.rdbms.dialect" -}}
   {{- end -}}
 
   {{- if not (kindIs "string" $dialect) -}}
@@ -42,8 +45,6 @@
 
   {{- /* Step two: merge in the server and schema definitions */ -}}
   {{- $dbInfo = get $dbInfo $dialect -}}
-  {{- $local := (($ctx.Values.configuration).db | default dict) -}}
-  {{- $global := ((($ctx.Values.global).conf).db | default dict) -}}
   {{- $dbConf := deepCopy $local | merge $global -}}
 
   {{- /* Make sure there's a hostname */ -}}
