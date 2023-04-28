@@ -120,20 +120,20 @@ global.conf.rdbms:
     # reflection on the database connectivity)
     numberone:
 
-      # The name of the database. If not given, defaults to the schema name
+      # The name of the database. If not given (or empty), defaults to the schema's symbolic name
       database: "dbone"
 
-      # The username to connect as. If not given, defaults to the database name
+      # The username to connect as. If not given (or empty), defaults to the database name
       username: "first"
 
-      # The password to connect with. If not given, defaults to the user name
+      # The password to connect with. If not given (or empty), defaults to an SHA-1 checksum of the user name, all lowercase
       password: "io8aeHeeja+go3ju"
 
-      # Optional ... only if required by the target DB
-      instance: "myInstance"
+      # Optional ... only if required by the target DB (i.e. Oracle SID, SQL Server instance name)
+      # instance: "myInstance"
 
-     # Optional ... only if required by the target DB
-      schema: "public"
+      # Optional ... only if required by the target DB (i.e. PostgreSQL or SQL Server schema name)
+      # schema: "public"
 
     deuce:
       database: "seconddb"
