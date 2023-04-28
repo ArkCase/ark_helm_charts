@@ -22,6 +22,8 @@ oracle10g: &oracle10g
     driver: oracle.jdbc.driver.OracleDriver
     type: oracle
     format: "jdbc:oracle:thin:@${HOSTNAME}:${PORT}:${INSTANCE}"
+    instance:
+      required: true
   aliases:
     - orcl
     - oracle
@@ -59,7 +61,8 @@ sqlserver:
   jdbc:
     driver: com.microsoft.sqlserver.jdbc.SQLServerDriver
     type: sqlserver
-    instance: "\\${INSTANCE}"
     format: "jdbc:sqlserver://${HOSTNAME}${INSTANCE}:${PORT};DatabaseName=${DATABASE}"
+    instance:
+      format: "\\${INSTANCE}"
   aliases:
     - mssql
