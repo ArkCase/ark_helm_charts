@@ -87,6 +87,65 @@ In the case of the database (`rdbms`) service, it's the `hostname` configuration
 
 Recall that if you want to use an external database server, you must have pre-configured all the necessary database users, passwords, and schemata (tables, etc.) beforehand.
 
+The database configuration has a very specific structure that must be followed when being overridden. *It is **strongly** recommended to **not** override any values other than the database dialect when deploying the embedded database pods*. Here's a general example of how the database configuration is structured:
+
+```yaml
+global.conf.rdbms:
+
+  # The type of the database
+  # Currently only postgres, mysql, mariadb, oracle, and mssql are supported.
+  dialect: "postgres"
+
+  # The host the DB is on. Only give this value if the DB is 
+  hostname: "my-db-hostname"
+
+  # The port at which it's accessible. If not given, a well-known default
+  # will be used. Only provide this value if a non-standard port is used.
+  port: 1234
+
+  # This is generally optional, except for Oracle in which the instance (SID) is
+  # required. It's also supported for SQL Server.
+  # instance: "defaultInstance"
+
+  # These may be necessary in some scenarios, but generally aren't.
+  # admin:
+  #   username: "...."
+  #   password: "...."
+
+  # Here we add the list of DB "schemas" that must exist on the target server,
+  # and the necessary information to connect
+  schema:
+
+    # The schema name (only in abstract, for reference by the charts...has no
+    # reflection on the database connectivity)
+    numberone:
+
+      # The name of the database. If not given, defaults to the schema name
+      database: "dbone"
+
+      # The username to connect as. If not given, defaults to the database name
+      username: "first"
+
+      # The password to connect with. If not given, defaults to the user name
+      password: "io8aeHeeja+go3ju"
+
+      # Optional ... only if required by the target DB
+      instance: "myInstance"
+
+     # Optional ... only if required by the target DB
+      schema: "public"
+
+    deuce:
+      database: "seconddb"
+      username: "duo"
+      password: "eGhu6ul)eePea&sh"
+      # ...
+
+    # ... more schema definitions here
+
+```
+
+
 ### <a name="external-database-init"></a>Initializing an External Database
 
 ***To be written***
