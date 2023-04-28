@@ -18,7 +18,7 @@ Here's a table of contents so you can quickly reach the documentation section yo
    - [Persistence Layer](#persistence)
    - [Externally-provided Services](#external-services)
    - [Deploying Custom ArkCase Versions](#custom-arkcase)
-   - [Development](#development)
+ - [Development](#dev-integration)
 
 ## <a name="overview"></a>Overview
 
@@ -123,6 +123,6 @@ The information on how to configure the stack to consume services provided by ex
 
 The information on how to deploy your custom ArkCase version with this stack can be found [in this document](docs/Custom_Arkcase.md).
 
-### <a name="development"></a>Development
+## <a name="dev-integration"></a>Development
 
 The information on how to deploy ArkCase for development with this stack can be found [in this document](docs/Development.md).
