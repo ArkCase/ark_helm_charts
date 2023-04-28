@@ -1,3 +1,4 @@
+{{- $db := (include "arkcase.db.info" $ | fromYaml) -}}
 <?xml version='1.0' encoding='utf-8'?>
 <!--===========================================================================
 HITACHI VANTARA PROPRIETARY AND CONFIDENTIAL
@@ -34,7 +35,7 @@ explicitly covering such access.
   * system/hibernate/sqlserver.hibernate.cfg.xml
   *
   -->
-    <config-file>system/hibernate/{{- include "arkcase.db.dialect" . -}}.hibernate.cfg.xml</config-file>
+    <config-file>system/hibernate/{{- $db.dialect -}}.hibernate.cfg.xml</config-file>
 
   <!--
   *

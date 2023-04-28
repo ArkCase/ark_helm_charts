@@ -1,4 +1,5 @@
 {{- if (include "arkcase.subsystem.enabled" $) }}
+{{- $db := (include "arkcase.db.info" $ | fromYaml) -}}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -88,9 +89,9 @@ spec:
             - name: LOGS_DIR
               value: *logsPath
             - name: DB_DIALECT
-              value: {{ include "arkcase.db.dialect" $ | quote }}
+              value: {{ $db.dialect | quote }}
             - name: DB_SCRIPTS
-              value: {{ include "arkcase.pentaho.db.scripts" $ | quote }}
+              value: {{ $db.scripts | quote }}
             - name: ADMIN_USERNAME
               valueFrom:
                 secretKeyRef:
@@ -200,7 +201,7 @@ spec:
               readOnly: true
             - name: *configMap
               mountPath: "/app/init/reports/000-arkcase-base-reports.tar.gz"
-              subPath: &baseReportsTarGz {{ printf "base-reports.%s.tar.gz" (include "arkcase.pentaho.db.reports" $) | quote }}
+              subPath: &baseReportsTarGz {{ printf "base-reports.%s.tar.gz" $db.reports | quote }}
               readOnly: true
       volumes:
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}

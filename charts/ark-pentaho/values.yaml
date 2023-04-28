@@ -24,45 +24,44 @@ configuration:
   journalType: db
 
   db: 
-    # Uncomment the correct one
-    # dialect: "mysql5"
-    # dialect: "oracle10g"
-    # dialect: "sqlserver"
-    dialect: "postgresql"
+    dialect: "postgres"
     hostname: "rdbms"
+    # port: ...
+    # adminUsername
+    # adminPassword
 
-  jdbc:
-    acm3:
-      database: "arkcase"
-      username: "arkcase"
-      password: "arkcase"
+    schema:
+      arkcase:
+        database: "arkcase"
+        username: "arkcase"
+        password: "arkcase"
 
-    quartz:
-      database: "quartz"
-      username: "pentaho_user"
-      password: "password"
+      quartz:
+        database: "quartz"
+        username: "pentaho_user"
+        password: "password"
 
-    jackrabbit:
-      database: "jackrabbit"
-      username: "jcr_user"
-      password: "password"
+      jackrabbit:
+        database: "jackrabbit"
+        username: "jcr_user"
+        password: "password"
 
-    hibernate: &hibernate
-      database: "hibernate"
-      username: "hibuser"
-      password: "password"
+      hibernate: &hibernate
+        database: "hibernate"
+        username: "hibuser"
+        password: "password"
 
-    audit:
-      <<: *hibernate
+      audit:
+        <<: *hibernate
 
-    pdiOperationsMart:
-      <<: *hibernate
+      pdiOperationsMart:
+        <<: *hibernate
 
-    pentahoOperationsMart:
-      <<: *hibernate
+      pentahoOperationsMart:
+        <<: *hibernate
 
-    liveLogging:
-      <<: *hibernate
+      liveLogging:
+        <<: *hibernate
 
   ldap:
     domain: "dev.arkcase.com"

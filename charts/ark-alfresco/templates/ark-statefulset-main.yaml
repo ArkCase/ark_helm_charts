@@ -1,4 +1,5 @@
 {{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.content.external" $)) -}}
+{{- $schema := (include "arkcase.db.schema" (dict "ctx" $ "schema" "content") | fromYaml) -}}
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -98,10 +99,10 @@ spec:
                 -XX:MinRAMPercentage=50
                 -XX:MaxRAMPercentage=80
                 -Ddir.root=/app/data
-                -Ddb.driver={{ include "arkcase.db.jdbc.driver" $ | quote }}
-                -Ddb.username={{ include "arkcase.db.jdbc.username" $ | quote }}
-                -Ddb.password={{ include "arkcase.db.jdbc.password" $ | quote }}
-                -Ddb.url={{ include "arkcase.db.jdbc.url" $ | quote }}
+                -Ddb.driver={{ $schema.jdbc.driver | quote }}
+                -Ddb.username={{ $schema.username | quote }}
+                -Ddb.password={{ $schema.password | quote }}
+                -Ddb.url={{ $schema.jdbc.url | quote }}
                 -Dsolr.host={{ include "arkcase.alfresco.service" (dict "ctx" $ "name" "search") | quote }}
                 -Dsolr.port=8983
                 -Dsolr.secureComms=secret

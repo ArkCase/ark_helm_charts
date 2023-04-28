@@ -24,14 +24,6 @@
   {{- end -}}
 {{- end -}}
 
-{{- define "arkcase.core.db.platform" -}}
-  {{- include "arkcase.db.param" (dict "ctx" . "param" "platform") -}}
-{{- end -}}
-
-{{- define "arkcase.core.db.activiti" -}}
-  {{- include "arkcase.db.param" (dict "ctx" . "param" "activiti") -}}
-{{- end -}}
-
 {{- define "arkcase.core.messaging.openwire" -}}
   {{- $messaging := (include "arkcase.tools.parseUrl" (include "arkcase.tools.conf" (dict "ctx" $ "value" "messaging.url")) | fromYaml) }}
   {{- $scheme := ($messaging.scheme | default "tcp") -}}

@@ -281,7 +281,7 @@
 {{- define "arkcase.image.pullSecrets.cached" -}}
   {{- $ctx := . -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
-    {{- fail "The  parameter must be the root context (. or $)" -}}
+    {{- fail "The parameter given must be the root context (. or $)" -}}
   {{- end -}}
 
   {{- $edition := (empty (include "arkcase.enterprise" $ctx) | ternary "community" "enterprise") -}}
@@ -332,7 +332,7 @@ Render the pull secret
 {{- define "arkcase.image.pullSecrets" -}}
   {{- $ctx := . -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
-    {{- fail "The  parameter must be the root context (. or $)" -}}
+    {{- fail "The parameter given must be the root context (. or $)" -}}
   {{- end -}}
 
   {{- $r := (include "arkcase.image.pullSecrets.cached" $ctx | fromYaml) -}}

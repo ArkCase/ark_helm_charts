@@ -15,6 +15,8 @@ oracle:
   jdbc:
     driver: oracle.jdbc.driver.OracleDriver
     format: "jdbc:oracle:thin:@${HOSTNAME}:${PORT}:${INSTANCE}"
+    instance:
+      required: true
 
 postgresql:
   port: 5432
@@ -29,7 +31,8 @@ sqlserver:
   port: 1433
   jdbc:
     driver: com.microsoft.sqlserver.jdbc.SQLServerDriver
-    instance: "\\${INSTANCE}"
     format: "jdbc:sqlserver://${HOSTNAME}${INSTANCE}:${PORT};DatabaseName=${DATABASE}"
+    instance:
+      format: "\\${INSTANCE}"
   aliases:
     - mssql
