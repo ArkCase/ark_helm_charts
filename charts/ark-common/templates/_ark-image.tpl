@@ -172,10 +172,10 @@
     $search = (
       list
         "global.image"
-        (printf "global.%s.image" $chart)
-        ((not (empty $image)) | ternary (printf "global.%s.image.%s" $chart $image) "")
-        (printf "global.%s.image.%s" $chart $edition)
-        ((not (empty $image)) | ternary (printf "global.%s.image.%s.%s" $chart $edition $image) "")
+        (printf "global.image.%s" $chart)
+        ((not (empty $image)) | ternary (printf "global.image.%s.%s" $chart $image) "")
+        (printf "global.image.%s.%s" $chart $edition)
+        ((not (empty $image)) | ternary (printf "global.image.%s.%s.%s" $chart $edition $image) "")
     ) | compact
   -}}
   {{- $pending = dict -}}
