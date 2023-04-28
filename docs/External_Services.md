@@ -153,7 +153,7 @@ As part of the process of interfacing with an externally-hosted database, the Ar
 
 Currently, the ArkCase ecosystem makes no attempt to execute these creation tasks on external servers, for safety reasons. It falls to the deployment team to prepare the groundwork on the external database in order to support ArkCase.
 
-These are the database schemas that need to be created, organized by the component that requires them. The "name" column is the symbolic name for the schema, as referenced from within the helm charts.
+These are the database schemata that need to be created, organized by the component that requires them. The "name" column is the symbolic name for the schema, as referenced from within the helm charts.
 
 |Name|Components that use it|
 |--|--|
@@ -162,6 +162,8 @@ These are the database schemas that need to be created, organized by the compone
 |hibernate|Reports (Pentaho)|
 |jackrabbit|Reports (Pentaho)|
 |quartz|Reports (Pentaho)|
+
+For each of these schemata, you must also create or select a username and password with which you'll want to allow access for the different components.
 
 As a result, if you wish to interface ArkCase with an external database, you ***must*** provide connection information for each of the above schemata, except for those schemata related to components that won't be rendered (for example if you will be using an external Alfresco instance, then you can ignore creating and configuring the *content* schema since it's assumed that this has already been done as part of the Alfresco deployment).
 
