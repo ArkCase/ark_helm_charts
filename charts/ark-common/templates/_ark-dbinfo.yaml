@@ -42,7 +42,9 @@
 
   {{- /* Step two: merge in the server and schema definitions */ -}}
   {{- $dbInfo = get $dbInfo $dialect -}}
-  {{- $dbConf := (include "arkcase.tools.conf" (dict "ctx" $ctx "value" "db" "yaml" true) | fromYaml) -}}
+  {{- $local := (($ctx.Values.configuration).db | default dict) -}}
+  {{- $global := ((($ctx.Values.global).conf).db | default dict) -}}
+  {{- $dbConf := deepCopy $local | merge $global -}}
 
   {{- /* Make sure there's a hostname */ -}}
   {{- if not (hasKey $dbConf "hostname") -}}
@@ -88,11 +90,11 @@
         {{- $jdbc := $data.jdbc -}}
         {{- if and $jdbc (kindIs "map" $jdbc) -}}
           {{- $instance := ($data.instance | default "") -}}
-          {{- if and $dbInfo.jdbc.instance.required (not $instance) -}}
+          {{- if and (($dbInfo.jdbc).instance).required (not $instance) -}}
             {{- fail (printf "Database schema configuration for [%s] lacks the required instance name" $name) -}}
           {{- end -}}
-          {{- if and $instance $dbInfo.jdbc.instance.format -}}
-            {{- $instance = ($dbInfo.jdbc.instance.format | replace "${INSTANCE}" $instance) -}}
+          {{- if and $instance (($dbInfo.jdbc).instance).format -}}
+            {{- $instance = ((($dbInfo.jdbc).instance).format | replace "${INSTANCE}" $instance) -}}
           {{- end -}}
 
           {{- $jdbc = set $jdbc "url"
