@@ -46,22 +46,10 @@ configuration:
         username: "jcr_user"
         password: "password"
 
-      hibernate: &hibernate
+      hibernate:
         database: "hibernate"
         username: "hibuser"
         password: "password"
-
-      audit:
-        <<: *hibernate
-
-      pdiOperationsMart:
-        <<: *hibernate
-
-      pentahoOperationsMart:
-        <<: *hibernate
-
-      liveLogging:
-        <<: *hibernate
 
   ldap:
     domain: "dev.arkcase.com"
