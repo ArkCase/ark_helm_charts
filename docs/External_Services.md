@@ -83,9 +83,9 @@ global:
       # More settings ...
 ```
 
-In the case of the database (`rdbms`) service, it's the `server.hostname` configuration parameter that determines if the database is provided by an external server. Other parameters may need to be provided, such as the dialect (i.e. type of database), and port. However, these alternate values may be provided while still using a bundled database (i.e. to switch from PostgreSQL to MariaDB, for instance).
+In the case of the database (`rdbms`) service, it's the `hostname` configuration parameter that determines if the database is provided by an external server. Other parameters may need to be provided, such as the dialect (i.e. type of database), and port (if non-standard). However, these alternate values may be provided while still using a bundled database (i.e. to switch from PostgreSQL to MariaDB, for instance).
 
-Recall that you must have pre-configured all the necessary database users, passwords, and schemata (tables, etc.) beforehand.
+Recall that if you want to use an external database server, you must have pre-configured all the necessary database users, passwords, and schemata (tables, etc.) beforehand.
 
 ### <a name="external-database-init"></a>Initializing an External Database
 

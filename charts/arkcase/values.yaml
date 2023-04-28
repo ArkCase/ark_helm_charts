@@ -190,9 +190,11 @@ content:
 
     db:
       <<: *dbConfig
-      username: *contentDb
-      password: *contentDbPassword
-      database: *contentDb
+      schema:
+        content:
+          database: *contentDb
+          username: *contentDb
+          password: *contentDbPassword
 
 core:
   configuration:
@@ -201,12 +203,14 @@ core:
 
     db:
       <<: *dbConfig
-      username: *arkcaseDb
-      password: *arkcaseDbPassword
-      database: *arkcaseDb
+      schema:
+        arkcase:
+          database: *arkcaseDb
+          username: *arkcaseDb
+          password: *arkcaseDbPassword
     arkcase:
-       adminUsername: *arkcaseAdminUsername
-       adminPassword: *arkcaseAdminPassword
+      adminUsername: *arkcaseAdminUsername
+      adminPassword: *arkcaseAdminPassword
     messaging:
       username: *arkcaseMessagingUser
       password: *arkcaseMessagingPassword
@@ -224,31 +228,31 @@ reports:
       <<: *ldapConfig
     db:
       <<: *dbConfig
-    jdbc:
-      acm3:
-        username: *arkcaseDb
-        password: *arkcaseDbPassword
-        database: *arkcaseDb
-      quartz:
-        database: *quartzDb
-        username: *quartzDb
-        password: *quartzDbPassword
-      jackrabbit:
-        database: *jcrDb
-        username: *jcrDb
-        password: *jcrDbPassword
-      hibernate: &hibernate
-        database: *pentahoDb
-        username: *pentahoDb
-        password: *pentahoDbPassword
-      audit:
-        <<: *hibernate
-      pdiOperationsMart:
-        <<: *hibernate
-      pentahoOperationsMart:
-        <<: *hibernate
-      liveLoggint:
-        <<: *hibernate
+      schema:
+        arkcase:
+          username: *arkcaseDb
+          database: *arkcaseDb
+          password: *arkcaseDbPassword
+        quartz:
+          database: *quartzDb
+          username: *quartzDb
+          password: *quartzDbPassword
+        jackrabbit:
+          database: *jcrDb
+          username: *jcrDb
+          password: *jcrDbPassword
+        hibernate: &hibernate
+          database: *pentahoDb
+          username: *pentahoDb
+          password: *pentahoDbPassword
+        audit:
+          <<: *hibernate
+        pdiOperationsMart:
+          <<: *hibernate
+        pentahoOperationsMart:
+          <<: *hibernate
+        liveLoggint:
+          <<: *hibernate
 
 #     tomcat:
 #       proxy:
