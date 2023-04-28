@@ -216,14 +216,15 @@ Either render and cache, or fetch the cached rendering of the init dependencies 
 in JSON format
 */ -}}
 {{- define "arkcase.initDatabase.cached" -}}
+  {{- $cacheKey := "InitDatabase" -}}
   {{- $masterCache := dict -}}
-  {{- if (hasKey $ "InitDatabase") -}}
+  {{- if (hasKey $ $cacheKey) -}}
     {{- $masterCache = $.InitDatabase -}}
     {{- if and $masterCache (not (kindIs "map" $masterCache)) -}}
       {{- $masterCache = dict -}}
     {{- end -}}
   {{- end -}}
-  {{- $crap := set $ "InitDatabase" $masterCache -}}
+  {{- $crap := set $ $cacheKey $masterCache -}}
 
   {{- $chartName := (include "arkcase.fullname" $) -}}
   {{- if not (hasKey $masterCache $chartName) -}}
