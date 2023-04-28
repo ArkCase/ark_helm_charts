@@ -83,39 +83,55 @@
   {{- if and $schemata (kindIs "map" $schemata) -}}
     {{- $newSchemata := dict -}}
     {{- range $name, $d := $schemata -}}
-      {{- if kindIs "map" $d -}}
-        {{- /* Sanitize the data */ -}}
-        {{- $data := merge (deepCopy $d) $common -}}
-
-        {{- /* Compute the JDBC URL */ -}}
-        {{- $jdbc := $data.jdbc -}}
-        {{- if and $jdbc (kindIs "map" $jdbc) -}}
-          {{- $instance := ($data.instance | default "") -}}
-          {{- if and (($dbInfo.jdbc).instance).required (not $instance) -}}
-            {{- fail (printf "Database schema configuration for [%s] lacks the required instance name" $name) -}}
-          {{- end -}}
-          {{- if and $instance (($dbInfo.jdbc).instance).format -}}
-            {{- $instance = ((($dbInfo.jdbc).instance).format | replace "${INSTANCE}" $instance) -}}
-          {{- end -}}
-
-          {{- $jdbc = set $jdbc "url"
-            (
-              $dbInfo.jdbc.format
-              | replace "${HOSTNAME}" ($data.hostname | toString)
-              | replace "${PORT}" ($data.port | toString)
-              | replace "${DATABASE}" ($data.database | toString)
-              | replace "${INSTANCE}" ($instance | toString)
-              | replace "${URL_PARAMETERS}" ($data.urlParameters | toString)
-            )
-          -}}
-
-          {{- $data = set $data "jdbc" $jdbc -}}
-        {{- else -}}
-          {{- $data = omit $data "jdbc" -}}
-        {{- end -}}
-        {{- /* Re-place the sanitized schema */ -}}
-        {{- $newSchemata = set $newSchemata $name (deepCopy $data) -}}
+      {{- if not $name -}}
+        {{- fail "The schema symbolic name may not be the empty string" -}}
       {{- end -}}
+      {{- $data := dict -}}
+      {{- if and $d (kindIs "map" $d) -}}
+        {{- /* Sanitize the data */ -}}
+        {{- $data = merge (deepCopy $d) $common -}}
+      {{- end -}}
+
+      {{- /* Apply default values, in case things weren't properly declared */ -}}
+      {{- if or (not (hasKey $data "database")) (not (kindIs "string" $data.database)) (empty $data.database) -}}
+        {{- $data = set $data "database" $name -}}
+      {{- end -}}
+      {{- if or (not (hasKey $data "username")) (not (kindIs "string" $data.username)) (empty $data.username) -}}
+        {{- $data = set $data "username" $data.database -}}
+      {{- end -}}
+      {{- if or (not (hasKey $data "password")) (not (kindIs "string" $data.password)) (empty $data.password) -}}
+        {{- $data = set $data "password" (sha1sum $data.username | lower) -}}
+      {{- end -}}
+
+      {{- /* Compute the JDBC URL */ -}}
+      {{- $jdbc := $data.jdbc -}}
+      {{- if and $jdbc (kindIs "map" $jdbc) -}}
+        {{- $instance := ($data.instance | default "") -}}
+        {{- if and (($dbInfo.jdbc).instance).required (not $instance) -}}
+          {{- fail (printf "Database schema configuration for [%s] lacks the required instance name" $name) -}}
+        {{- end -}}
+        {{- if and $instance (($dbInfo.jdbc).instance).format -}}
+          {{- $instance = ((($dbInfo.jdbc).instance).format | replace "${INSTANCE}" $instance) -}}
+        {{- end -}}
+
+        {{- $jdbc = set $jdbc "url"
+          (
+            $dbInfo.jdbc.format
+            | replace "${HOSTNAME}" ($data.hostname | toString)
+            | replace "${PORT}" ($data.port | toString)
+            | replace "${DATABASE}" ($data.database | toString)
+            | replace "${INSTANCE}" ($instance | toString)
+            | replace "${URL_PARAMETERS}" ($data.urlParameters | toString)
+          )
+        -}}
+
+        {{- $data = set $data "jdbc" $jdbc -}}
+      {{- else -}}
+        {{- $data = omit $data "jdbc" -}}
+      {{- end -}}
+
+      {{- /* Re-place the sanitized schema */ -}}
+      {{- $newSchemata = set $newSchemata $name (deepCopy $data) -}}
     {{- end -}}
     {{- $schemata = $newSchemata -}}
   {{- else -}}

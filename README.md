@@ -10,14 +10,15 @@ Here's a table of contents so you can quickly reach the documentation section yo
  - [Overview](#overview)
  - [Preparation for Deployment](#preparation)
  - [Deployment](#deployment)
-   - [Development](#development)
-   - [Production](#production)
+   - [Development](#development-mode)
+   - [Production](#production-mode)
  - [Configuration](#configuration)
    - [Licenses](#licenses)
    - [Ingress and SSL/TLS Access](#ingress)
    - [Persistence Layer](#persistence)
    - [Externally-provided Services](#external-services)
    - [Deploying Custom ArkCase Versions](#custom-arkcase)
+ - [Development](#dev-integration)
 
 ## <a name="overview"></a>Overview
 
@@ -70,7 +71,7 @@ The contents of the configuration files are discussed in the [configuration sect
 
 The above command will result in a deployment of pre-configured containers, interoperating with each other in order to support the included ArkCase instance. The number and types of containers may vary due to configurations. For instance: if you select to use an external LDAP service, then the Samba container will not be started. The same applies for other [external services](#external-services).
 
-### <a name="development"></a>Development
+### <a name="development-mode"></a>Development
 
 The mode of operation mainly affects the persistence layer. In *development* mode, all persistence is handled via ***hostPath*** volumes. In development mode it's still possible to configure the persistence layer to use a combination of rendered ***hostPath*** volumes, with actual cluster-provided volumes (i.e. [GlusterFS](https://www.gluster.org/), [Ceph](https://docs.ceph.com/en/quincy/), [NFS](https://en.wikipedia.org/wiki/Network_File_System), etc). You can find more details on how to do this [in this document](docs/Persistence.md).
 
@@ -78,7 +79,7 @@ The intent of supporting *development* mode is to facilitate the charts' use by 
 
 In the near future, enabling development mode will also enable many other features related to the deployment location for the actual ArkCase WAR file, as well as the configuration directory (a.k.a.: *.arkcase*). Through these features, Developers will be able to deploy the whole stack *except* for ArkCase, and with specific configuration on their environments, make their own ArkCase instance connect to the development stack.
 
-### <a name="production"></a>Production
+### <a name="production-mode"></a>Production
 
 In *production* mode, things become more ***real***, if you will. No hostPath volumes are rendered, and instead all generated persistence is managed via volume claim templates declared with each Pod or StatefulSet. The particulars of the persistence layer are described [here](#persistence).
 
@@ -121,3 +122,7 @@ The information on how to configure the stack to consume services provided by ex
 ### <a name="custom-arkcase"></a>Deploying Custom ArkCase Versions
 
 The information on how to deploy your custom ArkCase version with this stack can be found [in this document](docs/Custom_Arkcase.md).
+
+## <a name="dev-integration"></a>Development
+
+The information on how to deploy ArkCase for development with this stack can be found [in this document](docs/Development.md).
