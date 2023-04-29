@@ -393,6 +393,9 @@
       {{- fail (printf "Invalid storage class in pv:// URL for volume '%s': [%s]" $volumeName $storageClassName) -}}
     {{- end -}}
     {{- $cap := ($pv.path | default "/" | clean | trimPrefix "/") -}}
+    {{- if not $cap -}}
+      {{- $cap = (include "arkcase.persistence.buildVolume.getUndeclaredSize" .) -}}
+    {{- end -}}
     {{- $mode := $pv.fragment | default "" -}}
     {{- if or (not $cap) (not $mode) -}}
       {{- fail (printf "The pv:// volume declaration for '%s' must be of the form: pv://[${storageClassName}]/${capacity}#${accessModes} where only the ${storageClassName} portion is optional: [%s]" $volumeName $data) -}}
