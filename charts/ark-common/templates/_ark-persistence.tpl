@@ -385,16 +385,15 @@
     {{- if and $storageClassName (not (regexMatch "^([a-z0-9][-a-z0-9]*)?[a-z0-9]$" ($storageClassName | lower))) -}}
       {{- fail (printf "Invalid storage class in pv:// URL for volume '%s': [%s]" $volumeName $storageClassName) -}}
     {{- end -}}
-    {{- $cap := $pv.path | default "" -}}
+    {{- $cap := ($pv.path | default "/" | clean | trimPrefix "/") -}}
     {{- $mode := $pv.fragment | default "" -}}
-    {{- if or (eq "." (clean $cap)) (not $mode) -}}
+    {{- if or (not $cap) (not $mode) -}}
       {{- fail (printf "The pv:// volume declaration for '%s' must be of the form: pv://[${storageClassName}]/${capacity}#${accessModes} where only the ${storageClassName} portion is optional: [%s]" $volumeName $data) -}}
     {{- end -}}
     {{- $mode = (include "arkcase.persistence.buildVolume.parseAccessModes" $mode | fromYaml) -}}
     {{- if $mode.errors -}}
       {{- fail (printf "Invalid access modes %s given for volume spec '%s': [%s]" $mode.errors $volumeName $data) -}}
     {{- end -}}
-    {{- $cap = (clean $cap | trimPrefix "/") -}}
     {{- $capacity := (include "arkcase.persistence.buildVolume.parseStorageSize" $cap | fromYaml) -}}
     {{- if or (not $capacity) $capacity.max -}}
       {{- fail (printf "Invalid capacity specification '%s' for volume '%s': [%s]" $cap $volumeName $data) -}}
@@ -454,11 +453,10 @@
     {{- else if eq "pvc" ($pvc.scheme | lower) -}}
       {{- if hasPrefix "pvc://" ($data | lower) -}}
         {{- /* pvc://[${storageClassName}]/${minSize}[-${maxSize}][#${accessModes}] */ -}}
-        {{- $limitsRequests := (clean ($pvc.path | default "")) -}}
-        {{- if eq "." $limitsRequests -}}
+        {{- $limitsRequests := ($pvc.path | default "/" | clean | trimPrefix "/") -}}
+        {{- if not $limitsRequests -}}
           {{- fail (printf "No limits-requests specification given for volume '%s': [%s]" $volumeName $data) -}}
         {{- end -}}
-        {{- $limitsRequests = ($limitsRequests | trimPrefix "/") -}}
         {{- $size := (include "arkcase.persistence.buildVolume.parseStorageSize" $limitsRequests | fromYaml) -}}
         {{- if not $size -}}
           {{- fail (printf "Invalid limits-requests specification '%s' for volume '%s': [%s]" $limitsRequests $volumeName $data) -}}
