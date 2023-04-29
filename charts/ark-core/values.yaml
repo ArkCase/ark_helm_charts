@@ -267,11 +267,21 @@ persistence:
   # are ignored.
   enabled: true
 
+  default:
+
+    # Set the default capacity for volumes in case none is assigned explicitly
+    # and the default value is insufficient
+    volumeSize:
+      init: "4Gi"
+      home: "8Gi"
+      conf: "4Gi"
+      war: "2Gi"
+      logs: "2Gi"
+
 #  The volumes for persistent data
   volumes:
 # The volume where the data will be stored (RTFM for more info on how to
 # properly declare volumes)
-#     data:
 
 service:
   cloudconfig:
