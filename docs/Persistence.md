@@ -321,7 +321,7 @@ This table describes each value in some detail, along with examples:
 
 This syntax allows you to describe which PersistentVolumeClaim resource you wish to be associated to a specific volume, or the characteristics that the corresponding volume claim template should specify.
 
-#### pvc://[\${storageClassName}]/\${requests}[/\${limits}][#\${accessModes}]
+#### pvc://[\${storageClassName}]/\${requests}[-\${limits}][#\${accessModes}]
 
 This pattern describes the desire for the PVC template to be rendered with the given **storageClassName** (optional), **requests**, **limits** (optional), and **accessModes** (optional). The underlying assumption is that the persistence layer in the cluster will automatically deploy the necessary volumes to back the claim templates. If this is not the case, then you'll need to deploy those PersistentVolume resources manually.
 
