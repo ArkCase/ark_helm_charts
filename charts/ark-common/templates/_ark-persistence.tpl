@@ -387,7 +387,7 @@
     {{- end -}}
     {{- $cap := $pv.path | default "" -}}
     {{- $mode := $pv.fragment | default "" -}}
-    {{- if or (not $cap) (not $mode) -}}
+    {{- if or (eq "." (clean $cap)) (not $mode) -}}
       {{- fail (printf "The pv:// volume declaration for '%s' must be of the form: pv://[${storageClassName}]/${capacity}#${accessModes} where only the ${storageClassName} portion is optional: [%s]" $volumeName $data) -}}
     {{- end -}}
     {{- $mode = (include "arkcase.persistence.buildVolume.parseAccessModes" $mode | fromYaml) -}}
@@ -454,7 +454,7 @@
     {{- else if eq "pvc" ($pvc.scheme | lower) -}}
       {{- if hasPrefix "pvc://" ($data | lower) -}}
         {{- /* pvc://[${storageClassName}]/${minSize}[-${maxSize}][#${accessModes}] */ -}}
-        {{- $limitsRequests := (clean $pvc.path) -}}
+        {{- $limitsRequests := (clean ($pvc.path | default "")) -}}
         {{- if eq "." $limitsRequests -}}
           {{- fail (printf "No limits-requests specification given for volume '%s': [%s]" $volumeName $data) -}}
         {{- end -}}
