@@ -355,6 +355,13 @@
   {{- end -}}
 {{- end -}}
 
+{{- define "arkcase.persistence.buildVolume.getUndeclaredSize" -}}
+  {{- $limitsRequests := (.renderDefaults.size | default "") -}}
+  {{- if and $limitsRequests (kindIs "string" $limitsRequests) -}}
+    {{- $limitsRequests -}}
+  {{- end -}}
+{{- end -}}
+
 {{- define "arkcase.persistence.buildVolume.parseVolumeString.path" -}}
   {{- $data := .data -}}
   {{- $volumeName := .volumeName -}}
@@ -455,6 +462,9 @@
         {{- /* pvc://[${storageClassName}]/${minSize}[-${maxSize}][#${accessModes}] */ -}}
         {{- $limitsRequests := ($pvc.path | default "/" | clean | trimPrefix "/") -}}
         {{- if not $limitsRequests -}}
+          {{- $limitsRequests = (include "arkcase.persistence.buildVolume.getUndeclaredSize" .) -}}
+        {{- end -}}
+        {{- if not $limitsRequests -}}
           {{- fail (printf "No limits-requests specification given for volume '%s': [%s]" $volumeName $data) -}}
         {{- end -}}
         {{- $size := (include "arkcase.persistence.buildVolume.parseStorageSize" $limitsRequests | fromYaml) -}}
@@ -488,7 +498,17 @@
 
 {{- define "arkcase.persistence.buildVolume.renderUndescribed" -}}
   {{- /* This is an undescribed volume */ -}}
-  {{- dict "render" (dict "volume" true "claim" true "mode" "hostPath" "generated" true) | toYaml -}}
+  {{- $result := (dict "render" (dict "volume" true "claim" true "mode" "hostPath" "generated" true)) -}}
+  {{- $limitsRequests := (include "arkcase.persistence.buildVolume.getUndeclaredSize" .) -}}
+  {{- if $limitsRequests -}}
+    {{- $size := (include "arkcase.persistence.buildVolume.parseStorageSize" $limitsRequests | fromYaml) -}}
+    {{- $resources := dict "requests" (dict "storage" $size.min) -}}
+    {{- if $size.max -}}
+      {{- $resources = set $resources "limits" (dict "storage" $size.max) -}}
+    {{- end -}}
+    {{- $result = set $result "resources" $resources -}}
+  {{- end -}}
+  {{- $result | toYaml -}}
 {{- end -}}
 
 {{- define "arkcase.persistence.buildVolume.parseVolumeString" -}}
@@ -511,13 +531,14 @@
 {{- end -}}
 
 {{- define "arkcase.persistence.buildVolume.renderForCache" -}}
+  {{- $ctx := .ctx -}}
   {{- $volumeName := .volumeName -}}
   {{- $data := .data -}}
   {{- $mustRender := .mustRender -}}
 
   {{- $volume := dict -}}
   {{- if kindIs "string" $data -}}
-    {{- $volume = (include "arkcase.persistence.buildVolume.parseVolumeString" (dict "data" $data "volumeName" $volumeName) | fromYaml) -}}
+    {{- $volume = (include "arkcase.persistence.buildVolume.parseVolumeString" (dict "ctx" $ctx "data" $data "volumeName" $volumeName) | fromYaml) -}}
   {{- else if kindIs "map" $data -}}
     {{- /* May be a map that has "path", "claim", or "volume" ... but only one! */ -}}
     {{- $data = pick $data "path" "claim" "volume" -}}
@@ -526,7 +547,7 @@
     {{- end -}}
     {{- if $data.claim -}}
       {{- if kindIs "string" $data.claim -}}
-        {{- $volume = (include "arkcase.persistence.buildVolume.parseVolumeString.pvc" (dict "data" $data.claim "volumeName" $volumeName) | fromYaml) -}}
+        {{- $volume = (include "arkcase.persistence.buildVolume.parseVolumeString.pvc" (dict "ctx" $ctx "data" $data.claim "volumeName" $volumeName) | fromYaml) -}}
       {{- else if kindIs "map" $data.claim -}}
         {{- /* The map is a claim spec, so use it */ -}}
         {{- $volume = (dict "render" (dict "volume" false "claim" true) "spec" $data.claim) -}}
@@ -536,7 +557,7 @@
       {{- $volume = set $volume "render" (set $volume.render "mode" "claim") -}}
     {{- else if $data.volume -}}
       {{- if kindIs "string" $data.volume -}}
-        {{- $volume = (include "arkcase.persistence.buildVolume.parseVolumeString.pv" (dict "data" $data.volume "volumeName" $volumeName) | fromYaml) -}}
+        {{- $volume = (include "arkcase.persistence.buildVolume.parseVolumeString.pv" (dict "ctx" $ctx "data" $data.volume "volumeName" $volumeName) | fromYaml) -}}
       {{- else if kindIs "map" $data.volume -}}
         {{- /* The map is a volume spec, so use it */ -}}
         {{- $volume = (dict "render" (dict "volume" true "claim" true) "spec" $data.volume) -}}
@@ -546,7 +567,7 @@
       {{- $volume = set $volume "render" (set $volume.render "mode" "volume") -}}
     {{- else -}}
       {{- if $data.path -}}
-        {{- $volume = (include "arkcase.persistence.buildVolume.parseVolumeString.path" (dict "data" $data.path "volumeName" $volumeName) | fromYaml) -}}
+        {{- $volume = (include "arkcase.persistence.buildVolume.parseVolumeString.path" (dict "ctx" $ctx "data" $data.path "volumeName" $volumeName) | fromYaml) -}}
       {{- else -}}
         {{- $volume = (include "arkcase.persistence.buildVolume.renderUndescribed" . | fromYaml) -}}
       {{- end -}}
@@ -584,6 +605,11 @@ Parse a volume declaration and return a map that contains the following (possibl
   {{- $globalPersistence := (($ctx.Values.global).persistence | default dict) -}}
   {{- $globalPersistenceVolumes := ($globalPersistence.volumes | default dict) -}}
 
+  {{- $renderDefaults := get (($persistence.defaults).volumes | default dict) $name -}}
+  {{- if or (not $renderDefaults) (not (kindIs "map" $renderDefaults)) -}}
+    {{- $renderDefaults = dict -}}
+  {{- end -}}
+
   {{- $enabled := (not (empty (include "arkcase.persistence.enabled" $ctx))) -}}
   {{- $mustRender := $enabled -}}
 
@@ -603,7 +629,7 @@ Parse a volume declaration and return a map that contains the following (possibl
     {{- end -}}
   {{- end -}}
 
-  {{- include "arkcase.persistence.buildVolume.renderForCache" (dict "volumeName" $volumeName "data" $data "mustRender" $mustRender) -}}
+  {{- include "arkcase.persistence.buildVolume.renderForCache" (dict "ctx" $ctx "volumeName" $volumeName "data" $data "renderDefaults" $renderDefaults "mustRender" $mustRender) -}}
 {{- end -}}
 
 {{- define "arkcase.persistence.buildVolume" -}}
@@ -763,8 +789,11 @@ Render the entries for volumeClaimTemplates:, per configurations
       {{- $renderVolume = (ne $settings.mode "development") -}}
       {{- if $renderVolume -}}
         {{- /* Render a template using the default settings */ -}}
-        {{- $requests := dict "requests" (dict "storage" $settings.capacity) -}}
-        {{- $spec := dict "accessModes" $settings.accessModes "resources" $requests "volumeMode" $settings.volumeMode -}}
+        {{- $resources := $volume.resources -}}
+        {{- if or (not $resources) (not (kindIs "map" $resources)) -}}
+          {{- $resources = dict "requests" (dict "storage" $settings.capacity) -}}
+        {{- end -}}
+        {{- $spec := dict "accessModes" $settings.accessModes "resources" $resources "volumeMode" $settings.volumeMode -}}
         {{- if $settings.storageClassName -}}
           {{- $spec = set $spec "storageClassName" $settings.storageClassName -}}
         {{- end -}}
