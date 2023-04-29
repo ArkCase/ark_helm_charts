@@ -356,7 +356,7 @@
 {{- end -}}
 
 {{- define "arkcase.persistence.buildVolume.getUndeclaredSize" -}}
-  {{- $limitsRequests := (.renderDefaults.size | default "") -}}
+  {{- $limitsRequests := (.defaultSize | default "") -}}
   {{- if and $limitsRequests (kindIs "string" $limitsRequests) -}}
     {{- $limitsRequests -}}
   {{- end -}}
@@ -608,9 +608,9 @@ Parse a volume declaration and return a map that contains the following (possibl
   {{- $globalPersistence := (($ctx.Values.global).persistence | default dict) -}}
   {{- $globalPersistenceVolumes := ($globalPersistence.volumes | default dict) -}}
 
-  {{- $renderDefaults := get (($persistence.defaults).volumes | default dict) $name -}}
-  {{- if or (not $renderDefaults) (not (kindIs "map" $renderDefaults)) -}}
-    {{- $renderDefaults = dict -}}
+  {{- $defaultSize := get (($persistence.default).volumeSize | default dict) $name -}}
+  {{- if or (not $defaultSize) (not (kindIs "string" $defaultSize)) -}}
+    {{- $defaultSize = "" -}}
   {{- end -}}
 
   {{- $enabled := (not (empty (include "arkcase.persistence.enabled" $ctx))) -}}
@@ -632,7 +632,7 @@ Parse a volume declaration and return a map that contains the following (possibl
     {{- end -}}
   {{- end -}}
 
-  {{- include "arkcase.persistence.buildVolume.renderForCache" (dict "ctx" $ctx "volumeName" $volumeName "data" $data "renderDefaults" $renderDefaults "mustRender" $mustRender) -}}
+  {{- include "arkcase.persistence.buildVolume.renderForCache" (dict "ctx" $ctx "volumeName" $volumeName "data" $data "defaultSize" $defaultSize "mustRender" $mustRender) -}}
 {{- end -}}
 
 {{- define "arkcase.persistence.buildVolume" -}}
@@ -778,12 +778,18 @@ Render the entries for volumeClaimTemplates:, per configurations
     {{- fail "Must provide the 'name' of the volumeClaimTemplates to declare" -}}
   {{- end -}}
 
+  {{- $volumeFullName := $volumeName -}}
+  {{- $partname := (include "arkcase.part.name" $ctx) -}}
+  {{- if $partname -}}
+    {{- $volumeFullName = printf "%s-%s" $partname $volumeFullName -}}
+  {{- end -}}
+
   {{- $settings := (include "arkcase.persistence.settings" $ctx | fromYaml) -}}
   {{- if $settings.enabled -}}
     {{- $renderVolume := false -}}
     {{- $volume := (include "arkcase.persistence.buildVolume" (pick . "ctx" "name") | fromYaml) -}}
     {{- $subsystem := (include "arkcase.subsystem.name" $ctx) -}}
-    {{- $claimName := (printf "%s-%s-%s-%s" $ctx.Release.Namespace $ctx.Release.Name $subsystem $volumeName) -}}
+    {{- $claimName := (printf "%s-%s-%s-%s" $ctx.Release.Namespace $ctx.Release.Name $subsystem $volumeFullName) -}}
     {{- $labels := dict "arkcase/persistentVolume" $claimName -}}
     {{- $metadata := dict "name" $volumeName "labels" $labels -}}
     {{- $mode := $volume.render.mode -}}
@@ -806,7 +812,7 @@ Render the entries for volumeClaimTemplates:, per configurations
       {{- /* We're referencing an existing volume - don't care about the mode */ -}}
       {{- $renderVolume = true -}}
       {{- if not $volume.volumeName -}}
-        {{- fail (printf "The target volume name may not be the empty string (volume %s, chart %s)" $volumeName $ctx.Chart.Name) -}}
+        {{- fail (printf "The target volume name may not be the empty string (volume %s, chart %s)" $volumeFullName $ctx.Chart.Name) -}}
       {{- end -}}
       {{- $accessModes := ($volume.accessModes | default $settings.accessModes) -}}
       {{- $spec := dict "storageClassName" "" "volumeName" $volume.volumeName "resources" (dict "requests" (dict "storage" "1Ki")) "accessModes" $accessModes -}}
@@ -830,7 +836,7 @@ Render the entries for volumeClaimTemplates:, per configurations
           {{- $metadata = set $metadata "labels" (mergeOverwrite $specLabels $labels) -}}
         {{- end -}}
         {{- if or (not (hasKey $spec "spec")) (not (kindIs "map" $spec.spec)) -}}
-          {{- fail (printf "The volume description must contain a spec: stanza (volume %s, chart %s)" $volumeName $ctx.Chart.Name) -}}
+          {{- fail (printf "The volume description must contain a spec: stanza (volume %s, chart %s)" $volumeFullName $ctx.Chart.Name) -}}
         {{- end -}}
         {{- $decl = dict "metadata" $metadata "spec" $spec.spec -}}
       {{- else -}}
@@ -848,7 +854,7 @@ Render the entries for volumeClaimTemplates:, per configurations
     {{- else if eq $mode "volume" -}}
       {{- $renderVolume = false -}}
     {{- else -}}
-      {{- fail (printf "Unsupported volume rendering mode [%s] for volume %s (chart %s)" $mode $volumeName $ctx.Chart.Name) -}}
+      {{- fail (printf "Unsupported volume rendering mode [%s] for volume %s (chart %s)" $mode $volumeFullName $ctx.Chart.Name) -}}
     {{- end -}}
     {{- $decl = list $decl -}}
     {{- if $renderVolume -}}
