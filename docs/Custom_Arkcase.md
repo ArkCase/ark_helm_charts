@@ -106,7 +106,7 @@ You can then build that container image, like so:
 
     $ docker build -t my-image-repository/my-test-arkcase:1.2.3 .
 
-Finally, you can push the image to your repository (if desired):
+Recall that Docker's `ADD` Dockerfile command you may have the build process reach out and download resources from URLs (as is done in our base image's Dockerfile). This way you can use a singular image for all builds, and parameterize the URL using `--build-arg` (see the Docker documentation for more details on how `ARG` works). Finally, you can push the image to your repository (if desired):
 
     $ docker push my-image-repository/my-test-arkcase:1.2.3
 
