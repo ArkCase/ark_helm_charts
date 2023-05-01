@@ -12,6 +12,7 @@ Here's a table of contents so you can quickly reach the documentation section yo
  - [Deployment](#deployment)
    - [Development](#development-mode)
    - [Production](#production-mode)
+ - [Security](#security)
  - [Configuration](#configuration)
    - [Licenses](#licenses)
    - [Ingress and SSL/TLS Access](#ingress)
@@ -100,6 +101,22 @@ global.persistence.default.storageClassName: "someStorageClassName"
 If production mode is enabled explicitly, but a default *storageClassName* is not configured, all volume claim templates rendered will lack that stanza and thus will be expected to be provisioned by the cluster with [the default storage class](https://kubernetes.io/docs/tasks/administer-cluster/change-default-storage-class/). Specifically, it is possible to enable *development* mode explicitly even with a default *storageClassName* configured, by explicitly setting the `global.mode` configuration value to `"development"`.
 
 Finally, you may refer to the [documentation on the persistence layer](#persistence) for more details on how to configure that particular aspect of the deployment.
+
+## <a name="security"></a>Security
+
+Due to the highly varied nature of the security requriements each deployer may choose to require or enforce, it's impossiblte to anticipate and support them beyond granting the ability to run (portions of) the stack under service accounts. This helm chart supports the following syntax for indicating service account usage:
+
+```yaml
+
+global:
+  security:
+    # This service account will be used for all pods and components
+    serviceAccountName: "arkcase-service-account"
+```
+
+You can also specify the value using `--set global.security.serviceAccountName=arkcase-service-account` at deploy time as part of the `helm` command.
+
+Finally, this chart currently doesn't support individualized service accounts because no such requirement has been identified. This is not, however, out of the question should a solid use-case for this functionality be discovered.
 
 ## <a name="configuration"></a>Configuration
 
