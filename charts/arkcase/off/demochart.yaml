@@ -48,7 +48,7 @@ spec:
       {{- if .Values.schedulerName }}
       schedulerName: {{ .Values.schedulerName | quote }}
       {{- end }}
-      serviceAccountName: {{ include "common.serviceAccountName" . }}
+      serviceAccountName: {{ include "arkcase.serviceAccountName" . }}
       {{- with (.Values.securityContext).template }}
       securityContext: {{- toYaml . | nindent 8 }}
       {{- end }}

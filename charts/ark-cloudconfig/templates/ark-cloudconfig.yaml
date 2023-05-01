@@ -1,23 +1,23 @@
-{{- if (include "arkcase.subsystem.enabled" .) }}
+{{- if (include "arkcase.subsystem.enabled" $) }}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ include "arkcase.fullname" . | quote }}
-  namespace: {{ .Release.Namespace | quote }}
-  labels: {{- include "arkcase.labels" . | nindent 4 }}
-    {{- with (.Values.labels).common }}
-    {{- toYaml . | nindent 4 }}
+  name: {{ include "arkcase.fullname" $ | quote }}
+  namespace: {{ $.Release.Namespace | quote }}
+  labels: {{- include "arkcase.labels" $ | nindent 4 }}
+    {{- with ($.Values.labels).common }}
+      {{- toYaml . | nindent 4 }}
     {{- end }}
-  {{- with (.Values.annotations).common }}
+  {{- with ($.Values.annotations).common }}
   annotations: {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  {{- if not (.Values.autoscaling).enabled }}
-  replicas: {{ .Values.replicaCount | default 1 }}
+  {{- if not ($.Values.autoscaling).enabled }}
+  replicas: {{ $.Values.replicaCount | default 1 }}
   {{- end }}
   selector:
-    matchLabels: {{- include "arkcase.labels.matchLabels" . | nindent 6 }}
-  serviceName: {{ include "arkcase.name" . | quote }}
+    matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
+  serviceName: {{ include "arkcase.name" $ | quote }}
   updateStrategy:
     type: {{ .Values.updateStrategy }}
     {{- if (eq "Recreate" .Values.updateStrategy) }}
@@ -28,10 +28,10 @@ spec:
     {{- end }}
   template:
     metadata:
-      name: {{ include "arkcase.fullname" . | quote }}
+      name: {{ include "arkcase.fullname" $ | quote }}
       namespace: {{ .Release.Namespace | quote }}
-      labels: {{- include "arkcase.labels" . | nindent 8 }}
-        {{- with (.Values.labels).common }}
+      labels: {{- include "arkcase.labels" $ | nindent 8 }}
+        {{- with ($.Values.labels).common }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
       annotations:
@@ -39,7 +39,7 @@ spec:
         prometheus.io/scrape: "true"
         prometheus.io/port: "9100"
         timestamp: {{ date "20060102150405" now | quote }}
-        {{- with (.Values.annotations).common }}
+        {{- with ($.Values.annotations).common }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
     spec:
@@ -53,8 +53,8 @@ spec:
       {{- if .Values.schedulerName }}
       schedulerName: {{ .Values.schedulerName | quote }}
       {{- end }}
-      serviceAccountName: {{ include "common.serviceAccountName" . }}
-      {{- with (.Values.securityContext).template }}
+      serviceAccountName: {{ include "arkcase.serviceAccountName" $ | quote }}
+      {{- with ($.Values.securityContext).template }}
       securityContext: {{- toYaml . | nindent 8 }}
       {{- end }}
       initContainers:
@@ -77,7 +77,7 @@ spec:
       containers:
         - name: cloudconfig
           {{- include "arkcase.image" $ | nindent 10 }}
-          {{- with (.Values.securityContext).config }}
+          {{- with ($.Values.securityContext).config }}
           securityContext: {{- toYaml . | nindent 12 }}
           {{- end }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
@@ -90,7 +90,7 @@ spec:
           {{- with (include "arkcase.values" (dict "ctx" $ "base" "resources") | fromYaml) }}
           resources: {{- toYaml . | nindent 12 }}
           {{- end }}
-          {{- with (.Values.securityContext).config }}
+          {{- with ($.Values.securityContext).config }}
           securityContext: {{- toYaml . | nindent 12 }}
           {{- end }}
           volumeMounts:

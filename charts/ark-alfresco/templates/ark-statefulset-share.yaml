@@ -55,9 +55,7 @@ spec:
       {{- with (include "arkcase.values" (dict "ctx" $ "base" "schedulerName") | fromYaml) }}
       schedulerName: {{ .value | quote }}
       {{- end }}
-      {{- with (include "arkcase.values" (dict "ctx" $ "base" "serviceAccountName") | fromYaml) }}
-      serviceAccountName: {{ .value | quote }}
-      {{- end }}
+      serviceAccountName: {{ include "arkcase.serviceAccountName" $ | quote }}
       {{- with (include "arkcase.values" (dict "ctx" $ "base" "securityContext") | fromYaml) }}
         {{- with .template }}
       securityContext: {{- toYaml .value | nindent 8 }}
