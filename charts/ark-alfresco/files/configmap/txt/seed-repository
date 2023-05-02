@@ -126,16 +126,15 @@ def login():
 	try:
 		session.auth = ( USERNAME, PASSWORD )
 		headers = { "Content-Type" : "application/x-www-form-urlencoded" }
-		data = {
+
+		# Base login
+		logging.info(f"Logging into {SHARE} ...")
+		rsp = session.post(f"{SHARE}/page/dologin", headers = headers, data = {
 			"success": "/share/page/",
 			"failure": "/share/page/?error=true",
 			"username": USERNAME,
 			"password": PASSWORD
-		}
-
-		# Base login
-		logging.info(f"Logging into {SHARE} ...")
-		rsp = session.post(f"{SHARE}/page/dologin", headers = headers, data = data)
+		})
 		if rsp.status_code > 400:
 			fail(f"Failed to log into share at {SHARE} - rc: {rsp.status_code}")
 		else:
@@ -172,7 +171,7 @@ def create_content_folders(session, site, root, contents):
 
 	rsp = session.get(f"{CONTENT}/s/slingshot/doclib/treenode/site/{site}/{root}?perms=false&children=false&max=1000")
 	if rsp.status_code >= 400:
-		fail(f"\tFailed to obtain the contents of the root folder [{root}] for content site [{site}] (sc: {rsp.status_code}): {rsp.text}")
+		fail(f"\t\tFailed (sc: {rsp.status_code}): {rsp.text}")
 
 	items = rsp.json()["items"]
 	elements = set()
@@ -187,17 +186,38 @@ def create_content_folders(session, site, root, contents):
 			continue
 
 		logging.info(f"\tCreating the content folder [{item}]...")
-		rsp = session.post(f"{CONTENT}/s/api/site/folder/{site}/{root}", json = { "name" : item, "title" : item })
+		rsp = session.post(f"{CONTENT}/s/api/site/folder/{site}/{root}", json = {
+			"name" : item,
+			"title" : item
+		})
 		if rsp.status_code >= 400:
-			fail(f"\tFailed to create the folder [{item}] on content site [{site}] (sc: {rsp.status_code}): {rsp.text}")
+			fail(f"\t\tFailed (sc: {rsp.status_code}): {rsp.text}")
 
 		logging.info(f"\t\tCreated as [{rsp.text}]")
 
 	logging.info("\tContent folders created!")
 
+def grant_content_access(session, site, groups):
+	logging.info(f"\tGranting access to the content site [{site}]")
+	for group, role in groups.items():
+		if (not group) or (not role):
+			continue
+		logging.info(f"\t\tGranting access to group [{group}]")
+		rsp = session.post(f"{CONTENT}/s/api/sites/{site}/memberships?return_content=yes", json = {
+			"group" : {
+				"fullName": f"GROUP_{group}"
+			},
+			"role": role
+		})
+		if rsp.status_code >= 400:
+			fail(f"\t\t\tFailed (sc: {rsp.status_code}): {rsp.text}")
+		logging.info(f"\t\t\tGranted: {rsp.text}")
+
 def create_category(session, site, parent, name):
 	now = datetime.now().replace(tzinfo=timezone.utc)
-	data = {
+
+	logging.info(f"\tCreating the records management category [{name}] under [{parent}]...")
+	rsp = session.post(f"{CONTENT}/s/api/type/rma:recordCategory/formprocessor", json = {
 		"alf_destination": parent,
 		"prop_cm_description": "",
 		"prop_cm_name": name,
@@ -208,10 +228,7 @@ def create_category(session, site, parent, name):
 		"prop_rma_identifier": now.strftime("%Y-%m%d%H%M%S%f000"),
 		"prop_rma_reviewPeriod": "none|0",
 		"prop_rma_vitalRecordIndicator": "false"
-	}
-
-	logging.info(f"\tCreating the records management category [{name}] under [{parent}]...")
-	rsp = session.post(f"{CONTENT}/s/api/type/rma:recordCategory/formprocessor", json = data)
+	})
 	data = rsp.json()
 	if rsp.status_code > 400:
 		if data["message"].find("DuplicateChildNodeNameException") < 0:
@@ -288,7 +305,32 @@ def create_categories(session, site, root, contents):
 		create_category(session, site, rootNodeRef, item)
 
 	logging.info("\tRecord management categories created!")
-	
+
+def grant_records_management_access(session, site, groups):
+	logging.info(f"\tGranting access to the records management site [{site}]")
+	admin_role = "Administrator"
+	for group, role in groups.items():
+		if (not group) or (not role):
+			continue
+
+		logging.info(f"\tAdding groups to the records management admin role")
+		encoded_group = urllib.parse.quote(group, safe='')
+		rsp = session.post(f"{CONTENT}/s/api/rm/roles/{admin_role}/authorities/GROUP_{encoded_group}?return_content=yes")
+		if rsp.status_code >= 400:
+			fail(f"\t\t\tFailed (sc: {rsp.status_code}): {rsp.text}")
+		logging.info(f"\t\t\tGranted: {rsp.text}")
+
+		logging.info(f"\t\tGranting access to group [{group}]")
+		rsp = session.post(f"{CONTENT}/s/api/sites/{site}/memberships?return_content=yes", json = {
+			"group" : {
+				"fullName": f"GROUP_{group}"
+			},
+			"role": role
+		})
+		if rsp.status_code >= 400:
+			#fail(f"\t\t\tFailed (sc: {rsp.status_code}): {rsp.text}")
+			pass
+		logging.info(f"\t\t\tGranted: {rsp.text}")
 
 rmSite = ""
 rmEnabled = False
@@ -351,10 +393,12 @@ try:
 
 		if name != rmSite:
 			desc = "content"
-			func = create_content_folders
+			creator = create_content_folders
+			grant_group_access = grant_content_access
 		else:
 			desc = "records management"
-			func = create_categories
+			creator = create_categories
+			grant_group_access = grant_records_management_access
 
 		logging.info(f"Creating the {desc} site [{name}]...")
 		rsp = session.post(f"{SHARE}/service/modules/create-site", json=site_info)
@@ -375,18 +419,27 @@ try:
 		else:
 			root = None
 
-		if "contents" not in site:
+		if "contents" in site:
+			contents = site["contents"]
+			if type(contents) != dict:
+				fail(f"The configuration data is malformed - the value 'sites.{name}.contents' must be a map")
+
+			try:
+				creator(session, name, root, contents)
+			except Exception as e:
+				fail(f"Failed to create the contents for site {name} (rm={name == rmSite})\n{traceback.format_exc()}")
+		else:
 			logging.info(f"\tNo contents specified for site [{name}]")
-			continue
 
-		contents = site["contents"]
-		if type(contents) != dict:
-			fail(f"The configuration data is malformed - the value 'sites.{name}.contents' must be a map")
+		if "groups" in site:
+			groups = site["groups"]
+			if type(groups) != dict:
+				fail(f"The configuration data is malformed - the value 'sites.{name}.groups' must be a map")
 
-		try:
-			func(session, name, root, contents)
-		except Exception as e:
-			fail(f"Failed to create the contents for site {name} (rm={name == rmSite}): {e}")
+			try:
+				grant_group_access(session, name, groups)
+			except Exception as e:
+				fail(f"Failed to create the contents for site {name} (rm={name == rmSite})\n{traceback.format_exc()}")
 
 	logging.info("Seeding completed.")
 	exit(0)
