@@ -37,10 +37,11 @@ global:
       enabled: true
       
       #
-      # These boolean flags enable access to specific via the same URL, should this be
-      # desired. Please note that these will be served via alternate paths (i.e. /alfresco,
-      # /pentaho, etc.). Thus, if the main application is on the root context, these
-      # flags will have no effect.
+      # These boolean flags enable access to specific components via the same URL,
+      # should this be desired. Please note that these will be served via alternate
+      # paths (i.e. /alfresco, /pentaho, etc.). Thus, if the main application is on
+      # the root context, these flags will have no effect. (if not specified, they
+      # default to false)
       #
       content: true
       reports: true
