@@ -74,6 +74,10 @@ initDependencies:
     delay: 5
     attempts: 12
   dependencies:
+    ldap:
+      ports:
+        - 389
+        - 636
     rdbms:
       ports:
         # In case of SQLServer
