@@ -307,7 +307,6 @@ def grant_group_access(session, site, admin_role, groups):
 			rsp = session.post(f"{CONTENT}/s/api/rm/roles/{admin_role}/authorities/{full_group_name}?return_content=yes")
 			if rsp.status_code >= 400:
 				fail(f"\t\t\tFailed (sc: {rsp.status_code}): {rsp.text}")
-			logging.info(f"\t\t\tGranted!")
 
 		if group and role:
 			logging.info(f"\t\tGranting role [{role}] to group [{group}]")
@@ -319,7 +318,6 @@ def grant_group_access(session, site, admin_role, groups):
 			})
 			if rsp.status_code >= 400:
 				fail(f"\t\t\tFailed (sc: {rsp.status_code}): {rsp.text}")
-			logging.info(f"\t\t\tGranted!")
 
 rmSite = ""
 rmEnabled = False
