@@ -125,7 +125,7 @@ global:
           -----END PRIVATE KEY-----
 
         #
-        # This an SSL CA certificate chain, in PEM format, encoded in base64
+        # This an SSL CA certificate chain, in PEM format
         # (this entry is optional)
         #
         ca: |-
