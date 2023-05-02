@@ -85,6 +85,7 @@ spec:
         number: 80
       {{- end }}
   rules:
+    - host: {{ $hostname | quote }}
       http:
         paths:
           - path: {{ $path | quote }}
@@ -126,7 +127,6 @@ spec:
                 port:
                   number: 8080
       {{- end }}
-      host: {{ $hostname | quote }}
     {{- end -}}
     {{- if and $https $secretData }}
   tls:
