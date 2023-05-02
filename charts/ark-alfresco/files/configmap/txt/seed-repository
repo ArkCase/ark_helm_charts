@@ -17,6 +17,7 @@ ENV_INIT_SEED_CONTENT  = "INIT_SEED_CONTENT"
 ENV_INIT_SEED_SHARE    = "INIT_SEED_SHARE"
 ENV_INIT_SEED_USERNAME = "INIT_SEED_USERNAME"
 ENV_INIT_SEED_PASSWORD = "INIT_SEED_PASSWORD"
+ENV_INIT_SEED_IGNORE_DUPES = "INIT_SEED_IGNORE_DUPES"
 
 parser = argparse.ArgumentParser(description="Alfresco Content Seeder")
 parser.add_argument("config", metavar="config", action="store", help=f"The configuration to use (if not given, it will be read from the {ENV_INIT_SEED_CONF} environment variable)", type=str, nargs="?")
@@ -24,6 +25,7 @@ parser.add_argument("--content", metavar="content", action="store", help=f"The A
 parser.add_argument("--share", metavar="share", action="store", help=f"The Alfresco share URL (if not given, it will be read from the {ENV_INIT_SEED_SHARE} environment variable)", type=str, nargs=1)
 parser.add_argument("--username", metavar="username", action="store", help=f"The username to authenticate with (if not given, it will be read from the {ENV_INIT_SEED_USERNAME} environment variable)", type=str, nargs=1)
 parser.add_argument("--password", metavar="password", action="store", help=f"The password to authenticate with (if not given, it will be read from the {ENV_INIT_SEED_PASSWORD} environment variable)", type=str, nargs=1)
+parser.add_argument("--ignore-dupes", action="store_true", help=f"A flag to indicate whether to continue processing even if duplicate sites are encountered (if not given, it will be read from the {ENV_INIT_SEED_IGNORE_DUPES} environment variable)", default=False)
 
 args = parser.parse_args()
 
@@ -57,6 +59,12 @@ else:
     logging.error("Failed to get the configuration from parameters or the environment")
     parser.print_help()
     exit(1)
+
+IGNORE_DUPES = False
+if args.ignore_dupes:
+    IGNORE_DUPES = args.ignore_dupes
+elif ENV_INIT_SEED_IGNORE_DUPES in os.environ:
+    IGNORE_DUPES = to_boolean(os.environ[ENV_INIT_SEED_IGNORE_DUPES])
 
 show_data = True
 if source_file_is_file:
@@ -265,7 +273,8 @@ try:
 			result = rsp.json()
 			if ("message" in result) and (result["message"] == "error.duplicateShortName"):
 				logging.info(f"\tThe site {desc} [{name}] already exists, skipping")
-				# continue
+				if not IGNORE_DUPES:
+					continue
 			else:
 				fail(f"\tFailed to create the {desc} site [{name}] (rc: {rsp.status_code}): {result}")
 
