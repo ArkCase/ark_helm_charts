@@ -1,0 +1,296 @@
+#!/usr/bin/python3
+
+import argparse
+import json
+import logging
+import os
+import re
+import requests
+import shutil
+import sys
+import traceback
+import urllib
+import yaml
+
+ENV_INIT_SEED_CONF     = "INIT_SEED_CONF"
+ENV_INIT_SEED_CONTENT  = "INIT_SEED_CONTENT"
+ENV_INIT_SEED_SHARE    = "INIT_SEED_SHARE"
+ENV_INIT_SEED_USERNAME = "INIT_SEED_USERNAME"
+ENV_INIT_SEED_PASSWORD = "INIT_SEED_PASSWORD"
+
+parser = argparse.ArgumentParser(description="Alfresco Content Seeder")
+parser.add_argument("config", metavar="config", action="store", help=f"The configuration to use (if not given, it will be read from the {ENV_INIT_SEED_CONF} environment variable)", type=str, nargs="?")
+parser.add_argument("--content", metavar="content", action="store", help=f"The Alfresco content URL (if not given, it will be read from the {ENV_INIT_SEED_CONTENT} environment variable)", type=str, nargs=1)
+parser.add_argument("--share", metavar="share", action="store", help=f"The Alfresco share URL (if not given, it will be read from the {ENV_INIT_SEED_SHARE} environment variable)", type=str, nargs=1)
+parser.add_argument("--username", metavar="username", action="store", help=f"The username to authenticate with (if not given, it will be read from the {ENV_INIT_SEED_USERNAME} environment variable)", type=str, nargs=1)
+parser.add_argument("--password", metavar="password", action="store", help=f"The password to authenticate with (if not given, it will be read from the {ENV_INIT_SEED_PASSWORD} environment variable)", type=str, nargs=1)
+
+args = parser.parse_args()
+
+logging.basicConfig(level=logging.INFO, format = '%(asctime)s - %(levelname)s - %(message)s')
+
+def fail(msg):
+    logging.error(msg)
+    exit(1)
+
+def to_boolean(v):
+	t = type(v)
+	if t == bool:
+		return t
+	if t == str:
+		return ("true" == v.lower())
+	return True if v else False
+
+if args.config:
+    # If the parameter is given, use it
+    source_file = args.config
+    if source_file == "-":
+        source_file = sys.stdin
+        source_file_is_file = False
+    else:
+        source_file_is_file = True
+elif ENV_INIT_SEED_CONF in os.environ:
+    source_file = os.environ[ENV_INIT_SEED_CONF]
+    # Check if this points to a file ...
+    source_file_is_file = (os.path.exists(source_file) and os.path.isfile(source_file))
+else:
+    logging.error("Failed to get the configuration from parameters or the environment")
+    parser.print_help()
+    exit(1)
+
+show_data = True
+if source_file_is_file:
+    logging.info(f"Loading the configuration from the file [{source_file}]...")
+    with open(source_file, "r") as f:
+        data = yaml.safe_load(f)
+else:
+    if type(source_file) == str:
+        logging.info(f"Parsing the configuration from the string: [\n{source_file}\n]...")
+        show_data = False
+    else:
+        logging.info("Parsing the configuration from stdin...")
+    data = yaml.safe_load(source_file)
+
+if data is None:
+    fail("Data is not in YAML format")
+
+CONTENT = "http://localhost:8080/alfresco"
+if args.content:
+    CONTENT = args.content[0]
+elif ENV_INIT_SEED_CONTENT in os.environ:
+    CONTENT = os.environ[ENV_INIT_SEED_CONTENT]
+if not CONTENT:
+	fail("Must provide a CONTENT URL to connect to")
+logging.info(f"Using CONTENT URL [{CONTENT}]")
+
+SHARE = "http://localhost:8080/share"
+if args.share:
+    SHARE = args.share[0]
+elif ENV_INIT_SEED_SHARE in os.environ:
+    SHARE = os.environ[ENV_INIT_SEED_SHARE]
+if not SHARE:
+	fail("Must provide a SHARE URL to connect to")
+logging.info(f"Using SHARE URL [{SHARE}]")
+
+USERNAME = "admin"
+if args.username:
+    USERNAME = args.username[0]
+elif ENV_INIT_SEED_USERNAME in os.environ:
+    USERNAME = os.environ[ENV_INIT_SEED_USERNAME]
+if not USERNAME:
+	USERNAME = "admin"
+logging.info(f"Using username [{USERNAME}]")
+
+PASSWORD = "admin"
+if args.password:
+    PASSWORD = args.password[0]
+elif ENV_INIT_SEED_PASSWORD in os.environ:
+    PASSWORD = os.environ[ENV_INIT_SEED_PASSWORD]
+if not PASSWORD:
+	fail("Must provide a password to authenticate with")
+
+
+def login():
+	session = requests.Session()
+
+	try:
+		session.auth = ( USERNAME, PASSWORD )
+		headers = { "Content-Type" : "application/x-www-form-urlencoded" }
+		data = {
+			"success": "/share/page/",
+			"failure": "/share/page/?error=true",
+			"username": USERNAME,
+			"password": PASSWORD
+		}
+
+		# Base login
+		logging.info(f"Logging into {SHARE} ...")
+		rsp = session.post(f"{SHARE}/page/dologin", headers = headers, data = data)
+		if rsp.status_code > 400:
+			fail(f"Failed to log into share at {SHARE} - rc: {rsp.status_code}")
+		else:
+			logging.info(f"\tLogged in! (rc: {rsp.status_code})")
+
+		cookies = requests.utils.dict_from_cookiejar(session.cookies)
+		if "alfLogin" not in cookies:
+			fail(f"Login failed - unable to authenticate to {SHARE} using the given credentials (user = {USERNAME})")
+
+		if "Alfresco-CSRFToken" not in cookies:
+			# If we didn't get it the first time around, execute a request to get it
+			logging.info("CSRF Token not found in the login response, fetching it explicitly")
+			rsp = session.get("{SHARE}/service/modules/authenticated?a=user")
+			if rsp.status_code > 400:
+				fail(f"Failed to fetch the CSRF token from {SHARE} - rc: {rsp.status_code}")
+			else:
+				logging.info(f"\tRequest complete! (rc: {rsp.status_code})")
+
+			cookies = requests.utils.dict_from_cookiejar(session.cookies)
+			if "Alfresco-CSRFToken" not in cookies:
+				fail(f"Failed to fetch the CSRF token from {SHARE} - the token was not returned as a cookie")
+
+		session.headers["Alfresco-CSRFToken"] = urllib.parse.unquote(cookies["Alfresco-CSRFToken"])
+	except Exception as e:
+		fail(f"Failed to login and obtain the CSRF token from {SHARE}\n{traceback.format_exc()}")
+
+	logging.info("Logged in, and CSRF token retrieved.")
+	return session
+
+def create_content_folders(session, site, root, contents):
+	if not root:
+		root = "documentLibrary"
+	logging.info(f"\tFetching the contents of site [{site}] (root = {root})...")
+
+	rsp = session.get(f"{CONTENT}/s/slingshot/doclib/container/{site}/{root}")
+	if rsp.status_code >= 400:
+		fail(f"\tFailed to obtain the nodeRef for the root folder [{root}] for content site [{site}] (sc: {rsp.status_code}): {rsp.json()}")
+
+	rootNodeRef = rsp.json()["container"]["nodeRef"]
+
+	rsp = session.get(f"{CONTENT}/s/slingshot/doclib/treenode/site/{site}/{root}?perms=false&children=false&max=1000")
+	if rsp.status_code >= 400:
+		fail(f"\tFailed to obtain the contents of the root folder [{root}] for content site [{site}] (sc: {rsp.status_code}): {rsp.json()}")
+
+	items = rsp.json()["items"]
+	logging.info(f"\tFound {len(items)} children in the root")
+	
+	elements = set()
+	for i in items:
+		elements.add(i["name"])
+
+	for item in contents.keys():
+		if item in elements:
+			logging.info(f"\tDuplicate object: [{item}] ... skipping!")
+			continue
+
+		logging.info(f"\tCreating the folder [{item}]...")
+		rsp = session.post(f"{CONTENT}/s/api/site/folder/{site}/{root}", json = { "name" : item, "title" : item })
+		if rsp.status_code >= 400:
+			fail(f"\tFailed to create the folder [{item}] on content site [{site}] (sc: {rsp.status_code}): {rsp.json()}")
+
+	logging.info("\tContent folders created!")
+
+def create_categories(session, site, root, contents):
+	pass
+
+rmSite = ""
+rmEnabled = False
+
+if "recordsManagement" in data:
+	rmConf = data["recordsManagement"]
+	if type(rmConf) != dict:
+		fail("The configuration data is malformed - the 'recordsManagement' value must be a map")
+
+	if "site" in rmConf:
+		rmSite = str(rmConf["site"])
+
+	if "enabled" in rmConf:
+		rmEnabled = to_boolean(rmConf["enabled"])
+	else:
+		rmEnabled = True
+
+	if not rmSite or not rmEnabled:
+		rmSite = ""
+		rmEnabled = False
+
+site_atts = [ "title", "description", "sitePreset", "visibility", "type", "compliance" ]
+
+if "sites" not in data:
+	logging.info("No sites to seed.")
+	exit(0)
+
+try:
+	sites = data["sites"]
+	if type(sites) != dict:
+		fail("The configuration data is malformed - the 'sites' value must be a map")
+
+	session = login()
+
+	session.headers["Content-Type"] = "application/json"
+	session.headers["Accept"] = "*/*"
+
+	for name, site in sites.items():
+		name = name.strip()
+		if not name:
+			fail("The configuration data is malformed - there is a site with an empty name")
+
+		if type(site) != dict:
+			fail(f"The configuration data is malformed - the value 'sites.{name}' must be a map")
+
+		# Gather the site's attributes
+		site_info = {}
+		site_info["shortName"] = name
+		for att in site_atts:
+			if att not in site:
+				fail(f"The configuration data is malformed - the value 'sites.{name}.{att}' is missing")
+
+			v = site[att]
+			if type(v) != str:
+				fail(f"The configuration data is malformed - the value 'sites.{name}.{att}' must be a string")
+			site_info[att] = site[att]
+
+		# We have everything we want, prep for execution
+		site_info["id"] = name
+
+		if name != rmSite:
+			desc = "content"
+			func = create_content_folders
+		else:
+			desc = "records management"
+			func = create_categories
+
+		logging.info(f"Creating the {desc} site [{name}]...")
+		rsp = session.post(f"{SHARE}/service/modules/create-site", json=site_info)
+
+		if rsp.status_code >= 400:
+			result = rsp.json()
+			if ("message" in result) and (result["message"] == "error.duplicateShortName"):
+				logging.info(f"\tThe site {desc} [{name}] already exists, skipping")
+				# continue
+			else:
+				fail(f"\tFailed to create the {desc} site [{name}] (rc: {rsp.status_code}): {result}")
+
+		if "root" in site:
+			root = site["root"]
+		else:
+			root = None
+
+		if "contents" not in site:
+			logging.info(f"\tNo contents specified for site [{name}]")
+			continue
+
+		contents = site["contents"]
+		if type(contents) != dict:
+			fail(f"The configuration data is malformed - the value 'sites.{name}.contents' must be a map")
+
+		try:
+			func(session, name, root, contents)
+		except Exception as e:
+			fail(f"Failed to create the contents for site {name} (rm={name == rmSite}): {e}")
+
+	logging.info("Seeding completed.")
+	exit(0)
+except KeyboardInterrupt:
+	logging.error("Execution interrupted, exiting.")
+	sys.exit(1)
+except Exception as e:
+	fail(f"Seeding procedure failed\n{traceback.format_exc()}")
