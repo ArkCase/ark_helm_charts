@@ -14,11 +14,11 @@ import traceback
 import urllib
 import yaml
 
-ENV_INIT_SEED_CONF     = "INIT_SEED_CONF"
-ENV_INIT_SEED_CONTENT  = "INIT_SEED_CONTENT"
-ENV_INIT_SEED_SHARE    = "INIT_SEED_SHARE"
-ENV_INIT_SEED_USERNAME = "INIT_SEED_USERNAME"
-ENV_INIT_SEED_PASSWORD = "INIT_SEED_PASSWORD"
+ENV_INIT_SEED_CONF         = "INIT_SEED_CONF"
+ENV_INIT_SEED_CONTENT      = "INIT_SEED_CONTENT"
+ENV_INIT_SEED_SHARE        = "INIT_SEED_SHARE"
+ENV_INIT_SEED_USERNAME     = "INIT_SEED_USERNAME"
+ENV_INIT_SEED_PASSWORD     = "INIT_SEED_PASSWORD"
 ENV_INIT_SEED_IGNORE_DUPES = "INIT_SEED_IGNORE_DUPES"
 
 parser = argparse.ArgumentParser(description="Alfresco Content Seeder")
@@ -34,8 +34,8 @@ args = parser.parse_args()
 logging.basicConfig(level=logging.INFO, format = '%(asctime)s - %(levelname)s - %(message)s')
 
 def fail(msg):
-    logging.error(msg)
-    exit(1)
+	logging.error(msg)
+	exit(1)
 
 def to_boolean(v):
 	t = type(v)
@@ -46,76 +46,76 @@ def to_boolean(v):
 	return True if v else False
 
 if args.config:
-    # If the parameter is given, use it
-    source_file = args.config
-    if source_file == "-":
-        source_file = sys.stdin
-        source_file_is_file = False
-    else:
-        source_file_is_file = True
+	# If the parameter is given, use it
+	source_file = args.config
+	if source_file == "-":
+		source_file = sys.stdin
+		source_file_is_file = False
+	else:
+		source_file_is_file = True
 elif ENV_INIT_SEED_CONF in os.environ:
-    source_file = os.environ[ENV_INIT_SEED_CONF]
-    # Check if this points to a file ...
-    source_file_is_file = (os.path.exists(source_file) and os.path.isfile(source_file))
+	source_file = os.environ[ENV_INIT_SEED_CONF]
+	# Check if this points to a file ...
+	source_file_is_file = (os.path.exists(source_file) and os.path.isfile(source_file))
 else:
-    logging.error("Failed to get the configuration from parameters or the environment")
-    parser.print_help()
-    exit(1)
+	logging.error("Failed to get the configuration from parameters or the environment")
+	parser.print_help()
+	exit(1)
 
 IGNORE_DUPES = False
 if args.ignore_dupes:
-    IGNORE_DUPES = args.ignore_dupes
+	IGNORE_DUPES = args.ignore_dupes
 elif ENV_INIT_SEED_IGNORE_DUPES in os.environ:
-    IGNORE_DUPES = to_boolean(os.environ[ENV_INIT_SEED_IGNORE_DUPES])
+	IGNORE_DUPES = to_boolean(os.environ[ENV_INIT_SEED_IGNORE_DUPES])
 
 show_data = True
 if source_file_is_file:
-    logging.info(f"Loading the configuration from the file [{source_file}]...")
-    with open(source_file, "r") as f:
-        data = yaml.safe_load(f)
+	logging.info(f"Loading the configuration from the file [{source_file}]...")
+	with open(source_file, "r") as f:
+		data = yaml.safe_load(f)
 else:
-    if type(source_file) == str:
-        logging.info(f"Parsing the configuration from the string: [\n{source_file}\n]...")
-        show_data = False
-    else:
-        logging.info("Parsing the configuration from stdin...")
-    data = yaml.safe_load(source_file)
+	if type(source_file) == str:
+		logging.info(f"Parsing the configuration from the string: [\n{source_file}\n]...")
+		show_data = False
+	else:
+		logging.info("Parsing the configuration from stdin...")
+	data = yaml.safe_load(source_file)
 
 if data is None:
-    fail("Data is not in YAML format")
+	fail("Data is not in YAML format")
 
 CONTENT = "http://localhost:8080/alfresco"
 if args.content:
-    CONTENT = args.content[0]
+	CONTENT = args.content[0]
 elif ENV_INIT_SEED_CONTENT in os.environ:
-    CONTENT = os.environ[ENV_INIT_SEED_CONTENT]
+	CONTENT = os.environ[ENV_INIT_SEED_CONTENT]
 if not CONTENT:
 	fail("Must provide a CONTENT URL to connect to")
 logging.info(f"Using CONTENT URL [{CONTENT}]")
 
 SHARE = "http://localhost:8080/share"
 if args.share:
-    SHARE = args.share[0]
+	SHARE = args.share[0]
 elif ENV_INIT_SEED_SHARE in os.environ:
-    SHARE = os.environ[ENV_INIT_SEED_SHARE]
+	SHARE = os.environ[ENV_INIT_SEED_SHARE]
 if not SHARE:
 	fail("Must provide a SHARE URL to connect to")
 logging.info(f"Using SHARE URL [{SHARE}]")
 
 USERNAME = "admin"
 if args.username:
-    USERNAME = args.username[0]
+	USERNAME = args.username[0]
 elif ENV_INIT_SEED_USERNAME in os.environ:
-    USERNAME = os.environ[ENV_INIT_SEED_USERNAME]
+	USERNAME = os.environ[ENV_INIT_SEED_USERNAME]
 if not USERNAME:
 	USERNAME = "admin"
 logging.info(f"Using username [{USERNAME}]")
 
 PASSWORD = "admin"
 if args.password:
-    PASSWORD = args.password[0]
+	PASSWORD = args.password[0]
 elif ENV_INIT_SEED_PASSWORD in os.environ:
-    PASSWORD = os.environ[ENV_INIT_SEED_PASSWORD]
+	PASSWORD = os.environ[ENV_INIT_SEED_PASSWORD]
 if not PASSWORD:
 	fail("Must provide a password to authenticate with")
 

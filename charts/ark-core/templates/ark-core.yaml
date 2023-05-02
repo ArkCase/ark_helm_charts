@@ -89,6 +89,43 @@ spec:
             - name: &logsVolume "logs"
               mountPath: &logsDir "/app/logs"
         {{- include "arkcase.initDependencies.container" (dict "ctx" $ "name" "init-dependencies") | nindent 8 }}
+        - name: seed-content
+          {{- include "arkcase.image" (dict "ctx" $ "name" "seed-content" "repository" "arkcase/nettest") | nindent 10 }}
+          command: [ "/seed-content" ]
+          env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            - name: INIT_SEED_CONF
+              value: "/seed-content.yaml"
+            - name: INIT_SEED_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: &secretName {{ include "arkcase.fullname" $ | quote }}
+                  key: "contentUsername"
+            - name: INIT_SEED_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: *secretName
+                  key: "contentPassword"
+            - name: INIT_SEED_CONTENT
+              valueFrom:
+                secretKeyRef:
+                  name: *secretName
+                  key: "contentUrl"
+            - name: INIT_SEED_SHARE
+              valueFrom:
+                secretKeyRef:
+                  name: *secretName
+                  key: "contentShareUrl"
+            - name: INIT_SEED_IGNORE_DUPES
+              value: "true"
+          volumeMounts:
+            - name: &configMap "config-map"
+              mountPath: "/seed-content"
+              subPath: &seedContent "seed-content"
+              readOnly: true
+            - name: *configMap
+              mountPath: "/seed-content.yaml"
+              subPath: &seedContentYaml "seed-content.yaml"
+              readOnly: true
       containers:
         - name: arkcase
           {{- with ($.Values.securityContext).arkcase }}
@@ -150,7 +187,7 @@ spec:
               mountPath: "/app/home/.arkcase"
             - name: *warVolume
               mountPath: "/app/tomcat/webapps/arkcase"
-            - name: &configMap "config-map"
+            - name: *configMap
               mountPath: "/app/home/.arkcase/acm/acm-config-server-repo/spring/quartz.properties"
               subPath: &quartzProperties "quartz.properties"
               readOnly: true
@@ -249,7 +286,7 @@ spec:
         - name: *secrets
           secret:
             optional: false
-            secretName: {{ include "arkcase.fullname" $ | quote }}
+            secretName: *secretName
             defaultMode: 0444
             items:
               - key: *applicationYaml
@@ -280,6 +317,10 @@ spec:
                 path: *springConfigProxyXml
               - key: *log4j2Xml
                 path: *log4j2Xml
+              - key: *seedContent
+                path: *seedContent
+              - key: *seedContentYaml
+                path: *seedContentYaml
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "init") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "home") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "conf") | nindent 8 }}

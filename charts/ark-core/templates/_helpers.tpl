@@ -31,3 +31,27 @@
   {{- $port := (include "arkcase.tools.conf" (dict "ctx" $ "value" "messaging.openwire") | default "61616" | int) -}}
   {{- printf "%s://%s:%d" $scheme $host $port -}}
 {{- end -}}
+
+{{- define "arkcase.core.content.url" -}}
+  {{- if not (include "arkcase.isRootContext" $) -}}
+    {{- fail "Must send the root context as the only parameter" -}}
+  {{- end -}}
+
+  {{- $contentUrl := (include "arkcase.tools.conf" (dict "ctx" $ "value" "content.url")) -}}
+  {{- if not ($contentUrl) -}}
+    {{- $contentUrl = "http://content-main:8080/alfresco" -}}
+  {{- end -}}
+  {{- $contentUrl -}}
+{{- end -}}
+
+{{- define "arkcase.core.content.share" -}}
+  {{- if not (include "arkcase.isRootContext" $) -}}
+    {{- fail "Must send the root context as the only parameter" -}}
+  {{- end -}}
+
+  {{- $shareUrl := (include "arkcase.tools.conf" (dict "ctx" $ "value" "content.shareUrl")) -}}
+  {{- if not ($shareUrl) -}}
+    {{- $shareUrl = "http://content-share:8080/share" -}}
+  {{- end -}}
+  {{- $shareUrl -}}
+{{- end -}}
