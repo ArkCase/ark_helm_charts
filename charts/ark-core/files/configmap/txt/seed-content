@@ -192,7 +192,13 @@ def create_content_folders(session, site, root, contents):
 		if rsp.status_code >= 400:
 			fail(f"\t\tFailed (sc: {rsp.status_code}): {rsp.text}")
 
-		logging.info(f"\t\tCreated as [{rsp.text}]")
+		try:
+			nodeRef = rsp.json()["nodeRef"]
+		except json.decoder.JSONDecodeError as e:
+			# FIX A BUG WITH THE JSON ... thanks, Alfresco!
+			nodeRef = json.loads(rsp.text.replace("}", '"a":"b"}'))["nodeRef"]
+
+		logging.info(f"\t\tCreated as [{nodeRef}]")
 
 	logging.info("\tContent folders created!")
 
