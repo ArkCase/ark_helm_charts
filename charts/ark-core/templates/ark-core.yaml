@@ -61,10 +61,10 @@ spec:
             - name: REALM_FIX
               value: {{ printf "arkcase.org=%s" (include "arkcase.tools.ldap" (dict "ctx" $ "value" "domain")) | quote }}
           volumeMounts:
-            - name: "conf"
-              mountPath: "/app/conf"
-            - name: "war"
-              mountPath: "/app/war"
+            - name: &confVolume "conf"
+              mountPath: "/app/depl/conf"
+            - name: &warVolume "war"
+              mountPath: "/app/depl/war"
         - name: set-permissions
           {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
@@ -78,14 +78,14 @@ spec:
                     flags: [ "recurse", "noforced", "create", "changes" ]
                     targets: [ "/app/home", "/app/conf", "/app/war", "/app/logs" ]
           volumeMounts:
+            - name: *confVolume
+              mountPath: &confDir "/app/conf"
+            - name: *warVolume
+              mountPath: &warDir "/app/war"
             - name: &initVolume "home"
               mountPath: &initDir "/app/init"
             - name: &homeVolume "home"
               mountPath: &homeDir "/app/home"
-            - name: &confVolume "conf"
-              mountPath: &confDir "/app/conf"
-            - name: &warVolume "war"
-              mountPath: &warDir "/app/war"
             - name: &logsVolume "logs"
               mountPath: &logsDir "/app/logs"
         {{- include "arkcase.initDependencies.container" (dict "ctx" $ "name" "init-dependencies") | nindent 8 }}
@@ -319,6 +319,7 @@ spec:
                 path: *log4j2Xml
               - key: *seedContent
                 path: *seedContent
+                mode: 0555
               - key: *seedContentYaml
                 path: *seedContentYaml
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "init") | nindent 8 }}

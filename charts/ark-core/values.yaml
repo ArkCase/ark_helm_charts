@@ -80,6 +80,7 @@ configuration:
 
   content: &content
     url: "http://content-main:8080/alfresco"
+    shareUrl: "http://content-share:8080/share"
     username: "admin"
     password: "admin"
 
@@ -118,6 +119,7 @@ command:
   # TODO: This command is intended for debugging purposes *ONLY*
   # arkcase: [ "sleep", "infinity" ]
 
+# TODO: These need to be computed based on dynamic URLs ... probably rendered via helper?
 initDependencies:
   enabled: true
   mode: all
@@ -154,7 +156,10 @@ initDependencies:
         - 80
         - 443
         - 8983
-    content:
+    content-main:
+      ports:
+        - 8080
+    content-share:
       ports:
         - 8080
 
