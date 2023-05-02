@@ -291,9 +291,8 @@ def create_categories(session, site, root, contents):
 def grant_group_access(session, site, admin_role, groups):
 	logging.info(f"\tGranting access to site [{site}]")
 	for group, role in groups.items():
-		quoted_name = urllib.parse.quote(group, safe='')
-
-		rsp = session.get(f"{CONTENT}/api/-default-/public/alfresco/versions/1/groups/{quoted_name}")
+		full_group_name = f"GROUP_{urllib.parse.quote(group, safe='')}"
+		rsp = session.get(f"{CONTENT}/api/-default-/public/alfresco/versions/1/groups/{full_group_name}")
 		if rsp.status_code >= 400:
 			if rsp.status_code == 404:
 				logging.error(f"\t\t\tGroup [{group}] was not found, skipping!")
@@ -305,22 +304,22 @@ def grant_group_access(session, site, admin_role, groups):
 		# This only applies to RM ...
 		if (site == rmSite) and admin_role:
 			logging.info(f"\t\tAdding groups to the records management role [{admin_role}]")
-			rsp = session.post(f"{CONTENT}/s/api/rm/roles/{admin_role}/authorities/GROUP_{quoted_name}?return_content=yes")
+			rsp = session.post(f"{CONTENT}/s/api/rm/roles/{admin_role}/authorities/{full_group_name}?return_content=yes")
 			if rsp.status_code >= 400:
 				fail(f"\t\t\tFailed (sc: {rsp.status_code}): {rsp.text}")
-			logging.info(f"\t\t\tGranted: {rsp.text}")
+			logging.info(f"\t\t\tGranted!")
 
 		if group and role:
 			logging.info(f"\t\tGranting role [{role}] to group [{group}]")
 			rsp = session.post(f"{CONTENT}/s/api/sites/{site}/memberships?return_content=yes", json = {
 				"group" : {
-					"fullName": f"GROUP_{group}"
+					"fullName": full_group_name
 				},
 				"role": role
 			})
 			if rsp.status_code >= 400:
 				fail(f"\t\t\tFailed (sc: {rsp.status_code}): {rsp.text}")
-			logging.info(f"\t\t\tGranted: {rsp.text}")
+			logging.info(f"\t\t\tGranted!")
 
 rmSite = ""
 rmEnabled = False
