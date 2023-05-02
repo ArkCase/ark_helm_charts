@@ -197,22 +197,6 @@ def create_content_folders(session, site, root, contents):
 
 	logging.info("\tContent folders created!")
 
-def grant_content_access(session, site, groups):
-	logging.info(f"\tGranting access to the content site [{site}]")
-	for group, role in groups.items():
-		if (not group) or (not role):
-			continue
-		logging.info(f"\t\tGranting access to group [{group}]")
-		rsp = session.post(f"{CONTENT}/s/api/sites/{site}/memberships?return_content=yes", json = {
-			"group" : {
-				"fullName": f"GROUP_{group}"
-			},
-			"role": role
-		})
-		if rsp.status_code >= 400:
-			fail(f"\t\t\tFailed (sc: {rsp.status_code}): {rsp.text}")
-		logging.info(f"\t\t\tGranted: {rsp.text}")
-
 def create_category(session, site, parent, name):
 	now = datetime.now().replace(tzinfo=timezone.utc)
 
@@ -306,31 +290,39 @@ def create_categories(session, site, root, contents):
 
 	logging.info("\tRecord management categories created!")
 
-def grant_records_management_access(session, site, groups):
-	logging.info(f"\tGranting access to the records management site [{site}]")
-	admin_role = "Administrator"
+def grant_group_access(session, site, admin_role, groups):
+	logging.info(f"\tGranting access to site [{site}]")
 	for group, role in groups.items():
-		if (not group) or (not role):
-			continue
+		quoted_name = urllib.parse.quote(group, safe='')
 
-		logging.info(f"\tAdding groups to the records management admin role")
-		encoded_group = urllib.parse.quote(group, safe='')
-		rsp = session.post(f"{CONTENT}/s/api/rm/roles/{admin_role}/authorities/GROUP_{encoded_group}?return_content=yes")
+		rsp = session.get(f"{CONTENT}/api/-default-/public/alfresco/versions/1/groups/{quoted_name}")
 		if rsp.status_code >= 400:
-			fail(f"\t\t\tFailed (sc: {rsp.status_code}): {rsp.text}")
-		logging.info(f"\t\t\tGranted: {rsp.text}")
+			if rsp.status_code == 404:
+				logging.error(f"\t\t\tGroup [{group}] was not found, skipping!")
+				continue
+			fail(f"\t\t\tFailed to check for the existence of group [{group}] (sc: {rsp.status_code}): {rsp.text}")
 
-		logging.info(f"\t\tGranting access to group [{group}]")
-		rsp = session.post(f"{CONTENT}/s/api/sites/{site}/memberships?return_content=yes", json = {
-			"group" : {
-				"fullName": f"GROUP_{group}"
-			},
-			"role": role
-		})
-		if rsp.status_code >= 400:
-			#fail(f"\t\t\tFailed (sc: {rsp.status_code}): {rsp.text}")
-			pass
-		logging.info(f"\t\t\tGranted: {rsp.text}")
+		# Group exists ... keep going!
+
+		# This only applies to RM ...
+		if (site == rmSite) and admin_role:
+			logging.info(f"\t\tAdding groups to the records management role [{admin_role}]")
+			rsp = session.post(f"{CONTENT}/s/api/rm/roles/{admin_role}/authorities/GROUP_{quoted_name}?return_content=yes")
+			if rsp.status_code >= 400:
+				fail(f"\t\t\tFailed (sc: {rsp.status_code}): {rsp.text}")
+			logging.info(f"\t\t\tGranted: {rsp.text}")
+
+		if group and role:
+			logging.info(f"\t\tGranting role [{role}] to group [{group}]")
+			rsp = session.post(f"{CONTENT}/s/api/sites/{site}/memberships?return_content=yes", json = {
+				"group" : {
+					"fullName": f"GROUP_{group}"
+				},
+				"role": role
+			})
+			if rsp.status_code >= 400:
+				fail(f"\t\t\tFailed (sc: {rsp.status_code}): {rsp.text}")
+			logging.info(f"\t\t\tGranted: {rsp.text}")
 
 rmSite = ""
 rmEnabled = False
@@ -394,11 +386,9 @@ try:
 		if name != rmSite:
 			desc = "content"
 			creator = create_content_folders
-			grant_group_access = grant_content_access
 		else:
 			desc = "records management"
 			creator = create_categories
-			grant_group_access = grant_records_management_access
 
 		logging.info(f"Creating the {desc} site [{name}]...")
 		rsp = session.post(f"{SHARE}/service/modules/create-site", json=site_info)
@@ -436,10 +426,16 @@ try:
 			if type(groups) != dict:
 				fail(f"The configuration data is malformed - the value 'sites.{name}.groups' must be a map")
 
+			admin_role = None
+			if "adminRole" in site:
+				admin_role = site["adminRole"]
+				if type(admin_role) != str:
+					fail(f"The configuration data is malformed - the value 'sites.{name}.adminRole' must be a string")
+
 			try:
-				grant_group_access(session, name, groups)
+				grant_group_access(session, name, admin_role, groups)
 			except Exception as e:
-				fail(f"Failed to create the contents for site {name} (rm={name == rmSite})\n{traceback.format_exc()}")
+				fail(f"Failed to grant access for site {name} (rm={name == rmSite})\n{traceback.format_exc()}")
 
 	logging.info("Seeding completed.")
 	exit(0)
