@@ -273,10 +273,9 @@ def create_categories(session, site, root, contents):
 		fail(f"\tFailed to fetch the contents of the root category [{root}] in records management site [{site}] (sc: {rsp.status_code}): {rsp.text}")
 
 	items = rsp.json()["items"]
+	elements = set()
 	if items:
 		logging.info(f"\tFound {len(items)} items in the root element [{root}]")
-
-		elements = set()
 		for i in items:
 			elements.add(i["name"])
 
