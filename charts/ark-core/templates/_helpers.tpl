@@ -55,11 +55,3 @@
   {{- end -}}
   {{- $shareUrl -}}
 {{- end -}}
-
-{{- define "arkcase.core.baseUrl.scheme" -}}
-  {{- $baseUrl := (include "arkcase.tools.conf" (dict "ctx" $ "value" "baseUrl")) -}}
-  {{- if $baseUrl -}}
-    {{- $baseUrl = (include "arkcase.tools.parseUrl" $baseUrl | fromYaml) -}}
-    {{- $baseUrl.scheme -}}
-  {{- end -}}
-{{- end -}}
