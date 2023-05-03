@@ -16,13 +16,8 @@ configuration:
   baseUrl: "http://server.dev.arkcase.com:8080/arkcase"
 
   proxy:
-    reports:
-      url: "http://reports:8080"
-      scheme: "https"
-
-    weather:
-      url: "https://api.openweathermap.org/data/2.5"
-      scheme: "https"
+    reports: "http://reports:8080"
+    weather: "https://api.openweathermap.org/data/2.5"
 
   db:
     dialect: "postgres"
