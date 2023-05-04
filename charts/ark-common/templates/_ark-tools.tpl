@@ -743,6 +743,10 @@ result: "DC=some,DC=domain,DC=com"
       {{- $port = 443 -}}
     {{- else if eq "http" $data.scheme -}}
       {{- $port := 80 -}}
+    {{- else if eq "ldaps" $data.scheme -}}
+      {{- $port = 636 -}}
+    {{- else if eq "ldap" $data.scheme -}}
+      {{- $port := 389 -}}
     {{- else if eq "ftp" $data.scheme -}}
       {{- $port := 21 -}}
     {{- else if eq "ftps" $data.scheme -}}
