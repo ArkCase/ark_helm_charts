@@ -27,7 +27,7 @@ global:
 
 Then deploy, like so:
 
-    $ helm install arkcase arkcase/arkcase -f conf.yaml
+    $ helm install arkcase arkcase/app -f conf.yaml
 
 And that's it. This should yield a fully-working ArkCase stack, with all required components, and with all storage volumes using storage class `glusterfs`. During deployment, the infrastructure will be expected to fulfill all rendered volume claim templates by automatically provisioning volumes (or attaching to existing ones), or bind the incoming claims to already-existing volumes accordingly.
 

@@ -69,7 +69,7 @@ global:
 
 In a real world scenario, you would construct the license file, name it something meaningful (like `licenses.yaml`), and deploy ArkCase referencing it, like so:
 
-    $ helm install arkcase arkcase/arkcase -f licenses.yaml -f values.yaml
+    $ helm install arkcase arkcase/app -f licenses.yaml -f values.yaml
 
 This is a real-world example (with fake licenses, of course) of the licenses required for a full Enterprise Edition ArkCase stack (ArkCase EE, Pentaho EE, Alfresco EE, PDFTron EE):
 

@@ -66,7 +66,7 @@ Before you can deploy ArkCase, it's important to understand that it can be deplo
 
 The simplest way to deploy the chart is by using helm, and referencing any additional configuration files you may need (such as licenses, or other configurations):
 
-    $ helm install arkcase arckase/arkcase-0.1.0 -f licenses.yaml -f ingress.yaml -f conf.yaml
+    $ helm install arkcase arckase/app-0.2.0 -f licenses.yaml -f ingress.yaml -f conf.yaml
 
 The contents of the configuration files are discussed in the [configuration section](#configuration).
 
