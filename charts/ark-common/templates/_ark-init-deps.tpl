@@ -38,28 +38,28 @@ that checks the boot order
   {{- if hasKey $template "initialDelay" -}}
     {{- $tempVar := ($template.initialDelay | int) -}}
     {{- if lt $tempVar 0 -}}
-      {{- $crap := set $template "initialDelay" 0 -}}
+      {{- $template = set $template "initialDelay" 0 -}}
     {{- end -}}
   {{- end -}}
 
   {{- if hasKey $template "delay" -}}
     {{- $tempVar := ($template.delay | int) -}}
     {{- if lt $tempVar 0 -}}
-      {{- $crap := set $template "delay" 1 -}}
+      {{- $template = set $template "delay" 1 -}}
     {{- end -}}
   {{- end -}}
 
   {{- if hasKey $template "timeout" -}}
     {{- $tempVar := ($template.timeout | int) -}}
     {{- if lt $tempVar 0 -}}
-      {{- $crap := set $template "timeout" 1 -}}
+      {{- $template = set $template "timeout" 1 -}}
     {{- end -}}
   {{- end -}}
 
   {{- if hasKey $template "attempts" -}}
     {{- $tempVar := ($template.attempts | int) -}}
     {{- if lt $tempVar 0 -}}
-      {{- $crap := set $template "attempts" 1 -}}
+      {{- $template = set $template "attempts" 1 -}}
     {{- end -}}
   {{- end -}}
 
@@ -74,38 +74,75 @@ that checks the boot order
   {{- $initDependencies := dict -}}
   {{- range $hostname, $value := $dependencies -}}
 
-    {{- if not (include "arkcase.tools.checkHostname" $hostname) -}}
-      {{- fail (printf "The hostname '%s' is not a valid hostname per RFC-1123" $hostname) -}}
+    {{- /* Resolve this hostname to the service's actual hostname. If there's no 'url' or */ -}}
+    {{- /* 'hostname' attribute in the requisite section, then keep using the original value */ -}}
+
+    {{- $targetHostName := $hostname -}}
+    {{- $targetPort := $value -}}
+    {{- $replacement := (include "arkcase.tools.get" (dict "ctx" $ "name" (printf "Values.global.conf.%s" $hostname)) | fromYaml) -}}
+    {{- if and $replacement $replacement.value (kindIs "map" $replacement.value) -}}
+      {{- $newHostName := "" -}}
+      {{- $portSource := dict -}}
+      {{- if (hasKey $replacement.value "url") -}}
+        {{- $url := (include "arkcase.tools.parseUrl" ($replacement.value.url | toString) | fromYaml) -}}
+        {{- if hasKey $url "host" -}}
+          {{- $newHostName = $url.host -}}
+          {{- $portSource = $url -}}
+        {{- end -}}
+      {{- else -}}
+        {{- if (hasKey $replacement.value "hostname") -}}
+          {{- $newHostName = ($replacement.value | toString) -}}
+        {{- end -}}
+        {{- if (hasKey $replacement.value "port") -}}
+          {{- $portSource = $replacement.value -}}
+        {{- end -}}
+      {{- end -}}
+
+      {{- if and (hasKey $portSource "port") $portSource.port -}}
+        {{- $targetPort = $portSource.port -}}
+      {{- end -}}
+
+      {{- if $newHostName -}}
+        {{- $targetHostName = $newHostName -}}
+      {{- end -}}
     {{- end -}}
 
-    {{- if or (kindIs "string" $value) (kindIs "int" $value) (kindIs "int64" $value) (kindIs "float64" $value) -}}
-      {{- $newPort := (include "arkcase.tools.checkPort" $value) -}}
-      {{- if not $newPort -}}
-        {{- fail (printf "The port specification [%s] for the initDependency '%s' must either be a valid service spec (from /etc/services) or a port number between 1 and 65535" $value $hostname) -}}
+    {{- if not (include "arkcase.tools.checkHostname" $targetHostName) -}}
+      {{- if eq $targetHostName $hostname -}}
+        {{- fail (printf "The hostname '%s' is not a valid hostname per RFC-1123" $hostname) -}}
+      {{- else -}}
+        {{- fail (printf "The initDependency '%s' resolves to the invalid hostname '%s' - it's not a valid hostname per RFC-1123" $hostname $targetHostName) -}}
       {{- end -}}
-      {{- $value = list $newPort -}}
+    {{- end -}}
+
+    {{- if or (kindIs "string" $targetPort) (kindIs "int" $targetPort) (kindIs "int64" $targetPort) (kindIs "float64" $targetPort) -}}
+      {{- $newPort := (include "arkcase.tools.checkPort" $targetPort) -}}
+      {{- if not $newPort -}}
+        {{- fail (printf "The port specification [%s] for the initDependency '%s' must either be a valid service spec (from /etc/services) or a port number between 1 and 65535" $targetPort $hostname) -}}
+      {{- end -}}
+      {{- $targetPort = list $newPort -}}
       {{- /* We keep going b/c the rest of the code will handle things */ -}}
     {{- end -}}
 
-    {{- if $value -}}
+    {{- if $targetPort -}}
       {{- $dependency := dict -}}
-      {{- if kindIs "slice" $value -}}
+      {{- if kindIs "slice" $targetPort -}}
         {{- /* We already know the list isn't empty, we just need to validate the contents */ -}}
         {{- $ports := list -}}
-        {{- range $port := $value -}}
+        {{- range $port := $targetPort -}}
           {{- $newPort := (include "arkcase.tools.checkPort" $port) -}}
           {{- if not $newPort -}}
             {{- fail (printf "The port specification [%s] for the initDependency '%s' must either be a valid service spec (from /etc/services) or a port number between 1 and 65535" $port $hostname) -}}
           {{- end -}}
           {{- /* Add the valid port into the ports list */ -}}
-          {{- $ports = append $ports $newPort -}}
+          {{- $ports = append $ports ($newPort | atoi) -}}
         {{- end -}}
         {{- /* The contents have been validated and cleaned up, now fill in the rest of it */ -}}
         {{- $dependency = set $dependency "ports" $ports -}}
-      {{- else if kindIs "map" $value -}}
+      {{- else if kindIs "map" $targetPort -}}
         {{- $ports := list -}}
-        {{- if $value.ports -}}
-          {{- $ports = $value.ports -}}
+        {{- if $targetPort.ports -}}
+          {{- $ports = $targetPort.ports -}}
         {{- end -}}
         {{- if not (kindIs "slice" $ports) -}}
           {{- fail (printf "The 'ports' entry for '%s' must be a list of ports (%s)" $hostname (typeOf $ports)) -}}
@@ -113,40 +150,40 @@ that checks the boot order
 
         {{- if $ports -}}
           {{- /* Validate the configuration values for this dependency */ -}}
-          {{- if hasKey $value "mode" -}}
-            {{- $tempVar := ($value.mode | toString | lower) -}}
+          {{- if hasKey $targetPort "mode" -}}
+            {{- $tempVar := ($targetPort.mode | toString | lower) -}}
             {{- if and (ne $tempVar "all") (ne $tempVar "any") -}}
               {{- fail (printf "Unknown value for the dependency [%s] tracking mode: [%s] - must be either 'all' or 'any'" $hostname $tempVar) -}}
             {{- end -}}
-            {{- $value = set $dependency "mode" $tempVar -}}
+            {{- $targetPort = set $dependency "mode" $tempVar -}}
           {{- end -}}
 
-          {{- if hasKey $value "initialDelay" -}}
-            {{- $tempVar := ($value.initialDelay | int) -}}
+          {{- if hasKey $targetPort "initialDelay" -}}
+            {{- $tempVar := ($targetPort.initialDelay | int) -}}
             {{- if lt $tempVar 0 -}}
               {{- $tempVar = 0 -}}
             {{- end -}}
             {{- $crap := set $dependency "initialDelay" $tempVar -}}
           {{- end -}}
 
-          {{- if hasKey $value "delay" -}}
-            {{- $tempVar := ($value.delay | int) -}}
+          {{- if hasKey $targetPort "delay" -}}
+            {{- $tempVar := ($targetPort.delay | int) -}}
             {{- if lt $tempVar 0 -}}
               {{- $tempVar = 0 -}}
             {{- end -}}
             {{- $crap := set $dependency "delay" $tempVar -}}
           {{- end -}}
 
-          {{- if hasKey $value "timeout" -}}
-            {{- $tempVar := ($value.timeout | int) -}}
+          {{- if hasKey $targetPort "timeout" -}}
+            {{- $tempVar := ($targetPort.timeout | int) -}}
             {{- if lt $tempVar 0 -}}
               {{- $tempVar = 1 -}}
             {{- end -}}
             {{- $crap := set $dependency "attempts" $tempVar -}}
           {{- end -}}
 
-          {{- if hasKey $value "attempts" -}}
-            {{- $tempVar := ($value.attempts | int) -}}
+          {{- if hasKey $targetPort "attempts" -}}
+            {{- $tempVar := ($targetPort.attempts | int) -}}
             {{- if lt $tempVar 0 -}}
               {{- $tempVar = 1 -}}
             {{- end -}}
@@ -167,7 +204,7 @@ that checks the boot order
 
       {{- /* If there's a dependency to check, then we add it */ -}}
       {{- if $dependency -}}
-        {{- $initDependencies = set $initDependencies $hostname $dependency -}}
+        {{- $initDependencies = set $initDependencies $targetHostName $dependency -}}
       {{- end -}}
     {{- end -}}
   {{- end -}}
