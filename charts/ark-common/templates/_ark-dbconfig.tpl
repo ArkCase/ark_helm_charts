@@ -12,7 +12,30 @@
   {{- end -}}
 
   {{- $local := (($ctx.Values.configuration).db | default dict) -}}
-  {{- $global := ((($ctx.Values.global).conf).rdbms | default dict) -}}
+
+  {{- $global := (($ctx.Values.global).conf).rdbms -}}
+  {{- if not $global -}}
+    {{- /* This small trick helps the init dependencies to not be wasteful */ -}}
+    {{- /* because as we "alter" the main map, we also allow initDependencies */ -}}
+    {{- /* to only look at the port(s) we're actually interested in for this */ -}}
+    {{- /* specific dialect as-configured */ -}}
+    {{- $global = $ctx.Values -}}
+
+    {{- if not (hasKey $global "global") -}}
+      {{- $global = set $global "global" dict -}}
+    {{- end -}}
+    {{- $global = $ctx.Values.global -}}
+
+    {{- if not (hasKey $global "conf") -}}
+      {{- $global = set $global "conf" dict -}}
+    {{- end -}}
+    {{- $global = $global.conf -}}
+
+    {{- if not (hasKey $global "rdbms") -}}
+      {{- $global = set $global "rdbms" dict -}}
+    {{- end -}}
+    {{- $global = $global.rdbms -}}
+  {{- end -}}
 
   {{- $dialect := coalesce $global.dialect $local.dialect -}}
   {{- if not $dialect -}}
