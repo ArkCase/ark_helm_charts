@@ -2,6 +2,12 @@
 SCRIPT="$(readlink -f "${BASH_SOURCE:-${0}}")"
 BASEDIR="$(dirname "${SCRIPT}")"
 
+#
+# This script helps to manage dependencies when one or more charts are updated.
+# 
+# It automatically triggers downstream builds as required on dependent charts.
+#
+
 HELM_REPO_URL="https://arkcase.github.io/ark_helm_charts/"
 
 say() {
