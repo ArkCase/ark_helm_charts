@@ -1,0 +1,10 @@
+apiVersion: v2
+name: gateway-apache
+version: 0.2.0
+appVersion: "1.0.0"
+description: A Helm chart to provide a reverse proxy to all ArkCase services using Apache
+type: application
+dependencies:
+  - name: common
+    version: ~0.2.0
+    repository: "https://arkcase.github.io/ark_helm_charts"

@@ -1,0 +1,16 @@
+apiVersion: v2
+name: postgres
+version: 0.2.0
+appVersion: "13"
+description: This container image provides a containerized packaging of the PostgreSQL postgres daemon and client application. The postgres server daemon accepts connections from clients and provides access to content from PostgreSQL databases on behalf of the clients. You can find more information on the PostgreSQL project from the project Web site (https://www.postgresql.org/).
+keywords:
+  - postgres
+  - mysql
+  - database
+  - sql        
+sources:
+  - https://github.com/ArkCase/ark_helm_charts
+dependencies:
+  - name: common
+    version: ~0.2.0
+    repository: "https://arkcase.github.io/ark_helm_charts"

@@ -1,0 +1,261 @@
+apiVersion: v1
+entries:
+  activemq:
+  - apiVersion: v2
+    appVersion: 5.17.3
+    created: "2023-05-04T11:31:01.949255524-06:00"
+    dependencies:
+    - name: common
+      repository: https://arkcase.github.io/ark_helm_charts
+      version: ~0.2.0
+    description: Helm chart for ActiveMQ as used by ArkCase
+    digest: 07c38b74a968ca71331edb72d6a1aa97f5d255b6ad64020c0627d351efceb6c6
+    keywords:
+    - activemq
+    - message broker
+    name: activemq
+    sources:
+    - https://github.com/ArkCase/ark_helm_charts
+    urls:
+    - https://arkcase.github.io/ark_helm_charts/activemq-0.2.0.tgz
+    version: 0.2.0
+  alfresco:
+  - apiVersion: v2
+    appVersion: 7.3.1
+    created: "2023-05-04T11:31:01.952149832-06:00"
+    dependencies:
+    - name: common
+      repository: https://arkcase.github.io/ark_helm_charts
+      version: ~0.2.0
+    description: A Helm chart for deploying Alfresco Content Services as used by ArkCase
+    digest: 48076d630d74d0c947083dfbc55cc6891a05d6b7197dd9bd45b472e002ee8313
+    home: https://www.alfresco.com
+    icon: https://avatars0.githubusercontent.com/u/391127?s=200&v=4
+    keywords:
+    - content
+    - content services
+    - alfresco
+    - alfresco content services
+    name: alfresco
+    sources:
+    - https://github.com/Alfresco/acs-deployment
+    urls:
+    - https://arkcase.github.io/ark_helm_charts/alfresco-0.2.0.tgz
+    version: 0.2.0
+  application:
+  - apiVersion: v2
+    appVersion: 2021.03.26
+    created: "2023-05-04T11:31:01.97148321-06:00"
+    dependencies:
+    - alias: search
+      name: solr
+      repository: https://arkcase.github.io/ark_helm_charts
+      version: ~0.2.0
+    - alias: ldap
+      name: samba
+      repository: https://arkcase.github.io/ark_helm_charts
+      version: ~0.2.0
+    - alias: messaging
+      name: activemq
+      repository: https://arkcase.github.io/ark_helm_charts
+      version: ~0.2.0
+    - alias: core
+      name: core
+      repository: https://arkcase.github.io/ark_helm_charts
+      version: ~0.2.0
+    - alias: rdbms
+      name: postgres
+      repository: https://arkcase.github.io/ark_helm_charts
+      version: ~0.2.0
+    - alias: reports
+      name: pentaho
+      repository: https://arkcase.github.io/ark_helm_charts
+      version: ~0.2.0
+    - alias: content
+      name: alfresco
+      repository: https://arkcase.github.io/ark_helm_charts
+      version: ~0.2.0
+    - alias: gateway
+      name: gateway-apache
+      repository: https://arkcase.github.io/ark_helm_charts
+      version: ~0.2.0
+    description: ArkCase Application Chart
+    digest: f1c7053a218318b7f2f4463c2f54422f18867cb06082bf8a0bf40992a8e3bed0
+    name: application
+    type: application
+    urls:
+    - https://arkcase.github.io/ark_helm_charts/application-0.2.0.tgz
+    version: 0.2.0
+  cloudconfig:
+  - apiVersion: v2
+    appVersion: 2021.03.26
+    created: "2023-05-04T11:31:01.973049408-06:00"
+    dependencies:
+    - name: common
+      repository: https://arkcase.github.io/ark_helm_charts
+      version: ~0.2.0
+    description: A Helm chart for ArkCase cloud configurations
+    digest: 960fec0195c02358a97e14af9a4246297d36ba19c4a8b27ca6af262d3f988021
+    name: cloudconfig
+    type: application
+    urls:
+    - https://arkcase.github.io/ark_helm_charts/cloudconfig-0.2.0.tgz
+    version: 0.2.0
+  common:
+  - apiVersion: v2
+    appVersion: 1.2.13
+    created: "2023-05-04T11:31:01.974211534-06:00"
+    description: A library of common templates and functions, consumable by ArkCase
+      charts
+    digest: 2f6fb2c2cff71fe0c7062bb52fea8ad809fc1fa0ad6fe9df58268914d230b168
+    name: common
+    type: library
+    urls:
+    - https://arkcase.github.io/ark_helm_charts/common-0.2.0.tgz
+    version: 0.2.0
+  core:
+  - apiVersion: v2
+    appVersion: 2021.03.26
+    created: "2023-05-04T11:31:01.976583551-06:00"
+    dependencies:
+    - name: common
+      repository: https://arkcase.github.io/ark_helm_charts
+      version: ~0.2.0
+    description: A Helm chart for core ArkCase and ConfigServer
+    digest: b65d6a892c14fd65232df11d8c4d3f092e643717735d684a5ab140b45c5cbe54
+    name: core
+    type: application
+    urls:
+    - https://arkcase.github.io/ark_helm_charts/core-0.2.0.tgz
+    version: 0.2.0
+  gateway-apache:
+  - apiVersion: v2
+    appVersion: 1.0.0
+    created: "2023-05-04T11:31:01.97893283-06:00"
+    dependencies:
+    - name: common
+      repository: https://arkcase.github.io/ark_helm_charts
+      version: ~0.2.0
+    description: A Helm chart to provide a reverse proxy to all ArkCase services using
+      Apache
+    digest: 8168dfcba8a3c5f2dd24b9bf201268fc82d977fc46e452a675a4243c857c0f41
+    name: gateway-apache
+    type: application
+    urls:
+    - https://arkcase.github.io/ark_helm_charts/gateway-apache-0.2.0.tgz
+    version: 0.2.0
+  mariadb:
+  - apiVersion: v2
+    appVersion: "10.5"
+    created: "2023-05-04T11:31:01.980713003-06:00"
+    dependencies:
+    - name: common
+      repository: https://arkcase.github.io/ark_helm_charts
+      version: ~0.2.0
+    description: Fast, reliable, scalable, and easy to use open-source relational
+      database system. MariaDB Server is intended for mission-critical, heavy-load
+      production systems as well as for embedding into mass-deployed software. Highly
+      available MariaDB cluster.
+    digest: c24e0d8893da3b0b0d16168497b22cbc8e0650790cf73dcbc9b82e859f8a41d8
+    keywords:
+    - mariadb
+    - mysql
+    - database
+    - sql
+    name: mariadb
+    sources:
+    - https://github.com/ArkCase/ark_helm_charts
+    urls:
+    - https://arkcase.github.io/ark_helm_charts/mariadb-0.2.0.tgz
+    version: 0.2.0
+  pentaho:
+  - apiVersion: v2
+    appVersion: 9.4.0.0-343
+    created: "2023-05-04T11:31:01.984464363-06:00"
+    dependencies:
+    - name: common
+      repository: https://arkcase.github.io/ark_helm_charts
+      version: ~0.2.0
+    description: Helm chart for Pentaho as used by ArkCase
+    digest: 9a1c34c45287255663097e936426fecbd20cc76b22fc5ec7dc2f7b368b3fb1fe
+    keywords:
+    - pentaho
+    - reports
+    name: pentaho
+    sources:
+    - https://github.com/ArkCase/ark_helm_charts
+    urls:
+    - https://arkcase.github.io/ark_helm_charts/pentaho-0.2.0.tgz
+    version: 0.2.0
+  postgres:
+  - apiVersion: v2
+    appVersion: "13"
+    created: "2023-05-04T11:31:01.986282972-06:00"
+    dependencies:
+    - name: common
+      repository: https://arkcase.github.io/ark_helm_charts
+      version: ~0.2.0
+    description: This container image provides a containerized packaging of the PostgreSQL
+      postgres daemon and client application. The postgres server daemon accepts connections
+      from clients and provides access to content from PostgreSQL databases on behalf
+      of the clients. You can find more information on the PostgreSQL project from
+      the project Web site (https://www.postgresql.org/).
+    digest: cd20ce8691d1d52e3e0ce08bc53c14d92584a511c02c6d4ee861437a34e01fc5
+    keywords:
+    - postgres
+    - mysql
+    - database
+    - sql
+    name: postgres
+    sources:
+    - https://github.com/ArkCase/ark_helm_charts
+    urls:
+    - https://arkcase.github.io/ark_helm_charts/postgres-0.2.0.tgz
+    version: 0.2.0
+  samba:
+  - apiVersion: v2
+    appVersion: 4.14.5-10
+    created: "2023-05-04T11:31:01.988270357-06:00"
+    dependencies:
+    - name: common
+      repository: https://arkcase.github.io/ark_helm_charts
+      version: ~0.2.0
+    description: A Helm chart for Samba 4 as used by ArkCase
+    digest: 6b542ab6c3366eec9569262531ed8f91237ca5b2bfc76f92f079548949ccdb80
+    name: samba
+    type: application
+    urls:
+    - https://arkcase.github.io/ark_helm_charts/samba-0.2.0.tgz
+    version: 0.2.0
+  snowbound:
+  - apiVersion: v2
+    appVersion: 5.6.2-2021.03
+    created: "2023-05-04T11:31:01.989765896-06:00"
+    dependencies:
+    - name: common
+      repository: https://arkcase.github.io/ark_helm_charts
+      version: ~0.2.0
+    description: Helm chart for Snowbound as used by ArkCase
+    digest: e69a6b8d46a74801bdfe2da46dad017d96cefa60cd4ffe3d8288218866c38a0d
+    name: snowbound
+    sources:
+    - https://github.com/ArkCase/ark_helm_charts
+    urls:
+    - https://arkcase.github.io/ark_helm_charts/snowbound-0.2.0.tgz
+    version: 0.2.0
+  solr:
+  - apiVersion: v2
+    appVersion: 8.11.2
+    created: "2023-05-04T11:31:01.992090077-06:00"
+    dependencies:
+    - name: common
+      repository: https://arkcase.github.io/ark_helm_charts
+      version: ~0.2.0
+    description: A Helm chart for Solr as used by ArkCase
+    digest: 50c5a680f110702f1194ecb54c2b40bbd7b4d9b9961da1c35b27fb59e2fd4755
+    name: solr
+    type: application
+    urls:
+    - https://arkcase.github.io/ark_helm_charts/solr-0.2.0.tgz
+    version: 0.2.0
+generated: "2023-05-04T11:31:01.9472501-06:00"

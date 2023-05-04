@@ -1,0 +1,39 @@
+apiVersion: v2
+name: application
+version: 0.2.0
+appVersion: "2021.03.26"
+description: ArkCase Application Chart
+type: application
+dependencies:
+  - name: solr
+    version: ~0.2.0
+    repository: "https://arkcase.github.io/ark_helm_charts"
+    alias: search
+  - name: samba
+    version: ~0.2.0
+    repository: "https://arkcase.github.io/ark_helm_charts"
+    alias: ldap
+  - name: activemq
+    version: ~0.2.0
+    repository: "https://arkcase.github.io/ark_helm_charts"
+    alias: messaging
+  - name: core
+    version: ~0.2.0
+    repository: "https://arkcase.github.io/ark_helm_charts"
+    alias: core
+  - name: postgres
+    version: ~0.2.0
+    repository: "https://arkcase.github.io/ark_helm_charts"
+    alias: rdbms
+  - name: pentaho
+    version: ~0.2.0
+    repository: "https://arkcase.github.io/ark_helm_charts"
+    alias: reports
+  - name: alfresco
+    version: ~0.2.0
+    repository: "https://arkcase.github.io/ark_helm_charts"
+    alias: content
+  - name: gateway-apache
+    version: ~0.2.0
+    repository: "https://arkcase.github.io/ark_helm_charts"
+    alias: gateway
