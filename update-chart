@@ -1,0 +1,47 @@
+#!/bin/bash
+SCRIPT="$(readlink -f "${BASH_SOURCE:-${0}}")"
+BASEDIR="$(dirname "${SCRIPT}")"
+
+HELM_REPO_URL="https://arkcase.github.io/ark_helm_charts/"
+
+say() {
+	echo -e "${@}"
+}
+
+set -euo pipefail
+
+cd "${BASEDIR}"
+
+while true ; do
+	NEXT_ITERATION=()
+	for CHART in "${@}" ; do
+		CHART_NAME="${CHART##*/}"
+
+		say "Packaging ${CHART_NAME}"
+		OUT="$(helm package "${CHART}")"
+
+
+		SRC="$(echo -n "${OUT}" | sed -e 's;^.*and saved it to: ;;g')"
+		NEW_DEPS=()
+		while read f ; do
+			CHARTSDIR="$(dirname "${f}")"
+			MAINDIR="$(dirname "${CHARTSDIR}")"
+			say "\tApplying ${CHART_NAME} to ${MAINDIR}"
+			(
+				rm -fv "${f}"
+				cp -vf "${SRC}" "${CHARTSDIR}"
+			) |& sed -e 's;^;\t\t;g'
+			NEW_DEPS+=("${MAINDIR}")
+		done < <(find charts -type f -name "${CHART_NAME}-*.tgz" | sort)
+		say "\tFound ${#NEW_DEPS[@]} dependencies for ${CHART_NAME}:"
+		for D in "${NEW_DEPS[@]}" ; do
+			say "\t\t${D}"
+		done | sort
+		NEXT_ITERATION+=("${NEW_DEPS[@]}")
+	done
+
+	readarray -t NI < <( for n in "${NEXT_ITERATION[@]}" ; do echo "${n}" ; done | sort -u )
+	set -- "${NI[@]}"
+    [ "${#}" -lt 1 ] && break
+done
+helm repo index --url "${HELM_REPO_URL}" .
