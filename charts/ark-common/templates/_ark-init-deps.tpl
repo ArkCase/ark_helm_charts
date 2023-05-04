@@ -91,7 +91,7 @@ that checks the boot order
         {{- end -}}
       {{- else -}}
         {{- if (hasKey $replacement.value "hostname") -}}
-          {{- $newHostName = ($replacement.value | toString) -}}
+          {{- $newHostName = ($replacement.value.hostname | toString) -}}
         {{- end -}}
         {{- if (hasKey $replacement.value "port") -}}
           {{- $portSource = $replacement.value -}}
