@@ -15,44 +15,41 @@ that checks the boot order
   {{- $secretEntries := dict -}}
   {{- $secret := (dict "name" (printf "%s-database-init" (include "arkcase.fullname" .))) -}}
 
-  {{- /* Sanitize the admin object */ -}}
-  {{- $admin := dict -}}
-  {{- if or (not (hasKey $declaration "admin")) (not $declaration.admin) -}}
-    {{- $admin = (sha1sum "admin") -}}
-  {{- else -}}
-    {{- $admin = $declaration.admin -}}
-  {{- end -}}
-  {{- /* Verify that the admin password information is set properly */ -}}
-  {{- if kindIs "string" $admin -}}
-    {{- $admin = dict "password" $admin -}}
-  {{- end -}}
-  {{- if kindIs "map" $admin -}}
-    {{- if not (hasKey $admin "password") -}}
-      {{- $admin = set $admin "password" (sha1sum "admin") -}}
+  {{- if and (hasKey $declaration "admin") $declaration.admin -}}
+    {{- /* Sanitize the admin object */ -}}
+    {{- $admin := $declaration.admin -}}
+    {{- /* Verify that the admin password information is set properly */ -}}
+    {{- if kindIs "string" $admin -}}
+      {{- $admin = dict "password" $admin -}}
     {{- end -}}
-    {{- $password := $admin.password -}}
-    {{- if (kindIs "string" $password) -}}
-      {{- $key := "__ADMIN_PASSWORD__" -}}
-      {{- $secretEntries = set $secretEntries $key $password -}}
-      {{- $password = (dict "secretName" $secret.name "secretKey" $key) -}}
-    {{- end -}}
-    {{- if (kindIs "map" $password) -}}
-      {{- /* If this is a map, validate its contents */ -}}
-      {{- if not (hasKey $password "secretName") -}}
-        {{- fail "The .Values.dbinit.admin.password map doesn't have a secretName" -}}
+    {{- if kindIs "map" $admin -}}
+      {{- if not (hasKey $admin "password") -}}
+        {{- $admin = set $admin "password" (sha1sum "admin") -}}
       {{- end -}}
-      {{- if not (hasKey $password "secretKey") -}}
-        {{- fail "The .Values.dbinit.admin.password map doesn't have a secretKey" -}}
+      {{- $password := $admin.password -}}
+      {{- if (kindIs "string" $password) -}}
+        {{- $key := "__ADMIN_PASSWORD__" -}}
+        {{- $secretEntries = set $secretEntries $key $password -}}
+        {{- $password = (dict "secretName" $secret.name "secretKey" $key) -}}
       {{- end -}}
-      {{- $password = set $password "secretName" ($password.secretName | toString) -}}
-      {{- $password = set $password "secretKey" ($password.secretKey | toString) -}}
-      {{- $admin = set $admin "password" $password -}}
+      {{- if (kindIs "map" $password) -}}
+        {{- /* If this is a map, validate its contents */ -}}
+        {{- if not (hasKey $password "secretName") -}}
+          {{- fail "The .Values.dbinit.admin.password map doesn't have a secretName" -}}
+        {{- end -}}
+        {{- if not (hasKey $password "secretKey") -}}
+          {{- fail "The .Values.dbinit.admin.password map doesn't have a secretKey" -}}
+        {{- end -}}
+        {{- $password = set $password "secretName" ($password.secretName | toString) -}}
+        {{- $password = set $password "secretKey" ($password.secretKey | toString) -}}
+        {{- $admin = set $admin "password" $password -}}
+      {{- else -}}
+        {{- fail "The value for .Values.dbinit.admin.password must be either a map or a string" -}}
+      {{- end -}}
+      {{- $dbInit = set $dbInit "admin" $admin -}}
     {{- else -}}
-      {{- fail "The value for .Values.dbinit.admin.password must be either a map or a string" -}}
+      {{- fail "The value for .Values.dbinit.admin must be either a map or a string" -}}
     {{- end -}}
-    {{- $dbInit = set $dbInit "admin" $admin -}}
-  {{- else -}}
-    {{- fail "The value for .Values.dbinit.admin must be either a map or a string" -}}
   {{- end -}}
 
   {{- /* Sanitize the user list */ -}}
