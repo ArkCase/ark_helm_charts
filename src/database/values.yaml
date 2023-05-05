@@ -18,6 +18,10 @@ configuration:
   # Limit, in GiB, of how much temporary storage MariaDB can use
   maxTempUsageGb: 10
 
+  db:
+    dialect: "postgresql"
+    hostname: "localhost"
+
 # Please leave the `replicaCount` to 1 for the time being. Clustering is not
 # supported yet.
 replicaCount: 1
@@ -26,9 +30,15 @@ platform: ""
 image:
   # pullPolicy: IfNotPresent
   registry: "public.ecr.aws"
-  repository: "arkcase/postgres"
-  # Overrides the image tag whose default is the chart appVersion.
-  # tag: "20210716-45b2fb2"
+
+  postgresql:
+    repository: "arkcase/postgres"
+    tag: "13"
+
+  mysql:
+    # We use MariaDB here for convenience
+    repository: "arkcase/mariadb"
+    tag: "10.5"
 
 # You generally shouldn't mess with these. These exist to support some name-generation templates
 nameOverride: ""
@@ -110,11 +120,30 @@ persistence:
 #     data:
 
 service:
-  #external: host-or-IP
-  ports:
-    - name: postgresql
-      protocol: TCP
-      port: &db 5432
+  mysql:
+    ports:
+      - name: mysql
+        protocol: TCP
+        port: 3306
+
+  postgresql:
+    ports:
+      - name: postgresql
+        protocol: TCP
+        port: 5432
+
+  oracle:
+    ports:
+      - name: orcl
+        protocol: TCP
+        port: 1521
+
+  sqlserver:
+    ports:
+      - name: orcl
+        protocol: TCP
+        port: 1433
+
 ##
 ## Configure extra options for containers' liveness and readiness probes
 ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/#configure-probes
@@ -128,8 +157,6 @@ service:
   probes:
     enabled: true
     spec:
-      tcpSocket:
-        port: *db
       initialDelaySeconds: 0
       periodSeconds: 1
       timeoutSeconds: 1

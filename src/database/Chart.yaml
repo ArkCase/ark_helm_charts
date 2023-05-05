@@ -1,0 +1,17 @@
+apiVersion: v2
+name: database
+version: 0.2.1
+appVersion: "1.1"
+description: This helm chart allows deploying a database engine, which can be either PostgreSQL, MySQL, or MariaDB.
+keywords:
+  - postgres
+  - mysql
+  - mariadb
+  - database
+  - sql        
+sources:
+  - https://github.com/ArkCase/ark_helm_charts
+dependencies:
+  - name: common
+    version: ~0.2.0
+    repository: "https://arkcase.github.io/ark_helm_charts"

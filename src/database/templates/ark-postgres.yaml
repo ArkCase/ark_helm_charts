@@ -1,4 +1,4 @@
-{{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.rdbms.external" $)) }}
+{{- if (include "arkcase.rdbms.render" (dict "ctx" $ "name" "postgresql")) -}}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -76,10 +76,10 @@ spec:
           {{- with ($.Values.securityContext).postgres }}
           securityContext: {{- toYaml . | nindent 12 }}
           {{- end }}
-          {{- include "arkcase.image" $ | nindent 10 }}
+          {{- include "arkcase.image" (dict "ctx" $ "name" "postgresql" "repository" "arkcase/postgres") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.initDatabase.adminPassEnv" (dict "ctx" $ "var" "POSTGRESQL_ADMIN_PASSWORD") | nindent 12 }}
-          {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
+          {{- include "arkcase.rdbms.ports" $ | nindent 10 }}
           {{- if $.Values.command }}
           command: {{- $.Values.command | toYaml | nindent 12 }}
           {{- end }}

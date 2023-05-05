@@ -140,16 +140,18 @@
           {{- $instance = ((($dbInfo.jdbc).instance).format | replace "${INSTANCE}" $instance) -}}
         {{- end -}}
 
-        {{- $jdbc = set $jdbc "url"
-          (
-            $dbInfo.jdbc.format
-            | replace "${HOSTNAME}" ($data.hostname | toString)
-            | replace "${PORT}" ($data.port | toString)
-            | replace "${DATABASE}" ($data.database | toString)
-            | replace "${INSTANCE}" ($instance | toString)
-            | replace "${URL_PARAMETERS}" ($data.urlParameters | toString)
-          )
-        -}}
+        {{- if ($dbInfo.jdbc).format -}}
+          {{- $jdbc = set $jdbc "url"
+            (
+              $dbInfo.jdbc.format
+              | replace "${HOSTNAME}" ($data.hostname | toString)
+              | replace "${PORT}" ($data.port | toString)
+              | replace "${DATABASE}" ($data.database | toString)
+              | replace "${INSTANCE}" ($instance | toString)
+              | replace "${URL_PARAMETERS}" ($data.urlParameters | toString)
+            )
+          -}}
+        {{- end -}}
 
         {{- $data = set $data "jdbc" $jdbc -}}
       {{- else -}}
