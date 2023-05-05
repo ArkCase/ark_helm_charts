@@ -24,9 +24,9 @@ oracle:
   port: 1521
   jdbc:
     driver: oracle.jdbc.driver.OracleDriver
-    format: "jdbc:oracle:thin:@${HOSTNAME}:${PORT}:${INSTANCE}"
+    format: "jdbc:oracle:thin:@${HOSTNAME}:${PORT}${INSTANCE}"
     instance:
-      required: true
+      format: "/${INSTANCE}"
 
 postgresql:
   platform: PostgreSQL
