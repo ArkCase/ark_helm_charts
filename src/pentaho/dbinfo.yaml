@@ -1,20 +1,23 @@
 mysql: &mysql
   dialect: &dialect mysql5
+  filesDialect: *dialect
   reports: mysql
   port: 3306
   scripts: mysql
-  quartz: StdJdbcDelegate
+  quartz: StdJDBCDelegate
   jdbc:
     driver: com.mysql.cj.jdbc.Driver
     type: mysql
     format: "jdbc:mysql://${HOSTNAME}:${PORT}/${DATABASE}"
+  validationQuery: "SELECT 1"
   aliases:
     - mariadb
     - mysql5
     - mysql8
 
 oracle10g: &oracle10g
-  dialect: oracle10g
+  dialect: &dialect oracle10g
+  filesDialect: *dialect
   reports: oracle
   port: 1521
   quartz: oracle.OracleDelegate
@@ -24,6 +27,7 @@ oracle10g: &oracle10g
     format: "jdbc:oracle:thin:@${HOSTNAME}:${PORT}${INSTANCE}"
     instance:
       format: "/${INSTANCE}"
+  validationQuery: "SELECT 1 FROM DUAL"
   aliases:
     - orcl
     - oracle
@@ -41,6 +45,7 @@ oracle12c:
 
 postgresql:
   dialect: &dialect postgresql
+  filesDialect: *dialect
   reports: *dialect
   port: 5432
   quartz: PostgreSQLDelegate
@@ -48,12 +53,14 @@ postgresql:
     driver: org.postgresql.Driver
     type: postgresql
     format: "jdbc:postgresql://${HOSTNAME}:${PORT}/${DATABASE}"
+  validationQuery: "SELECT 1"
   aliases:
     - psql
     - postgres
 
 sqlserver:
   dialect: &dialect sqlserver
+  filesDialect: *dialect
   reports: *dialect
   port: 1433
   quartz: MSSQLDelegate
@@ -64,5 +71,6 @@ sqlserver:
     format: "jdbc:sqlserver://${HOSTNAME}${INSTANCE}:${PORT};DatabaseName=${DATABASE}"
     instance:
       format: "\\${INSTANCE}"
+  validationQuery: "SELECT 1"
   aliases:
     - mssql

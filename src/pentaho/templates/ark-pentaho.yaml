@@ -89,7 +89,7 @@ spec:
             - name: LOGS_DIR
               value: *logsPath
             - name: DB_DIALECT
-              value: {{ $db.dialect | quote }}
+              value: {{ $db.filesDialect | quote }}
             - name: DB_SCRIPTS
               value: {{ $db.scripts | quote }}
             - name: ADMIN_USERNAME
