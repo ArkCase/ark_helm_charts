@@ -42,14 +42,18 @@
 {{- end -}}
 
 {{- define "arkcase.rdbms.render" -}}
-  {{- $ctx := .ctx -}}
-  {{- $name := .name | required "Must provide the name of the database type to render" -}}
+  {{- $ctx := $ -}}
+  {{- $name := "" -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- $ctx = .ctx -}}
+    {{- if not (include "arkcase.isRootContext" $ctx) -}}
+      {{- fail "Incorrect context given - either submit the root context as the only parameter, or a 'ctx' parameter pointing to it" -}}
+    {{- end -}}
+    {{- $name = .name -}}
+  {{- end -}}
   {{- $render := true -}}
   {{- $render = and $render (include "arkcase.subsystem.enabled" $ctx) -}}
   {{- $render = and $render (not (include "arkcase.rdbms.external" $ctx)) -}}
-  {{- $type := (include "arkcase.rdbms.type" $ctx) -}}
-  {{- $render = and $render (eq $name $type) -}}
-  {{- if $render -}}
-    {{- $render -}}
-  {{- end -}}
+  {{- $render = and $render (or (not $name) (eq $name (include "arkcase.rdbms.type" $ctx))) -}}
+  {{- $render | ternary "true" "" -}}
 {{- end -}}
