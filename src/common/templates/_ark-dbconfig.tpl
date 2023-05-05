@@ -130,6 +130,9 @@
       {{- $jdbc := $data.jdbc -}}
       {{- if and $jdbc (kindIs "map" $jdbc) -}}
         {{- $instance := ($data.instance | default "") -}}
+        {{- if and (not $instance) (($dbInfo.jdbc).instance).default -}}
+          {{- $instance = $dbInfo.jdbc.instance.default -}}
+        {{- end -}}
         {{- if and (($dbInfo.jdbc).instance).required (not $instance) -}}
           {{- fail (printf "Database schema configuration for [%s] lacks the required instance name" $name) -}}
         {{- end -}}
