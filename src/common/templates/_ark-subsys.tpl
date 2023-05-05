@@ -230,7 +230,6 @@ Parameter: the root context (i.e. "." or "$")
     {{- $ctx = .ctx -}}
     {{- if hasKey . "subname" -}}
       {{- $partname = (.subname | toString | lower) -}}
-      {{- $explicit = true -}}
     {{- end -}}
   {{- end -}}
 
@@ -337,7 +336,7 @@ Parameter: the root context (i.e. "." or "$"), or a map which descibes the ports
       {{- end -}}
       {{- $service = get $parts $partname -}}
     {{- else -}}
-      {{- $ports := $service.ports -}}
+      {{- $ports := $service.ports | default list -}}
       {{- range $partname, $p := $parts -}}
         {{- $ports = concat $ports $p.ports -}}
       {{- end -}}
