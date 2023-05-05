@@ -27,6 +27,8 @@ oracle:
     format: "jdbc:oracle:thin:@${HOSTNAME}:${PORT}${INSTANCE}"
     instance:
       format: "/${INSTANCE}"
+  aliases:
+   - orcl
 
 postgresql:
   platform: PostgreSQL
