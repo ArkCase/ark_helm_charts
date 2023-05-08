@@ -1,4 +1,12 @@
 {{- if (include "arkcase.subsystem.enabled" $) }}
+{{- $dev := (include "arkcase.dev" $ | fromYaml) }}
+{{- $debug := $dev.debug | default dict }}
+{{- $customConf := and $dev $dev.conf }}
+{{- $customConfFile := and $customConf $dev.conf.file }}
+{{- $customConfDir := and $customConf (not $dev.conf.file) }}
+{{- $customWar := and $dev $dev.war }}
+{{- $customWarFile := and $customConf $dev.war.file }}
+{{- $customWarDir := and $customConf (not $dev.war.file) }}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -60,11 +68,27 @@ spec:
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             - name: REALM_FIX
               value: {{ printf "arkcase.org=%s" (include "arkcase.tools.ldap" (dict "ctx" $ "value" "domain")) | quote }}
+        {{- if or $customConfFile $customWarFile }}
+            - name: FORCE_HASHES
+              value: "true"
+        {{- end }}
           volumeMounts:
-            - name: &confVolume "conf"
+        {{- if $customConfFile }}
+            - name: &confFileVolume "conf-file"
+              mountPath: "/app/file/conf.zip"
+        {{- end }}
+        {{- if not $customConfDir }}
+            - name: "conf"
               mountPath: "/app/depl/conf"
-            - name: &warVolume "war"
+        {{- end }}
+        {{- if $customWarFile }}
+            - name: &warFileVolume "war-file"
+              mountPath: "/app/file/war.zip"
+        {{- end }}
+        {{- if not $customWarDir }}
+            - name: "war"
               mountPath: "/app/depl/war"
+        {{- end }}
         - name: set-permissions
           {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
@@ -78,9 +102,9 @@ spec:
                     flags: [ "recurse", "noforced", "create", "changes" ]
                     targets: [ "/app/home", "/app/conf", "/app/war", "/app/logs" ]
           volumeMounts:
-            - name: *confVolume
+            - name: &confVolume "conf"
               mountPath: &confDir "/app/conf"
-            - name: *warVolume
+            - name: &war "war"
               mountPath: &warDir "/app/war"
             - name: &initVolume "home"
               mountPath: &initDir "/app/init"
@@ -156,18 +180,10 @@ spec:
                 -Dconfiguration.client.spring.path=spring
                 -Dspring.profiles.active=ldap
                 -Duser.home=/app/home
-              {{- if ($.Values.debug).enabled }}
-                {{- $debugSuspend := "n" }}
-                {{- if ($.Values.debug).suspend }}
-                  {{- $debugSuspend = "y" }}
-                {{- end }}
-                {{- $debugPort := 8888 }}
-                {{- if ($.Values.debug).port }}
-                  {{- $debugPort = (($.Values.debug).port | int) }}
-                {{- end }}
+                {{- with $debug }}
                 -Xdebug
-                -Xrunjdwp:transport=dt_socket,server=y,suspend={{ $debugSuspend }},address=0.0.0.0:{{ $debugPort }}
-              {{- end }}
+                -Xrunjdwp:transport=dt_socket,server=y,suspend={{ .suspend }},address=0.0.0.0:{{ .jdb }}
+                {{- end }}
           {{- include "arkcase.subsystem.ports" ($.Values.service).arkcase | nindent 10 }}
           {{- with ($.Values.command).arkcase }}
           command: {{ toJson $ }}
@@ -322,22 +338,56 @@ spec:
                 mode: 0555
               - key: *seedContentYaml
                 path: *seedContentYaml
+        {{- if $customConfDir }}
+        - name: "conf"
+          hostPath:
+            path: {{ $dev.conf.path | quote }}
+            type: Directory
+        {{- else }}
+          {{- if $customConfFile }}
+        - name: *confFileVolume
+          hostPath:
+            path: {{ $dev.conf.path | quote }}
+            type: File
+          {{- end }}
+        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "conf") | nindent 8 }}
+        {{- end }}
+        {{- if $customWarDir }}
+        - name: "war"
+          hostPath:
+            path: {{ $dev.war.path | quote }}
+            type: Directory
+        {{- else }}
+          {{- if $customWarFile }}
+        - name: *warFileVolume
+          hostPath:
+            path: {{ $dev.war.path | quote }}
+            type: File
+          {{- end }}
+        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "war") | nindent 8 }}
+        {{- end }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "init") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "home") | nindent 8 }}
-        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "conf") | nindent 8 }}
-        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "war" ) | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "logs") | nindent 8 }}
   volumeClaimTemplates:
+    {{- if not $customConfDir }}
+    {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "conf") | nindent 4 }}
+    {{- end }}
+    {{- if not $customWarDir }}
+    {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "war" ) | nindent 4 }}
+    {{- end }}
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "init") | nindent 4 }}
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "home") | nindent 4 }}
-    {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "conf") | nindent 4 }}
-    {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "war" ) | nindent 4 }}
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "logs") | nindent 4 }}
 
+  {{- if not $customConfDir }}
+  {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "conf") | nindent 0 }}
+  {{- end }}
+  {{- if not $customWarDir }}
+  {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "war" ) | nindent 0 }}
+  {{- end }}
   {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "init") | nindent 0 }}
   {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "home") | nindent 0 }}
-  {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "conf") | nindent 0 }}
-  {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "war" ) | nindent 0 }}
   {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "logs") | nindent 0 }}
 
 {{- end }}
