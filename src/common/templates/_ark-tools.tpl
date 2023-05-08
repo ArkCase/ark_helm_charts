@@ -786,7 +786,7 @@ result: "DC=some,DC=domain,DC=com"
   {{- $data | toYaml -}}
 {{- end -}}
 
-{{- define "arkcase.development.compute" -}}
+{{- define "arkcase.dev.compute" -}}
   {{- $ctx := . -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "The parameter must be the root context (. or $)" -}}
@@ -867,7 +867,7 @@ result: "DC=some,DC=domain,DC=com"
   {{- $result | toYaml -}}
 {{- end -}}
 
-{{- define "arkcase.development" -}}
+{{- define "arkcase.dev" -}}
   {{- $ctx := . -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "The parameter must be the root context (. or $)" -}}
@@ -879,7 +879,7 @@ result: "DC=some,DC=domain,DC=com"
   {{- if (hasKey $ctx $cacheKey) -}}
     {{- $result = (get $ctx $cacheKey | toYaml) -}}
   {{- else -}}
-    {{- $result = (include "arkcase.development.compute" $ctx) -}}
+    {{- $result = (include "arkcase.dev.compute" $ctx) -}}
     {{- $ctx = set $ctx $cacheKey ($result | fromYaml) -}}
   {{- end -}}
   {{- $result -}}
@@ -892,15 +892,15 @@ result: "DC=some,DC=domain,DC=com"
     {{- fail "The parameter must be the root context (. or $)" -}}
   {{- end -}}
 
+  {{- /* For now, default to production mode */ -}}
+  {{- $value := "production" -}}
+  {{- $valueSet := false -}}
+
   {{- /* Get the global map, if defined */ -}}
   {{- $global := $ctx.Values.global | default dict -}}
   {{- if not (kindIs "map" $global) -}}
     {{- $global = dict -}}
   {{- end -}}
-
-  {{- /* For now, default to development mode */ -}}
-  {{- $value := "development" -}}
-  {{- $valueSet := false -}}
 
   {{- if $global -}}
     {{- /* Get the explicitly set value, if any */ -}}
@@ -916,6 +916,17 @@ result: "DC=some,DC=domain,DC=com"
       {{- end -}}
     {{- end -}}
   {{- end -}}
+
+  {{- /* If the value isn't explicitly set, which would take priority, we then */ -}}
+  {{- /* check to see if the development settings are enabled. If they are, then */ -}}
+  {{- /* we treat this as the value being explicitly set. */ -}}
+  {{- if not $valueSet -}}
+    {{- $valueSet = (not (empty (include "arkcase.dev" $ctx | fromYaml))) -}}
+    {{- if $valueSet -}}
+      {{- $value = "development" -}}
+    {{- end -}}
+  {{- end -}}
+
   {{- dict "value" $value "set" $valueSet | toYaml -}}
 {{- end -}}
 
