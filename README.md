@@ -62,11 +62,11 @@ Without further ado ... the steps:
 
 ## <a name="preparation"></a>Deployment
 
-Before you can deploy ArkCase, it's important to understand that it can be deployed in two modes: [*production*](#production) mode, and [*development*](#development) mode. By default, if deployed with no configurations, the charts will build an application in ***development*** mode. This may change in the near future, but for now this is the default mode of operation.
+Before you can deploy ArkCase, it's important to understand that it can be deployed in two modes: [*production*](#production) mode, and [*development*](#development) mode. By default, if deployed with no configurations, the charts will build an application in ***production*** mode. This has recently changed from the previos default of **development** mode, since it's more congruent with the chart's intended use, and develoment environments are more easily configured.
 
 The simplest way to deploy the chart is by using helm, and referencing any additional configuration files you may need (such as licenses, or other configurations):
 
-    $ helm install arkcase arckase/app-0.2.0 -f licenses.yaml -f ingress.yaml -f conf.yaml
+    $ helm install arkcase arkcase/app -f licenses.yaml -f ingress.yaml -f conf.yaml
 
 The contents of the configuration files are discussed in the [configuration section](#configuration).
 
@@ -78,29 +78,30 @@ The mode of operation mainly affects the persistence layer. In *development* mod
 
 The intent of supporting *development* mode is to facilitate the charts' use by developers in single-cluster environments, where persistence can be provided safely by a single host. This lowers the environment bar required for a developer to get an instance up and running, for testing and development purposes.
 
-In the near future, enabling development mode will also enable many other features related to the deployment location for the actual ArkCase WAR file, as well as the configuration directory (a.k.a.: *.arkcase*). Through these features, Developers will be able to deploy the whole stack *except* for ArkCase, and with specific configuration on their environments, make their own ArkCase instance connect to the development stack.
+Enabling development mode may also enable many other features related to the deployment location for the actual ArkCase WAR file, as well as the configuration directory (a.k.a.: *.arkcase*). Through these features, Developers will be able to deploy the whole stack using custom ArkCase WAR files, configurations, and even run it in (remote) debugger mode.
+
+Details on how to use **development** mode are available [here](#dev-integration). Development mode can be explicitly enabled via the instructions in that document, or by enabling the configuration value:
+
+```yaml
+global.mode: "development"
+```
+
+Other (case-insensitive) abbreviations such as "dev", "devel", or "develop" are also accepted. If an invalid value is used, ***production*** mode is defaulted.
 
 ### <a name="production-mode"></a>Production
 
 In *production* mode, things become more ***real***, if you will. No hostPath volumes are rendered, and instead all generated persistence is managed via volume claim templates declared with each Pod or StatefulSet. The particulars of the persistence layer are described [here](#persistence).
 
-To enable production mode ***explicitly***, you'll need to set this configuration value (in YAML syntax):
+Production mode is enabled implicitly by default, but may be enabled explicitly if you need to combine some of the features from production mode with other features from development mode. To enable production mode ***explicitly***, you'll need to set this configuration value (in YAML syntax):
 
 ```yaml
 # Enable production mode
 global.mode: "production"
 ```
 
-Production mode may also be enabled implicitly by setting a default *storageClassName* for the persistence layer, like so:
+If production mode is enabled, but a default *storageClassName* is not configured, all volume claim templates rendered will lack that setting and thus will be expected to be provisioned by the cluster with [the default storage class](https://kubernetes.io/docs/tasks/administer-cluster/change-default-storage-class/).
 
-```yaml
-# Enable production mode by setting a default storageClassName
-global.persistence.default.storageClassName: "someStorageClassName"
-```
-
-If production mode is enabled explicitly, but a default *storageClassName* is not configured, all volume claim templates rendered will lack that stanza and thus will be expected to be provisioned by the cluster with [the default storage class](https://kubernetes.io/docs/tasks/administer-cluster/change-default-storage-class/). Specifically, it is possible to enable *development* mode explicitly even with a default *storageClassName* configured, by explicitly setting the `global.mode` configuration value to `"development"`.
-
-Finally, you may refer to the [documentation on the persistence layer](#persistence) for more details on how to configure that particular aspect of the deployment.
+Finally, you may refer to the [documentation on the persistence layer](#persistence) for more details on how to configure persistence.
 
 ## <a name="security"></a>Security
 
@@ -116,7 +117,7 @@ global:
 
 You can also specify the value using `--set global.security.serviceAccountName=arkcase-service-account` at deploy time as part of the `helm` command.
 
-Finally, this chart currently doesn't support individualized service accounts because no such requirement has been identified. This is not, however, out of the question should a solid use-case for this functionality be discovered.
+Finally, this chart currently doesn't support individualized service accounts for each component because no such requirement has been identified. This is not, however, out of the question should a solid use-case for this functionality be discovered.
 
 ## <a name="configuration"></a>Configuration
 
