@@ -815,7 +815,7 @@ result: "DC=some,DC=domain,DC=com"
           {{- end -}}
           {{- $war = $path -}}
         {{- end -}}
-        {{- $result = set $result "war" (dict "file" false "path" (include "arkcase.tools.normalizePath" $war)) -}}
+        {{- $result = set $result "war" (dict "file" $file "path" (include "arkcase.tools.normalizePath" $war)) -}}
       {{- else if $dev.war -}}
         {{- fail (printf "The value for global.dev.war must be a string (%s)" (kindOf $dev.war)) -}}
       {{- end -}}
@@ -831,7 +831,7 @@ result: "DC=some,DC=domain,DC=com"
           {{- end -}}
           {{- $conf = $path -}}
         {{- end -}}
-        {{- $result = set $result "conf" (dict "file" false "path" (include "arkcase.tools.normalizePath" $conf)) -}}
+        {{- $result = set $result "conf" (dict "file" $file "path" (include "arkcase.tools.normalizePath" $conf)) -}}
       {{- else if $dev.conf -}}
         {{- fail (printf "The value for global.dev.conf must be a string (%s)" (kindOf $dev.conf)) -}}
       {{- end -}}
