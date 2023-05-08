@@ -17,12 +17,13 @@ global.dev:
   # an absolute path. If it's an absolute path, it's assumed to be an "exploded WAR" directory.
   # To indicate a file, you must use the syntax file://${absolutePathToFile}. If you want to be specific,
   # you can also use path://${absolutePathToDirectory} to also indicate an exploded WAR directory.
-  war: "...."
+  war: "path:///mnt/c/Users/developer/workspace/ArkCase/WAR"
+  # war: "file:///mnt/c/Users/developer/workspace/ArkCase/target/arkcase-webapp.war"
 
   # Use the ArkCase configuration zip file or exploded zip directory at this location for execution.
   # the syntax and logic is identical for the war component, except this is for the .arkcase configuration
   # file set.
-  conf: "...."
+  conf: "path:///mnt/c/Users/developer/.arkcase"
 
   # The settings in this map govern the debugging features
   debug:
