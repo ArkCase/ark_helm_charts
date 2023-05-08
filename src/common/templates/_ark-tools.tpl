@@ -786,6 +786,105 @@ result: "DC=some,DC=domain,DC=com"
   {{- $data | toYaml -}}
 {{- end -}}
 
+{{- define "arkcase.development.compute" -}}
+  {{- $ctx := . -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "The parameter must be the root context (. or $)" -}}
+  {{- end -}}
+
+  {{- /* Get the global map, if defined */ -}}
+  {{- $global := $ctx.Values.global | default dict -}}
+  {{- if not (kindIs "map" $global) -}}
+    {{- $global = dict -}}
+  {{- end -}}
+
+  {{- $result := dict -}}
+  {{- if and $global.dev (kindIs "map" $global.dev) -}}
+    {{- $dev := $global.dev -}}
+    {{- $enabled := (or (not (hasKey $dev "enabled")) (not (empty (include "arkcase.toBoolean" $dev.enabled)))) -}}
+    {{- if $enabled -}}
+      {{- $result = set $result "enabled" $enabled -}}
+      {{- if and $dev.war (kindIs "string" $dev.war) -}}
+        {{- $war := $dev.war | toString -}}
+        {{- $file := (hasPrefix "file://" $war) -}}
+        {{- if or (hasPrefix "path://" $war) (hasPrefix "file://" $war) -}}
+          {{- $war = (include "arkcase.tools.parseUrl" $war | fromYaml) -}}
+          {{- $path := $war.path -}}
+          {{- if not $path -}}
+            {{- fail (printf "The value for global.dev.war must contain a path: [%s]" $war) -}}
+          {{- end -}}
+          {{- $war = $path -}}
+        {{- end -}}
+        {{- $result = set $result "war" (dict "file" false "path" (include "arkcase.tools.normalizePath" $war)) -}}
+      {{- else if $dev.war -}}
+        {{- fail (printf "The value for global.dev.war must be a string (%s)" (kindOf $dev.war)) -}}
+      {{- end -}}
+
+      {{- if and $dev.conf (kindIs "string" $dev.conf) -}}
+        {{- $conf := $dev.conf | toString -}}
+        {{- $file := (hasPrefix "file://" $conf) -}}
+        {{- if or (hasPrefix "path://" $conf) (hasPrefix "file://" $conf) -}}
+          {{- $conf = (include "arkcase.tools.parseUrl" $conf | fromYaml) -}}
+          {{- $path := $conf.path -}}
+          {{- if not $path -}}
+            {{- fail (printf "The value for global.dev.conf must contain a path: [%s]" $conf) -}}
+          {{- end -}}
+          {{- $conf = $path -}}
+        {{- end -}}
+        {{- $result = set $result "conf" (dict "file" false "path" (include "arkcase.tools.normalizePath" $conf)) -}}
+      {{- else if $dev.conf -}}
+        {{- fail (printf "The value for global.dev.conf must be a string (%s)" (kindOf $dev.conf)) -}}
+      {{- end -}}
+
+      {{- $debug := $dev.debug -}}
+      {{- if and $debug (kindIs "map" $debug) -}}
+        {{- $enabled := or (not (hasKey $debug "enabled")) (not (empty (include "arkcase.toBoolean" $debug.enabled))) -}}
+        {{- if $enabled -}}
+          {{- $jdb := 0 -}}
+          {{- if hasKey $debug "port" -}}
+            {{- $jdb = ($debug.port | default "0" | toString | atoi) -}}
+            {{- if or (lt $jdb 0) (gt $jdb 65535) -}}
+              {{- fail (printf "The debug port number [%s] is not valid" ($debug.port | toString)) -}}
+            {{- end -}}
+          {{- else -}}
+            {{- $jdb = 8888 -}}
+          {{- end -}}
+          {{- $suspend := and (hasKey $debug "suspend") (not (empty (include "arkcase.toBoolean" $debug.suspend))) | ternary "y" "n" -}}
+          {{- $flags := dict -}}
+          {{- range $k, $v := (omit $debug "port" "suspend" "enabled") -}}
+            {{- $flags = set $flags $k (not (empty (include "arkcase.toBoolean" $v))) -}}
+          {{- end -}}
+          {{- $debug = dict "enabled" $enabled "jdb" $jdb "suspend" $suspend "flags" $flags -}}
+        {{- else -}}
+          {{- $debug = dict -}}
+        {{- end -}}
+      {{- else -}}
+        {{- $debug = dict -}}
+      {{- end -}}
+      {{- $result = set $result "debug" $debug -}}
+    {{- end -}}
+  {{- end -}}
+  {{- $result | toYaml -}}
+{{- end -}}
+
+{{- define "arkcase.development" -}}
+  {{- $ctx := . -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "The parameter must be the root context (. or $)" -}}
+  {{- end -}}
+
+  {{- $cacheKey := "DevelopmentMode" -}}
+  {{- $masterCache := dict -}}
+  {{- $result := dict -}}
+  {{- if (hasKey $ctx $cacheKey) -}}
+    {{- $result = (get $ctx $cacheKey | toYaml) -}}
+  {{- else -}}
+    {{- $result = (include "arkcase.development.compute" $ctx) -}}
+    {{- $ctx = set $ctx $cacheKey ($result | fromYaml) -}}
+  {{- end -}}
+  {{- $result -}}
+{{- end -}}
+
 {{- /* Get the mode of operation value that should be used for everything */ -}}
 {{- define "arkcase.deployment.mode" -}}
   {{- $ctx := . -}}
