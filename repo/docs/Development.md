@@ -13,11 +13,17 @@ global.dev:
   # is explicitly set to "production".
   enabled: true
 
-  # Use the ArkCase WAR file or exploded WAR directory at this location for execution
-  war: "...."
+  # Use the ArkCase WAR file or exploded WAR directory at this location for execution. It must be
+  # an absolute path. If it's an absolute path, it's assumed to be an "exploded WAR" directory.
+  # To indicate a file, you must use the syntax file://${absolutePathToFile}. If you want to be specific,
+  # you can also use path://${absolutePathToDirectory} to also indicate an exploded WAR directory.
+  war: "path:///mnt/c/Users/developer/workspace/ArkCase/WAR"
+  # war: "file:///mnt/c/Users/developer/workspace/ArkCase/target/arkcase-webapp.war"
 
-  # Use the ArkCase configuration zip file or exploded zip directory at this location for execution
-  conf: "...."
+  # Use the ArkCase configuration zip file or exploded zip directory at this location for execution.
+  # the syntax and logic is identical for the war component, except this is for the .arkcase configuration
+  # file set.
+  conf: "path:///mnt/c/Users/developer/.arkcase"
 
   # The settings in this map govern the debugging features
   debug:
@@ -25,12 +31,12 @@ global.dev:
     # is not empty, and the enabled flag is not explicitly set to "false"
     enabled: true
 
-    # The port to listen on for JDB connections
+    # The port to listen on for JDB connections. If not specified, the default of 8888 is used.
     port: 8888
 
     # This setting governs the "suspend" setting in the debugger configuration for the JVM, and is useful
     # to stop execution of any code until and unless a debugger connects to the instance (i.e. for
-    # debugging bootup issues)
+    # debugging bootup issues). The default value is "false".
     suspend: true
 ```
 
