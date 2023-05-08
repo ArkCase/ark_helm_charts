@@ -1,12 +1,13 @@
 {{- if (include "arkcase.subsystem.enabled" $) }}
 {{- $dev := (include "arkcase.dev" $ | fromYaml) }}
 {{- $debug := $dev.debug | default dict }}
-{{- $customConf := and $dev $dev.conf }}
+{{- $customConf := and (not (empty $dev)) (not (empty $dev.conf)) }}
 {{- $customConfFile := and $customConf $dev.conf.file }}
 {{- $customConfDir := and $customConf (not $dev.conf.file) }}
-{{- $customWar := and $dev $dev.war }}
+{{- $customWar := and (not (empty $dev)) (not (empty $dev.war)) }}
 {{- $customWarFile := and $customConf $dev.war.file }}
 {{- $customWarDir := and $customConf (not $dev.war.file) }}
+---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -104,7 +105,7 @@ spec:
           volumeMounts:
             - name: &confVolume "conf"
               mountPath: &confDir "/app/conf"
-            - name: &war "war"
+            - name: &warVolume "war"
               mountPath: &warDir "/app/war"
             - name: &initVolume "home"
               mountPath: &initDir "/app/init"
