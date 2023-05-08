@@ -195,7 +195,7 @@ def render_group_id(groupId):
 	# If the groupId starts with the plus sign, remove the plus sign and return
 	# it as-is, no prefix. If it doesn't start with a plus sign, apply the prefix
 	if groupId.startswith("+"):
-		groupId = re.sub("^\++", "", groupId).strip()
+		return re.sub("^\+", "", groupId)
 	return f"{GROUP_PREFIX}{groupId}"
 
 def create_user(userId, userData):
@@ -271,12 +271,17 @@ def create_user(userId, userData):
 				fail(f"Failed to get the SID for LDAP administrator {userId}")
 
 			output = result.stdout.decode("utf-8")
-			m = SID_RE.match(output)
-			if not m:
-				fail(f"Unrecognized net command output looking for {userId}'s SID: [{output}]")
+			if DEBUG:
+				# Render a placeholder SID so we can view the command being rendered
+				sid = "S-X-X-XX-XXXXXXXXXX-XXXXXXXXXX-XXXXXXXXXX-XXXX"
+			else:
+				m = SID_RE.match(output)
+				if not m:
+					fail(f"Unrecognized net command output looking for {userId}'s SID: [{output}]")
 
-			# The SID is the last string that contains no spaces
-			sid = m.group(1)
+				# The SID is the last string that contains no spaces
+				sid = m.group(1)
+
 			result = samba_tool(["dsacl", "set", "--action=allow", f"--sddl=(A;OICI;GA;;;{sid})", f"--objectdn={DOMAIN_USER_GROUP_BASE}"])
 			if result.returncode != 0:
 				output = result.stdout.decode("utf-8")
@@ -290,13 +295,15 @@ def compile_memberships(memberships, memberId, memberData):
 	if KEY_GROUPS not in memberData:
 		return
 
-	groups = memberData[KEY_GROUPS]
-	for groupId in groups:
-		memberships[render_group_id(groupId)][memberId] = True
+	for groupId in memberData[KEY_GROUPS]:
+		groupId = render_group_id(groupId)
+		if groupId not in memberships:
+			memberships[groupId] = set()
+		memberships[groupId].add(memberId)
 
 def create_group(groupId, groupData):
 	if groupId.startswith("+"):
-		fail("Can't create groups that aren't 'owned' by ArkCase")
+		logging.info(f"The group ID [{groupId}] is not owned by ArkCase, skipping its creation")
 
 	groupId = render_group_id(groupId)
 	logging.info(f"Creating group '{groupId}' from [{groupData}]")
@@ -378,8 +385,8 @@ try:
 		if type(groups) == dict:
 			for groupId, groupData in groups.items():
 				groupId = create_group(groupId, groupData)
+				memberships[groupId] = set()
 				compile_memberships(memberships, groupId, groupData)
-				memberships[groupId] = {}
 		else:
 			logging.error(f"The '{KEY_GROUPS}' item in the configuration data is not a map, skipping its processing")
 
@@ -395,7 +402,7 @@ try:
 
 	# 3) apply the memberships
 	for groupId, members in memberships.items():
-		apply_memberships(groupId, sorted(members.keys()))
+		apply_memberships(groupId, sorted(members))
 
 	# Done!
 	sys.exit(0)
