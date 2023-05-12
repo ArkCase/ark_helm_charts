@@ -1,12 +1,14 @@
 {{- if (include "arkcase.subsystem.enabled" $) }}
-{{- $dev := (include "arkcase.dev" $ | fromYaml) }}
-{{- $debug := $dev.debug | default dict }}
-{{- $customConf := and (not (empty $dev)) (not (empty $dev.conf)) }}
-{{- $customConfFile := and $customConf $dev.conf.file }}
-{{- $customConfDir := and $customConf (not $dev.conf.file) }}
-{{- $customWar := and (not (empty $dev)) (not (empty $dev.war)) }}
-{{- $customWarFile := and $customConf $dev.war.file }}
-{{- $customWarDir := and $customConf (not $dev.war.file) }}
+  {{- $dev := (include "arkcase.dev" $ | fromYaml) }}
+  {{- $debug := $dev.debug | default dict }}
+  {{- $devUid := $dev.uid | default "1000" }}
+  {{- $devGid := $dev.gid | default "1000" }}
+  {{- $customConf := and (not (empty $dev)) (not (empty $dev.conf)) }}
+  {{- $customConfFile := and $customConf $dev.conf.file }}
+  {{- $customConfDir := and $customConf (not $dev.conf.file) }}
+  {{- $customWar := and (not (empty $dev)) (not (empty $dev.war)) }}
+  {{- $customWarFile := and $customConf $dev.war.file }}
+  {{- $customWarDir := and $customConf (not $dev.war.file) }}
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -98,8 +100,13 @@ spec:
                 jobs:
                   # We know the Cloudconfig image uses user 997i (centos) , 1997 (rocky)
                   # TODO: Make this autodetected via the securityContext
+                  {{- if $dev }}
+                  - ownership: "{{ $devUid }}:{{ $devGid }}"
+                    permissions: "u=rwXs,g=rwXs,o="
+                  {{- else }}
                   - ownership: "1997:1997"
                     permissions: "u=rwX,g=rX,o="
+                  {{- end }}
                     flags: [ "recurse", "noforced", "create", "changes" ]
                     targets: [ "/app/home", "/app/conf", "/app/war", "/app/logs" ]
           volumeMounts:
@@ -166,6 +173,10 @@ spec:
               value: *confDir
             - name: LOGS_DIR
               value: *logsDir
+            {{- if $dev }}
+            - name: DEVELOPMENT
+              value: "true"
+            {{- end }}
             {{- with (($.Values.configuration).arkcase).env }}
               {{- toYaml . | nindent 12 }}
             {{- end }}
