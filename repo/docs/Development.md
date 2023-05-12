@@ -6,38 +6,39 @@ This document describes the model and configuration for developers to integrate 
 The ArkCase helm chart supports enabling development mode by way of a map whose fully-populated structure matches the following:
 
 ```yaml
-global.dev:
-  # Enable or disable development mode, explicitly ... if the global.dev map is not empty,
-  # and this flag is not explicitly set to false, development features will be enabled. Development
-  # mode will also be enabled in general (i.e. for persistence), except if the global.mode flag
-  # is explicitly set to "production".
-  enabled: true
-
-  # Use the ArkCase WAR file or exploded WAR directory at this location for execution. It must be
-  # an absolute path. If it's an absolute path, it's assumed to be an "exploded WAR" directory.
-  # To indicate a file, you must use the syntax file://${absolutePathToFile}. If you want to be specific,
-  # you can also use path://${absolutePathToDirectory} to also indicate an exploded WAR directory.
-  war: "path:///mnt/c/Users/developer/workspace/ArkCase/WAR"
-  # war: "file:///mnt/c/Users/developer/workspace/ArkCase/target/arkcase-webapp.war"
-
-  # Use the ArkCase configuration zip file or exploded zip directory at this location for execution.
-  # the syntax and logic is identical for the war component, except this is for the .arkcase configuration
-  # file set.
-  conf: "path:///mnt/c/Users/developer/.arkcase"
-
-  # The settings in this map govern the debugging features
-  debug:
-    # Whether to enable or disable debugger features. Debugger features will be enabled if the debug map
-    # is not empty, and the enabled flag is not explicitly set to "false"
+global:
+  dev:
+    # Enable or disable development mode, explicitly ... if the global.dev map is not empty,
+    # and this flag is not explicitly set to false, development features will be enabled. Development
+    # mode will also be enabled in general (i.e. for persistence), except if the global.mode flag
+    # is explicitly set to "production".
     enabled: true
 
-    # The port to listen on for JDB connections. If not specified, the default of 8888 is used.
-    port: 8888
+    # Use the ArkCase WAR file or exploded WAR directory at this location for execution. It must be
+    # an absolute path. If it's an absolute path, it's assumed to be an "exploded WAR" directory.
+    # To indicate a file, you must use the syntax file://${absolutePathToFile}. If you want to be specific,
+    # you can also use path://${absolutePathToDirectory} to also indicate an exploded WAR directory.
+    war: "path:///mnt/c/Users/developer/workspace/ArkCase/WAR"
+    # war: "file:///mnt/c/Users/developer/workspace/ArkCase/target/arkcase-webapp.war"
 
-    # This setting governs the "suspend" setting in the debugger configuration for the JVM, and is useful
-    # to stop execution of any code until and unless a debugger connects to the instance (i.e. for
-    # debugging bootup issues). The default value is "false".
-    suspend: true
+    # Use the ArkCase configuration zip file or exploded zip directory at this location for execution.
+    # the syntax and logic is identical for the war component, except this is for the .arkcase configuration
+    # file set.
+    conf: "path:///mnt/c/Users/developer/.arkcase"
+
+    # The settings in this map govern the debugging features
+    debug:
+      # Whether to enable or disable debugger features. Debugger features will be enabled if the debug map
+      # is not empty, and the enabled flag is not explicitly set to "false"
+      enabled: true
+
+      # The port to listen on for JDB connections. If not specified, the default of 8888 is used.
+      port: 8888
+
+      # This setting governs the "suspend" setting in the debugger configuration for the JVM, and is useful
+      # to stop execution of any code until and unless a debugger connects to the instance (i.e. for
+      # debugging bootup issues). The default value is "false".
+      suspend: true
 ```
 
 ## Development vs. Production Mode
@@ -55,7 +56,8 @@ Enabling development mode may also enable many other features related to the dep
 Development mode can be explicitly enabled via the instructions in that document, or by enabling the configuration value:
 
 ```yaml
-global.mode: "development"
+global:
+  mode: "development"
 ```
 
 Other (case-insensitive) abbreviations such as "dev", "devel", or "develop" are also accepted. If an invalid value is used, ***production*** mode is defaulted.
@@ -68,7 +70,8 @@ Production mode is enabled implicitly by default, but may be enabled explicitly 
 
 ```yaml
 # Enable production mode
-global.mode: "production"
+global:
+  mode: "production"
 ```
 
 If production mode is enabled, but a default *storageClassName* is not configured, all volume claim templates rendered will lack that setting and thus will be expected to be provisioned by the cluster with [the default storage class](https://kubernetes.io/docs/tasks/administer-cluster/change-default-storage-class/).

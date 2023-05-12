@@ -181,110 +181,111 @@ For brevity and ease of reading in the following examples, we're going to shorte
 This configuration snippet attempts to describe all the forms in which a volume override may be described.  Each volume entry will have a brief comment describing what the configuration seeks to accomplish:
 
 ```yaml
-global.persistence.volumes:
+global:
+  persistence:
+    volumes:
 
-  # We use the name "widget" for our example component, for brevity
-  widget:
+      # We use the name "widget" for our example component, for brevity
+      widget:
 
-    ################################################################################
-    # FIRST, THE MORE VERBOSE METHODS                                              #
-    ################################################################################
+        ################################################################################
+        # FIRST, THE MORE VERBOSE METHODS                                              #
+        ################################################################################
   
-    # Apply the full PVC description as a template. The PVC will seek to
-    # bind to an nvme volume of at least 16Gi in ReadWriteMany mode
-    able:
-      claim:
-         # ... PersistentVolumeClaim (see doc links, below)
-         metadata:
-           labels:
-             # ... add some labels
-           annotations:
-             # ... add some annotations
-         spec:
-           storageClassName: "nvme"
-           accessModes:
-             - ReadWriteMany
-           resources:
-             requests:
-               storage: "16Gi"
+        # Apply the full PVC description as a template. The PVC will seek to
+        # bind to an nvme volume of at least 16Gi in ReadWriteMany mode
+        able:
+          claim:
+             # ... PersistentVolumeClaim (see doc links, below)
+             metadata:
+               labels:
+                 # ... add some labels
+               annotations:
+                 # ... add some annotations
+             spec:
+               storageClassName: "nvme"
+               accessModes:
+                 - ReadWriteMany
+               resources:
+                 requests:
+                   storage: "16Gi"
 
-    # Create a new PV, using nfs and of exactly 64Gi size, in ReadWriteOnce mode,
-    # and connecting to the server at 172.17.0.2, on path /data/beta, while also providing
-    # some mount flags
-    bravo:
-      volume:
-         # ... PersistentVolumeSpec (see links, below)
-         storageClassName: "nfs"
-         capacity:
-           storage: "64Gi"
-         accessModes: [ "ReadWriteOnce" ]
-        mountOptions:
-          - hard
-          - nfsvers=4.1
-        nfs:
-          path: /data/beta
-          server: 172.17.0.2
+        # Create a new PV, using nfs and of exactly 64Gi size, in ReadWriteOnce mode,
+        # and connecting to the server at 172.17.0.2, on path /data/beta, while also providing
+        # some mount flags
+        bravo:
+          volume:
+             # ... PersistentVolumeSpec (see links, below)
+             storageClassName: "nfs"
+             capacity:
+               storage: "64Gi"
+             accessModes: [ "ReadWriteOnce" ]
+            mountOptions:
+              - hard
+              - nfsvers=4.1
+            nfs:
+              path: /data/beta
+              server: 172.17.0.2
 
-    # Create a hostPath volume (if applicable) for charlie, which mounts the contents
-    # of the path /var/log/chuck as the volume
-    charlie:
-      path: "/var/log/chuck"
+        # Create a hostPath volume (if applicable) for charlie, which mounts the contents
+        # of the path /var/log/chuck as the volume
+        charlie:
+          path: "/var/log/chuck"
 
-    ################################################################################
-    # NEXT, USING THE FANCY STRING SYNTAX                                          #
-    ################################################################################
+        ################################################################################
+        # NEXT, USING THE FANCY STRING SYNTAX                                          #
+        ################################################################################
 
-    # Create a PVC template using glusterfs as the storageClassName, and with 8Gi
-    # resource requests, in ReadWriteMany or ReadWriteOnce modes, whichever one matches first
-    dog: "pvc://glusterfs/8Gi#RWM,ReadWriteOnce"
+        # Create a PVC template using glusterfs as the storageClassName, and with 8Gi
+        # resource requests, in ReadWriteMany or ReadWriteOnce modes, whichever one matches first
+        dog: "pvc://glusterfs/8Gi#RWM,ReadWriteOnce"
 
-    # Create a PVC template using the cluster's default-configured storageClassName (or our
-    # specifically configured storageClassName), and with 1Gi resource requests, in
-    # ReadWriteOnce mode
-    easy: "pvc:///1Gi#RW"
+        # Create a PVC template using the cluster's default-configured storageClassName (or our
+        # specifically configured storageClassName), and with 1Gi resource requests, in
+        # ReadWriteOnce mode
+        easy: "pvc:///1Gi#RW"
 
-    # Bind to the specific PVC resource named "myFoxyPvc", which would be managed external to the helm
-    # chart
-    fox: "pvc:myFoxyPvc"
+        # Bind to the specific PVC resource named "myFoxyPvc", which would be managed external to the helm
+        # chart
+        fox: "pvc:myFoxyPvc"
 
-    # Create an nvme volume that's 32Gi in size, and will be mounted in ReadWriteMany mode
-    george: "pv://nvme/32Gi#RWM"
+        # Create an nvme volume that's 32Gi in size, and will be mounted in ReadWriteMany mode
+        george: "pv://nvme/32Gi#RWM"
 
-    # Bind this volume to the existing PV resource named "howYouLikeDisVolume"
-    how: "vol://howYouLikeDisVolume"
+        # Bind this volume to the existing PV resource named "howYouLikeDisVolume"
+        how: "vol://howYouLikeDisVolume"
 
-    # This will render a hostPath volume, housed in ${hostPathRoot}/my-item-volume
-    item: "my-item-volume"
+        # This will render a hostPath volume, housed in ${hostPathRoot}/my-item-volume
+        item: "my-item-volume"
 
-    # This will render a hostPath volume, housed in "/opt/app/j"
-    jig: "/opt/app/j"
+        # This will render a hostPath volume, housed in "/opt/app/j"
+        jig: "/opt/app/j"
 
-    ################################################################################
-    # FINALLY, USING THE COMBINATION MAP AND FANCY STRING SYNTAX                   #
-    ################################################################################
+        ################################################################################
+        # FINALLY, USING THE COMBINATION MAP AND FANCY STRING SYNTAX                   #
+        ################################################################################
 
-    # Similar to the above examples, except the string is tied to the "claim:" stanza
-    king:
-      # claim: "pvc://.../..."
-      # claim: "pvc:queenOfVolumes"
+        # Similar to the above examples, except the string is tied to the "claim:" stanza
+        king:
+          # claim: "pvc://.../..."
+          # claim: "pvc:queenOfVolumes"
       
-      # This is identical to "pvc:kingOfAllVolumes"
-      claim: "kingOfAllVolumes"
+          # This is identical to "pvc:kingOfAllVolumes"
+          claim: "kingOfAllVolumes"
 
-    # Similar to the above examples, except the string is tied to the "volume:" stanza
-    love:
-      # volume: "pv://.../..."
-      # volume: "vol://volumeIDoNotLove"
+        # Similar to the above examples, except the string is tied to the "volume:" stanza
+        love:
+          # volume: "pv://.../..."
+          # volume: "vol://volumeIDoNotLove"
       
-      # This is identical to "vol://loveThisVolume"
-      volume: "loveThisVolume"
+          # This is identical to "vol://loveThisVolume"
+          volume: "loveThisVolume"
 
-    # Similar to the above examples, except the string is tied to the "path:" stanza
-    mike:
-      # volume: "relative/path/for/mike"
+        # Similar to the above examples, except the string is tied to the "path:" stanza
+        mike:
+          # volume: "relative/path/for/mike"
       
-      volume: "/opt/app/michael"
-
+          volume: "/opt/app/michael"
 ```
 
 Some helpful reference docs:

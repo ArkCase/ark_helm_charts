@@ -118,30 +118,32 @@ Please note that for real-world usage there may be authentication steps and othe
 Once you have your [custom image built](#create-custom-image), you will want to make it available to the helm deployment. In order to do this, you must set these configurations:
 
 ```yaml
-global.image.core:
-  #
-  # The name of the secret which contains the required credentials to access the image
-  # (may be provided as a CSV list of names, or a YAML array of names). All 3 forms
-  # below are acceptable.
-  #
-  # pullSecrets: "pull-secret-1,pull-secret-2"
-  # pullSecrets: [ "pull-secret-1", "pull-secret-2" ]
-  # pullSecrets:
-  #   - "pull-secret-1"
-  #   - "pull-secret-2"
+global:
+  image:
+    core:
+      #
+      # The name of the secret which contains the required credentials to access the image
+      # (may be provided as a CSV list of names, or a YAML array of names). All 3 forms
+      # below are acceptable.
+      #
+      # pullSecrets: "pull-secret-1,pull-secret-2"
+      # pullSecrets: [ "pull-secret-1", "pull-secret-2" ]
+      # pullSecrets:
+      #   - "pull-secret-1"
+      #   - "pull-secret-2"
 
-  # This name is required
-  deploy:
-    # These settings would be provided as required. They don't all have to be there,
-    # but at least some will need to be customized in order to support your custom
-    # deployment ... most likely the registry and repository since you would be able
-    # to mimic the default tag on your own images. However, if you wish to follow your
-    # own tag organization, you're also able to do that comfortably.
-    registry: "my-image-repository"
-    repository: "my-test-arkcase"
-    tag: "1.2.3"
+      # This name is required
+      deploy:
+        # These settings would be provided as required. They don't all have to be there,
+        # but at least some will need to be customized in order to support your custom
+        # deployment ... most likely the registry and repository since you would be able
+        # to mimic the default tag on your own images. However, if you wish to follow your
+        # own tag organization, you're also able to do that comfortably.
+        registry: "my-image-repository"
+        repository: "my-test-arkcase"
+        tag: "1.2.3"
 
-    # This setting is optional, and the default behavior is described
-    # here: https://kubernetes.io/docs/concepts/containers/images/#image-pull-policy
-    # pullPolicy: "IfNotPresent"
+        # This setting is optional, and the default behavior is described
+        # here: https://kubernetes.io/docs/concepts/containers/images/#image-pull-policy
+        # pullPolicy: "IfNotPresent"
 ```

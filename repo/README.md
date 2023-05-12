@@ -83,7 +83,8 @@ Enabling development mode may also enable many other features related to the dep
 Details on how to use **development** mode are available [here](#dev-integration). Development mode can be explicitly enabled via the instructions in that document, or by enabling the configuration value:
 
 ```yaml
-global.mode: "development"
+global:
+  mode: "development"
 ```
 
 Other (case-insensitive) abbreviations such as "dev", "devel", or "develop" are also accepted. If an invalid value is used, ***production*** mode is defaulted.
@@ -96,7 +97,8 @@ Production mode is enabled implicitly by default, but may be enabled explicitly 
 
 ```yaml
 # Enable production mode
-global.mode: "production"
+global:
+  mode: "production"
 ```
 
 If production mode is enabled, but a default *storageClassName* is not configured, all volume claim templates rendered will lack that setting and thus will be expected to be provisioned by the cluster with [the default storage class](https://kubernetes.io/docs/tasks/administer-cluster/change-default-storage-class/).

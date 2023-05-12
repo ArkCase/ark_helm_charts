@@ -90,58 +90,60 @@ Recall that if you want to use an external database server, you must have pre-co
 The database configuration has a very specific structure that must be followed when being overridden. *It is **strongly** recommended to **not** override any values other than the database dialect when deploying the embedded database pods*. Here's a general example of how the database configuration is structured:
 
 ```yaml
-global.conf.rdbms:
+global:
+  conf:
+    rdbms:
 
-  # The type of the database
-  # Currently only postgres, mysql, mariadb, oracle, and mssql are supported.
-  dialect: "postgres"
+      # The type of the database
+      # Currently only postgres, mysql, mariadb, oracle, and mssql are supported.
+      dialect: "postgres"
 
-  # The host the DB is on. Only give this value if the DB is 
-  hostname: "my-db-hostname"
+      # The host the DB is on. Only give this value if the DB is 
+      hostname: "my-db-hostname"
 
-  # The port at which it's accessible. If not given, a well-known default
-  # will be used. Only provide this value if a non-standard port is used.
-  port: 1234
+      # The port at which it's accessible. If not given, a well-known default
+      # will be used. Only provide this value if a non-standard port is used.
+      port: 1234
 
-  # This is generally optional, except for Oracle in which the instance (SID) is
-  # required. It's also supported for SQL Server.
-  # instance: "defaultInstance"
+      # This is generally optional, except for Oracle in which the instance (SID) is
+      # required. It's also supported for SQL Server.
+      # instance: "defaultInstance"
 
-  # These may be necessary in some scenarios, but generally aren't.
-  # admin:
-  #   username: "...."
-  #   password: "...."
+      # These may be necessary in some scenarios, but generally aren't.
+      # admin:
+      #   username: "...."
+      #   password: "...."
 
-  # Here we add the list of DB "schemas" that must exist on the target server,
-  # and the necessary information to connect
-  schema:
+      # Here we add the list of DB "schemas" that must exist on the target server,
+      # and the necessary information to connect
+      schema:
 
-    # The schema name (only in abstract, for reference by the charts...has no
-    # reflection on the database connectivity)
-    numberone:
+        # The schema name (only in abstract, for reference by the charts...has no
+        # reflection on the database connectivity)
+        numberone:
 
-      # The name of the database. If not given (or empty), defaults to the schema's symbolic name
-      database: "dbone"
+          # The name of the database. If not given (or empty), defaults to the schema's symbolic name
+          database: "dbone"
 
-      # The username to connect as. If not given (or empty), defaults to the database name
-      username: "first"
+          # The username to connect as. If not given (or empty), defaults to the database name
+          username: "first"
 
-      # The password to connect with. If not given (or empty), defaults to an SHA-1 checksum of the user name, all lowercase
-      password: "io8aeHeeja+go3ju"
+          # The password to connect with. If not given (or empty), defaults to an SHA-1 checksum of the user name, all lowercase
+          password: "io8aeHeeja+go3ju"
 
-      # Optional ... only if required by the target DB (i.e. Oracle SID, SQL Server instance name)
-      # instance: "myInstance"
+          # Optional ... only if required by the target DB (i.e. Oracle SID, SQL Server instance name)
+          # instance: "myInstance"
 
-      # Optional ... only if required by the target DB (i.e. PostgreSQL or SQL Server schema name)
-      # schema: "public"
+          # Optional ... only if required by the target DB (i.e. PostgreSQL or SQL Server schema name)
+          # schema: "public"
 
-    deuce:
-      database: "seconddb"
-      username: "duo"
-      password: "eGhu6ul)eePea&sh"
-      # ...
+        deuce:
+          database: "seconddb"
+          username: "duo"
+          password: "eGhu6ul)eePea&sh"
+          # ...
 
-    # ... more schema definitions here
+        # ... more schema definitions here
 
 ```
 
@@ -170,42 +172,44 @@ As a result, if you wish to interface ArkCase with an external database, you ***
 Here's an example of what that database configuration may end up looking like (assuming a PostgreSQL instance):
 
 ```yaml
-global.conf.rdbms:
+global:
+  conf:
+    rdbms:
 
-  # Always required
-  dialect: "postgresql"
+      # Always required
+      dialect: "postgresql"
 
-  # Always required
-  hostname: "psqldb.my-domain.com"
+      # Always required
+      hostname: "psqldb.my-domain.com"
 
-  # Only required if using a non-default port
-  # port: 15432
+      # Only required if using a non-default port
+      # port: 15432
 
-  schema:
-    # Always required
-    arkcase:
-      username: "arkcase-db-user"
-      password: "<some-password-value>"
+      schema:
+        # Always required
+        arkcase:
+          username: "arkcase-db-user"
+          password: "<some-password-value>"
 
-    # Only required if Alfresco is being deployed
-    content:
-      username: "alfresco-db-user"
-      password: "<some-password-value>"
+        # Only required if Alfresco is being deployed
+        content:
+          username: "alfresco-db-user"
+          password: "<some-password-value>"
       
-    # Only required if Pentaho is being deployed
-    hibernate:
-      username: "pentaho-db-user"
-      password: "<some-password-value>"
+        # Only required if Pentaho is being deployed
+        hibernate:
+          username: "pentaho-db-user"
+          password: "<some-password-value>"
 
-    # Only required if Pentaho is being deployed
-    jackrabbit:
-      username: "pentaho-jcr-db-user"
-      password: "<some-password-value>"
+        # Only required if Pentaho is being deployed
+        jackrabbit:
+          username: "pentaho-jcr-db-user"
+          password: "<some-password-value>"
 
-    # Only required if Pentaho is being deployed
-    quartz:
-      username: "pentaho-quartz-db-user"
-      password: "<some-password-value>"
+        # Only required if Pentaho is being deployed
+        quartz:
+          username: "pentaho-quartz-db-user"
+          password: "<some-password-value>"
 ```
 
 ## <a name="ssl"></a>SSL/TLS Considerations
