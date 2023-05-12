@@ -803,7 +803,7 @@ result: "DC=some,DC=domain,DC=com"
     {{- $dev := $global.dev -}}
     {{- $enabled := (or (not (hasKey $dev "enabled")) (not (empty (include "arkcase.toBoolean" $dev.enabled)))) -}}
     {{- if $enabled -}}
-      {{- $result = set $result "enabled" $enabled -}}
+      {{- $result = set $result "enabled" true -}}
       {{- if and $dev.war (kindIs "string" $dev.war) -}}
         {{- $war := $dev.war | toString -}}
         {{- $file := (hasPrefix "file://" $war) -}}
@@ -834,6 +834,22 @@ result: "DC=some,DC=domain,DC=com"
         {{- $result = set $result "conf" (dict "file" $file "path" (include "arkcase.tools.normalizePath" $conf)) -}}
       {{- else if $dev.conf -}}
         {{- fail (printf "The value for global.dev.conf must be a string (%s)" (kindOf $dev.conf)) -}}
+      {{- end -}}
+
+      {{- if $dev.uid -}}
+        {{- $uid := ($dev.uid | toString) -}}
+        {{- if (not (regexMatch "^[1-9][0-9]*$" $uid)) -}}
+          {{- fail (printf "The value for global.dev.uid must be a number (%s)" $uid) -}}
+        {{- end -}}
+        {{- $result = set $result "uid" ($uid | atoi) -}}
+      {{- end -}}
+
+      {{- if $dev.gid -}}
+        {{- $gid := ($dev.gid | toString) -}}
+        {{- if (not (regexMatch "^[1-9][0-9]*$" $gid)) -}}
+          {{- fail (printf "The value for global.dev.gid must be a number (%s)" $gid) -}}
+        {{- end -}}
+        {{- $result = set $result "gid" ($gid | atoi) -}}
       {{- end -}}
 
       {{- $debug := $dev.debug -}}
