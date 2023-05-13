@@ -23,7 +23,7 @@ Here's a table of contents so you can quickly reach the documentation section yo
 
 ## <a name="overview"></a>Overview
 
-This repository houses the set of Helm charts and supporting library charts for deploying [ArkCase](https://www.arkcase.com/) in a [Kubernetes](https://kubernetes.io/) environment, running on [Linux](https://www.linux.org/) (for now, this is the only supported platform). These charts have only been tested in vanilla Kubernetes and [EKS](https://aws.amazon.com/eks/) environments. However, it's not unreasonable to expect these charts to work OOTB with other stacks such as [OpenShift](https://www.redhat.com/en/technologies/cloud-computing/openshift/kubernetes-engine), [MiniKube](https://minikube.sigs.k8s.io/docs/start/), and [K3s](https://k3s.io/).
+This repository houses the set of Helm charts and supporting library charts for deploying [ArkCase](https://www.arkcase.com/) in a [Kubernetes](https://kubernetes.io/) environment, running on [Linux](https://www.linux.org/) (for now, this is the only supported platform). These charts have only been tested in vanilla Kubernetes, [Rancher Desktop](https://arkcase.github.io/ark_helm_charts/) and [EKS](https://aws.amazon.com/eks/) environments. However, it's not unreasonable to expect these charts to work OOTB with other stacks such as [OpenShift](https://www.redhat.com/en/technologies/cloud-computing/openshift/kubernetes-engine), [MiniKube](https://minikube.sigs.k8s.io/docs/start/), and [K3s](https://k3s.io/) or [K3d](https://k3d.io/).
 
 The charts are designed to facilitate the application's deployment and configuration for (almost) any deployment environment, and are meant to facilitate the deployment of an entire, working stack in a matter of minutes.
 
