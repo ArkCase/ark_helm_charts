@@ -5,6 +5,7 @@
 * [Introduction](#introduction)
 * [General Use Pattern](#general-pattern)
 * [External Databases](#external-database)
+* [External LDAP Authentication](#external-ldap)
 * [SSL/TLS Considerations](#ssl)
 
 ## <a name="introduction"></a>Introduction
@@ -211,6 +212,50 @@ global:
           username: "pentaho-quartz-db-user"
           password: "<some-password-value>"
 ```
+## <a name="external-ldap"></a>External LDAP Authentication
+
+To configure external LDAP Authentication, things are also a little bit different. In addition to providing the LDAP(S) URL, you must also provide some information regarding how the directory is configured. The default organization assumes an [Active Directory](https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/get-started/virtual-dc/active-directory-domain-services-overview) organization.
+
+This is the complete configuration available for LDAP services. Not all values are required - for example, it's generally sufficient to provide the URL (`global.conf.ldap.url`), the domain specification (`global.conf.ldap.domain`), and the bind details (`global.conf.ldap.bind.dn` and `global.conf.ldap.bind.password`):
+
+```yaml
+global:
+  conf:
+    ldap:
+      url: "ldaps://ldap:636"
+      domain: "my.external-ldap.domain.com"
+      # Don't declare a baseDn unless absolutely necessary
+      # baseDn: "ou=Case Management,dc=my,dc=external-ldap,dc=domain,dc=com"
+      bind:
+        dn: "cn=ArkCase Administrator,cn=Users,${baseDn}"
+        password: "someUserBindPassword"
+      admin:
+        dn: "cn=ArkCase Administrator"
+        role: "cn=ARKCASE_ADMINISTRATOR"
+      search:
+        users:
+          base: "cn=Users"
+          attribute: "sAMAccountName"
+          filter: "(&(objectClass=user)(sAMAccountName={0}))"
+          allFilter: "(objectClass=user)"
+          prefix: ""
+        groups:
+          base: "cn=Users"
+          attribute: "cn"
+          filter: "(&(objectClass=group)(cn={0}))"
+          allFilter: "(objectClass=group)"
+          membership: "(&(objectClass=group)(member={0}))"
+          ignoreCase: "false"
+          subtree: "true"
+          rolePrefix: ""
+          prefix: ""
+```
+
+In more nuanced cases you may also have to provide the baseDn (`global.conf.ldap.baseDn`), as well as other values describing how to find users, groups, memberships, etc.  Please note that the configurations that appear to be missing a complete DN specification (i.e. like `global.conf.ldap.search.users.base` or `global.conf.ldap.search.groups.base`) are set in that manner by design, because when they're consumed while rendering configuration files, the baseDn value is appended unto them at that moment.
+
+### User Management
+
+ArkCase's user management features require the bind DN user to be able to create or modify users and groups. These permissions must be managed manually, or these features will not work as desired.
 
 ## <a name="ssl"></a>SSL/TLS Considerations
 
