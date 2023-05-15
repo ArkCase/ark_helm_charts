@@ -14,20 +14,34 @@
   {{- end -}}
 
   {{- $finalTrusts := list -}}
+  {{- $current := 0 -}}
+  {{- $dupes := dict -}}
   {{- range $trusts -}}
+    {{- $current = add 1 $current -}}
     {{- if (kindIs "string" .) -}}
-      {{- $cert := "" -}}
+      {{- $value := "" -}}
+      {{- $type := "" -}}
       {{- if and (contains "-----BEGIN CERTIFICATE-----" .) (contains "-----END CERTIFICATE-----" .) -}}
-        {{- $cert = . -}}
+        {{- $value = . -}}
+        {{- $type = "pem" -}}
+      {{- else if (regexMatch "^([^:/?#]+)://([^/?#]*)([^?#]*)([?]([^#]*))?(#(.*))?$" .) -}}
+        {{- $value = . -}}
+        {{- $type = "url" -}}
+      {{- else if (regexMatch "^(([^@]+)@)?(([^:]+):([1-9][0-9]*))$" .) -}}
+        {{- $value = . -}}
+        {{- $type = "ssl" -}}
       {{- else -}}
-        {{- /* Validate that it's a URL */ -}}
-        {{- if not (regexMatch "^[a-zA-Z0-9_-]+://" .) -}}
-          {{- fail (printf "This value for global.trusts is not valid - must be a PEM-encoded certificate, or a URL from which to download one (using curl): [%s]" .) -}}
-        {{- end -}}
-        {{- $cert = . -}}
+        {{- fail (printf "Value # %d for global.trusts is not valid - must be a PEM-encoded certificate, URL from which to download one (using curl), or an SSL endpoing of the form [serverName@]hostnameOrIP[:port]. Bad value = [%s]" $current .) -}}
       {{- end -}}
-      {{- if $cert -}}
-        {{- $finalTrusts = append $finalTrusts $cert -}}
+
+      {{- if $value -}}
+        {{- $hash := ($value | sha256sum) -}}
+        {{- if (not (hasKey $dupes $hash)) -}}
+          {{- $name := (printf "ssl-trust-%03d" (len $finalTrusts)) -}}
+          {{- $result := (dict "type" $type "name" $name "value" $value "hash" $hash) -}}
+          {{- $finalTrusts = append $finalTrusts $result -}}
+          {{- $dupes = set $dupes $hash $result -}}
+        {{- end -}}
       {{- end -}}
     {{- end -}}
   {{- end -}}
