@@ -1,0 +1,22 @@
+## bitnami/common
+## It is required by CI/CD tools and processes.
+## @skip exampleValue
+##
+exampleValue: common-chart
+
+global:
+  trusts:
+    - http://www.kakuska.com
+    # - something that isn't a URL
+    - |
+      -----BEGIN CERTIFICATE-----
+      MIIFeDCCBGCgAwIBAgIBLTANBgkqhkiG9w0BAQsFADCBtzELMAkGA1UEBhMCQ1Ix
+      ETAPBgNVBAgTCFNhbiBKb3NlMRIwEAYDVQQHEwlTYW50YSBBbmExFzAVBgNVBAoT
+      DkVydWRpY2l0eSBTLkEuMRwwGgYDVQQLExNTZWN1cml0eSBPcGVyYXRpb25zMSMw
+      IQYDVQQDExpFcnVkaWNpdHkgMjA0OC1iaXQgUm9vdCBDQTElMCMGCSqGSIb3DQEJ
+      ARYWc2VjdXJpdHlAZXJ1ZGljaXR5LmNvbTAeFw0yMjA3MTQwNDQxMDhaFw0zMjA3
+      MTEwNDQxMDhaMIGZMQswCQYDVQQGEwJDUjERMA8GA1UECBMIU2FuIEpvc2UxFzAV
+      BgNVBAoTDkVydWRpY2l0eSBTLkEuMRwwGgYDVQQLExNTZWN1cml0eSBPcGVyYXRp
+      b25zMRkwFwYDVQQDExBkaWVnby5yaXZlcmEucHJ2MSUwIwYJKoZIhvcNAQkBFhZz
+      -----END CERTIFICATE-----
+    - serverName@hostName:1234

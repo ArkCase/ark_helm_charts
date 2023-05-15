@@ -207,6 +207,7 @@ spec:
           securityContext: {{- toYaml . | nindent 12 }}
           {{- end }}
           volumeMounts:
+            {{- include "arkcase.trusts.mount" $ | nindent 12 }}
             - name: *initVolume
               mountPath: *initDir
             - name: *homeVolume
@@ -287,6 +288,7 @@ spec:
           securityContext: {{- toYaml . | nindent 12 }}
           {{- end }}
           volumeMounts:
+            {{- include "arkcase.trusts.mount" $ | nindent 12 }}
             - name: *confVolume
               mountPath: *confDir
               subPath: "acm/acm-config-server-repo"
@@ -311,6 +313,7 @@ spec:
               subPath: *ldapYaml
               readOnly: true
       volumes:
+        {{- include "arkcase.trusts.volume" $ | nindent 8 }}
         - name: *secrets
           secret:
             optional: false

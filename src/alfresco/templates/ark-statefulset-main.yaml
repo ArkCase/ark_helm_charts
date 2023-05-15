@@ -140,6 +140,7 @@ spec:
           {{- end }}
           volumeMounts:
             {{- include "arkcase.alfresco.license.volumeMounts" (dict "ctx" $ "volume" "secrets" "path" "/usr/local/tomcat/shared/classes/alfresco/extension/license") | nindent 12 }}
+            {{- include "arkcase.trusts.mount" $ | nindent 12 }}
             - name: *dataVolume
               mountPath: *dataDir
             - name: *initVolume
@@ -153,6 +154,7 @@ spec:
               subPath: &ldapAdProperties "ldap-ad.properties"
               readOnly: true
       volumes:
+        {{- include "arkcase.trusts.volume" $ | nindent 8 }}
         - name: *secrets
           secret:
             optional: false

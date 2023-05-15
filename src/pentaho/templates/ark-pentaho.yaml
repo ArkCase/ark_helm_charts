@@ -121,6 +121,7 @@ spec:
           {{- end }}
           volumeMounts:
             {{- include "arkcase.pentaho.license.volumeMounts" (dict "ctx" $ "volume" "secrets" "path" "/app/init/licenses") | nindent 12 }}
+            {{- include "arkcase.trusts.mount" $ | nindent 12 }}
             - name: *dataVol
               mountPath: *dataPath
             - name: *initVol
@@ -204,6 +205,7 @@ spec:
               subPath: &baseReportsTarGz {{ printf "base-reports.%s.tar.gz" $db.reports | quote }}
               readOnly: true
       volumes:
+        {{- include "arkcase.trusts.volume" $ | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "init") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "logs") | nindent 8 }}
