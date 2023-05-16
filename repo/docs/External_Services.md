@@ -259,4 +259,33 @@ ArkCase's user management features require the bind DN user to be able to create
 
 ## <a name="ssl"></a>SSL/TLS Considerations
 
-To be written
+In order to consume external services using SSL/TLS, it's important to establish trust between the ArkCase stack and those services. The expectation is that those services will be utilizing certificates signed by a Certification Authority. Thus, the solution to establish trust is to enable the adding of those CA certificates into the stack's trust-at-large. The way to establish that trust is by the following configuration model:
+
+```yaml
+global:
+  trusts:
+
+    # A URL that leads directly to a certificate, or certificate chain.
+    # Only CA certificates will be added to the trust.
+    - http://www.my-certificates.com/trusted/root.pem
+
+    # An actual PEM-encoded certificate, or chain. Only CA certificates
+    # will be added to the trust.
+    - |
+      -----BEGIN CERTIFICATE-----
+      MIIFeDCCBGCgAwIBAgIBLTANBgkqhkiG9w0BAQsFADCBtzELMAkGA1UEBhMCQ1Ix
+      ETAPBgNVBAgTCFNhbiBKb3NlMRIwEAYDVQQHEwlTYW50YSBBbmExFzAVBgNVBAoT
+      DkVydWRpY2l0eSBTLkEuMRwwGgYDVQQLExNTZWN1cml0eSBPcGVyYXRpb25zMSMw
+      BgNVBAoTDkVydWRpY2l0eSBTLkEuMRwwGgYDVQQLExNTZWN1cml0eSBPcGVyYXRp
+      b25zMRkwFwYDVQQDExBkaWVnby5yaXZlcmEucHJ2MSUwIwYJKoZIhvcNAQkBFhZz
+      ......
+      -----END CERTIFICATE-----
+
+    # A string of the form [serverName@]hostName:port, which will be queried
+    # using openssl s_client to obtain the offered certificates, and any CA
+    # certificates returned will be added to the trust.
+    - psql.service.com@10.35.4.32:3434
+
+```
+
+You can add any number of certificates or pointers/URLs to certificates here. Only CA certificates (`basicConstraints.CA=TRUE`) will be added to the trust stores.
