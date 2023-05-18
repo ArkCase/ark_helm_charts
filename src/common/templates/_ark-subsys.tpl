@@ -299,13 +299,17 @@ subsets:
           {{- fail (printf "The value global.service.%s.loadBalancerClass is not valid: %s" $name $loadBalancerClass) -}}
         {{- end -}}
 
-        {{- $allocateNodePorts := ($service.allocateNodePorts | default "" | toString | lower) -}}
-        {{- if $allocateNodePorts -}}
-          {{- if or (eq "true" $allocateNodePorts) (eq "false" $allocateNodePorts) -}}
-            {{- $s = set $s "allocateNodePorts" (eq "true" $allocateNodePorts) -}}
-          {{- else -}}
-            {{- fail (printf "The value global.service.%s.allocateNodePorts is not valid - must be either 'true' or 'false': %s" $name $allocateNodePorts) -}}
+        {{- if hasKey $service "allocateNodePorts" -}}
+          {{- $allocateNodePorts := get $service "allocateNodePorts" -}}
+          {{- if not (kindIs "bool" $allocateNodePorts) -}}
+            {{- $allocateNodePorts = $allocateNodePorts | toString -}}
+            {{- if or (eq "true" $allocateNodePorts) (eq "false" $allocateNodePorts) -}}
+              {{- $allocateNodePorts = (eq "true" $allocateNodePorts) -}}
+            {{- else -}}
+              {{- fail (printf "The value global.service.%s.allocateNodePorts is not valid - must be either 'true' or 'false': [%s]" $name $allocateNodePorts) -}}
+            {{- end -}}
           {{- end -}}
+          {{- $s = set $s "allocateNodePorts" $allocateNodePorts -}}
         {{- end -}}
       {{- else if (eq "NodePort" $s.type) -}}
         {{- $ports := ($service.ports | default dict) -}}
