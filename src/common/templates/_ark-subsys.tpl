@@ -113,7 +113,6 @@ Parameter: either the root context (i.e. "." or "$"), or
   {{- $data := .data }}
   {{- $global := .global }}
   {{- if (include "arkcase.subsystem.enabledOrExternal" $ctx) }}
-    {{- $globalOverrides := (include "arkcase.subsystem.service.global" $ctx | fromYaml) -}}
     {{- $external := (coalesce $data.external $ctx.Values.service.external "") }}
     {{- $ports := (coalesce $data.ports list) }}
     {{- $type := (coalesce $data.type "ClusterIP") }}
@@ -128,6 +127,15 @@ Parameter: either the root context (i.e. "." or "$"), or
         {{- $name = (printf "%s-%s" $name .name) }}
       {{- end }}
     {{- end }}
+    {{- $overrides := (include "arkcase.subsystem.service.global" $ctx | fromYaml) -}}
+    {{- if hasKey $overrides $name -}}
+      {{- $overrides = get $overrides $name -}}
+    {{- else -}}
+      {{- $overrides = dict -}}
+    {{- end -}}
+    {{- if and (hasKey $overrides "type") ($overrides.type) -}}
+      {{- $type = $overrides.type -}}
+    {{- end -}}
 
 ---
 apiVersion: v1
@@ -153,10 +161,22 @@ spec:
     {{- if or (not $external) (include "arkcase.tools.isIp" $external) }}
   # This is either an internal service, or an external service using an IP address
   type: {{ coalesce $type "ClusterIP" }}
+  {{- if (eq $type "LoadBalancer") }}
+    {{- with $overrides.loadBalancerClass }}
+  loadBalancerClass: {{ . | quote }}
+    {{- end }}
+    {{- with $overrides.loadBalancerIP }}
+  loadBalancerIP: {{ . | quote }}
+    {{- end }}
+    {{- if (hasKey $overrides "allocateNodePorts") }}
+  allocateLoadBalancerNodePorts: {{ $overrides.allocateNodePorts }}
+    {{- end }}
+  {{- end }}
   ports:
       {{- if (empty $ports) }}
         {{- fail "There are no ports defined to be proxied for this external service" }}
       {{- end }}
+      {{- $portOverrides := ($overrides.ports | default dict) -}}
       {{- range $ports }}
     - name: {{ (required "Port specifications must contain a name" .name) | quote }}
       protocol: {{ coalesce .protocol "TCP" }}
@@ -164,8 +184,11 @@ spec:
         {{- if .targetPort }}
       targetPort: {{ int .targetPort }}
         {{- end }}
-        {{- if and (eq $type "NodePort") .nodePort }}
-      nodePort: {{ int .nodePort }}
+        {{- if (eq $type "NodePort") }}
+          {{- $nodePort = coalesce ((hasKey $portOverrides .name) | ternary (get $portOverrides .name) 0) (.nodePort | default 0) }}
+          {{- if $nodePort }}
+      nodePort: {{ int $nodePort }}
+          {{- end }}
         {{- end }}
       {{- end }}
   selector: {{- include "arkcase.labels.matchLabels" $ctx | nindent 4 }}
@@ -279,7 +302,7 @@ subsets:
         {{- $allocateNodePorts := ($service.allocateNodePorts | default "" | toString | lower) -}}
         {{- if $allocateNodePorts -}}
           {{- if or (eq "true" $allocateNodePorts) (eq "false" $allocateNodePorts) -}}
-            {{- $s = set $s "allocateLoadBalancerNodePorts" (eq "true" $allocateNodePorts) -}}
+            {{- $s = set $s "allocateNodePorts" (eq "true" $allocateNodePorts) -}}
           {{- else -}}
             {{- fail (printf "The value global.service.%s.allocateNodePorts is not valid - must be either 'true' or 'false': %s" $name $allocateNodePorts) -}}
           {{- end -}}
