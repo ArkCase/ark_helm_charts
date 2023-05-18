@@ -185,7 +185,7 @@ spec:
       targetPort: {{ int .targetPort }}
         {{- end }}
         {{- if (eq $type "NodePort") }}
-          {{- $nodePort = coalesce ((hasKey $portOverrides .name) | ternary (get $portOverrides .name) 0) (.nodePort | default 0) }}
+          {{- $nodePort := coalesce ((hasKey $portOverrides .name) | ternary (get $portOverrides .name) 0) (.nodePort | default 0) }}
           {{- if $nodePort }}
       nodePort: {{ int $nodePort }}
           {{- end }}
