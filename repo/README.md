@@ -15,6 +15,7 @@ Here's a table of contents so you can quickly reach the documentation section yo
  - [Security](#security)
  - [Configuration](#configuration)
    - [Licenses](#licenses)
+   - [Service Type Overrides](#service-overrides)
    - [Ingress and SSL/TLS Access](#ingress)
    - [Persistence Layer](#persistence)
    - [Externally-provided Services](#external-services)
@@ -127,9 +128,13 @@ Finally, this chart currently doesn't support individualized service accounts fo
 
 The information on how to configure component licenses can be found [in this document](docs/Licenses.md).
 
+### <a name="service-overrides"></a>Service Type Overrides
+
+The information on how to override service types (i.e. NodePort/LoadBalancer) can be found [in this document](docs/Service_Overrides.md).
+
 ### <a name="ingress"></a>Ingress and SSL/TLS Access
 
-The information on how to configure the ingress, and the SSL/TLS certificates for secure access can be found [in this document](docs/Ingress.md).
+The information on how to configure the Ingress and the SSL/TLS certificates for secure access can be found [in this document](docs/Ingress.md).
 
 ### <a name="persistence"></a>Persistence
 

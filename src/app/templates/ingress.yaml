@@ -1,8 +1,7 @@
 {{- $baseUrl := (include "arkcase.tools.conf" (dict "ctx" $ "value" "baseUrl") | toString) -}}
 {{- if $baseUrl -}}
   {{- $baseUrl = ((include "arkcase.tools.parseUrl" $baseUrl) | fromYaml) -}}
-  {{- $ingress := (include "arkcase.tools.conf" (dict "ctx" $ "value" "ingress" "detailed" true) | fromYaml) -}}
-  {{- $ingress = $ingress.value -}}
+  {{- $ingress := ($.Values.global.ingress | default dict) -}}
   {{- $ingress = (kindIs "map" $ingress) | ternary $ingress dict -}}
   {{- $enabled := or (not (hasKey $ingress "enabled")) (eq "true" ($ingress.enabled | toString | lower)) -}}
   {{- $https := (eq "https" ($baseUrl.scheme | lower)) -}}
