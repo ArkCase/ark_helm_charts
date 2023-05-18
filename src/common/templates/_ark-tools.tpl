@@ -606,6 +606,45 @@ return either the value if correct, or the empty string if not.
   {{- (hasPrefix "Values.configuration." (include "arkcase.tools.normalizeDots" $var)) | ternary "true" "" -}}
 {{- end -}}
 
+{{- define "arkcase.tools.global" -}}
+  {{- $ctx := .ctx -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "The context given (either the parameter map, or the 'ctx' value within) is not the top-level context" -}}
+  {{- end -}}
+  {{- $debug := and (hasKey . "debug") .debug -}}
+
+  {{- $value := .value -}}
+  {{- if and $value (not (kindIs "string" $value)) -}}
+    {{- fail (printf "The 'value' parameter must be a string, not a %s" (kindOf $value)) -}}
+  {{- else if not $value -}}
+    {{- $value = "" -}}
+  {{- end -}}
+
+  {{- $prefix := (.prefix | default "") -}}
+  {{- if and $prefix (kindIs "string" $prefix) -}}
+    {{- $prefix = (include "arkcase.tools.normalizeDots" $prefix | trimPrefix "." | trimSuffix ".") -}}
+  {{- end -}}
+  {{- if and $value $prefix -}}
+    {{- $value = (printf "%s.%s" $prefix $value) -}}
+  {{- else if $prefix -}}
+    {{- $value = $prefix -}}
+  {{- end -}}
+
+  {{- $result := (include "arkcase.tools.get" (dict "ctx" $ctx "name" (printf "Values.global.%s" $value)) | fromYaml) -}}
+  {{- if $debug -}}
+    {{- fail (dict "result" $result "global" (dict "conf" ($ctx.Values.global | default dict)) | toYaml | nindent 0) -}}
+  {{- end -}}
+  {{- if .detailed -}}
+    {{- $result | toYaml -}}
+  {{- else -}}
+    {{- $v := $result.value -}}
+    {{- if or (kindIs "map" $v) (kindIs "slice" $v) -}}
+      {{- $v = (toYaml $v) -}}
+    {{- end -}}
+    {{- $v -}}
+  {{- end -}}
+{{- end -}}
+
 {{- define "arkcase.tools.conf" -}}
   {{- $ctx := .ctx -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}

@@ -143,6 +143,10 @@ metadata:
     {{- with $data.labels }}
       {{- toYaml . | nindent 4 }}
     {{- end }}
+    {{- with $overrides.labels }}
+      {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
   annotations:
     {{- with $ctx.Values.annotations }}
       {{- toYaml . | nindent 4 }}
@@ -308,24 +312,6 @@ subsets:
           {{- end -}}
           {{- $s = set $s "allocateNodePorts" $allocateNodePorts -}}
         {{- end -}}
-
-        {{- if hasKey $service "annotations" -}}
-          {{- $annotations := $service.annotations -}}
-          {{- if and $annotations (not (kindIs "map" $annotations)) -}}
-            {{- fail (printf "The value global.service.%s.annotations must be a map (it's a %s)" $name (kindOf $annotations)) -}}
-          {{- else if $annotations -}}
-            {{- $a := dict -}}
-            {{- range $k, $v := $annotations -}}
-              {{- $a = set $a ($k | toString) ($v | toString) -}}
-            {{- end -}}
-            {{- $annotations = $a -}}
-          {{- else -}}
-            {{- $annotations = dict -}}
-          {{- end -}}
-          {{- $s = set $s "annotations" $annotations -}}
-        {{- else -}}
-          {{- $s = set $s "annotations" dict -}}
-        {{- end -}}
       {{- else if (eq "NodePort" $s.type) -}}
         {{- $ports := ($service.ports | default dict) -}}
         {{- if not (kindIs "map" $ports) -}}
@@ -349,6 +335,42 @@ subsets:
           {{- end -}}
         {{- end -}}
         {{- $s = set $s "ports" $finalPorts -}}
+      {{- end -}}
+
+      {{- if hasKey $service "labels" -}}
+        {{- $labels := $service.labels -}}
+        {{- if and $labels (not (kindIs "map" $labels)) -}}
+          {{- fail (printf "The value global.service.%s.labels must be a map (it's a %s)" $name (kindOf $labels)) -}}
+        {{- else if $labels -}}
+          {{- $a := dict -}}
+          {{- range $k, $v := $labels -}}
+            {{- $a = set $a ($k | toString) ($v | toString) -}}
+          {{- end -}}
+          {{- $labels = $a -}}
+        {{- else -}}
+          {{- $labels = dict -}}
+        {{- end -}}
+        {{- $s = set $s "labels" $labels -}}
+      {{- else -}}
+        {{- $s = set $s "labels" dict -}}
+      {{- end -}}
+
+      {{- if hasKey $service "annotations" -}}
+        {{- $annotations := $service.annotations -}}
+        {{- if and $annotations (not (kindIs "map" $annotations)) -}}
+          {{- fail (printf "The value global.service.%s.annotations must be a map (it's a %s)" $name (kindOf $annotations)) -}}
+        {{- else if $annotations -}}
+          {{- $a := dict -}}
+          {{- range $k, $v := $annotations -}}
+            {{- $a = set $a ($k | toString) ($v | toString) -}}
+          {{- end -}}
+          {{- $annotations = $a -}}
+        {{- else -}}
+          {{- $annotations = dict -}}
+        {{- end -}}
+        {{- $s = set $s "annotations" $annotations -}}
+      {{- else -}}
+        {{- $s = set $s "annotations" dict -}}
       {{- end -}}
     {{- else -}}
       {{- fail (printf "The value global.service.%s must be either a string or a map (%s)" $name (kindOf $service)) -}}
