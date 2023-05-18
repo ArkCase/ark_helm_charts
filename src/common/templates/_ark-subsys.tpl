@@ -114,20 +114,21 @@ Parameter: either the root context (i.e. "." or "$"), or
   {{- $global := .global }}
   {{- if (include "arkcase.subsystem.enabledOrExternal" $ctx) }}
     {{- $external := (coalesce $data.external $ctx.Values.service.external "") }}
-
     {{- $ports := (coalesce $data.ports list) }}
     {{- $type := (coalesce $data.type "ClusterIP") }}
     {{- if and (empty $ports) (not $external) }}
       {{- fail (printf "No ports are defined for chart %s, and no external server was given" (include "common.name" $ctx)) }}
     {{- end }}
-    {{- $name := "" }}
-    {{- $name := ($data.name | default "") | toString }}
-    {{- if not $name }}
-      {{- $name =  (include "common.name" $ctx) }}
-      {{- if .name }}
-        {{- $name = (printf "%s-%s" $name .name) }}
-      {{- end }}
-    {{- end }}
+    {{- $name := (include "arkcase.name" $ctx) -}}
+    {{- $overrides := (include "arkcase.subsystem.service.global" $ctx | fromYaml) -}}
+    {{- if hasKey $overrides $name -}}
+      {{- $overrides = get $overrides $name -}}
+    {{- else -}}
+      {{- $overrides = dict -}}
+    {{- end -}}
+    {{- if and (hasKey $overrides "type") ($overrides.type) -}}
+      {{- $type = $overrides.type -}}
+    {{- end -}}
 
 ---
 apiVersion: v1
@@ -149,14 +150,29 @@ metadata:
     {{- with $data.annotations }}
       {{- toYaml . | nindent 4 }}
     {{- end }}
+    {{- with $overrides.annotations }}
+      {{- toYaml . | nindent 4 }}
+    {{- end }}
 spec:
     {{- if or (not $external) (include "arkcase.tools.isIp" $external) }}
   # This is either an internal service, or an external service using an IP address
   type: {{ coalesce $type "ClusterIP" }}
+  {{- if (eq $type "LoadBalancer") }}
+    {{- with $overrides.loadBalancerClass }}
+  loadBalancerClass: {{ . | quote }}
+    {{- end }}
+    {{- with $overrides.loadBalancerIP }}
+  loadBalancerIP: {{ . | quote }}
+    {{- end }}
+    {{- if (hasKey $overrides "allocateNodePorts") }}
+  allocateLoadBalancerNodePorts: {{ $overrides.allocateNodePorts }}
+    {{- end }}
+  {{- end }}
   ports:
       {{- if (empty $ports) }}
         {{- fail "There are no ports defined to be proxied for this external service" }}
       {{- end }}
+      {{- $portOverrides := ($overrides.ports | default dict) -}}
       {{- range $ports }}
     - name: {{ (required "Port specifications must contain a name" .name) | quote }}
       protocol: {{ coalesce .protocol "TCP" }}
@@ -164,8 +180,11 @@ spec:
         {{- if .targetPort }}
       targetPort: {{ int .targetPort }}
         {{- end }}
-        {{- if and (eq $type "NodePort") .nodePort }}
-      nodePort: {{ int .nodePort }}
+        {{- if (eq $type "NodePort") }}
+          {{- $nodePort := coalesce ((hasKey $portOverrides .name) | ternary (get $portOverrides .name) 0) (.nodePort | default 0) }}
+          {{- if $nodePort }}
+      nodePort: {{ int $nodePort }}
+          {{- end }}
         {{- end }}
       {{- end }}
   selector: {{- include "arkcase.labels.matchLabels" $ctx | nindent 4 }}
@@ -218,6 +237,155 @@ subsets:
   {{- end }}
 {{- end }}
 
+{{- define "arkcase.subsystem.service.parseType" -}}
+  {{- $type := (kindIs "string" .) | ternary . (. | toString) | default "ClusterIP" | lower -}}
+  {{- if or (eq "np" $type) (eq "nodeport" $type) -}}
+    {{- $type = "NodePort" -}}
+  {{- else if or (eq "lb" $type) (eq "loadbalancer" $type) -}}
+    {{- $type = "LoadBalancer" -}}
+  {{- else if or (eq "def" $type) (eq "default" $type) (eq "clusterip" $type) -}}
+    {{- $type = "ClusterIP" -}}
+  {{- else -}}
+    {{- fail (printf "Unrecognized service type: [%s]" .) -}}
+  {{- end -}}
+  {{- $type -}}
+{{- end -}}
+
+{{- define "arkcase.subsystem.service.global.compute" -}}
+  {{- $ctx := . }}
+  {{- if hasKey . "ctx" -}}
+    {{- $ctx = .ctx -}}
+  {{- end -}}
+
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "Incorrect context given - either submit the root context as the only parameter, or a 'ctx' parameter pointing to it" -}}
+  {{- end -}}
+
+  {{- $globalService := ($ctx.Values.global.service | default dict) -}}
+  {{- if or (not $globalService) (not (kindIs "map" $globalService)) -}}
+    {{- $globalService = dict -}}
+  {{- end -}}
+
+  {{- $result := dict -}}
+  {{- range $name, $service := $globalService -}}
+    {{- /* TODO: validate the name as a valid RFC-1123 hostname part */ -}}
+    {{- $n := (include "arkcase.tools.hostnamePart" $name) -}}
+    {{- if not $n -}}
+      {{- fail (printf "The service name [%s] (in global.service) is not valid" $name) -}}
+    {{- end -}}
+
+    {{- $s := dict -}}
+    {{- if (kindIs "string" $service) -}}
+      {{- /* May only be one of: (NodePort|NP|LoadBalancer|LB|def|default|ClusterIP|"") */ -}}
+      {{- $s = set $s "type" (include "arkcase.subsystem.service.parseType" $service) -}}
+      {{- $s = set $s "ports" dict -}}
+    {{- else if (kindIs "map" $service) -}}
+      {{- $s = set $s "type" (include "arkcase.subsystem.service.parseType" ($service.type | default "")) -}}
+      {{- if (eq "LoadBalancer" $s.type) -}}
+        {{- $loadBalancerIP := ($service.loadBalancerIP | default "" | toString) -}}
+        {{- if (include "arkcase.tools.checkIp" $loadBalancerIP) -}}
+          {{- $s = set $s "loadBalancerIP" $loadBalancerIP -}}
+        {{- else if $loadBalancerIP -}}
+          {{- fail (printf "The value global.service.%s.loadBalancerIP is not valid: %s" $name $loadBalancerIP) -}}
+        {{- end -}}
+
+        {{- $loadBalancerClass := ($service.loadBalancerClass | default "" | toString) -}}
+        {{- if (include "arkcase.tools.hostnamePart" $loadBalancerClass) -}}
+          {{- $s = set $s "loadBalancerClass" $loadBalancerClass -}}
+        {{- else if $loadBalancerClass -}}
+          {{- fail (printf "The value global.service.%s.loadBalancerClass is not valid: %s" $name $loadBalancerClass) -}}
+        {{- end -}}
+
+        {{- if hasKey $service "allocateNodePorts" -}}
+          {{- $allocateNodePorts := get $service "allocateNodePorts" -}}
+          {{- if not (kindIs "bool" $allocateNodePorts) -}}
+            {{- $allocateNodePorts = $allocateNodePorts | toString -}}
+            {{- if or (eq "true" $allocateNodePorts) (eq "false" $allocateNodePorts) -}}
+              {{- $allocateNodePorts = (eq "true" $allocateNodePorts) -}}
+            {{- else -}}
+              {{- fail (printf "The value global.service.%s.allocateNodePorts is not valid - must be either 'true' or 'false': [%s]" $name $allocateNodePorts) -}}
+            {{- end -}}
+          {{- end -}}
+          {{- $s = set $s "allocateNodePorts" $allocateNodePorts -}}
+        {{- end -}}
+
+        {{- if hasKey $service "annotations" -}}
+          {{- $annotations := $service.annotations -}}
+          {{- if and $annotations (not (kindIs "map" $annotations)) -}}
+            {{- fail (printf "The value global.service.%s.annotations must be a map (it's a %s)" $name (kindOf $annotations)) -}}
+          {{- else if $annotations -}}
+            {{- $a := dict -}}
+            {{- range $k, $v := $annotations -}}
+              {{- $a = set $a ($k | toString) ($v | toString) -}}
+            {{- end -}}
+            {{- $annotations = $a -}}
+          {{- else -}}
+            {{- $annotations = dict -}}
+          {{- end -}}
+          {{- $s = set $s "annotations" $annotations -}}
+        {{- else -}}
+          {{- $s = set $s "annotations" dict -}}
+        {{- end -}}
+      {{- else if (eq "NodePort" $s.type) -}}
+        {{- $ports := ($service.ports | default dict) -}}
+        {{- if not (kindIs "map" $ports) -}}
+          {{- $ports = dict -}}
+        {{- end -}}
+        {{- $finalPorts := dict -}}
+        {{- range $port, $nodePort := $ports -}}
+          {{- $p := (include "arkcase.tools.hostnamePart" $port) -}}
+          {{- if not $p -}}
+            {{- fail (printf "The port name [%s] in the value global.service.%s.ports is not valid" $port $name) -}}
+          {{- end -}}
+          {{- $np := ($nodePort | default "" | toString) -}}
+          {{- if not (regexMatch "^[1-9][0-9]*$" $np) -}}
+            {{- fail (printf "Invalid port number given for global.service.%s.ports.%s: [%s]" $name $port $nodePort) -}}
+          {{- end -}}
+          {{- $np = (atoi $np) -}}
+          {{- if and $np (ge $np 1) (le $np 65535) -}}
+            {{- $finalPorts = set $finalPorts $p $np -}}
+          {{- else -}}
+            {{- fail (printf "Invalid port number for global.service.%s.ports.%s - out of range [1..65535]: [%d]" $name $port $np) -}}
+          {{- end -}}
+        {{- end -}}
+        {{- $s = set $s "ports" $finalPorts -}}
+      {{- end -}}
+    {{- else -}}
+      {{- fail (printf "The value global.service.%s must be either a string or a map (%s)" $name (kindOf $service)) -}}
+    {{- end -}}
+    {{- /* add to the return value */ -}}
+    {{- $result = set $result $n $s -}}
+  {{- end -}}
+  {{- $result | toYaml -}}
+{{- end -}}
+
+{{- define "arkcase.subsystem.service.global" -}}
+  {{- $ctx := . -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "The parameter given must be the root context (. or $)" -}}
+  {{- end -}}
+
+  {{- $cacheKey := "GlobalServiceOverrides" -}}
+  {{- $masterCache := dict -}}
+  {{- if (hasKey $ctx $cacheKey) -}}
+    {{- $masterCache = get $ctx $cacheKey -}}
+    {{- if and $masterCache (not (kindIs "map" $masterCache)) -}}
+      {{- $masterCache = dict -}}
+    {{- end -}}
+  {{- end -}}
+  {{- $ctx = set $ctx $cacheKey $masterCache -}}
+
+  {{- $masterKey := $ctx.Release.Name -}}
+  {{- $yamlResult := dict -}}
+  {{- if not (hasKey $masterCache $masterKey) -}}
+    {{- $yamlResult = (include "arkcase.subsystem.service.global.compute" $ctx) -}}
+    {{- $masterCache = set $masterCache $masterKey ($yamlResult | fromYaml) -}}
+  {{- else -}}
+    {{- $yamlResult = get $masterCache $masterKey | toYaml -}}
+  {{- end -}}
+  {{- $yamlResult -}}
+{{- end -}}
+
 {{- /*
 Render subsystem service declarations based on whether an external host declaration is provided or not
 
@@ -239,17 +407,17 @@ Parameter: the root context (i.e. "." or "$")
 
   {{- if (include "arkcase.subsystem.enabledOrExternal" $ctx) }}
     {{- /* Gather the global ports */ -}}
-    {{- $global := pick $ctx.Values.service "ports" "type" "probes" "external" }}
-    {{- $globalPorts := list }}
-    {{- if $global.ports }}
-      {{- if not (kindIs "slice" $global.ports) }}
-        {{- fail (printf "The declaration for .Values.service.ports must be a list of ports (maps) (%s)" (kindOf $global.ports)) }}
+    {{- $service := pick $ctx.Values.service "ports" "type" "probes" "external" }}
+    {{- $ports := list }}
+    {{- if $service.ports }}
+      {{- if not (kindIs "slice" $service.ports) }}
+        {{- fail (printf "The declaration for .Values.service.ports must be a list of ports (maps) (%s)" (kindOf $service.ports)) }}
       {{- end }}
-      {{- $globalPorts = $global.ports }}
+      {{- $ports = $service.ports }}
     {{- end }}
 
     {{- $parts := omit $ctx.Values.service "ports" "type" "probes" "external" }}
-    {{- $external := ($global.external | default "") -}}
+    {{- $external := ($service.external | default "") -}}
 
     {{- /* Render the work to be performed */ -}}
     {{- $work := list }}
@@ -257,15 +425,15 @@ Parameter: the root context (i.e. "." or "$")
       {{- /* Render a single part as the global service, as necessary */ -}}
       {{- if hasKey $parts $partname }}
         {{- /* The single-part option supplants the global service */ -}}
-        {{- $work = append $work (dict "ctx" $ctx "data" (get $parts $partname) "global" $global "subname" $partname) }}
+        {{- $work = append $work (dict "ctx" $ctx "data" (get $parts $partname) "global" $service "subname" $partname) }}
       {{- end }}
     {{- else }}
       {{- /* Render a global service with all the ports */ -}}
-      {{- $data := pick $global "type" "external" }}
+      {{- $data := pick $service "type" "external" }}
       {{- range $pn, $p := $parts -}}
-        {{- $globalPorts = concat $globalPorts $p.ports -}}
+        {{- $ports = concat $ports $p.ports -}}
       {{- end -}}
-      {{- $data = set $data "ports" $globalPorts }}
+      {{- $data = set $data "ports" $ports }}
       {{- /* Add the work item */ -}}
       {{- $work = append $work (dict "ctx" $ctx "data" $data "subname" $partname) }}
     {{- end }}
