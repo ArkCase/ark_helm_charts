@@ -119,14 +119,7 @@ Parameter: either the root context (i.e. "." or "$"), or
     {{- if and (empty $ports) (not $external) }}
       {{- fail (printf "No ports are defined for chart %s, and no external server was given" (include "common.name" $ctx)) }}
     {{- end }}
-    {{- $name := "" }}
-    {{- $name := ($data.name | default "") | toString }}
-    {{- if not $name }}
-      {{- $name =  (include "common.name" $ctx) }}
-      {{- if .name }}
-        {{- $name = (printf "%s-%s" $name .name) }}
-      {{- end }}
-    {{- end }}
+    {{- $name := (include "arkcase.name" $ctx) -}}
     {{- $overrides := (include "arkcase.subsystem.service.global" $ctx | fromYaml) -}}
     {{- if hasKey $overrides $name -}}
       {{- $overrides = get $overrides $name -}}
@@ -282,6 +275,7 @@ subsets:
     {{- if (kindIs "string" $service) -}}
       {{- /* May only be one of: (NodePort|NP|LoadBalancer|LB|def|default|ClusterIP|"") */ -}}
       {{- $s = set $s "type" (include "arkcase.subsystem.service.parseType" $service) -}}
+      {{- $s = set $s "ports" dict -}}
     {{- else if (kindIs "map" $service) -}}
       {{- $s = set $s "type" (include "arkcase.subsystem.service.parseType" ($service.type | default "")) -}}
       {{- if (eq "LoadBalancer" $s.type) -}}
