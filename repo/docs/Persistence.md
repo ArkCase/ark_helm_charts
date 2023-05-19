@@ -215,11 +215,11 @@ global:
         # some mount flags
         bravo:
           volume:
-             # ... PersistentVolumeSpec (see links, below)
-             storageClassName: "nfs"
-             capacity:
-               storage: "64Gi"
-             accessModes: [ "ReadWriteOnce" ]
+            # ... PersistentVolumeSpec (see links, below)
+            storageClassName: "nfs"
+            capacity:
+              storage: "64Gi"
+            accessModes: [ "ReadWriteOnce" ]
             mountOptions:
               - hard
               - nfsvers=4.1
