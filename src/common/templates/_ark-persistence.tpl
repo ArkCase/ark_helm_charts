@@ -33,16 +33,24 @@
     {{- fail "The 'name' parameter must be the name of the setting to retrieve" -}}
   {{- end -}}
 
-  {{- $defaults := (include "arkcase.persistence.getBaseSetting" (set . "name" "default") | fromYaml) -}}
-
   {{- $result := dict -}}
 
-  {{- $global := ($defaults.global | default dict) -}}
+  {{- $global := (($ctx.Values.global).persistence | default dict) -}}
+  {{- if not (kindIs "map" $global) -}}
+    {{- $global = dict -}}
+  {{- else -}}
+    {{- $global = omit $global "volumes" -}}
+  {{- end -}}
   {{- if (hasKey $global $name) -}}
     {{- $result = set $result "global" (get $global $name) -}}
   {{- end -}}
 
-  {{- $local := ($defaults.local | default dict) -}}
+  {{- $local := ($ctx.Values.persistence | default dict) -}}
+  {{- if not (kindIs "map" $local) -}}
+    {{- $local = dict -}}
+  {{- else -}}
+    {{- $local = omit $local "volumes" -}}
+  {{- end -}}
   {{- if (hasKey $local $name) -}}
     {{- $result = set $result "local" (get $local $name) -}}
   {{- end -}}
@@ -56,11 +64,24 @@
     {{- fail "The parameter must be the root context (. or $)" -}}
   {{- end -}}
 
-  {{- $local := (include "arkcase.tools.checkEnabledFlag" (.Values.persistence | default dict)) -}}
-  {{- $global := (include "arkcase.tools.checkEnabledFlag" ((.Values.global).persistence | default dict)) -}}
+  {{- $global := ((.Values.global).persistence | default dict) -}}
+  {{- $globalSet := and (kindIs "map" $global) (hasKey $global "enabled") -}}
+  {{- $global := and $globalSet (not (empty (include "arkcase.toBoolean" $global.enabled))) -}}
 
-  {{- /* Persistence is only enabled if the local and global flags agree that it should be */ -}}
-  {{- if (and $local $global) -}}
+  {{- $local := (.Values.persistence | default dict) -}}
+  {{- $localSet := and (kindIs "map" $local) (hasKey $local "enabled") -}}
+  {{- $local := and $localSet (not (empty (include "arkcase.toBoolean" $local.enabled))) -}}
+
+  {{- /* If global is set, use its value. Otherwise, use the local value. If none is given, assume true */ -}}
+  {{- if $globalSet -}}
+    {{- if $global -}}
+      {{- true -}}
+    {{- end -}}
+  {{- else if $localSet -}}
+    {{- if $local -}}
+      {{- true -}}
+    {{- end -}}
+  {{- else -}}
     {{- true -}}
   {{- end -}}
 {{- end -}}
@@ -167,27 +188,27 @@
   {{- $values := (include "arkcase.persistence.getDefaultSetting" (dict "ctx" . "name" "accessModes") | fromYaml) -}}
   {{- $modes := dict -}}
   {{- if and (not $modes) (hasKey $values "global") -}}
-    {{- $accessModes = $values.global -}}
+    {{- $accessModes := $values.global -}}
     {{- $str := "" -}}
     {{- if kindIs "slice" $accessModes -}}
       {{- $str = join "," $accessModes -}}
     {{- else -}}
       {{- $str := ($accessModes | toString) -}}
     {{- end -}}
-    {{- $modes = (include "arkcase.persistence.buildVolume.parseAccessModes" $str) -}}
+    {{- $modes = (include "arkcase.persistence.buildVolume.parseAccessModes" $str | fromYaml) -}}
     {{- if $modes.errors -}}
       {{- fail (printf "Invalid access modes found in the value global.persistence.accessModes: %s" $modes.errors) -}}
     {{- end -}}
   {{- end -}}
   {{- if and (not $modes) (hasKey $values "local") -}}
-    {{- $accessModes = $values.local -}}
+    {{- $accessModes := $values.local -}}
     {{- $str := "" -}}
     {{- if kindIs "slice" $accessModes -}}
       {{- $str = join "," $accessModes -}}
     {{- else -}}
       {{- $str := ($accessModes | toString) -}}
     {{- end -}}
-    {{- $modes = (include "arkcase.persistence.buildVolume.parseAccessModes" $str) -}}
+    {{- $modes = (include "arkcase.persistence.buildVolume.parseAccessModes" $str | fromYaml) -}}
     {{- if $modes.errors -}}
       {{- fail (printf "Invalid access modes found in the value persistence.accessModes: %s" $modes.errors) -}}
     {{- end -}}
