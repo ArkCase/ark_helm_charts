@@ -1,4 +1,4 @@
-{{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.content.external" $)) -}}
+{{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.content.external" $)) (eq "alfresco" (include "arkcase.content.engine" $)) -}}
 {{- $schema := (include "arkcase.db.schema" (dict "ctx" $ "schema" "content") | fromYaml) -}}
 ---
 apiVersion: apps/v1

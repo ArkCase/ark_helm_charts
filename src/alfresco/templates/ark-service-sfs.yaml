@@ -1,3 +1,0 @@
-{{- if and (include "arkcase.enterprise" .) (not (include "arkcase.content.external" $)) -}}
-  {{- include "arkcase.subsystem.service" $ -}}
-{{- end -}}

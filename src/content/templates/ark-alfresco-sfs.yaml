@@ -1,4 +1,4 @@
-{{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.content.external" $)) -}}
+{{- if and (include "arkcase.subsystem.enabled" $) (include "arkcase.enterprise" $) (not (include "arkcase.content.external" $)) (eq "alfresco" (include "arkcase.content.engine" $)) -}}
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -58,15 +58,34 @@ spec:
       securityContext: {{- toYaml .value | nindent 8 }}
         {{- end }}
       {{- end }}
+      initContainers:
+        - name: set-permissions
+          {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
+          env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            - name: JOBS
+              value: |
+                jobs:
+                  # We know the image uses user 33000:1000
+                  - ownership: {{ coalesce ($.Values.persistence).ownership "33030:1000" | quote }}
+                    permissions: "u=rwX,g=rX,o="
+                    flags: [ "recurse", "noforced", "create", "changes" ]
+                    targets: [ "/app/data" ]
+          volumeMounts:
+            - name: &dataVolume "data"
+              mountPath: &dataDir "/app/data"
       containers:
         - name: {{ include "arkcase.part.name" $ | quote }}
           {{- include "arkcase.image" $ | nindent 10 }}
-          env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
-            - name: JAVA_TOOL_OPTIONS
+          {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
+          env:
+            - name: JAVA_OPTS
               value: >-
                 -XX:MinRAMPercentage=50
                 -XX:MaxRAMPercentage=80
-          {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
+            - name: scheduler.content.age.millis
+              value: "86400000"
+            - name: scheduler.cleanup.interval
+              value: "86400000"
           {{- with (include "arkcase.values" (dict "ctx" $ "base" "command") | fromYaml) }}
           command: {{ toJson .value }}
           {{- end }}
@@ -76,8 +95,13 @@ spec:
           {{- else }}
           resources:
             limits:
-              memory: "1Gi"
+              memory: "512Mi"
           {{- end }}
+          volumeMounts:
+            - name: *dataVolume
+              mountPath: *dataDir
+      volumes:
+        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
       {{- with (include "arkcase.values" (dict "ctx" $ "base" "nodeSelector") | fromYaml) }}
       nodeSelector: {{- toYaml .value | nindent 8 }}
       {{- end }}
@@ -87,4 +111,8 @@ spec:
       {{- with (include "arkcase.values" (dict "ctx" $ "base" "tolerations") | fromYaml) }}
       tolerations: {{- toYaml .value | nindent 8 }}
       {{- end }}
+  volumeClaimTemplates:
+    {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "data") | nindent 4 }}
+
+  {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "data") | nindent 0 }}
 {{- end }}

@@ -1,4 +1,4 @@
-{{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.content.external" $)) -}}
+{{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.content.external" $)) (eq "alfresco" (include "arkcase.content.engine" $)) -}}
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -46,9 +46,6 @@ spec:
         {{- end }}
     spec:
       {{- include "arkcase.image.pullSecrets" $ | nindent 6 }}
-      {{- with (include "arkcase.values" (dict "ctx" $ "base" "imagePullSecrets") | fromYaml) }}
-      imagePullSecrets: {{- toYaml .value | nindent 8 }}
-      {{- end }}
       {{- with (include "arkcase.values" (dict "ctx" $ "base" "hostAliases") | fromYaml) }}
       hostAliases: {{- toYaml .value | nindent 8 }}
       {{- end }}
@@ -64,20 +61,12 @@ spec:
       containers:
         - name: {{ include "arkcase.part.name" $ | quote }}
           {{- include "arkcase.image" $ | nindent 10 }}
-          {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
-          env:
-            - name: REPO_HOST
-              value: {{ include "arkcase.alfresco.service" (dict "ctx" $ "name" "main") | quote }}
-            - name: REPO_PORT
-              value: "8080"
-            - name: CATALINA_OPTS
+          env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            - name: JAVA_TOOL_OPTIONS
               value: >-
                 -XX:MinRAMPercentage=50
                 -XX:MaxRAMPercentage=80
-                -Dalfresco.host={{ include "arkcase.alfresco.service" (dict "ctx" $ "name" "main") | quote }}
-                -Dalfresco.port=8080
-                -Dalfresco.context=alfresco
-                -Dalfresco.protocol=http
+          {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
           {{- with (include "arkcase.values" (dict "ctx" $ "base" "command") | fromYaml) }}
           command: {{ toJson .value }}
           {{- end }}
