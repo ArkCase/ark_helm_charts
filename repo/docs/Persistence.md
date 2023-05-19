@@ -6,6 +6,7 @@
 * [Enable or Disable Persistence](#enable-disable)
 * [Setting Default Values](#defaults)
 * [Default Persistence Mode](#default-mode)
+* [Host Path Persistence Mode](#hostpath-mode)
 * [Overriding Volumes](#overriding-volumes)
 * [Volume String Syntax](#volume-string-syntax)
 
@@ -21,8 +22,7 @@ Here's an example of a simple configuration that should work on a production env
 # Example contents of conf.yaml
 global:
   persistence:
-    default:
-      storageClassName: "glusterfs"
+    storageClassName: "glusterfs"
 ```
 
 Then deploy, like so:
@@ -67,53 +67,58 @@ These are the default values that can be configured, in YAML syntax:
 
 ```yaml
 global:
-  # The default value for mode is "development"
-  # Can be set case-insesitively, and must be one of
-  # "production" (prod is equivalent), or
-  # "development" (develop, devel, dev are equivalent)
-  #
-  # hostPath volumes are only allowed in development mode
-  mode: "development"
-
   persistence:
-    default:
-      # The default value for accessModes is [ "ReadWriteOnce" ]
-      # Can be set case-insensitively, and supports abbreviations
-      # such as RWM, RWO (RW is equivalent), and ROM (RO is equivalent)
-      #
-      # Can be specified as a list (JSON or YAML format), or a string of
-      # CSV values (i.e. "RWM,RWO,RO").
-      accessModes: [ "ReadWriteOnce" ]
+    # The default value for accessModes is [ "ReadWriteOnce" ]
+    # Can be set case-insensitively, and supports abbreviations
+    # such as RWM, RWO (RW is equivalent), and ROM (RO is equivalent)
+    #
+    # Can be specified as a list (JSON or YAML format), or a string of
+    # CSV values (i.e. "RWM,RWO,RO").
+    accessModes: [ "ReadWriteOnce" ]
 
-      # The default value for capacity is 1Gi
-      # Can be set case-insensitively
-      capacity: "4Gi"
+    # The default value for capacity is 1Gi
+    # Can be set case-insensitively
+    capacity: "4Gi"
 
-      # The default value for hostPathRoot is "/opt/app"
-      hostPathRoot: "/directory/where/relative/hostPath/volumes/will/reside"
+    # Whether to explicitly enable or disable the use of hostPath volumes
+    # in development mode, this defaults to true. In production mode, this
+    # defaults to false. The value set here explicitly will take precedence
+    hostPathEnable: true
 
-      # No default value for persistentVolumeReclaimPolicy
-      # Can be set case-insensitively, and must be one of
-      # Retain, Recycle, or Delete
-      persistentVolumeReclaimPolicy: "retain"
+    # The default value for hostPathRoot is "/opt/app"
+    hostPathRoot: "/directory/where/relative/hostPath/volumes/will/reside"
 
-      # No default value for storageClassName
-      storageClassName: "..."
+    # No default value for persistentVolumeReclaimPolicy
+    # Can be set case-insensitively, and must be one of
+    # Retain, Recycle, or Delete
+    persistentVolumeReclaimPolicy: "retain"
 
-      # The default value for volumeMode is "Filesystem"
-      # Can be set case-insensitively, and must be one of
-      # "Filesystem" or "Block"
-      volumeMode: "Block"
+    # No default value for storageClassName
+    storageClassName: "..."
+
+    # The default value for volumeMode is "Filesystem"
+    # Can be set case-insensitively, and must be one of
+    # "Filesystem" or "Block"
+    volumeMode: "Block"
 ```
 
 ## <a name="default-mode"></a>Default Persistence Mode
 
-The current default for the helm charts is to deploy ArkCase in ***development*** mode. This means that all volumes will be described as ***hostPath*** volumes, and will be allocated based on the `global.persistence.default.hostPathRoot` configuration (by default this has a value of `/opt/app`).
+The current default for the helm charts is to deploy ArkCase in ***production*** mode. This means that all volumes will be described using ***volumeClaimTemplate*** declarations, and will thus be delegated to the cluster for provisioning.
+
+Default (production) mode is enabled when:
+
+  - `global.persistence.hostPathEnable` is set to false
+  - `global.persistence.hostPathEnable` is not set, and either `global.mode` is set to ***production***, or is not set altogether
+
+## <a name="hostpath-mode"></a>Host Path Persistence Mode
+
+When the application is deployed in ***development*** mode, or when the `global.persistence.hostPathEnable` flag is set to `true`, then all volumes described will be implmeneted as ***hostPath*** volumes, and will be allocated based on the `global.persistence.hostPathRoot` configuration (by default this has a value of `/opt/app`).
 
 The path that a volume is stored in will be computed as follows:
 
 - If no path is given explicitly (or an empty path is given), then use this formula: `${hostPathRoot}/${namespace}/${releaseName}/${component}/${volumeName}`.
-  - The value ***hostPathRoot*** will be the value set for `global.persistence.default.hostPathRoot`, or the default value as specified above.
+  - The value ***hostPathRoot*** will be the value substituted with the value from the `global.persistence.hostPathRoot` setting, or the default value as specified above.
   - The value ***namespace*** refers to the K8s namespace into which the deployment is being executed
   - The value ***releaseName*** is the release name given to the Helm release
   - The value ***component*** is the component that will consume the volume (i.e. *core*, *search*, *reports*, *rdbms*, etc.)
@@ -123,16 +128,10 @@ The path that a volume is stored in will be computed as follows:
 
 Volumes in hostPath mode are specified in mode ***DirectoryOrCreate***, which means that if the target path does not exist, it will be created by the cluster to satisfy the requirements. If this creation fails, the volume bind operation will eventually fail, and the affected pods will fail to boot up.
 
-*Please note that **hostPath** volumes are only supported in **development** mode*
+Host path mode is enabled when:
 
-Production mode is enabled when:
-
-- `global.mode` is explicitly set to the value ***production***
-- `global.mode` is not set to any value, and `global.persistence.default.storageClassName` is set to a non-empty value
-
-In all other instances, *development* mode will be active.
-
-***NOTE**: this default behavior **may** change soon, making **production** the default mode, and requiring explicit configuration of **development** mode.*
+  - `global.persistence.hostPathEnable` is set to true
+  - `global.persistence.hostPathEnable` is not set, and `global.mode` is set to ***development***
 
 ## <a name="overriding-volumes"></a>Overriding Volumes
 

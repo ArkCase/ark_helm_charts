@@ -75,7 +75,7 @@ The above command will result in a deployment of pre-configured containers, inte
 
 The mode of operation mainly affects the persistence layer. In *development* mode, all persistence is handled via ***hostPath*** volumes. In development mode it's still possible to configure the persistence layer to use a combination of rendered ***hostPath*** volumes, with actual cluster-provided volumes (i.e. [GlusterFS](https://www.gluster.org/), [Ceph](https://docs.ceph.com/en/quincy/), [NFS](https://en.wikipedia.org/wiki/Network_File_System), etc). You can find more details on how to do this [in this document](docs/Persistence.md).
 
-The intent of supporting *development* mode is to facilitate the charts' use by developers in single-cluster environments, where persistence can be provided safely by a single host. This lowers the environment bar required for a developer to get an instance up and running, for testing and development purposes.
+The intent of supporting *development* mode is to facilitate the charts' use by developers in single-node-cluster environments, where persistence can be provided safely by a single host. This lowers the environment bar required for a developer to get an instance up and running, for testing and development purposes.
 
 Enabling development mode may also enable many other features related to the deployment location for the actual ArkCase WAR file, as well as the configuration directory (a.k.a.: *.arkcase*). Through these features, Developers will be able to deploy the whole stack using custom ArkCase WAR files, configurations, and even run it in (remote) debugger mode.
 
@@ -90,15 +90,17 @@ Other (case-insensitive) abbreviations such as "dev", "devel", or "develop" are 
 
 ### <a name="production-mode"></a>Production
 
-In *production* mode, things become more ***real***, if you will. No hostPath volumes are rendered, and instead all generated persistence is managed via volume claim templates declared with each Pod or StatefulSet. The particulars of the persistence layer are described [here](#persistence).
+In *production* mode, things become more ***real***, if you will. No hostPath volumes are rendered (except expressly configured to do so), and instead all generated persistence is managed via volume claim templates declared with each Pod or StatefulSet. The particulars of the persistence layer are described [here](#persistence).
 
-Production mode is enabled implicitly by default, but may be enabled explicitly if you need to combine some of the features from production mode with other features from development mode. To enable production mode ***explicitly***, you'll need to set this configuration value (in YAML syntax):
+Production mode is active by default, but may be enabled explicitly if you need to combine some of the features from production mode with other features from development mode. To enable production mode ***explicitly***, you'll need to set this configuration value (in YAML syntax):
 
 ```yaml
 # Enable production mode
 global:
   mode: "production"
 ```
+
+The value is case-insensitive, and the alternative value "prod" can also be used.
 
 If production mode is enabled, but a default *storageClassName* is not configured, all volume claim templates rendered will lack that setting and thus will be expected to be provisioned by the cluster with [the default storage class](https://kubernetes.io/docs/tasks/administer-cluster/change-default-storage-class/).
 
