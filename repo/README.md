@@ -1,8 +1,6 @@
 
 # [ArkCase](https://www.arkcase.com/) Helm Chart Library
 
-***NOTE**: In a rare first, this documentation is slightly ahead of the code it covers. If something described here doesn't work with the current version of the charts, check in within a few days, and it more than likely will. These charts will remain in a constant state of flux until they reach 1.0 status, as we're using them to guide the development roadmap. Adjustments to the docs will be made if/when we find better/cleaner ways to do things on the backend.*
-
 Welcome to the [ArkCase](https://www.arkcase.com/) Helm Chart Library!
 
 Here's a table of contents so you can quickly reach the documentation section you're most interested in:
@@ -13,14 +11,14 @@ Here's a table of contents so you can quickly reach the documentation section yo
    - [Development](#development-mode)
    - [Production](#production-mode)
  - [Security](#security)
- - [Configuration](#configuration)
-   - [Licenses](#licenses)
-   - [Service Type Overrides](#service-overrides)
-   - [Ingress and SSL/TLS Access](#ingress)
-   - [Persistence Layer](#persistence)
-   - [Externally-provided Services](#external-services)
-   - [Deploying Custom ArkCase Versions](#custom-arkcase)
- - [Development](#dev-integration)
+ - Configuration
+   - [Licenses](docs/Licenses.md)
+   - [Service Type Overrides](docs/Service_Overrides.md)
+   - [Ingress and SSL/TLS Access](docs/Ingress.md)
+   - [Persistence Layer](docs/Persistence.md)
+   - [Externally-provided Services](docs/External_Services.md)
+   - [Deploying Custom ArkCase Versions](docs/Custom_Arkcase.md)
+   - [Development](docs/Development.md)
 
 ## <a name="overview"></a>Overview
 
@@ -121,33 +119,3 @@ global:
 You can also specify the value using `--set global.security.serviceAccountName=arkcase-service-account` at deploy time as part of the `helm` command.
 
 Finally, this chart currently doesn't support individualized service accounts for each component because no such requirement has been identified. This is not, however, out of the question should a solid use-case for this functionality be discovered.
-
-## <a name="configuration"></a>Configuration
-
-### <a name="licenses"></a>Licenses
-
-The information on how to configure component licenses can be found [in this document](docs/Licenses.md).
-
-### <a name="service-overrides"></a>Service Type Overrides
-
-The information on how to override service types (i.e. NodePort/LoadBalancer) can be found [in this document](docs/Service_Overrides.md).
-
-### <a name="ingress"></a>Ingress and SSL/TLS Access
-
-The information on how to configure the Ingress and the SSL/TLS certificates for secure access can be found [in this document](docs/Ingress.md).
-
-### <a name="persistence"></a>Persistence
-
-The information on how to configure the persistence layer can be found [in this document](docs/Persistence.md).
-
-### <a name="external-services"></a>External Services
-
-The information on how to configure the stack to consume services provided by external components (i.e. an external database, an external AD instance, etc.) can be found [in this document](docs/External_Services.md).
-
-### <a name="custom-arkcase"></a>Deploying Custom ArkCase Versions
-
-The information on how to deploy your custom ArkCase version with this stack can be found [in this document](docs/Custom_Arkcase.md).
-
-## <a name="dev-integration"></a>Development
-
-The information on how to deploy ArkCase for development with this stack can be found [in this document](docs/Development.md).
