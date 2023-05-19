@@ -87,32 +87,30 @@
 {{- end -}}
 
 {{- /* Get the mode of operation value that should be used for everything */ -}}
-{{- define "arkcase.persistence.mode" -}}
+{{- define "arkcase.persistence.hostPathEnable" -}}
   {{- if not (include "arkcase.isRootContext" .) -}}
     {{- fail "The parameter must be the root context (. or $)" -}}
   {{- end -}}
-  {{- $mode := (include "arkcase.deployment.mode" . | fromYaml) -}}
-  {{- if (include "arkcase.persistence.enabled" .) -}}
-    {{- $storageClassName := (include "arkcase.persistence.getDefaultSetting" (dict "ctx" . "name" "storageClassName") | fromYaml) -}}
-    {{- $storageClassName = (coalesce $storageClassName.global $storageClassName.local | default "" | lower) -}}
-    {{- if $mode.set -}}
-      {{- /* If the mode is explicitly set, then use it */ -}}
-      {{- $mode = $mode.value -}}
-    {{- else if $storageClassName -}}
-      {{- /* If the mode is not explicitly set, but we have a storageClass, we default to production mode */ -}}
-      {{- $mode = "production" -}}
-    {{- else -}}
-      {{- /* If the mode is not explicitly set, but we lack a storageClass, we default to development mode */ -}}
-      {{- $mode = "development" -}}
-    {{- end -}}
-  {{- else if $mode.set -}}
-    {{- /* If the mode is explicitly set, then use it */ -}}
-    {{- $mode = $mode.value -}}
-  {{- else -}}
-    {{- /* No mode is explicitly set, and persistence is disabled, so we're in development mode */ -}}
-    {{- $mode = "development" -}}
+
+  {{- $global := ((.Values.global).persistence | default dict) -}}
+  {{- if (not (kindIs "map" $global)) -}}
+    {{- $global = dict -}}
   {{- end -}}
-  {{- $mode -}}
+
+  {{- $key := "hostPathEnable" -}}
+
+  {{- $hostPathEnable := false -}}
+
+  {{- if hasKey $global $key -}}
+    {{- /* If the flag is explicitly set, use it */ -}}
+    {{- $v := (get $global $key) -}}
+    {{- $hostPathEnable = (kindIs "bool" $v) | ternary $v (not (empty (include "arkcase.toBoolean" ($v | toString)))) -}}
+  {{- else -}}
+    {{- /* The flag is not explicitly set, so deduce it from the deployment mode */ -}}
+    {{- $deploymentMode := (include "arkcase.deployment.mode" . | fromYaml) -}}
+    {{- $hostPathEnable = (eq $deploymentMode.value "development") -}}
+  {{- end -}}
+  {{- $hostPathEnable -}}
 {{- end -}}
 
 {{- /* Get the hostPathRoot value that should be used for everything */ -}}
@@ -309,7 +307,7 @@
       {{- $volumeMode = "Filesystem" -}}
     {{- end -}}
 
-    {{- $mode := (include "arkcase.persistence.mode" .) -}}
+    {{- $hostPathEnable := (eq "true" (include "arkcase.persistence.hostPathEnable" .)) -}}
     {{-
       $obj := dict 
         "enabled" $enabled
@@ -319,7 +317,7 @@
         "persistentVolumeReclaimPolicy" $persistentVolumeReclaimPolicy
         "accessModes" $accessModes
         "volumeMode" $volumeMode
-        "mode" $mode
+        "hostPathEnable" $hostPathEnable
     -}}
     {{- $masterCache = set $masterCache $chartName $obj -}}
   {{- end -}}
@@ -741,7 +739,7 @@ Render the entries for volumes:, per configurations
     {{- $mode := $volume.render.mode -}}
     {{- $decl := dict -}}
     {{- if eq $mode "hostPath" -}}
-      {{- $renderVolume = (eq $settings.mode "development") -}}
+      {{- $renderVolume = $settings.hostPathEnable -}}
       {{- if $renderVolume -}}
         {{- /* The host path is structured as follows */ -}}
         {{- $hostPath := "" -}}
@@ -811,12 +809,17 @@ Render the entries for volumeClaimTemplates:, per configurations
     {{- $volume := (include "arkcase.persistence.buildVolume" (pick . "ctx" "name") | fromYaml) -}}
     {{- $subsystem := (include "arkcase.subsystem.name" $ctx) -}}
     {{- $claimName := (printf "%s-%s-%s-%s" $ctx.Release.Namespace $ctx.Release.Name $subsystem $volumeFullName) -}}
-    {{- $labels := dict "arkcase/persistentVolume" $claimName -}}
+    {{- $hostPath := (printf "%s/%s/%s/%s" $ctx.Release.Namespace $ctx.Release.Name $subsystem $volumeFullName) -}}
+    {{-
+        $labels := dict
+          "arkcase/persistentVolume" $claimName
+          "arkcase/defaultPath" $hostPath
+    -}}
     {{- $metadata := dict "name" $volumeName "labels" $labels -}}
     {{- $mode := $volume.render.mode -}}
     {{- $decl := dict -}}
     {{- if eq $mode "hostPath" -}}
-      {{- $renderVolume = (ne $settings.mode "development") -}}
+      {{- $renderVolume = not $settings.hostPathEnable -}}
       {{- if $renderVolume -}}
         {{- /* Render a template using the default settings */ -}}
         {{- $resources := $volume.resources -}}
