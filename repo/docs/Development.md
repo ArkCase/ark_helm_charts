@@ -1,6 +1,9 @@
 
 # [ArkCase](https://www.arkcase.com/) Development Integration
 
+- [Enabling Host Path Persistence](#hostpath)
+- [Developer Workstations](#workstations)
+
 This document describes the model and configuration for developers to integrate their local development environments with an ArkCase Helm chart deployment. As with any community-release project, Issues and PRs are always welcome to help move this code further along.
 
 The ArkCase helm chart supports enabling development mode by way of a map whose fully-populated structure matches the following:
@@ -9,22 +12,25 @@ The ArkCase helm chart supports enabling development mode by way of a map whose 
 global:
   dev:
     # Enable or disable development mode, explicitly ... if the global.dev map is not empty,
-    # and this flag is not explicitly set to false, development features will be enabled. Development
-    # mode will also be enabled in general (i.e. for persistence), except if the global.mode flag
-    # is explicitly set to "production".
+    # and this flag is not explicitly set to false, development features will be enabled.
     enabled: true
 
     # Use the ArkCase WAR file or exploded WAR directory at this location for execution. It must be
     # an absolute path. If it's an absolute path, it's assumed to be an "exploded WAR" directory.
     # To indicate a file, you must use the syntax file://${absolutePathToFile}. If you want to be specific,
     # you can also use path://${absolutePathToDirectory} to also indicate an exploded WAR directory.
+    #
+    # This will result in the use of a hostPath volume by the core pod(s)
     war: "path:///mnt/c/Users/developer/workspace/ArkCase/WAR"
     # war: "file:///mnt/c/Users/developer/workspace/ArkCase/target/arkcase-webapp.war"
 
     # Use the ArkCase configuration zip file or exploded zip directory at this location for execution.
     # the syntax and logic is identical for the war component, except this is for the .arkcase configuration
     # file set.
+    #
+    # This will result in the use of a hostPath volume by the core pod(s)
     conf: "path:///mnt/c/Users/developer/.arkcase"
+    # conf: "file:///mnt/c/Users/developer/workspace/ArkCase/target/.arkcase.zip"
 
     # The settings in this map govern the debugging features
     debug:
@@ -41,43 +47,25 @@ global:
       suspend: true
 ```
 
-## Development vs. Production Mode
+## <a name="hostpath"></a>Enabling Host Path Persistence
 
-There are two major deployment modes for the application: [Development mode](#development-mode) and [production mode](#production-mode). There are important differences between the two, so you should endeavor to understand these before pressing further.
+Among the helm charts available for deployment is the `arkcase/hostpath-provisioner` chart. This chart will deploy a CSI provisioner service that will deploy `hostPath` volumes to the local filesystem. This provisioner should only be used in single-node cluster environments (i.e. development environments) since the provisioner doesn't fully support multi-node clusters. In particular: when a volume is provisioned by this component, even though it's visible to the entire cluster, only one of the nodes will contain the data, and this data will only be accessible to pods running on that node.
 
-### <a name="development-mode"></a>Development
+Hence, why it's only appropriate in single-node clusters: no such discrepancy will arise.
 
-The mode of operation mainly affects the persistence layer. In *development* mode, all persistence is handled via ***hostPath*** volumes. In development mode it's still possible to configure the persistence layer to use a combination of rendered ***hostPath*** volumes, with actual cluster-provided volumes (i.e. [GlusterFS](https://www.gluster.org/), [Ceph](https://docs.ceph.com/en/quincy/), [NFS](https://en.wikipedia.org/wiki/Network_File_System), etc). You can find more details on how to do this [in this document](docs/Persistence.md).
+In order to deploy the provisioner, you may use the following command:
 
-The intent of supporting *development* mode is to facilitate the charts' use by developers in single-cluster environments, where persistence can be provided safely by a single host. This lowers the environment bar required for a developer to get an instance up and running, for testing and development purposes.
+`$ helm install --create-namespace --namespace hostpath-provisioner hostpath-provisioner arkcase/hostpath-provisioner`
 
-Enabling development mode may also enable many other features related to the deployment location for the actual ArkCase WAR file, as well as the configuration directory (a.k.a.: *.arkcase*). Through these features, Developers will be able to deploy the whole stack using custom ArkCase WAR files, configurations, and even run it in (remote) debugger mode.
-
-Development mode can be explicitly enabled via the instructions in that document, or by enabling the configuration value:
+The provisioner has many available configurations. The most important one is the value `hostPath`, which indicates the place within the node's filesystem the volumes will be provisioned (the default is `/opt/app`):
 
 ```yaml
-global:
-  mode: "development"
+# Set the host path to /k8s/hostPath
+hostPath: "/k8s/hostPath"
 ```
 
-Other (case-insensitive) abbreviations such as "dev", "devel", or "develop" are also accepted. If an invalid value is used, ***production*** mode is defaulted.
+The path must normalize to an absolute path, or an error will result. The component creates a `storageClass` with the name `hostpath` (configurable via the `storageClass.name` value), which is marked as the default storage class (can be overridden with the value `storageClass.defaultClass`).
 
-### <a name="production-mode"></a>Production
-
-In *production* mode, the resources rendered are more apt for deployment on a normal, multi-node cluster environment. No hostPath volumes are rendered, and instead all generated persistence is managed via volume claim templates declared with each Pod or StatefulSet. The particulars of the persistence layer are described [here](Persistence.md).
-
-Production mode is enabled implicitly by default, but may be enabled explicitly if you need to combine some of the features from production mode with other features from development mode. To enable production mode ***explicitly***, you'll need to set this configuration value (in YAML syntax):
-
-```yaml
-# Enable production mode
-global:
-  mode: "production"
-```
-
-If production mode is enabled, but a default *storageClassName* is not configured, all volume claim templates rendered will lack that setting and thus will be expected to be provisioned by the cluster with [the default storage class](https://kubernetes.io/docs/tasks/administer-cluster/change-default-storage-class/).
-
-Finally, you may refer to the [documentation on the persistence layer](#persistence) for more details on how to configure persistence.
-
-## Developer Workstations
+## <a name="workstations"></a>Developer Workstations
 
 ***This documentation will be added soon***

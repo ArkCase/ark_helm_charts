@@ -854,7 +854,11 @@ result: "DC=some,DC=domain,DC=com"
           {{- end -}}
           {{- $war = $path -}}
         {{- end -}}
-        {{- $result = set $result "war" (dict "file" $file "path" (include "arkcase.tools.normalizePath" $war)) -}}
+        {{- $war = (include "arkcase.tools.normalizePath" $war) -}}
+        {{- if not (isAbs $war) -}}
+          {{- fail (printf "The value for global.dev.war must be an absolute path: [%s]" $war) -}}
+        {{- end -}}
+        {{- $result = set $result "war" (dict "file" $file "path" $war) -}}
       {{- else if $dev.war -}}
         {{- fail (printf "The value for global.dev.war must be a string (%s)" (kindOf $dev.war)) -}}
       {{- end -}}
@@ -870,7 +874,11 @@ result: "DC=some,DC=domain,DC=com"
           {{- end -}}
           {{- $conf = $path -}}
         {{- end -}}
-        {{- $result = set $result "conf" (dict "file" $file "path" (include "arkcase.tools.normalizePath" $conf)) -}}
+        {{- $conf = (include "arkcase.tools.normalizePath" $conf) -}}
+        {{- if not (isAbs $conf) -}}
+          {{- fail (printf "The value for global.dev.conf must be an absolute path: [%s]" $conf) -}}
+        {{- end -}}
+        {{- $result = set $result "conf" (dict "file" $file "path" $conf) -}}
       {{- else if $dev.conf -}}
         {{- fail (printf "The value for global.dev.conf must be a string (%s)" (kindOf $dev.conf)) -}}
       {{- end -}}
@@ -938,51 +946,6 @@ result: "DC=some,DC=domain,DC=com"
     {{- $ctx = set $ctx $cacheKey ($result | fromYaml) -}}
   {{- end -}}
   {{- $result -}}
-{{- end -}}
-
-{{- /* Get the mode of operation value that should be used for everything */ -}}
-{{- define "arkcase.deployment.mode" -}}
-  {{- $ctx := . -}}
-  {{- if not (include "arkcase.isRootContext" $ctx) -}}
-    {{- fail "The parameter must be the root context (. or $)" -}}
-  {{- end -}}
-
-  {{- /* For now, default to production mode */ -}}
-  {{- $value := "production" -}}
-  {{- $valueSet := false -}}
-
-  {{- /* Get the global map, if defined */ -}}
-  {{- $global := $ctx.Values.global | default dict -}}
-  {{- if not (kindIs "map" $global) -}}
-    {{- $global = dict -}}
-  {{- end -}}
-
-  {{- if $global -}}
-    {{- /* Get the explicitly set value, if any */ -}}
-    {{- if and (hasKey $global "mode") $global.mode -}}
-      {{- $m := ($global.mode | toString | trim | lower) -}}
-      {{- $valueSet = true -}}
-      {{- if or (eq $m "development") (eq $m "develop") (eq $m "devel") (eq $m "dev") -}}
-        {{- $value = "development" -}}
-      {{- else if or (eq $m "production") (eq $m "prod") -}}
-        {{- $value = "production" -}}
-      {{- else -}}
-        {{- fail (printf "Unknown deployment mode [%s] (.Values.global.mode) - must be either 'development' (or 'develop', or 'devel' or 'dev') or 'production' (or 'prod')" $m) -}}
-      {{- end -}}
-    {{- end -}}
-  {{- end -}}
-
-  {{- /* If the value isn't explicitly set, which would take priority, we then */ -}}
-  {{- /* check to see if the development settings are enabled. If they are, then */ -}}
-  {{- /* we treat this as the value being explicitly set. */ -}}
-  {{- if not $valueSet -}}
-    {{- $valueSet = (not (empty (include "arkcase.dev" $ctx | fromYaml))) -}}
-    {{- if $valueSet -}}
-      {{- $value = "development" -}}
-    {{- end -}}
-  {{- end -}}
-
-  {{- dict "value" $value "set" $valueSet | toYaml -}}
 {{- end -}}
 
 {{- define "arkcase.enterprise.compute" -}}

@@ -1,0 +1,19 @@
+apiVersion: v2
+name: hostpath-provisioner
+version: 0.2.0
+appVersion: 0.3.0
+description: hostpath-provisioner is an automatic provisioner creating Persistent Volumes on the host's filesystem
+home: https://github.com/ArkCase/ark_helm_charts/tree/main/src/hostpath-provisioner
+keywords:
+- hostpath
+- storage
+maintainers:
+- email: diego.rivera@armedia.com
+  name: diego.rivera
+sources:
+- https://github.com/Armedia/hostpath-provisioner
+type: application
+dependencies:
+  - name: common
+    version: ~0.2.0
+    repository: "https://arkcase.github.io/ark_helm_charts"

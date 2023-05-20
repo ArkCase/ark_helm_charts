@@ -86,48 +86,6 @@
   {{- end -}}
 {{- end -}}
 
-{{- /* Get the mode of operation value that should be used for everything */ -}}
-{{- define "arkcase.persistence.hostPathEnable" -}}
-  {{- if not (include "arkcase.isRootContext" .) -}}
-    {{- fail "The parameter must be the root context (. or $)" -}}
-  {{- end -}}
-
-  {{- $global := ((.Values.global).persistence | default dict) -}}
-  {{- if (not (kindIs "map" $global)) -}}
-    {{- $global = dict -}}
-  {{- end -}}
-
-  {{- $key := "hostPathEnable" -}}
-
-  {{- $hostPathEnable := false -}}
-
-  {{- if hasKey $global $key -}}
-    {{- /* If the flag is explicitly set, use it */ -}}
-    {{- $v := (get $global $key) -}}
-    {{- $hostPathEnable = (kindIs "bool" $v) | ternary $v (not (empty (include "arkcase.toBoolean" ($v | toString)))) -}}
-  {{- else -}}
-    {{- /* The flag is not explicitly set, so deduce it from the deployment mode */ -}}
-    {{- $deploymentMode := (include "arkcase.deployment.mode" . | fromYaml) -}}
-    {{- $hostPathEnable = (eq $deploymentMode.value "development") -}}
-  {{- end -}}
-  {{- $hostPathEnable -}}
-{{- end -}}
-
-{{- /* Get the hostPathRoot value that should be used for everything */ -}}
-{{- define "arkcase.persistence.hostPathRoot" -}}
-  {{- if not (include "arkcase.isRootContext" .) -}}
-    {{- fail "The parameter must be the root context (. or $)" -}}
-  {{- end -}}
-  {{- $hostPathRoot := (include "arkcase.persistence.getDefaultSetting" (dict "ctx" . "name" "hostPathRoot") | fromYaml) -}}
-  {{- $local := (include "arkcase.tools.normalizePath" ($hostPathRoot.local | default "")) -}}
-  {{- $global := (include "arkcase.tools.normalizePath" ($hostPathRoot.global | default "")) -}}
-  {{- $finalRoot := coalesce $global $local "/opt/app" -}}
-  {{- if not (isAbs $finalRoot) -}}
-	{{- fail (printf "The hostPathRoot setting must be an absolute path (path = [%s], chart = %s, %s)" $finalRoot .Chart.Name $hostPathRoot) -}}
-  {{- end -}}
-  {{- $finalRoot -}}
-{{- end -}}
-
 {{- /* Get the storageClassName value that should be used for everything */ -}}
 {{- define "arkcase.persistence.storageClassName" -}}
   {{- if not (include "arkcase.isRootContext" .) -}}
@@ -284,7 +242,6 @@
   {{- $chartName := (include "common.fullname" .) -}}
   {{- if not (hasKey $masterCache $chartName) -}}
     {{- $enabled := (eq "true" (include "arkcase.persistence.enabled" . | trim | lower)) -}}
-    {{- $hostPathRoot := (include "arkcase.persistence.hostPathRoot" .) -}}
     {{- $storageClassName := (include "arkcase.persistence.storageClassName" .) -}}
     {{- $persistentVolumeReclaimPolicy := (include "arkcase.persistence.persistentVolumeReclaimPolicy" .) -}}
     {{- if not $persistentVolumeReclaimPolicy -}}
@@ -307,17 +264,14 @@
       {{- $volumeMode = "Filesystem" -}}
     {{- end -}}
 
-    {{- $hostPathEnable := (eq "true" (include "arkcase.persistence.hostPathEnable" .)) -}}
     {{-
       $obj := dict 
         "enabled" $enabled
-        "hostPathRoot" $hostPathRoot
         "capacity" $capacity
         "storageClassName" $storageClassName
         "persistentVolumeReclaimPolicy" $persistentVolumeReclaimPolicy
         "accessModes" $accessModes
         "volumeMode" $volumeMode
-        "hostPathEnable" $hostPathEnable
     -}}
     {{- $masterCache = set $masterCache $chartName $obj -}}
   {{- end -}}
@@ -379,21 +333,6 @@
   {{- if and $limitsRequests (kindIs "string" $limitsRequests) -}}
     {{- $limitsRequests -}}
   {{- end -}}
-{{- end -}}
-
-{{- define "arkcase.persistence.buildVolume.parseVolumeString.path" -}}
-  {{- $data := .data -}}
-  {{- $volumeName := .volumeName -}}
-  {{- /* Must be a path ... only valid in development mode */ -}}
-  {{- if isAbs $data -}}
-    {{- $data = (include "arkcase.tools.normalizePath" $data) -}}
-  {{- else -}}
-    {{- $data = (include "arkcase.tools.normalizePath" $data) -}}
-    {{- if not $data -}}
-      {{- fail (printf "The given relative path [%s] for volume '%s' overflows containment (too many '..' components)" .data $volumeName) -}}
-    {{- end -}}
-  {{- end -}}
-  {{- dict "render" (dict "volume" true "claim" true "mode" "hostPath") "hostPath" $data "generated" false | toYaml -}}
 {{- end -}}
 
 {{- define "arkcase.persistence.buildVolume.parseVolumeString.pv" -}}
@@ -520,7 +459,7 @@
 
 {{- define "arkcase.persistence.buildVolume.renderUndescribed" -}}
   {{- /* This is an undescribed volume */ -}}
-  {{- $result := (dict "render" (dict "volume" true "claim" true "mode" "hostPath" "generated" true)) -}}
+  {{- $result := (dict "render" (dict "volume" true "claim" true "mode" "undescribed" "generated" true)) -}}
   {{- $limitsRequests := (include "arkcase.persistence.buildVolume.getUndeclaredSize" .) -}}
   {{- if $limitsRequests -}}
     {{- $size := (include "arkcase.persistence.buildVolume.parseStorageSize" $limitsRequests | fromYaml) -}}
@@ -544,7 +483,7 @@
     {{- else if (hasPrefix "pv:" ($data | lower)) -}}
       {{- $volume = (include "arkcase.persistence.buildVolume.parseVolumeString.pv" . | fromYaml) -}}
     {{- else -}}
-      {{- $volume = (include "arkcase.persistence.buildVolume.parseVolumeString.path" . | fromYaml) -}}
+      {{- fail (printf "Invalid volume spec string, must be a pvc: or pv: string: [%s]" $data) -}}
     {{- end -}}
   {{- else -}}
     {{- $volume = (include "arkcase.persistence.buildVolume.renderUndescribed" . | fromYaml) -}}
@@ -587,12 +526,10 @@
         {{- fail (printf "The 'volume' value for the volume '%s' must be either a dict or a string (%s)" $volumeName (kindOf $data.volume)) -}}
       {{- end -}}
       {{- $volume = set $volume "render" (set $volume.render "mode" "volume") -}}
+    {{- else if $data -}}
+      {{- fail (printf "Invalid volume description map:%s" ($data | toYaml | nindent 0)) -}}
     {{- else -}}
-      {{- if $data.path -}}
-        {{- $volume = (include "arkcase.persistence.buildVolume.parseVolumeString.path" (dict "ctx" $ctx "data" $data.path "volumeName" $volumeName) | fromYaml) -}}
-      {{- else -}}
-        {{- $volume = (include "arkcase.persistence.buildVolume.renderUndescribed" . | fromYaml) -}}
-      {{- end -}}
+      {{- $volume = (include "arkcase.persistence.buildVolume.renderUndescribed" . | fromYaml) -}}
     {{- end -}}
   {{- else if (kindIs "invalid" $data) -}}
     {{- $volume = (include "arkcase.persistence.buildVolume.renderUndescribed" . | fromYaml) -}}
@@ -738,29 +675,8 @@ Render the entries for volumes:, per configurations
     {{- $subsystem := (include "arkcase.subsystem.name" $ctx) -}}
     {{- $mode := $volume.render.mode -}}
     {{- $decl := dict -}}
-    {{- if eq $mode "hostPath" -}}
-      {{- $renderVolume = $settings.hostPathEnable -}}
-      {{- if $renderVolume -}}
-        {{- /* The host path is structured as follows */ -}}
-        {{- $hostPath := "" -}}
-        {{- if (hasKey $volume "hostPath") -}}
-          {{- if not $volume.hostPath -}}
-            {{- fail (printf "The host path may not be the empty string (volume [%s] for chart %s)" $volumeName $ctx.Chart.Name) -}}
-          {{- end -}}
-          {{- $hostPath = $volume.hostPath -}}
-        {{- else -}}
-          {{- $hostPath = $volumeName -}}
-          {{- $partname := (include "arkcase.part.name" $ctx) -}}
-          {{- if $partname -}}
-            {{- $hostPath = (printf "%s-%s" $partname $hostPath) -}}
-          {{- end -}}
-          {{- $hostPath = (printf "%s/%s/%s/%s" $ctx.Release.Namespace $ctx.Release.Name $subsystem $hostPath) -}}
-        {{- end -}}
-        {{- if not (isAbs $hostPath) -}}
-          {{- $hostPath = printf "%s/%s" $settings.hostPathRoot $hostPath -}}
-        {{- end -}}
-        {{- $decl = dict "hostPath" (dict "path" $hostPath "type" "DirectoryOrCreate") -}}
-      {{- end -}}
+    {{- if eq $mode "undescribed" -}}
+      {{- /* This is an undescribed volume, so just render using defaults */ -}}
     {{- else if eq $mode "claim" -}}
       {{- $renderVolume = and (hasKey $volume "claimName") $volume.claimName -}}
       {{- if $renderVolume -}}
@@ -811,24 +727,25 @@ Render the entries for volumeClaimTemplates:, per configurations
     {{- $claimName := (printf "%s-%s-%s-%s" $ctx.Release.Namespace $ctx.Release.Name $subsystem $volumeFullName) -}}
     {{- $hostPath := (printf "%s/%s/%s/%s" $ctx.Release.Namespace $ctx.Release.Name $subsystem $volumeFullName) -}}
     {{- $labels := dict "arkcase/persistentVolume" $claimName -}}
-    {{- $annotations := dict "arkcase/hostPath" $hostPath -}}
+    {{- $annotations := dict 
+          "arkcase/podName" (include "arkcase.fullname" $ctx)
+          "arkcase/volumeName" $volumeName
+          "arkcase/hostPath" $hostPath
+    -}}
     {{- $metadata := dict "name" $volumeName "labels" $labels "annotations" $annotations -}}
     {{- $mode := $volume.render.mode -}}
     {{- $decl := dict -}}
-    {{- if eq $mode "hostPath" -}}
-      {{- $renderVolume = not $settings.hostPathEnable -}}
-      {{- if $renderVolume -}}
-        {{- /* Render a template using the default settings */ -}}
-        {{- $resources := $volume.resources -}}
-        {{- if or (not $resources) (not (kindIs "map" $resources)) -}}
-          {{- $resources = dict "requests" (dict "storage" $settings.capacity) -}}
-        {{- end -}}
-        {{- $spec := dict "accessModes" $settings.accessModes "resources" $resources "volumeMode" $settings.volumeMode -}}
-        {{- if $settings.storageClassName -}}
-          {{- $spec = set $spec "storageClassName" $settings.storageClassName -}}
-        {{- end -}}
-        {{- $decl = dict "metadata" $metadata "spec" $spec -}}
+    {{- if eq $mode "undescribed" -}}
+      {{- /* Render a template using the default settings */ -}}
+      {{- $resources := $volume.resources -}}
+      {{- if or (not $resources) (not (kindIs "map" $resources)) -}}
+        {{- $resources = dict "requests" (dict "storage" $settings.capacity) -}}
       {{- end -}}
+      {{- $spec := dict "accessModes" $settings.accessModes "resources" $resources "volumeMode" $settings.volumeMode -}}
+      {{- if $settings.storageClassName -}}
+        {{- $spec = set $spec "storageClassName" $settings.storageClassName -}}
+      {{- end -}}
+      {{- $decl = dict "metadata" $metadata "spec" $spec -}}
     {{- else if hasKey $volume "volumeName" -}}
       {{- /* We're referencing an existing volume - don't care about the mode */ -}}
       {{- $renderVolume = true -}}
