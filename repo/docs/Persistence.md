@@ -5,8 +5,6 @@
 * [Introduction](#introduction)
 * [Enable or Disable Persistence](#enable-disable)
 * [Setting Default Values](#defaults)
-* [Default Persistence Mode](#default-mode)
-* [Host Path Persistence Mode](#hostpath-mode)
 * [Overriding Volumes](#overriding-volumes)
 * [Volume String Syntax](#volume-string-syntax)
 
@@ -16,7 +14,9 @@ This document describes how to configure the persistence layer for the ArkCase h
 
 ArkCase relies on **PersistentVolumeClaim** (PVC) templates to access **PersistentVolume** (PV) resources which it (generally) expects the cluster infrastructure (or some other actor) to provision. It may also leverage specifically declared PVC resources, as well as specifically tailored PV resources. However, great effort has gone towards not requiring such manipulations of the persistence layer.
 
-Here's an example of a simple configuration that should work on a production environment:
+The current default for the helm charts is to deploy ArkCase using the default cluster storage class. This means that all volumes will be described using ***volumeClaimTemplate*** declarations within each pod (explicit or template), and will thus be delegated to the cluster for provisioning.
+
+Here's an example of a simple configuration that should work on a production environment, to enable the use of `glusterfs` volumes:
 
 ```yaml
 # Example contents of conf.yaml
@@ -31,18 +31,7 @@ Then deploy, like so:
 
 And that's it. This should yield a fully-working ArkCase stack, with all required components, and with all storage volumes using storage class `glusterfs`. During deployment, the infrastructure will be expected to fulfill all rendered volume claim templates by automatically provisioning volumes (or attaching to existing ones), or bind the incoming claims to already-existing volumes accordingly.
 
-Alternatively, production deployment can be selected by setting the appropriate mode, but without setting a default value for *storageClassName*, which will result in the volume claims using [the cluster's default storage class](https://kubernetes.io/docs/tasks/administer-cluster/change-default-storage-class/):
-
-```yaml
-# Example contents of conf.yaml
-global:
-  mode: "production"
-```
-Then deploy, like so:
-
-    $ helm install arkcase arkcase/arkcase -f conf.yaml
-
-This will result in a similar cluster with production persistence, but relying on the cluster's configured default storage class.
+Alternatively, if no `storageClassName` is provided, [the cluster's default storage class](https://kubernetes.io/docs/tasks/administer-cluster/change-default-storage-class/) will be used.
 
 ## <a name="enable-disable"></a>Enable or Disable Persistence
 
@@ -80,14 +69,6 @@ global:
     # Can be set case-insensitively
     capacity: "4Gi"
 
-    # Whether to explicitly enable or disable the use of hostPath volumes
-    # in development mode, this defaults to true. In production mode, this
-    # defaults to false. The value set here explicitly will take precedence
-    hostPathEnable: true
-
-    # The default value for hostPathRoot is "/opt/app"
-    hostPathRoot: "/directory/where/relative/hostPath/volumes/will/reside"
-
     # No default value for persistentVolumeReclaimPolicy
     # Can be set case-insensitively, and must be one of
     # Retain, Recycle, or Delete
@@ -101,37 +82,6 @@ global:
     # "Filesystem" or "Block"
     volumeMode: "Block"
 ```
-
-## <a name="default-mode"></a>Default Persistence Mode
-
-The current default for the helm charts is to deploy ArkCase in ***production*** mode. This means that all volumes will be described using ***volumeClaimTemplate*** declarations, and will thus be delegated to the cluster for provisioning.
-
-Default (production) mode is enabled when:
-
-  - `global.persistence.hostPathEnable` is set to false
-  - `global.persistence.hostPathEnable` is not set, and either `global.mode` is set to ***production***, or is not set altogether
-
-## <a name="hostpath-mode"></a>Host Path Persistence Mode
-
-When the application is deployed in ***development*** mode, or when the `global.persistence.hostPathEnable` flag is set to `true`, then all volumes described will be implmeneted as ***hostPath*** volumes, and will be allocated based on the `global.persistence.hostPathRoot` configuration (by default this has a value of `/opt/app`).
-
-The path that a volume is stored in will be computed as follows:
-
-- If no path is given explicitly (or an empty path is given), then use this formula: `${hostPathRoot}/${namespace}/${releaseName}/${component}/${volumeName}`.
-  - The value ***hostPathRoot*** will be the value substituted with the value from the `global.persistence.hostPathRoot` setting, or the default value as specified above.
-  - The value ***namespace*** refers to the K8s namespace into which the deployment is being executed
-  - The value ***releaseName*** is the release name given to the Helm release
-  - The value ***component*** is the component that will consume the volume (i.e. *core*, *search*, *reports*, *rdbms*, etc.)
-  - The value ***volumeName*** is the name of the volume, as referenced within the consuming component
-- If a non-empty, relative path is given explicitly, use this formula: `${hostPathRoot}/${relativePath}`
-- If a non-empty, absolute path is given explicitly, use that path directly regardless of any other configurations
-
-Volumes in hostPath mode are specified in mode ***DirectoryOrCreate***, which means that if the target path does not exist, it will be created by the cluster to satisfy the requirements. If this creation fails, the volume bind operation will eventually fail, and the affected pods will fail to boot up.
-
-Host path mode is enabled when:
-
-  - `global.persistence.hostPathEnable` is set to true
-  - `global.persistence.hostPathEnable` is not set, and `global.mode` is set to ***development***
 
 ## <a name="overriding-volumes"></a>Overriding Volumes
 
@@ -226,46 +176,35 @@ global:
               path: /data/beta
               server: 172.17.0.2
 
-        # Create a hostPath volume (if applicable) for charlie, which mounts the contents
-        # of the path /var/log/chuck as the volume
-        charlie:
-          path: "/var/log/chuck"
-
         ################################################################################
         # NEXT, USING THE FANCY STRING SYNTAX                                          #
         ################################################################################
 
         # Create a PVC template using glusterfs as the storageClassName, and with 8Gi
         # resource requests, in ReadWriteMany or ReadWriteOnce modes, whichever one matches first
-        dog: "pvc://glusterfs/8Gi#RWM,ReadWriteOnce"
+        charlie: "pvc://glusterfs/8Gi#RWM,ReadWriteOnce"
 
         # Create a PVC template using the cluster's default-configured storageClassName (or our
         # specifically configured storageClassName), and with 1Gi resource requests, in
         # ReadWriteOnce mode
-        easy: "pvc:///1Gi#RW"
+        dog: "pvc:///1Gi#RW"
 
         # Bind to the specific PVC resource named "myFoxyPvc", which would be managed external to the helm
         # chart
-        fox: "pvc:myFoxyPvc"
+        easy: "pvc:myFoxyPvc"
 
         # Create an nvme volume that's 32Gi in size, and will be mounted in ReadWriteMany mode
-        george: "pv://nvme/32Gi#RWM"
+        fox: "pv://nvme/32Gi#RWM"
 
         # Bind this volume to the existing PV resource named "howYouLikeDisVolume"
-        how: "vol://howYouLikeDisVolume"
-
-        # This will render a hostPath volume, housed in ${hostPathRoot}/my-item-volume
-        item: "my-item-volume"
-
-        # This will render a hostPath volume, housed in "/opt/app/j"
-        jig: "/opt/app/j"
+        george: "vol://howYouLikeDisVolume"
 
         ################################################################################
         # FINALLY, USING THE COMBINATION MAP AND FANCY STRING SYNTAX                   #
         ################################################################################
 
         # Similar to the above examples, except the string is tied to the "claim:" stanza
-        king:
+        how:
           # claim: "pvc://.../..."
           # claim: "pvc:queenOfVolumes"
       
@@ -273,18 +212,12 @@ global:
           claim: "kingOfAllVolumes"
 
         # Similar to the above examples, except the string is tied to the "volume:" stanza
-        love:
+        item:
           # volume: "pv://.../..."
           # volume: "vol://volumeIDoNotLove"
       
           # This is identical to "vol://loveThisVolume"
           volume: "loveThisVolume"
-
-        # Similar to the above examples, except the string is tied to the "path:" stanza
-        mike:
-          # volume: "relative/path/for/mike"
-      
-          volume: "/opt/app/michael"
 ```
 
 Some helpful reference docs:
@@ -302,7 +235,6 @@ There are several supported string syntaxes. This section describes each one, al
 
 - [pvc: and pvc://](#pvcString)
 - [vol:// and pv://](#pvString)
-- [Other string patterns](#otherString)
 
 In the following documentation, you'll find reference to placeholders for variable values that you may wish to employ with each syntax. Placeholders are specified with the syntax `${p1}`, where ***p1*** is the name of the value in that position, and optional values are enclosed in square brackets. Thus, the placeholder `[${p2}]` can be read as "the placeholder ***p2*** is optional".
 
@@ -358,34 +290,3 @@ This pattern describes the desire to bind the volume to a specific **PersistentV
 If the ArkCase deployment is executed with volume overrides described using this string pattern, then the deployment will only succeed if the named PV resources already exist in the cluster by the time the deployment process tries to bind to them. If they haven't, then some pods will hang indefinitely pending deployment until such a time as they're torn down, or the required PV is created.
 
 In this scenario, the deployer assumes reponsibility for deploying the necessary PV resource(s) ***before*** attempting to deploy ArkCase.
-
-### <a name="otherString"></a>Other String Patterns
-
-Other string patterns are allowed, and their interpretation varies depending on the context in which they're used. They can be used to describe paths, PVC names, or PV names. Here are some examples:
-
-```yaml
-global:
-  persistence:
-    defaults:
-      # Define the location within which relative paths will be housed
-      hostPathRoot: "/data/volumes"
-
-    volumes:
-      # Render the volume 'logs' for pod 'search' as a hostPath,
-      # if applicable, pointing to this specific absolute path
-      search:
-        logs: "/var/log/arkcase-search"
-
-      # Render the volume 'init' for pod 'core' as a hostPath,
-      # if applicable, pointing to the path "/data/volumes/core-initializer"
-      core:
-        init: "core-initializer"
-        # This is equivalent to using vol://volumeWithConfigurations
-        home:
-          volume: "volumeWithConfigurations"
-
-      rdbms:
-        data:
-          # This is equivalent to using pvc:pvcForDatabase
-          claim: "pvcForDatabase"
-```
