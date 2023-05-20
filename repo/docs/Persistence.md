@@ -105,7 +105,7 @@ global:
 
 The `actual configuration` for a volume can either be a string (see [this section for more information on the supported syntax](#volume-string-syntax)), or a map which describes how you wish to override the volume. The string syntax facilitates override specifications because it allows the condensation of information into a single line, using (relatively) easy-to-read statements.
 
-The alternative to using a string is to use a map to describe the override in more detail. The map may contain exactly one of 3 supported keys: `claim`, `volume`, and `path`. Defining more than one results in a Helm error that fails the deployment.  Please note that even at this stage, the `claim:`, `volume:` or `path:` may also be described using a string, for convenience.
+The alternative to using a string is to use a map to describe the override in more detail. The map may contain exactly one of 2 supported keys: `claim` or `volume`. Defining more than one results in a Helm error that fails the deployment.  Please note that even at this stage, the `claim:` or `volume:` may also be described using a string, for convenience.
 
 As an example, if you wanted to override the ***core*** component's ***home*** volume to be supplied by the ***nvme*** storage class, with a minimum capacity of ***4Gi***, you could achieve that with a configuration similar to this one:
 
