@@ -1,6 +1,9 @@
 
 # [ArkCase](https://www.arkcase.com/) Development Integration
 
+- [Enabling Host Path Persistence](#hostpath)
+- [Developer Workstations](#workstations)
+
 This document describes the model and configuration for developers to integrate their local development environments with an ArkCase Helm chart deployment. As with any community-release project, Issues and PRs are always welcome to help move this code further along.
 
 The ArkCase helm chart supports enabling development mode by way of a map whose fully-populated structure matches the following:
@@ -44,6 +47,25 @@ global:
       suspend: true
 ```
 
-## Developer Workstations
+## <a name="hostpath"></a>Enabling Host Path Persistence
+
+Among the helm charts available for deployment is the `arkcase/hostpath-provisioner` chart. This chart will deploy a CSI provisioner service that will deploy `hostPath` volumes to the local filesystem. This provisioner should only be used in single-node cluster environments (i.e. development environments) since the provisioner doesn't fully support multi-node clusters. In particular: when a volume is provisioned by this component, even though it's visible to the entire cluster, only one of the nodes will contain the data, and this data will only be accessible to pods running on that node.
+
+Hence, why it's only appropriate in single-node clusters: no such discrepancy will arise.
+
+In order to deploy the provisioner, you may use the following command:
+
+`$ helm install --create-namespace --namespace hostpath-provisioner hostpath-provisioner arkcase/hostpath-provisioner`
+
+The provisioner has many available configurations. The most important one is the value `hostPath`, which indicates the place within the node's filesystem the volumes will be provisioned (the default is `/opt/app`):
+
+```yaml
+# Set the host path to /k8s/hostPath
+hostPath: "/k8s/hostPath"
+```
+
+The path must normalize to an absolute path, or an error will result. The component creates a `storageClass` with the name `hostpath` (configurable via the `storageClass.name` value), which is marked as the default storage class (can be overridden with the value `storageClass.defaultClass`).
+
+## <a name="workstations"></a>Developer Workstations
 
 ***This documentation will be added soon***
