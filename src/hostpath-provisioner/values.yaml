@@ -28,7 +28,8 @@ provisionerName: hostpath
 reclaimPolicy: Delete
 
 ## Set the local HostPath to be used on the node
-nodeHostPath: "/opt/app"
+hostPath: "/opt/app"
+hostPathAnnotation: "arkcase/hostPath"
 
 ## Node selector
 nodeSelector: {}
