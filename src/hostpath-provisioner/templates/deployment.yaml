@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "hostpath-provisioner.fullname" $ | quote }}
+  labels:
+    app.kubernetes.io/name: {{ include "hostpath-provisioner.name" $ }}
+    helm.sh/chart: {{ include "hostpath-provisioner.chart" $ }}
+    app.kubernetes.io/instance: {{ $.Release.Name }}
+    app.kubernetes.io/managed-by: {{ $.Release.Service }}
+spec:
+  replicas: 1
+  strategy:
+    type: {{ $.Values.strategyType }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "hostpath-provisioner.name" $ }}
+      app.kubernetes.io/instance: {{ $.Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "hostpath-provisioner.name" $ }}
+        app.kubernetes.io/instance: {{ $.Release.Name }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ if $.Values.rbac.create }}{{ include "hostpath-provisioner.fullname" $ }}{{ else }}{{ $.Values.rbac.serviceAccountName | quote }}{{ end }}
+      containers:
+        - name: hostpath-provisioner
+          {{- include "arkcase.image" $ | nindent 10 }}
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            {{- with $.Values.provisionerName }}
+            - name: HOSTPATH_PROVISIONER_NAME
+              value: {{ . | quote }}
+            {{- end }}
+            - name: NODE_HOST_PATH
+              value: {{ $.Values.hostPath | quote }}
+            {{- with $.Values.hostPathAnnotation }}
+            - name: NODE_HOST_PATH_ANNOTATION
+              value: {{ . | quote }}
+            {{- end }}
+          volumeMounts:
+            - name: pv-volume
+              mountPath: "/hostPath"
+          resources: {{- toYaml $.Values.resources | nindent 12 }}
+      volumes:
+        - name: pv-volume
+          hostPath:
+            path: {{ $.Values.nodeHostPath | quote }}
+      {{- with $.Values.nodeSelector }}
+      nodeSelector: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $.Values.affinity }}
+      affinity: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $.Values.tolerations }}
+      tolerations: {{- toYaml . | nindent 8 }}
+      {{- end }}
