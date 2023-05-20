@@ -39,19 +39,19 @@ spec:
               value: {{ . | quote }}
             {{- end }}
             - name: NODE_HOST_PATH
-              value: {{ $.Values.hostPath | quote }}
+              value: &hostPath {{ $.Values.hostPath | quote }}
             {{- with $.Values.hostPathAnnotation }}
             - name: NODE_HOST_PATH_ANNOTATION
               value: {{ . | quote }}
             {{- end }}
           volumeMounts:
-            - name: pv-volume
+            - name: &hostPathVol "pv-vol"
               mountPath: "/hostPath"
           resources: {{- toYaml $.Values.resources | nindent 12 }}
       volumes:
-        - name: pv-volume
+        - name: *hostPathVol
           hostPath:
-            path: {{ $.Values.nodeHostPath | quote }}
+            path: *hostPath
       {{- with $.Values.nodeSelector }}
       nodeSelector: {{- toYaml . | nindent 8 }}
       {{- end }}
