@@ -810,12 +810,9 @@ Render the entries for volumeClaimTemplates:, per configurations
     {{- $subsystem := (include "arkcase.subsystem.name" $ctx) -}}
     {{- $claimName := (printf "%s-%s-%s-%s" $ctx.Release.Namespace $ctx.Release.Name $subsystem $volumeFullName) -}}
     {{- $hostPath := (printf "%s/%s/%s/%s" $ctx.Release.Namespace $ctx.Release.Name $subsystem $volumeFullName) -}}
-    {{-
-        $labels := dict
-          "arkcase/persistentVolume" $claimName
-          "arkcase/defaultPath" $hostPath
-    -}}
-    {{- $metadata := dict "name" $volumeName "labels" $labels -}}
+    {{- $labels := dict "arkcase/persistentVolume" $claimName -}}
+    {{- $annotations := dict "arkcase/hostPath" $hostPath -}}
+    {{- $metadata := dict "name" $volumeName "labels" $labels "annotations" $annotations -}}
     {{- $mode := $volume.render.mode -}}
     {{- $decl := dict -}}
     {{- if eq $mode "hostPath" -}}
