@@ -725,17 +725,18 @@ Render the entries for volumeClaimTemplates:, per configurations
     {{- $volume := (include "arkcase.persistence.buildVolume" (pick . "ctx" "name") | fromYaml) -}}
     {{- $subsystem := (include "arkcase.subsystem.name" $ctx) -}}
     {{- $claimName := (printf "%s-%s-%s-%s" $ctx.Release.Namespace $ctx.Release.Name $subsystem $volumeFullName) -}}
-    {{- $hostPath := (printf "%s/%s/%s/%s" $ctx.Release.Namespace $ctx.Release.Name $subsystem $volumeFullName) -}}
+    {{- $hostPath := (printf "%s/%s/%s/%s/${pvcId}" $ctx.Release.Namespace $ctx.Release.Name $subsystem $volumeFullName) -}}
     {{- $labels := dict "arkcase/persistentVolume" $claimName -}}
     {{- $annotations := dict 
-          "arkcase/podName" (include "arkcase.fullname" $ctx)
-          "arkcase/volumeName" $volumeName
-          "arkcase/hostPath" $hostPath
+          "hostpath/pvcId-pattern" (printf "^%s-%s(?:-(.*))?$" $volumeName (include "arkcase.fullname" $ctx))
+          "hostpath/pvcId-replace" "${1}"
+          "hostpath/location" $hostPath
     -}}
     {{- $metadata := dict "name" $volumeName "labels" $labels "annotations" $annotations -}}
     {{- $mode := $volume.render.mode -}}
     {{- $decl := dict -}}
     {{- if eq $mode "undescribed" -}}
+      {{- $renderVolume = true -}}
       {{- /* Render a template using the default settings */ -}}
       {{- $resources := $volume.resources -}}
       {{- if or (not $resources) (not (kindIs "map" $resources)) -}}
