@@ -1,6 +1,6 @@
 # Hostpath Provisioner
 
-This chart bootstraps a [hostpath-provisioner](https://github.com/Armedia/hostpath-provisioner) deployment on a [Kubernetes](http://kubernetes.io), which dynamically provisions Kubernetes HostPath Volumes. It is particularly handy to use on single-node Kubernetes cluster such as [kind](https://github.com/kubernetes-sigs/kind).
+This chart bootstraps a [hostpath-provisioner](https://github.com/ArkCase/ark_hostpath_provisioner) deployment on a [Kubernetes](http://kubernetes.io), which dynamically provisions Kubernetes HostPath Volumes. It is particularly handy to use on single-node Kubernetes cluster such as [kind](https://github.com/kubernetes-sigs/kind) or [K3s](https://k3s.io).
 
 ## Installing the Chart
 
@@ -15,7 +15,7 @@ $ helm upgrade --install hostpath-provisioner --create-namespace --namespace hos
 **Note:** On [kind](https://github.com/kubernetes-sigs/kind) please delete the default storage class:
 
 ```console
-kubectl delete storageclass standard
+$ kubectl delete storageclass standard
 ```
 
 The command deploys hostpath-provisioner on the Kubernetes cluster in the default configuration. The [configuration](#configuration) section lists the parameters that can be configured during installation.
@@ -66,7 +66,6 @@ The following table lists the configurable parameters of the `hostpath-provision
 | `storageClass.name`            | The name to assign the created StorageClass                                       | `hostpath`                            |
 | `provisionerName`              | The name to assign the created Provisioner                                        | `hostpath`                            |
 | `hostPathRoot`                 | Set the local HostPath to be used on the node                                     | `/opt/app`                       |
-| `hostPathAnnotation`           | Set the annotation to read from PVCs when a custom path should be used            | `arkcase/hostPath`                       |
 | `reclaimPolicy`                | Set the reclaimPolicy                                                             | `Delete`                              |
 | `rbac.create`                  | Enable RABC                                                                       | `true`                                |
 | `rbac.serviceAccountName`      | Service account name                                                              | `default`                             |
@@ -76,7 +75,7 @@ The following table lists the configurable parameters of the `hostpath-provision
 | `affinity`                     | Affinity for pod assignment                                                       | `{}`                                  |
 
 ```console
-$ helm upgrade -install hostpath-provisioner -n hostpath-provisioner arkcase/hostpath-provisioner \
+$ helm upgrade --install hostpath-provisioner --create-namespace --namespace hostpath-provisioner arkcase/hostpath-provisioner \
   --set resources.limits.cpu=200m
 ```
 
