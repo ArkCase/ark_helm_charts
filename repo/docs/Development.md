@@ -49,7 +49,7 @@ global:
 
 ## <a name="hostpath"></a>Enabling Host Path Persistence
 
-Among the helm charts available for deployment is the `arkcase/hostpath-provisioner` chart. This chart will deploy a CSI provisioner service that will deploy `hostPath` volumes to the local filesystem. This provisioner should only be used in single-node cluster environments (i.e. development environments) since the provisioner doesn't fully support multi-node clusters. In particular: when a volume is provisioned by this component, even though it's visible to the entire cluster, only one of the nodes will contain the data, and this data will only be accessible to pods running on that node.
+Among the helm charts available for deployment is the `arkcase/hostpath-provisioner` chart. This chart will deploy a CSI provisioner service that will allow the use of `HostPath` volumes backed by a cluster node's local filesystem. This provisioner should only be used in single-node cluster environments (i.e. development environments) since the provisioner doesn't fully support multi-node clusters. In particular: when a volume is provisioned by this component, even though it's visible to the entire cluster, only one of the nodes will contain the data (the node on which the provisioner is running), and this data will only be accessible to pods running on that node.
 
 Hence, why it's only appropriate in single-node clusters: no such discrepancy will arise.
 
@@ -64,7 +64,7 @@ The provisioner has many available configurations. The most important one is the
 hostPath: "/k8s/hostPath"
 ```
 
-The path must normalize to an absolute path, or an error will result. The component creates a `storageClass` with the name `hostpath` (configurable via the `storageClass.name` value), which is marked as the default storage class (can be overridden with the value `storageClass.defaultClass`).
+The path must normalize (i.e. after removing `.` and `..` components) to an absolute path, or an error will result. The component creates a `storageClass` with the name `hostpath` (this name is configurable via the `storageClass.name` value), which can also be earmarked as the default storage class for the cluster (this behavior can be overridden with the value `storageClass.defaultClass`).
 
 ## <a name="workstations"></a>Developer Workstations
 
