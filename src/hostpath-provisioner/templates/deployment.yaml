@@ -40,10 +40,6 @@ spec:
             {{- end }}
             - name: NODE_HOST_PATH
               value: &hostPath {{ $.Values.hostPath | quote }}
-            {{- with $.Values.hostPathAnnotation }}
-            - name: NODE_HOST_PATH_ANNOTATION
-              value: {{ . | quote }}
-            {{- end }}
           volumeMounts:
             - name: &hostPathVol "pv-vol"
               mountPath: "/hostPath"
