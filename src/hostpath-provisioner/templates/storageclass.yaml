@@ -1,17 +1,17 @@
-{{ if .Values.storageClass.create -}}
+{{- if ($.Values.storageClass).create }}
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: {{ .Values.storageClass.name }}
+  name: {{ ($.Values.storageClass).name | default "hostpath" | quote }}
   labels:
-    app.kubernetes.io/name: {{ include "hostpath-provisioner.name" . }}
-    helm.sh/chart: {{ include "hostpath-provisioner.chart" . }}
-    app.kubernetes.io/instance: {{ .Release.Name }}
-    app.kubernetes.io/managed-by: {{ .Release.Service }}
-{{- if .Values.storageClass.defaultClass }}
+    app.kubernetes.io/name: {{ include "hostpath-provisioner.name" $ | quote }}
+    helm.sh/chart: {{ include "hostpath-provisioner.chart" $ | quote }}
+    app.kubernetes.io/instance: {{ $.Release.Name | quote }}
+    app.kubernetes.io/managed-by: {{ $.Release.Service | quote }}
+  {{- if ($.Values.storageClass).defaultClass }}
   annotations:
     storageclass.kubernetes.io/is-default-class: "true"
-{{- end }}
-provisioner: {{ .Values.provisionerName }}
-reclaimPolicy: {{ .Values.reclaimPolicy }}
+  {{- end }}
+provisioner: {{ $.Values.provisionerName | default "hostpath" | quote }}
+reclaimPolicy: {{ $.Values.reclaimPolicy | default "Delete" | quote }}
 {{- end }}
