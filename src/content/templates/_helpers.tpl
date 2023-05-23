@@ -39,7 +39,7 @@
 
   {{- /* This is the default engine to use */ -}}
   {{- $engine := "alfresco" -}}
-  {{- if (hasKey $content "engine" -}}
+  {{- if (hasKey $content "engine") -}}
     {{- $engine = ($content.engine | toString | lower) -}}
     {{- if and (ne "s3" $engine) (ne "alfresco" $engine) -}}
       {{- fail (printf "Unknown content engine [%s] set (global.content.engine)" $engine) -}}
@@ -55,11 +55,13 @@
   {{- $nodes := (include "arkcase.tools.conf" (dict "ctx" $ "value" "content.minio.nodes" "detailed" true) | fromYaml) -}}
   {{- if and $nodes $nodes.global -}}
     {{- $nodes = ($nodes | toString | atoi) -}}
+  {{- else -}}
+    {{- $nodes = 1 -}}
   {{- end -}}
 
-  {{- if lt $nodes 1 -}}
+  {{- if (lt $nodes 1) -}}
     {{- $nodes = 1 -}}
-  {{- else if gt $nodes 1 -}}
+  {{- else if (gt $nodes 1) -}}
     {{- /* The node count must be a multiple of 4 or 16 */ -}}
     {{- $mod4 := (mod $nodes 4) -}}
     {{- $mod16 := (mod $nodes 4) -}}

@@ -1,4 +1,5 @@
 {{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.content.external" $)) (eq "s3" (include "arkcase.content.engine" $)) -}}
+{{- $nodes := (include "arkcase.content.minio.nodeCount" $ | int) -}}
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -14,7 +15,7 @@ metadata:
       {{- toYaml .value | nindent 4 }}
     {{- end }}
 spec:
-  replicas: &nodes {{ include "arkcase.content.minio.nodeCount" $ }}
+  replicas: {{ $nodes }}
   selector:
     matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
   serviceName: {{ include "arkcase.name" $ | quote }}
@@ -80,34 +81,44 @@ spec:
           {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             - name: NODES
-              value: *nodes
+              value: {{ $nodes | quote }}
             - name: DATA_DIR
               value: *dataDir
+            - name: MINIO_ADDRESS
+              value: ":9000"
+            - name: MINIO_CONSOLE_ADDRESS
+              value: ":9001"
             - name: MINIO_ROOT_USER
               value: "admin"
             - name: MINIO_ROOT_PASSWORD
               valueFrom:
-                secretKeyRef: &secrets {{ include "arkcase.fullname" $ | quote }}
+                secretKeyRef:
+                  name: &secrets {{ include "arkcase.fullname" $ | quote }}
                   key: MINIO_ROOT_PASSWORD
             - name: MINIO_IDENTITY_LDAP_SERVER_ADDR
               valueFrom:
-                secretKeyRef: *secrets
+                secretKeyRef:
+                  name: *secrets
                   key: MINIO_IDENTITY_LDAP_SERVER_ADDR
             - name: MINIO_IDENTITY_LDAP_LOOKUP_BIND_DN
               valueFrom:
-                secretKeyRef: *secrets
+                secretKeyRef:
+                  name: *secrets
                   key: MINIO_IDENTITY_LDAP_LOOKUP_BIND_DN
             - name: MINIO_IDENTITY_LDAP_LOOKUP_BIND_PASSWORD
               valueFrom:
-                secretKeyRef: *secrets
+                secretKeyRef:
+                  name: *secrets
                   key: MINIO_IDENTITY_LDAP_LOOKUP_BIND_PASSWORD
             - name: MINIO_IDENTITY_LDAP_USER_DN_SEARCH_BASE_DN
               valueFrom:
-                secretKeyRef: *secrets
+                secretKeyRef:
+                  name: *secrets
                   key: MINIO_IDENTITY_LDAP_USER_DN_SEARCH_BASE_DN
             - name: MINIO_IDENTITY_LDAP_USER_DN_SEARCH_FILTER
               valueFrom:
-                secretKeyRef: *secrets
+                secretKeyRef:
+                  name: *secrets
                   key: MINIO_IDENTITY_LDAP_USER_DN_SEARCH_FILTER
           {{- with (include "arkcase.values" (dict "ctx" $ "base" "command") | fromYaml) }}
           command: {{ toJson .value }}

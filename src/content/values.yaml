@@ -10,6 +10,9 @@
 #
 configuration:
 
+  s3:
+    password: "ji3me|u}qu*eu7Ae"
+
   ingress:
     enabled: false
     className: haproxy
@@ -258,6 +261,16 @@ serviceTemplates: &serviceTemplate
   ports: &ports {}
 
 service:
+
+  minio:
+    <<: *serviceTemplate
+    ports:
+      - name: "http"
+        protocol: TCP
+        port: 9000
+      - name: "console"
+        protocol: TCP
+        port: 9001
 
   main:
     <<: *serviceTemplate
