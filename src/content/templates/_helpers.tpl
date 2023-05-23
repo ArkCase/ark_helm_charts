@@ -47,3 +47,25 @@
   {{- end -}}
   {{- $engine -}}
 {{- end -}}
+
+{{- define "arkcase.content.minio.nodeCount" -}}
+  {{- if not (include "arkcase.isRootContext" $) -}}
+    {{- fail "The parameter must be the root context" -}}
+  {{- end -}}
+  {{- $nodes := (include "arkcase.tools.conf" (dict "ctx" $ "value" "content.minio.nodes" "detailed" true) | fromYaml) -}}
+  {{- if and $nodes $nodes.global -}}
+    {{- $nodes = ($nodes | toString | atoi) -}}
+  {{- end -}}
+
+  {{- if lt $nodes 1 -}}
+    {{- $nodes = 1 -}}
+  {{- else if gt $nodes 1 -}}
+    {{- /* The node count must be a multiple of 4 or 16 */ -}}
+    {{- $mod4 := (mod $nodes 4) -}}
+    {{- $mod16 := (mod $nodes 4) -}}
+    {{- if and (ne $mod4 0) (ne $mod16 0) -}}
+      {{- fail (printf "The number of nodes must be a multiple of 4 or 16: %d" $nodes) -}}
+    {{- end -}}
+  {{- end -}}
+  {{- $nodes -}}
+{{- end -}}

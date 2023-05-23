@@ -1,5 +1,4 @@
-{{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.content.external" $)) (eq "alfresco" (include "arkcase.content.engine" $)) -}}
-{{- $schema := (include "arkcase.db.schema" (dict "ctx" $ "schema" "content") | fromYaml) -}}
+{{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.content.external" $)) (eq "s3" (include "arkcase.content.engine" $)) -}}
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -15,9 +14,7 @@ metadata:
       {{- toYaml .value | nindent 4 }}
     {{- end }}
 spec:
-  {{- if not ($.Values.autoscaling).enabled }}
-  replicas: {{ $.Values.replicaCount | default 1 }}
-  {{- end }}
+  replicas: &nodes {{ include "arkcase.content.minio.nodeCount" $ }}
   selector:
     matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
   serviceName: {{ include "arkcase.name" $ | quote }}
@@ -81,52 +78,37 @@ spec:
         - name: {{ include "arkcase.part.name" $ | quote }}
           {{- include "arkcase.image" $ | nindent 10 }}
           {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
-          env:
-            - name: JAVA_TOOL_OPTIONS
-              value: >-
-                -Dencryption.keystore.type=JCEKS
-                -Dencryption.cipherAlgorithm=DESede/CBC/PKCS5Padding
-                -Dencryption.keyAlgorithm=DESede
-                -Dencryption.keystore.location=/usr/local/tomcat/shared/classes/alfresco/extension/keystore/keystore
-                -Dmetadata-keystore.password=mp6yc0UD9e
-                -Dmetadata-keystore.aliases=metadata
-                -Dmetadata-keystore.metadata.password=oKIWzVdEdA
-                -Dmetadata-keystore.metadata.algorithm=DESede
-            {{- $serviceName := (include "arkcase.name" $) }}
-            {{- $baseUrl := (printf "http://%s:8080/alfresco" $serviceName) }}
-            - name: CATALINA_OPTS
-              value: >-
-                -XX:MinRAMPercentage=50
-                -XX:MaxRAMPercentage=80
-                -Ddir.root=/app/data
-                -Ddb.driver={{ $schema.jdbc.driver | quote }}
-                -Ddb.username={{ $schema.username | quote }}
-                -Ddb.password={{ $schema.password | quote }}
-                -Ddb.url={{ $schema.jdbc.url | quote }}
-                -Dsolr.host={{ include "arkcase.alfresco.service" (dict "ctx" $ "name" "search") | quote }}
-                -Dsolr.port=8983
-                -Dsolr.secureComms=secret
-                -Dsolr.sharedSecret={{ include "arkcase.alfresco.searchSecret" $ | quote }}
-                -Dsolr.base.url=/solr
-                -Dsolr.http.connection.timeout=1000
-                -Dindex.subsystem.name=solr6
-                -Dshare.host={{ include "arkcase.alfresco.service" (dict "ctx" $ "name" "share") | quote }}
-                -Dshare.port=8080
-                -Dalfresco.host={{ $serviceName | quote }}
-                -Dalfresco.port=8080
-                -Daos.baseUrlOverwrite={{ printf "%s/aos" $baseUrl | quote }}
-                -Dopencmis.server.override=true
-                -Dopencmis.server.value={{ printf "%s/api" $baseUrl | quote }}
-                -Dmessaging.broker.url="failover:(nio://{{- include "arkcase.alfresco.service" (dict "ctx" $ "name" "activemq") -}}:61616)?timeout=3000&jms.useCompression=true"
-                -Ddeployment.method=DOCKER_COMPOSE
-                -Dcsrf.filter.enabled=false
-                -DlocalTransform.core-aio.url=http://{{- include "arkcase.alfresco.service" (dict "ctx" $ "name" "transform-core-aio") -}}:8090/
-              {{- if (include "arkcase.enterprise" $) }}
-                -Dsfs.url=http://{{- include "arkcase.alfresco.service" (dict "ctx" $ "name" "sfs") -}}:8099/
-                -Dtransform.service.enabled=true
-                -Dtransform.service.url=http://{{- include "arkcase.alfresco.service" (dict "ctx" $ "name" "transform-router") -}}:8095
-                -Ddsync.service.uris=http://localhost:9090/alfresco
-              {{- end }}
+          env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            - name: NODES
+              value: *nodes
+            - name: DATA_DIR
+              value: *dataDir
+            - name: MINIO_ROOT_USER
+              value: "admin"
+            - name: MINIO_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef: &secrets {{ include "arkcase.fullname" $ | quote }}
+                  key: MINIO_ROOT_PASSWORD
+            - name: MINIO_IDENTITY_LDAP_SERVER_ADDR
+              valueFrom:
+                secretKeyRef: *secrets
+                  key: MINIO_IDENTITY_LDAP_SERVER_ADDR
+            - name: MINIO_IDENTITY_LDAP_LOOKUP_BIND_DN
+              valueFrom:
+                secretKeyRef: *secrets
+                  key: MINIO_IDENTITY_LDAP_LOOKUP_BIND_DN
+            - name: MINIO_IDENTITY_LDAP_LOOKUP_BIND_PASSWORD
+              valueFrom:
+                secretKeyRef: *secrets
+                  key: MINIO_IDENTITY_LDAP_LOOKUP_BIND_PASSWORD
+            - name: MINIO_IDENTITY_LDAP_USER_DN_SEARCH_BASE_DN
+              valueFrom:
+                secretKeyRef: *secrets
+                  key: MINIO_IDENTITY_LDAP_USER_DN_SEARCH_BASE_DN
+            - name: MINIO_IDENTITY_LDAP_USER_DN_SEARCH_FILTER
+              valueFrom:
+                secretKeyRef: *secrets
+                  key: MINIO_IDENTITY_LDAP_USER_DN_SEARCH_FILTER
           {{- with (include "arkcase.values" (dict "ctx" $ "base" "command") | fromYaml) }}
           command: {{ toJson .value }}
           {{- end }}
@@ -136,36 +118,16 @@ spec:
           {{- else }}
           resources:
             limits:
-              memory: "1536Mi"
+              memory: "512Mi"
           {{- end }}
           volumeMounts:
-            {{- include "arkcase.alfresco.license.volumeMounts" (dict "ctx" $ "volume" "secrets" "path" "/usr/local/tomcat/shared/classes/alfresco/extension/license") | nindent 12 }}
             {{- include "arkcase.trusts.mount" $ | nindent 12 }}
             - name: *dataVolume
               mountPath: *dataDir
             - name: *initVolume
               mountPath: *initDir
-            - name: &secrets "secrets"
-              mountPath: "/usr/local/tomcat/shared/classes/alfresco-global.properties"
-              subPath: &alfrescoGlobalProperties "alfresco-global.properties"
-              readOnly: true
-            - name: *secrets
-              mountPath: "/usr/local/tomcat/shared/classes/alfresco/extension/subsystems/Authentication/ldap-ad/ldap1/ldap-ad.properties"
-              subPath: &ldapAdProperties "ldap-ad.properties"
-              readOnly: true
       volumes:
         {{- include "arkcase.trusts.volume" $ | nindent 8 }}
-        - name: *secrets
-          secret:
-            optional: false
-            secretName: {{ include "arkcase.fullname" $ | quote }}
-            defaultMode: 0444
-            items:
-              {{- include "arkcase.alfresco.license.volumes" $ | nindent 14 }}
-              - key: *alfrescoGlobalProperties
-                path: *alfrescoGlobalProperties
-              - key: *ldapAdProperties
-                path: *ldapAdProperties
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "init") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
       {{- with (include "arkcase.values" (dict "ctx" $ "base" "nodeSelector") | fromYaml) }}
