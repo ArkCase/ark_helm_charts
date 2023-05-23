@@ -1,8 +1,8 @@
 {{- if (include "arkcase.subsystem.enabled" $) }}
   {{- $dev := (include "arkcase.dev" $ | fromYaml) }}
   {{- $debug := $dev.debug | default dict }}
-  {{- $devUid := $dev.uid | default "1000" }}
-  {{- $devGid := $dev.gid | default "1000" }}
+  {{- $devUid := $dev.uid | default "1997" }}
+  {{- $devGid := $dev.gid | default "1997" }}
   {{- $customConf := and (not (empty $dev)) (not (empty $dev.conf)) }}
   {{- $customConfFile := and $customConf $dev.conf.file }}
   {{- $customConfDir := and $customConf (not $dev.conf.file) }}
