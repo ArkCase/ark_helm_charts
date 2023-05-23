@@ -32,18 +32,11 @@
   {{- if not (include "arkcase.isRootContext" $) -}}
     {{- fail "The parameter must be the root context" -}}
   {{- end -}}
-  {{- $content := ($.Values.global).content | default dict -}}
-  {{- if not (kindIs "map" $content) -}}
-    {{- $content = dict -}}
-  {{- end -}}
-
   {{- /* This is the default engine to use */ -}}
-  {{- $engine := "alfresco" -}}
-  {{- if (hasKey $content "engine") -}}
-    {{- $engine = ($content.engine | toString | lower) -}}
-    {{- if and (ne "s3" $engine) (ne "alfresco" $engine) -}}
-      {{- fail (printf "Unknown content engine [%s] set (global.content.engine)" $engine) -}}
-    {{- end -}}
+  {{- $setting := "content.engine" -}}
+  {{- $engine := (include "arkcase.tools.conf" (dict "ctx" $ "value" $setting) | default "alfresco" | lower) -}}
+  {{- if and (ne "s3" $engine) (ne "alfresco" $engine) -}}
+    {{- fail (printf "Unknown content engine [%s] set (global.conf.%s)" $engine $setting) -}}
   {{- end -}}
   {{- $engine -}}
 {{- end -}}
@@ -52,12 +45,8 @@
   {{- if not (include "arkcase.isRootContext" $) -}}
     {{- fail "The parameter must be the root context" -}}
   {{- end -}}
-  {{- $nodes := (include "arkcase.tools.conf" (dict "ctx" $ "value" "content.minio.nodes" "detailed" true) | fromYaml) -}}
-  {{- if and $nodes $nodes.global -}}
-    {{- $nodes = ($nodes | toString | atoi) -}}
-  {{- else -}}
-    {{- $nodes = 1 -}}
-  {{- end -}}
+  {{- $nodes := (include "arkcase.tools.conf" (dict "ctx" $ "value" "content.nodes") | default 1) -}}
+  {{- $nodes = ($nodes | toString | atoi) -}}
 
   {{- if (lt $nodes 1) -}}
     {{- $nodes = 1 -}}
