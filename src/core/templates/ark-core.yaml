@@ -367,19 +367,19 @@ spec:
           {{- end }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "conf") | nindent 8 }}
         {{- end }}
+        - name: *warVolume
         {{- if $customWarDir }}
-        - name: "war"
           hostPath:
             path: {{ $dev.war.path | quote }}
             type: Directory
         {{- else }}
+          emptyDir: {}
           {{- if $customWarFile }}
         - name: *warFileVolume
           hostPath:
             path: {{ $dev.war.path | quote }}
             type: File
           {{- end }}
-        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "war") | nindent 8 }}
         {{- end }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "init") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "home") | nindent 8 }}
@@ -388,18 +388,12 @@ spec:
     {{- if not $customConfDir }}
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "conf") | nindent 4 }}
     {{- end }}
-    {{- if not $customWarDir }}
-    {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "war" ) | nindent 4 }}
-    {{- end }}
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "init") | nindent 4 }}
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "home") | nindent 4 }}
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "logs") | nindent 4 }}
 
   {{- if not $customConfDir }}
   {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "conf") | nindent 0 }}
-  {{- end }}
-  {{- if not $customWarDir }}
-  {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "war" ) | nindent 0 }}
   {{- end }}
   {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "init") | nindent 0 }}
   {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "home") | nindent 0 }}
