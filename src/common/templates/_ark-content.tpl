@@ -31,17 +31,19 @@
   {{- $auth := dict -}}
   {{- $authValues := dict -}}
   {{- $defaultUrl := "" -}}
+  {{- $defaultShareUrl := "" -}}
   {{- if (eq "alfresco" $type) -}}
-    {{- $defaultUrl = "http://content:8080/alfresco" -}}
+    {{- $defaultUrl = "http://content-main:8080/alfresco" -}}
+    {{- $defaultShareUrl = "http://content-share:8080/share" -}}
     {{-
       $authValues =
         dict
           "username" true
           "password" true
-          "shareUrl" true
+          "shareUrl" false
     -}}
   {{- else if (eq "s3" $type) -}}
-    {{- $defaultUrl = "http://content:9000" -}}
+    {{- $defaultUrl = "http://content-main:9000" -}}
     {{-
       $authValues =
         dict
@@ -77,14 +79,14 @@
   {{- end -}}
 
   {{- /* Special case - if we have an Alfresco shareUrl, parse it */ -}}
-  {{- $shareUrl := dict -}}
-  {{- if (hasKey $auth "shareUrl") -}}
-    {{- $shareUrl = (include "arkcase.tools.parseUrl" $auth.shareUrl | fromYaml) -}}
+  {{- $shareUrl := (hasKey $auth "shareUrl") | ternary $auth.shareUrl $defaultShareUrl -}}
+  {{- if $shareUrl -}}
+    {{- $shareUrl = (include "arkcase.tools.parseUrl" $shareUrl | fromYaml) -}}
     {{- $auth = omit $auth "shareUrl" -}}
   {{- end -}}
 
   {{- /* Return the configuration data */ -}}
-  {{- $result := dict "type" $type "url" $url "auth" $auth -}}
+  {{- $result := merge (dict "type" $type "url" $url) $auth -}}
   {{- if $shareUrl -}}
     {{- $result = set $result "shareUrl" $shareUrl -}}
   {{- end -}}
