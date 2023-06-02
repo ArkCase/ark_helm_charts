@@ -39,7 +39,14 @@
 
   {{- $contentUrl := (include "arkcase.tools.conf" (dict "ctx" $ "value" "content.url")) -}}
   {{- if not ($contentUrl) -}}
-    {{- $contentUrl = "http://content-main:8080/alfresco" -}}
+    {{- $engine := (include "arkcase.tools.conf" (dict "ctx" $ "value" "content.engine")) -}}
+    {{- if or (not $engine) (eq "alfresco" $engine) -}}
+      {{- $contentUrl = "http://content-main:8080/alfresco" -}}
+    {{- else if (eq "s3" $engine) -}}
+      {{- $contentUrl = "http://content-minio:9000/" -}}
+    {{- else -}}
+      {{- fail (printf "Unsupported content engine [%s]" $engine) -}}
+    {{- end -}}
   {{- end -}}
   {{- $contentUrl -}}
 {{- end -}}
