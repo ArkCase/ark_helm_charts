@@ -1,3 +1,42 @@
+{{- define "arkcase.content.info.get" -}}
+  {{- $local := $.local -}}
+  {{- $global := $.global -}}
+  {{- $value := $.value -}}
+
+  {{- $local = (include "arkcase.tools.get" (dict "ctx" $local "name" $value) | fromYaml) -}}
+  {{- $local = (eq "string" $local.type) | ternary $local.value "" -}}
+  {{- $global = (include "arkcase.tools.get" (dict "ctx" $global "name" $value) | fromYaml) -}}
+  {{- $global = (eq "string" $global.type) | ternary $global.value "" -}}
+
+  {{- (empty $global) | ternary $local $global -}}
+{{- end -}}
+
+{{- define "arkcase.content.sanitizeDialect" -}}
+  {{- $dialect := $ -}}
+  {{- if not $dialect -}}
+    {{- $dialect = "s3" -}}
+  {{- end -}}
+  {{- if (not (kindIs "string" $dialect)) -}}
+    {{- fail (printf "The dialect to sanitize must be a non-empty string value: (%s)" (kindOf $dialect)) -}}
+  {{- end -}}
+
+  {{- /* Sanitize the engine dialect */ -}}
+  {{- $ldialect := ($dialect | lower) -}}
+  {{-
+    $aliases :=
+      dict
+        "minio" "s3"
+        "s3" "s3"
+        "alfresco" "alfresco"
+        "alf" "alfresco"
+        "cmis" "alfresco"
+  -}}
+  {{- if not (hasKey $aliases $ldialect) -}}
+    {{- fail (printf "Invalid content engine dialect [%s] - must be one of %s" $dialect (keys $aliases | sortAlpha)) -}}
+  {{- end -}}
+  {{- get $aliases $ldialect -}}
+{{- end -}}
+
 {{- define "arkcase.content.info.compute" -}}
   {{- if not (include "arkcase.isRootContext" $) -}}
     {{- fail "The parameter given must be the root context (. or $)" -}}
@@ -5,36 +44,15 @@
 
   {{- $global := ((($.Values.global).conf).content | default dict) -}}
   {{- $local := (($.Values.configuration).content | default dict) -}}
+  {{- $getParams := dict "local" $local "global" $global -}}
 
-  {{- /* Get the engine type */ -}}
-  {{- $type := (include "arkcase.tools.conf" (dict "ctx" $ "value" "content.type")) -}}
-  {{- if and $type (kindIs "string" $type) -}}
-    {{- /* Sanitize the engine type */ -}}
-    {{- $ltype := ($type | lower) -}}
-    {{-
-      $aliases :=
-        dict
-          "minio" "s3"
-          "s3" "s3"
-          "alfresco" "alfresco"
-          "alf" "alfresco"
-          "cmis" "alfresco"
-    -}}
-    {{- if not (hasKey $aliases $ltype) -}}
-      {{- fail (printf "Invalid content engine type [%s] - must be one of %s" $type (keys $aliases | sortAlpha)) -}}
-    {{- end -}}
-    {{- $type = get $aliases $ltype -}}
-  {{- else -}}
-    {{- $type = "s3" -}}
-  {{- end -}}
+  {{- /* Get the engine dialect */ -}}
+  {{- $dialect := (include "arkcase.content.info.get" (set $getParams "value" "dialect")) -}}
+  {{- $dialect = (include "arkcase.content.sanitizeDialect" $dialect) -}}
 
   {{- $auth := dict -}}
   {{- $authValues := dict -}}
-  {{- $defaultUrl := "" -}}
-  {{- $defaultShareUrl := "" -}}
-  {{- if (eq "alfresco" $type) -}}
-    {{- $defaultUrl = "http://content-main:8080/alfresco" -}}
-    {{- $defaultShareUrl = "http://content-share:8080/share" -}}
+  {{- if (eq "alfresco" $dialect) -}}
     {{-
       $authValues =
         dict
@@ -42,8 +60,7 @@
           "password" true
           "shareUrl" false
     -}}
-  {{- else if (eq "s3" $type) -}}
-    {{- $defaultUrl = "http://content-main:9000" -}}
+  {{- else if (eq "s3" $dialect) -}}
     {{-
       $authValues =
         dict
@@ -56,41 +73,48 @@
     -}}
   {{- end -}}
 
+  {{- $failures := list -}}
   {{- range $v, $r := $authValues -}}
-    {{- $V := (include "arkcase.tools.conf" (dict "ctx" $ "value" (printf "content.%s" $v))) -}}
+    {{- $V := (include "arkcase.content.info.get" (set $getParams "value" $v)) -}}
     {{- if $V -}}
       {{- $auth = set $auth $v $V -}}
     {{- else if $r -}}
-      {{- fail (printf "Missing content configuration value '%s' for content engine type %s - must be a non-empty string" $v $type) -}}
+      {{- $failures = append $failures $v -}}
     {{- end -}}
   {{- end -}}
+  {{- if $failures -}}
+    {{- fail (printf "Missing content configuration values for content engine dialect %s (must be non-empty strings): %s" $dialect $failures) -}}
+  {{- end -}}
 
-  {{- $url := (include "arkcase.tools.conf" (dict "ctx" $ "value" "content.url") | default $defaultUrl) -}}
+  {{- $url := (include "arkcase.content.info.get" (set $getParams "value" "url")) -}}
+  {{- if not $url -}}
+    {{- fail "Must provide a non-empty content url configuration (global.conf.content.url or configuration.content.url)" -}}
+  {{- end -}}
   {{- /* Parse the URL, to ensure it's valid */ -}}
   {{- $url = (include "arkcase.tools.parseUrl" $url | fromYaml) -}}
 
-  {{- /* Special case - if we have an S3 prefix, we must sanitize it as a path and make sure it starts with a slash */ -}}
-  {{- if (hasKey $auth "prefix") -}}
-    {{- $prefix := (include "arkcase.tools.normalizePath" $auth.prefix) -}}
-    {{- if not (hasPrefix "/" $prefix) -}}
-      {{- $prefix = (printf "/%s" $prefix) -}}
+  {{- if eq "s3" $dialect -}}
+    {{- /* Special case - if we have an S3 prefix, we must sanitize it as a path and make sure it starts with a slash */ -}}
+    {{- $prefix := (hasKey $auth "prefix") | ternary $auth.prefix "" -}}
+    {{- if $prefix -}}
+      {{- $prefix := (include "arkcase.tools.normalizePath" $auth.prefix) -}}
+      {{- if and $prefix (not (hasPrefix "/" $prefix)) -}}
+        {{- $prefix = (printf "/%s" $prefix) -}}
+      {{- end -}}
+      {{- $auth = set $auth "prefix" $prefix -}}
     {{- end -}}
-    {{- $auth = set $auth "prefix" $prefix -}}
   {{- end -}}
 
-  {{- /* Special case - if we have an Alfresco shareUrl, parse it */ -}}
-  {{- $shareUrl := (hasKey $auth "shareUrl") | ternary $auth.shareUrl $defaultShareUrl -}}
-  {{- if $shareUrl -}}
-    {{- $shareUrl = (include "arkcase.tools.parseUrl" $shareUrl | fromYaml) -}}
-    {{- $auth = omit $auth "shareUrl" -}}
+  {{- if eq "alfresco" $dialect -}}
+    {{- /* Special case - if we have an Alfresco shareUrl, parse it */ -}}
+    {{- if not $auth.shareUrl -}}
+      {{- fail "Must provide a non-empty content share url configuration (global.conf.content.shareUrl or configuration.content.shareUrl)" -}}
+    {{- end -}}
+    {{- $auth = set $auth "shareUrl" (include "arkcase.tools.parseUrl" $auth.shareUrl | fromYaml) -}}
   {{- end -}}
 
   {{- /* Return the configuration data */ -}}
-  {{- $result := merge (dict "type" $type "url" $url) $auth -}}
-  {{- if $shareUrl -}}
-    {{- $result = set $result "shareUrl" $shareUrl -}}
-  {{- end -}}
-  {{- $result | toYaml -}}
+  {{- merge (dict "dialect" $dialect "url" $url) $auth | toYaml -}}
 {{- end -}}
 
 {{- define "arkcase.content.info" -}}
@@ -119,4 +143,12 @@
     {{- $yamlResult = get $masterCache $chartName | toYaml -}}
   {{- end -}}
   {{- $yamlResult -}}
+{{- end -}}
+
+{{- define "arkcase.content.info.dialect" -}}
+  {{- if not (include "arkcase.isRootContext" $) -}}
+    {{- fail "The parameter given must be the root context (. or $)" -}}
+  {{- end -}}
+  {{- $dialect := (include "arkcase.tools.conf" (dict "ctx" $ "value" "content.dialect")) -}}
+  {{- include "arkcase.content.sanitizeDialect" $dialect -}}
 {{- end -}}
