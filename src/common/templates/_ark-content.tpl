@@ -64,10 +64,9 @@
     {{-
       $authValues =
         dict
-          "bucket" true
-          "accessKey" true
-          "secretKey" true
-          "sessionToken" false
+          "username" true
+          "password" true
+          "bucket" false
           "prefix" false
           "region" false
     -}}
