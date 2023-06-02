@@ -124,10 +124,12 @@ spec:
         - name: seed-content
           {{- include "arkcase.image" (dict "ctx" $ "name" "seed-content" "repository" "arkcase/nettest") | nindent 10 }}
           {{- $contentDialect := (include "arkcase.content.info.dialect" $) }}
-          command: [ {{ printf "/seed-content.%s" $contentDialect | quote }} ]
+          {{- $contentScript := printf "/seed-content.%s" $contentDialect }}
+          {{- $contentData := printf "%s.yaml" $contentScript }}
+          command: [ {{ $contentScript | quote }} ]
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             - name: INIT_SEED_CONF
-              value: {{ printf "/seed-content.%s.yaml" $contentDialect | quote }}
+              value: {{ $contentData | quote }}
             - name: INIT_SEED_USERNAME
               valueFrom:
                 secretKeyRef:
@@ -154,12 +156,12 @@ spec:
             {{- end }}
           volumeMounts:
             - name: &configMap "config-map"
-              mountPath: "/seed-content"
-              subPath: &seedContent "seed-content"
+              mountPath: {{ $contentScript | quote }}
+              subPath: &seedContent {{ $contentScript | trimPrefix "/" | quote }}
               readOnly: true
             - name: *configMap
-              mountPath: "/seed-content.yaml"
-              subPath: &seedContentYaml "seed-content.yaml"
+              mountPath: {{ $contentData | quote }}
+              subPath: &seedContentYaml {{ $contentData | trimPrefix "/" | quote }}
               readOnly: true
       containers:
         - name: arkcase
