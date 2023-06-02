@@ -52,6 +52,12 @@ configuration:
     dialect: "postgresql"
     hostname: "rdbms"
 
+  content: &contentConfig
+    dialect: "s3"
+    url: "http://content-main:9000"
+    username: "admin"
+    password: "AhWieb?aej^ah5Sh"
+
 gateway:
   enabled: false
   configuration:
@@ -192,6 +198,9 @@ content:
     ldap:
       <<: *ldapConfig
 
+    content:
+      <<: *contentConfig
+
     db:
       <<: *dbConfig
       schema:
@@ -204,6 +213,9 @@ core:
   configuration:
     ldap:
       <<: *ldapConfig
+
+    content:
+      <<: *contentConfig
 
     db:
       <<: *dbConfig
