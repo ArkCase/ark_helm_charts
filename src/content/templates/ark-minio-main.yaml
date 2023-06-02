@@ -1,4 +1,4 @@
-{{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.content.external" $)) (eq "s3" (include "arkcase.content.engine" $)) -}}
+{{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.content.external" $)) (eq "s3" (include "arkcase.content.info.dialect" $)) -}}
 {{- $nodes := (include "arkcase.content.minio.nodeCount" $ | int) -}}
 ---
 apiVersion: apps/v1
@@ -77,8 +77,8 @@ spec:
         {{- include "arkcase.initDependencies.container" $ | nindent 8 }}
       containers:
         - name: {{ include "arkcase.part.name" $ | quote }}
-          {{- include "arkcase.image" $ | nindent 10 }}
-          {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
+          {{- include "arkcase.image" (dict "ctx" $ "name" "minio" "repository" "arkcase/minio") | nindent 10 }}
+          {{- include "arkcase.subsystem.ports" (dict "ctx" $ "name" "minio") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             - name: NODES
               value: {{ $nodes | quote }}
@@ -89,11 +89,14 @@ spec:
             - name: MINIO_CONSOLE_ADDRESS
               value: ":9001"
             - name: MINIO_ROOT_USER
-              value: "admin"
-            - name: MINIO_ROOT_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: &secrets {{ include "arkcase.fullname" $ | quote }}
+                  key: MINIO_ROOT_USER
+            - name: MINIO_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: *secrets
                   key: MINIO_ROOT_PASSWORD
             - name: MINIO_IDENTITY_LDAP_SERVER_ADDR
               valueFrom:

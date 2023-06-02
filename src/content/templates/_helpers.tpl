@@ -23,22 +23,14 @@
 
 {{- define "arkcase.content.external" -}}
   {{- $url := (include "arkcase.tools.conf" (dict "ctx" $ "value" "content.url" "detailed" true) | fromYaml) -}}
-  {{- if and $url $url.global -}}
+
+  {{- $dialect := (include "arkcase.content.info.dialect" $) -}}
+  {{- /* Small trick: for S3, use the same URL as before ... for Alfresco, use the configured shareUrl value */ -}}
+  {{- $shareUrl := (eq "s3" $dialect) | ternary $url (include "arkcase.tools.conf" (dict "ctx" $ "value" "content.shareUrl" "detailed" true) | fromYaml) -}}
+
+  {{- if or (and $url $url.global) (and $shareUrl $shareUrl.global) -}}
     {{- true -}}
   {{- end -}}
-{{- end -}}
-
-{{- define "arkcase.content.engine" -}}
-  {{- if not (include "arkcase.isRootContext" $) -}}
-    {{- fail "The parameter must be the root context" -}}
-  {{- end -}}
-  {{- /* This is the default engine to use */ -}}
-  {{- $setting := "content.engine" -}}
-  {{- $engine := (include "arkcase.tools.conf" (dict "ctx" $ "value" $setting) | default "alfresco" | lower) -}}
-  {{- if and (ne "s3" $engine) (ne "alfresco" $engine) -}}
-    {{- fail (printf "Unknown content engine [%s] set (global.conf.%s)" $engine $setting) -}}
-  {{- end -}}
-  {{- $engine -}}
 {{- end -}}
 
 {{- define "arkcase.content.minio.nodeCount" -}}
