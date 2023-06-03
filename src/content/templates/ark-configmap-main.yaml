@@ -1,0 +1,44 @@
+{{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.content.external" $)) }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "arkcase.fullname" $ | quote }}
+  namespace: {{ $.Release.Namespace | quote }}
+  labels: {{- include "arkcase.labels" $ | nindent 4 }}
+    {{- with (.Values.labels).common }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  annotations:
+    timestamp: {{ date "20060102150405" now | quote }}
+    {{- with (.Values.annotations).common }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+data:
+  #
+  # Process static files
+  #
+  {{- range $path, $_ := ($.Files.Glob "files/configmap/txt/*") }}
+  {{ $path | base }}: | {{- $.Files.Get $path | nindent 4 }}
+  {{- end }}
+
+  #
+  # Process templated files
+  #
+  {{- range $path, $_ := ($.Files.Glob "files/configmap/tpl/*") }}
+  {{ $path | base }}: | {{- tpl ($.Files.Get $path) $ | nindent 4 }}
+  {{- end }}
+
+binaryData:
+  {{- $bin := ($.Files.Glob "files/configmap/bin/*") }}
+  {{- if $bin }}
+  #
+  # Process binary files
+  #
+    {{- ($.Files.Glob "files/configmap/bin/*").AsSecrets | nindent 2 }}
+  {{- else }}
+  #
+  # No binary files found
+  #
+  {{- end }}
+
+{{- end }}
