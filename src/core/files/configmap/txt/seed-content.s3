@@ -55,6 +55,34 @@ def s3(*args):
 def s3api(*args):
 	return aws("s3api", *args)
 
+def build_bucket_config(config):
+	if type(config) != dict:
+		config = {}
+
+	ret = {}
+	if "acl" in config:
+		ret["acl"] = config["acl"]
+
+	if "version" in config:
+		version = config["version"]
+		enable = True
+		mfaDel = False
+
+		if type(version) != dict:
+			enable = to_boolean(version)
+		else:
+			if "enable" in version:
+				enable = to_boolean(version["enable"])
+
+			if "mfaDel" in version:
+				mfaDel = to_boolean(version["mfaDel"])
+
+		enable = "Enabled" if enable else "Suspended"
+		mfaDel = "Enabled" if mfaDel else "Disabled"
+
+		ret["version"] = json.dumps({ "MFADelete" : mfaDel, "Status" : enable })
+	return ret
+
 if args.config:
 	# If the parameter is given, use it
 	source_file = args.config
@@ -136,8 +164,11 @@ if not buckets:
 	logging.info("No buckets to seed.")
 	exit(0)
 
-VERSION_JSON = json.dumps({
-	"MFADelete"	: "Enabled",
+DEFAULTS = {}
+if "defaults" in data:
+	DEFAULTS = build_bucket_config(data["defaults"])
+
+DEFAULT_VERSION = json.dumps({
 	"Status"	: "Enabled"
 })
 
@@ -147,6 +178,11 @@ try:
 	os.environ["AWS_REGION"] = REGION
 
 	for name, config in buckets.items():
+
+		# If the configuration isn't a dict, normalize it to a dict
+		if type(config) != dict:
+			config = {}
+
 		name = name.strip()
 		if not name:
 			fail("The configuration data is malformed - there is a bucket with an empty name")
@@ -163,21 +199,33 @@ try:
 			# if it exists and IGNORE_DUPES is False, then this is an error
 			fail(f"The bucket [{name}] already exists, and IGNORE_DUPES is not set - cannot continue.")
 
-		# TODO: Enable selection of locking support per bucket
 		# The bucket does not exist, so create it (always add locking support)
-		logging.info(f"Creating the bucket [{name}]...")
-		result = s3api("create-bucket", "--bucket", name, "--object-lock-enabled-for-bucket")
+		config = build_bucket_config(config)
+
+		acl = "private"
+		if "acl" in config:
+			acl = config["acl"]
+		else if "acl" in DEFAULTS:
+			acl = DEFAULTS["acl"]
+
+		logging.info(f"Creating the bucket [{name}] with acl '{acl}'...")
+		result = s3api("create-bucket", "--bucket", name, "--object-lock-enabled-for-bucket", "--acl", acl)
 		if result.returncode != 0:
 			fail(f"Failed to create the bucket [{name}] (rc={result.returncode}):\n{result.stdout}")
 
-		# TODO: Enable selection of versioning per bucket
+		version = DEFAULT_VERSION
+		if "version" in config:
+			version = config["version"]
+		else if "version" in DEFAULTS:
+			version = DEFAULTS["version"]
+
 		# Enable versioning on the bucket
-		logging.info(f"Setting the versioning configuration for the bucket [{name}]...")
-		result = s3api("put-bucket-versioning", "--bucket", name, "--versioning-configuration", VERSION_JSON)
+		logging.info(f"Setting the versioning configuration for the bucket [{name}] to {version}...")
+		result = s3api("put-bucket-versioning", "--bucket", name, "--versioning-configuration", version)
 		if result.returncode != 0:
 			fail(f"Failed to set the versioning configuration for the bucket [{name}] (rc={result.returncode}):\n{result.stdout}")
 
-		# TODO: Enable retention policy description per bucket
+		# TODO: Enable retention policy description per bucket? How?
 
 	logging.info("Seeding completed.")
 	exit(0)
