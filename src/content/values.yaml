@@ -264,22 +264,18 @@ serviceTemplates: &serviceTemplate
 
 service:
 
-  minio:
-    <<: *serviceTemplate
-    ports:
-      - name: "http"
-        protocol: TCP
-        port: 9000
-      - name: "console"
-        protocol: TCP
-        port: 9001
-
   main:
     <<: *serviceTemplate
     ports:
-      - name: "http"
+      - name: "cmis"
         protocol: TCP
         port: 8080
+      - name: "s3"
+        protocol: TCP
+        port: 9000
+      - name: "s3console"
+        protocol: TCP
+        port: 9001
 
   share:
     <<: *serviceTemplate
