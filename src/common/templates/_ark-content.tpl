@@ -14,7 +14,7 @@
 {{- define "arkcase.content.sanitizeDialect" -}}
   {{- $dialect := $ -}}
   {{- if not $dialect -}}
-    {{- $dialect = "s3" -}}
+    {{- fail "The content service dialect may not be the empty string" -}}
   {{- end -}}
   {{- if (not (kindIs "string" $dialect)) -}}
     {{- fail (printf "The dialect to sanitize must be a non-empty string value: (%s)" (kindOf $dialect)) -}}
