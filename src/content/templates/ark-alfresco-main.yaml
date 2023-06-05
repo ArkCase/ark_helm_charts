@@ -97,6 +97,8 @@ spec:
               value: >-
                 -XX:MinRAMPercentage=50
                 -XX:MaxRAMPercentage=80
+                -Dalfresco_user_store.adminusername={{ $content.username | quote }}
+                -Dalfresco_user_store.adminpassword={{ $content.password | quote }}
                 -Ddir.root=/app/data
                 -Ddb.driver={{ $schema.jdbc.driver | quote }}
                 -Ddb.username={{ $schema.username | quote }}
