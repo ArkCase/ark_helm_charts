@@ -74,13 +74,11 @@ configuration:
     url: "http://localhost:9999"
 
   content: &content
+    dialect: "alfresco"
     url: "http://content-main:8080/alfresco"
     shareUrl: "http://content-share:8080/share"
     username: "admin"
     password: "admin"
-
-  contentArchive:
-    <<: *content
 
   messaging: &messaging
     url: "tcp://messaging"
@@ -145,6 +143,7 @@ initDependencies:
     content:
       ports:
         - 8080
+        - 9000
 
 # Please leave the `replicaCount` to 1 for the time being. Clustering is not
 # supported yet.

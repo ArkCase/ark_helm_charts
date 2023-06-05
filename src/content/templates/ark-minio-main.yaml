@@ -1,0 +1,199 @@
+{{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.content.external" $)) (eq "s3" (include "arkcase.content.info.dialect" $)) -}}
+{{- $nodes := (include "arkcase.content.minio.nodeCount" $ | int) -}}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "arkcase.fullname" $ | quote }}
+  namespace: {{ $.Release.Namespace | quote }}
+  labels: {{- include "arkcase.labels" $ | nindent 4 }}
+    {{- with (include "arkcase.values" (dict "ctx" $ "base" "labels") | fromYaml) }}
+      {{- toYaml .value | nindent 4 }}
+    {{- end }}
+  annotations:
+    {{- with (include "arkcase.values" (dict "ctx" $ "base" "annotations") | fromYaml) }}
+      {{- toYaml .value | nindent 4 }}
+    {{- end }}
+spec:
+  replicas: {{ $nodes }}
+  selector:
+    matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
+  serviceName: {{ include "arkcase.name" $ | quote }}
+  updateStrategy:
+    type: {{ $.Values.updateStrategy }}
+    {{- if (eq "Recreate" $.Values.updateStrategy) }}
+    rollingUpdate: null
+    {{- else if $.Values.rollingUpdatePartition }}
+    rollingUpdate:
+      partition: {{ $.Values.rollingUpdatePartition }}
+    {{- end }}
+  template:
+    metadata:
+      name: {{ include "arkcase.fullname" $ | quote }}
+      namespace: {{ $.Release.Namespace | quote }}
+      labels: {{- include "arkcase.labels" $ | nindent 8 }}
+        {{- with (include "arkcase.values" (dict "ctx" $ "base" "labels") | fromYaml) }}
+          {{- toYaml .value | nindent 8 }}
+        {{- end }}
+      annotations:
+        # NB: Both these annotation values must be of type "string"
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9100"
+        timestamp: {{ date "20060102150405" now | quote }}
+        {{- with (include "arkcase.values" (dict "ctx" $ "base" "annotations") | fromYaml) }}
+          {{- toYaml .value | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- include "arkcase.image.pullSecrets" $ | nindent 6 }}
+      {{- with (include "arkcase.values" (dict "ctx" $ "base" "hostAliases") | fromYaml) }}
+      hostAliases: {{- toYaml .value | nindent 8 }}
+      {{- end }}
+      {{- with (include "arkcase.values" (dict "ctx" $ "base" "schedulerName") | fromYaml) }}
+      schedulerName: {{ .value | quote }}
+      {{- end }}
+      serviceAccountName: {{ include "arkcase.serviceAccountName" $ | quote }}
+      {{- with (include "arkcase.values" (dict "ctx" $ "base" "securityContext") | fromYaml) }}
+        {{- with .template }}
+      securityContext: {{- toYaml .value | nindent 8 }}
+        {{- end }}
+      {{- end }}
+      initContainers:
+        - name: set-permissions
+          {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
+          env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            - name: JOBS
+              value: |
+                jobs:
+                  # We know the image uses user 33000:1000
+                  - ownership: {{ coalesce ($.Values.persistence).ownership "33000:1000" | quote }}
+                    permissions: "u=rwX,g=rX,o="
+                    flags: [ "recurse", "noforced", "create", "changes" ]
+                    targets: [ "/app/data", "/app/init" ]
+          volumeMounts:
+            - name: &initVolume "init"
+              mountPath: &initDir "/app/init"
+            - name: &dataVolume "data"
+              mountPath: &dataDir "/app/data"
+        {{- include "arkcase.initDependencies.container" $ | nindent 8 }}
+      containers:
+        - name: {{ include "arkcase.part.name" $ | quote }}
+          {{- include "arkcase.image" (dict "ctx" $ "name" "minio" "repository" "arkcase/minio") | nindent 10 }}
+          {{- include "arkcase.subsystem.ports" (dict "ctx" $ "name" "minio") | nindent 10 }}
+          env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            - name: NODES
+              value: {{ $nodes | quote }}
+            - name: DATA_DIR
+              value: *dataDir
+            - name: MINIO_ADDRESS
+              value: ":9000"
+            - name: MINIO_CONSOLE_ADDRESS
+              value: ":9001"
+            - name: MINIO_ROOT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: &secrets {{ include "arkcase.fullname" $ | quote }}
+                  key: MINIO_ROOT_USER
+            - name: MINIO_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: *secrets
+                  key: MINIO_ROOT_PASSWORD
+            - name: MINIO_IDENTITY_LDAP_SERVER_ADDR
+              valueFrom:
+                secretKeyRef:
+                  name: *secrets
+                  key: MINIO_IDENTITY_LDAP_SERVER_ADDR
+            - name: MINIO_IDENTITY_LDAP_LOOKUP_BIND_DN
+              valueFrom:
+                secretKeyRef:
+                  name: *secrets
+                  key: MINIO_IDENTITY_LDAP_LOOKUP_BIND_DN
+            - name: MINIO_IDENTITY_LDAP_LOOKUP_BIND_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: *secrets
+                  key: MINIO_IDENTITY_LDAP_LOOKUP_BIND_PASSWORD
+            - name: MINIO_IDENTITY_LDAP_USER_DN_SEARCH_BASE_DN
+              valueFrom:
+                secretKeyRef:
+                  name: *secrets
+                  key: MINIO_IDENTITY_LDAP_USER_DN_SEARCH_BASE_DN
+            - name: MINIO_IDENTITY_LDAP_USER_DN_SEARCH_FILTER
+              valueFrom:
+                secretKeyRef:
+                  name: *secrets
+                  key: MINIO_IDENTITY_LDAP_USER_DN_SEARCH_FILTER
+            - name: MINIO_IDENTITY_LDAP_GROUP_SEARCH_BASE_DN
+              valueFrom:
+                secretKeyRef:
+                  name: *secrets
+                  key: MINIO_IDENTITY_LDAP_GROUP_SEARCH_BASE_DN
+            - name: MINIO_IDENTITY_LDAP_GROUP_SEARCH_FILTER
+              valueFrom:
+                secretKeyRef:
+                  name: *secrets
+                  key: MINIO_IDENTITY_LDAP_GROUP_SEARCH_FILTER
+            {{- $baseDn := (include "arkcase.tools.ldap.baseDn" $) }}
+            {{- $ldapGroupsBase := (printf "%s,%s" (include "arkcase.tools.ldap" (dict "ctx" $ "value" "search.groups.base")) $baseDn) }}
+            - name: LDAP_ADMIN_GROUP
+              value: {{ printf "%s,%s" (include "arkcase.tools.ldap" (dict "ctx" $ "value" "admin.role")) $ldapGroupsBase | quote }}
+          {{- $command := (include "arkcase.values" (dict "ctx" $ "base" "command") | fromYaml) }}
+          {{- $lifecycle := (include "arkcase.values" (dict "ctx" $ "base" "lifecycle") | fromYaml) }}
+          {{- if $command.value }}
+          command: {{ toJson $command.value }}
+          {{- end }}
+          {{- if and (not $command.value) (not $lifecycle.value) }}
+          lifecycle:
+            postStart:
+              exec:
+                command: [ "/config-post.sh" ]
+          {{- else if $lifecycle.value }}
+          lifecycle: {{- $lifecycle.value | toYaml | nindent 12 }}
+          {{- end }}
+          {{- $resources := (include "arkcase.values" (dict "ctx" $ "base" "resources") | fromYaml) }}
+          {{- if $resources }}
+          resources: {{- toYaml $resources.value | nindent 12 }}
+          {{- else }}
+          resources:
+            limits:
+              memory: "512Mi"
+          {{- end }}
+          volumeMounts:
+            {{- include "arkcase.trusts.mount" $ | nindent 12 }}
+            - name: *dataVolume
+              mountPath: *dataDir
+            - name: *initVolume
+              mountPath: *initDir
+            - name: &configMap "config-map"
+              mountPath: "/config-post.sh"
+              subPath: &configPostSh "config-post.sh"
+              readOnly: true
+      volumes:
+        {{- include "arkcase.trusts.volume" $ | nindent 8 }}
+        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "init") | nindent 8 }}
+        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
+        - name: *configMap
+          configMap:
+            optional: false
+            name: {{ include "arkcase.fullname" $ | quote }}
+            defaultMode: 0444
+            items:
+              - key: *configPostSh
+                path: *configPostSh
+                mode: 0555
+      {{- with (include "arkcase.values" (dict "ctx" $ "base" "nodeSelector") | fromYaml) }}
+      nodeSelector: {{- toYaml .value | nindent 8 }}
+      {{- end }}
+      {{- with (include "arkcase.values" (dict "ctx" $ "base" "affinity") | fromYaml) }}
+      affinity: {{- toYaml .value | nindent 8 }}
+      {{- end }}
+      {{- with (include "arkcase.values" (dict "ctx" $ "base" "tolerations") | fromYaml) }}
+      tolerations: {{- toYaml .value | nindent 8 }}
+      {{- end }}
+  volumeClaimTemplates:
+    {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "init") | nindent 4 }}
+    {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "data") | nindent 4 }}
+
+  {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "init") | nindent 0 }}
+  {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "data") | nindent 0 }}
+{{- end }}
