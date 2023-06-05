@@ -797,15 +797,10 @@ result: "DC=some,DC=domain,DC=com"
   {{- end -}}
 
   {{- if hasKey $data "path" -}}
-    {{- /* Pick out the context */ -}}
-    {{- $path := list -}}
-    {{- range $p := (splitList "/" $data.path) -}}
-      {{- if $p -}}
-        {{- $path = append $path $p -}}
-      {{- end -}}
-    {{- end -}}
+    {{- $normalized := (include "arkcase.tools.normalizePath" $data.path) -}}
+    {{- $path := (splitList "/" $normalized | compact) -}}
     {{- $context := "" -}}
-    {{- if gt (len $path) 0 -}}
+    {{- if $path -}}
       {{- $context = (first $path) -}}
     {{- end -}}
     {{- $data = set $data "context" $context -}}

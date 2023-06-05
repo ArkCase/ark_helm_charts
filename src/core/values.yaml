@@ -142,10 +142,7 @@ initDependencies:
         - 80
         - 443
         - 8983
-    content-main:
-      ports:
-        - 8080
-    content-share:
+    content:
       ports:
         - 8080
 
@@ -266,16 +263,14 @@ persistence:
   # are ignored.
   enabled: true
 
-  default:
-
-    # Set the default capacity for volumes in case none is assigned explicitly
-    # and the default value is insufficient
-    volumeSize:
-      init: "4Gi"
-      home: "8Gi"
-      conf: "4Gi"
-      war: "2Gi"
-      logs: "2Gi"
+  # Set the default capacity for volumes in case none is assigned explicitly
+  # and the default value is insufficient
+  volumeSize:
+    init: "4Gi"
+    home: "8Gi"
+    conf: "4Gi"
+    war: "2Gi"
+    logs: "2Gi"
 
 #  The volumes for persistent data
   volumes:

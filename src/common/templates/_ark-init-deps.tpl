@@ -79,7 +79,7 @@ that checks the boot order
 
     {{- $targetHostName := $hostname -}}
     {{- $targetPort := $value -}}
-    {{- $replacement := (include "arkcase.tools.get" (dict "ctx" $ "name" (printf "Values.global.conf.%s" $hostname)) | fromYaml) -}}
+    {{- $replacement := (include "arkcase.tools.conf" (dict "ctx" $ "value" $hostname "detailed" true) | fromYaml) -}}
     {{- if and $replacement $replacement.value (kindIs "map" $replacement.value) -}}
       {{- $newHostName := "" -}}
       {{- $portSource := dict -}}

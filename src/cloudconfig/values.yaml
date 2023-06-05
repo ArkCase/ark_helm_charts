@@ -113,12 +113,10 @@ persistence:
   # are ignored.
   enabled: true
 
-  default:
-
-    # Set the default capacity for volumes in case none is assigned explicitly
-    # and the default value is insufficient
-    volumeSize:
-      data: "4Gi"
+  # Set the default capacity for volumes in case none is assigned explicitly
+  # and the default value is insufficient
+  volumeSize:
+    data: "4Gi"
 
 #  The volumes for persistent data
   volumes:
