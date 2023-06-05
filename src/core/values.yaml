@@ -74,11 +74,11 @@ configuration:
     url: "http://localhost:9999"
 
   content: &content
-    dialect: "s3"
-    url: "http://content-main:9000"
+    dialect: "alfresco"
+    url: "http://content-main:8080/alfresco"
+    shareUrl: "http://content-share:8080/share"
     username: "admin"
     password: "admin"
-    bucket: "arkcase"
 
   messaging: &messaging
     url: "tcp://messaging"
