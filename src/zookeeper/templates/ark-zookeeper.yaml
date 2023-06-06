@@ -1,4 +1,18 @@
 {{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.zookeeper.external" $)) }}
+{{- $maxFailed := (include "arkcase.zookeeper.maxFailed" $ | atoi) }}
+{{- if (gt $maxFailed 0) }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "arkcase.fullname" $ | quote }}
+  namespace: {{ $.Release.Namespace | quote }}
+spec:
+  selector:
+    matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
+  maxUnavailable: {{ $maxFailed }}
+---
+{{- end }}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -24,6 +38,7 @@ spec:
     rollingUpdate:
       partition: {{ $.Values.rollingUpdatePartition }}
     {{- end }}
+  podManagementPolicy: Parallel
   template:
     metadata:
       name: {{ include "arkcase.fullname" $ | quote }}
@@ -82,6 +97,11 @@ spec:
               value: *confPath
             - name: ZOO_LOG_DIR
               value: *logsPath
+            # We use a 10-second boot delay b/c the pods will come up in parallel,
+            # and thus they should all block on the boot delay in time for the DNS
+            # updates to be applied
+            - name: BOOT_DELAY
+              value: "10"
             {{- if $.Values.env }}
             {{- $.Values.env | toYaml | nindent 12 }}
             {{- end }}

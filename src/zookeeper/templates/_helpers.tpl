@@ -30,3 +30,9 @@
   {{- /* We have a hard limit of 255 nodes */ -}}
   {{- (gt $nodes 255) | ternary 255 $nodes -}}
 {{- end -}}
+
+{{- define "arkcase.zookeeper.maxFailed" -}}
+  {{- $nodes := (include "arkcase.zookeeper.nodes" $ | atoi) -}}
+  {{- /* We can lose at most half of our nodes */ -}}
+  {{- div $nodes 2 -}}
+{{- end -}}
