@@ -265,7 +265,7 @@ subsets:
     {{- fail "Incorrect context given - either submit the root context as the only parameter, or a 'ctx' parameter pointing to it" -}}
   {{- end -}}
 
-  {{- $globalService := ($ctx.Values.global.service | default dict) -}}
+  {{- $globalService := (($ctx.Values.global).service | default dict) -}}
   {{- if or (not $globalService) (not (kindIs "map" $globalService)) -}}
     {{- $globalService = dict -}}
   {{- end -}}
