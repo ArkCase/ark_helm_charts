@@ -30,6 +30,23 @@ image:
   # Overrides the image tag whose default is the chart appVersion.
   # tag: "latest"
 
+initDependencies:
+  enabled: true
+  mode: all
+  template:
+    # Any of the required ports are enough to succeed
+    mode: any
+    initialDelay: 10
+    delay: 5
+    timeout: 5
+    attempts: 12
+  dependencies:
+    ldap:
+      ports:
+        - 389
+        - 636
+        - 9000
+
 # You generally shouldn't mess with these. These exist to support some name-generation templates
 nameOverride: ""
 fullnameOverride: ""
