@@ -101,6 +101,10 @@ spec:
               mountPath: "/app/conf/zoo.cfg"
               subPath: &zooCfg "zoo.cfg"
               readOnly: true
+            - name: *configMap
+              mountPath: "/app/conf/logback.xml"
+              subPath: &logbackXml "logback.xml"
+              readOnly: true
       volumes:
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "conf") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
@@ -113,6 +117,8 @@ spec:
             items:
               - key: *zooCfg
                 path: *zooCfg
+              - key: *logbackXml
+                path: *logbackXml
   volumeClaimTemplates:
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "conf") | nindent 4 }}
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "data") | nindent 4 }}
