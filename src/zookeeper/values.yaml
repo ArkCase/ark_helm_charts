@@ -1,0 +1,151 @@
+# Default values for solr-helm-charts.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# This can be set to "false" by parent charts. If not defined, it will be taken as true
+#enabled: true
+
+#
+# This should group all application-specific configurations
+#
+configuration:
+  nodes: 1
+  tickTime: 2000
+  initLimit: 10
+  syncLimit: 5
+  maxClients: 60
+  autopurge:
+    # By default, this is off
+    purgeInterval: 0
+    snapRetainCount: 3
+  metrics:
+    enable: true
+    jvm: true
+
+platform: ""
+image:
+  # pullPolicy: IfNotPresent 
+  registry: "public.ecr.aws"
+  repository: "arkcase/zookeeper"
+  # Overrides the image tag whose default is the chart appVersion.
+  # tag: "latest"
+
+# You generally shouldn't mess with these. These exist to support some name-generation templates
+nameOverride: ""
+fullnameOverride: ""
+
+# Custom annotations to apply throughout
+annotations:
+
+# Custom labels to apply throughout
+labels:
+
+updateStrategy: RollingUpdate
+rollingUpdatePartition: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: false
+  # Annotations to add to the service account
+  annotations:
+  # Annotations to add to the service account
+  labels:
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+securityContext:
+  template:
+    # You must specify an `fsGroup` to allow Solr write access to mounted
+    # volumes (as long as Solr runs as a non-root user, which should be the
+    # case). Any random number will do.
+    fsGroup: 2002
+    fsGroupChangePolicy: OnRootMismatch
+  solr:
+    # capabilities:
+    #   drop:
+    #   - ALL
+    # readOnlyRootFilesystem: true
+
+resources:
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+#autoscaling:
+  #enabled: false
+  #minReplicas: 1
+  #maxReplicas: 100
+  #targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+nodeSelector:
+
+tolerations:
+
+affinity:
+
+persistence:
+  # If set to `false`, an `emptyDir` will be used instead and all other `persistence.*` parameters
+  # are ignored.
+  enabled: true
+
+  # Set the default capacity for volumes in case none is assigned explicitly
+  # and the default value is insufficient
+  volumeSize:
+    conf: "1Gi"
+    data: "4Gi"
+    logs: "1Gi"
+
+#  The volumes for persistent data
+  volumes:
+# The volume where the data will be stored (RTFM for more info on how to
+# properly declare volumes)
+#     data:
+
+service:
+  #external: host-or-IP
+  ports:
+    - name: clients
+      protocol: TCP
+      port: 2181
+    - name: peers
+      protocol: TCP
+      port: 2888
+    - name: leader
+      protocol: TCP
+      port: 3888
+    - name: metrics
+      protocol: TCP
+      port: 7000
+
+##
+## Configure extra options for containers' liveness and readiness probes
+## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/#configure-probes
+## @param service.probes.enabled Enable liveness and readiness probes
+## @param service.probes.spec.initialDelaySeconds Initial delay seconds for liveness and readiness probes
+## @param service.probes.spec.periodSeconds Period seconds for liveness and readiness probes
+## @param service.probes.spec.timeoutSeconds Timeout seconds for liveness and readiness probes
+## @param service.probes.spec.failureThreshold Failure threshold for liveness and readiness probes
+## @param service.probes.spec.successThreshold Success threshold for liveness and readiness probes
+##
+  probes:
+    enabled: true
+    startup:
+      command: [ "/app/zookeeper/bin/zkServer.sh", "status" ]
+      initialDelaySeconds: 0
+      periodSeconds: 1
+      timeoutSeconds: 1
+      failureThreshold: 60
+      successThreshold: 1
+    liveness:
+      enabled: true
+    readiness:
+      enabled: true

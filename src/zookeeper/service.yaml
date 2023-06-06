@@ -1,0 +1,3 @@
+{{- if (not (include "arkcase.zookeeper.external" $)) }}
+  {{- include "arkcase.subsystem.service" . -}}
+{{- end -}}

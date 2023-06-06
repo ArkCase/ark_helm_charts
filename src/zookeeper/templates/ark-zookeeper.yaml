@@ -1,0 +1,124 @@
+{{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.zookeeper.external" $)) }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "arkcase.fullname" $ | quote }}
+  namespace: {{ $.Release.Namespace | quote }}
+  labels: {{- include "arkcase.labels" $ | nindent 4 }}
+    {{- with ($.Values.labels).common }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with ($.Values.annotations).common }}
+  annotations: {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  replicas: {{ include "arkcase.zookeeper.nodes" $ }}
+  selector: 
+    matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
+  serviceName: {{ include "arkcase.name" $ | quote }}
+  updateStrategy:
+    type: {{ $.Values.updateStrategy }}
+    {{- if (eq "Recreate" $.Values.updateStrategy) }}
+    rollingUpdate: null
+    {{- else if $.Values.rollingUpdatePartition }}
+    rollingUpdate:
+      partition: {{ $.Values.rollingUpdatePartition }}
+    {{- end }}
+  template:
+    metadata:
+      name: {{ include "arkcase.fullname" $ | quote }}
+      namespace: {{ $.Release.Namespace | quote }}
+      labels: {{- include "arkcase.labels" $ | nindent 8 }}
+        {{- with ($.Values.labels).common }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      annotations:
+        # NB: Both these annotation values must be of type "string"
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9100"
+        timestamp: {{ date "20060102150405" now | quote }}
+        {{- with ($.Values.annotations).common }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- include "arkcase.image.pullSecrets" $ | nindent 6 }}
+      {{- with $.Values.hostAliases }}
+      hostAliases: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if $.Values.schedulerName }}
+      schedulerName: {{ $.Values.schedulerName | quote }}
+      {{- end }}
+      {{- with ($.Values.securityContext).template }}
+      securityContext: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      initContainers:
+        - name: set-permissions
+          {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
+          env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            - name: JOBS
+              value: |
+                jobs:
+                  # We know the ActiveMQ image uses user 998 (centos), 1998 (rocky)
+                  - ownership: {{ coalesce ($.Values.persistence).ownership "2000:2000" | quote }}
+                    permissions: "u=rwX,g=rX,o="
+                    flags: [ "recurse", "noforced", "create", "changes" ]
+                    targets: [ "/app/conf", "/app/data", "/app/logs" ]
+          volumeMounts:
+            - name: &confVolume "conf"
+              mountPath: &confPath "/app/conf"
+            - name: &dataVolume "data"
+              mountPath: &dataPath "/app/data"
+            - name: &logsVolume "logs"
+              mountPath: &logsPath "/app/logs"
+        {{- include "arkcase.initDependencies.container" $ | nindent 8 }}
+      containers:
+        - name: zookeeper
+          {{- with ($.Values.securityContext).zookeeper }}
+          securityContext: {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- include "arkcase.image" $ | nindent 10 }}
+          env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            - name: ZOOCFGDIR
+              value: *confPath
+            - name: ZOO_LOG_DIR
+              value: *logsPath
+            {{- if $.Values.env }}
+            {{- $.Values.env | toYaml | nindent 12 }}
+            {{- end }}
+          {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
+          {{- if $.Values.command }}
+          command: {{ toJson $.Values.command }}
+          {{- else }}
+          command: [ "/entrypoint" ]
+          {{- end }}
+          {{- with $.Values.resources }}
+          resources: {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: *dataVolume
+              mountPath: *dataPath
+            - name: &configMap "configmap"
+              mountPath: "/app/conf/zoo.cfg"
+              subPath: &zooCfg "zoo.cfg"
+              readOnly: true
+      volumes:
+        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "conf") | nindent 8 }}
+        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
+        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "logs") | nindent 8 }}
+        - name: *configMap
+          configMap:
+            name: {{ include "arkcase.fullname" $ | quote }}
+            optional: false
+            defaultMode: 0440
+            items:
+              - key: *zooCfg
+                path: *zooCfg
+  volumeClaimTemplates:
+    {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "conf") | nindent 4 }}
+    {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "data") | nindent 4 }}
+    {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "logs") | nindent 4 }}
+
+  {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "conf") | nindent 0 }}
+  {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "data") | nindent 0 }}
+  {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "logs") | nindent 0 }}
+{{- end }}
