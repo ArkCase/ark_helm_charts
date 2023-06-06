@@ -163,6 +163,24 @@ def login():
 	logging.info("Logged in, and CSRF token retrieved.")
 	return session
 
+def add_administrator(session, name, group):
+	entity_type = "GROUP" if group else "PERSON"
+	logging.info(f"\tAdding the {entity_type} named [{name}] to the ALFRESCO_ADMINISTRATORS group...")
+
+	name = urllib.parse.quote(name, safe='')
+	if group:
+		name = f"GROUP_{name}"
+
+	rsp = session.post(f"{CONTENT}/api/-default-/public/alfresco/versions/1/groups/GROUP_ALFRESCO_ADMINISTRATORS/members", json = {
+		"id" : name,
+		"memberType" : entity_type
+	})
+
+	if rsp.status_code >= 400:
+		fail(f"\t\tFailed (sc: {rsp.status_code}): {rsp.text}")
+
+	return True
+
 def create_content_folders(session, site, root, contents):
 	if not root:
 		root = "documentLibrary"
@@ -352,11 +370,45 @@ if "sites" not in data:
 	exit(0)
 
 try:
+	session = login()
+
+	if "admins" in data:
+		admins = data["admins"]
+		if admins and (type(admins) != dict):
+			fail("The configuration data is malformed - the 'admins' value must be a map")
+
+		admin_users = {}
+		if "users" in admins:
+			admin_users = admins["users"]
+		if admin_users and (type(admin_users) != dict):
+			fail("The configuration data is malformed - the 'admins.users' value must be a map")
+
+		admins_added = False
+
+		for user, enabled in admin_users.items():
+			if not enabled:
+				continue
+			add_administrator(session, user, False)
+			admins_added = True
+
+		admin_groups = {}
+		if "groups" in admins:
+			admin_groups = admins["groups"]
+		if admin_groups and (type(admin_users) != dict):
+			fail("The configuration data is malformed - the 'admins.groups' value must be a map")
+
+		for group, enabled in admin_groups.items():
+			if not enabled:
+				continue
+			add_administrator(session, group, True)
+			admins_added = True
+
+		if admins_added:
+			logging.info("Administrators configured.")
+
 	sites = data["sites"]
 	if type(sites) != dict:
 		fail("The configuration data is malformed - the 'sites' value must be a map")
-
-	session = login()
 
 	session.headers["Content-Type"] = "application/json"
 	session.headers["Accept"] = "*/*"
