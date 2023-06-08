@@ -10,13 +10,13 @@
 #
 configuration:
   nodes: 1
+  onePerNode: false
   tickTime: 2000
   initLimit: 10
   syncLimit: 5
   maxClients: 60
   autopurge:
-    # By default, this is off
-    purgeInterval: 0
+    purgeInterval: 1
     snapRetainCount: 3
   metrics:
     enable: true
