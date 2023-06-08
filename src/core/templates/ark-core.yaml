@@ -126,8 +126,14 @@ spec:
           {{- $contentDialect := (include "arkcase.content.info.dialect" $) }}
           {{- $contentScript := printf "/seed-content.%s" $contentDialect }}
           {{- $contentData := printf "%s.yaml" $contentScript }}
-          command: [ {{ $contentScript | quote }} ]
+          command: [ "/only-once" ]
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            - name: WRAPPED_STATE
+              value: *confDir
+            - name: WRAPPED_SCRIPT
+              value: {{ $contentScript | quote }}
+            # - name: WRAPPED_SCRIPT_ARGS
+            #   value: "...."
             - name: INIT_SEED_CONF
               value: {{ $contentData | quote }}
             - name: INIT_SEED_USERNAME
@@ -155,6 +161,8 @@ spec:
                   key: "contentShareUrl"
             {{- end }}
           volumeMounts:
+            - name: *confVolume
+              mountPath: *confDir
             - name: &configMap "config-map"
               mountPath: {{ $contentScript | quote }}
               subPath: &seedContent {{ $contentScript | trimPrefix "/" | quote }}
