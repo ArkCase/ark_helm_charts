@@ -270,13 +270,13 @@ global:
       url: https://some-server.domain.com/alfresco
       shareUrl: https://another-server.domain.com/share
       # More settings ...
+      # username: "admin"
+      # password: "admin's password"
 ```
 
-Specifically, and consistent with Alfresco's capabilities, content server and share need not be co-located on the same hostname. As long as the share instance (indicated by `shareUrl`) is connected to the same content server URL instance (indicated by `url`), everything will work just fine.
+Specifically, and consistent with Alfresco's capabilities, content server and share need **not** be co-located on the same hostname. As long as the share instance (indicated by `shareUrl`) is connected to the same content server URL instance (indicated by `url`), everything will work just fine.
 
-If you want to use an external Alfresco instance, you ***must*** set the value `global.conf.content.url` to point to the content server URL. Changing only the `global.conf.content.shareUrl` value will not be enough.
-
-Recall that if you want to use an external Alfresco instance, you must have pre-configured all the necessary users, passwords, groups, sites, and site contents (folders, files, RM Catetgories, etc) beforehand.
+If you want to use an external Alfresco instance, you ***must*** set the value `global.conf.content.url` to point to the content server URL. Only changing the `global.conf.content.shareUrl` value will not be enough. You must also take care to change the `shareUrl` setting to match the correct value to a Share instance which connects to the given content server url.
 
 Depending on the ArkCase deployment, the Alfresco content structures may vary, and thus not all permutations can be covered here. However, we can cover the default configuration supported by the charts.
 
@@ -314,6 +314,8 @@ ArkCase will require two sites (depending on configuration):
 The ArkCase application will attempt to initialize the Alfresco contents on bootup - whether internal or external -, and as such there should not be any need for manual intervention on the deployer's part. This effort will only be done once, and its success will be tracked within ArkCase's persistence areas.
 
 As long as the configurations (URLs, usernames, passwords, etc.) are correct, everything should work out just fine. Specifically, the content seeder script will require administrative access to Alfresco, so whatever username (`global.conf.content.username`) or password (`global.conf.content.password`) are used, they must provide administrator access for the seeding process to succeed (this is particularly important for the Records Management portions).
+
+In particular, the ArkCase initialization data may include information regarding users and groups to be added to the ***ALFRESCO\_ADMINISTRATORS*** group during initialization. As such it's important that the `username` and `password` settings permit access to an account that's already a member of that group, or any other group/role with access to add members (either users or groups) to that group.
 
 ## <a name="ssl"></a>SSL/TLS Considerations
 
