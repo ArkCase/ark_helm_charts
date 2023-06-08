@@ -6,6 +6,7 @@
 * [General Use Pattern](#general-pattern)
 * [External Databases](#external-database)
 * [External LDAP Authentication](#external-ldap)
+* [External Alfresco](#external-alfresco)
 * [SSL/TLS Considerations](#ssl)
 
 ## <a name="introduction"></a>Introduction
@@ -212,6 +213,7 @@ global:
           username: "pentaho-quartz-db-user"
           password: "<some-password-value>"
 ```
+
 ## <a name="external-ldap"></a>External LDAP Authentication
 
 To configure external LDAP Authentication, things are also a little bit different. In addition to providing the LDAP(S) URL, you must also provide some information regarding how the directory is configured. The default organization assumes an [Active Directory](https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/get-started/virtual-dc/active-directory-domain-services-overview) organization.
@@ -256,6 +258,62 @@ In more nuanced cases you may also have to provide the baseDn (`global.conf.ldap
 ### User Management
 
 ArkCase's user management features require the bind DN user to be able to create or modify users and groups. These permissions must be managed manually, or these features will not work as desired.
+
+## <a name="external-alfresco"></a>External Alfresco
+
+To configure an external Alfrseco instance, things are also a little bit different since you must provide two URLs: one for the content server, and one for the Alfresco Share application, like so:
+
+```yaml
+global:
+  conf:
+    content:
+      url: https://some-server.domain.com/alfresco
+      shareUrl: https://another-server.domain.com/share
+      # More settings ...
+```
+
+Specifically, and consistent with Alfresco's capabilities, content server and share need not be co-located on the same hostname. As long as the share instance (indicated by `shareUrl`) is connected to the same content server URL instance (indicated by `url`), everything will work just fine.
+
+If you want to use an external Alfresco instance, you ***must*** set the value `global.conf.content.url` to point to the content server URL. Changing only the `global.conf.content.shareUrl` value will not be enough.
+
+Recall that if you want to use an external Alfresco instance, you must have pre-configured all the necessary users, passwords, groups, sites, and site contents (folders, files, RM Catetgories, etc) beforehand.
+
+Depending on the ArkCase deployment, the Alfresco content structures may vary, and thus not all permutations can be covered here. However, we can cover the default configuration supported by the charts.
+
+ArkCase will require two sites (depending on configuration):
+
+* ***ACM*** - (regular site) will store the primary ArkCase live content, and must contain the following folders:
+
+  * Business Processes
+  * Case Files
+  * Complaints
+  * Consultations
+  * Document Repositories
+  * Expenses
+  * People
+  * Recycle Bin
+  * Requests
+  * SAR
+  * Tasks
+  * Timesheets
+  * User Profile
+
+* ***RM*** - (Records Management site) will store any records flagged to be preserved, and must contain the following categories:
+
+  * ACM
+    * Case Files
+    * Complaints
+    * Consultations
+    * Document Repositories
+    * Requests
+    * SAR
+    * Tasks
+
+### <a name="external-alfresco-init"></a>Initializing an External Alfresco
+
+The ArkCase application will attempt to initialize the Alfresco contents on bootup - whether internal or external -, and as such there should not be any need for manual intervention on the deployer's part. This effort will only be done once, and its success will be tracked within ArkCase's persistence areas.
+
+As long as the configurations (URLs, usernames, passwords, etc.) are correct, everything should work out just fine. Specifically, the content seeder script will require administrative access to Alfresco, so whatever username (`global.conf.content.username`) or password (`global.conf.content.password`) are used, they must provide administrator access for the seeding process to succeed (this is particularly important for the Records Management portions).
 
 ## <a name="ssl"></a>SSL/TLS Considerations
 
