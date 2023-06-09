@@ -145,18 +145,9 @@ service:
     - name: console
       protocol: TCP
       port: &console 8161
-    - name: amqp
-      protocol: TCP
-      port: &amq 5672
-    - name: mqtt
-      protocol: TCP
-      port: &mqtt 1883
     - name: openwire
       protocol: TCP
       port: &openwire 61616
-    - name: websocket
-      protocol: TCP
-      port: &websocket 61614
     - name: stomp
       protocol: TCP
       port: &stomp 61613
