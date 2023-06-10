@@ -47,6 +47,20 @@ configuration:
     hostname: "zookeeper"
     port: 2181
 
+initDependencies:
+  enabled: true
+  template:
+    mode: any
+    initialDelay: 10
+    delay: 5
+    timeout: 5
+    attempts: 12
+  mode: all
+  dependencies:
+    zookeeper:
+      ports:
+        - 2181
+
 platform: ""
 
 image:
