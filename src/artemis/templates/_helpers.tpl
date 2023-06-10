@@ -10,15 +10,28 @@
 {{- end -}}
 
 {{- define "arkcase.artemis.adminPassword" -}}
-  {{- include "arkcase.tools.conf" (dict "ctx" $ "value" "adminPassword") -}}
+  {{- if not (include "arkcase.isRootContext" $) -}}
+    {{- fail "The parameter must be the root context" -}}
+  {{- end -}}
+
+  {{- $adminPassword := (include "arkcase.tools.conf" (dict "ctx" $ "value" "adminPassword")) -}}
+  {{- if not $adminPassword -}}
+    {{- $fullname := (include "common.fullname" $) -}}
+    {{- $secretKey := (printf "%s-adminPassword" $fullname) -}}
+    {{- if not (hasKey $ $secretKey) -}}
+      {{- $newSecret := (randAlphaNum 12 | b64enc) -}}
+      {{- $crap := set $ $secretKey $newSecret -}}
+      {{- $secretKey = $newSecret -}}
+    {{- else -}}
+      {{- $secretKey = get $ $secretKey -}}
+    {{- end -}}
+    {{- $adminPassword = $secretKey -}}
+  {{- end -}}
+  {{- $adminPassword -}}
 {{- end -}}
 
 {{- define "arkcase.artemis.adminRole" -}}
   {{- include "arkcase.tools.conf" (dict "ctx" $ "value" "adminRole") -}}
-{{- end -}}
-
-{{- define "arkcase.artemis.guestPassword" -}}
-  {{- include "arkcase.tools.conf" (dict "ctx" $ "value" "guestPassword") -}}
 {{- end -}}
 
 {{- define "arkcase.artemis.encryptionPassword" -}}
@@ -92,26 +105,23 @@
 {{- end -}}
 
 {{- define "arkcase.artemis.nodes" -}}
-  {{- $nodes := (include "arkcase.tools.conf" (dict "ctx" $ "value" "nodes")) -}}
+  {{- $backups := (include "arkcase.tools.conf" (dict "ctx" $ "value" "backups")) -}}
 
   {{- /* If it's not set at all, use the default of 1 node */ -}}
-  {{- if not $nodes -}}
-    {{- $nodes = "0" -}}
-  {{- else if not (regexMatch "^[0-9]+$" $nodes) -}}
-    {{- fail (printf "The nodes value [%s] is not valid - it must be a numeric value" $nodes) -}}
+  {{- if not $backups -}}
+    {{- $backups = "0" -}}
+  {{- else if not (regexMatch "^[0-9]+$" $backups) -}}
+    {{- fail (printf "The backups value [%s] is not valid - it must be a numeric value" $backups) -}}
   {{- end -}}
 
   {{- /* Remove leading zeros */ -}}
-  {{- $nodes = (regexReplaceAll "^0+" $nodes "") -}}
+  {{- $backups = (regexReplaceAll "^0+" $backups "") -}}
 
   {{- /* In case it nuked the whole string :D */ -}}
-  {{- $nodes = (empty $nodes) | ternary 0 (atoi $nodes) -}}
-  {{- $pad := 0 -}}
-  {{- if not (mod $nodes 2) -}}
-    {{- /* It's an even number ... add one to support at least the given number of nodes */ -}}
-    {{- $pad = 1 -}}
-  {{- end -}}
-  {{- $nodes = add $nodes $pad -}}
+  {{- $backups = (empty $backups) | ternary 0 (atoi $backups) -}}
+
+  {{- /* Add the main node to the number of backups */ -}}
+  {{- $nodes := add $backups 1 -}}
 
   {{- /* We have a hard limit of 5 nodes */ -}}
   {{- (gt $nodes 5) | ternary 5 $nodes -}}

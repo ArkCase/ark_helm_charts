@@ -10,14 +10,13 @@
 #
 configuration:
 
-  backups: 1
+  backups: 0
 
   # Console username and password: Please set a secure password
   adminUsername: &admin "admin"
-  adminPassword: *admin
+  # If we don't supply an admin password, one will be rendered each bootup
+  # adminPassword: *admin
   adminRole: "administrator"
-
-  guestPassword: "password"
 
   encryptPassword: "artemis"
 
@@ -28,9 +27,10 @@ configuration:
     cloudconfig:
       name: &cloudConfigMessagingUser "cloudconfig"
       password: *cloudConfigMessagingUser
-    guest:
-      name: &guestUser "guest"
-      password: *guestUser
+    # For now, disable the guest user until we're positive we need it
+    # guest:
+    #   name: &guestUser "guest"
+    #   password: *guestUser
 
   roles:
     administrator:
@@ -113,16 +113,17 @@ securityContext:
     # readOnlyRootFilesystem: true
 
 resources:
-  # We usually recommend not to specify default resources and to leave this as a conscious
-  # choice for the user. This also increases chances charts run on environments with little
-  # resources, such as Minikube. If you do want to specify resources, uncomment the following
-  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
-  # limits:
-  #   cpu: 100m
-  #   memory: 128Mi
-  # requests:
-  #   cpu: 100m
-  #   memory: 128Mi
+  common:
+    # We usually recommend not to specify default resources and to leave this as a conscious
+    # choice for the user. This also increases chances charts run on environments with little
+    # resources, such as Minikube. If you do want to specify resources, uncomment the following
+    # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+    limits:
+    #   cpu: 100m
+      memory: 2536Mi
+    requests:
+    #   cpu: 100m
+      memory: 768Mi
 
 #autoscaling:
   #enabled: false
@@ -178,8 +179,7 @@ service:
   probes:
     enabled: true
     spec:
-      tcpSocket:
-        port: *openwire
+      command: [ "/check-health" ]
       initialDelaySeconds: 0
       periodSeconds: 1
       timeoutSeconds: 1

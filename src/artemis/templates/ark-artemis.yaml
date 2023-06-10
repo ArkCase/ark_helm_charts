@@ -118,10 +118,15 @@ spec:
             # updates to be applied
             - name: BOOT_DELAY
               value: "10"
+            - name: ARTEMIS_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: &secretName {{ include "arkcase.fullname" $ | quote }}
+                  key: ADMIN_PASSWORD
             - name: ARTEMIS_ENCRYPTION_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "arkcase.fullname" $ | quote }}
+                  name: *secretName
                   key: ENCRYPTION_PASSWORD
           {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
           {{- with (include "arkcase.values" (dict "ctx" $ "base" "command") | fromYaml) }}
@@ -154,6 +159,10 @@ spec:
               subPath: &bootstrapXml "bootstrap.xml"
               readOnly: true
             - name: *configMap
+              mountPath: "/check-health"
+              subPath: &checkHealth "check-health"
+              readOnly: true
+            - name: *configMap
               mountPath: "/app/conf/jolokia-access.xml"
               subPath: &jolokiaAccessXml "jolokia-access.xml"
               readOnly: true
@@ -174,7 +183,7 @@ spec:
         - name: *secrets
           secret:
             optional: false
-            secretName: {{ include "arkcase.fullname" $ | quote }}
+            secretName: *secretName
             defaultMode: 0644
             items:
               - key: *artemisUsersProperties
@@ -191,6 +200,9 @@ spec:
             items:
               - key: *bootstrapXml
                 path: *bootstrapXml
+              - key: *checkHealth
+                path: *checkHealth
+                mode: 0755
               - key: *jolokiaAccessXml
                 path: *jolokiaAccessXml
               - key: *log4j2Properties
