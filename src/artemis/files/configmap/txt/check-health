@@ -1,6 +1,5 @@
 #!/bin/bash
 
-PWARG=()
-[ -v ARTEMIS_ADMIN_PASSWORD ] && PWARG=(--password "${ARTEMIS_ADMIN_PASSWORD}")
-
-exec broker check --silent --up --user admin "${PWARG[@]}"
+ARGS=(--silent --up --user admin)
+[ -v ARTEMIS_ADMIN_PASSWORD ] && ARGS+=(--password "${ARTEMIS_ADMIN_PASSWORD}")
+exec broker check node "${ARGS[@]}"
