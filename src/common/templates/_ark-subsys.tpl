@@ -544,27 +544,34 @@ ports:
       {{- end }}
     {{- end }}
     {{- $probes := (coalesce .probes dict) }}
-    {{- $common := (coalesce $probes.spec dict) }}
+    {{- $commonBase := omit (coalesce $probes.spec dict) "httpGet" "grpc" "tcpSocket" "exec" -}}
+    {{- $commonTask := pick (coalesce $probes.spec dict) "httpGet" "grpc" "tcpSocket" "exec" -}}
     {{- $startup := (coalesce $probes.startup dict) }}
     {{- $readiness := (coalesce $probes.readiness dict) }}
     {{- $liveness := (coalesce $probes.liveness dict) }}
     {{- if or ($probes.enabled) (not (hasKey $probes "enabled")) }}
       {{- if or ($startup.enabled) (not (hasKey $startup "enabled")) -}}
-        {{- with (mergeOverwrite $common $startup) }}
+        {{- $base := omit $startup "httpGet" "grpc" "tcpSocket" "exec" -}}
+        {{- $task := pick $startup "httpGet" "grpc" "tcpSocket" "exec" -}}
+        {{- with (merge $base $commonBase ((empty $task) | ternary $commonTask $task)) -}}
           {{- if (include "arkcase.subsystem.probeIsValid" .) }}
 startupProbe: {{- toYaml (unset . "enabled") | nindent 2 }}
           {{- end -}}
         {{- end }}
       {{- end }}
       {{- if or ($readiness.enabled) (not (hasKey $readiness "enabled")) -}}
-        {{- with (mergeOverwrite $common $readiness) }}
+        {{- $base := omit $readiness "httpGet" "grpc" "tcpSocket" "exec" -}}
+        {{- $task := pick $readiness "httpGet" "grpc" "tcpSocket" "exec" -}}
+        {{- with (merge $base $commonBase ((empty $task) | ternary $commonTask $task)) -}}
           {{- if (include "arkcase.subsystem.probeIsValid" .) }}
 readinessProbe: {{- toYaml (unset . "enabled") | nindent 2 }}
           {{- end }}
         {{- end }}
       {{- end }}
       {{- if or ($liveness.enabled) (not (hasKey $liveness "enabled")) -}}
-        {{- with (mergeOverwrite $common $liveness) }}
+        {{- $base := omit $liveness "httpGet" "grpc" "tcpSocket" "exec" -}}
+        {{- $task := pick $liveness "httpGet" "grpc" "tcpSocket" "exec" -}}
+        {{- with (merge $base $commonBase ((empty $task) | ternary $commonTask $task)) -}}
           {{- if (include "arkcase.subsystem.probeIsValid" .) }}
 livenessProbe: {{- toYaml (unset . "enabled") | nindent 2 }}
           {{- end }}
