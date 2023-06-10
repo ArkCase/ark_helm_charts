@@ -179,9 +179,13 @@ service:
   probes:
     enabled: true
     spec:
-      command: [ "/check-health" ]
+      exec:
+        command: [ "/check-health" ]
       initialDelaySeconds: 0
       periodSeconds: 1
       timeoutSeconds: 1
       failureThreshold: 60
       successThreshold: 1
+    readiness:
+      tcpSocket:
+        port: 61616
