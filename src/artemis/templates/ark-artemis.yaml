@@ -138,7 +138,7 @@ spec:
             - name: *logsVol
               mountPath: *logsPath
             - name: &secrets "secrets"
-              mountPath: "/app/conf/artemis-user.properties"
+              mountPath: "/app/conf/artemis-users.properties"
               subPath: &artemisUsersProperties "artemis-users.properties"
               readOnly: true
             - name: *secrets
