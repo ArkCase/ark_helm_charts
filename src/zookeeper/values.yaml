@@ -156,7 +156,9 @@ service:
       timeoutSeconds: 1
       failureThreshold: 60
       successThreshold: 1
-    liveness:
-      enabled: true
+    startup:
+      enabled: false
     readiness:
+      enabled: false
+    liveness:
       enabled: true
