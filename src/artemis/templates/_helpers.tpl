@@ -105,31 +105,18 @@
 {{- end -}}
 
 {{- define "arkcase.artemis.nodes" -}}
-  {{- $backups := (include "arkcase.tools.conf" (dict "ctx" $ "value" "backups")) -}}
-
-  {{- /* If it's not set at all, use the default of 1 node */ -}}
-  {{- if not $backups -}}
-    {{- $backups = "0" -}}
-  {{- else if not (regexMatch "^[0-9]+$" $backups) -}}
-    {{- fail (printf "The backups value [%s] is not valid - it must be a numeric value" $backups) -}}
+  {{- $backupNode := (include "arkcase.tools.conf" (dict "ctx" $ "value" "backupNode")) -}}
+  {{- $nodes := 1 -}}
+  {{- if (include "arkcase.toBoolean" $backupNode) -}}
+    {{- $nodes = add 1 $nodes -}}
   {{- end -}}
-
-  {{- /* Remove leading zeros */ -}}
-  {{- $backups = (regexReplaceAll "^0+" $backups "") -}}
-
-  {{- /* In case it nuked the whole string :D */ -}}
-  {{- $backups = (empty $backups) | ternary 0 (atoi $backups) -}}
-
-  {{- /* Add the main node to the number of backups */ -}}
-  {{- $nodes := add $backups 1 -}}
-
-  {{- /* We have a hard limit of 5 nodes */ -}}
-  {{- (gt $nodes 5) | ternary 5 $nodes -}}
+  {{- /* We only support standalone, or primary-backup mode */ -}}
+  {{- nodes -}}
 {{- end -}}
 
-{{- define "arkcase.artemis.onePerNode" -}}
-  {{- $onePerNode := (include "arkcase.tools.conf" (dict "ctx" $ "value" "onePerNode")) -}}
-  {{- if (include "arkcase.toBoolean" $onePerNode) -}}
+{{- define "arkcase.artemis.onePerHost" -}}
+  {{- $onePerHost := (include "arkcase.tools.conf" (dict "ctx" $ "value" "onePerHost")) -}}
+  {{- if (include "arkcase.toBoolean" $onePerHost) -}}
     {{- true -}}
   {{- end -}}
 {{- end -}}

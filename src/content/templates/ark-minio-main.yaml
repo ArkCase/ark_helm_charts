@@ -1,5 +1,20 @@
 {{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.content.external" $)) (eq "s3" (include "arkcase.content.info.dialect" $)) -}}
-{{- $nodes := (include "arkcase.content.minio.nodeCount" $ | int) -}}
+{{- $maxFailed := (include "arkcase.content.minio.maxFailed" $ | int) }}
+{{- $nodes := (include "arkcase.content.minio.nodeCount" $ | int) }}
+{{- $onePerHost := (include "arkcase.content.minio.onePerHost" $) }}
+{{- if (gt $maxFailed 0) }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "arkcase.fullname" $ | quote }}
+  namespace: {{ $.Release.Namespace | quote }}
+spec:
+  selector:
+    matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
+  maxUnavailable: {{ $maxFailed }}
+---
+{{- end }}
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -16,7 +31,7 @@ metadata:
     {{- end }}
 spec:
   replicas: {{ $nodes }}
-  selector:
+  selector: &labelSelector
     matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
   serviceName: {{ include "arkcase.name" $ | quote }}
   updateStrategy:
@@ -27,6 +42,7 @@ spec:
     rollingUpdate:
       partition: {{ $.Values.rollingUpdatePartition }}
     {{- end }}
+  podManagementPolicy: Parallel
   template:
     metadata:
       name: {{ include "arkcase.fullname" $ | quote }}
@@ -44,6 +60,23 @@ spec:
           {{- toYaml .value | nindent 8 }}
         {{- end }}
     spec:
+      affinity:
+        podAntiAffinity:
+        {{- if $onePerHost }}
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - topologyKey: "kubernetes.io/hostname"
+              namespaces: [ {{ $.Release.Namespace | quote }} ]
+              labelSelector:
+                <<: *labelSelector
+        {{- else }}
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 1
+              podAffinityTerm:
+                topologyKey: "kubernetes.io/hostname"
+                namespaces: [ {{ $.Release.Namespace | quote }} ]
+                labelSelector:
+                  <<: *labelSelector
+        {{- end }}
       {{- include "arkcase.image.pullSecrets" $ | nindent 6 }}
       {{- with (include "arkcase.values" (dict "ctx" $ "base" "hostAliases") | fromYaml) }}
       hostAliases: {{- toYaml .value | nindent 8 }}

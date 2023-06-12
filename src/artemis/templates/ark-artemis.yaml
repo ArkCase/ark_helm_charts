@@ -1,7 +1,7 @@
 {{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.artemis.external" $)) }}
-{{- $maxFailed := (include "arkcase.artemis.maxFailed" $ | atoi) }}
-{{- $nodes := (include "arkcase.artemis.nodes" $ | atoi) }}
-{{- $onePerNode := (include "arkcase.artemis.onePerNode" $) }}
+{{- $maxFailed := (include "arkcase.artemis.maxFailed" $ | int) }}
+{{- $nodes := (include "arkcase.artemis.nodes" $ | int) }}
+{{- $onePerHost := (include "arkcase.artemis.onePerHost" $) }}
 {{- if (gt $maxFailed 0) }}
 ---
 apiVersion: policy/v1
@@ -60,7 +60,7 @@ spec:
     spec:
       affinity:
         podAntiAffinity:
-        {{- if $onePerNode }}
+        {{- if $onePerHost }}
           requiredDuringSchedulingIgnoredDuringExecution:
             - topologyKey: "kubernetes.io/hostname"
               namespaces: [ {{ $.Release.Namespace | quote }} ]
@@ -123,6 +123,8 @@ spec:
                 secretKeyRef:
                   name: &secretName {{ include "arkcase.fullname" $ | quote }}
                   key: ADMIN_PASSWORD
+            - name: JAVA_MEM_ARGS
+              value: "-Xms2g -Xmx2g"
             - name: ARTEMIS_ENCRYPTION_PASSWORD
               valueFrom:
                 secretKeyRef:
