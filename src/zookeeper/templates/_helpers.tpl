@@ -31,9 +31,9 @@
   {{- (gt $nodes 255) | ternary 255 $nodes -}}
 {{- end -}}
 
-{{- define "arkcase.zookeeper.onePerNode" -}}
-  {{- $onePerNode := (include "arkcase.tools.conf" (dict "ctx" $ "value" "onePerNode")) -}}
-  {{- if (include "arkcase.toBoolean" $onePerNode) -}}
+{{- define "arkcase.zookeeper.onePerHost" -}}
+  {{- $onePerHost := (include "arkcase.tools.conf" (dict "ctx" $ "value" "onePerHost")) -}}
+  {{- if (include "arkcase.toBoolean" $onePerHost) -}}
     {{- true -}}
   {{- end -}}
 {{- end -}}

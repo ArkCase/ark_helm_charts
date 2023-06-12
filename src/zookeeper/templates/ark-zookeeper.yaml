@@ -1,7 +1,7 @@
 {{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.zookeeper.external" $)) }}
 {{- $maxFailed := (include "arkcase.zookeeper.maxFailed" $ | atoi) }}
 {{- $nodes := (include "arkcase.zookeeper.nodes" $ | atoi) }}
-{{- $onePerNode := (include "arkcase.zookeeper.onePerNode" $) }}
+{{- $onePerHost := (include "arkcase.zookeeper.onePerHost" $) }}
 {{- if (gt $maxFailed 0) }}
 ---
 apiVersion: policy/v1
@@ -60,7 +60,7 @@ spec:
     spec:
       affinity:
         podAntiAffinity:
-        {{- if $onePerNode }}
+        {{- if $onePerHost }}
           requiredDuringSchedulingIgnoredDuringExecution:
             - topologyKey: "kubernetes.io/hostname"
               namespaces: [ {{ $.Release.Namespace | quote }} ]
