@@ -1,7 +1,13 @@
 #!/bin/bash
 
+set -euo pipefail
+
+timestamp() {
+	date -Isec -u
+}
+
 say() {
-	echo -e "${@}"
+	echo -e "$(timestamp): ${@}"
 }
 
 err() {
@@ -13,21 +19,54 @@ fail() {
 	exit ${EXIT_CODE:-1}
 }
 
-create_collection() {
+create() {
 	local NAME="${1}"
 	local CONF="${2}"
+	local SHARDS="${3}"
+	local REPLICAS="${4}"
 
-	solr create -c "${NAME}" -d "${CONF_HOME}/${CONF}"
+	[[ "${SHARDS}" =~ ^[1-9][0-9]*$ ]] || SHARDS=1
+	[[ "${REPLICAS}" =~ ^[1-9][0-9]*$ ]] || REPLICAS=1
+
+	solr create -c "${NAME}" -d "${CONF_HOME}/${CONF}" -n "${CONF}" -shards ${SHARDS} -replicationFactor ${REPLICAS} -V
 }
 
-create_core() {
+config_exists() {
+	local CONF="${1}"
+	local DIR="${CONF_HOME}/${CONF}"
+	[ -e "${DIR}" ] || return 1
+	[ -d "${DIR}" ] || return 1
+	[ -r "${DIR}" ] || return 1
+	[ -x "${DIR}" ] || return 1
+	return 0
+}
+
+exists() {
 	local NAME="${1}"
-	local CONF="${2}"
+	local RC=0
 
-	solr create -c "${NAME}" -n "${CONF}"
+	# Run the query
+	local JSON="$(curl -kL "http://localhost:8983/solr/admin/collections?action=colstatus&collection=${NAME}")" || RC=${?}
+	[ ${RC} -eq 0 ] || return ${RC}
+
+	# Examine the result
+	local RESULT="$(jq -r ".${NAME}.stateFormat // \"missing\"" <<< "${JSON}")" || return ${?}
+
+	RC=0
+	[ "${RESULT}" == "missing" ] && RC=1
+	return ${RC}
 }
 
-set -euo pipefail
+[ -v BASE_DIR ] || BASE_DIR="/app"
+[ -v DATA_DIR ] || DATA_DIR="${BASE_DIR}/data"
+[ -v LOGS_DIR ] || LOGS_DIR="${DATA_DIR}/logs"
+
+if [ -d "${LOGS_DIR}" ] ; then
+	LOG_FILE="${LOGS_DIR}/create-cores.log"
+	exec > >(/usr/bin/tee -a "${LOG_FILE}")
+	exec 2>&1
+	say "Logs redirected to [${LOG_FILE}]"
+fi
 
 [ -v SOLR_HOME ] || fail "Can't find the SOLR_HOME variable - can't continue"
 CONF_HOME="${SOLR_HOME}/configsets"
@@ -36,11 +75,7 @@ CONF_HOME="${SOLR_HOME}/configsets"
 # If there are no cores to add, skip this job
 [ -v SOLR_CORES ] || exit 0
 
-CLOUD="false"
-MODE="core"
-
-# TODO: How to identify if solr is in "cloud" or "standalone" mode?
-${CLOUD} || MODE="collection"
+MODE="cloud"
 
 readarray -d , -t CORES < <(echo -n "${SOLR_CORES}")
 say "Validating the core specifications"
@@ -52,6 +87,17 @@ for C in "${CORES[@]}" ; do
 	NAME="${BASH_REMATCH[1]}"
 	CONF="${BASH_REMATCH[2]}"
 
-	"create_${MODE}" "${NAME}" "${CONF}" || fail "\tFailed to create the core specified by [${C}]"
+	config_exists "${CONF}" || fail say "The [${CONF}] configuration for collection [${NAME}] doesn't exist."
+
+	if exists "${NAME}" ; then
+		say "The [${NAME}] core already exists, skipping its creation"
+		continue
+	fi
+
+	# TODO: Allow these to be specified/computed somehow
+	SHARDS=""
+	REPLICAS=""
+
+	create "${NAME}" "${CONF}" "${SHARDS}" "${REPLICAS}" || fail "\tFailed to create the core as specified by [${C}]"
 done
 say "Created ${#CORES[@]} core${PLURAL}"
