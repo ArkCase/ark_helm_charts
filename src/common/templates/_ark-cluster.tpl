@@ -150,7 +150,7 @@
 
 {{- define "arkcase.cluster.onePerHost" -}}
   {{- $config := (include "arkcase.cluster" $ | fromYaml) -}}
-  {{- $config.onePerHost -}}
+  {{- $config.onePerHost | ternary "true" "" -}}
 {{- end -}}
 
 {{- define "arkcase.cluster.zookeeper" -}}
