@@ -79,8 +79,8 @@ MODE="cloud"
 
 readarray -d , -t CORES < <(echo -n "${SOLR_CORES}")
 say "Validating the core specifications"
-PLURAL=""
-[ ${#CORES[@]} -lt 2 ] || PLURAL="s"
+CREATED=0
+EXISTING=0
 for C in "${CORES[@]}" ; do
 	# Each core must have the format NAME=CONFIG
 	[[ "${C}" =~ ^([^=]+)=([^=]+)$ ]] || fail "\tThe core specification [${C}] is invalid - it must be in the form \${NAME}=\${CONFIG}"
@@ -91,6 +91,7 @@ for C in "${CORES[@]}" ; do
 
 	if exists "${NAME}" ; then
 		say "The [${NAME}] core already exists, skipping its creation"
+		(( EXISTING++ ))
 		continue
 	fi
 
@@ -98,6 +99,26 @@ for C in "${CORES[@]}" ; do
 	SHARDS=""
 	REPLICAS=""
 
-	create "${NAME}" "${CONF}" "${SHARDS}" "${REPLICAS}" || fail "\tFailed to create the core as specified by [${C}]"
+	if create "${NAME}" "${CONF}" "${SHARDS}" "${REPLICAS}" ; then
+		(( CREATED++ ))
+	else
+		RC=${?}
+
+		# Was it created by another instance coming up? If not, this is an error!
+		exists "${NAME}" || fail "\tFailed to create the core as specified by [${C}] (rc=${RC})"
+
+		# It *was* created concurrently! Complain mildrly, and exit cleanly
+		say "The [${NAME}] core already exists, must have been created concurrently. Continuing."
+		(( EXISTING++ ))
+	fi
 done
-say "Created ${#CORES[@]} core${PLURAL}"
+
+say "Work summary:"
+
+PLURAL=""
+[ ${CREATED} -eq 1 ] || PLURAL="s"
+say "\t${CREATED} core${PLURAL} created"
+
+PLURAL=""
+[ ${ESISTING} -eq 1 ] || PLURAL="s"
+say "\t${EXISTING} core${PLURAL} already existed"
