@@ -1,4 +1,20 @@
-{{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.solr.external" $)) }}
+{{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.subsystem.external" $)) }}
+{{- $maxFailed := (include "arkcase.solr.maxFailed" $ | int) }}
+{{- $nodes := (include "arkcase.cluster.nodes" $ | int) }}
+{{- $onePerHost := (include "arkcase.cluster.onePerHost" $) }}
+{{- if (gt $maxFailed 0) }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "arkcase.fullname" $ | quote }}
+  namespace: {{ $.Release.Namespace | quote }}
+spec:
+  selector:
+    matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
+  maxUnavailable: {{ $maxFailed }}
+---
+{{- end }}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -12,10 +28,8 @@ metadata:
   annotations: {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  {{- if not ($.Values.autoscaling).enabled }}
-  replicas: {{ $.Values.replicaCount | default 1 }}
-  {{- end }}
-  selector: 
+  replicas: {{ $nodes }}
+  selector: &labelSelector
     matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
   serviceName: {{ include "arkcase.name" $ | quote }}
   updateStrategy:
@@ -26,6 +40,7 @@ spec:
     rollingUpdate:
       partition: {{ $.Values.rollingUpdatePartition }}
     {{- end }}
+  podManagementPolicy: Parallel
   template:
     metadata:
       name: {{ include "arkcase.fullname" $ | quote }}
@@ -43,6 +58,23 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
     spec:
+      affinity:
+        podAntiAffinity:
+        {{- if $onePerHost }}
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - topologyKey: "kubernetes.io/hostname"
+              namespaces: [ {{ $.Release.Namespace | quote }} ]
+              labelSelector:
+                <<: *labelSelector
+        {{- else }}
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 1
+              podAffinityTerm:
+                topologyKey: "kubernetes.io/hostname"
+                namespaces: [ {{ $.Release.Namespace | quote }} ]
+                labelSelector:
+                  <<: *labelSelector
+        {{- end }}
       {{- include "arkcase.image.pullSecrets" $ | nindent 6 }}
       {{- with $.Values.hostAliases }}
       hostAliases: {{- toYaml . | nindent 8 }}
@@ -78,6 +110,11 @@ spec:
           {{- end }}
           {{- include "arkcase.image" $ | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            {{- $zk := (include "arkcase.cluster.zookeeper" $) -}}
+            {{- if $zk }}
+            - name: ZK_HOST
+              value: {{ $zk | quote }}
+            {{- end }}
             - name: SOLR_OPTS
               value: "-Dsolr.autoSoftCommit.maxTime=1000"
             - name: SOLR_HOME
@@ -85,7 +122,7 @@ spec:
             - name: SOLR_CORES
               value: "acmAdvancedSearch=arkcase,acmQuickSearch=arkcase"
             {{- if $.Values.env }}
-            {{- $.Values.env | toYaml | nindent 12 }}
+              {{- $.Values.env | toYaml | nindent 12 }}
             {{- end }}
           {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
           {{- if $.Values.command }}
