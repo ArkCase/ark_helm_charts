@@ -6,20 +6,7 @@
 {{- end -}}
 
 {{- define "arkcase.zookeeper.nodes" -}}
-  {{- $nodes := (include "arkcase.tools.conf" (dict "ctx" $ "value" "nodes")) -}}
-
-  {{- /* If it's not set at all, use the default of 1 node */ -}}
-  {{- if not $nodes -}}
-    {{- $nodes = "0" -}}
-  {{- else if not (regexMatch "^[0-9]+$" $nodes) -}}
-    {{- fail (printf "The nodes value [%s] is not valid - it must be a numeric value" $nodes) -}}
-  {{- end -}}
-
-  {{- /* Remove leading zeros */ -}}
-  {{- $nodes = (regexReplaceAll "^0+" $nodes "") -}}
-
-  {{- /* In case it nuked the whole string :D */ -}}
-  {{- $nodes = (empty $nodes) | ternary 0 (atoi $nodes) -}}
+  {{- $nodes := (include "arkcase.cluster.nodes" $ | atoi) -}}
   {{- $pad := 0 -}}
   {{- if not (mod $nodes 2) -}}
     {{- /* It's an even number ... add one to support at least the given number of nodes */ -}}
@@ -29,13 +16,6 @@
 
   {{- /* We have a hard limit of 255 nodes */ -}}
   {{- (gt $nodes 255) | ternary 255 $nodes -}}
-{{- end -}}
-
-{{- define "arkcase.zookeeper.onePerHost" -}}
-  {{- $onePerHost := (include "arkcase.tools.conf" (dict "ctx" $ "value" "onePerHost")) -}}
-  {{- if (include "arkcase.toBoolean" $onePerHost) -}}
-    {{- true -}}
-  {{- end -}}
 {{- end -}}
 
 {{- define "arkcase.zookeeper.maxFailed" -}}
@@ -56,7 +36,7 @@
     {{- $config := (include "arkcase.cluster" $ | fromYaml) -}}
     {{- if $config.enabled -}}
       {{- /* Check to see if we've been given an external Artemis URL */ -}}
-      {{- $messaging := (include "arkcase.tools.conf" (dict "ctx" $ "value" "messaging.url" "detailed" true)) -}}
+      {{- $messaging := (include "arkcase.tools.conf" (dict "ctx" $ "value" "messaging.url" "detailed" true) | fromYaml) -}}
       {{- if and $messaging $messaging.global -}}
         {{- /* Messaging does not require Zookeeper b/c it's external */ -}}
         {{- $messaging = false -}}
@@ -67,7 +47,7 @@
       {{- /* At this point, $messaging is "true" if it's being deployed embedded and in clustered mode */ -}}
 
       {{- /* Check to see if we've been given an external Solr URL */ -}}
-      {{- $search := (include "arkcase.tools.conf" (dict "ctx" $ "value" "search.url" "detailed" true)) -}}
+      {{- $search := (include "arkcase.tools.conf" (dict "ctx" $ "value" "search.url" "detailed" true) | fromYaml) -}}
       {{- if and $search $search.global -}}
         {{- /* Search does not require Zookeeper b/c it's external */ -}}
         {{- $search = false -}}

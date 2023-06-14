@@ -1,7 +1,7 @@
 {{- if and (include "arkcase.subsystem.enabled" $) (include "arkcase.zookeeper.required" $) }}
 {{- $maxFailed := (include "arkcase.zookeeper.maxFailed" $ | atoi) }}
 {{- $nodes := (include "arkcase.zookeeper.nodes" $ | atoi) }}
-{{- $onePerHost := (include "arkcase.zookeeper.onePerHost" $) }}
+{{- $onePerHost := (include "arkcase.cluster.onePerHost" $) }}
 {{- if (gt $maxFailed 0) }}
 ---
 apiVersion: policy/v1
