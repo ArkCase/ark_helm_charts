@@ -898,21 +898,12 @@ result: "DC=some,DC=domain,DC=com"
       {{- if and $debug (kindIs "map" $debug) -}}
         {{- $enabled := or (not (hasKey $debug "enabled")) (not (empty (include "arkcase.toBoolean" $debug.enabled))) -}}
         {{- if $enabled -}}
-          {{- $jdb := 0 -}}
-          {{- if hasKey $debug "port" -}}
-            {{- $jdb = ($debug.port | default "0" | toString | atoi) -}}
-            {{- if or (lt $jdb 0) (gt $jdb 65535) -}}
-              {{- fail (printf "The debug port number [%s] is not valid" ($debug.port | toString)) -}}
-            {{- end -}}
-          {{- else -}}
-            {{- $jdb = 8888 -}}
-          {{- end -}}
           {{- $suspend := and (hasKey $debug "suspend") (not (empty (include "arkcase.toBoolean" $debug.suspend))) | ternary "y" "n" -}}
           {{- $flags := dict -}}
           {{- range $k, $v := (omit $debug "port" "suspend" "enabled") -}}
             {{- $flags = set $flags $k (not (empty (include "arkcase.toBoolean" $v))) -}}
           {{- end -}}
-          {{- $debug = dict "enabled" $enabled "jdb" $jdb "suspend" $suspend "flags" $flags -}}
+          {{- $debug = dict "enabled" $enabled "suspend" $suspend "flags" $flags -}}
         {{- else -}}
           {{- $debug = dict -}}
         {{- end -}}
