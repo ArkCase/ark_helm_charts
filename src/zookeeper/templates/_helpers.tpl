@@ -37,25 +37,11 @@
     {{- if $config.enabled -}}
       {{- /* Check to see if we've been given an external Artemis URL */ -}}
       {{- $messaging := (include "arkcase.tools.conf" (dict "ctx" $ "value" "messaging.url" "detailed" true) | fromYaml) -}}
-      {{- if and $messaging $messaging.global -}}
-        {{- /* Messaging does not require Zookeeper b/c it's external */ -}}
-        {{- $messaging = false -}}
-      {{- else -}}
-        {{- /* Search only requires zookeeper if its clustering is enabled */ -}}
-        {{- $messaging = or (not (hasKey $config "messaging")) ($config.messaging.enabled) -}}
-      {{- end -}}
-      {{- /* At this point, $messaging is "true" if it's being deployed embedded and in clustered mode */ -}}
+      {{- $messaging = not (and $messaging $messaging.global) -}}
 
       {{- /* Check to see if we've been given an external Solr URL */ -}}
       {{- $search := (include "arkcase.tools.conf" (dict "ctx" $ "value" "search.url" "detailed" true) | fromYaml) -}}
-      {{- if and $search $search.global -}}
-        {{- /* Search does not require Zookeeper b/c it's external */ -}}
-        {{- $search = false -}}
-      {{- else -}}
-        {{- /* Search only requires zookeeper if its clustering is enabled */ -}}
-        {{- $search = or (not (hasKey $config "search")) ($config.search.enabled) -}}
-      {{- end -}}
-      {{- /* At this point, $search is "true" if it's being deployed embedded and in clustered mode */ -}}
+      {{- $search = not (and $search $search.global) -}}
 
       {{- if or $messaging $search -}}
         {{- true -}}
