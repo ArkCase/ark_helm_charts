@@ -1,4 +1,4 @@
-{{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.zookeeper.external" $)) }}
+{{- if and (include "arkcase.subsystem.enabled" $) (include "arkcase.zookeeper.required" $) }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
