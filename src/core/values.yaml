@@ -309,6 +309,9 @@ service:
       - name: arkcase
         protocol: TCP
         port: &arkcasePort 8080
+      - name: debug
+        protocol: TCP
+        port: &debugPort 8888
 #    probes:
 #      enabled: true
 #      spec:
