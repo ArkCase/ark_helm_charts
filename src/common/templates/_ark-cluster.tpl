@@ -68,7 +68,7 @@
       {{- if $m.enabled -}}
         {{- $nodes := 2 -}}
         {{- if hasKey $m "nodes" -}}
-          {{- $nodes := ($m.nodes | toString) -}}
+          {{- $nodes = ($m.nodes | toString) -}}
           {{- if not (regexMatch "^[1-9][0-9]*$" $nodes) -}}
             {{- fail (printf "The node count for global.cluster.%s is not valid: [%s] is not a valid number" $k $nodes) -}}
           {{- end -}}
@@ -127,7 +127,7 @@
     {{- $info = get $info $subsys -}}
   {{- else -}}
     {{- $info = pick $info "enabled" "onePerHost" -}}
-    {{- $info = set $info "nodes" ($info.enabled | ternary 1 2) -}}
+    {{- $info = set $info "nodes" ($info.enabled | ternary 2 1) -}}
   {{- end -}}
   {{- $info | toYaml -}}
 {{- end -}}

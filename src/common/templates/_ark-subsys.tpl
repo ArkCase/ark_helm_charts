@@ -101,12 +101,21 @@ Parameter: either the root context (i.e. "." or "$"), or
              - subsystem = a string with the name of the subsystem to query
 */ -}}
 {{- define "arkcase.subsystem.enabledOrExternal" }}
-  {{- $map := (include "arkcase.subsystem" . | fromYaml) }}
+  {{- $map := (include "arkcase.subsystem" $ | fromYaml) }}
   {{- $data := ($map.ctx.Values.service | default dict) }}
-  {{- if (or ($map.data.enabled) ($data.external)) }}
+  {{- $external := (include "arkcase.subsystem.external" $) -}}
+  {{- if or ($map.data.enabled) $external }}
     {{- true }}
   {{- end }}
 {{- end }}
+
+{{- define "arkcase.subsystem.external" -}}
+  {{- $property := (printf "%s.url" (include "arkcase.name" $)) -}}
+  {{- $url := (include "arkcase.tools.conf" (dict "ctx" $ "value" $property "detailed" true) | fromYaml) -}}
+  {{- if and $url $url.global -}}
+    {{- true -}}
+  {{- end -}}
+{{- end -}}
 
 {{- define "arkcase.subsystem.service.render" }}
   {{- $ctx := .ctx }}
