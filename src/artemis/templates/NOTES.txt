@@ -17,3 +17,8 @@
   kubectl --namespace {{ .Release.Namespace }} port-forward $POD_NAME 8080:$CONTAINER_PORT --address='0.0.0.0'
 {{- end }}
 {{- end }}
+
+######
+{{- include "arkcase.cluster" $ | nindent 0 }}
+######
+{{- include "arkcase.cluster.info" $ | nindent 0 }}

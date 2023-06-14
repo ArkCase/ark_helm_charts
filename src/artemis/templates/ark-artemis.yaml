@@ -1,8 +1,8 @@
-{{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.artemis.external" $)) }}
-{{- $maxFailed := (include "arkcase.artemis.maxFailed" $ | int) }}
+{{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.subsystem.external" $)) }}
+{{- $maxFailed := 1 }}
 {{- $nodes := (include "arkcase.artemis.nodes" $ | int) }}
-{{- $onePerHost := (include "arkcase.artemis.onePerHost" $) }}
-{{- if (gt $maxFailed 0) }}
+{{- $onePerHost := (include "arkcase.cluster.onePerHost" $) }}
+{{- if and (gt $nodes 1) (gt $maxFailed 0) }}
 ---
 apiVersion: policy/v1
 kind: PodDisruptionBudget

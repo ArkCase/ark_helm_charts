@@ -1,8 +1,10 @@
-{{- define "arkcase.artemis.external" -}}
-  {{- $url := (include "arkcase.tools.conf" (dict "ctx" $ "value" "messaging.url" "detailed" true) | fromYaml) -}}
-  {{- if and $url $url.global -}}
-    {{- true -}}
+{{- define "arkcase.artemis.nodes" -}}
+  {{- $nodes := (include "arkcase.cluster.nodes" $ | atoi) -}}
+  {{- $nodes = min 2 $nodes -}}
+  {{- if lt $nodes 1 -}}
+    {{- $nodes = 1 -}}
   {{- end -}}
+  {{- $nodes -}}
 {{- end -}}
 
 {{- define "arkcase.artemis.adminUser" -}}
@@ -104,29 +106,6 @@
   {{- end -}}
 {{- end -}}
 
-{{- define "arkcase.artemis.nodes" -}}
-  {{- $backupNode := (include "arkcase.tools.conf" (dict "ctx" $ "value" "backupNode")) -}}
-  {{- $nodes := 1 -}}
-  {{- if (include "arkcase.toBoolean" $backupNode) -}}
-    {{- $nodes = add 1 $nodes -}}
-  {{- end -}}
-  {{- /* We only support standalone, or primary-backup mode */ -}}
-  {{- nodes -}}
-{{- end -}}
-
-{{- define "arkcase.artemis.onePerHost" -}}
-  {{- $onePerHost := (include "arkcase.tools.conf" (dict "ctx" $ "value" "onePerHost")) -}}
-  {{- if (include "arkcase.toBoolean" $onePerHost) -}}
-    {{- true -}}
-  {{- end -}}
-{{- end -}}
-
-{{- define "arkcase.artemis.maxFailed" -}}
-  {{- $nodes := (include "arkcase.artemis.nodes" $ | atoi) -}}
-  {{- /* We can lose all but one of the nodes */ -}}
-  {{- sub $nodes 1 -}}
-{{- end -}}
-
 {{- define "arkcase.artemis.clusterPassword" -}}
   {{- if not (include "arkcase.isRootContext" $) -}}
     {{- fail "The parameter must be the root context" -}}
@@ -142,41 +121,4 @@
     {{- $secretKey = get $ $secretKey -}}
   {{- end -}}
   {{- $secretKey -}}
-{{- end -}}
-
-{{- define "arkcase.artemis.zookeeper" -}}
-  {{- if not (include "arkcase.isRootContext" $) -}}
-    {{- fail "The parameter must be the root context" -}}
-  {{- end -}}
-
-  {{- $zk := (include "arkcase.tools.conf" (dict "ctx" $ "value" "zookeeper") | fromYaml) -}}
-  {{- if not $zk -}}
-    {{- $zk = dict "hostname" "zookeeper" "port" 2181 -}}
-  {{- end -}}
-
-  {{- if (kindIs "string" $zk) -}}
-    {{- /* Allow the use of host:port notation */ -}}
-    {{- if not (regexMatch "^[^:]+:[1-9][0-9]*$" $zk) -}}
-      {{- if (include "arkcase.tools.isSingleHostname" $zk) -}}
-        {{- $zk = list $zk "2181" -}}
-      {{- else -}}
-        {{- fail (printf "The zookeeper configuration string [%s] is not valid - must be in host:port form (i.e. 'zookeeper:2181')" $zk) -}}
-      {{- end -}}
-    {{- else -}}
-      {{- $zk = splitList ":" $zk -}}
-    {{- end -}}
-    {{- $host := (include "arkcase.tools.mustSingleHostname" (first $zk)) -}}
-    {{- $port := (last $zk | atoi) -}}
-    {{- $zk = dict "hostname" $host "port" $port -}}
-  {{- end -}}
-  {{- if not (kindIs "map" $zk) -}}
-    {{- fail "The zookeeper configuration must be a string (host:port) or a map (with hostname and port bits)" -}}
-  {{- end -}}
-  {{- if not (hasKey $zk "hostname") -}}
-    {{- fail "The zookeeper configuration is missing a hostname" -}}
-  {{- end -}}
-  {{- if not (hasKey $zk "port") -}}
-    {{- $zk = set $zk "port" 2181 -}}
-  {{- end -}}
-  {{- $zk | toYaml -}}
 {{- end -}}
