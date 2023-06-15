@@ -44,16 +44,31 @@
       {{- /* if it's a short syntax, turn it into a single map with the "enabled" flag */ -}}
       {{- $m := dict -}}
 
-      {{- /* Sanitize the "enabled" flag */ -}}
-      {{- if not (kindIs "map" $v) -}}
-        {{- $m = set $m "enabled" (not (empty (include "arkcase.toBoolean" $v))) -}}
-      {{- else -}}
+      {{- /* Can't use a list here */ -}}
+      {{- if (kindIs "slice" $v) -}}
+        {{- fail (printf "The cluster configuration value global.cluster.%s may not be a list" $k) -}}
+      {{- end -}}
+
+      {{- /* Support both map format, and a scalar value */ -}}
+      {{- if (kindIs "map" $v) -}}
         {{- $m = pick $v "enabled" "onePerHost" "nodes" -}}
 
+        {{- /* Sanitize the "enabled" flag */ -}}
         {{- if hasKey $m "enabled" -}}
           {{- $m = set $m "enabled" (not (empty (include "arkcase.toBoolean" $m.enabled))) -}}
         {{- else -}}
           {{- $m = set $m "enabled" true -}}
+        {{- end -}}
+      {{- else -}}
+        {{- $v = $v | toString -}}
+        {{- if (regexMatch "^[0-9]+$" $v) -}}
+          {{- /* If it's a number, it's the node count we want (min == 1) */ -}}
+          {{- $v = (atoi $v | int) -}}
+          {{- $m = set $m "nodes" (max $v 1) -}}
+          {{- $m = set $m "enabled" (gt $m.nodes 1) -}}
+        {{- else -}}
+          {{- /* If it's a non-number, fold it into a boolean using toBoolean and use it as the "enabled" flag */ -}}
+          {{- $m = set $m "enabled" (not (empty (include "arkcase.toBoolean" $v))) -}}
         {{- end -}}
       {{- end -}}
 
