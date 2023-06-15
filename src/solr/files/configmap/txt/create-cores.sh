@@ -75,7 +75,18 @@ CONF_HOME="${SOLR_HOME}/configsets"
 # If there are no cores to add, skip this job
 [ -v SOLR_CORES ] || exit 0
 
-MODE="cloud"
+[ -v NODES ] || NODES=1
+[[ "${NODES}" =~ ^[1-9][0-9]*$ ]] || fail "The number of nodes [${NODES}] is not a valid number"
+
+# Default values
+SHARDS=1
+REPLICAS=${NODES}
+
+# Have we been given a number of nodes that merits more sophisticated logic?
+if [ ${NODES} -gt 2 ] ; then
+	SHARDS=${NODES}
+	REPLICAS=$(( ( SHARDS + 1 ) / 2 ))
+fi
 
 readarray -d , -t CORES < <(echo -n "${SOLR_CORES}")
 say "Validating the core specifications"
@@ -94,10 +105,6 @@ for C in "${CORES[@]}" ; do
 		(( EXISTING++ ))
 		continue
 	fi
-
-	# TODO: Allow these to be specified/computed somehow
-	SHARDS=""
-	REPLICAS=""
 
 	if create "${NAME}" "${CONF}" "${SHARDS}" "${REPLICAS}" ; then
 		(( CREATED++ ))

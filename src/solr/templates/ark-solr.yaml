@@ -115,6 +115,8 @@ spec:
             - name: ZK_HOST
               value: {{ $zk | quote }}
             {{- end }}
+            - name: NODES
+              value: {{ $nodes | toString | quote }}
             - name: SOLR_OPTS
               value: "-Dsolr.autoSoftCommit.maxTime=1000"
             - name: SOLR_HOME
