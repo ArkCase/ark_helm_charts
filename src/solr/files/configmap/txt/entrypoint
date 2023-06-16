@@ -49,6 +49,7 @@ if [ -v ZK_HOST ] ; then
 		[[ "${HOST}" =~ ^([a-z0-9][-a-z0-9]*)?[a-z0-9]([.]([a-z0-9][-a-z0-9]*)?[a-z0-9])*$ ]] || fail "\tInvalid Zookeeper spec [${H}]: invalid host name [${HOST}]"
 
 		PORT="${BASH_REMATCH[3]}"
+		[ -z "${PORT}" ] && PORT="2181"
 		[ ${PORT} -le 65535 ] || fail "\tInvalid Zookeeper spec [${H}]: invalid port number ${PORT}"
 
 		say "\tAdding Zookeeper at ${HOST}:${PORT}"
