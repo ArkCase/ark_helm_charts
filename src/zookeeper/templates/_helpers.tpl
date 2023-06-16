@@ -6,20 +6,19 @@
 {{- end -}}
 
 {{- define "arkcase.zookeeper.nodes" -}}
-  {{- $nodes := (include "arkcase.cluster.nodes" $ | atoi) -}}
+  {{- $nodes := max 1 ($ | toString | atoi) -}}
   {{- $pad := 0 -}}
   {{- if not (mod $nodes 2) -}}
     {{- /* It's an even number ... add one to support at least the given number of nodes */ -}}
     {{- $pad = 1 -}}
   {{- end -}}
-  {{- $nodes = add $nodes $pad -}}
 
   {{- /* We have a hard limit of 255 nodes */ -}}
-  {{- (gt $nodes 255) | ternary 255 $nodes -}}
+  {{- min 255 (add $nodes $pad) -}}
 {{- end -}}
 
 {{- define "arkcase.zookeeper.maxFailed" -}}
-  {{- $nodes := (include "arkcase.zookeeper.nodes" $ | atoi) -}}
+  {{- $nodes := max 1 ($ | toString | atoi) -}}
   {{- /* We can lose at most half of our nodes */ -}}
   {{- div $nodes 2 -}}
 {{- end -}}

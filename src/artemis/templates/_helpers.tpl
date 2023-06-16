@@ -1,12 +1,3 @@
-{{- define "arkcase.artemis.nodes" -}}
-  {{- $nodes := (include "arkcase.cluster.nodes" $ | atoi) -}}
-  {{- $nodes = min 2 $nodes -}}
-  {{- if lt $nodes 1 -}}
-    {{- $nodes = 1 -}}
-  {{- end -}}
-  {{- $nodes -}}
-{{- end -}}
-
 {{- define "arkcase.artemis.adminUser" -}}
   {{- include "arkcase.tools.conf" (dict "ctx" $ "value" "adminUsername") -}}
 {{- end -}}

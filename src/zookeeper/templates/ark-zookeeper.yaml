@@ -1,7 +1,6 @@
 {{- if and (include "arkcase.subsystem.enabled" $) (include "arkcase.zookeeper.required" $) }}
-{{- $maxFailed := (include "arkcase.zookeeper.maxFailed" $ | atoi) }}
-{{- $nodes := (include "arkcase.zookeeper.nodes" $ | atoi) }}
-{{- $onePerHost := (include "arkcase.cluster.onePerHost" $) }}
+{{- $cluster := (include "arkcase.cluster" $ | fromYaml) }}
+{{- $maxFailed := (include "arkcase.zookeeper.maxFailed" $cluster.nodes | atoi) }}
 {{- if (gt $maxFailed 0) }}
 ---
 apiVersion: policy/v1
@@ -28,7 +27,7 @@ metadata:
   annotations: {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  replicas: {{ $nodes }}
+  replicas: {{ include "arkcase.zookeeper.nodes" $cluster.nodes }}
   selector: &labelSelector
     matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
   serviceName: {{ include "arkcase.name" $ | quote }}
@@ -60,7 +59,7 @@ spec:
     spec:
       affinity:
         podAntiAffinity:
-        {{- if $onePerHost }}
+        {{- if $cluster.onePerHost }}
           requiredDuringSchedulingIgnoredDuringExecution:
             - topologyKey: "kubernetes.io/hostname"
               namespaces: [ {{ $.Release.Namespace | quote }} ]

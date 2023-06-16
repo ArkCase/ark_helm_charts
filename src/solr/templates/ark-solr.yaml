@@ -1,8 +1,7 @@
 {{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.subsystem.external" $)) }}
-{{- $maxFailed := (include "arkcase.solr.maxFailed" $ | int) }}
-{{- $nodes := (include "arkcase.cluster.nodes" $ | int) }}
-{{- $onePerHost := (include "arkcase.cluster.onePerHost" $) }}
-{{- if (gt $maxFailed 0) }}
+{{- $cluster := (include "arkcase.cluster" $ | fromYaml) }}
+{{- $maxFailed := (include "arkcase.solr.maxFailed" $cluster.nodes | atoi) }}
+{{- if and $cluster.enabled (gt $maxFailed 0) }}
 ---
 apiVersion: policy/v1
 kind: PodDisruptionBudget
@@ -28,7 +27,7 @@ metadata:
   annotations: {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  replicas: {{ $nodes }}
+  replicas: {{ $cluster.nodes }}
   selector: &labelSelector
     matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
   serviceName: {{ include "arkcase.name" $ | quote }}
@@ -60,7 +59,7 @@ spec:
     spec:
       affinity:
         podAntiAffinity:
-        {{- if $onePerHost }}
+        {{- if $cluster.onePerHost }}
           requiredDuringSchedulingIgnoredDuringExecution:
             - topologyKey: "kubernetes.io/hostname"
               namespaces: [ {{ $.Release.Namespace | quote }} ]
@@ -116,7 +115,7 @@ spec:
               value: {{ $zk | quote }}
             {{- end }}
             - name: NODES
-              value: {{ $nodes | toString | quote }}
+              value: {{ $cluster.nodes | toString | quote }}
             - name: SOLR_OPTS
               value: "-Dsolr.autoSoftCommit.maxTime=1000"
             - name: SOLR_HOME
