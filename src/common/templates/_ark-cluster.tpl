@@ -175,7 +175,7 @@
 {{- define "arkcase.cluster.tomcat.nodeId" -}}
   {{- $result := list -}}
   {{- range (until 15) -}}
-    {{- $result = append $result (randInt 0 256) -}}
+    {{- $result = append $result (randInt -128 127) -}}
   {{- end -}}
   {{- $result = append $result "${NODE_ID}" -}}
   {{- printf "{%s}" (join "," $result) -}}
