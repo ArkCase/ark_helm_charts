@@ -147,27 +147,6 @@
   {{- $info | toYaml -}}
 {{- end -}}
 
-{{- define "arkcase.cluster.enabled" -}}
-  {{- $config := (include "arkcase.cluster" $ | fromYaml) -}}
-  {{- if $config.enabled -}}
-    {{- true -}}
-  {{- end -}}
-{{- end -}}
-
-{{- define "arkcase.cluster.nodes" -}}
-  {{- $config := (include "arkcase.cluster" $ | fromYaml) -}}
-  {{- if hasKey $config "nodes" -}}
-    {{- $config.nodes -}}
-  {{- else -}}
-    {{- 1 -}}
-  {{- end -}}
-{{- end -}}
-
-{{- define "arkcase.cluster.onePerHost" -}}
-  {{- $config := (include "arkcase.cluster" $ | fromYaml) -}}
-  {{- $config.onePerHost | ternary "true" "" -}}
-{{- end -}}
-
 {{- define "arkcase.cluster.zookeeper" -}}
   {{- $config := (include "arkcase.cluster" $ | fromYaml) -}}
   {{- if $config.enabled -}}
