@@ -230,6 +230,10 @@ spec:
             - name: *warVolume
               mountPath: "/app/tomcat/webapps/arkcase"
             - name: *configMap
+              mountPath: "/app/tomcat/conf/server.xml"
+              subPath: &serverXml "server.xml"
+              readOnly: true
+            - name: *configMap
               mountPath: "/app/home/.arkcase/acm/acm-config-server-repo/spring/quartz.properties"
               subPath: &quartzProperties "quartz.properties"
               readOnly: true
@@ -355,6 +359,8 @@ spec:
             name: {{ include "arkcase.fullname" $ | quote }}
             defaultMode: 0444
             items:
+              - key: *serverXml
+                path: *serverXml
               - key: *quartzProperties
                 path: *quartzProperties
               - key: *springConfigProxyXml

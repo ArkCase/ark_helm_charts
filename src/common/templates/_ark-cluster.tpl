@@ -171,3 +171,65 @@
     {{- join "," $zk -}}
   {{- end -}}
 {{- end -}}
+
+{{- define "arkcase.cluster.tomcat.nodeId" -}}
+  {{- $result := list -}}
+  {{- range (until 15) -}}
+    {{- $result = append $result (randInt 0 256) -}}
+  {{- end -}}
+  {{- $result = append $result "${NODE_ID}" -}}
+  {{- printf "{%s}" (join "," $result) -}}
+{{- end -}}
+
+{{- define "arkcase.cluster.tomcat" -}}
+  {{- $ctx := $ -}}
+  {{- if not (include "arkcase.isRootContext" $) -}}
+    {{- fail "The parameter value must be the root context" -}}
+  {{- end -}}
+  {{- $cluster := (include "arkcase.cluster" $ | fromYaml) }}
+  {{- $nodes := ($cluster.nodes | int) }}
+  {{- if and $cluster.enabled (gt $nodes 1) }}
+<Cluster className="org.apache.catalina.ha.tcp.SimpleTcpCluster"
+         channelStartOptions="3"
+         channelSendOptions="8">
+  <Manager className="org.apache.catalina.ha.session.DeltaManager"
+           expireSessionsOnShutdown="false"
+           notifyListenersOnReplication="true"/>
+  <Channel className="org.apache.catalina.tribes.group.GroupChannel">
+    <Receiver className="org.apache.catalina.tribes.transport.nio.NioReceiver"
+              address="auto"
+              port="4000"
+              autoBind="100"
+              selectorTimeout="5000"
+              maxThreads="6" />
+    <Sender className="org.apache.catalina.tribes.transport.ReplicationTransmitter">
+      <Transport className="org.apache.catalina.tribes.transport.nio.PooledParallelSender" />
+    </Sender>
+    <Interceptor className="org.apache.catalina.tribes.group.interceptors.TcpFailureDetector" />
+    <Interceptor className="org.apache.catalina.tribes.group.interceptors.MessageDispatchInterceptor" />
+    <Interceptor className="org.apache.catalina.tribes.group.interceptors.StaticMembershipInterceptor">
+      {{- $service := (include "arkcase.name" $) }}
+      {{- $pod := (include "arkcase.fullname" $) }}
+      {{- $nodeId := (include "arkcase.cluster.tomcat.nodeId" $) }}
+      <LocalMember className="org.apache.catalina.tribes.membership.StaticMember"
+                   domain="{{ $pod }}"
+                   uniqueId="{{ $nodeId }}" />
+
+      {{- range $n := (until $nodes) }}
+      <Member className="org.apache.catalina.tribes.membership.StaticMember"
+              port="4000"
+              securePort="-1"
+              host="{{ printf "%s-%d.%s" $pod $n $service }}"
+              domain="{{ $pod }}"
+              uniqueId="{{ $nodeId | replace "${NODE_ID}" ($n | toString) }}" />
+      {{- end }}
+    </Interceptor>
+  </Channel>
+  <Valve className="org.apache.catalina.ha.tcp.ReplicationValve"
+         filter="" />
+  <Valve className="org.apache.catalina.ha.session.JvmRouteBinderValve" />
+  <ClusterListener className="org.apache.catalina.ha.session.JvmRouteSessionIDBinderListener" />
+  <ClusterListener className="org.apache.catalina.ha.session.ClusterSessionListener" />
+</Cluster>
+  {{- end }}
+{{- end -}}
