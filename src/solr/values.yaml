@@ -11,9 +11,19 @@
 configuration:
   # add your configurations here
 
-# Please leave the `replicaCount` to 1 for the time being. Clustering is not
-# supported yet.
-replicaCount: 1
+initDependencies:
+  enabled: true
+  template:
+    mode: any
+    initialDelay: 10
+    delay: 5
+    timeout: 5
+    attempts: 12
+  mode: all
+  dependencies:
+    zookeeper:
+      ports:
+        - 2181
 
 platform: ""
 image:

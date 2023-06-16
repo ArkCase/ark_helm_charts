@@ -113,11 +113,7 @@ spec:
           securityContext: {{- toYaml . | nindent 12 }}
           {{- end }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
-            # We use a 10-second boot delay b/c the pods will come up in parallel,
-            # and thus they should all block on the boot delay in time for the DNS
-            # updates to be applied
-            - name: BOOT_DELAY
-              value: "10"
+            {{- include "arkcase.cluster.bootDelay" ($cluster.enabled | ternary 10 0) | nindent 12 }}
             - name: ARTEMIS_ADMIN_PASSWORD
               valueFrom:
                 secretKeyRef:

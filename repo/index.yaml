@@ -3,7 +3,7 @@ entries:
   activemq:
   - apiVersion: v2
     appVersion: 5.17.3
-    created: "2023-06-16T13:39:38.592840509-06:00"
+    created: "2023-06-16T15:00:05.336341383-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -22,7 +22,7 @@ entries:
   alfresco:
   - apiVersion: v2
     appVersion: 7.3.1
-    created: "2023-06-16T13:39:38.597687172-06:00"
+    created: "2023-06-16T15:00:05.341426469-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -44,7 +44,7 @@ entries:
     version: 0.2.1
   - apiVersion: v2
     appVersion: 7.3.1
-    created: "2023-06-16T13:39:38.595158051-06:00"
+    created: "2023-06-16T15:00:05.338627229-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -67,8 +67,11 @@ entries:
   app:
   - apiVersion: v2
     appVersion: 2021.03.33
-    created: "2023-06-16T13:39:38.794646588-06:00"
+    created: "2023-06-16T15:00:05.543679321-06:00"
     dependencies:
+    - name: common
+      repository: https://arkcase.github.io/ark_helm_charts
+      version: ~0.2.11
     - alias: search
       name: solr
       repository: https://arkcase.github.io/ark_helm_charts
@@ -105,7 +108,7 @@ entries:
       repository: https://arkcase.github.io/ark_helm_charts
       version: ~0.2.0
     description: ArkCase Application Chart
-    digest: 5fcc745fe084e43242d9c02e2419f72f885022781fbc3830ffac8ff87029d36f
+    digest: 6db64fdeb361f256ce442c1783d7cff1e64b24c813af9cda15b1f9031a09e9d6
     name: app
     type: application
     urls:
@@ -113,7 +116,7 @@ entries:
     version: 0.2.9
   - apiVersion: v2
     appVersion: 2021.03.32
-    created: "2023-06-16T13:39:38.770686853-06:00"
+    created: "2023-06-16T15:00:05.518347678-06:00"
     dependencies:
     - alias: search
       name: solr
@@ -159,7 +162,7 @@ entries:
     version: 0.2.8
   - apiVersion: v2
     appVersion: 2021.03.32
-    created: "2023-06-16T13:39:38.748832797-06:00"
+    created: "2023-06-16T15:00:05.497772096-06:00"
     dependencies:
     - alias: search
       name: solr
@@ -202,7 +205,7 @@ entries:
     version: 0.2.7
   - apiVersion: v2
     appVersion: 2021.03.32
-    created: "2023-06-16T13:39:38.729931443-06:00"
+    created: "2023-06-16T15:00:05.478309305-06:00"
     dependencies:
     - alias: search
       name: solr
@@ -245,7 +248,7 @@ entries:
     version: 0.2.6
   - apiVersion: v2
     appVersion: 2021.03.28
-    created: "2023-06-16T13:39:38.710808006-06:00"
+    created: "2023-06-16T15:00:05.458285121-06:00"
     dependencies:
     - alias: search
       name: solr
@@ -288,7 +291,7 @@ entries:
     version: 0.2.5
   - apiVersion: v2
     appVersion: 2021.03.28
-    created: "2023-06-16T13:39:38.692203855-06:00"
+    created: "2023-06-16T15:00:05.439569873-06:00"
     dependencies:
     - alias: search
       name: solr
@@ -331,7 +334,7 @@ entries:
     version: 0.2.4
   - apiVersion: v2
     appVersion: 2021.03.27
-    created: "2023-06-16T13:39:38.672604099-06:00"
+    created: "2023-06-16T15:00:05.420386179-06:00"
     dependencies:
     - alias: search
       name: solr
@@ -374,7 +377,7 @@ entries:
     version: 0.2.3
   - apiVersion: v2
     appVersion: 2021.03.26
-    created: "2023-06-16T13:39:38.653448177-06:00"
+    created: "2023-06-16T15:00:05.401852893-06:00"
     dependencies:
     - alias: search
       name: solr
@@ -417,7 +420,7 @@ entries:
     version: 0.2.2
   - apiVersion: v2
     appVersion: 2021.03.26
-    created: "2023-06-16T13:39:38.634228248-06:00"
+    created: "2023-06-16T15:00:05.383915416-06:00"
     dependencies:
     - alias: search
       name: solr
@@ -460,7 +463,7 @@ entries:
     version: 0.2.1
   - apiVersion: v2
     appVersion: 2021.03.26
-    created: "2023-06-16T13:39:38.615885253-06:00"
+    created: "2023-06-16T15:00:05.365337343-06:00"
     dependencies:
     - alias: search
       name: solr
@@ -504,13 +507,13 @@ entries:
   artemis:
   - apiVersion: v2
     appVersion: 2.28.0-01
-    created: "2023-06-16T13:39:38.800595384-06:00"
+    created: "2023-06-16T15:00:05.54923196-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
       version: ~0.2.11
     description: Helm chart for Apache Artemis as used by ArkCase
-    digest: 5f656149c6b2390aaec02b98e93faa44dda5058785aee53d4a4c6eb27f1cc060
+    digest: cf5632555690182a4161b7476b4a7ea5373334d1281409877f443a6bd65cecda
     keywords:
     - artemis
     - message broker
@@ -522,7 +525,7 @@ entries:
     version: 0.2.1
   - apiVersion: v2
     appVersion: 2.28.0-01
-    created: "2023-06-16T13:39:38.798309652-06:00"
+    created: "2023-06-16T15:00:05.546992428-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -541,13 +544,13 @@ entries:
   cloudconfig:
   - apiVersion: v2
     appVersion: 2021.03.28
-    created: "2023-06-16T13:39:38.805938751-06:00"
+    created: "2023-06-16T15:00:05.554912846-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
       version: ~0.2.7
     description: A Helm chart for ArkCase cloud configurations
-    digest: 08c917c6c6868e55a7a82becffa02cf04e3e2cd8fed214b504a9b34779387835
+    digest: b64bdbd67e350dfc0bc38e4766b31f23cbad16a7f5cdb1dfea2325e6a7b28bde
     name: cloudconfig
     type: application
     urls:
@@ -555,7 +558,7 @@ entries:
     version: 0.2.2
   - apiVersion: v2
     appVersion: 2021.03.27
-    created: "2023-06-16T13:39:38.804275601-06:00"
+    created: "2023-06-16T15:00:05.552981052-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -569,7 +572,7 @@ entries:
     version: 0.2.1
   - apiVersion: v2
     appVersion: 2021.03.26
-    created: "2023-06-16T13:39:38.80265047-06:00"
+    created: "2023-06-16T15:00:05.551096401-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -584,10 +587,10 @@ entries:
   common:
   - apiVersion: v2
     appVersion: 1.6.3
-    created: "2023-06-16T13:39:38.811466724-06:00"
+    created: "2023-06-16T15:00:05.56077754-06:00"
     description: A library of common templates and functions, consumable by ArkCase
       charts
-    digest: d6349269515c87376221d3efe25f5de51313caa11a049bcb7af72caeefd77eff
+    digest: 4d809a437e722ee32aaa69389da86f503d3f708d5252ad19b935830c4aa40e2d
     name: common
     type: library
     urls:
@@ -595,7 +598,7 @@ entries:
     version: 0.2.11
   - apiVersion: v2
     appVersion: 1.6.2
-    created: "2023-06-16T13:39:38.810169077-06:00"
+    created: "2023-06-16T15:00:05.559452724-06:00"
     description: A library of common templates and functions, consumable by ArkCase
       charts
     digest: c18f7f28db76440866d896907b9b53d0aa3470829802b029dc4271883a8944ea
@@ -606,7 +609,7 @@ entries:
     version: 0.2.10
   - apiVersion: v2
     appVersion: 1.6.1
-    created: "2023-06-16T13:39:38.822075002-06:00"
+    created: "2023-06-16T15:00:05.571901722-06:00"
     description: A library of common templates and functions, consumable by ArkCase
       charts
     digest: ae30ee919f9aa299f9b040462f2183852e01efda21ea55c80f2fd50cc8eeb518
@@ -617,7 +620,7 @@ entries:
     version: 0.2.9
   - apiVersion: v2
     appVersion: 1.6.0
-    created: "2023-06-16T13:39:38.820766422-06:00"
+    created: "2023-06-16T15:00:05.570150501-06:00"
     description: A library of common templates and functions, consumable by ArkCase
       charts
     digest: d2baedab049922e8cd249188143e7c2ef6b000c6eddb69feb7caf96a8f09fe78
@@ -628,7 +631,7 @@ entries:
     version: 0.2.8
   - apiVersion: v2
     appVersion: 1.5.1
-    created: "2023-06-16T13:39:38.81917216-06:00"
+    created: "2023-06-16T15:00:05.568927503-06:00"
     description: A library of common templates and functions, consumable by ArkCase
       charts
     digest: e281d7e640557986caea596d243e23ad1bafac71739767e55c8d3b13fa57237f
@@ -639,7 +642,7 @@ entries:
     version: 0.2.7
   - apiVersion: v2
     appVersion: 1.5.0
-    created: "2023-06-16T13:39:38.817918202-06:00"
+    created: "2023-06-16T15:00:05.567661006-06:00"
     description: A library of common templates and functions, consumable by ArkCase
       charts
     digest: 659ff2827e5bb20e3c8fe1bd423818295b85dca303765c0b72e9457de84f71b2
@@ -650,7 +653,7 @@ entries:
     version: 0.2.6
   - apiVersion: v2
     appVersion: 1.4.0
-    created: "2023-06-16T13:39:38.816699311-06:00"
+    created: "2023-06-16T15:00:05.566393978-06:00"
     description: A library of common templates and functions, consumable by ArkCase
       charts
     digest: bad5e1393f4531a13f7d25469a820413207a0f7e4b91b6be28794c2693f5ef63
@@ -661,7 +664,7 @@ entries:
     version: 0.2.5
   - apiVersion: v2
     appVersion: 1.3.2
-    created: "2023-06-16T13:39:38.815492311-06:00"
+    created: "2023-06-16T15:00:05.565002971-06:00"
     description: A library of common templates and functions, consumable by ArkCase
       charts
     digest: 220f9dbd73aa888b03b02b4a59c06928a5179d27feca98874b05c9d22e4fe232
@@ -672,7 +675,7 @@ entries:
     version: 0.2.4
   - apiVersion: v2
     appVersion: 1.3.1
-    created: "2023-06-16T13:39:38.8137472-06:00"
+    created: "2023-06-16T15:00:05.563102917-06:00"
     description: A library of common templates and functions, consumable by ArkCase
       charts
     digest: 37b808047bce4756148f14b388e933899a13d1c05fbb1804e8ce1b2a740fe315
@@ -683,7 +686,7 @@ entries:
     version: 0.2.3
   - apiVersion: v2
     appVersion: 1.3.0
-    created: "2023-06-16T13:39:38.812594782-06:00"
+    created: "2023-06-16T15:00:05.561929126-06:00"
     description: A library of common templates and functions, consumable by ArkCase
       charts
     digest: 0209792afe46eb9610a810f5cb5c42e022da5d0be5f0b2d24334ce2a9c05aac9
@@ -694,7 +697,7 @@ entries:
     version: 0.2.2
   - apiVersion: v2
     appVersion: 1.3.0
-    created: "2023-06-16T13:39:38.808916044-06:00"
+    created: "2023-06-16T15:00:05.558108595-06:00"
     description: A library of common templates and functions, consumable by ArkCase
       charts
     digest: 0755efa28d9a87038e7bf6426a1f88959320ed1c7018ca420a154005cc92e272
@@ -705,7 +708,7 @@ entries:
     version: 0.2.1
   - apiVersion: v2
     appVersion: 1.2.13
-    created: "2023-06-16T13:39:38.807131013-06:00"
+    created: "2023-06-16T15:00:05.556321905-06:00"
     description: A library of common templates and functions, consumable by ArkCase
       charts
     digest: 7410b1182636942dd699929baa8a5f2be7cbd1ce5204bf45b6ed749e66c6f218
@@ -717,14 +720,14 @@ entries:
   content:
   - apiVersion: v2
     appVersion: 1.0.0
-    created: "2023-06-16T13:39:38.824377676-06:00"
+    created: "2023-06-16T15:00:05.574236993-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
       version: ~0.2.0
     description: A Helm chart for deploying Content Storage Services as used by ArkCase
       (Alfresco v7.3.1 or Minio)
-    digest: 57c230c7586acac172449eb72a5c7f6ab5de826c31f9543e86666cacc0c5d5de
+    digest: fc14b6d653ea5624bee045a93f3d3e65cc4dbf65c37d3e9ddf2054d65e92c93f
     keywords:
     - content
     - content services
@@ -739,13 +742,13 @@ entries:
   core:
   - apiVersion: v2
     appVersion: 2021.03.33
-    created: "2023-06-16T13:39:38.84319946-06:00"
+    created: "2023-06-16T15:00:05.594114375-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
       version: ~0.2.7
     description: A Helm chart for core ArkCase and ConfigServer
-    digest: a1c273a1b7a093b4b8b2d8375628d22b9ed0546f2bda61323f2e434aecdb664a
+    digest: 02a337d5d4c97652e273b65f08bae14293634fa25cdb64e6144280274f7d431a
     name: core
     type: application
     urls:
@@ -753,7 +756,7 @@ entries:
     version: 0.2.7
   - apiVersion: v2
     appVersion: 2021.03.32
-    created: "2023-06-16T13:39:38.840757629-06:00"
+    created: "2023-06-16T15:00:05.591649604-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -767,7 +770,7 @@ entries:
     version: 0.2.6
   - apiVersion: v2
     appVersion: 2021.03.32
-    created: "2023-06-16T13:39:38.838429064-06:00"
+    created: "2023-06-16T15:00:05.589322132-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -781,7 +784,7 @@ entries:
     version: 0.2.5
   - apiVersion: v2
     appVersion: 2021.03.28
-    created: "2023-06-16T13:39:38.835906821-06:00"
+    created: "2023-06-16T15:00:05.586426995-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -795,7 +798,7 @@ entries:
     version: 0.2.4
   - apiVersion: v2
     appVersion: 2021.03.28
-    created: "2023-06-16T13:39:38.83356576-06:00"
+    created: "2023-06-16T15:00:05.583987507-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -809,7 +812,7 @@ entries:
     version: 0.2.3
   - apiVersion: v2
     appVersion: 2021.03.27
-    created: "2023-06-16T13:39:38.831367944-06:00"
+    created: "2023-06-16T15:00:05.581557001-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -823,7 +826,7 @@ entries:
     version: 0.2.2
   - apiVersion: v2
     appVersion: 2021.03.26
-    created: "2023-06-16T13:39:38.829119445-06:00"
+    created: "2023-06-16T15:00:05.57913452-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -837,7 +840,7 @@ entries:
     version: 0.2.1
   - apiVersion: v2
     appVersion: 2021.03.26
-    created: "2023-06-16T13:39:38.826504428-06:00"
+    created: "2023-06-16T15:00:05.576360465-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -852,14 +855,14 @@ entries:
   database:
   - apiVersion: v2
     appVersion: "1.2"
-    created: "2023-06-16T13:39:38.848606075-06:00"
+    created: "2023-06-16T15:00:05.599537307-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
       version: ~0.2.2
     description: This helm chart allows deploying a database engine, which can be
       either PostgreSQL, MySQL, or MariaDB.
-    digest: a84969779fb53808ed26d5d0b66ac9898acd1216ea306d9afc0223bfa0d1eeb4
+    digest: b5597fabebac2cb84ef41af8fe7914632964b73154f002fbf6933d1df2534e0d
     keywords:
     - postgres
     - mysql
@@ -874,7 +877,7 @@ entries:
     version: 0.2.2
   - apiVersion: v2
     appVersion: "1.1"
-    created: "2023-06-16T13:39:38.846850217-06:00"
+    created: "2023-06-16T15:00:05.597764033-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -896,7 +899,7 @@ entries:
     version: 0.2.1
   - apiVersion: v2
     appVersion: "1.0"
-    created: "2023-06-16T13:39:38.845291939-06:00"
+    created: "2023-06-16T15:00:05.596195611-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -919,14 +922,14 @@ entries:
   gateway-apache:
   - apiVersion: v2
     appVersion: 1.0.0
-    created: "2023-06-16T13:39:38.850930291-06:00"
+    created: "2023-06-16T15:00:05.602121272-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
       version: ~0.2.0
     description: A Helm chart to provide a reverse proxy to all ArkCase services using
       Apache
-    digest: af36886cb5ed4184db19f2cd53a2fe4d230af39637a8821405cb062c9aeb5a97
+    digest: 2625c90ed3b8733a8199e61cc878983ba23d6c8ae330352ac64427af3ad8dd15
     name: gateway-apache
     type: application
     urls:
@@ -935,14 +938,14 @@ entries:
   hostpath-provisioner:
   - apiVersion: v2
     appVersion: 0.3.0
-    created: "2023-06-16T13:39:38.852613884-06:00"
+    created: "2023-06-16T15:00:05.604259808-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
       version: ~0.2.0
     description: hostpath-provisioner is an automatic provisioner creating Persistent
       Volumes on the host's filesystem
-    digest: 2d909873828364278c84e73c81788e139e0800abe50b28ae55e06bdd1af1e3ed
+    digest: e901ae9000318738c297a0deab82db968fc8bd052cc2e96ca4f2a6d8800a191c
     home: https://github.com/ArkCase/ark_helm_charts/tree/main/src/hostpath-provisioner
     keywords:
     - hostpath
@@ -960,13 +963,13 @@ entries:
   pentaho:
   - apiVersion: v2
     appVersion: 9.4.0.0-343
-    created: "2023-06-16T13:39:38.865429791-06:00"
+    created: "2023-06-16T15:00:05.61690346-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
       version: ~0.2.0
     description: Helm chart for Pentaho as used by ArkCase
-    digest: 58a7f0cfcaea47c0c654376049d8853ab1540be7086234fce4a70b82a52919b9
+    digest: b8cd962a4d456b6177037e1003ee479cefb1fcd1ac9b7c871388778e39b16082
     keywords:
     - pentaho
     - reports
@@ -978,7 +981,7 @@ entries:
     version: 0.2.3
   - apiVersion: v2
     appVersion: 9.4.0.0-343
-    created: "2023-06-16T13:39:38.862318855-06:00"
+    created: "2023-06-16T15:00:05.613764123-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -996,7 +999,7 @@ entries:
     version: 0.2.2
   - apiVersion: v2
     appVersion: 9.4.0.0-343
-    created: "2023-06-16T13:39:38.858653212-06:00"
+    created: "2023-06-16T15:00:05.610567242-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -1014,7 +1017,7 @@ entries:
     version: 0.2.1
   - apiVersion: v2
     appVersion: 9.4.0.0-343
-    created: "2023-06-16T13:39:38.855552268-06:00"
+    created: "2023-06-16T15:00:05.607200477-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -1033,7 +1036,7 @@ entries:
   postgres:
   - apiVersion: v2
     appVersion: "13"
-    created: "2023-06-16T13:39:38.86694015-06:00"
+    created: "2023-06-16T15:00:05.61849931-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -1058,13 +1061,13 @@ entries:
   samba:
   - apiVersion: v2
     appVersion: 4.14.5-10
-    created: "2023-06-16T13:39:38.869497396-06:00"
+    created: "2023-06-16T15:00:05.62102885-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
       version: ~0.2.0
     description: A Helm chart for Samba 4 as used by ArkCase
-    digest: f253d10716828199801918ca1740d7eee4496c75aba4f63ca1940db4d2aad0f7
+    digest: a04ea53e94557db1188c43ef2dbdb9183cf4c4e042b16b8181296078c0bd270f
     name: samba
     type: application
     urls:
@@ -1073,13 +1076,13 @@ entries:
   solr:
   - apiVersion: v2
     appVersion: 8.11.2
-    created: "2023-06-16T13:39:38.875643129-06:00"
+    created: "2023-06-16T15:00:05.627557908-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
       version: ~0.2.11
     description: A Helm chart for Solr as used by ArkCase
-    digest: 0e90715e94a8e6ce861f52bd82c654c56b48a8c782e2a22a9bf5baac1aea7c37
+    digest: 7b42c2d9ef427f9afd2bef4dacc2d861b62e82e4ebe392d255d905b2b20d1541
     name: solr
     type: application
     urls:
@@ -1087,7 +1090,7 @@ entries:
     version: 0.2.2
   - apiVersion: v2
     appVersion: 8.11.2
-    created: "2023-06-16T13:39:38.873601052-06:00"
+    created: "2023-06-16T15:00:05.62509371-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -1101,7 +1104,7 @@ entries:
     version: 0.2.1
   - apiVersion: v2
     appVersion: 8.11.2
-    created: "2023-06-16T13:39:38.871630925-06:00"
+    created: "2023-06-16T15:00:05.623044916-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -1116,13 +1119,13 @@ entries:
   zookeeper:
   - apiVersion: v2
     appVersion: 3.8.1-02
-    created: "2023-06-16T13:39:38.883729296-06:00"
+    created: "2023-06-16T15:00:05.634931032-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
       version: ~0.2.11
     description: A Helm chart for ZooKeeper as used by ArkCase
-    digest: 59cd77fa94b649089a7e936a1ff48646388600d0ec957cadddc7c3a43be73a5f
+    digest: 3da391370a1967fd1f2130e554b1777f7e9c0c17fb89f835ea37741a2f27bd97
     name: zookeeper
     type: application
     urls:
@@ -1130,7 +1133,7 @@ entries:
     version: 0.2.3
   - apiVersion: v2
     appVersion: 3.8.1-02
-    created: "2023-06-16T13:39:38.881352764-06:00"
+    created: "2023-06-16T15:00:05.632682161-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -1144,7 +1147,7 @@ entries:
     version: 0.2.2
   - apiVersion: v2
     appVersion: 3.8.1-01
-    created: "2023-06-16T13:39:38.879613924-06:00"
+    created: "2023-06-16T15:00:05.630942611-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -1158,7 +1161,7 @@ entries:
     version: 0.2.1
   - apiVersion: v2
     appVersion: 3.8.1-01
-    created: "2023-06-16T13:39:38.877793973-06:00"
+    created: "2023-06-16T15:00:05.629266542-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -1170,4 +1173,4 @@ entries:
     urls:
     - https://arkcase.github.io/ark_helm_charts/zookeeper-0.2.0.tgz
     version: 0.2.0
-generated: "2023-06-16T13:39:38.590791259-06:00"
+generated: "2023-06-16T15:00:05.334254302-06:00"
