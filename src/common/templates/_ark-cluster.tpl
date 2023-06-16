@@ -228,7 +228,6 @@
   <Valve className="org.apache.catalina.ha.tcp.ReplicationValve"
          filter="" />
   <Valve className="org.apache.catalina.ha.session.JvmRouteBinderValve" />
-  <ClusterListener className="org.apache.catalina.ha.session.JvmRouteSessionIDBinderListener" />
   <ClusterListener className="org.apache.catalina.ha.session.ClusterSessionListener" />
 </Cluster>
   {{- end }}
