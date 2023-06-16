@@ -10,7 +10,8 @@
   {{- $customWarFile := and $customConf $dev.war.file }}
   {{- $customWarDir := and $customConf (not $dev.war.file) }}
 {{- $cluster := (include "arkcase.cluster" $ | fromYaml) }}
-{{- $maxFailed := (sub $cluster.nodes 1) -}}
+{{- $nodes := (min 4 $cluster.nodes) -}}
+{{- $maxFailed := (sub $nodes 1) -}}
 {{- if (gt $maxFailed 0) }}
 ---
 apiVersion: policy/v1
@@ -38,7 +39,7 @@ metadata:
   annotations: {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  replicas: {{ $cluster.nodes }}
+  replicas: {{ $nodes }}
   selector: &labelSelector
     matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
   serviceName: {{ include "arkcase.name" $ | quote }}

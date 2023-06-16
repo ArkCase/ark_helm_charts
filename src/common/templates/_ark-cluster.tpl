@@ -182,12 +182,27 @@
 {{- end -}}
 
 {{- define "arkcase.cluster.tomcat" -}}
-  {{- $ctx := $ -}}
-  {{- if not (include "arkcase.isRootContext" $) -}}
-    {{- fail "The parameter value must be the root context" -}}
+  {{- if not (kindIs "map" $) -}}
+    {{- fail "The parameter must either be the root context ($ or .), or a map with the 'ctx' value pointing to the root context" -}}
   {{- end -}}
-  {{- $cluster := (include "arkcase.cluster" $ | fromYaml) }}
-  {{- $nodes := ($cluster.nodes | int) }}
+  {{- $ctx := $ -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- if or (not (hasKey $ "ctx")) (not (include "arkcase.isRootContext" $.ctx)) -}}
+      {{- fail "The 'ctx' dictionary parameter value must be the root context" -}}
+    {{- end -}}
+    {{- $ctx = $.ctx -}}
+  {{- end -}}
+
+  {{- $cluster := (include "arkcase.cluster" $ctx | fromYaml) }}
+
+  {{- /* Allow the caller to specify the maximum number of nodes to render for */ -}}
+  {{- /* (if no value is given, use 255 as the upper limit */ -}}
+  {{- $max := ((hasKey $ "max") | ternary ($.max | toString | atoi | max 1) 255 | int) -}}
+
+  {{- /* Enforce the upper limit of $max nodes */ -}}
+  {{- $nodes := min $max ($cluster.nodes | toString | atoi | int) }}
+  {{- /* Enforce the lower limit of 1 node */ -}}
+  {{- $nodes = (max 1 $nodes | int) -}}
   {{- if and $cluster.enabled (gt $nodes 1) }}
 <Cluster className="org.apache.catalina.ha.tcp.SimpleTcpCluster"
          channelStartOptions="3"
