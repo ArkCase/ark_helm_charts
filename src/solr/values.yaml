@@ -124,12 +124,14 @@ service:
       httpGet:
         path: "/solr/admin/info/health"
         port: *solr
-      initialDelaySeconds: 0
+      initialDelaySeconds: 10
       periodSeconds: 1
       timeoutSeconds: 1
       failureThreshold: 60
       successThreshold: 1
-    liveness:
+    startup:
       enabled: false
     readiness:
       enabled: false
+    liveness:
+      enabled: true

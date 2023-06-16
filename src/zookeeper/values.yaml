@@ -151,7 +151,7 @@ service:
     enabled: true
     startup:
       command: [ "/app/zookeeper/bin/zkServer.sh", "status" ]
-      initialDelaySeconds: 0
+      initialDelaySeconds: 10
       periodSeconds: 1
       timeoutSeconds: 1
       failureThreshold: 60

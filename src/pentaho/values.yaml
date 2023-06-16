@@ -233,12 +233,6 @@ service:
 ##
   probes:
     enabled: false
-    startup:
-      enabled: true
-    liveness:
-      enabled: false
-    readiness:
-      enabled: false
     spec:
       httpGet:
         path: "/pentaho/Login"
@@ -248,3 +242,9 @@ service:
       timeoutSeconds: 1
       failureThreshold: 60
       successThreshold: 1
+    startup:
+      enabled: false
+    readiness:
+      enabled: false
+    liveness:
+      enabled: true

@@ -312,14 +312,21 @@ service:
       - name: debug
         protocol: TCP
         port: &debugPort 8888
-#    probes:
-#      enabled: true
-#      spec:
-#        httpGet:
-#          path: "/"
-#          port: *arkcasePort
-#        initialDelaySeconds: 30
-#        periodSeconds: 1
-#        timeoutSeconds: 1
-#        failureThreshold: 150
-#        successThreshold: 1
+    probes:
+      enabled: true
+      spec:
+        httpGet:
+          path: "/arkcase"
+          port: *arkcasePort
+        initialDelaySeconds: 30
+        periodSeconds: 30
+        timeoutSeconds: 1
+        failureThreshold: 150
+        successThreshold: 1
+      startup:
+        enabled: false
+      readiness:
+        enabled: false
+      liveness:
+        enabled: true
+        initialDelaySeconds: 300
