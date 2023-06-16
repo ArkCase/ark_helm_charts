@@ -1,0 +1,56 @@
+core:
+  resources:
+    arkcase:
+      requests:
+        cpu: 2
+        memory: 3Gi
+      limits:
+        cpu: 2
+        memory: 3Gi
+    cloudconfig:  
+      requests:
+        cpu: 1
+        memory: 2Gi
+      limits:
+        cpu: 1
+        memory: 2Gi  
+ldap:
+  resources:
+    requests:
+      cpu: 0.4
+      memory: 1268Mi
+    limits:
+      cpu: 0.4
+      memory: 1268Mi
+messaging:
+  resources:
+    requests:
+      cpu: 0.2
+      memory: 200Mi
+    limits:
+      cpu: 0.2
+      memory: 200Mi
+rdbms:
+  resources:
+    requests:
+      cpu: 0.1
+      memory: 100Mi
+    limits:
+      cpu: 0.1
+      memory: 100Mi
+reports:
+  resources:
+    requests:
+      cpu: 1
+      memory: 2Gi
+    limits:
+      cpu: 1
+      memory: 2Gi
+search:
+  resources:
+    requests:
+      cpu: 0.3
+      memory: 700Mi
+    limits:
+      cpu: 0.3
+      memory: 700Mi
