@@ -125,6 +125,7 @@ Parameter: either the root context (i.e. "." or "$"), or
     {{- $external := (coalesce $data.external $ctx.Values.service.external "") }}
     {{- $ports := (coalesce $data.ports list) }}
     {{- $type := (coalesce $data.type "ClusterIP") }}
+    {{- $cluster := (include "arkcase.cluster" $ctx | fromYaml) -}}
     {{- if and (empty $ports) (not $external) }}
       {{- fail (printf "No ports are defined for chart %s, and no external server was given" (include "common.name" $ctx)) }}
     {{- end }}
@@ -155,7 +156,6 @@ metadata:
     {{- with $overrides.labels }}
       {{- toYaml . | nindent 4 }}
     {{- end }}
-spec:
   annotations:
     {{- with $ctx.Values.annotations }}
       {{- toYaml . | nindent 4 }}
@@ -167,6 +167,7 @@ spec:
       {{- toYaml . | nindent 4 }}
     {{- end }}
 spec:
+  publishNotReadyAddresses: {{ $cluster.enabled }}
     {{- if or (not $external) (include "arkcase.tools.isIp" $external) }}
   # This is either an internal service, or an external service using an IP address
   type: {{ coalesce $type "ClusterIP" }}
