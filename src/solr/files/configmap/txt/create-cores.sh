@@ -127,5 +127,5 @@ PLURAL=""
 say "\t${CREATED} core${PLURAL} created"
 
 PLURAL=""
-[ ${ESISTING} -eq 1 ] || PLURAL="s"
+[ ${EXISTING} -eq 1 ] || PLURAL="s"
 say "\t${EXISTING} core${PLURAL} already existed"
