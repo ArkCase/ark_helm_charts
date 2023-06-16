@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -x
 
 set -euo pipefail
 
@@ -102,12 +102,12 @@ for C in "${CORES[@]}" ; do
 
 	if exists "${NAME}" ; then
 		say "The [${NAME}] core already exists, skipping its creation"
-		(( EXISTING++ ))
+		(( EXISTING += 1 ))
 		continue
 	fi
 
 	if create "${NAME}" "${CONF}" "${SHARDS}" "${REPLICAS}" ; then
-		(( CREATED++ ))
+		(( CREATED += 1 ))
 	else
 		RC=${?}
 
@@ -116,7 +116,7 @@ for C in "${CORES[@]}" ; do
 
 		# It *was* created concurrently! Complain mildrly, and exit cleanly
 		say "The [${NAME}] core already exists, must have been created concurrently. Continuing."
-		(( EXISTING++ ))
+		(( EXISTING += 1 ))
 	fi
 done
 
