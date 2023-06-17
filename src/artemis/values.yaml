@@ -53,6 +53,9 @@ initDependencies:
     attempts: 12
   mode: all
   dependencies:
+    ldap:
+      ports:
+        - 9000
     zookeeper:
       clusterOnly: true
       ports:
