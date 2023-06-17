@@ -43,7 +43,9 @@ configuration:
   # Limit, in GiB, of how much temporary storage ActiveMQ can use
   maxTempUsageGb: 10
 
-initDependencies:
+command: [ "sleep", "infinity" ]
+
+off.initDependencies:
   enabled: true
   template:
     mode: any
@@ -119,11 +121,11 @@ resources:
     # resources, such as Minikube. If you do want to specify resources, uncomment the following
     # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
     #
-    limits:
-      cpu: 100m
-      memory: 3Gi
+    # limits:
+    #   cpu: 100m
+    #   memory: 3Gi
     requests:
-      cpu: 100m
+    #   cpu: 100m
       memory: 1Gi
 
 #autoscaling:
