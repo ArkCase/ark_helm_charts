@@ -62,7 +62,7 @@ exists() {
 [ -v LOGS_DIR ] || LOGS_DIR="${DATA_DIR}/logs"
 
 if [ -d "${LOGS_DIR}" ] ; then
-	LOG_FILE="${LOGS_DIR}/create-cores.log"
+	LOG_FILE="${LOGS_DIR}/create-collections.log"
 	exec > >(/usr/bin/tee -a "${LOG_FILE}")
 	exec 2>&1
 	say "Logs redirected to [${LOG_FILE}]"
@@ -72,7 +72,7 @@ fi
 CONF_HOME="${SOLR_HOME}/configsets"
 [ -d "${CONF_HOME}" ] || fail "Can't find the configsets directory at [${CONF_HOME}]"
 
-# If there are no cores to add, skip this job
+# If there are no collection to add, skip this job
 [ -v SOLR_CORES ] || exit 0
 
 [ -v NODES ] || NODES=1
@@ -88,44 +88,55 @@ if [ ${NODES} -gt 2 ] ; then
 	REPLICAS=$(( ( SHARDS + 1 ) / 2 ))
 fi
 
-readarray -d , -t CORES < <(echo -n "${SOLR_CORES}")
-say "Validating the core specifications"
+readarray -d , -t CORES < <(echo -n "${SOLR_CORES}" | sed -e 's;,\+;,;g')
+say "Validating the collection specifications"
+
+[ -v RETRY_ATTEMPTS ] || RETRY_ATTEMPTS=""
+[[ "${RETRY_ATTEMPTS}" =~ ^[1-9][0-9]*$ ]] || RETRY_ATTEMPTS=5
+
+[ -v RETRY_WAIT ] || RETRY_WAIT=""
+[[ "${RETRY_WAIT}" =~ ^[1-9][0-9]*$ ]] || RETRY_WAIT=10
+
 CREATED=0
 EXISTING=0
 for C in "${CORES[@]}" ; do
-	# Each core must have the format NAME=CONFIG
-	[[ "${C}" =~ ^([^=]+)=([^=]+)$ ]] || fail "\tThe core specification [${C}] is invalid - it must be in the form \${NAME}=\${CONFIG}"
+	# Each collection must have the format NAME=CONFIG
+	[[ "${C}" =~ ^([^=]+)=([^=]+)$ ]] || fail "\tThe collection specification [${C}] is invalid - it must be in the form \${NAME}=\${CONFIG}"
 	NAME="${BASH_REMATCH[1]}"
 	CONF="${BASH_REMATCH[2]}"
 
 	config_exists "${CONF}" || fail say "The [${CONF}] configuration for collection [${NAME}] doesn't exist."
 
-	if exists "${NAME}" ; then
-		say "The [${NAME}] core already exists, skipping its creation"
-		(( EXISTING += 1 ))
-		continue
-	fi
+	SUCCESS="false"
+	for (( A = 0 ; A < ${RETRY_ATTEMPTS} ; A++ )) ; do
+		if [ ${A} -gt 0 ] ; then
+			say "Possible race to creation of collection [${NAME}], will wait ${RETRY_WAIT} seconds and try again"
+			sleep ${RETRY_WAIT} || fail "\tInterrupted waiting to retry the creation of the [${NAME}] collection"
+		fi
 
-	if create "${NAME}" "${CONF}" "${SHARDS}" "${REPLICAS}" ; then
-		(( CREATED += 1 ))
-	else
-		RC=${?}
+		if exists "${NAME}" ; then
+			say "The [${NAME}] collection already exists, skipping its creation"
+			(( EXISTING += 1 ))
+			SUCCESS="true"
+			break
+		fi
 
-		# Was it created by another instance coming up? If not, this is an error!
-		exists "${NAME}" || fail "\tFailed to create the core as specified by [${C}] (rc=${RC})"
-
-		# It *was* created concurrently! Complain mildrly, and exit cleanly
-		say "The [${NAME}] core already exists, must have been created concurrently. Continuing."
-		(( EXISTING += 1 ))
-	fi
+		if ! create "${NAME}" "${CONF}" "${SHARDS}" "${REPLICAS}" ; then
+			say "The [${NAME}] collection was created successfully"
+			(( CREATED += 1 ))
+			SUCCESS="true"
+			break
+		fi
+	done
+	${SUCCESS} || fail "\tFailed to create the collection as specified by [${C}]"
 done
 
 say "Work summary:"
 
 PLURAL=""
 [ ${CREATED} -eq 1 ] || PLURAL="s"
-say "\t${CREATED} core${PLURAL} created"
+say "\t${CREATED} collection${PLURAL} created"
 
 PLURAL=""
 [ ${EXISTING} -eq 1 ] || PLURAL="s"
-say "\t${EXISTING} core${PLURAL} already existed"
+say "\t${EXISTING} collection${PLURAL} already existed"
