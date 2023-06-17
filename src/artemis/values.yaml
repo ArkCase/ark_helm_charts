@@ -43,10 +43,6 @@ configuration:
   # Limit, in GiB, of how much temporary storage ActiveMQ can use
   maxTempUsageGb: 10
 
-  zookeeper:
-    hostname: "zookeeper"
-    port: 2181
-
 initDependencies:
   enabled: true
   template:
@@ -58,6 +54,7 @@ initDependencies:
   mode: all
   dependencies:
     zookeeper:
+      clusterOnly: true
       ports:
         - 2181
 
