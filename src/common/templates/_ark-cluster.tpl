@@ -250,11 +250,12 @@
 
 {{- define "arkcase.cluster.bootDelay" -}}
   {{- $delay := ($ | toString | atoi | int) -}}
-  {{- if (gt $delay 0) -}}
+  {{- /* Temporarily disable this */ -}}
+  {{- if (gt $delay 0) }}
 # We use a {{ $delay }}-second boot delay b/c the pods will come up in parallel,
 # and thus they should all block on the boot delay in time for the DNS
 # updates to be applied
-- name: BOOT_DELAY
-  value: {{ $delay | toString | quote }}
-  {{- end -}}
+# - name: BOOT_DELAY
+#   value: {{ $delay | toString | quote }}
+  {{- end }}
 {{- end -}}
