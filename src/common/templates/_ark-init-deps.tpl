@@ -5,11 +5,13 @@ that checks the boot order
 {{- define "arkcase.initDependencies.render" -}}
   {{- $declaration := dict -}}
   {{- if hasKey .Values "initDependencies" -}}
-    {{- $declaration = .Values.initDependencies -}}
+    {{- $declaration = $.Values.initDependencies -}}
   {{- end -}}
   {{- if not (kindIs "map" $declaration) -}}
     {{- fail (printf "The .Values.initDependencies value must be a map data structure (%s)" (kindOf $declaration)) -}}
   {{- end -}}
+
+  {{- $cluster := (include "arkcase.cluster" $ | fromYaml) -}}
 
   {{- $globalMode := "" -}}
   {{- if hasKey $declaration "mode" -}}
@@ -99,7 +101,11 @@ that checks the boot order
       {{- end -}}
 
       {{- if and (hasKey $portSource "port") $portSource.port -}}
-        {{- $targetPort = $portSource.port -}}
+        {{- if (kindIs "map" $targetPort) -}}
+          {{- $targetPort = set $targetPort "ports" (list $portSource.port) -}}
+        {{- else -}}
+          {{- $targetPort = list $portSource.port -}}
+        {{- end -}}
       {{- end -}}
 
       {{- if $newHostName -}}
@@ -190,6 +196,11 @@ that checks the boot order
             {{- $crap := set $dependency "attempts" $tempVar -}}
           {{- end -}}
 
+          {{- if hasKey $targetPort "clusterOnly" -}}
+            {{- $tempVar := (include "arkcase.toBoolean" $targetPort.clusterOnly) -}}
+            {{- $crap := set $dependency "clusterOnly" (not (empty $tempVar)) -}}
+          {{- end -}}
+
           {{- /* We have ports to work upon, so validate them */ -}}
           {{- range $port := $ports -}}
             {{- $newPort := (include "arkcase.tools.checkPort" $port) -}}
@@ -200,6 +211,15 @@ that checks the boot order
 
           {{- $dependency = set $dependency "ports" $ports -}}
         {{- end -}}
+      {{- end -}}
+
+      {{- $onlyInCluster := and (kindIs "map" $targetPort) (hasKey $targetPort "clusterOnly") (not (empty (include "arkcase.toBoolean" $targetPort.clusterOnly))) -}}
+
+      {{- if and $onlyInCluster (not $cluster.enabled) -}}
+        {{- /* If we're supposed to skip this dependency when clustering is not in use, we do so */ -}}
+        {{- $dependency = dict -}}
+      {{- else -}}
+        {{- $dependency = omit $dependency "clusterOnly" -}}
       {{- end -}}
 
       {{- /* If there's a dependency to check, then we add it */ -}}
