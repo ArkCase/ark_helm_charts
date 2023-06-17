@@ -149,16 +149,11 @@ service:
 ##
   probes:
     enabled: true
-    startup:
-      command: [ "/app/zookeeper/bin/zkServer.sh", "status" ]
+    spec:
+      exec:
+        command: [ "/app/zookeeper/bin/zkServer.sh", "status" ]
       initialDelaySeconds: 10
       periodSeconds: 1
       timeoutSeconds: 1
       failureThreshold: 60
       successThreshold: 1
-    startup:
-      enabled: false
-    readiness:
-      enabled: false
-    liveness:
-      enabled: true

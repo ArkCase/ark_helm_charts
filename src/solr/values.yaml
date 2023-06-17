@@ -134,7 +134,7 @@ service:
 ##
   probes:
     enabled: true
-    startup:
+    spec:
       httpGet:
         path: "/solr/admin/info/health"
         port: *solr
@@ -143,9 +143,3 @@ service:
       timeoutSeconds: 1
       failureThreshold: 60
       successThreshold: 1
-    startup:
-      enabled: false
-    readiness:
-      enabled: false
-    liveness:
-      enabled: true
