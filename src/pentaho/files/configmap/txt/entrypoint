@@ -153,6 +153,10 @@ fi
 ###################################################################
 [ -v JCR_DIR ] || JCR_DIR="${DATA_DIR}/jackrabbit/repository"
 [ -d "${JCR_DIR}" ] && rm -rf "${JCR_DIR}" &>/dev/null
+mkdir -p "${JCR_DIR}"
+
+# Just in case... for clustering
+hostname > "${JCR_DIR}/cluster_node.id"
 
 ###################################################################
 # LAUNCH THE SERVER PROCESS                                       #
