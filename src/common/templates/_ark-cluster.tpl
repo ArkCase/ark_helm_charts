@@ -221,6 +221,7 @@
       <Transport className="org.apache.catalina.tribes.transport.nio.PooledParallelSender" />
     </Sender>
     <Interceptor className="org.apache.catalina.tribes.group.interceptors.TcpFailureDetector" />
+    <Interceptor className="org.apache.catalina.tribes.group.interceptors.TcpPingInterceptor" />
     <Interceptor className="org.apache.catalina.tribes.group.interceptors.MessageDispatchInterceptor" />
     <Interceptor className="org.apache.catalina.tribes.group.interceptors.StaticMembershipInterceptor">
       {{- $service := (include "arkcase.name" $) }}
