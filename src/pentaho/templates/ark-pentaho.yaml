@@ -41,7 +41,7 @@ spec:
     rollingUpdate:
       partition: {{ $.Values.rollingUpdatePartition }}
     {{- end }}
-  podManagementPolicy: Parallel
+  podManagementPolicy: OrderedReady
   template:
     metadata:
       name: {{ include "arkcase.fullname" $ | quote }}
@@ -226,8 +226,8 @@ spec:
               subPath: &hibernateSettingsXml "hibernate-settings.xml"
               readOnly: true
             - name: *configMap
-              mountPath: "/app/pentaho/pentaho-server/tomcat/conf/server.xml"
-              subPath: &serverXml "server.xml"
+              mountPath: "/app/pentaho/pentaho-server/tomcat/conf/server.xml.tpl"
+              subPath: &serverXmlTpl "server.xml.tpl"
               readOnly: true
             - name: *configMap
               mountPath: "/app/pentaho/pentaho-server/tomcat/webapps/pentaho/WEB-INF/classes/log4j2.xml"
@@ -276,8 +276,8 @@ spec:
                 path: *securityProperties
               - key: *serverProperties
                 path: *serverProperties
-              - key: *serverXml
-                path: *serverXml
+              - key: *serverXmlTpl
+                path: *serverXmlTpl
               - key: *log4j2Xml
                 path: *log4j2Xml
               - key: *quartzProperties

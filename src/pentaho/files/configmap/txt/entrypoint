@@ -38,6 +38,17 @@ fi
 # Remove al leading zeros, just in case...
 export NODE_ID="$(( 10#${NODE_ID} ))"
 
+#
+# Apply the changes to the server.xml template
+#
+SERVER_XML="/app/pentaho/pentaho-server/tomcat/conf/server.xml.tpl"
+if [ -f "${SERVER_XML}" ] ; then
+	TARGET="${SERVER_XML//.tpl/}"
+	say "Editing [${TARGET}] to remove the redundant cluster member"
+	XPATH="//Cluster/Channel/Interceptor/Member[@className = 'org.apache.catalina.tribes.membership.StaticMember' and starts-with(@host, '$(hostname).')]"
+	/usr/bin/xmlstarlet ed -P -d "${XPATH}" "${SERVER_XML}" > "${TARGET}"
+fi
+
 ###################################################################
 # CONFIGURE FILESYSTEM PERSISTENCE                                #
 ###################################################################
