@@ -46,8 +46,8 @@ fi
 # By default, wait up to 300 seconds if not told otherwise
 [ -v INIT_POLL_SLEEP ] || INIT_POLL_SLEEP=2
 [[ "${INIT_POLL_SLEEP}" =~ ^[1-9][0-9]*$ ]] || INIT_POLL_SLEEP=2
-[ -v INIT_MAX_WAIT ] || INIT_MAX_WAIT=300
-[[ "${INIT_MAX_WAIT}" =~ ^[1-9][0-9]*$ ]] || INIT_MAX_WAIT=300
+[ -v INIT_MAX_WAIT ] || INIT_MAX_WAIT=900
+[[ "${INIT_MAX_WAIT}" =~ ^[1-9][0-9]*$ ]] || INIT_MAX_WAIT=900
 
 [ -v ADMIN_URL ] || ADMIN_URL="http://localhost:8080/pentaho/"
 
