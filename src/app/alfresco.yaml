@@ -1,0 +1,56 @@
+content:
+  resources:
+    common:
+      requests:
+        memory: ...
+        cpu: ...
+      limits:
+        memory: ...
+        cpu: ...
+
+    main:
+      requests:
+        memory: 200Mi
+        cpu: 100m
+      limits:
+        memory: 1536Mi
+        cpu: 500m
+
+    share:
+      requests:
+        memory: 400Mi
+        cpu: 200m
+      limits:
+        memory: 1Gi
+        cpu: 500m
+
+    activemq:
+      requests:
+        memory: 200Mi
+        cpu: 100m
+      limits:
+        memory: 1Gi
+        cpu: 500m
+
+    search:
+      requests:
+        memory: 200Mi
+        cpu: 200m
+      limits:
+        memory: 2Gi
+        cpu: 500m
+
+    # Shared File System
+    sfs:
+      # requests + limits ...
+
+    transform-core-aio:
+      requests:
+        memory: 200Mi
+        cpu: 300m
+      limits:
+        memory: 1536Mi
+        cpu: 500m
+
+    transform-router:
+      # requests + limits ...b  
