@@ -41,7 +41,7 @@ spec:
     rollingUpdate:
       partition: {{ $.Values.rollingUpdatePartition }}
     {{- end }}
-  podManagementPolicy: Parallel
+  podManagementPolicy: OrderedReady
   template:
     metadata:
       name: {{ include "arkcase.fullname" $ | quote }}
@@ -170,8 +170,8 @@ spec:
               subPath: &contextXml "context.xml"
               readOnly: true
             - name: *secrets
-              mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/jackrabbit/repository.xml"
-              subPath: &repositoryXml "repository.xml"
+              mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/jackrabbit/repository.xml.tpl"
+              subPath: &repositoryXmlTpl "repository.xml.tpl"
               readOnly: true
             - name: *secrets
               mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/applicationContext-security-ldap.properties"
@@ -253,8 +253,8 @@ spec:
                 path: *contextXml
               - key: *dbconfigJson
                 path: *dbconfigJson
-              - key: *repositoryXml
-                path: *repositoryXml
+              - key: *repositoryXmlTpl
+                path: *repositoryXmlTpl
               - key: *applicationContextSecurityLdapProperties
                 path: *applicationContextSecurityLdapProperties
               - key: *runLiquibaseUpdates
