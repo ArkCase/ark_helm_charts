@@ -125,7 +125,9 @@
       <!--For clustering, please take a look at documentation at:
           /docs/cluster-howto.html  (simple how to)
           /docs/config/cluster.html (reference documentation) -->
-      {{- include "arkcase.cluster.tomcat" (dict "ctx" $ "max" 4) | nindent 6 }}
+      {{- /* Enable this if and only if this Tomcat issue is resolved */ -}}
+      {{- /* https://bz.apache.org/bugzilla/show_bug.cgi?id=66660     */ -}}
+      {{- /* include "arkcase.cluster.tomcat" (dict "ctx" $ "max" 4) | nindent 6 */ -}}
 
       <!-- Use the LockOutRealm to prevent attempts to guess user passwords
            via a brute-force attack -->
