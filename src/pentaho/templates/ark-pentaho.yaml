@@ -156,12 +156,6 @@ spec:
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.cluster.bootDelay" ($cluster.enabled | ternary 10 0) | nindent 12 }}
             {{- include "arkcase.cluster.tomcat.env" $ | nindent 12 }}
-            - name: CATALINA_OPTS
-              value: >-
-                -Dcom.sun.management.jmxremote
-                -Dcom.sun.management.jmxremote.port=9000
-                -Dcom.sun.management.jmxremote.ssl=false
-                -Dcom.sun.management.jmxremote.authenticate=false
             - name: DATA_DIR
               value: *dataPath
             - name: INIT_DIR
@@ -189,10 +183,10 @@ spec:
           command: [ "/entrypoint" ]
           {{- end }}
           {{- if and (not ($.Values.command)) (not ($.Values.lifecycle)) }}
-          lifecycle:
-            postStart:
-              exec:
-                command: [ "/config-post.sh" ]
+          # lifecycle:
+          #   postStart:
+          #     exec:
+          #       command: [ "/config-post.sh" ]
           {{- else if ($.Values.lifecycle) }}
           lifecycle: {{- $.Values.lifecycle | toYaml | nindent 12 }}
           {{- end }}

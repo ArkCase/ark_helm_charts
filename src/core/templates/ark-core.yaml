@@ -251,12 +251,6 @@ spec:
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.cluster.bootDelay" ($cluster.enabled | ternary 10 0) | nindent 12 }}
             {{- include "arkcase.cluster.tomcat.env" $ | nindent 12 }}
-            - name: CATALINA_OPTS
-              value: >-
-                -Dcom.sun.management.jmxremote
-                -Dcom.sun.management.jmxremote.port=9000
-                -Dcom.sun.management.jmxremote.ssl=false
-                -Dcom.sun.management.jmxremote.authenticate=false
             - name: INIT_DIR
               value: *initDir
             - name: HOME_DIR

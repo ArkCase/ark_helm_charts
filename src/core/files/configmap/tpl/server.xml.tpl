@@ -133,34 +133,14 @@
       <!--For clustering, please take a look at documentation at:
           /docs/cluster-howto.html  (simple how to)
           /docs/config/cluster.html (reference documentation) -->
-      {{- /* include "arkcase.cluster.tomcat" (dict "ctx" $ "max" 4) | nindent 6 */ -}}
-
-      <Cluster className="org.apache.catalina.ha.tcp.SimpleTcpCluster"
-               channelStartOptions="3"
-               channelSendOptions="8">
-        <Manager className="org.apache.catalina.ha.session.DeltaManager"
-                 expireSessionsOnShutdown="false"
-                 notifyListenersOnReplication="true"/>
+      {{- $cluster := (include "arkcase.cluster" $ | fromYaml) }}
+      {{- if $cluster.enabled }}
+      <Cluster className="org.apache.catalina.ha.tcp.SimpleTcpCluster">
         <Channel className="org.apache.catalina.tribes.group.GroupChannel">
-          <Receiver className="org.apache.catalina.tribes.transport.nio.NioReceiver"
-                    address="auto"
-                    port="4000"
-                    autoBind="100"
-                    selectorTimeout="5000"
-                    maxThreads="6" />
-          <Sender className="org.apache.catalina.tribes.transport.ReplicationTransmitter">
-            <Transport className="org.apache.catalina.tribes.transport.nio.PooledParallelSender" />
-          </Sender>
-          <Interceptor className="org.apache.catalina.tribes.group.interceptors.TcpFailureDetector" />
-          <Interceptor className="org.apache.catalina.tribes.group.interceptors.TcpPingInterceptor" />
-          <Interceptor className="org.apache.catalina.tribes.group.interceptors.MessageDispatchInterceptor" />
           <Membership className="org.apache.catalina.tribes.membership.cloud.CloudMembershipService"/>
         </Channel>
-        <Valve className="org.apache.catalina.ha.tcp.ReplicationValve"
-               filter="" />
-        <Valve className="org.apache.catalina.ha.session.JvmRouteBinderValve" />
-        <ClusterListener className="org.apache.catalina.ha.session.ClusterSessionListener" />
       </Cluster>
+      {{- end }}
 
       <!-- Use the LockOutRealm to prevent attempts to guess user passwords
            via a brute-force attack -->
