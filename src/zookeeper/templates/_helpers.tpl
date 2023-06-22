@@ -32,15 +32,18 @@
 {{- define "arkcase.zookeeper.required" -}}
   {{- $external := (include "arkcase.zookeeper.external" $) -}}
   {{- if not $external -}}
-    {{- $config := (include "arkcase.cluster" $ | fromYaml) -}}
-    {{- if $config.enabled -}}
+    {{- $cluster := (include "arkcase.cluster" $ | fromYaml) -}}
+    {{- if $cluster.enabled -}}
+      {{- $cluster = (include "arkcase.cluster.info" $ | fromYaml) -}}
       {{- /* Check to see if we've been given an external Artemis URL */ -}}
       {{- $messaging := (include "arkcase.tools.conf" (dict "ctx" $ "value" "messaging.url" "detailed" true) | fromYaml) -}}
-      {{- $messaging = not (and $messaging $messaging.global) -}}
+      {{- $messagingCluster :=  or (not (hasKey $cluster "messaging")) $cluster.messaging.enabled -}}
+      {{- $messaging = and (not (and $messaging $messaging.global)) $messagingCluster -}}
 
       {{- /* Check to see if we've been given an external Solr URL */ -}}
       {{- $search := (include "arkcase.tools.conf" (dict "ctx" $ "value" "search.url" "detailed" true) | fromYaml) -}}
-      {{- $search = not (and $search $search.global) -}}
+      {{- $searchCluster := or (not (hasKey $cluster "search")) $cluster.search.enabled -}}
+      {{- $search = and (not (and $search $search.global)) $searchCluster -}}
 
       {{- if or $messaging $search -}}
         {{- true -}}
