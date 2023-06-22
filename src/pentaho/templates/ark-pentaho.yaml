@@ -183,10 +183,10 @@ spec:
           command: [ "/entrypoint" ]
           {{- end }}
           {{- if and (not ($.Values.command)) (not ($.Values.lifecycle)) }}
-          # lifecycle:
-          #   postStart:
-          #     exec:
-          #       command: [ "/config-post.sh" ]
+          lifecycle:
+            postStart:
+              exec:
+                command: [ "/config-post.sh" ]
           {{- else if ($.Values.lifecycle) }}
           lifecycle: {{- $.Values.lifecycle | toYaml | nindent 12 }}
           {{- end }}
