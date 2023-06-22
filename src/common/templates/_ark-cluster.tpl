@@ -260,3 +260,19 @@
 #   value: {{ $delay | toString | quote }}
   {{- end }}
 {{- end -}}
+
+{{- define "arkcase.cluster.tomcat.env" -}}
+  {{- if not (include "arkcase.isRootContext" $) -}}
+    {{- fail "The parameter value must be the root context" -}}
+  {{- end -}}
+  {{- $result := list -}}
+  {{- range $k, $v := (include "arkcase.labels.matchLabels" $ | fromYaml) -}}
+    {{- $result = append $result (printf "%s=%s" $k $v) -}}
+  {{- end -}}
+  {{- if $result }}
+- name: KUBERNETES_NAMESPACE
+  value: {{ $.Release.Namespace | quote }}
+- name: KUBERNETES_LABELS
+  value: {{ join "," $result | quote }}
+  {{- end }}
+{{- end -}}

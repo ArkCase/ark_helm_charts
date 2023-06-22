@@ -20,10 +20,47 @@ metadata:
   name: {{ include "arkcase.fullname" $ | quote }}
   namespace: {{ $.Release.Namespace | quote }}
 spec:
+  maxUnavailable: {{ $maxFailed }}
   selector:
     matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
-  maxUnavailable: {{ $maxFailed }}
+{{- end }}
+{{- $serviceAccountName := (include "arkcase.serviceAccountName" $) }}
+{{- if $cluster.enabled }}
+  {{- $serviceAccountName = (or (empty $serviceAccountName) (eq "default" $serviceAccountName)) | ternary (include "arkcase.fullname" $) $serviceAccountName }}
+  {{- $roleName := (printf "%s-cluster-membership" $serviceAccountName) }}
 ---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ $serviceAccountName | quote }}
+  namespace: {{ $.Release.Namespace | quote }}
+  labels: {{- include "arkcase.labels" $ | nindent 4 }}
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: {{ $roleName | quote }}
+  namespace: {{ $.Release.Namespace | quote }}
+  labels: {{- include "arkcase.labels" $ | nindent 4 }}
+rules:
+  # "" indicates the core API group
+  - apiGroups: [ "" ]
+    resources: [ "pods" ]
+    verbs: [ "get", "watch", "list" ]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ printf "%s:%s" $serviceAccountName $roleName | quote }}
+  namespace: {{ $.Release.Namespace | quote }}
+  labels: {{- include "arkcase.labels" $ | nindent 4 }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ $serviceAccountName | quote }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ $roleName | quote }}
 {{- end }}
 ---
 apiVersion: apps/v1
@@ -93,7 +130,9 @@ spec:
       {{- if $.Values.schedulerName }}
       schedulerName: {{ $.Values.schedulerName | quote }}
       {{- end }}
-      serviceAccountName: {{ include "arkcase.serviceAccountName" $ | quote }}
+      {{- if $serviceAccountName }}
+      serviceAccountName: {{ $serviceAccountName | quote }}
+      {{- end }}
       {{- with ($.Values.securityContext).template }}
       securityContext: {{- toYaml . | nindent 8 }}
       {{- end }}
@@ -211,6 +250,13 @@ spec:
           {{- include "arkcase.image" (dict "ctx" $ "name" "arkcase" "repository" "arkcase/core") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.cluster.bootDelay" ($cluster.enabled | ternary 10 0) | nindent 12 }}
+            {{- include "arkcase.cluster.tomcat.env" $ | nindent 12 }}
+            - name: CATALINA_OPTS
+              value: >-
+                -Dcom.sun.management.jmxremote
+                -Dcom.sun.management.jmxremote.port=9000
+                -Dcom.sun.management.jmxremote.ssl=false
+                -Dcom.sun.management.jmxremote.authenticate=false
             - name: INIT_DIR
               value: *initDir
             - name: HOME_DIR

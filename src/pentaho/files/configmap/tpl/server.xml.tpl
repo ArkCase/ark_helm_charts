@@ -125,9 +125,15 @@
       <!--For clustering, please take a look at documentation at:
           /docs/cluster-howto.html  (simple how to)
           /docs/config/cluster.html (reference documentation) -->
-      {{- /* Enable this if and only if this Tomcat issue is resolved */ -}}
-      {{- /* https://bz.apache.org/bugzilla/show_bug.cgi?id=66660     */ -}}
       {{- /* include "arkcase.cluster.tomcat" (dict "ctx" $ "max" 4) | nindent 6 */ -}}
+
+      <Cluster className="org.apache.catalina.ha.tcp.SimpleTcpCluster"
+               channelStartOptions="3"
+               channelSendOptions="8">
+        <Channel className="org.apache.catalina.tribes.group.GroupChannel">
+          <Membership className="org.apache.catalina.tribes.membership.cloud.CloudMembershipService"/>
+        </Channel>
+      </Cluster>
 
       <!-- Use the LockOutRealm to prevent attempts to guess user passwords
            via a brute-force attack -->
