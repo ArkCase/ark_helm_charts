@@ -878,21 +878,27 @@ result: "DC=some,DC=domain,DC=com"
         {{- fail (printf "The value for global.dev.conf must be a string (%s)" (kindOf $dev.conf)) -}}
       {{- end -}}
 
-      {{- if $dev.uid -}}
+      {{- if hasKey $dev "uid" -}}
         {{- $uid := ($dev.uid | toString) -}}
-        {{- if (not (regexMatch "^[1-9][0-9]*$" $uid)) -}}
+        {{- if (not (regexMatch "^[0-9]+$" $uid)) -}}
           {{- fail (printf "The value for global.dev.uid must be a number (%s)" $uid) -}}
         {{- end -}}
         {{- $result = set $result "uid" ($uid | atoi) -}}
       {{- end -}}
 
-      {{- if $dev.gid -}}
+      {{- if hasKey $dev "gid" -}}
         {{- $gid := ($dev.gid | toString) -}}
-        {{- if (not (regexMatch "^[1-9][0-9]*$" $gid)) -}}
+        {{- if (not (regexMatch "^[0-9]+$" $gid)) -}}
           {{- fail (printf "The value for global.dev.gid must be a number (%s)" $gid) -}}
         {{- end -}}
         {{- $result = set $result "gid" ($gid | atoi) -}}
       {{- end -}}
+
+      {{- $resources := true -}}
+      {{- if (hasKey $dev "resources") -}}
+        {{- $resources := (not (empty (include "arkcase.toBoolean" ($dev.resources | toString)))) -}}
+      {{- end -}}
+      {{- $result = set $result "resources" $resources -}}
 
       {{- $debug := $dev.debug -}}
       {{- if and $debug (kindIs "map" $debug) -}}
@@ -911,6 +917,9 @@ result: "DC=some,DC=domain,DC=com"
         {{- $debug = dict -}}
       {{- end -}}
       {{- $result = set $result "debug" $debug -}}
+
+      {{- /* Copy all the other keys verbatim */ -}}
+      {{- $result = merge $result (omit $dev "enabled" "war" "conf" "debug" "uid" "gid" "resources") -}}
     {{- end -}}
   {{- end -}}
   {{- $result | toYaml -}}
