@@ -896,7 +896,7 @@ result: "DC=some,DC=domain,DC=com"
 
       {{- $resources := true -}}
       {{- if (hasKey $dev "resources") -}}
-        {{- $resources := (not (empty (include "arkcase.toBoolean" ($dev.resources | toString)))) -}}
+        {{- $resources = (not (empty (include "arkcase.toBoolean" ($dev.resources | toString)))) -}}
       {{- end -}}
       {{- $result = set $result "resources" $resources -}}
 
