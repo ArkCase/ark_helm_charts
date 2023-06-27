@@ -315,8 +315,21 @@
 {{- end -}}
 
 {{- define "arkcase.resources" -}}
-  {{- $part := (include "arkcase.part.name" $) -}}
-  {{- $resources := (include "arkcase.resources.cached" $ | fromYaml) -}}
+  {{- $ctx := $ -}}
+  {{- $part := "" -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- $ctx = $.ctx -}}
+    {{- if not (include "arkcase.isRootContext" $ctx) -}}
+      {{- fail "The 'ctx' parameter given must be the root context (. or $)" -}}
+    {{- end -}}
+    {{- $part = ($.part | toString) -}}
+  {{- end -}}
+
+  {{- if (not $part) -}}
+    {{- $part = (include "arkcase.part.name" $ctx | default "common") -}}
+  {{- end -}}
+
+  {{- $resources := (include "arkcase.resources.cached" $ctx | fromYaml) -}}
   {{- if (not (hasKey $resources $part)) -}}
     {{- $part = "common" -}}
   {{- end -}}
