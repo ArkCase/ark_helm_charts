@@ -97,9 +97,7 @@ spec:
             postStart:
               exec:
                 command: [ "/config-post.sh" ]
-          {{- with $.Values.resources }}
-          resources: {{- toYaml . | nindent 12 }}
-          {{- end }}
+          resources: {{- include "arkcase.resources" $ | nindent 12 }}
           volumeMounts:
             - name: *dataVolume
               mountPath: *dataPath
