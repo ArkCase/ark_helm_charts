@@ -23,16 +23,16 @@
     {{- $data = (splitList "-" $data) -}}
     {{- $req := (include "arkcase.resources.parseCpu.single" (first $data)) -}}
     {{- if $req -}}
-      {{- $result = set $result "req" (dict $key $req) -}}
+      {{- $result = set $result "requests" (dict $key $req) -}}
     {{- end -}}
     {{- $lim := (include "arkcase.resources.parseCpu.single" (last $data)) -}}
     {{- if $lim -}}
-      {{- $result = set $result "lim" (dict $key $lim) -}}
+      {{- $result = set $result "limits" (dict $key $lim) -}}
     {{- end -}}
   {{- else if regexMatch "^[^-]+$" $data -}}
     {{- $val := (include "arkcase.resources.parseCpu.single" $) -}}
     {{- if $val -}}
-      {{- $result = dict "req" (dict $key $val) "lim" (dict $key $val) -}}
+      {{- $result = dict "requests" (dict $key $val) "limits" (dict $key $val) -}}
     {{- end -}}
   {{- else if $data -}}
     {{- fail (printf "Invalid CPU requests-limits description string: [%s]" $) -}}
@@ -56,21 +56,21 @@
 {{- define "arkcase.resources.parseMem" -}}
   {{- $data := ($ | toString) -}}
   {{- $result := dict -}}
-  {{- $key := "mem" -}}
+  {{- $key := "memory" -}}
   {{- if regexMatch "^([^-]+)-([^-]+)$" $data -}}
     {{- $data = (splitList "-" $data) -}}
     {{- $req := (include "arkcase.resources.parseMem.single" (first $data)) -}}
     {{- if $req -}}
-      {{- $result = set $result "req" (dict $key $req) -}}
+      {{- $result = set $result "requests" (dict $key $req) -}}
     {{- end -}}
     {{- $lim := (include "arkcase.resources.parseMem.single" (last $data)) -}}
     {{- if $lim -}}
-      {{- $result = set $result "lim" (dict $key $lim) -}}
+      {{- $result = set $result "limits" (dict $key $lim) -}}
     {{- end -}}
   {{- else if regexMatch "^[^-]+$" $data -}}
     {{- $val := (include "arkcase.resources.parseMem.single" $) -}}
     {{- if $val -}}
-      {{- $result = dict "req" (dict $key $val) "lim" (dict $key $val) -}}
+      {{- $result = dict "requests" (dict $key $val) "limits" (dict $key $val) -}}
     {{- end -}}
   {{- else if $data -}}
     {{- fail (printf "Invalid CPU requests-limits description string: [%s]" $) -}}
@@ -112,15 +112,15 @@
     {{- /* This is the "MEMSPEC,CPUSPEC" format */ -}}
     {{- $result = (include "arkcase.resources.parseCpuMem" $data | fromYaml) -}}
   {{- else if (kindIs "map" $data) -}}
-    {{- $cpuMem := pick $data "cpu" "mem" -}}
-    {{- $reqLim := pick $data "req" "lim" -}}
+    {{- $cpuMem := pick $data "cpu" "memory" -}}
+    {{- $reqLim := pick $data "requests" "limits" -}}
     {{- /* We're not interested in anything other keys */ -}}
     {{- if and $cpuMem $reqLim -}}
       {{- fail "You may only specify 'cpu-mem' or 'req-lim' when describing resources allocations, not both forms intermingled" -}}
     {{- end -}}
 
     {{- if $cpuMem -}}
-      {{- $mem := ((and (hasKey $cpuMem "mem") (not (empty $cpuMem.mem))) | ternary (include "arkcase.resources.parseMem" $cpuMem.mem | fromYaml) dict) -}}
+      {{- $mem := ((and (hasKey $cpuMem "memory") (not (empty $cpuMem.memory))) | ternary (include "arkcase.resources.parseMem" $cpuMem.memory | fromYaml) dict) -}}
       {{- $result = merge $result $mem -}}
 
       {{- $cpu := ((and (hasKey $cpuMem "cpu") (not (empty $cpuMem.cpu))) | ternary (include "arkcase.resources.parseCpu" $cpuMem.cpu | fromYaml) dict) -}}
@@ -128,38 +128,38 @@
     {{- end -}}
 
     {{- if $reqLim -}}
-      {{- if and (hasKey $reqLim "req") $reqLim.req -}}
-        {{- $req := $reqLim.req -}}
+      {{- if and (hasKey $reqLim "requests") $reqLim.requests -}}
+        {{- $req := $reqLim.requests -}}
         {{- if (kindIs "string" $req) -}}
           {{- $req = (include "arkcase.resources.parseCpuMem" $req | fromYaml) -}}
-          {{- /* Whatever this produced, we're only interested in the "req" key */ -}}
-          {{- $req = (and (hasKey $req "req") (not (empty $req.req)) | ternary $req.req dict) -}}
+          {{- /* Whatever this produced, we're only interested in the "requests" key */ -}}
+          {{- $req = (and (hasKey $req "requests") (not (empty $req.requests)) | ternary $req.requests dict) -}}
         {{- else if (kindIs "map" $req) -}}
           {{- /* If this is a map, then it must contain cpu/mem */ -}}
-          {{- $req = pick $req "cpu" "mem" -}}
-          {{- $mem := (and (hasKey $req "mem") (not (empty $req.mem)) | ternary (include "arkcase.resources.parseMem.single" $req.mem) "") -}}
+          {{- $req = pick $req "cpu" "memory" -}}
+          {{- $mem := (and (hasKey $req "memory") (not (empty $req.memory)) | ternary (include "arkcase.resources.parseMem.single" $req.memory) "") -}}
           {{- $cpu := (and (hasKey $req "cpu") (not (empty $req.cpu)) | ternary (include "arkcase.resources.parseCpu.single" $req.cpu) "") -}}
-          {{- $req = dict "mem" $mem "cpu" $cpu -}}
+          {{- $req = dict "memory" $mem "cpu" $cpu -}}
         {{- else -}}
           {{- fail (printf "Invalid format for resource requests: %s" $req) -}}
         {{- end -}}
 
-        {{- $lim := $reqLim.lim -}}
+        {{- $lim := $reqLim.limits -}}
         {{- if (kindIs "string" $lim) -}}
           {{- $lim = (include "arkcase.resources.parseCpuMem" $lim | fromYaml) -}}
-          {{- /* Whatever this produced, we're only interested in the "lim" key */ -}}
-          {{- $lim = (and (hasKey $lim "lim") (not (empty $lim.lim)) | ternary $lim.lim dict) -}}
+          {{- /* Whatever this produced, we're only interested in the "limits" key */ -}}
+          {{- $lim = (and (hasKey $lim "limits") (not (empty $lim.limits)) | ternary $lim.limits dict) -}}
         {{- else if (kindIs "map" $lim) -}}
           {{- /* If this is a map, then it must contain cpu/mem */ -}}
-          {{- $lim = pick $lim "cpu" "mem" -}}
-          {{- $mem := (and (hasKey $lim "mem") (not (empty $lim.mem)) | ternary (include "arkcase.resources.parseMem.single" $lim.mem) "") -}}
+          {{- $lim = pick $lim "cpu" "memory" -}}
+          {{- $mem := (and (hasKey $lim "memory") (not (empty $lim.memory)) | ternary (include "arkcase.resources.parseMem.single" $lim.memory) "") -}}
           {{- $cpu := (and (hasKey $lim "cpu") (not (empty $lim.cpu)) | ternary (include "arkcase.resources.parseCpu.single" $lim.cpu) "") -}}
-          {{- $lim = dict "mem" $mem "cpu" $cpu -}}
+          {{- $lim = dict "memory" $mem "cpu" $cpu -}}
         {{- else -}}
           {{- fail (printf "Invalid format for resource limits: %s" $lim) -}}
         {{- end -}}
 
-        {{- $result = (dict "req" $req "lim" $lim) -}}
+        {{- $result = (dict "requests" $req "limits" $lim) -}}
       {{- end -}}
     {{- end -}}
   {{- else if $data -}}
@@ -174,8 +174,8 @@
   {{- /* they're all structured the same, and thus can and should be parsed the same */ -}}
   {{- $base := $ -}}
   {{- $result := dict -}}
-  {{- if or (hasKey $base "cpu") (hasKey $base "mem") -}}
-    {{- $result = dict "common" (include "arkcase.resources.parseResourceTarget" (pick $base "cpu" "mem") | fromYaml) -}}
+  {{- if or (hasKey $base "cpu") (hasKey $base "memory") -}}
+    {{- $result = dict "common" (include "arkcase.resources.parseResourceTarget" (pick $base "cpu" "memory") | fromYaml) -}}
   {{- else -}}
     {{- /* at this point, base contains common, or part-named sections /* -}}
 
@@ -328,14 +328,14 @@
   {{- $limMem := "" -}}
   {{- $limCpu := "" -}}
 
-  {{- if and (hasKey $part "req") $part.req -}}
-    {{- $reqMem = (and (hasKey $part.req "mem") (not (empty $part.req.mem)) | ternary $part.req.mem "") -}}
-    {{- $reqCpu = (and (hasKey $part.req "cpu") (not (empty $part.req.cpu)) | ternary $part.req.cpu "") -}}
+  {{- if and (hasKey $part "requests") $part.requests -}}
+    {{- $reqMem = (and (hasKey $part.requests "memory") (not (empty $part.requests.memory)) | ternary $part.requests.memory "") -}}
+    {{- $reqCpu = (and (hasKey $part.requests "cpu") (not (empty $part.requests.cpu)) | ternary $part.requests.cpu "") -}}
   {{- end -}}
 
-  {{- if and (hasKey $part "lim") $part.lim -}}
-    {{- $limMem = (and (hasKey $part.lim "mem") (not (empty $part.lim.mem)) | ternary $part.lim.mem "") -}}
-    {{- $limCpu = (and (hasKey $part.lim "cpu") (not (empty $part.lim.cpu)) | ternary $part.lim.cpu "") -}}
+  {{- if and (hasKey $part "limits") $part.limits -}}
+    {{- $limMem = (and (hasKey $part.limits "memory") (not (empty $part.limits.memory)) | ternary $part.limits.memory "") -}}
+    {{- $limCpu = (and (hasKey $part.limits "cpu") (not (empty $part.limits.cpu)) | ternary $part.limits.cpu "") -}}
   {{- end -}}
 
   {{- if and (eq "=" $reqCpu $limCpu) -}}
