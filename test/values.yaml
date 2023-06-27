@@ -15,8 +15,6 @@ image:
     repository: "dbinitrepository"
     tag: "dbinittag"
 
-global:
-  imageRegistry: "GlobalRegistry"
 
 initDependencies:
   enabled: true
@@ -38,3 +36,86 @@ initDependencies:
         - 8161
         - 61616
 
+
+global:
+  imageRegistry: "GlobalRegistry"
+
+  dev:
+    enabled: true
+    resources: false
+
+  # Global resources supersede all other set resources
+  xresources:
+
+    testchart:
+      common: "23Gi,200m"
+      part-1: "22Gi,0.22"
+      part-2: "23Gi,*"
+      part-3: "24Gi,"
+      part-4: "25Gi,0.25"
+
+tests:
+  crap1: "1Gi-2Gi,1-2"
+  crap2:
+    #cpu: "3-4"
+    memory: "3Gi-4Gi"
+  crap3:
+    requests: "5Gi,5"
+    limits: "6Gi,6"
+  crap4:
+    requests:
+      cpu: 7
+      memory: "*"
+    limits:
+      cpu: "="
+      memory: 8Gi
+
+resources:
+  # Default resources are used by default
+  default:
+    common: # "1Gi,1"
+      limits:
+        memory: "*"
+        cpu: 1.5
+      requests:
+        memory: 1536Mi
+        cpu: "*"
+
+    part-1:
+      memory: 2Gi
+      #cpu: 2
+
+    part-2:
+      memory: 3Gi
+      cpu: 3
+
+    part-3:
+      memory: 4Gi
+      cpu: 4
+
+    part-4:
+      memory: 5Gi
+      cpu: 5
+
+  # Dev resources supersede default resources IIF dev mode is enabled AND global.dev.resources is either missing or true. If set
+  # to "false", then default resources are used.
+  development:
+    common:
+      memory: 11Gi
+      cpu: "*"
+
+    part-1:
+      memory: 12Gi
+      cpu: 12
+
+    part-2:
+      # memory: 13Gi
+      cpu: 13
+
+    part-3:
+      # memory: 14Gi
+      cpu: 14
+
+    part-4:
+      # memory: 15Gi
+      cpu: 15

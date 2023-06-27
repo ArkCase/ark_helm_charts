@@ -83,9 +83,7 @@ spec:
           {{- if $.Values.command }}
           command: {{- $.Values.command | toYaml | nindent 12 }}
           {{- end }}
-          {{- with $.Values.resources }}
-          resources: {{- toYaml . | nindent 12 }}
-          {{- end }}
+          resources: {{- include "arkcase.resources" $ | nindent 12 }}
           volumeMounts:
             - name: "init"
               mountPath: "/opt/app-root/src/mysql-init"

@@ -12,6 +12,8 @@ configuration:
 
   content:
     dialect: "alfresco"
+    url: "http://content:8080/alfresco"
+    shareUrl: "http://share:8080/share"
     username: "admin"
     password: "admin"
 
@@ -65,10 +67,6 @@ configuration:
         rolePrefix: ""
         prefix: ""
 
-command:
-  # TODO: This command is intended for debugging purposes *ONLY*
-  # main: [ "sleep", "infinity" ]
-
 initDependencies:
   enabled: true
   mode: all
@@ -95,9 +93,15 @@ initDependencies:
         # In case of PostgreSQL
         - 5432
 
-# Please leave the `replicaCount` to 1 for the time being. Clustering is not
-# supported yet.
-replicaCount: 1
+resources:
+  development:
+    main: "200Mi-1536Mi,100m-500m"
+    share: "400Mi-1Gi,200m-500m"
+    activemq: "200Mi-1Gi,100m-500m"
+    search: "200Mi-2Gi,200m-500m"
+    sfs: #.... ???
+    transform-core-aio: "200Mi-1536Mi,300m-500m"
+    transform-router: #.... ???
 
 platform: ""
 
@@ -204,17 +208,6 @@ securityContext:
     # runAsNonRoot: true
     # runAsUser: &runAsUser 1997
     # runAsGroup: *fsGroup
-resources:
-  # We usually recommend not to specify default resources and to leave this as a conscious
-  # choice for the user. This also increases chances charts run on environments with little
-  # resources, such as Minikube. If you do want to specify resources, uncomment the following
-  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
-  # limits:
-  #   cpu: 1
-  #   memory: 1Gi
-  # requests:
-  #   cpu: 100m
-  #   memory: 128Mi
 
 #autoscaling:
   #enabled: false

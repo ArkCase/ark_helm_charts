@@ -1,24 +1,8 @@
-Add test code here
-
-YAML:= [{{ include "arkcase.initDatabase.yaml" . | nindent 2 }}]
-JSON:= [{{ include "arkcase.initDatabase.json" . }}]
-DEF := [{{ include "arkcase.initDatabase" . }}]
-
-      initContainers:
-        {{- include "arkcase.initDatabase.container" (dict "ctx" . "db" "postgres" "volume" "KAKAVOLUME") | nindent 8 }}
-
-ADMIN PASSWORD:
-{{ include "arkcase.initDatabase.adminPassEnv" (dict "ctx" $ "var" "ADMIN_PASS") }}
-
-USER_PASSWORD:
-{{ include "arkcase.initDatabase.userPassEnv" (dict "ctx" $ "var" "USER_PASS" "user" "twobert") }}
-
-SECRET:
-{{ include "arkcase.initDatabase.secret" . }}
-
-VOLUME:
-{{ include "arkcase.initDatabase.secretVolume" . }}
---- END OF FILE ---
-
-{{- $url := "http://www.test.com:9324/ctx/pathcrap/rest?query=value&value2=r2#MarkerCrap" -}}
-{{- (include "arkcase.tools.parseUrl" $url) -}}
+CHART: [{{ $.Chart.Name }}]
+########## DEV ##########
+{{ include "arkcase.dev" $ | nindent 0 }}
+####### ALL RESOURCES #######
+{{ include "arkcase.resources.cached" $ | nindent 0 }}
+####### THIS CHART RESOURCES #######
+{{ include "arkcase.resources" $ | nindent 0 }}
+########## END ##########
