@@ -163,7 +163,7 @@ By using this strategy we allow granular control over the resource allocation wh
 
 The resource allocations may be described either using a classical "requests-limits" map (i.e. [ResourceRequirements](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#resourcerequirements-v1-core)), or using a few variations including an abbreviated string notation that facilitates declaring both requests and limits in a single string.
 
-The high-level syntax is as follows: `MEMSPEC,CPUSPEC`. The elements are positional, so if you only want to produce a CPUSPEC, you must add the leading `,` character (i.e. `,0.5-1.5`). If you only wish to provide a MEMSPEC, then you can omit the CPUSPEC outright. This is by design as it's anticipated that the resource which tere will be the most interest in capping will be the memory.
+The high-level syntax is as follows: `MEMSPEC,CPUSPEC`. The elements are positional, so if you only want to produce a CPUSPEC, you must add the leading `,` character (i.e. `,0.5-1.5`). If you only wish to provide a MEMSPEC, then you can omit the CPUSPEC outright. This is by design as it's anticipated that the resource for which there will be the most interest in capping will be the memory.
 
 Here's a breakdown of what MEMSPEC and CPUSPEC mean, and how to formulate them:
 
