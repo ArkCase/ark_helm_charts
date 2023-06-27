@@ -130,9 +130,7 @@ spec:
           {{- with (include "arkcase.values" (dict "ctx" $ "base" "command") | fromYaml) }}
           command: {{ toJson .value }}
           {{- end }}
-          {{- with (include "arkcase.values" (dict "ctx" $ "base" "resources") | fromYaml) }}
-          resources: {{- toYaml .value | nindent 12 }}
-          {{- end }}
+          resources: {{- include "arkcase.resources" $ | nindent 12 }}
           volumeMounts:
             - name: *confVol
               mountPath: *confPath
