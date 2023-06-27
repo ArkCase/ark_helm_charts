@@ -216,10 +216,11 @@
     {{- /* Parse out the local development resources and construct the allocations for this chart */ -}}
     {{- if hasKey $local "development" -}}
       {{- $development = $local.development -}}
-      {{- if not (kindIs "map" $development) -}}
-        {{- $development = dict -}}
+      {{- if (kindIs "string" $development) -}}
+        {{- $development = dict "common" (include "arkcase.resources.parseCpuMem" $development | fromYaml) -}}
+      {{- else if (kindIs "map" $development) -}}
+        {{- $development = (include "arkcase.resources.parseSection" $development | fromYaml) -}}
       {{- end -}}
-      {{- $development = (include "arkcase.resources.parseSection" $development | fromYaml) -}}
     {{- end -}}
   {{- end -}}
 
@@ -227,10 +228,11 @@
   {{- $default := dict "common" dict -}}
   {{- if hasKey $local "default" -}}
     {{- $default = $local.default -}}
-    {{- if not (kindIs "map" $default) -}}
-      {{- $default = dict -}}
+    {{- if (kindIs "string" $default) -}}
+      {{- $default = dict "common" (include "arkcase.resources.parseCpuMem" $default | fromYaml) -}}
+    {{- else if (kindIs "map" $default) -}}
+      {{- $default = (include "arkcase.resources.parseSection" $default | fromYaml) -}}
     {{- end -}}
-    {{- $default = (include "arkcase.resources.parseSection" $default | fromYaml) -}}
   {{- end -}}
 
   {{- /* Get the global resources */ -}}
@@ -238,19 +240,22 @@
   {{- if not (kindIs "map" $global) -}}
     {{- $global = dict -}}
   {{- end -}}
+
   {{- /* Find the global resources for this chart */ -}}
   {{- $chart := $.Chart.Name -}}
   {{- if hasKey $global $chart -}}
     {{- $global = get $global $chart -}}
-    {{- if not (kindIs "map" $global) -}}
-      {{- $global = dict -}}
+    {{- if (kindIs "string" $global) -}}
+      {{- $global = dict "common" (include "arkcase.resources.parseCpuMem" $global | fromYaml) -}}
+    {{- else if (kindIs "map" $global) -}}
+      {{- $global = (include "arkcase.resources.parseSection" $global | fromYaml) -}}
+    {{- else -}}
+      {{- $global = dict "common" dict -}}
     {{- end -}}
   {{- else -}}
     {{- /* No global configuration for this chart, so we skip it */ -}}
-    {{- $global = dict -}}
+    {{- $global = dict "common" dict -}}
   {{- end -}}
-
-  {{- $global = (include "arkcase.resources.parseSection" $global | fromYaml) -}}
 
   {{- /* Now merge everything into a single resource table from where we can pull the resources */ -}}
   {{- /* For a single part (or from "common", if no part is given) */ -}}
