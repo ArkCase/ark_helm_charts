@@ -188,7 +188,7 @@ Here are some examples of strings, and what they mean:
 |800Mi|Set both requests and limits to 800Mi RAM, no requests/limits on CPU|
 |,1|Set both requests and limits to 1000m CPU, no requests/limits on RAM|
 |200Mi-1536Mi,100m-500m|Request 200Mi of RAM and 100m CPU, and limit to 1536Mi RAM and 500m CPU|
-|\*-2Gi,1.5-\*|Request 2Gi of RAM but no request for CPU, and limit to 1500m CPU, no limit for RAM|
+|\*-2Gi,1.5-\*|No request for RAM, but set a limit of 2Gi, and request 1500m CPU, with no limit value|
 |4Gi,\*-3|Request *and* limit to 4Gi of RAM, no CPU request, but limit to 3000m CPU|
 
 In addition, maps may be described in an abbreviated form, like so:
