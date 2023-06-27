@@ -17,6 +17,7 @@ Welcome to the [ArkCase](https://www.arkcase.com/) Helm Chart Library!
    - [Externally-provided Services](docs/External_Services.md)
    - [Deploying Custom ArkCase Versions](docs/Custom_Arkcase.md)
    - [Development](docs/Development.md)
+   - [Resource Requests and Limits](docs/Resources.md)
 
 ## <a name="overview"></a>Overview
 
