@@ -116,9 +116,7 @@ spec:
           {{- else if ($.Values.lifecycle) }}
           lifecycle: {{- $.Values.lifecycle | toYaml | nindent 12 }}
           {{- end }}
-          {{- with $.Values.resources }}
-          resources: {{- toYaml . | nindent 12 }}
-          {{- end }}
+          resources: {{- include "arkcase.resources" $ | nindent 12 }}
           volumeMounts:
             {{- include "arkcase.pentaho.license.volumeMounts" (dict "ctx" $ "volume" "secrets" "path" "/app/init/licenses") | nindent 12 }}
             {{- include "arkcase.trusts.mount" $ | nindent 12 }}
