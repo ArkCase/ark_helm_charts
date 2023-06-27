@@ -74,6 +74,32 @@
   {{- $result | toYaml -}}
 {{- end -}}
 
+{{- define "arkcase.resources.parseCpuMem.single" -}}
+  {{- $data := ($ | toString) -}}
+  {{- $result := dict -}}
+  {{- if $data -}}
+    {{- /* This is the "MEMSPEC,CPUSPEC" format, so split on the comma and parse each value */ -}}
+    {{- $data = (splitList "," $data) -}}
+    {{- if $data -}}
+      {{- /* The first element is the memory spec */ -}}
+      {{- $parts := $data -}}
+      {{- $mem := (include "arkcase.resources.parseMem.single" (first $parts)) -}}
+      {{- if $mem -}}
+        {{- $result = set $result "memory" $mem -}}
+      {{- end -}}
+
+      {{- /* If there's a second element, it's the CPU spec. We ignore all others */ -}}
+      {{- if (ge (len $parts) 2) -}}
+        {{- $cpu := (include "arkcase.resources.parseCpu.single" (index $parts 1)) -}}
+        {{- if $cpu -}}
+          {{- $result = set $result "cpu" $cpu -}}
+        {{- end -}}
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
+  {{- $result | toYaml -}}
+{{- end -}}
+
 {{- define "arkcase.resources.parseCpuMem" -}}
   {{- $data := ($ | toString) -}}
   {{- $result := dict -}}
@@ -127,9 +153,7 @@
       {{- if and (hasKey $reqLim "requests") $reqLim.requests -}}
         {{- $req := $reqLim.requests -}}
         {{- if (kindIs "string" $req) -}}
-          {{- $req = (include "arkcase.resources.parseCpuMem" $req | fromYaml) -}}
-          {{- /* Whatever this produced, we're only interested in the "requests" key */ -}}
-          {{- $req = (and (hasKey $req "requests") (not (empty $req.requests)) | ternary $req.requests dict) -}}
+          {{- $req = (include "arkcase.resources.parseCpuMem.single" $req | fromYaml) -}}
         {{- else if (kindIs "map" $req) -}}
           {{- /* If this is a map, then it must contain cpu/mem */ -}}
           {{- $req = pick $req "cpu" "memory" -}}
@@ -145,9 +169,7 @@
       {{- if and (hasKey $reqLim "limits") $reqLim.limits -}}
         {{- $lim := $reqLim.limits -}}
         {{- if (kindIs "string" $lim) -}}
-          {{- $lim = (include "arkcase.resources.parseCpuMem" $lim | fromYaml) -}}
-          {{- /* Whatever this produced, we're only interested in the "limits" key */ -}}
-          {{- $lim = (and (hasKey $lim "limits") (not (empty $lim.limits)) | ternary $lim.limits dict) -}}
+          {{- $lim = (include "arkcase.resources.parseCpuMem.single" $lim | fromYaml) -}}
         {{- else if (kindIs "map" $lim) -}}
           {{- /* If this is a map, then it must contain cpu/mem */ -}}
           {{- $lim = pick $lim "cpu" "memory" -}}
