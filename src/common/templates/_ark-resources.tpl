@@ -8,8 +8,6 @@
     {{- printf "%dm" ($data | mulf 1000 | int64) -}}
   {{- else if (eq $data "*") -}}
     {{- "*" -}}
-  {{- else if (eq $data "=") -}}
-    {{- "=" -}}
   {{- else if $data -}}
     {{- fail (printf "Invalid CPU units description: [%s]" $) -}}
   {{- end -}}
@@ -46,8 +44,6 @@
     {{- $data | replace "I" "i" | replace "K" "k" | replace "ki" "Ki" -}}
   {{- else if (eq $data "*") -}}
     {{- "*" -}}
-  {{- else if (eq $data "=") -}}
-    {{- "=" -}}
   {{- else if $data -}}
     {{- fail (printf "Invalid Memory units: [%s]" $) -}}
   {{- end -}}
@@ -143,7 +139,10 @@
         {{- else -}}
           {{- fail (printf "Invalid format for resource requests: %s" $req) -}}
         {{- end -}}
+        {{- $result = set $result "requests" $req -}}
+      {{- end -}}
 
+      {{- if and (hasKey $reqLim "limits") $reqLim.limits -}}
         {{- $lim := $reqLim.limits -}}
         {{- if (kindIs "string" $lim) -}}
           {{- $lim = (include "arkcase.resources.parseCpuMem" $lim | fromYaml) -}}
@@ -158,8 +157,7 @@
         {{- else -}}
           {{- fail (printf "Invalid format for resource limits: %s" $lim) -}}
         {{- end -}}
-
-        {{- $result = (dict "requests" $req "limits" $lim) -}}
+        {{- $result = set $result "limits" $lim -}}
       {{- end -}}
     {{- end -}}
   {{- else if $data -}}
@@ -176,6 +174,8 @@
   {{- $result := dict -}}
   {{- if or (hasKey $base "cpu") (hasKey $base "memory") -}}
     {{- $result = dict "common" (include "arkcase.resources.parseResourceTarget" (pick $base "cpu" "memory") | fromYaml) -}}
+  {{- else if or (hasKey $base "limits") (hasKey $base "requests") -}}
+    {{- $result = dict "common" (include "arkcase.resources.parseResourceTarget" (pick $base "limits" "requests") | fromYaml) -}}
   {{- else -}}
     {{- /* at this point, base contains common, or part-named sections /* -}}
 
@@ -323,11 +323,6 @@
 
   {{- $part = get $resources $part -}}
 
-  {{- /* Sanitize the contents of $part, like so */ -}}
-  {{- /*   - A value of "*" is simply removed */ -}}
-  {{- /*   - A value of "=" is made to be a copy of its counterpart */ -}}
-  {{- /*     if its counterpart is also "=", then both are removed */ -}}
-
   {{- $reqMem := "" -}}
   {{- $reqCpu := "" -}}
   {{- $limMem := "" -}}
@@ -341,24 +336,6 @@
   {{- if and (hasKey $part "limits") $part.limits -}}
     {{- $limMem = (and (hasKey $part.limits "memory") (not (empty $part.limits.memory)) | ternary $part.limits.memory "") -}}
     {{- $limCpu = (and (hasKey $part.limits "cpu") (not (empty $part.limits.cpu)) | ternary $part.limits.cpu "") -}}
-  {{- end -}}
-
-  {{- if and (eq "=" $reqCpu $limCpu) -}}
-    {{- $reqCpu = "" -}}
-    {{- $limCpu = "" -}}
-  {{- else if (eq "=" $reqCpu) -}}
-    {{- $reqCpu = $limCpu -}}
-  {{- else if (eq "=" $limCpu) -}}
-    {{- $limCpu = $reqCpu -}}
-  {{- end -}}
-
-  {{- if and (eq "=" $reqMem $limMem) -}}
-    {{- $reqMem = "" -}}
-    {{- $limMem = "" -}}
-  {{- else if (eq "=" $reqMem) -}}
-    {{- $reqMem = $limMem -}}
-  {{- else if (eq "=" $limMem) -}}
-    {{- $limMem = $reqMem -}}
   {{- end -}}
 
   {{- if (eq "*" $reqCpu) -}}{{- $reqCpu = "" -}}{{- end -}}
