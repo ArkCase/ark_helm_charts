@@ -45,7 +45,7 @@ global:
     resources: false
 
   # Global resources supersede all other set resources
-  xresources:
+  resources:
 
     testchart:
       common: "23Gi,200m"
@@ -53,6 +53,9 @@ global:
       part-2: "23Gi,*"
       part-3: "24Gi,"
       part-4: "25Gi,0.25"
+      part-5:
+        requests: "5Gi,5"
+        limits: "6Gi,6"
 
 tests:
   crap1: "1Gi-2Gi,1-2"
