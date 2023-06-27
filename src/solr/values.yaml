@@ -13,7 +13,8 @@ configuration:
 
 # Resource allocations for development mode
 resources:
-  development: "*-700Mi,*-300m"
+  development:
+    limits: "700Mi,300m"
 
 # Please leave the `replicaCount` to 1 for the time being. Clustering is not
 # supported yet.
