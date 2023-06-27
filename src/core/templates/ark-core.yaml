@@ -213,9 +213,7 @@ spec:
           {{- with ($.Values.command).arkcase }}
           command: {{ toJson $ }}
           {{- end }}
-          {{- with ($.Values.resources).arkcase }}
-          resources: {{- toYaml . | nindent 12 }}
-          {{- end }}
+          resources: {{- include "arkcase.resources" (dict "ctx" $ "part" "arkcase") | nindent 12 }}
           {{- with ($.Values.securityContext).arkcase }}
           securityContext: {{- toYaml . | nindent 12 }}
           {{- end }}
@@ -294,9 +292,7 @@ spec:
           {{- with ($.Values.command).cloudconfig }}
           command: {{ toJson . }}
           {{- end }}
-          {{- with ($.Values.resources).cloudconfig }}
-          resources: {{- toYaml . | nindent 12 }}
-          {{- end }}
+          resources: {{- include "arkcase.resources" (dict "ctx" $ "part" "cloudconfig") | nindent 12 }}
           {{- with ($.Values.securityContext).cloudconfig }}
           securityContext: {{- toYaml . | nindent 12 }}
           {{- end }}
