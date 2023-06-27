@@ -58,60 +58,64 @@ tests:
   crap1: "1Gi-2Gi,1-2"
   crap2:
     #cpu: "3-4"
-    mem: "3Gi-4Gi"
+    memory: "3Gi-4Gi"
   crap3:
-    req: "5Gi,5"
-    lim: "6Gi,6"
+    requests: "5Gi,5"
+    limits: "6Gi,6"
   crap4:
-    req:
+    requests:
       cpu: 7
-      mem: "*"
-    lim:
+      memory: "*"
+    limits:
       cpu: "="
-      mem: 8Gi
+      memory: 8Gi
 
 resources:
   # Default resources are used by default
   default:
     common: # "1Gi,1"
-      mem: "*"
-      cpu: 1.5
+      limits:
+        memory: "*"
+        cpu: 1.5
+      requests:
+        memory: 1536Mi
+        cpu: "*"
 
     part-1:
-      mem: 2Gi
+      memory: 2Gi
       #cpu: 2
 
     part-2:
-      mem: 3Gi
+      memory: 3Gi
       cpu: 3
 
     part-3:
-      mem: 4Gi
+      memory: 4Gi
       cpu: 4
 
     part-4:
-      mem: 5Gi
+      memory: 5Gi
       cpu: 5
 
   # Dev resources supersede default resources IIF dev mode is enabled AND global.dev.resources is either missing or true. If set
   # to "false", then default resources are used.
   development:
     common:
-      mem: 11Gi
+      memory: 11Gi
       cpu: "*"
 
     part-1:
-      mem: 12Gi
+      memory: 12Gi
       cpu: 12
 
     part-2:
-      # mem: 13Gi
+      # memory: 13Gi
       cpu: 13
 
     part-3:
-      # mem: 14Gi
+      # memory: 14Gi
       cpu: 14
 
     part-4:
-      # mem: 15Gi
+      # memory: 15Gi
       cpu: 15
