@@ -55,5 +55,5 @@
   {{- $render = and $render (include "arkcase.subsystem.enabled" $ctx) -}}
   {{- $render = and $render (not (include "arkcase.rdbms.external" $ctx)) -}}
   {{- $render = and $render (or (not $name) (eq $name (include "arkcase.rdbms.type" $ctx))) -}}
-  {{- $render | ternary "true" "" -}}
+  {{- (not (empty $render)) | ternary "true" "" -}}
 {{- end -}}
