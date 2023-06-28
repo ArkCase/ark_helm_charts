@@ -150,10 +150,11 @@ service:
 ## @param service.probes.spec.successThreshold Success threshold for liveness and readiness probes
 ##
   probes:
-    enabled: true
+    # TODO: How to enable probes that work for all databases?
+    enabled: false
     spec:
-      initialDelaySeconds: 0
-      periodSeconds: 1
-      timeoutSeconds: 1
+      initialDelaySeconds: 5
+      periodSeconds: 5
+      timeoutSeconds: 5
       failureThreshold: 60
       successThreshold: 1

@@ -289,9 +289,9 @@ service:
         httpGet:
           path: "/actuator/health"
           port: *cloudconfigPort
-        initialDelaySeconds: 0
-        periodSeconds: 1
-        timeoutSeconds: 1
+        initialDelaySeconds: 10
+        periodSeconds: 5
+        timeoutSeconds: 5
         failureThreshold: 60
         successThreshold: 1
 
@@ -309,10 +309,8 @@ service:
         httpGet:
           path: "/arkcase"
           port: *arkcasePort
-        initialDelaySeconds: 30
+        initialDelaySeconds: 300
         periodSeconds: 30
-        timeoutSeconds: 1
+        timeoutSeconds: 10
         failureThreshold: 150
         successThreshold: 1
-      liveness:
-        initialDelaySeconds: 300

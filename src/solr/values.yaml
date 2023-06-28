@@ -132,7 +132,7 @@ service:
         path: "/solr/admin/info/health"
         port: *solr
       initialDelaySeconds: 10
-      periodSeconds: 1
-      timeoutSeconds: 1
+      periodSeconds: 10
+      timeoutSeconds: 10
       failureThreshold: 60
       successThreshold: 1
