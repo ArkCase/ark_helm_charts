@@ -15,6 +15,21 @@ image:
     repository: "dbinitrepository"
     tag: "dbinittag"
 
+persistence:
+  # If set to `false`, an `emptyDir` will be used instead and all other `persistence.*` parameters
+  # are ignored.
+  enabled: true
+
+  # Set the default capacity for volumes in case none is assigned explicitly
+  # and the default value is insufficient
+  storageClassName: "gp3"
+  accessModes: [ "RWM" ]
+  volumeSize:
+    init: "4Gi"
+    home: "8Gi"
+    conf: "4Gi"
+    war: "2Gi"
+    logs: "2Gi"
 
 initDependencies:
   enabled: true
