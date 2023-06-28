@@ -564,7 +564,7 @@ Parse a volume declaration and return a map that contains the following (possibl
   {{- $globalPersistence := (($ctx.Values.global).persistence | default dict) -}}
   {{- $globalPersistenceVolumes := ($globalPersistence.volumes | default dict) -}}
 
-  {{- $defaultSize := get (($persistence.default).volumeSize | default dict) $name -}}
+  {{- $defaultSize := get ($persistence.volumeSize | default dict) $name -}}
   {{- if or (not $defaultSize) (not (kindIs "string" $defaultSize)) -}}
     {{- $defaultSize = "" -}}
   {{- end -}}
