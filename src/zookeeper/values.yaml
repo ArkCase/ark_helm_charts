@@ -153,7 +153,7 @@ service:
       exec:
         command: [ "/app/zookeeper/bin/zkServer.sh", "status" ]
       initialDelaySeconds: 10
-      periodSeconds: 1
-      timeoutSeconds: 1
+      periodSeconds: 30
+      timeoutSeconds: 30
       failureThreshold: 60
       successThreshold: 1
