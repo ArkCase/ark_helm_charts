@@ -4,6 +4,7 @@
 - [Basic Premise](#basic-premise)
 - [Operating Modes](#operating-modes)
 - [Abbreviated Syntax](#abbreviated-syntax)
+- [Default Allocations](#default-allocations)
 
 This document describes the model and configuration for specifying the resource allocations - requests and/or limits - for Pods as part of the ArkCase deployment. As with any community-release project, Issues and PRs are always welcome to help move this code further along.
 
@@ -230,3 +231,26 @@ finalExample:
     memory: "MEM"
     cpu: "CPU"
 ```
+
+## <a name="default-allocations"></a>Default Allocations
+
+The following tables describe the default and development mode allocations for each container as per the current form of these charts.  The actual values used may be slightly out of date with this table, but we will strive to keep this table current.
+
+For brevity, we'll use the [string notation described above](#abbreviated-syntax).
+
+|Chart|Container|Default|Development|
+|activemq|(main)||200Mi,0.2|
+|content (Alfresco)|activemq|\*-1Gi|200Mi-1Gi,100m-500m|
+||main|\*-1536Mi|200Mi-1536Mi,100m-500m|
+||search|\*-2Gi|200Mi-2Gi,200m-500m|
+||sfs|\*-512Mi||
+||share|\*-1Gi|400Mi-1Gi,200m-500m|
+||transform-core-aio|\*-1536Mi|200Mi-1536Mi,300m-500m|
+||transform-router|\*-512Mi||
+|core|arkcase||\*-3Gi,\*-2|
+||cloudconfig||\*-2Gi,\*-1|
+|ldap|samba||\*-1268Mi,\*-0.4|
+||step-ca|||
+|rdbms (both MariaDB and PostgreSQL)|(main)||\*-100Mi,\*-0.1|
+|reports|(main)||\*-2Gi,\*-1|
+|search|(main)||\*-700Mi,\*-300m|
