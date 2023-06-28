@@ -89,14 +89,7 @@ spec:
           {{- with (include "arkcase.values" (dict "ctx" $ "base" "command") | fromYaml) }}
           command: {{ toJson .value }}
           {{- end }}
-          {{- $resources := (include "arkcase.resources" $ | fromYaml) }}
-          {{- if $resources }}
-          resources: {{- toYaml $resources | nindent 12 }}
-          {{- else }}
-          resources:
-            limits:
-              memory: "512Mi"
-          {{- end }}
+          resources: {{- include "arkcase.resources" $ | nindent 12 }}
           volumeMounts:
             - name: *dataVolume
               mountPath: *dataDir

@@ -133,14 +133,7 @@ spec:
           {{- with (include "arkcase.values" (dict "ctx" $ "base" "command") | fromYaml) }}
           command: {{ toJson .value }}
           {{- end }}
-          {{- $resources := (include "arkcase.resources" $ | fromYaml) }}
-          {{- if $resources }}
-          resources: {{- toYaml $resources | nindent 12 }}
-          {{- else }}
-          resources:
-            limits:
-              memory: "1536Mi"
-          {{- end }}
+          resources: {{- include "arkcase.resources" $ | nindent 12 }}
           volumeMounts:
             {{- include "arkcase.alfresco.license.volumeMounts" (dict "ctx" $ "volume" "secrets" "path" "/usr/local/tomcat/shared/classes/alfresco/extension/license") | nindent 12 }}
             {{- include "arkcase.trusts.mount" $ | nindent 12 }}
