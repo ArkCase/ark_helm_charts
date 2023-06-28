@@ -94,14 +94,23 @@ initDependencies:
         - 5432
 
 resources:
+  default:
+    activemq: "*-1Gi"
+    main: "*-1536Mi"
+    search: "*-2Gi"
+    sfs: "*-512Mi"
+    share: "*-1Gi"
+    transform-core-aio: "*-1536Mi"
+    transform-router: "*-512Mi"
+
   development:
-    main: "200Mi-1536Mi,100m-500m"
-    share: "400Mi-1Gi,200m-500m"
     activemq: "200Mi-1Gi,100m-500m"
+    main: "200Mi-1536Mi,100m-500m"
     search: "200Mi-2Gi,200m-500m"
-    sfs: #.... ???
+    # sfs: "...?"
+    share: "400Mi-1Gi,200m-500m"
     transform-core-aio: "200Mi-1536Mi,300m-500m"
-    transform-router: #.... ???
+    # transform-router: "...?"
 
 platform: ""
 

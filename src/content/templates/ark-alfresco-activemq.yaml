@@ -70,14 +70,7 @@ spec:
           {{- with (include "arkcase.values" (dict "ctx" $ "base" "command") | fromYaml) }}
           command: {{ toJson .value }}
           {{- end }}
-          {{- $resources := (include "arkcase.resources" $ | fromYaml) }}
-          {{- if $resources }}
-          resources: {{- toYaml $resources | nindent 12 }}
-          {{- else }}
-          resources:
-            limits:
-              memory: "1Gi"
-          {{- end }}
+          resources: {{- include "arkcase.resources" $ | nindent 12 }}
       {{- with (include "arkcase.values" (dict "ctx" $ "base" "nodeSelector") | fromYaml) }}
       nodeSelector: {{- toYaml .value | nindent 8 }}
       {{- end }}
