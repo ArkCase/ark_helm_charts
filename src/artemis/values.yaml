@@ -169,10 +169,13 @@ service:
   probes:
     enabled: true
     spec:
-      exec:
-        command: [ "/check-health" ]
+      httpGet:
+        path: "/console"
+        port: *console
+      # exec:
+      #   command: [ "/check-health" ]
       initialDelaySeconds: 10
-      periodSeconds: 1
-      timeoutSeconds: 1
+      periodSeconds: 5
+      timeoutSeconds: 5
       failureThreshold: 60
       successThreshold: 1
