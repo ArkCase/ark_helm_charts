@@ -167,7 +167,9 @@ metadata:
       {{- toYaml . | nindent 4 }}
     {{- end }}
 spec:
-  publishNotReadyAddresses: {{ $cluster.enabled | ternary $cluster.publishNotReady "false" }}
+    {{- if and $cluster.enabled $cluster.publishNotReady }}
+  publishNotReadyAddresses: "true"
+    {{- end }}
     {{- if or (not $external) (include "arkcase.tools.isIp" $external) }}
   # This is either an internal service, or an external service using an IP address
   type: {{ coalesce $type "ClusterIP" }}
