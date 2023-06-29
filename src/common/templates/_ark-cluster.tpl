@@ -144,7 +144,25 @@
     {{- $info = pick $info "enabled" "onePerHost" -}}
     {{- $info = set $info "nodes" ($info.enabled | ternary 2 1) -}}
   {{- end -}}
-  {{- $info | toYaml -}}
+
+  {{- $clusterConfig := (.Files.Get "cluster.yaml" | fromYaml) -}}
+  {{- if not (kindIs "map" $clusterConfig) -}}
+    {{- $clusterConfig = dict -}}
+  {{- end -}}
+
+  {{- /* Add any default flags that should be here */ -}}
+  {{- if (not (hasKey $clusterConfig "publishNotReady")) -}}
+    {{- $clusterConfig = set $clusterConfig "publishNotReady" false -}}
+  {{- else -}}
+    {{- $clusterConfig = set $clusterConfig "publishNotReady" (not (empty (include "arkcase.toBoolean" $clusterConfig.publishNotReady))) -}}
+  {{- end -}}
+  {{- if (not (hasKey $clusterConfig "onePerHost")) -}}
+    {{- $clusterConfig = set $clusterConfig "onePerHost" false -}}
+  {{- else -}}
+    {{- $clusterConfig = set $clusterConfig "onePerHost" (not (empty (include "arkcase.toBoolean" $clusterConfig.onePerHost))) -}}
+  {{- end -}}
+
+  {{- merge $info $clusterConfig | toYaml -}}
 {{- end -}}
 
 {{- define "arkcase.cluster.zookeeper" -}}
