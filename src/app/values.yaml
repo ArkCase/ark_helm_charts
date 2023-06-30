@@ -178,12 +178,14 @@ rdbms:
     admin: "YieghuV!ahh0EoC1"
     users:
       arkcase: &arkcaseDbPassword "ho!aKaeyoh-zo1do"
+      cloudconfig: &cloudConfigPassword "phae@y2huso!Yoh8"
       content: &contentDbPassword "eth3be.ox4phah!W"
       jcr: &jcrDbPassword "ong>oo0Ocha~up^e"
       pentaho: &pentahoDbPassword "faiv>a[gheeP3Cai"
       quartz: &quartzDbPassword "lie't+ahra6aiShu"
     databases:
       arkcase: &arkcaseDb "arkcase"
+      cloudconfig: &cloudConfigDb "cloudconfig"
       content: &contentDb "content"
       jcr: &jcrDb "jcr"
       pentaho: &pentahoDb "pentaho"
@@ -225,6 +227,10 @@ core:
           database: *arkcaseDb
           username: *arkcaseDb
           password: *arkcaseDbPassword
+        cloudconfig: &arkcaseDbConfig
+          database: *cloudConfigDb
+          username: *cloudConfigDb
+          password: *cloudConfigPassword
     arkcase:
       adminUsername: *arkcaseAdminUsername
       adminPassword: *arkcaseAdminPassword
