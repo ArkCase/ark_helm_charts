@@ -168,7 +168,7 @@ metadata:
     {{- end }}
 spec:
     {{- if and $cluster.enabled $cluster.publishNotReady }}
-  publishNotReadyAddresses: "true"
+  publishNotReadyAddresses: true
     {{- end }}
     {{- if or (not $external) (include "arkcase.tools.isIp" $external) }}
   # This is either an internal service, or an external service using an IP address
