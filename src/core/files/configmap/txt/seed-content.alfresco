@@ -177,6 +177,18 @@ def add_administrator(session, name, group):
 	})
 
 	if rsp.status_code >= 400:
+		json = rsp.json();
+		# See if it's the special case of a duplicate member...
+		if "error" in error:
+			error = json["error"]
+			if "briefSummary" in error:
+				briefSummary = error["briefSummary"]
+				if briefSummary.upper().startswith("DUPLICATE "):
+					# We're OK ... it's just a duplicate member, so return True
+					logging.info(f"\t\tDuplicate entry!")
+					return True
+
+		# Not a duplicate member ... explode!
 		fail(f"\t\tFailed (sc: {rsp.status_code}): {rsp.text}")
 
 	return True
