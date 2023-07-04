@@ -33,7 +33,7 @@ spec:
   replicas: {{ $nodes }}
   selector: &labelSelector
     matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
-  serviceName: {{ include "arkcase.name" $ | quote }}
+  serviceName: {{ include "arkcase.service.headless" $ | quote }}
   updateStrategy:
     type: {{ $.Values.updateStrategy }}
     {{- if (eq "Recreate" $.Values.updateStrategy) }}

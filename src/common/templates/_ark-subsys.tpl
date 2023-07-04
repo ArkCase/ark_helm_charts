@@ -117,6 +117,14 @@ Parameter: either the root context (i.e. "." or "$"), or
   {{- end -}}
 {{- end -}}
 
+{{- define "arkcase.service.name" }}
+  {{- include "arkcase.name" $ -}}
+{{- end -}}
+
+{{- define "arkcase.service.headless" }}
+  {{- printf "%s-dns" (include "arkcase.service.name" $) -}}
+{{- end -}}
+
 {{- define "arkcase.subsystem.service.render" }}
   {{- $ctx := .ctx }}
   {{- $data := .data }}
@@ -140,11 +148,12 @@ Parameter: either the root context (i.e. "." or "$"), or
       {{- $type = $overrides.type -}}
     {{- end -}}
 
+    {{- if not $external }}
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "arkcase.name" $ctx | quote }}
+  name: {{ include "arkcase.service.headless" $ctx | quote }}
   namespace: {{ $ctx.Release.Namespace | quote }}
   labels: {{- include "arkcase.labels" $ctx | nindent 4 }}
     {{- with $ctx.Values.labels }}
@@ -167,9 +176,57 @@ metadata:
       {{- toYaml . | nindent 4 }}
     {{- end }}
 spec:
-    {{- if and $cluster.enabled $cluster.publishNotReady }}
   publishNotReadyAddresses: true
+  type: "ClusterIP"
+  clusterIP: "None"
+  ports:
+      {{- if (empty $ports) }}
+        {{- fail "There are no ports defined to be proxied for this external service" }}
+      {{- end }}
+      {{- $portOverrides := ($overrides.ports | default dict) -}}
+      {{- range $ports }}
+    - name: {{ (required "Port specifications must contain a name" .name) | quote }}
+      protocol: {{ coalesce .protocol "TCP" }}
+      port: {{ required (printf "Port [%s] doesn't have a port number" .name) .port }}
+        {{- if .targetPort }}
+      targetPort: {{ int .targetPort }}
+        {{- end }}
+        {{- if (eq $type "NodePort") }}
+          {{- $nodePort := coalesce ((hasKey $portOverrides .name) | ternary (get $portOverrides .name) 0) (.nodePort | default 0) }}
+          {{- if $nodePort }}
+      nodePort: {{ int $nodePort }}
+          {{- end }}
+        {{- end }}
+      {{- end }}
+  selector: {{- include "arkcase.labels.matchLabels" $ctx | nindent 4 }}
     {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "arkcase.service.name" $ctx | quote }}
+  namespace: {{ $ctx.Release.Namespace | quote }}
+  labels: {{- include "arkcase.labels" $ctx | nindent 4 }}
+    {{- with $ctx.Values.labels }}
+      {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- with $data.labels }}
+      {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- with $overrides.labels }}
+      {{- toYaml . | nindent 4 }}
+    {{- end }}
+  annotations:
+    {{- with $ctx.Values.annotations }}
+      {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- with $data.annotations }}
+      {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- with $overrides.annotations }}
+      {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
     {{- if or (not $external) (include "arkcase.tools.isIp" $external) }}
   # This is either an internal service, or an external service using an IP address
   type: {{ coalesce $type "ClusterIP" }}
