@@ -148,6 +148,7 @@ Parameter: either the root context (i.e. "." or "$"), or
       {{- $type = $overrides.type -}}
     {{- end -}}
 
+    {{- $serviceName := (include "arkcase.service.name" $ctx) -}}
     {{- if not $external }}
 ---
 apiVersion: v1
@@ -181,7 +182,7 @@ spec:
   clusterIP: "None"
   ports:
       {{- if (empty $ports) }}
-        {{- fail "There are no ports defined to be proxied for this external service" }}
+        {{- fail (printf "There are no ports defined for the %s service" $serviceName) }}
       {{- end }}
       {{- $portOverrides := ($overrides.ports | default dict) -}}
       {{- range $ports }}
@@ -191,12 +192,6 @@ spec:
         {{- if .targetPort }}
       targetPort: {{ int .targetPort }}
         {{- end }}
-        {{- if (eq $type "NodePort") }}
-          {{- $nodePort := coalesce ((hasKey $portOverrides .name) | ternary (get $portOverrides .name) 0) (.nodePort | default 0) }}
-          {{- if $nodePort }}
-      nodePort: {{ int $nodePort }}
-          {{- end }}
-        {{- end }}
       {{- end }}
   selector: {{- include "arkcase.labels.matchLabels" $ctx | nindent 4 }}
     {{- end }}
@@ -204,7 +199,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "arkcase.service.name" $ctx | quote }}
+  name: {{ $serviceName | quote }}
   namespace: {{ $ctx.Release.Namespace | quote }}
   labels: {{- include "arkcase.labels" $ctx | nindent 4 }}
     {{- with $ctx.Values.labels }}
@@ -227,6 +222,7 @@ metadata:
       {{- toYaml . | nindent 4 }}
     {{- end }}
 spec:
+  publishNotReadyAddresses: false
     {{- if or (not $external) (include "arkcase.tools.isIp" $external) }}
   # This is either an internal service, or an external service using an IP address
   type: {{ coalesce $type "ClusterIP" }}
@@ -243,7 +239,7 @@ spec:
   {{- end }}
   ports:
       {{- if (empty $ports) }}
-        {{- fail "There are no ports defined to be proxied for this external service" }}
+        {{- fail (printf "There are no ports defined for the %s service" $serviceName) }}
       {{- end }}
       {{- $portOverrides := ($overrides.ports | default dict) -}}
       {{- range $ports }}

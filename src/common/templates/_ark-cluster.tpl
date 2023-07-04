@@ -151,11 +151,6 @@
   {{- end -}}
 
   {{- /* Add any default flags that should be here */ -}}
-  {{- if (not (hasKey $clusterConfig "publishNotReady")) -}}
-    {{- $clusterConfig = set $clusterConfig "publishNotReady" false -}}
-  {{- else -}}
-    {{- $clusterConfig = set $clusterConfig "publishNotReady" (not (empty (include "arkcase.toBoolean" $clusterConfig.publishNotReady))) -}}
-  {{- end -}}
   {{- if (not (hasKey $clusterConfig "onePerHost")) -}}
     {{- $clusterConfig = set $clusterConfig "onePerHost" false -}}
   {{- else -}}
