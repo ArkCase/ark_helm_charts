@@ -1,15 +1,18 @@
 {{- $cluster := (include "arkcase.cluster.info" $ | fromYaml) -}}
+{{- $fullName := (include "arkcase.fullname" $) -}}
+{{- $roleBaseName := "pod-modifier" -}}
+{{- $roleName := (printf "%s-%s" $fullName $roleBaseName) -}}
 ---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: {{ include "arkcase.fullname" $ | quote }}
+  name: {{ $fullName | quote }}
   namespace: {{ $.Release.Namespace | quote }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  name: pod-modifier
+  name: {{ $roleName | quote }}
   namespace: {{ $.Release.Namespace | quote }}
 rules:
   - apiGroups: [ "" ]
@@ -19,20 +22,20 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: {{ printf "%s:pod-modifier" (include "arkcase.fullname" $) | quote }}
+  name: {{ printf "%s:%s" $fullName $roleBaseName | quote }}
   namespace: {{ $.Release.Namespace | quote }}
 subjects:
   - kind: ServiceAccount
-    name: {{ include "arkcase.fullname" $ | quote }}
+    name: {{ $fullName | quote }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: pod-modifier
+  name: {{ $roleName | quote }}
 ---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ include "arkcase.fullname" $ | quote }}
+  name: {{ $fullName | quote }}
   namespace: {{ $.Release.Namespace | quote }}
   labels: {{- include "arkcase.labels" $ | nindent 4 }}
     {{- with ($.Values.labels).common }}
@@ -55,7 +58,7 @@ spec:
     {{- end }}
   template:
     metadata:
-      name: {{ include "arkcase.fullname" $ | quote }}
+      name: {{ $fullName | quote }}
       namespace: {{ $.Release.Namespace | quote }}
       labels: {{- include "arkcase.labels" $ | nindent 8 }}
         {{- with ($.Values.labels).common }}
@@ -73,7 +76,7 @@ spec:
       {{- if $.Values.schedulerName }}
       schedulerName: {{ $.Values.schedulerName | quote }}
       {{- end }}
-      serviceAccountName: {{ include "arkcase.fullname" $ | quote }}
+      serviceAccountName: {{ $fullName | quote }}
       {{- with ($.Values.securityContext).template }}
       securityContext: {{- toYaml . | nindent 8 }}
       {{- end }}
@@ -93,7 +96,7 @@ spec:
       volumes:
         - name: *configMap
           configMap:
-            name: {{ include "arkcase.fullname" $ | quote }}
+            name: {{ $fullName | quote }}
             optional: false
             defaultMode: 0440
             items:
