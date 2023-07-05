@@ -122,7 +122,9 @@ Parameter: either the root context (i.e. "." or "$"), or
 {{- end -}}
 
 {{- define "arkcase.service.headless" }}
-  {{- printf "%s-dns" (include "arkcase.service.name" $) -}}
+  {{- $cluster := (include "arkcase.cluster" $ | fromYaml) -}}
+  {{- $name := (include "arkcase.service.name" $) -}}
+  {{- $cluster.enabled | ternary (printf "%s-dns" $name) $name -}}
 {{- end -}}
 
 {{- define "arkcase.subsystem.service.render" }}
@@ -149,12 +151,14 @@ Parameter: either the root context (i.e. "." or "$"), or
     {{- end -}}
 
     {{- $serviceName := (include "arkcase.service.name" $ctx) -}}
+    {{- $headlessName := (include "arkcase.service.headless" $ctx) -}}
     {{- if not $external }}
+      {{- if ne $serviceName $headlessName }}
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "arkcase.service.headless" $ctx | quote }}
+  name: {{ $headlessName | quote }}
   namespace: {{ $ctx.Release.Namespace | quote }}
   labels: {{- include "arkcase.labels" $ctx | nindent 4 }}
     {{- with $ctx.Values.labels }}
@@ -181,20 +185,21 @@ spec:
   type: "ClusterIP"
   clusterIP: "None"
   ports:
-      {{- if (empty $ports) }}
-        {{- fail (printf "There are no ports defined for the %s service" $serviceName) }}
-      {{- end }}
-      {{- $portOverrides := ($overrides.ports | default dict) -}}
-      {{- range $ports }}
+          {{- if (empty $ports) }}
+            {{- fail (printf "There are no ports defined for the %s service" $serviceName) }}
+          {{- end }}
+          {{- $portOverrides := ($overrides.ports | default dict) -}}
+          {{- range $ports }}
     - name: {{ (required "Port specifications must contain a name" .name) | quote }}
       protocol: {{ coalesce .protocol "TCP" }}
       port: {{ required (printf "Port [%s] doesn't have a port number" .name) .port }}
-        {{- if .targetPort }}
+            {{- if .targetPort }}
       targetPort: {{ int .targetPort }}
+            {{- end }}
+          {{- end }}
+  selector: {{- include "arkcase.labels.matchLabels" $ctx | nindent 4 }}
         {{- end }}
       {{- end }}
-  selector: {{- include "arkcase.labels.matchLabels" $ctx | nindent 4 }}
-    {{- end }}
 ---
 apiVersion: v1
 kind: Service
