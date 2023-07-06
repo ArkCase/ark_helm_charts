@@ -175,21 +175,6 @@ hostname > "${JCR_DIR}/cluster_node.id"
 # LAUNCH THE SERVER PROCESS                                       #
 ###################################################################
 
-MAX_BOOT_DELAY="60"
-if [ -v BOOT_DELAY ] && [[ "${BOOT_DELAY}" =~ ^[0-9]+$ ]] ; then
-	BOOT_DELAY="$(( 10#${BOOT_DELAY} ))"
-	if [ ${BOOT_DELAY} -gt 0 ] ; then
-		[ ${BOOT_DELAY} -gt ${MAX_BOOT_DELAY} ] && BOOT_DELAY=${MAX_BOOT_DELAY}
-		say "Applying a boot delay of ${BOOT_DELAY} seconds"
-		START="$(date +%s)"
-		while true ; do
-			DIFF="$(( $(date +%s) - START ))"
-			[ ${DIFF} -ge ${BOOT_DELAY} ] && break
-			sleep 1 || fail "Boot delay aborted - exiting"
-		done
-	fi
-fi
-
 CMD=("${PENTAHO_SERVER}/start-pentaho.sh" "${@}")
 say "Launching Pentaho as: ${CMD[@]@Q}"
 exec "${CMD}"

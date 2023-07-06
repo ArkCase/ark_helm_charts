@@ -113,7 +113,6 @@ spec:
           securityContext: {{- toYaml . | nindent 12 }}
           {{- end }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
-            {{- include "arkcase.cluster.bootDelay" ($cluster.enabled | ternary 10 0) | nindent 12 }}
             - name: ARTEMIS_ADMIN_PASSWORD
               valueFrom:
                 secretKeyRef:

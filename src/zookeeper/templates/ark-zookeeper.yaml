@@ -111,7 +111,6 @@ spec:
           {{- end }}
           {{- include "arkcase.image" $ | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
-            {{- include "arkcase.cluster.bootDelay" ($cluster.enabled | ternary 10 0) | nindent 12 }}
             - name: ZOOCFGDIR
               value: *confPath
             - name: ZOO_LOG_DIR
