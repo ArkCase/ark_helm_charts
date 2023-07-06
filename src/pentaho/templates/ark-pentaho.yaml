@@ -276,6 +276,22 @@ spec:
               mountPath: "/app/init/reports/000-arkcase-base-reports.tar.gz"
               subPath: &baseReportsTarGz {{ printf "base-reports.%s.tar.gz" $db.reports | quote }}
               readOnly: true
+        {{- if $cluster.enabled }}
+        - name: haproxy
+          {{- with ($.Values.securityContext).pentaho }}
+          securityContext: {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- include "arkcase.image" (dict "ctx" $ "name" "haproxy" "repository" "haproxy") | nindent 10 }}
+          env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+          {{- if $.Values.command }}
+          command: {{- $.Values.command | toYaml | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: *configMap
+              mountPath: "/usr/local/etc/haproxy/haproxy.cfg"
+              subPath: &haproxyCfg "haproxy.cfg"
+              readOnly: true
+        {{- end }}
       volumes:
         {{- include "arkcase.trusts.volume" $ | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
@@ -337,6 +353,10 @@ spec:
                 mode: 0555
               - key: *baseReportsTarGz
                 path: *baseReportsTarGz
+              {{- if $cluster.enabled }}
+              - key: *haproxyCfg
+                path: *haproxyCfg
+              {{- end }}
       {{- with $.Values.nodeSelector }}
       nodeSelector: {{- toYaml . | nindent 8 }}
       {{- end }}

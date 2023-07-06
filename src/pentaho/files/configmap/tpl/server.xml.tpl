@@ -1,5 +1,8 @@
 {{- $proxyName := (((.Values.configuration).tomcat).proxy).name -}}
 {{- $proxyPort := (((.Values.configuration).tomcat).proxy).port -}}
+{{- $cluster := (include "arkcase.cluster" $ | fromYaml) -}}
+{{- $httpPort := $cluster.enabled | ternary 4040 8080 -}}
+{{- $httpsPort := $cluster.enabled | ternary 4443 8443 -}}
 <?xml version='1.0' encoding='utf-8'?>
 <!--
   Licensed to the Apache Software Foundation (ASF) under one or more
@@ -66,12 +69,12 @@
          Java HTTP Connector: /docs/config/http.html (blocking & non-blocking)
          Java AJP  Connector: /docs/config/ajp.html
          APR (HTTP/AJP) Connector: /docs/apr.html
-         Define a non-SSL/TLS HTTP/1.1 Connector on port 8080
+         Define a non-SSL/TLS HTTP/1.1 Connector on port {{ $httpPort }}
     -->
     <Connector URIEncoding="UTF-8"
-       port="8080" protocol="HTTP/1.1"
+       port="{{ $httpPort }}" protocol="HTTP/1.1"
        connectionTimeout="20000"
-       redirectPort="8443"
+       redirectPort="{{ $httpsPort }}"
        relaxedPathChars="[]|"
        relaxedQueryChars="^{}[]|&amp;"
        maxHttpHeaderSize="65536"
@@ -88,17 +91,17 @@
     <!-- A "Connector" using the shared thread pool-->
     <!--
     <Connector URIEncoding="UTF-8" executor="tomcatThreadPool"
-               port="8080" protocol="HTTP/1.1"
+               port="{{ $httpPort }}" protocol="HTTP/1.1"
                connectionTimeout="20000"
-               redirectPort="8443" />
+               redirectPort="{{ $httpsPort }}" />
     -->
-    <!-- Define a SSL/TLS HTTP/1.1 Connector on port 8443
+    <!-- Define a SSL/TLS HTTP/1.1 Connector on port {{ $httpsPort }}
          This connector uses the NIO implementation that requires the JSSE
          style configuration. When using the APR/native implementation, the
          OpenSSL style configuration is required as described in the APR/native
          documentation -->
     <!--
-    <Connector URIEncoding="UTF-8" port="8443" protocol="org.apache.coyote.http11.Http11NioProtocol"
+    <Connector URIEncoding="UTF-8" port="{{ $httpsPort }}" protocol="org.apache.coyote.http11.Http11NioProtocol"
                maxThreads="150" SSLEnabled="true" scheme="https" secure="true"
                clientAuth="false" sslProtocol="TLS" />
     -->
@@ -108,7 +111,7 @@
     <Connector protocol="AJP/1.3"
                address="::1"
                port="8009"
-               redirectPort="8443" />
+               redirectPort="{{ $httpsPort }}" />
     -->
 
     <!-- An Engine represents the entry point (within Catalina) that processes
@@ -125,7 +128,6 @@
       <!--For clustering, please take a look at documentation at:
           /docs/cluster-howto.html  (simple how to)
           /docs/config/cluster.html (reference documentation) -->
-      {{- $cluster := (include "arkcase.cluster" $ | fromYaml) }}
       {{- if $cluster.enabled }}
       <Cluster className="org.apache.catalina.ha.tcp.SimpleTcpCluster">
         <Channel className="org.apache.catalina.tribes.group.GroupChannel">
