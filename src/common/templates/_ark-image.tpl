@@ -73,7 +73,7 @@
       {{- if and $r.value (kindIs "map" $r.value) -}}
         {{- /* If we've been given an image name, we can only consider the image */ -}}
         {{- /* attributes from maps that match that given name (i.e. ends with */ -}}
-        {{- /* $imageSuffix. If we don't have an image name, then named scopes will */ -}}
+        {{- /* $imageSuffix). If we don't have an image name, then named scopes will */ -}}
         {{- /* not be included in the search path possibilities. */ -}}
         {{- if or (not $image) (hasSuffix $imageSuffix $s) -}}
           {{- range $att := $imageAttributes -}}
@@ -97,14 +97,11 @@
         {{- if $found -}}
           {{- range $att := $commonAttributes -}}
             {{- /* Never override values we've already found */ -}}
-            {{- if not (hasKey $result $att) -}}
+            {{- if and (not (hasKey $result $att)) (hasKey $r.value $att) -}}
               {{- $v := get $r.value $att -}}
-              {{- /* Only accept non-empty strings */ -}}
-              {{- if and $v (kindIs "string" $v) -}}
-                {{- $result = set $result $att $v -}}
-                {{- /* Mark the found attribute as ... well ... found! */ -}}
-                {{- $pending = omit $pending $att -}}
-              {{- end -}}
+              {{- $result = set $result $att (empty $v | ternary "" $v) -}}
+              {{- /* Mark the found attribute as ... well ... found! */ -}}
+              {{- $pending = omit $pending $att -}}
             {{- end -}}
           {{- end -}}
         {{- end -}}
@@ -147,11 +144,9 @@
         {{- if not (hasKey $result $att) -}}
           {{- $v := get $scope $att -}}
           {{- /* Only accept non-empty strings */ -}}
-          {{- if and $v (kindIs "string" $v) -}}
-            {{- $result = set $result $att $v -}}
-            {{- /* Mark the found attribute as ... well ... found! */ -}}
-            {{- $pending = omit $pending $att -}}
-          {{- end -}}
+          {{- $result = set $result $att (empty $v | ternary "" $v) -}}
+          {{- /* Mark the found attribute as ... well ... found! */ -}}
+          {{- $pending = omit $pending $att -}}
         {{- end -}}
       {{- end -}}
     {{- end -}}
