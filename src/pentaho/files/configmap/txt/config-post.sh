@@ -35,6 +35,7 @@ set -euo pipefail
 [ -v BASE_DIR ] || BASE_DIR="/app"
 [ -v DATA_DIR ] || DATA_DIR="${BASE_DIR}/data"
 [ -v LOGS_DIR ] || LOGS_DIR="${BASE_DIR}/logs"
+[ -v ADMIN_PORT ] || ADMIN_PORT="8080"
 
 if [ -d "${LOGS_DIR}" ] ; then
 	LOG_FILE="${LOGS_DIR}/config-post.log"
@@ -49,7 +50,7 @@ fi
 [ -v INIT_MAX_WAIT ] || INIT_MAX_WAIT=900
 [[ "${INIT_MAX_WAIT}" =~ ^[1-9][0-9]*$ ]] || INIT_MAX_WAIT=900
 
-[ -v ADMIN_URL ] || ADMIN_URL="http://localhost:8080/pentaho/"
+[ -v ADMIN_URL ] || ADMIN_URL="http://localhost:${ADMIN_PORT}/pentaho/"
 
 START="$(date +%s)"
 say "Starting the polling cycle"

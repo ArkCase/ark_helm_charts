@@ -175,6 +175,8 @@ spec:
                 secretKeyRef:
                   name: *secrets
                   key: "adminPassword"
+            - name: ADMIN_PORT
+              value: {{ $cluster.enabled | ternary 4040 8080 | toString | quote }}
           {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
           {{- if $.Values.command }}
           command: {{- $.Values.command | toYaml | nindent 12 }}
