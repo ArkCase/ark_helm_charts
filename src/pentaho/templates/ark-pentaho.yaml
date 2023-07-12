@@ -290,9 +290,7 @@ spec:
           {{- end }}
           {{- include "arkcase.image" (dict "ctx" $ "name" "haproxy" "repository" "haproxy") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
-          {{- if $.Values.command }}
-          command: {{- $.Values.command | toYaml | nindent 12 }}
-          {{- end }}
+          # command: [ "sleep", "infinity" ]
           volumeMounts:
             - name: *configMap
               mountPath: "/usr/local/etc/haproxy/haproxy.cfg"
