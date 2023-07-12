@@ -185,6 +185,7 @@ say "Co-process started (pid=${LOCK_PID}, fd=${LOCK_OUT})"
 
 RC=0
 LAUNCH="exec"
+LOCK_START="$(date +%s)"
 while true ; do
 	# Has the marker been output?
 	if read -u ${LOCK_OUT} LINE &>/dev/null ; then
@@ -212,12 +213,25 @@ while true ; do
 	say "Another process executed the initialization"
 	break
 done
+LOCK_END="$(date +%s)"
 
 ###################################################################
 # LAUNCH THE SERVER PROCESS                                       #
 ###################################################################
 
 CMD=("${PENTAHO_SERVER}/start-pentaho.sh" "${@}")
-[ -z "${LAUNCH}" ] || CMD=("${LAUNCH}" "${CMD[@]}")
+if [ -n "${LAUNCH}" ] ; then
+	CMD=("${LAUNCH}" "${CMD[@]}")
+
+	# If we had to wait more than 10 seconds for the initialization lock
+	# then it means this is the first boot, so we do stupid things to
+	# deal with stupid issues with Pentaho... otherwise, no wait, just go!
+	if [ $(( LOCK_END - LOCK_START )) -ge 10 ] ; then
+		[ -v BOOT_DELAY ] || BOOT_DELAY="30"
+		[[ "${BOOT_DELAY}" =~ ^[1-9][0-9]*$ ]] || BOOT_DELAY="30"
+		say "Applying a delay of ${BOOT_DELAY} seconds (don't ask... thank Hitachi)"
+		sleep "${BOOT_DELAY}" || fail "Initial delay interrupted, can't continue"
+	fi
+fi
 say "Launching Pentaho as: ${CMD[@]@Q}"
 "${CMD[@]}"
