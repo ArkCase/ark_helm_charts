@@ -172,6 +172,39 @@ mkdir -p "${JCR_DIR}"
 hostname > "${JCR_DIR}/cluster_node.id"
 
 ###################################################################
+# LOCK FOR FIRST INITIALIZATION TO AVOID PROBLEMS IN CLUSTERING   #
+###################################################################
+
+INITIALIZER_PROCESS="/config-post.sh"
+MARKER="$(dd if=/dev/urandom bs=3 count=16 2>/dev/null | base64 --wrap=0)"
+say "Acquiring the initializer lock"
+coproc "/lock-initializer" "${MARKER}" "${INITIALIZER_PROCESS}"
+COPROC_OUT="${COPROC[0]}"
+while true ; do
+	# Has the marker been output?
+	if read -u ${COPROC_OUT} LINE ; then
+		# A successful read ...
+
+		# If it's not our marker, keep reading!
+		[ "${LINE}" != "${MARKER}" ] && continue
+
+		# If it was our marker, end the loop!
+		say "Initialization lock acquired"
+		break
+	fi
+
+	# The read failed ... is the coproc still running?
+	kill -0 ${COPROC_PID} &>/dev/null && continue
+
+	# It's not running... did it exit successfully?
+	wait ${COPROC_PID} || RC=${?}
+	[ ${RC} -eq 0 ] && break
+
+	# If it's not running and its exit status is not 0, then there was
+	fail "Initializer lock failed - cannot continue (rc=${RC})"
+done
+
+###################################################################
 # LAUNCH THE SERVER PROCESS                                       #
 ###################################################################
 

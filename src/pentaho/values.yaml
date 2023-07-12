@@ -107,6 +107,11 @@ initDependencies:
         - 636
         - 9000
 
+    zookeeper:
+      clusterOnly: true
+      ports:
+        - 2181
+
 resources:
   development:
     limits: "2Gi,1"

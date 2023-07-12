@@ -79,7 +79,7 @@ spec:
     rollingUpdate:
       partition: {{ $.Values.rollingUpdatePartition }}
     {{- end }}
-  podManagementPolicy: OrderedReady
+  podManagementPolicy: Parallel
   template:
     metadata:
       name: {{ include "arkcase.fullname" $ | quote }}
@@ -155,6 +155,13 @@ spec:
           {{- include "arkcase.image" $ | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.cluster.tomcat.env" $ | nindent 12 }}
+            {{- if $cluster.enabled }}
+              {{- $zk := (include "arkcase.cluster.zookeeper" $) }}
+              {{- if $zk }}
+            - name: ZK_HOST
+              value: {{ $zk | quote }}
+              {{- end }}
+            {{- end }}
             - name: DATA_DIR
               value: *dataPath
             - name: INIT_DIR
@@ -182,14 +189,6 @@ spec:
           command: {{- $.Values.command | toYaml | nindent 12 }}
           {{- else }}
           command: [ "/entrypoint" ]
-          {{- end }}
-          {{- if and (not ($.Values.command)) (not ($.Values.lifecycle)) }}
-          lifecycle:
-            postStart:
-              exec:
-                command: [ "/config-post.sh" ]
-          {{- else if ($.Values.lifecycle) }}
-          lifecycle: {{- $.Values.lifecycle | toYaml | nindent 12 }}
           {{- end }}
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           volumeMounts:
@@ -277,6 +276,13 @@ spec:
               mountPath: "/app/init/reports/000-arkcase-base-reports.tar.gz"
               subPath: &baseReportsTarGz {{ printf "base-reports.%s.tar.gz" $db.reports | quote }}
               readOnly: true
+            - name: *configMap
+              mountPath: "/lock-initializer"
+              subPath: &lockInitializer "lock-initializer"
+            - name: *configMap
+              mountPath: "/usr/local/etc/curator-wrapper.yaml"
+              subPath: &curatorWrapperYaml "curator-wrapper.yaml"
+              readOnly: true
         {{- if $cluster.enabled }}
         - name: haproxy
           {{- with ($.Values.securityContext).pentaho }}
@@ -354,6 +360,11 @@ spec:
                 mode: 0555
               - key: *baseReportsTarGz
                 path: *baseReportsTarGz
+              - key: *lockInitializer
+                path: *lockInitializer
+                mode: 0555
+              - key: *curatorWrapperYaml
+                path: *curatorWrapperYaml
               {{- if $cluster.enabled }}
               - key: *haproxyCfg
                 path: *haproxyCfg

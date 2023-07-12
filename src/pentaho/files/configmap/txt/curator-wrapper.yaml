@@ -1,0 +1,20 @@
+session:
+  connect: ${ZK_HOST}
+  sessionTimeout: 1000
+  connectionTimeout: 5000
+  basePath: "/arkcase/pentaho"
+
+  retry:
+    count: 0
+    delay: 1000
+
+wrapper:
+  mode: "init"
+  name: "initialization"
+
+  param:
+    version: ${INIT_VERSION}
+    marker: ${INIT_MARKER}
+
+  exec:
+    command: ${INIT_PROCESS}
