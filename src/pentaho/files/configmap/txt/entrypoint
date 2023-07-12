@@ -220,4 +220,4 @@ done
 CMD=("${PENTAHO_SERVER}/start-pentaho.sh" "${@}")
 [ -z "${LAUNCH}" ] || CMD=("${LAUNCH}" "${CMD[@]}")
 say "Launching Pentaho as: ${CMD[@]@Q}"
-"${CMD}"
+"${CMD[@]}"
