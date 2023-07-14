@@ -231,21 +231,22 @@ if [ -n "${LAUNCH}" ] ; then
 		[[ "${BOOT_DELAY}" =~ ^[1-9][0-9]*$ ]] || BOOT_DELAY="30"
 		say "Applying a delay of ${BOOT_DELAY} seconds (don't ask... thank Hitachi)"
 		sleep "${BOOT_DELAY}" || fail "Initial delay interrupted, can't continue"
-	else
-		# We didn't have to wait for the lock. However, Pentaho is still
-		# bitchy about true concurrent booting against the same databases
-		# (thanks, Hitachi!). Thus, we must apply a (variable) delay...
-		#
-		# Get the pod ID, multiply it by 10, and apply it as a boot delay.
-		BOOT_DELAY=0
-		MUL=0
-		[[ "${POD_NAME}" =~ -([0-9]*)$ ]] && MUL="${BASH_REMATCH[1]}"
-		[ ${MUL} -gt 0 ] && BOOT_DELAY=$(( MUL * 30 ))
-		if [ ${BOOT_DELAY} -gt 0 ] ; then
-			say "Applying a safety delay of ${BOOT_DELAY} seconds (again... thank Hitachi)"
-			sleep "${BOOT_DELAY}" || fail "Safety delay interrupted, can't continue"
-		fi
 	fi
+
+	#
+	# We didn't own the initialization lock, either because we lost
+	# the leadership race, or because this isn't our first boot.
+	#
+	# In either case, we're not supposed to mess with JCR installation,
+	# so we're going to nuke the zip files that would be added as default
+	# content
+	#
+	# This should eliminate all the cluster bootup problems
+	#
+	say "Avoiding re-installation of JCR default content"
+	while read zip ; do
+		mv -vf "${zip}" "${zip}.installed"
+	done < <(find "${PENTAHO_SERVER}/pentaho-solutions/system/default-content" -type f -name '*.zip')
 fi
 say "Launching Pentaho as: ${CMD[@]@Q}"
 "${CMD[@]}"
