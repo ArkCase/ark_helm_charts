@@ -277,11 +277,12 @@ persistence:
   # Set the default capacity for volumes in case none is assigned explicitly
   # and the default value is insufficient
   volumeSize:
-    init: "4Gi"
-    home: "8Gi"
     conf: "4Gi"
-    war: "2Gi"
+    fsrv: "8Gi"
+    home: "8Gi"
+    init: "4Gi"
     logs: "2Gi"
+    wars: "4Gi"
 
 #  The volumes for persistent data
   volumes:
