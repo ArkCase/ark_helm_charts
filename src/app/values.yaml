@@ -18,11 +18,10 @@ adminPassword: &arkcaseAdminPassword "$arkcase-admin$"
 #
 configuration:
 
-  ldap: &ldapConfig
+  ldap:
     default: "arkcase"
-    arkcase:
+    arkcase: &ldapArkcase
       domain: "dev.arkcase.com"
-      password: "RaL@a5eio:heC3"
       url: "ldaps://ldap:636"
       # Base DN will be taken as relative from the root DN
       baseDn: "ou=ArkCase"
@@ -49,6 +48,12 @@ configuration:
           subtree: "true"
           rolePrefix: ""
           prefix: ""
+    foia:
+      <<: *ldapArkcase
+      baseDn: "ou=FOIA"
+      bind:
+        dn: "cn=FOIA Administrator,ou=Users,${baseDn}"
+        password: "$foia-admin$"
 
   db: &dbConfig
     dialect: "postgresql"

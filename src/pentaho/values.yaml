@@ -53,7 +53,7 @@ configuration:
 
   ldap:
     default: "arkcase"
-    arkcase:
+    arkcase: &ldapArkcase
       domain: "dev.arkcase.com"
       url: "ldaps://ldap:636"
       # Base DN will be taken as relative from the root DN
@@ -81,6 +81,12 @@ configuration:
           subtree: "true"
           rolePrefix: ""
           prefix: ""
+    foia:
+      <<: *ldapArkcase
+      baseDn: "ou=FOIA"
+      bind:
+        dn: "cn=FOIA Administrator,ou=Users,${baseDn}"
+        password: "$foia-admin$"
 
 initDependencies:
   enabled: true

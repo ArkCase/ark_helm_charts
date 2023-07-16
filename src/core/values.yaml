@@ -72,23 +72,10 @@ configuration:
           prefix: ""
     foia:
       <<: *ldapArkcase
-      search:
-        users:
-          base: "ou=Users,ou=FOIA"
-          attribute: "sAMAccountName"
-          filter: "(&(objectClass=user)(sAMAccountName={0}))"
-          allFilter: "(objectClass=user)"
-          prefix: ""
-        groups:
-          base: "ou=Groups,ou=FOIA"
-          attribute: "cn"
-          filter: "(&(objectClass=group)(cn={0}))"
-          allFilter: "(objectClass=group)"
-          membership: "(&(objectClass=group)(member={0}))"
-          ignoreCase: "false"
-          subtree: "true"
-          rolePrefix: ""
-          prefix: ""
+      baseDn: "ou=FOIA"
+      bind:
+        dn: "cn=FOIA Administrator,ou=Users,${baseDn}"
+        password: "$foia-admin$"
 
   configServer:
     # For now, it's collocated ... eventually it will live elsewhere
