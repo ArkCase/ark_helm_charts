@@ -9,10 +9,10 @@
 {{- end -}}
 
 {{- define "arkcase.samba.external" -}}
-  {{- $serverNames := (include "arkcase.tools.ldap.serverNames" $ | fromYaml) -}}
+  {{- $serverNames := (include "arkcase.ldap.serverNames" $ | fromYaml) -}}
   {{- $external := 0 -}}
   {{- range $server := $serverNames.result -}}
-    {{- $url := (include "arkcase.tools.ldap" (dict "ctx" $ "server" $server "value" "url" "detailed" true) | fromYaml) -}}
+    {{- $url := (include "arkcase.ldap" (dict "ctx" $ "server" $server "value" "url" "detailed" true) | fromYaml) -}}
     {{- if and $url $url.external -}}
       {{- $external = add $external 1 -}}
     {{- end -}}

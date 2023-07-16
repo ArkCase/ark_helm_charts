@@ -1,4 +1,4 @@
-{{- define "arkcase.tools.ldap.baseParam" -}}
+{{- define "arkcase.ldap.baseParam" -}}
   {{- $ctx := $ -}}
   {{- $root := true -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
@@ -15,7 +15,7 @@
   {{- $result | toYaml -}}
 {{- end -}}
 
-{{- define "arkcase.tools.ldap.serverNames" -}}
+{{- define "arkcase.ldap.serverNames" -}}
   {{- $ctx := $ -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- $ctx := $.ctx -}}
@@ -31,7 +31,7 @@
   {{- dict "result" (concat $local $global | sortAlpha | uniq) | toYaml -}}
 {{- end -}}
 
-{{- define "arkcase.tools.ldap" -}}
+{{- define "arkcase.ldap" -}}
 
   {{- /* First, fetch the whole LDAP configuration */ -}}
   {{- $params := merge (pick $ "ctx" "debug") (dict "detailed" true "value" "ldap") -}}
@@ -59,7 +59,7 @@
     {{- fail "The LDAP server name 'default' is reserved and may not be used" -}}
   {{- end -}}
 
-  {{- $serverNames := (include "arkcase.tools.ldap.serverNames" $.ctx | fromYaml) -}}
+  {{- $serverNames := (include "arkcase.ldap.serverNames" $.ctx | fromYaml) -}}
   {{- if not ($serverNames.result | has $server) -}}
     {{- fail (printf "The LDAP server name '%s' is invalid - must be one of %s" $server $serverNames.result) -}}
   {{- end -}}
@@ -81,10 +81,10 @@
 {{/*
 Compute the LDAP dc=XXX,dc=XXX from a given domain name
 
-usage: ( include "arkcase.tools.ldap.dc" "some.domain.com" )
+usage: ( include "arkcase.ldap.dc" "some.domain.com" )
 result: "DC=some,DC=domain,DC=com"
 */}}
-{{- define "arkcase.tools.ldap.dc" -}}
+{{- define "arkcase.ldap.dc" -}}
   {{- $parts := splitList "." (include "arkcase.tools.mustHostname" . | upper) | compact -}}
   {{- $dc := "" -}}
   {{- $sep := "" -}}
@@ -97,16 +97,16 @@ result: "DC=some,DC=domain,DC=com"
   {{- $dc -}}
 {{- end -}}
 
-{{- define "arkcase.tools.ldap.baseDn" -}}
-  {{- $params := (include "arkcase.tools.ldap.baseParam" $ | fromYaml) -}}
+{{- define "arkcase.ldap.baseDn" -}}
+  {{- $params := (include "arkcase.ldap.baseParam" $ | fromYaml) -}}
 
-  {{- $rootDn := (include "arkcase.tools.ldap" (set $params "value" "domain")) -}}
+  {{- $rootDn := (include "arkcase.ldap" (set $params "value" "domain")) -}}
   {{- if or (not $rootDn) (not (kindIs "string" $rootDn)) -}}
     {{- fail "No LDAP domain is configured - cannot continue" -}}
   {{- end -}}
-  {{- $rootDn = (include "arkcase.tools.ldap.dc" $rootDn | lower) -}}
+  {{- $rootDn = (include "arkcase.ldap.dc" $rootDn | lower) -}}
 
-  {{- $baseDn := (include "arkcase.tools.ldap" (set $params "value" "baseDn")) -}}
+  {{- $baseDn := (include "arkcase.ldap" (set $params "value" "baseDn")) -}}
   {{- if and $baseDn (kindIs "string" $baseDn) -}}
     {{- $baseDn = (printf "%s,%s" $baseDn $rootDn) -}}
   {{- else -}}
@@ -115,14 +115,14 @@ result: "DC=some,DC=domain,DC=com"
   {{- $baseDn -}}
 {{- end -}}
 
-{{- define "arkcase.tools.ldap.bindDn" -}}
-  {{- $baseDn := (include "arkcase.tools.ldap.baseDn" $) -}}
-  {{- include "arkcase.tools.ldap" (dict "ctx" $ "value" "bind.dn") | replace "${baseDn}" $baseDn -}}
+{{- define "arkcase.ldap.bindDn" -}}
+  {{- $baseDn := (include "arkcase.ldap.baseDn" $) -}}
+  {{- include "arkcase.ldap" (dict "ctx" $ "value" "bind.dn") | replace "${baseDn}" $baseDn -}}
 {{- end -}}
 
-{{- define "arkcase.tools.ldap.realm" -}}
-  {{- $params := (include "arkcase.tools.ldap.baseParam" $ | fromYaml) -}}
-  {{- $realm := (include "arkcase.tools.ldap" (set $params "value" "domain")) -}}
+{{- define "arkcase.ldap.realm" -}}
+  {{- $params := (include "arkcase.ldap.baseParam" $ | fromYaml) -}}
+  {{- $realm := (include "arkcase.ldap" (set $params "value" "domain")) -}}
   {{- if not $realm -}}
     {{- fail "No LDAP domain is configured - cannot continue" -}}
   {{- end -}}

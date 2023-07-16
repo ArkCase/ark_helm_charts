@@ -71,7 +71,7 @@ spec:
           {{- include "arkcase.image" (dict "ctx" $ "name" "deploy" "useChartTag" true) | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             - name: REALM_FIX
-              value: {{ printf "arkcase.org=%s" (include "arkcase.tools.ldap" (dict "ctx" $ "value" "domain")) | quote }}
+              value: {{ printf "arkcase.org=%s" (include "arkcase.ldap" (dict "ctx" $ "value" "domain")) | quote }}
         {{- if or $customConfFile $customWarFile }}
             - name: FORCE_HASHES
               value: "true"
@@ -197,7 +197,7 @@ spec:
               # choke if the ".0" isn't provided at the end
              {{- $springProfiles := "ldap" }}
              {{- if $foia.enabled }}
-                {{- $springProfiles = (printf "%s,%s" $foia.springProfiles $springProfiles) }}
+                {{- $springProfiles = (printf "%s,%s" $foia.springProfile $springProfiles) }}
              {{- end }}
               value: >-
                 -XX:MinRAMPercentage=50.0
