@@ -62,3 +62,8 @@
   {{- end -}}
   {{- $shareUrl -}}
 {{- end -}}
+
+{{- define "arkcase.core.foia" -}}
+  {{- /* Do nothing just yet */ -}}
+  {{- dict "enabled" false | toYaml -}}
+{{- end -}}

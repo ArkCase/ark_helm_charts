@@ -1,0 +1,19 @@
+{{- $foia := (include "arkcase.core.foia" $ | fromYaml) -}}
+{{- if $foia.enabled -}}
+{{- $foiaLdapGroupPrefix := "" -}}
+{{- $foiaLdapDomain := "" -}}
+lookupsConfiguration:
+  standardLookup:
+    downloadResponseNotificationGroup:
+      entries:
+        ^groupName:
+          value: ""
+          order: 1
+        {{- $index := 0 }}
+        {{- range $group: = $foia.notificationGroups }}
+        group{{ $index }}:
+          value: {{ printf "%s%s@%s" $foiaLdapGroupPrefix $group $foiaLdapDomain | quote }}
+          order: {{ $index }}
+          {{- $index = add 1 $index }}
+        {{- end }}
+{{- end -}}

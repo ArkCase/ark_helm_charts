@@ -765,7 +765,8 @@ result: "DC=some,DC=domain,DC=com"
 
   {{- if hasKey $data "host" -}}
     {{- /* Host may be of the form (host)?(:port)? */ -}}
-    {{- $hostInfo := split ":" $data.host -}}
+    {{- $data = set $data "hostPort" $data.host -}}
+    {{- $hostInfo := split ":" $data.hostPort -}}
 
     {{- /* Purify the host information */ -}}
     {{- $host := "" -}}
