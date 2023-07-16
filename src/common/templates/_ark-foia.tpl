@@ -11,7 +11,7 @@
     {{- /* This value must be a map with configs, or a true-false string */ -}}
     {{- $foia := (($ctx.Values.global).foia) -}}
     {{- if $foia -}}
-      {{- if (kindIs "string" $foia) -}}
+      {{- if or (kindIs "bool" $foia) (kindIs "string" $foia) -}}
         {{- $foia = (not (empty (include "arkcase.toBoolean" $foia))) | ternary (dict "enabled" true) dict -}}
       {{- else if (kindIs "map" $foia) -}}
         {{- /* All is well, sanitize the "enabled" flag */ -}}
@@ -22,7 +22,7 @@
           {{- $foia = set $foia "enabled" false -}}
         {{- end -}}
       {{- else -}}
-        {{- fail (printf "The global.foia configuration is bad - must be a string or a map (%s)" (kindOf $foia)) -}}
+        {{- fail (printf "The global.foia configuration is bad - must be a bool, a string, or a map (%s)" (kindOf $foia)) -}}
       {{- end -}}
     {{- else -}}
       {{- /* Empty value or equivalent, we don't care about the type and simply don't activate anything */ -}}
