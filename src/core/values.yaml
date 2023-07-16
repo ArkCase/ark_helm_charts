@@ -41,26 +41,46 @@ configuration:
     # tls: my-secret-name
 
   ldap:
-    arkcase:
+    default: "arkcase"
+    arkcase: &ldapArkcase
       domain: "dev.arkcase.com"
       url: "ldaps://ldap:636"
-      # Don't declare a baseDn unless absolutely necessary
-      # baseDn: ...
+      # Base DN will be taken as relative from the root DN
+      baseDn: "ou=ArkCase"
       bind:
-        dn: "cn=ArkCase Administrator,cn=Users,${baseDn}"
+        dn: "cn=ArkCase Administrator,ou=Users,${baseDn}"
         password: "$arkcase-admin$"
       admin:
         dn: "cn=ArkCase Administrator"
         role: "cn=ARKCASE_ADMINISTRATOR"
       search:
         users:
-          base: "cn=Users"
+          base: "ou=Users"
           attribute: "sAMAccountName"
           filter: "(&(objectClass=user)(sAMAccountName={0}))"
           allFilter: "(objectClass=user)"
           prefix: ""
         groups:
-          base: "cn=Users"
+          base: "ou=Groups"
+          attribute: "cn"
+          filter: "(&(objectClass=group)(cn={0}))"
+          allFilter: "(objectClass=group)"
+          membership: "(&(objectClass=group)(member={0}))"
+          ignoreCase: "false"
+          subtree: "true"
+          rolePrefix: ""
+          prefix: ""
+    foia:
+      <<: *ldapArkcase
+      search:
+        users:
+          base: "ou=Users,ou=FOIA"
+          attribute: "sAMAccountName"
+          filter: "(&(objectClass=user)(sAMAccountName={0}))"
+          allFilter: "(objectClass=user)"
+          prefix: ""
+        groups:
+          base: "ou=Groups,ou=FOIA"
           attribute: "cn"
           filter: "(&(objectClass=group)(cn={0}))"
           allFilter: "(objectClass=group)"
