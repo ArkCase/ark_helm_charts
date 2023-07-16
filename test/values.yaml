@@ -1,124 +1,61 @@
 # Default values for demochart.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
-
-goodIPs: [ "1.2.3.4", "255.255.255.255", "0.0.0.0", "1.1.1.1", "1.023.3.33" ]
-badIPs: [ "1.2.3.4", "www.google.com", "a", "255.255.255.255", "0.0.0.0", "255.255.255.256", "-bad hostname", "-.-.-", "some.hostname.com.", "some.hostname.com-", "non-single.hostname" ]
-
-
-image:
-  #registry: "RegistryName"
-  repository: "SomeRepo/SomeImage"
-  #tag: "TaggyMcTagTag"
-  dbinit:
-    registry: "dbinitregistry"
-    repository: "dbinitrepository"
-    tag: "dbinittag"
-
-
-initDependencies:
-  enabled: true
-  mode: any
-  template:
-    mode: ALL
-  dependencies:
-    config :
-      delay: 15
-      ports:
-        - 9999
-    rdbms :
-      delay: 15
-      ports:
-        - 5432
-    messaging :
-      delay: 5
-      ports:
-        - 8161
-        - 61616
-
-
+  
 global:
-  imageRegistry: "GlobalRegistry"
-
-  dev:
+  foia:
     enabled: true
-    resources: false
+    disableAuth: false
+    generateUsers: false
+    notificationGroups: [ "a", "b", "c" ]
 
-  # Global resources supersede all other set resources
-  resources:
-
-    testchart:
-      common: "23Gi,200m"
-      part-1: "22Gi,0.22"
-      part-2: "23Gi,*"
-      part-3: "24Gi,"
-      part-4: "25Gi,0.25"
-      part-5:
-        requests: "5Gi,5"
-        limits: "6Gi,6"
-
-tests:
-  crap1: "1Gi-2Gi,1-2"
-  crap2:
-    #cpu: "3-4"
-    memory: "3Gi-4Gi"
-  crap3:
-    requests: "5Gi,5"
-    limits: "6Gi,6"
-  crap4:
-    requests:
-      cpu: 7
-      memory: "*"
-    limits:
-      cpu: "="
-      memory: 8Gi
-
-resources:
-  # Default resources are used by default
-  default:
-    common: # "1Gi,1"
-      limits:
-        memory: "*"
-        cpu: 1.5
-      requests:
-        memory: 1536Mi
-        cpu: "*"
-
-    part-1:
-      memory: 2Gi
-      #cpu: 2
-
-    part-2:
-      memory: 3Gi
-      cpu: 3
-
-    part-3:
-      memory: 4Gi
-      cpu: 4
-
-    part-4:
-      memory: 5Gi
-      cpu: 5
-
-  # Dev resources supersede default resources IIF dev mode is enabled AND global.dev.resources is either missing or true. If set
-  # to "false", then default resources are used.
-  development:
-    common:
-      memory: 11Gi
-      cpu: "*"
-
-    part-1:
-      memory: 12Gi
-      cpu: 12
-
-    part-2:
-      # memory: 13Gi
-      cpu: 13
-
-    part-3:
-      # memory: 14Gi
-      cpu: 14
-
-    part-4:
-      # memory: 15Gi
-      cpu: 15
+  conf:
+    ldap:
+      default: "arkcase"
+      arkcase: &ldapArkcase
+        domain: "dev.arkcase.com"
+        url: "ldaps://ldap:636"
+        # Base DN will be taken as relative from the root DN
+        baseDn: "ou=ArkCase"
+        bind:
+          dn: "cn=ArkCase Administrator,ou=Users,${baseDn}"
+          password: "$arkcase-admin$"
+        admin:
+          dn: "cn=ArkCase Administrator"
+          role: "cn=ARKCASE_ADMINISTRATOR"
+        search:
+          users:
+            base: "ou=Users"
+            attribute: "sAMAccountName"
+            filter: "(&(objectClass=user)(sAMAccountName={0}))"
+            allFilter: "(objectClass=user)"
+            prefix: ""
+          groups:
+            base: "ou=Groups"
+            attribute: "cn"
+            filter: "(&(objectClass=group)(cn={0}))"
+            allFilter: "(objectClass=group)"
+            membership: "(&(objectClass=group)(member={0}))"
+            ignoreCase: "false"
+            subtree: "true"
+            rolePrefix: ""
+            prefix: ""
+      foia:
+        <<: *ldapArkcase
+        search:
+          users:
+            base: "ou=Users,ou=FOIA"
+            attribute: "sAMAccountName"
+            filter: "(&(objectClass=user)(sAMAccountName={0}))"
+            allFilter: "(objectClass=user)"
+            prefix: ""
+          groups:
+            base: "ou=Groups,ou=FOIA"
+            attribute: "cn"
+            filter: "(&(objectClass=group)(cn={0}))"
+            allFilter: "(objectClass=group)"
+            membership: "(&(objectClass=group)(member={0}))"
+            ignoreCase: "false"
+            subtree: "true"
+            rolePrefix: ""
+            prefix: ""
