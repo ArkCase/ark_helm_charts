@@ -9,7 +9,7 @@
   {{- $customWar := and (not (empty $dev)) (not (empty $dev.war)) }}
   {{- $customWarFile := and $customConf $dev.war.file }}
   {{- $customWarDir := and $customConf (not $dev.war.file) }}
-  {{- $foia := (include "arkcase.core.foia" $ | fromYaml) }}
+  {{- $foia := (include "arkcase.foia" $ | fromYaml) }}
 ---
 apiVersion: apps/v1
 kind: StatefulSet

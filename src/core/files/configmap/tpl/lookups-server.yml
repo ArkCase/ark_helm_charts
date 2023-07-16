@@ -1,4 +1,4 @@
-{{- $foia := (include "arkcase.core.foia" $ | fromYaml) -}}
+{{- $foia := (include "arkcase.foia" $ | fromYaml) -}}
 {{- if $foia -}}
 lookupsConfiguration:
   standardLookup:

@@ -62,8 +62,3 @@
   {{- end -}}
   {{- $shareUrl -}}
 {{- end -}}
-
-{{- define "arkcase.core.foia" -}}
-  {{- /* Do nothing just yet */ -}}
-  {{- dict "enabled" false "springProfile" "FOIA_server" | toYaml -}}
-{{- end -}}
