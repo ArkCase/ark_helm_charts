@@ -5,7 +5,7 @@ lookupsConfiguration:
     downloadResponseNotificationGroup:
       entries:
         {{- $index := 0 }}
-        {{- range $group: = $foia.notificationGroups }}
+        {{- range $group := $foia.notificationGroups }}
         group{{ $index }}:
           value: {{ printf "%s%s@%s" $foia.ldap.groupPrefix $group $foia.ldap.domain | quote }}
           order: {{ $index }}

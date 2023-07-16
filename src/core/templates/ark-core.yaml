@@ -350,8 +350,10 @@ spec:
                 path: *applicationYaml
               - key: *arkcaseK8sYaml
                 path: *arkcaseK8sYaml
+              {{- if $foia }}
               - key: *arkcaseFoiaYaml
                 path: *arkcaseFoiaYaml
+              {{- end }}
               - key: *ldapYaml
                 path: *ldapYaml
               - key: *camelConfigAlfrescoCmisProperties
