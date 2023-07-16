@@ -99,8 +99,6 @@ spec:
               value: "false"
             - name: NOCOMPLEXITY
               value: "true"
-            - name: LDAP_SEED_FILE
-              value: "/app/secrets/seeds.yaml"
             - name: SERVICE_NAME
               value: {{ include "arkcase.name" $ | quote }}
           {{- if (include "arkcase.samba.step" $) }}
@@ -127,7 +125,11 @@ spec:
               mountPath: "/app/secrets"
               readOnly: true
             - name: &configMap "configmap"
-              mountPath: "/app/init/init.d/000-init-seeds"
+              mountPath: "/app/init/init.d/000-init-seeds-wrapper"
+              subPath: &initSeedsWrapper "init-seeds-wrapper"
+              readOnly: true
+            - name: *configMap "configmap"
+              mountPath: "/usr/local/bin/init-seeds"
               subPath: &initSeeds "init-seeds"
               readOnly: true
           {{- if (include "arkcase.samba.step" $) }}
@@ -170,6 +172,8 @@ spec:
             name: {{ include "arkcase.fullname" $ | quote }}
             defaultMode: 0444
             items:
+              - key: *initSeedsWrapper
+                path: *initSeedsWrapper
               - key: *initSeeds
                 path: *initSeeds
                 mode: 0555

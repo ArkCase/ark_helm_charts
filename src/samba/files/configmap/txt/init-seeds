@@ -20,6 +20,7 @@ EXE_SAMBA_TOOL = "/usr/bin/samba-tool"
 EXE_NET = "/usr/bin/net"
 
 SID_RE = re.compile("^.* SID (S-\\S*)$", re.IGNORECASE)
+DN_SPLIT_RE = re.compile("(?<!\\\\),")
 
 KEY_DEBUG = "debug"
 KEY_LDAP = "server"
@@ -35,6 +36,7 @@ KEY_SECRET_DOMAIN_ROOT_DN = "ROOT_DN"
 KEY_SECRET_DOMAIN_REALM = "REALM"
 KEY_SECRETS = [ KEY_SECRET_DOMAIN_NAME, KEY_SECRET_DOMAIN_ROOT_DN, KEY_SECRET_DOMAIN_REALM ]
 
+KEY_USER_OU = "userou"
 KEY_USERS = "users"
 KEY_PASSWORD = "password"
 KEY_EXPIRATION_DAYS = "expirationDays"
@@ -46,6 +48,7 @@ USER_ATTRIBUTES = {
 	"description" : None,
 }
 
+KEY_GROUP_OU = "groupou"
 KEY_GROUPS = "groups"
 GROUP_ATTRIBUTES = {
 	"scope" : "group-scope",
@@ -198,11 +201,61 @@ def render_group_id(groupId):
 		return re.sub("^\+", "", groupId)
 	return f"{GROUP_PREFIX}{groupId}"
 
+# To track which OUs have been created via ensureOuExists()
+CREATED_OU = {}
+def ensureOuExists(ou):
+
+	# Super-shortcut... avoid processing if we already
+	# created the given OU
+	if ou in CREATED_OU:
+		return
+
+	# The OU is a list of elements, separated by commas. Escaped commas are
+	# preceded by backslashes. So we'll want to create the entire tree
+	# downward, as required
+	steps = DN_SPLIT_RE.split(ou)
+
+	currentOu = ""
+	while steps:
+
+		# If necessary, prepend a comma before adding the next element
+		# to the current OU
+		if currentOu:
+			currentOu = "," + currentOu
+		currentOu = steps.pop() + currentOu
+
+		# Shortcut! Avoid testing for, or creating the current OU
+		if currentOu in CREATED_OU:
+			continue
+
+		# Ok so we haven't played with the current OU before ... is this a valid component?
+		if not currentOu.lower().startswith("ou="):
+			fail("The OU path may only contain OU elements: {currentOu} (full OU => {ou})")
+
+		# The current OU is valid ... does it exist?
+		result = samba_tool([ "ou", "listobjects", currentOu ])
+		if result.returncode == 0:
+			CREATED_OU[currentOu] = True
+			continue
+
+		# The current OU is valid and does not exist... create it!
+		result = samba_tool([ "ou", "create", currentOu ])
+		if result.returncode == 0:
+			CREATED_OU[currentOu] = True
+			continue
+
+		# Ooops ... something went wrong
+		fail("Failed to create the OU [{currentOu}] (rc={result}")
+
 def create_user(userId, userData):
 	userId = render_user_id(userId)
 	# a) create the user
 	logging.info(f"Creating user '{userId}' from [{userData}]")
 	command = [ "user", "add", userId, "--random-password" ]
+
+	if USER_OU:
+		ensureOuExists(USER_OU)
+		command += [ f"--userou={USER_OU}" ]
 
 	for attName, attFlag in USER_ATTRIBUTES.items():
 		if attFlag is None:
@@ -309,6 +362,10 @@ def create_group(groupId, groupData):
 	logging.info(f"Creating group '{groupId}' from [{groupData}]")
 	command = [ "group", "add", groupId ]
 
+	if GROUP_OU:
+		ensureOuExists(GROUP_OU)
+		command += [ f"--groupou={GROUP_OU}" ]
+
 	for attName, attFlag in GROUP_ATTRIBUTES.items():
 		if attFlag is None:
 			attFlag = attName
@@ -375,6 +432,22 @@ if DEBUG:
 	DEBUG = (DEBUG.lower() == "true")
 else:
 	DEBUG = False
+
+USER_OU = None
+try:
+	USER_OU = data[KEY_USER_OU]
+	if type(USER_OU) != str:
+		USER_OU = None
+except KeyError:
+	USER_OU = None
+
+GROUP_OU = None
+try:
+	GROUP_OU = data[KEY_GROUP_OU]
+	if type(GROUP_OU) != str:
+		GROUP_OU = None
+except KeyError:
+	GROUP_OU = None
 
 try:
 	memberships = {}
