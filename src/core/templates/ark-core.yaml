@@ -113,7 +113,7 @@ spec:
               mountPath: &homeDir "/app/home"
             - name: &logsVolume "logs"
               mountPath: &logsDir "/app/logs"
-            {{- if $foia.enabled }}
+            {{- if $foia }}
             - name: &fsrvVolume "fsrv"
               mountPath: &fsrvDir "/app/fsrv"
             {{- end }}
@@ -196,7 +196,7 @@ spec:
               # For Java 8, these percentages must be given as doubles. The JVM may
               # choke if the ".0" isn't provided at the end
              {{- $springProfiles := "ldap" }}
-             {{- if $foia.enabled }}
+             {{- if $foia }}
                 {{- $springProfiles = (printf "%s,%s" $foia.springProfile $springProfiles) }}
              {{- end }}
               value: >-
@@ -256,7 +256,7 @@ spec:
               mountPath: "/app/home/.arkcase/acm/acm-config-server-repo/ldap/ldap.yaml"
               subPath: &ldapYaml "ldap.yaml"
               readOnly: true
-            {{- if $foia.enabled }}
+            {{- if $foia }}
             - name: *secrets
               mountPath: "/app/home/.arkcase/acm/acm-config-server-repo/arkcase-{{ $foia.springProfile }}.yaml"
               subPath: &arkcaseFoiaYaml "arkcase-{{ $foia.springProfile }}.yaml"
@@ -280,7 +280,7 @@ spec:
               readOnly: true
             - name: *logsVolume
               mountPath: *logsDir
-            {{- if $foia.enabled }}
+            {{- if $foia }}
             - name: *fsrvVolume
               mountPath: *fsrvDir
             {{- end }}
@@ -332,7 +332,7 @@ spec:
               mountPath: "/app/conf/ldap/ldap.yaml"
               subPath: *ldapYaml
               readOnly: true
-            {{- if $foia.enabled }}
+            {{- if $foia }}
             - name: *secrets
               mountPath: "/app/conf/arkcase-{{ $foia.springProfile }}.yaml"
               subPath: *arkcaseFoiaYaml
@@ -413,7 +413,7 @@ spec:
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "init") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "home") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "logs") | nindent 8 }}
-        {{- if $foia.enabled }}
+        {{- if $foia }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "fsrv") | nindent 8 }}
         {{- end }}
   volumeClaimTemplates:
@@ -423,7 +423,7 @@ spec:
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "init") | nindent 4 }}
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "home") | nindent 4 }}
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "logs") | nindent 4 }}
-    {{- if $foia.enabled }}
+    {{- if $foia }}
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "fsrv") | nindent 4 }}
     {{- end }}
 
@@ -433,7 +433,7 @@ spec:
   {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "init") | nindent 0 }}
   {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "home") | nindent 0 }}
   {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "logs") | nindent 0 }}
-  {{- if $foia.enabled }}
+  {{- if $foia }}
   {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "fsrv") | nindent 0 }}
   {{- end }}
 

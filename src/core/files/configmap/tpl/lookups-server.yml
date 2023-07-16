@@ -1,5 +1,5 @@
 {{- $foia := (include "arkcase.core.foia" $ | fromYaml) -}}
-{{- if $foia.enabled -}}
+{{- if $foia -}}
 lookupsConfiguration:
   standardLookup:
     downloadResponseNotificationGroup:
