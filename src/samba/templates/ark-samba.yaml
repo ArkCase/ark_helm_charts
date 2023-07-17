@@ -101,6 +101,8 @@ spec:
               value: "true"
             - name: SERVICE_NAME
               value: {{ include "arkcase.name" $ | quote }}
+            - name: SEED_DIR
+              value: "/app/secrets"
           {{- if (include "arkcase.samba.step" $) }}
             - name: STEP_URL
               value: "https://localhost:9000"
@@ -108,6 +110,7 @@ spec:
               value: "/app/secrets/step.password"
           {{- end }}
           {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
+          command: [ "sleep", "infinity" ]
           {{- if $.Values.command }}
           command: {{- $.Values.command | toYaml | nindent 12 }}
           {{- end }}
