@@ -53,7 +53,7 @@
   {{- end -}}
   {{- $render := true -}}
   {{- $render = and $render (not (empty (include "arkcase.subsystem.enabled" $ctx))) -}}
-  {{- $render = and $render (not (empty (include "arkcase.rdbms.external" $ctx))) -}}
-  {{- $render = and $render (or (not (empty $name)) (eq $name (include "arkcase.rdbms.type" $ctx))) -}}
+  {{- $render = and $render (empty (include "arkcase.rdbms.external" $ctx)) -}}
+  {{- $render = and $render (or (empty $name) (eq $name (include "arkcase.rdbms.type" $ctx))) -}}
   {{- $render | ternary "true" "" -}}
 {{- end -}}
