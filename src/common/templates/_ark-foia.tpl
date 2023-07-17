@@ -1,13 +1,10 @@
 {{- define "arkcase.foia" -}}
   {{- $ctx := $ -}}
-  {{- if not (include "arkcase.isRootContext" $) -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "The single parameter must be the root context ($ or .)" -}}
   {{- end -}}
 
-  {{- /* TODO: Only proceed if we're in enterprise mode */ -}}
-  {{- $enterprise := true -}}
-
-  {{- if $enterprise -}}
+  {{- if (include "arkcase.enterprise" $ctx) -}}
     {{- /* This value must be a map with configs, or a true-false string */ -}}
     {{- $foia := (($ctx.Values.global).foia) -}}
     {{- if $foia -}}
