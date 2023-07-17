@@ -285,14 +285,10 @@ spec:
               mountPath: *fsrvDir
             - name: *foiaVolume
               mountPath: "/app/home/.external-portal-api"
-            - name: *configMap
-              mountPath: "/app/home/.arkcase/acm/spring/spring-config-foiaportal-ldap.xml"
-              subPath: &springConfigFoiaLdapXml "spring-config-foiaportal-ldap.xml"
-              readOnly: true
-            - name: *configMap
-              mountPath: "/app/home/.external-portal-api/arkcase.ks"
-              subPath: &emptyKs "empty.ks"
-              readOnly: true
+             - name: *configMap
+               mountPath: "/app/home/.external-portal-api/arkcase.ks"
+               subPath: &emptyKs "empty.ks"
+               readOnly: true
             - name: *configMap
               mountPath: "/app/home/.external-portal-api/arkcase.ts"
               subPath: *emptyKs
@@ -304,10 +300,6 @@ spec:
             - name: *secrets
               mountPath: "/app/home/.arkcase/acm/acm-config-server-repo/arkcase-{{ $foia.springProfile }}.yaml"
               subPath: &arkcaseFoiaYaml "arkcase-{{ $foia.springProfile }}.yaml"
-              readOnly: true
-            - name: *secrets
-              mountPath: "/app/home/.arkcase/acm/spring/spring-config-foiaportal-ldap.properties"
-              subPath: &springConfigFoiaLdapProperties "spring-config-foiaportal-ldap.properties"
               readOnly: true
             {{- end }}
         - name: cloudconfig
