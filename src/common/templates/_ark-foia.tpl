@@ -63,6 +63,7 @@
           "notificationGroups" $notificationGroups
           "disableAuth" $disableAuth
           "generateUsers" $generateUsers
+          "springProfile" "FOIA_server"
           "ldap" (
             dict
               "server" $ldapServer
