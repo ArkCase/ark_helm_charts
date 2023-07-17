@@ -373,6 +373,8 @@ spec:
                 path: *arkcasePortalServerYaml
               - key: *arkcaseFoiaYaml
                 path: *arkcaseFoiaYaml
+              - key: *springConfigFoiaLdapProperties
+                path: *springConfigFoiaLdapProperties
               {{- end }}
               - key: *ldapYaml
                 path: *ldapYaml
@@ -386,8 +388,6 @@ spec:
                 path: *confYaml
               - key: *pdfnetSdkLicenseTxt
                 path: *pdfnetSdkLicenseTxt
-              - key: *springConfigFoiaLdapProperties
-                path: *springConfigFoiaLdapProperties
         - name: *configMap
           configMap:
             optional: false
