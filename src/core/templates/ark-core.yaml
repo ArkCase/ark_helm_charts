@@ -245,8 +245,16 @@ spec:
               readOnly: true
             {{- if $foia }}
             - name: *configMap
-              mountPath: "/home/arkcase/.arkcase/acm/spring/spring-config-foiaportal-ldap.xml"
+              mountPath: "/app/home/.arkcase/acm/spring/spring-config-foiaportal-ldap.xml"
               subPath: &springConfigFoiaLdapXml "spring-config-foiaportal-ldap.xml"
+              readOnly: true
+            - name: *configMap
+              mountPath: "/app/home/.external-portal-api/arkcase.ks"
+              subPath: &emptyKs "empty.ks"
+              readOnly: true
+            - name: *configMap
+              mountPath: "/app/home/.external-portal-api/arkcase.ts"
+              subPath: *emptyKs
               readOnly: true
             {{- end }}
             - name: &secrets "secrets"
@@ -275,7 +283,7 @@ spec:
               subPath: &arkcaseFoiaYaml "arkcase-{{ $foia.springProfile }}.yaml"
               readOnly: true
             - name: *secrets
-              mountPath: "/home/arkcase/.arkcase/acm/spring/spring-config-foiaportal-ldap.properties"
+              mountPath: "/app/home/.arkcase/acm/spring/spring-config-foiaportal-ldap.properties"
               subPath: &springConfigFoiaLdapProperties "spring-config-foiaportal-ldap.properties"
               readOnly: true
             {{- end }}
@@ -404,6 +412,8 @@ spec:
               {{- if $foia }}
               - key: *springConfigFoiaLdapXml
                 path: *springConfigFoiaLdapXml
+              - key: *emptyKs
+                path: *emptyKs
               {{- end }}
               - key: *log4j2Xml
                 path: *log4j2Xml
