@@ -32,7 +32,6 @@
 {{- end -}}
 
 {{- define "arkcase.ldap" -}}
-
   {{- /* First, fetch the whole LDAP configuration */ -}}
   {{- $params := merge (pick $ "ctx" "debug") (dict "detailed" true "value" "ldap") -}}
   {{- $ldap := (include "arkcase.tools.conf" $params | fromYaml) -}}
@@ -116,8 +115,9 @@ result: "DC=some,DC=domain,DC=com"
 {{- end -}}
 
 {{- define "arkcase.ldap.bindDn" -}}
-  {{- $baseDn := (include "arkcase.ldap.baseDn" $) -}}
-  {{- include "arkcase.ldap" (dict "ctx" $ "value" "bind.dn") | replace "${baseDn}" $baseDn -}}
+  {{- $params := (include "arkcase.ldap.baseParam" $ | fromYaml) -}}
+  {{- $baseDn := (include "arkcase.ldap.baseDn" $params) -}}
+  {{- include "arkcase.ldap" (set $params "value" "bind.dn") | replace "${baseDn}" $baseDn -}}
 {{- end -}}
 
 {{- define "arkcase.ldap.realm" -}}
