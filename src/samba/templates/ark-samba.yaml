@@ -110,7 +110,6 @@ spec:
               value: "/app/secrets/step.password"
           {{- end }}
           {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
-          command: [ "sleep", "infinity" ]
           {{- if $.Values.command }}
           command: {{- $.Values.command | toYaml | nindent 12 }}
           {{- end }}
