@@ -285,10 +285,10 @@ spec:
               mountPath: *fsrvDir
             - name: *foiaVolume
               mountPath: "/app/home/.external-portal-api"
-             - name: *configMap
-               mountPath: "/app/home/.external-portal-api/arkcase.ks"
-               subPath: &emptyKs "empty.ks"
-               readOnly: true
+            - name: *configMap
+              mountPath: "/app/home/.external-portal-api/arkcase.ks"
+              subPath: &emptyKs "empty.ks"
+              readOnly: true
             - name: *configMap
               mountPath: "/app/home/.external-portal-api/arkcase.ts"
               subPath: *emptyKs
