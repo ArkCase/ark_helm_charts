@@ -68,7 +68,7 @@ spec:
       {{- end }}
       initContainers:
         - name: initialize-configuration
-          {{- include "arkcase.image" (dict "ctx" $ "name" "deploy" "useChartTag" true) | nindent 10 }}
+          {{- include "arkcase.core.image.deploy" (dict "ctx" $ "name" "deploy" "useChartTag" true) | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             - name: REALM_FIX
               value: {{ printf "arkcase.org=%s" (include "arkcase.ldap" (dict "ctx" $ "value" "domain")) | quote }}
