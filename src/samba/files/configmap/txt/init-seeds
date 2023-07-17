@@ -30,6 +30,9 @@ KEY_LDAP_ADMIN_PASS = "adminPass"
 KEY_LDAP_USER_PREFIX = "userPrefix"
 KEY_LDAP_GROUP_PREFIX = "groupPrefix"
 KEY_LDAP_DEFAULT_PASSWORD = "defaultPassword"
+KEY_LDAP_BASE_DN = "baseDn"
+KEY_LDAP_USER_OU = "userou"
+KEY_LDAP_GROUP_OU = "groupou"
 
 KEY_SECRET_DOMAIN_NAME = "NAME"
 KEY_SECRET_DOMAIN_ROOT_DN = "ROOT_DN"
@@ -37,7 +40,6 @@ KEY_SECRET_DOMAIN_BASE_DN = "BASE_DN"
 KEY_SECRET_DOMAIN_REALM = "REALM"
 KEY_SECRETS = [ KEY_SECRET_DOMAIN_NAME, KEY_SECRET_DOMAIN_ROOT_DN, KEY_SECRET_DOMAIN_BASE_DN, KEY_SECRET_DOMAIN_REALM ]
 
-KEY_USER_OU = "userou"
 KEY_USERS = "users"
 KEY_PASSWORD = "password"
 KEY_EXPIRATION_DAYS = "expirationDays"
@@ -49,7 +51,6 @@ USER_ATTRIBUTES = {
 	"description" : None,
 }
 
-KEY_GROUP_OU = "groupou"
 KEY_GROUPS = "groups"
 GROUP_ATTRIBUTES = {
 	"scope" : "group-scope",
@@ -106,13 +107,6 @@ for s in KEY_SECRETS:
 DOMAIN_NAME = SECRETS[KEY_SECRET_DOMAIN_NAME]
 DOMAIN_REALM = SECRETS[KEY_SECRET_DOMAIN_REALM]
 DOMAIN_ROOT_DN = SECRETS[KEY_SECRET_DOMAIN_ROOT_DN]
-DOMAIN_BASE_DN = SECRETS[KEY_SECRET_DOMAIN_BASE_DN]
-
-if DOMAIN_BASE_DN == DOMAIN_ROOT_DN:
-	DOMAIN_BASE_DN = ""
-else:
-	# Remove the root DN from the base DN
-	DOMAIN_BASE_DN = DOMAIN_BASE_DN.replace("," + DOMAIN_ROOT_DN, "")
 
 def get_config_value(conf, confName, args, argName, envName, default = None):
 	if hasattr(args, argName):
@@ -446,9 +440,22 @@ else:
 
 # Deduce the actual base DN removing the root DN from the end
 
+try:
+	DOMAIN_BASE_DN = serverInfo[KEY_LDAP_BASE_DN]
+	if type(DOMAIN_BASE_DN) != str:
+		DOMAIN_BASE_DN = SECRETS[KEY_SECRET_DOMAIN_BASE_DN]
+except KeyError:
+	DOMAIN_BASE_DN = SECRETS[KEY_SECRET_DOMAIN_BASE_DN]
+
+if DOMAIN_BASE_DN == DOMAIN_ROOT_DN:
+	DOMAIN_BASE_DN = ""
+else:
+	# Remove the root DN from the base DN
+	DOMAIN_BASE_DN = DOMAIN_BASE_DN.replace("," + DOMAIN_ROOT_DN, "")
+
 USER_OU = None
 try:
-	USER_OU = data[KEY_USER_OU]
+	USER_OU = serverInfo[KEY_LDAP_USER_OU]
 	if type(USER_OU) != str:
 		USER_OU = None
 	else:
@@ -461,7 +468,7 @@ except KeyError:
 
 GROUP_OU = None
 try:
-	GROUP_OU = data[KEY_GROUP_OU]
+	GROUP_OU = serverInfo[KEY_LDAP_GROUP_OU]
 	if type(GROUP_OU) != str:
 		GROUP_OU = None
 	else:
