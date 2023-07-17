@@ -240,6 +240,12 @@ spec:
               mountPath: "/app/home/.arkcase/acm/spring/proxy-config/spring-config-proxy.xml"
               subPath: &springConfigProxyXml "spring-config-proxy.xml"
               readOnly: true
+            {{- if $foia }}
+            - name: *configMap
+              mountPath: "/home/arkcase/.arkcase/acm/spring/spring-config-foiaportal-ldap.xml"
+              subPath: &springConfigFoiaLdapXml "spring-config-foiaportal-ldap.xml"
+              readOnly: true
+            {{- end }}
             - name: &secrets "secrets"
               mountPath: "/app/home/.arkcase/acm/acm-config-server-repo/application.yaml"
               subPath: &applicationYaml "application.yaml"
@@ -258,8 +264,16 @@ spec:
               readOnly: true
             {{- if $foia }}
             - name: *secrets
+              mountPath: "/app/home/.arkcase/acm/acm-config-server-repo/arkcase-portal-server.yaml"
+              subPath: &arkcasePortalServerYaml "arkcase-portal-server.yaml"
+              readOnly: true
+            - name: *secrets
               mountPath: "/app/home/.arkcase/acm/acm-config-server-repo/arkcase-{{ $foia.springProfile }}.yaml"
               subPath: &arkcaseFoiaYaml "arkcase-{{ $foia.springProfile }}.yaml"
+              readOnly: true
+            - name: *secrets
+              mountPath: "/home/arkcase/.arkcase/acm/spring/spring-config-foiaportal-ldap.properties"
+              subPath: &springConfigFoiaLdapProperties "spring-config-foiaportal-ldap.properties"
               readOnly: true
             {{- end }}
             - name: *secrets
@@ -334,6 +348,10 @@ spec:
               readOnly: true
             {{- if $foia }}
             - name: *secrets
+              mountPath: "/app/conf/arkcase-portal-server.yaml"
+              subPath: *arkcasePortalServerYaml
+              readOnly: true
+            - name: *secrets
               mountPath: "/app/conf/arkcase-{{ $foia.springProfile }}.yaml"
               subPath: *arkcaseFoiaYaml
               readOnly: true
@@ -351,6 +369,8 @@ spec:
               - key: *arkcaseK8sYaml
                 path: *arkcaseK8sYaml
               {{- if $foia }}
+              - key: *arkcasePortalServerYaml
+                path: *arkcasePortalServerYaml
               - key: *arkcaseFoiaYaml
                 path: *arkcaseFoiaYaml
               {{- end }}
@@ -366,6 +386,8 @@ spec:
                 path: *confYaml
               - key: *pdfnetSdkLicenseTxt
                 path: *pdfnetSdkLicenseTxt
+              - key: *springConfigFoiaLdapProperties
+                path: *springConfigFoiaLdapProperties
         - name: *configMap
           configMap:
             optional: false
@@ -376,6 +398,10 @@ spec:
                 path: *quartzProperties
               - key: *springConfigProxyXml
                 path: *springConfigProxyXml
+              {{- if $foia }}
+              - key: *springConfigFoiaLdapXml
+                path: *springConfigFoiaLdapXml
+              {{- end }}
               - key: *log4j2Xml
                 path: *log4j2Xml
               - key: *seedContent
