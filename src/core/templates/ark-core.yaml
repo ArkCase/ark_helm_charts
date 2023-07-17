@@ -1,8 +1,8 @@
 {{- if (include "arkcase.subsystem.enabled" $) }}
   {{- $dev := (include "arkcase.dev" $ | fromYaml) }}
   {{- $debug := $dev.debug | default dict }}
-  {{- $devUid := $dev.uid | default "1997" }}
-  {{- $devGid := $dev.gid | default "1997" }}
+  {{- $devUid := (empty $dev) | ternary "1997" $dev.uid }}
+  {{- $devGid := (empty $dev) | ternary "1997" $dev.gid }}
   {{- $customConf := and (not (empty $dev)) (not (empty $dev.conf)) }}
   {{- $customConfFile := and $customConf $dev.conf.file }}
   {{- $customConfDir := and $customConf (not $dev.conf.file) }}
@@ -81,9 +81,17 @@ spec:
             - name: &confFileVolume "conf-file"
               mountPath: "/app/file/conf/00-base.zip"
         {{- end }}
+        {{- if not $customConfDir }}
+            - name: "conf"
+              mountPath: "/app/depl/conf"
+        {{- end }}
         {{- if $customWarFile }}
             - name: &warFileVolume "war-file"
               mountPath: "/app/file/wars/arkcase.war"
+        {{- end }}
+        {{- if not $customWarDir }}
+            - name: "wars"
+              mountPath: "/app/depl/wars"
         {{- end }}
         - name: set-permissions
           {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
@@ -93,15 +101,10 @@ spec:
                 jobs:
                   # We know the Cloudconfig image uses user 997i (centos) , 1997 (rocky)
                   # TODO: Make this autodetected via the securityContext
-                  {{- if $dev }}
                   - ownership: "{{ $devUid }}:{{ $devGid }}"
                     permissions: "u=rwXs,g=rwXs,o="
-                  {{- else }}
-                  - ownership: "1997:1997"
-                    permissions: "u=rwX,g=rX,o="
-                  {{- end }}
                     flags: [ "recurse", "noforced", "create", "changes" ]
-                    targets: [ "/app/home", "/app/conf", "/app/war", "/app/logs", "/apps/fsrv" ]
+                    targets: [ "/app/home", "/app/conf", "/app/wars", "/app/logs", "/apps/fsrv" ]
           volumeMounts:
             - name: &confVolume "conf"
               mountPath: &confDir "/app/conf"
