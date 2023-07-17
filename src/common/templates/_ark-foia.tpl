@@ -39,6 +39,11 @@
       {{- $generateUsers := (not (empty (include "arkcase.toBoolean" $foia.generateUsers))) -}}
       {{- $disableAuth := (not (empty (include "arkcase.toBoolean" $foia.disableAuth))) -}}
 
+      {{- $apiSecret := (hasKey $foia "apiSecret" | ternary $foia.apiSecret "") -}}
+      {{- if or (not $apiSecret) (not (kindIs "string" $apiSecret)) -}}
+        {{- $apiSecret = "voSNRpEtMsK0ocueclMvd97KE7aTezFTtEOoYfe2MtX7/8t+dq1dXvlOMpD10B8Nu+R/UE8CA1rvD4o2Nrb9gwZt" -}}
+      {{- end -}}
+
       {{- /* If we're not authenticating, then we won't be generating users */ -}}
       {{- $generateUsers = and $generateUsers (not $disableAuth) -}}
 
@@ -57,16 +62,17 @@
       {{- /* default values */ -}}
       {{-
         $result = dict
-          "notificationGroups" $notificationGroups
+          "apiSecret" $apiSecret
           "disableAuth" $disableAuth
           "generateUsers" $generateUsers
-          "springProfile" "FOIA_server"
           "ldap" (
             dict
               "server" $ldapServer
               "groupPrefix" $ldapGroupPrefix
               "domain" $ldapDomain
             )
+          "notificationGroups" $notificationGroups
+          "springProfile" "FOIA_server"
       -}}
     {{- end -}}
     {{- $result | toYaml -}}
