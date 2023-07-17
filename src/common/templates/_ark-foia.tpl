@@ -39,6 +39,12 @@
       {{- $generateUsers := (not (empty (include "arkcase.toBoolean" $foia.generateUsers))) -}}
       {{- $disableAuth := (not (empty (include "arkcase.toBoolean" $foia.disableAuth))) -}}
 
+      {{- $portalId := (hasKey $foia "portalId" | ternary $foia.portalId "") -}}
+      {{- if or (not $portalId) (not (kindIs "string" $portalId)) -}}
+        {{- /* This default value was taken from the installer */ -}}
+        {{- $portalId = "8c41ee4e-49d4-4acb-8bce-866e52de3e4e" -}}
+      {{- end -}}
+
       {{- $apiSecret := (hasKey $foia "apiSecret" | ternary $foia.apiSecret "") -}}
       {{- if or (not $apiSecret) (not (kindIs "string" $apiSecret)) -}}
         {{- $apiSecret = "voSNRpEtMsK0ocueclMvd97KE7aTezFTtEOoYfe2MtX7/8t+dq1dXvlOMpD10B8Nu+R/UE8CA1rvD4o2Nrb9gwZt" -}}
@@ -65,6 +71,7 @@
           "apiSecret" $apiSecret
           "disableAuth" $disableAuth
           "generateUsers" $generateUsers
+          "portalId" $portalId
           "ldap" (
             dict
               "server" $ldapServer
