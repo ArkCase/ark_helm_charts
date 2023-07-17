@@ -74,16 +74,19 @@
             <beans:property name="userControlGroup" value="${ldapConfig.userControlGroup}"/>
             <beans:property name="groupControlGroup" value="${ldapConfig.groupControlGroup}"/>
         </beans:bean>
-        
-        <beans:bean id="foiaportal_ldapAuthenticateService" class="gov.foia.service.FOIALdapAuthenticationService">
-            <!-- ldapAuthenticateConfig: ref must match an AcmLdapAuthenticateConfig bean -->
-            <beans:property name="ldapAuthenticateConfig" ref="foiaportal_authenticate"/>
-            <!-- ldapSyncConfig: ref must match an AcmLdapSyncConfig bean -->
-            <beans:property name="ldapSyncConfig" ref="foiaportal_sync"/>
-            <!-- do not change ldapDao properties. -->
-            <beans:property name="ldapDao" ref="customPagedLdapDao"/>
-            <beans:property name="userDao" ref="userJpaDao"/>
-            <beans:property name="ldapUserDao" ref="springLdapUserDao"/>
-        </beans:bean>
 
+        <beans:bean id="foiaportal_ldapAuthenticateService" class="gov.foia.service.FOIALdapAuthenticationService" factory-method="getInstance">
+            <beans:constructor-arg>
+                <beans:bean class="com.armedia.acm.services.users.service.ldap.LdapAuthenticateService">
+                    <!-- ldapAuthenticateConfig: ref must match an AcmLdapAuthenticateConfig bean -->
+                    <beans:property name="ldapAuthenticateConfig" ref="foiaportal_authenticate"/>
+                    <!-- ldapSyncConfig: ref must match an AcmLdapSyncConfig bean -->
+                    <beans:property name="ldapSyncConfig" ref="foiaportal_sync"/>
+                    <!-- do not change ldapDao properties. -->
+                    <beans:property name="ldapDao" ref="customPagedLdapDao"/>
+                    <beans:property name="userDao" ref="userJpaDao"/>
+                    <beans:property name="ldapUserDao" ref="springLdapUserDao"/>
+                </beans:bean>
+            </beans:constructor-arg>
+        </beans:bean>
 </beans:beans>
