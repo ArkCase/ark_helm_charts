@@ -96,15 +96,20 @@ result: "DC=some,DC=domain,DC=com"
   {{- $dc -}}
 {{- end -}}
 
-{{- define "arkcase.ldap.baseDn" -}}
+{{- define "arkcase.ldap.rootDn" -}}
   {{- $params := (include "arkcase.ldap.baseParam" $ | fromYaml) -}}
 
   {{- $rootDn := (include "arkcase.ldap" (set $params "value" "domain")) -}}
   {{- if or (not $rootDn) (not (kindIs "string" $rootDn)) -}}
     {{- fail "No LDAP domain is configured - cannot continue" -}}
   {{- end -}}
-  {{- $rootDn = (include "arkcase.ldap.dc" $rootDn | lower) -}}
+  {{- include "arkcase.ldap.dc" $rootDn | lower -}}
+{{- end -}}
 
+{{- define "arkcase.ldap.baseDn" -}}
+  {{- $params := (include "arkcase.ldap.baseParam" $ | fromYaml) -}}
+
+  {{- $rootDn := (include "arkcase.ldap.rootDn" $params) -}}
   {{- $baseDn := (include "arkcase.ldap" (set $params "value" "baseDn")) -}}
   {{- if and $baseDn (kindIs "string" $baseDn) -}}
     {{- $baseDn = (printf "%s,%s" $baseDn $rootDn) -}}
