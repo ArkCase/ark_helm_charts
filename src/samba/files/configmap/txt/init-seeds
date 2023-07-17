@@ -223,7 +223,6 @@ def ensure_ou_exists(ou):
 	# preceded by backslashes. So we'll want to create the entire tree
 	# downward, as required
 	steps = DN_SPLIT_RE.split(ou)
-	logging.info(f"\tSteps: {steps}")
 
 	currentOu = ""
 	while steps:
@@ -233,11 +232,9 @@ def ensure_ou_exists(ou):
 		if currentOu:
 			currentOu = "," + currentOu
 		currentOu = steps.pop() + currentOu
-		logging.info(f"\t\tcurrentOu = {currentOu}")
 
 		# Shortcut! Avoid testing for, or creating the current OU
 		if currentOu in CREATED_OU:
-			logging.info(f"\t\t\tAlready cached")
 			continue
 
 		# Ok so we haven't played with the current OU before ... is this a valid component?
@@ -247,14 +244,12 @@ def ensure_ou_exists(ou):
 		# The current OU is valid ... does it exist?
 		result = samba_tool([ "ou", "listobjects", currentOu ])
 		if result.returncode == 0:
-			logging.info(f"\t\t\tAlready exists")
 			CREATED_OU[currentOu] = True
 			continue
 
 		# The current OU is valid and does not exist... create it!
 		result = samba_tool([ "ou", "create", currentOu ])
 		if result.returncode == 0:
-			logging.info(f"\tCreated OU [{currentOu}]")
 			CREATED_OU[currentOu] = True
 			continue
 
