@@ -78,7 +78,7 @@
             "domain" $ldapDomain
           )
         "notificationGroups" $notificationGroups
-        "springProfile" "FOIA_server"
+        "springProfile" "extension-foia"
     -}}
   {{- end -}}
   {{- $result | toYaml -}}
