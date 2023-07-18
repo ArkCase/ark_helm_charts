@@ -60,8 +60,11 @@
         {{- $notificationGroups = ($notificationGroups | toString | splitList ",") -}}
       {{- end -}}
       {{- $notificationGroups = ($notificationGroups | compact | sortAlpha | uniq) -}}
-    {{- else -}}
-      {{- $notificationGroups = list -}}
+    {{- end -}}
+
+    {{- /* Make sure there are always entries here */ -}}
+    {{- if not $notificationGroups -}}
+      {{- $notificationGroups = list "OFFICERS" -}}
     {{- end -}}
 
     {{- /* default values */ -}}
