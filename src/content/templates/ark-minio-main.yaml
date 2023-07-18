@@ -133,10 +133,10 @@ spec:
                 secretKeyRef:
                   name: *secrets
                   key: MINIO_IDENTITY_LDAP_GROUP_SEARCH_FILTER
-            {{- $baseDn := (include "arkcase.tools.ldap.baseDn" $) }}
-            {{- $ldapGroupsBase := (printf "%s,%s" (include "arkcase.tools.ldap" (dict "ctx" $ "value" "search.groups.base")) $baseDn) }}
+            {{- $baseDn := (include "arkcase.ldap.baseDn" $) }}
+            {{- $ldapGroupsBase := (printf "%s,%s" (include "arkcase.ldap" (dict "ctx" $ "value" "search.groups.base")) $baseDn) }}
             - name: LDAP_ADMIN_GROUP
-              value: {{ printf "%s,%s" (include "arkcase.tools.ldap" (dict "ctx" $ "value" "admin.role")) $ldapGroupsBase | quote }}
+              value: {{ printf "%s,%s" (include "arkcase.ldap" (dict "ctx" $ "value" "admin.role")) $ldapGroupsBase | quote }}
           {{- $command := (include "arkcase.values" (dict "ctx" $ "base" "command") | fromYaml) }}
           {{- $lifecycle := (include "arkcase.values" (dict "ctx" $ "base" "lifecycle") | fromYaml) }}
           {{- if $command.value }}

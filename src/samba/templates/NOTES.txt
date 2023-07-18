@@ -1,12 +1,12 @@
 {{- if (include "arkcase.subsystem.enabledOrExternal" .) -}}
 Samba Domain specs:
 
-    {{- $domain := (include "arkcase.tools.ldap" (dict "ctx" $ "value" "domain")) }}
-    {{- $administrator := (include "arkcase.tools.ldap" (dict "ctx" $ "value" "administrator") | default "administrator") }}
-    {{- $password := (include "arkcase.tools.ldap" (dict "ctx" $ "value" "password")) }}
-    {{- $baseDn := (include "arkcase.tools.ldap.baseDn" $) }}
-    {{- $userBaseDn := (include "arkcase.tools.ldap" (dict "ctx" $ "value" "search.users.base") | default "cn=Users") }}
-	{{- $realm := (include "arkcase.tools.ldap.realm" $) }}
+    {{- $domain := (include "arkcase.ldap" (dict "ctx" $ "value" "domain")) }}
+    {{- $administrator := (include "arkcase.ldap" (dict "ctx" $ "value" "administrator") | default "administrator") }}
+    {{- $password := (include "arkcase.ldap" (dict "ctx" $ "value" "password")) }}
+    {{- $baseDn := (include "arkcase.ldap.baseDn" $) }}
+    {{- $userBaseDn := (include "arkcase.ldap" (dict "ctx" $ "value" "search.users.base") | default "cn=Users") }}
+	{{- $realm := (include "arkcase.ldap.realm" $) }}
 	Domain: {{ $domain }}
 	Realm: {{ $realm }}
 	LDAP Base DN: {{ $baseDn }}

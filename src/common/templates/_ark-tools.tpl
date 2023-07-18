@@ -697,66 +697,8 @@ return either the value if correct, or the empty string if not.
   {{- end -}}
 {{- end -}}
 
-{{- define "arkcase.tools.ldap" -}}
-  {{- $params := merge (pick $ "ctx" "value" "debug") (dict "detailed" true "prefix" "ldap") -}}
-  {{- $value := "" -}}
-  {{- $result := (include "arkcase.tools.conf" $params | fromYaml) -}}
-  {{- if and $result $result.value -}}
-    {{- $value = $result.value -}}
-    {{- if or (kindIs "map" $value) (kindIs "slice" $value) -}}
-      {{- $value = toYaml $value -}}
-    {{- end -}}
-  {{- end -}}
-  {{- $value -}}
-{{- end -}}
-
-{{/*
-Compute the LDAP dc=XXX,dc=XXX from a given domain name
-
-usage: ( include "arkcase.tools.ldap.dc" "some.domain.com" )
-result: "DC=some,DC=domain,DC=com"
-*/}}
-{{- define "arkcase.tools.ldap.dc" -}}
-  {{- $parts := splitList "." (include "arkcase.tools.mustHostname" . | upper) | compact -}}
-  {{- $dc := "" -}}
-  {{- $sep := "" -}}
-  {{- range $parts -}}
-    {{- $dc = (printf "%s%sdc=%s" $dc $sep .) -}}
-    {{- if (eq $sep "") -}}
-      {{- $sep = "," -}}
-    {{- end -}}
-  {{- end -}}
-  {{- $dc -}}
-{{- end -}}
-
 {{- define "arkcase.tools.normalizeDots" -}}
   {{- splitList "." $ | compact | join "." -}}
-{{- end -}}
-
-{{- define "arkcase.tools.ldap.baseDn" -}}
-  {{- $baseDn := (include "arkcase.tools.ldap" (dict "ctx" . "value" "baseDn")) -}}
-  {{- if not $baseDn -}}
-    {{- $baseDn = (include "arkcase.tools.ldap" (dict "ctx" . "value" "domain")) -}}
-    {{- if not $baseDn -}}
-      {{- fail "No LDAP domain is configured - cannot continue" -}}
-    {{- end -}}
-    {{- $baseDn = (include "arkcase.tools.ldap.dc" $baseDn | lower) -}}
-  {{- end -}}
-  {{- $baseDn -}}
-{{- end -}}
-
-{{- define "arkcase.tools.ldap.bindDn" -}}
-  {{- $baseDn := (include "arkcase.tools.ldap.baseDn" $) -}}
-  {{- include "arkcase.tools.ldap" (dict "ctx" $ "value" "bind.dn") | replace "${baseDn}" $baseDn -}}
-{{- end -}}
-
-{{- define "arkcase.tools.ldap.realm" -}}
-  {{- $realm := (include "arkcase.tools.ldap" (dict "ctx" . "value" "domain")) -}}
-  {{- if not $realm -}}
-    {{- fail "No LDAP domain is configured - cannot continue" -}}
-  {{- end -}}
-  {{- $parts := splitList "." (include "arkcase.tools.mustHostname" $realm | upper) -}}
-  {{- (index $parts 0) -}}
 {{- end -}}
 
 {{- define "arkcase.tools.parseUrl" -}}
@@ -765,7 +707,8 @@ result: "DC=some,DC=domain,DC=com"
 
   {{- if hasKey $data "host" -}}
     {{- /* Host may be of the form (host)?(:port)? */ -}}
-    {{- $hostInfo := split ":" $data.host -}}
+    {{- $data = set $data "hostPort" $data.host -}}
+    {{- $hostInfo := split ":" $data.hostPort -}}
 
     {{- /* Purify the host information */ -}}
     {{- $host := "" -}}

@@ -7,7 +7,7 @@
   {{- $https := (eq "https" ($baseUrl.scheme | lower)) -}}
   {{- $hostname := $baseUrl.host -}}
   {{- $path := $baseUrl.path | default "/" -}}
-  {{- $rootPath := (eq "/" $path) -}}
+  {{- $foia := (include "arkcase.foia" $ | fromYaml) -}}
 
   {{- $secretData := $ingress.secret -}}
   {{- if and $https (not $secretData) -}}
@@ -66,35 +66,37 @@ metadata:
       {{- toYaml . | nindent 4 }}
     {{- end }}
 spec:
-    {{- if $ingress.className }}
-  ingressClassName: {{ $ingress.className | quote }}
+    {{- with $ingress.className }}
+  ingressClassName: {{ . | quote }}
     {{- end }}
-    {{- if $rootPath -}}
-  defaultBackend:
-    service:
-      name: "core"
-      port:
-        number: 8080
-    {{- else -}}
-      {{- if $ingress.gateway }}
+    {{- if $ingress.gateway }}
   defaultBackend:
     service:
       name: "gateway"
       port:
         number: 80
-      {{- end }}
+    {{- end }}
   rules:
     - host: {{ $hostname | quote }}
       http:
         paths:
-          - path: {{ $path | quote }}
+          - path: "/arkcase"
             pathType: Prefix
             backend:
               service:
                 name: "core"
                 port:
                   number: 8080
-      {{- if $ingress.content }}
+    {{- if $foia }}
+          - path: "/foia"
+            pathType: Prefix
+            backend:
+              service:
+                name: "core"
+                port:
+                  number: 8080
+    {{- end }}
+    {{- if $ingress.content }}
           - path: "/alfresco"
             pathType: Prefix
             backend:
@@ -116,8 +118,8 @@ spec:
                 name: "content-share"
                 port:
                   number: 8080
-      {{- end }}
-      {{- if $ingress.reports }}
+    {{- end }}
+    {{- if $ingress.reports }}
           - path: "/pentaho"
             pathType: Prefix
             backend:
@@ -125,8 +127,7 @@ spec:
                 name: "reports"
                 port:
                   number: 8080
-      {{- end }}
-    {{- end -}}
+    {{- end }}
     {{- if and $https $secretData }}
   tls:
     - secretName: {{ $secretName | quote }}
