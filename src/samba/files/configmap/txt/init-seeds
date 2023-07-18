@@ -20,6 +20,7 @@ EXE_SAMBA_TOOL = "/usr/bin/samba-tool"
 EXE_NET = "/usr/bin/net"
 
 SID_RE = re.compile("^.* SID (S-\\S*)$", re.IGNORECASE)
+DN_SPLIT_RE = re.compile("(?<!\\\\),")
 
 KEY_DEBUG = "debug"
 KEY_LDAP = "server"
@@ -29,11 +30,15 @@ KEY_LDAP_ADMIN_PASS = "adminPass"
 KEY_LDAP_USER_PREFIX = "userPrefix"
 KEY_LDAP_GROUP_PREFIX = "groupPrefix"
 KEY_LDAP_DEFAULT_PASSWORD = "defaultPassword"
+KEY_LDAP_BASE_DN = "baseDn"
+KEY_LDAP_USER_OU = "userou"
+KEY_LDAP_GROUP_OU = "groupou"
 
 KEY_SECRET_DOMAIN_NAME = "NAME"
 KEY_SECRET_DOMAIN_ROOT_DN = "ROOT_DN"
+KEY_SECRET_DOMAIN_BASE_DN = "BASE_DN"
 KEY_SECRET_DOMAIN_REALM = "REALM"
-KEY_SECRETS = [ KEY_SECRET_DOMAIN_NAME, KEY_SECRET_DOMAIN_ROOT_DN, KEY_SECRET_DOMAIN_REALM ]
+KEY_SECRETS = [ KEY_SECRET_DOMAIN_NAME, KEY_SECRET_DOMAIN_ROOT_DN, KEY_SECRET_DOMAIN_BASE_DN, KEY_SECRET_DOMAIN_REALM ]
 
 KEY_USERS = "users"
 KEY_PASSWORD = "password"
@@ -102,7 +107,6 @@ for s in KEY_SECRETS:
 DOMAIN_NAME = SECRETS[KEY_SECRET_DOMAIN_NAME]
 DOMAIN_REALM = SECRETS[KEY_SECRET_DOMAIN_REALM]
 DOMAIN_ROOT_DN = SECRETS[KEY_SECRET_DOMAIN_ROOT_DN]
-DOMAIN_USER_GROUP_BASE = f"cn=Users,{DOMAIN_ROOT_DN}"
 
 def get_config_value(conf, confName, args, argName, envName, default = None):
 	if hasattr(args, argName):
@@ -198,11 +202,63 @@ def render_group_id(groupId):
 		return re.sub("^\+", "", groupId)
 	return f"{GROUP_PREFIX}{groupId}"
 
+# To track which OUs have been created via ensure_ou_exists()
+CREATED_OU = {}
+def ensure_ou_exists(ou):
+
+	# Super-shortcut... avoid processing if we already
+	# created the given OU
+	if ou in CREATED_OU:
+		return
+
+	logging.info(f"Ensuring that OU [{ou}] exists...")
+
+	# The OU is a list of elements, separated by commas. Escaped commas are
+	# preceded by backslashes. So we'll want to create the entire tree
+	# downward, as required
+	steps = DN_SPLIT_RE.split(ou)
+
+	currentOu = ""
+	while steps:
+
+		# If necessary, prepend a comma before adding the next element
+		# to the current OU
+		if currentOu:
+			currentOu = "," + currentOu
+		currentOu = steps.pop() + currentOu
+
+		# Shortcut! Avoid testing for, or creating the current OU
+		if currentOu in CREATED_OU:
+			continue
+
+		# Ok so we haven't played with the current OU before ... is this a valid component?
+		if not currentOu.lower().startswith("ou="):
+			fail("The OU path may only contain OU elements: {currentOu} (full OU => {ou})")
+
+		# The current OU is valid ... does it exist?
+		result = samba_tool([ "ou", "listobjects", currentOu ])
+		if result.returncode == 0:
+			CREATED_OU[currentOu] = True
+			continue
+
+		# The current OU is valid and does not exist... create it!
+		result = samba_tool([ "ou", "create", currentOu ])
+		if result.returncode == 0:
+			CREATED_OU[currentOu] = True
+			continue
+
+		# Ooops ... something went wrong
+		fail("Failed to create the OU [{currentOu}] (rc={result}")
+
 def create_user(userId, userData):
 	userId = render_user_id(userId)
 	# a) create the user
 	logging.info(f"Creating user '{userId}' from [{userData}]")
 	command = [ "user", "add", userId, "--random-password" ]
+
+	if USER_OU:
+		ensure_ou_exists(USER_OU)
+		command += [ f"--userou={USER_OU}" ]
 
 	for attName, attFlag in USER_ATTRIBUTES.items():
 		if attFlag is None:
@@ -282,11 +338,13 @@ def create_user(userId, userData):
 				# The SID is the last string that contains no spaces
 				sid = m.group(1)
 
-			result = samba_tool(["dsacl", "set", "--action=allow", f"--sddl=(A;OICI;GA;;;{sid})", f"--objectdn={DOMAIN_USER_GROUP_BASE}"])
-			if result.returncode != 0:
-				output = result.stdout.decode("utf-8")
-				fail(f"Failed to set LDAP administrative permissions for {userId} on branch {DOMAIN_USER_GROUP_BASE}:\n{output}")
-			logging.info(f"\tGranted administrative priviliges to '{userId}' on branch [{DOMAIN_USER_GROUP_BASE}]")
+			branches = { USER_OU_FULL : True,  GROUP_OU_FULL : True }
+			for dn in branches.keys():
+				result = samba_tool(["dsacl", "set", "--action=allow", f"--sddl=(A;OICI;GA;;;{sid})", f"--objectdn={dn}"])
+				if result.returncode != 0:
+					output = result.stdout.decode("utf-8")
+					fail(f"Failed to set LDAP administrative permissions for {userId} on branch {dn}:\n{output}")
+				logging.info(f"\tGranted administrative priviliges to '{userId}' on branch [{dn}]")
 
 	return userId
 
@@ -308,6 +366,10 @@ def create_group(groupId, groupData):
 	groupId = render_group_id(groupId)
 	logging.info(f"Creating group '{groupId}' from [{groupData}]")
 	command = [ "group", "add", groupId ]
+
+	if GROUP_OU:
+		ensure_ou_exists(GROUP_OU)
+		command += [ f"--groupou={GROUP_OU}" ]
 
 	for attName, attFlag in GROUP_ATTRIBUTES.items():
 		if attFlag is None:
@@ -375,6 +437,47 @@ if DEBUG:
 	DEBUG = (DEBUG.lower() == "true")
 else:
 	DEBUG = False
+
+# Deduce the actual base DN removing the root DN from the end
+
+try:
+	DOMAIN_BASE_DN = serverInfo[KEY_LDAP_BASE_DN]
+	if type(DOMAIN_BASE_DN) != str:
+		DOMAIN_BASE_DN = SECRETS[KEY_SECRET_DOMAIN_BASE_DN]
+except KeyError:
+	DOMAIN_BASE_DN = SECRETS[KEY_SECRET_DOMAIN_BASE_DN]
+
+if DOMAIN_BASE_DN == DOMAIN_ROOT_DN:
+	DOMAIN_BASE_DN = ""
+else:
+	# Remove the root DN from the base DN
+	DOMAIN_BASE_DN = DOMAIN_BASE_DN.replace("," + DOMAIN_ROOT_DN, "")
+
+USER_OU = None
+try:
+	USER_OU = serverInfo[KEY_LDAP_USER_OU]
+	if type(USER_OU) != str:
+		USER_OU = None
+	else:
+		if DOMAIN_BASE_DN:
+			USER_OU += f",{DOMAIN_BASE_DN}"
+		USER_OU_FULL = f"{USER_OU},{DOMAIN_ROOT_DN}"
+		logging.info(f"User OU: {USER_OU_FULL}")
+except KeyError:
+	USER_OU = None
+
+GROUP_OU = None
+try:
+	GROUP_OU = serverInfo[KEY_LDAP_GROUP_OU]
+	if type(GROUP_OU) != str:
+		GROUP_OU = None
+	else:
+		if DOMAIN_BASE_DN:
+			GROUP_OU += f",{DOMAIN_BASE_DN}"
+		GROUP_OU_FULL = f"{GROUP_OU},{DOMAIN_ROOT_DN}"
+		logging.info(f"Group OU: {GROUP_OU_FULL}")
+except KeyError:
+	GROUP_OU = None
 
 try:
 	memberships = {}

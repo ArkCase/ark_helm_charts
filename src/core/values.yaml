@@ -47,33 +47,41 @@ configuration:
     # tls: my-secret-name
 
   ldap:
-    domain: "dev.arkcase.com"
-    url: "ldaps://ldap:636"
-    # Don't declare a baseDn unless absolutely necessary
-    # baseDn: ...
-    bind:
-      dn: "cn=ArkCase Administrator,cn=Users,${baseDn}"
-      password: "$arkcase-admin$"
-    admin:
-      dn: "cn=ArkCase Administrator"
-      role: "cn=ARKCASE_ADMINISTRATOR"
-    search:
-      users:
-        base: "cn=Users"
-        attribute: "sAMAccountName"
-        filter: "(&(objectClass=user)(sAMAccountName={0}))"
-        allFilter: "(objectClass=user)"
-        prefix: ""
-      groups:
-        base: "cn=Users"
-        attribute: "cn"
-        filter: "(&(objectClass=group)(cn={0}))"
-        allFilter: "(objectClass=group)"
-        membership: "(&(objectClass=group)(member={0}))"
-        ignoreCase: "false"
-        subtree: "true"
-        rolePrefix: ""
-        prefix: ""
+    default: "arkcase"
+    arkcase: &ldapArkcase
+      domain: "dev.arkcase.com"
+      url: "ldaps://ldap:636"
+      # Base DN will be taken as relative from the root DN
+      baseDn: "ou=ArkCase"
+      bind:
+        dn: "cn=ArkCase Administrator,ou=Users,${baseDn}"
+        password: "$arkcase-admin$"
+      admin:
+        dn: "cn=ArkCase Administrator"
+        role: "cn=ARKCASE_ADMINISTRATOR"
+      search:
+        users:
+          base: "ou=Users"
+          attribute: "sAMAccountName"
+          filter: "(&(objectClass=user)(sAMAccountName={0}))"
+          allFilter: "(objectClass=user)"
+          prefix: ""
+        groups:
+          base: "ou=Groups"
+          attribute: "cn"
+          filter: "(&(objectClass=group)(cn={0}))"
+          allFilter: "(objectClass=group)"
+          membership: "(&(objectClass=group)(member={0}))"
+          ignoreCase: "false"
+          subtree: "true"
+          rolePrefix: ""
+          prefix: ""
+    foia:
+      <<: *ldapArkcase
+      baseDn: "ou=FOIA"
+      bind:
+        dn: "cn=FOIA Administrator,ou=Users,${baseDn}"
+        password: "$foia-admin$"
 
   configServer:
     # For now, it's collocated ... eventually it will live elsewhere
@@ -163,8 +171,9 @@ licenses:
   - "pdftron"
 
 image:
-
-  # pullPolicy: IfNotPresent
+  pullPolicy: IfNotPresent
+  pullSecrets:
+    - name: aws-arkcase-pull
 
   registry: "public.ecr.aws"
 
@@ -172,6 +181,11 @@ image:
 
   deploy:
     repository: "arkcase/deploy"
+    # tag: &arkcaseVersion "2021.03.27"
+
+  deploy-foia:
+    registry: "207428623785.dkr.ecr.us-east-1.amazonaws.com"
+    repository: "arkcase/deploy-foia"
     # tag: &arkcaseVersion "2021.03.27"
 
   # cloudconfig:
@@ -262,11 +276,12 @@ persistence:
   # Set the default capacity for volumes in case none is assigned explicitly
   # and the default value is insufficient
   volumeSize:
-    init: "4Gi"
-    home: "8Gi"
     conf: "4Gi"
-    war: "2Gi"
+    fsrv: "8Gi"
+    home: "8Gi"
+    init: "4Gi"
     logs: "2Gi"
+    wars: "4Gi"
 
 #  The volumes for persistent data
   volumes:

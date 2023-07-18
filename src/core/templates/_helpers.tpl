@@ -62,3 +62,12 @@
   {{- end -}}
   {{- $shareUrl -}}
 {{- end -}}
+
+{{- define "arkcase.core.image.deploy" -}}
+  {{- $imageName := "deploy" -}}
+  {{- if (include "arkcase.foia" $.ctx | fromYaml) -}}
+    {{- $imageName = (printf "%s-foia" $imageName) -}}
+  {{- end -}}
+  {{- $param := (merge (dict "name" $imageName) (omit $ "name")) -}}
+  {{- include "arkcase.image" $param }}
+{{- end -}}

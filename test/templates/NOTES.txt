@@ -1,8 +1,1 @@
-CHART: [{{ $.Chart.Name }}]
-########## DEV ##########
-{{ include "arkcase.dev" $ | nindent 0 }}
-####### ALL RESOURCES #######
-{{ include "arkcase.resources.cached" $ | nindent 0 }}
-####### THIS CHART RESOURCES #######
-{{ include "arkcase.resources" $ | nindent 0 }}
-########## END ##########
+{{ include "arkcase.foia" $ | nindent 0 }}

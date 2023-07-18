@@ -1,14 +1,15 @@
 {{- if (include "arkcase.subsystem.enabled" $) }}
   {{- $dev := (include "arkcase.dev" $ | fromYaml) }}
   {{- $debug := $dev.debug | default dict }}
-  {{- $devUid := $dev.uid | default "1997" }}
-  {{- $devGid := $dev.gid | default "1997" }}
+  {{- $devUid := (empty $dev) | ternary "1997" $dev.uid }}
+  {{- $devGid := (empty $dev) | ternary "1997" $dev.gid }}
   {{- $customConf := and (not (empty $dev)) (not (empty $dev.conf)) }}
   {{- $customConfFile := and $customConf $dev.conf.file }}
   {{- $customConfDir := and $customConf (not $dev.conf.file) }}
   {{- $customWar := and (not (empty $dev)) (not (empty $dev.war)) }}
   {{- $customWarFile := and $customConf $dev.war.file }}
   {{- $customWarDir := and $customConf (not $dev.war.file) }}
+  {{- $foia := (include "arkcase.foia" $ | fromYaml) }}
 {{- $cluster := (include "arkcase.cluster" $ | fromYaml) }}
 {{- $nodes := (min 4 $cluster.nodes) -}}
 {{- $maxFailed := (sub $nodes 1) -}}
@@ -137,19 +138,32 @@ spec:
       securityContext: {{- toYaml . | nindent 8 }}
       {{- end }}
       initContainers:
-        - name: initialize-configuration
-          {{- include "arkcase.image" (dict "ctx" $ "name" "deploy" "useChartTag" true) | nindent 10 }}
+        - name: init-deploy
+          {{- include "arkcase.core.image.deploy" (dict "ctx" $ "name" "deploy" "useChartTag" true) | nindent 10 }}
+          command: [ "/deploy" ]
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             - name: REALM_FIX
-              value: {{ printf "arkcase.org=%s" (include "arkcase.tools.ldap" (dict "ctx" $ "value" "domain")) | quote }}
+              value: {{ printf "arkcase.org=%s" (include "arkcase.ldap" (dict "ctx" $ "value" "domain")) | quote }}
         {{- if or $customConfFile $customWarFile }}
             - name: FORCE_HASHES
               value: "true"
         {{- end }}
           volumeMounts:
+            - name: &configMap "config-map"
+              mountPath: "/deploy"
+              subPath: &deploy "deploy"
+              readOnly: true
+            - name: *configMap
+              mountPath: "/usr/local/bin/fixExcel"
+              subPath: &fixExcel "fixExcel"
+              readOnly: true
+            - name: *configMap
+              mountPath: "/usr/local/bin/realm-fix"
+              subPath: &realmFix "realm-fix"
+              readOnly: true
         {{- if $customConfFile }}
             - name: &confFileVolume "conf-file"
-              mountPath: "/app/file/conf.zip"
+              mountPath: "/app/file/conf/00-base.zip"
         {{- end }}
         {{- if not $customConfDir }}
             - name: "conf"
@@ -157,13 +171,13 @@ spec:
         {{- end }}
         {{- if $customWarFile }}
             - name: &warFileVolume "war-file"
-              mountPath: "/app/file/war.zip"
+              mountPath: "/app/file/wars/arkcase.war"
         {{- end }}
         {{- if not $customWarDir }}
-            - name: "war"
-              mountPath: "/app/depl/war"
+            - name: "wars"
+              mountPath: "/app/depl/wars"
         {{- end }}
-        - name: set-permissions
+        - name: init-permissions
           {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             - name: JOBS
@@ -171,28 +185,29 @@ spec:
                 jobs:
                   # We know the Cloudconfig image uses user 997i (centos) , 1997 (rocky)
                   # TODO: Make this autodetected via the securityContext
-                  {{- if $dev }}
                   - ownership: "{{ $devUid }}:{{ $devGid }}"
                     permissions: "u=rwXs,g=rwXs,o="
-                  {{- else }}
-                  - ownership: "1997:1997"
-                    permissions: "u=rwX,g=rX,o="
-                  {{- end }}
                     flags: [ "recurse", "noforced", "create", "changes" ]
-                    targets: [ "/app/home", "/app/conf", "/app/war", "/app/logs" ]
+                    targets: [ "/app/home", "/app/conf", "/app/wars", "/app/logs", "/apps/fsrv", "/apps/foia" ]
           volumeMounts:
             - name: &confVolume "conf"
               mountPath: &confDir "/app/conf"
-            - name: &warVolume "war"
-              mountPath: &warDir "/app/war"
+            - name: &warsVolume "wars"
+              mountPath: &warsDir "/app/wars"
             - name: &initVolume "home"
               mountPath: &initDir "/app/init"
             - name: &homeVolume "home"
               mountPath: &homeDir "/app/home"
             - name: &logsVolume "logs"
               mountPath: &logsDir "/app/logs"
+            {{- if $foia }}
+            - name: &foiaVolume "foia"
+              mountPath: &foiaDir "/app/foia"
+            - name: &fsrvVolume "fsrv"
+              mountPath: &fsrvDir "/app/fsrv"
+            {{- end }}
         {{- include "arkcase.initDependencies.container" (dict "ctx" $ "name" "init-dependencies") | nindent 8 }}
-        - name: seed-content
+        - name: init-seed-content
           {{- include "arkcase.image" (dict "ctx" $ "name" "seed-content" "repository" "arkcase/nettest") | nindent 10 }}
           {{- $contentDialect := (include "arkcase.content.info.dialect" $) }}
           {{- $contentScript := printf "/seed-content.%s" $contentDialect }}
@@ -234,7 +249,7 @@ spec:
           volumeMounts:
             - name: *confVolume
               mountPath: *confDir
-            - name: &configMap "config-map"
+            - name: *configMap
               mountPath: {{ $contentScript | quote }}
               subPath: &seedContent {{ $contentScript | trimPrefix "/" | quote }}
               readOnly: true
@@ -270,12 +285,16 @@ spec:
             - name: CATALINA_OPTS
               # For Java 8, these percentages must be given as doubles. The JVM may
               # choke if the ".0" isn't provided at the end
+             {{- $springProfiles := "ldap" }}
+             {{- if $foia }}
+                {{- $springProfiles = (printf "extension-foia,%s" $springProfiles) }}
+             {{- end }}
               value: >-
                 -XX:MinRAMPercentage=50.0
                 -XX:MaxRAMPercentage=80.0
                 -Dacm.configurationserver.propertyfile=/app/home/.arkcase/acm/conf.yml
                 -Dconfiguration.client.spring.path=spring
-                -Dspring.profiles.active=ldap
+                -Dspring.profiles.active={{ $springProfiles }}
                 -Duser.home=/app/home
                 {{- with $debug }}
                 -Xdebug
@@ -283,7 +302,7 @@ spec:
                 {{- end }}
           {{- include "arkcase.subsystem.ports" ($.Values.service).arkcase | nindent 10 }}
           {{- with ($.Values.command).arkcase }}
-          command: {{ toJson $ }}
+          command: {{ toJson . }}
           {{- end }}
           resources: {{- include "arkcase.resources" (dict "ctx" $ "part" "arkcase") | nindent 12 }}
           {{- with ($.Values.securityContext).arkcase }}
@@ -297,8 +316,9 @@ spec:
               mountPath: *homeDir
             - name: *confVolume
               mountPath: "/app/home/.arkcase"
-            - name: *warVolume
-              mountPath: "/app/tomcat/webapps/arkcase"
+            - name: *warsVolume
+              mountPath: "/app/tomcat/webapps"
+              readOnly: true
             - name: *configMap
               mountPath: "/app/tomcat/conf/server.xml.tpl"
               subPath: &serverXmlTpl "server.xml.tpl"
@@ -320,8 +340,8 @@ spec:
               subPath: &applicationYaml "application.yaml"
               readOnly: true
             - name: *secrets
-              mountPath: "/app/home/.arkcase/acm/acm-config-server-repo/arkcase-k8s.yaml"
-              subPath: &arkcaseK8sYaml "arkcase-k8s.yaml"
+              mountPath: "/app/home/.arkcase/acm/acm-config-server-repo/arkcase-server.yaml"
+              subPath: &arkcaseK8sYaml "arkcase-server.yaml"
               readOnly: true
             - name: *secrets
               mountPath: "/app/home/.arkcase/acm/acm-config-server-repo/arkcase-activemq.yaml"
@@ -349,6 +369,36 @@ spec:
               readOnly: true
             - name: *logsVolume
               mountPath: *logsDir
+            {{- if $foia }}
+            - name: *fsrvVolume
+              mountPath: *fsrvDir
+            - name: *foiaVolume
+              mountPath: "/app/home/.external-portal-api"
+            - name: *configMap
+              mountPath: "/app/home/.external-portal-api/arkcase.ks"
+              subPath: &emptyKs "empty.ks"
+              readOnly: true
+            - name: *configMap
+              mountPath: "/app/home/.external-portal-api/arkcase.ts"
+              subPath: *emptyKs
+              readOnly: true
+            - name: *configMap
+              mountPath: "/app/home/.arkcase/acm/acm-config-server-repo/lookups/lookups-server.yaml"
+              subPath: &lookupsK8sYaml "lookups-server.yaml"
+              readOnly: true
+            - name: *secrets
+              mountPath: "/app/home/.arkcase/acm/acm-config-server-repo/arkcase-portal-server.yaml"
+              subPath: &arkcasePortalServerYaml "arkcase-portal-server.yaml"
+              readOnly: true
+            - name: *secrets
+              mountPath: "/app/home/.arkcase/acm/acm-config-server-repo/arkcase-FOIA_server.yaml"
+              subPath: &arkcaseFoiaYaml "arkcase-FOIA_server.yaml"
+              readOnly: true
+            - name: *secrets
+              mountPath: "/app/home/.arkcase/acm/acm-config-server-repo/ldap/ldap-foia.yaml"
+              subPath: &ldapFoiaYaml "ldap-foia.yaml"
+              readOnly: true
+            {{- end }}
         - name: cloudconfig
           {{- with ($.Values.securityContext).cloudconfig }}
           securityContext: {{- toYaml . | nindent 12 }}
@@ -390,13 +440,31 @@ spec:
               subPath: *arkcaseActivemqYaml
               readOnly: true
             - name: *secrets
-              mountPath: "/app/conf/arkcase-k8s.yaml"
+              mountPath: "/app/conf/arkcase-server.yaml"
               subPath: *arkcaseK8sYaml
               readOnly: true
             - name: *secrets
               mountPath: "/app/conf/ldap/ldap.yaml"
               subPath: *ldapYaml
               readOnly: true
+            {{- if $foia }}
+            - name: *configMap
+              mountPath: "/app/conf/lookups/lookups-server.yaml"
+              subPath: *lookupsK8sYaml
+              readOnly: true
+            - name: *secrets
+              mountPath: "/app/conf/arkcase-portal-server.yaml"
+              subPath: *arkcasePortalServerYaml
+              readOnly: true
+            - name: *secrets
+              mountPath: "/app/conf/arkcase-FOIA_server.yaml"
+              subPath: *arkcaseFoiaYaml
+              readOnly: true
+            - name: *secrets
+              mountPath: "/app/conf/ldap/ldap-foia.yaml"
+              subPath: *ldapFoiaYaml
+              readOnly: true
+            {{- end }}
       volumes:
         {{- include "arkcase.trusts.volume" $ | nindent 8 }}
         - name: *secrets
@@ -421,12 +489,29 @@ spec:
                 path: *confYaml
               - key: *pdfnetSdkLicenseTxt
                 path: *pdfnetSdkLicenseTxt
+              {{- if $foia }}
+              - key: *arkcasePortalServerYaml
+                path: *arkcasePortalServerYaml
+              - key: *arkcaseFoiaYaml
+                path: *arkcaseFoiaYaml
+              - key: *ldapFoiaYaml
+                path: *ldapFoiaYaml
+              {{- end }}
         - name: *configMap
           configMap:
             optional: false
             name: {{ include "arkcase.fullname" $ | quote }}
             defaultMode: 0444
             items:
+              - key: *deploy
+                path: *deploy
+                mode: 0555
+              - key: *fixExcel
+                path: *fixExcel
+                mode: 0555
+              - key: *realmFix
+                path: *realmFix
+                mode: 0555
               - key: *serverXmlTpl
                 path: *serverXmlTpl
               - key: *quartzProperties
@@ -440,6 +525,12 @@ spec:
                 mode: 0555
               - key: *seedContentYaml
                 path: *seedContentYaml
+              {{- if $foia }}
+              - key: *lookupsK8sYaml
+                path: *lookupsK8sYaml
+              - key: *emptyKs
+                path: *emptyKs
+              {{- end }}
         {{- if $customConfDir }}
         - name: "conf"
           hostPath:
@@ -449,14 +540,15 @@ spec:
           {{- if $customConfFile }}
         - name: *confFileVolume
           hostPath:
-            path: {{ $dev.conf.path | quote }}
+            path: {{ $dev.conf.file | quote }}
             type: File
           {{- end }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "conf") | nindent 8 }}
         {{- end }}
-        - name: *warVolume
+        - name: *warsVolume
         {{- if $customWarDir }}
           hostPath:
+            # TODO: Square this with the new volume strategy which points to webapps
             path: {{ $dev.war.path | quote }}
             type: Directory
         {{- else }}
@@ -464,13 +556,18 @@ spec:
           {{- if $customWarFile }}
         - name: *warFileVolume
           hostPath:
-            path: {{ $dev.war.path | quote }}
+            path: {{ $dev.war.file | quote }}
             type: File
           {{- end }}
         {{- end }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "init") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "home") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "logs") | nindent 8 }}
+        {{- if $foia }}
+        - name: *foiaVolume
+          emptyDir: {}
+        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "fsrv") | nindent 8 }}
+        {{- end }}
   volumeClaimTemplates:
     {{- if not $customConfDir }}
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "conf") | nindent 4 }}
@@ -478,6 +575,9 @@ spec:
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "init") | nindent 4 }}
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "home") | nindent 4 }}
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "logs") | nindent 4 }}
+    {{- if $foia }}
+    {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "fsrv") | nindent 4 }}
+    {{- end }}
 
   {{- if not $customConfDir }}
   {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "conf") | nindent 0 }}
@@ -485,5 +585,8 @@ spec:
   {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "init") | nindent 0 }}
   {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "home") | nindent 0 }}
   {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "logs") | nindent 0 }}
+  {{- if $foia }}
+  {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "fsrv") | nindent 0 }}
+  {{- end }}
 
 {{- end }}
