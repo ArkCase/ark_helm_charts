@@ -202,7 +202,7 @@ spec:
               # choke if the ".0" isn't provided at the end
              {{- $springProfiles := "ldap" }}
              {{- if $foia }}
-                {{- $springProfiles = (printf "%s,%s" $foia.springProfile $springProfiles) }}
+                {{- $springProfiles = (printf "extension-foia,%s" $springProfiles) }}
              {{- end }}
               value: >-
                 -XX:MinRAMPercentage=50.0
@@ -298,8 +298,8 @@ spec:
               subPath: &arkcasePortalServerYaml "arkcase-portal-server.yaml"
               readOnly: true
             - name: *secrets
-              mountPath: "/app/home/.arkcase/acm/acm-config-server-repo/arkcase-{{ $foia.springProfile }}.yaml"
-              subPath: &arkcaseFoiaYaml "arkcase-{{ $foia.springProfile }}.yaml"
+              mountPath: "/app/home/.arkcase/acm/acm-config-server-repo/arkcase-extension-foia.yaml"
+              subPath: &arkcaseFoiaYaml "arkcase-extension-foia.yaml"
               readOnly: true
             {{- end }}
         - name: cloudconfig
@@ -356,7 +356,7 @@ spec:
               subPath: *arkcasePortalServerYaml
               readOnly: true
             - name: *secrets
-              mountPath: "/app/conf/arkcase-{{ $foia.springProfile }}.yaml"
+              mountPath: "/app/conf/arkcase-extension-foia.yaml"
               subPath: *arkcaseFoiaYaml
               readOnly: true
             {{- end }}
