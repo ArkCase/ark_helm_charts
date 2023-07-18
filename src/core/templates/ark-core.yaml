@@ -298,8 +298,8 @@ spec:
               subPath: &arkcasePortalServerYaml "arkcase-portal-server.yaml"
               readOnly: true
             - name: *secrets
-              mountPath: "/app/home/.arkcase/acm/acm-config-server-repo/arkcase-extension-foia.yaml"
-              subPath: &arkcaseFoiaYaml "arkcase-extension-foia.yaml"
+              mountPath: "/app/home/.arkcase/acm/acm-config-server-repo/arkcase-FOIA_server.yaml"
+              subPath: &arkcaseFoiaYaml "arkcase-FOIA_server.yaml"
               readOnly: true
             {{- end }}
         - name: cloudconfig
@@ -356,7 +356,7 @@ spec:
               subPath: *arkcasePortalServerYaml
               readOnly: true
             - name: *secrets
-              mountPath: "/app/conf/arkcase-extension-foia.yaml"
+              mountPath: "/app/conf/arkcase-FOIA_server.yaml"
               subPath: *arkcaseFoiaYaml
               readOnly: true
             {{- end }}
