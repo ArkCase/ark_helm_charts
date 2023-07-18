@@ -301,6 +301,10 @@ spec:
               mountPath: "/app/home/.arkcase/acm/acm-config-server-repo/arkcase-FOIA_server.yaml"
               subPath: &arkcaseFoiaYaml "arkcase-FOIA_server.yaml"
               readOnly: true
+            - name: *secrets
+              mountPath: "/app/home/.arkcase/acm/acm-config-server-repo/ldap/ldap-foia.yaml"
+              subPath: &ldapFoiaYaml "ldap-foia.yaml"
+              readOnly: true
             {{- end }}
         - name: cloudconfig
           {{- with ($.Values.securityContext).cloudconfig }}
@@ -359,6 +363,10 @@ spec:
               mountPath: "/app/conf/arkcase-FOIA_server.yaml"
               subPath: *arkcaseFoiaYaml
               readOnly: true
+            - name: *secrets
+              mountPath: "/app/conf/ldap/ldap-foia.yaml"
+              subPath: *ldapFoiaYaml
+              readOnly: true
             {{- end }}
       volumes:
         {{- include "arkcase.trusts.volume" $ | nindent 8 }}
@@ -377,6 +385,8 @@ spec:
                 path: *arkcasePortalServerYaml
               - key: *arkcaseFoiaYaml
                 path: *arkcaseFoiaYaml
+              - key: *ldapFoiaYaml
+                path: *ldapFoiaYaml
               {{- end }}
               - key: *ldapYaml
                 path: *ldapYaml
