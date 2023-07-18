@@ -165,8 +165,9 @@ licenses:
   - "pdftron"
 
 image:
-
-  # pullPolicy: IfNotPresent
+  pullPolicy: IfNotPresent
+  pullSecrets:
+    - name: aws-arkcase-pul
 
   registry: "public.ecr.aws"
 
