@@ -1,0 +1,185 @@
+#!/usr/bin/env python3
+import openpyxl
+import re
+import sys
+import shutil
+import time
+
+def usage():
+	print(f"usage: {sys.argv[0]} excel-file pat1 repl1 [pat2 repl2 pat3 repl3 ... patN replN]")
+	print(f"")
+	print(f"\tPatterns are literal by default (i.e. will only match the exact, whole value of the cell).")
+	print(f"")
+	print(f"\tTo use regular expressions in patterns, use regex:/REGULAR_EXPRESSION/[flags]")
+	print(f"\t(if your regex contains slashes, end it with a slash). The flags may be any")
+	print(f"\tof [MSXLIAD] (case-insensitive, check Python's regular expression documentation")
+	print(f"\tto figure out each one, D == DEBUG). If you use a regular expression in the pattern,")
+	print(f"\tyou may also use regular expression placeholders in the replacement (\\1, \\2, etc).")
+	print(f"")
+	print(f"\tAll transformations will be applied to each cell's entire value.")
+	sys.exit(1)
+
+if len(sys.argv) < 4:
+	usage()
+
+if (len(sys.argv) % 2) == 1:
+	print(f"You've provided an even number of parameters. Please double check to ensure your replacement strings")
+	print(f"")
+	usage()
+
+updated = False
+
+class RegEx:
+	def __init__(self, x, r):
+		self.regex = x
+		self.replacement = r
+
+	def apply(self, v):
+		return self.regex.sub(self.replacement, v)
+
+class Substring:
+	def __init__(self, p, r):
+		self.pattern = p
+		self.replacement = r
+
+	def apply(self, v):
+		return v.replace(self.pattern, self.replacement)
+
+class Exact:
+	def __init__(self, p, r):
+		self.pattern = p
+		self.replacement = r
+
+	def apply(self, v):
+		if self.pattern == v:
+			v = self.replacement
+		return v
+
+regexPattern = re.compile("^regex:/(.*?)/([^/]*)$", re.IGNORECASE)
+
+# First things first: compile the replacements
+transformers = []
+print(f"Compiling the replacements")
+for p in range(2, len(sys.argv), 2):
+	pattern = sys.argv[p]
+	replacement = sys.argv[p + 1]
+
+	# Is it a regular expression match?
+	m = regexPattern.match(pattern)
+	if not m:
+		# Not a regex, so use a literal match
+		if pattern == replacement:
+			# If the pattern and the replacement are the same, skip this step
+			continue
+		print(f"\tSubstring: [{pattern}] -> [{replacement}]")
+		transformers.append(Substring(pattern, replacement))
+		continue
+
+	regexStr = m.group(1)
+	if not regexStr:
+		# An empty regex will match nothing, so just skip it
+		continue
+
+	flagLetters = m.group(2)
+	flags = 0
+	if flagLetters:
+		unrecognized = ""
+		uniqueFlags = {}
+		for f in flagLetters.upper():
+			u = False
+			if f == "A":
+				flags |= re.ASCII
+			elif f == "D":
+				flags |= re.DEBUG
+			elif f == "I":
+				flags |= re.IGNORECASE
+			elif f == "L":
+				flags |= re.LOCALE
+			elif f == "M":
+				flags |= re.MULTILINE
+			elif f == "S":
+				flags |= re.DOTALL
+			elif f == "X":
+				flags |= re.VERBOSE
+			else:
+				unrecognized += f
+				u = True
+
+			if not u:
+				uniqueFlags[f] = f
+
+		uniqueFlags = "".join(uniqueFlags.keys())
+
+		if unrecognized:
+			print(f"Unrecognized regular expression flags for pattern [{pattern}] (parameter # {p}, flags may be any of [MmSsXxLlIiAaDd]): {unrecognized}")
+			sys.exit(1)
+
+	try:
+		regex = re.compile(regexStr, flags)
+	except Exception as e:
+		print(f"Bad regular expression syntax for pattern [{pattern}] (parameter # {p}): {e}")
+		sys.exit(1)
+
+	try:
+		# Test it just to make sure the replacement pattern is also good
+		regex.sub(replacement, "")
+	except Exception as e:
+		print(f"Bad regular expression replacement [{replacement}] (parameter # {p + 1}): {e}")
+		sys.exit(1)
+
+	print(f"\tRegex: /{regexStr}/{uniqueFlags} -> /{replacement}/")
+	transformers.append(RegEx(regex, replacement))
+
+if not transformers:
+	print("No valid replacements were computed, cannot continue")
+	sys.exit(0)
+
+source_file = sys.argv[1]
+backup_file = sys.argv[1] + ".bak-" + str(int(time.time()))
+target_file = sys.argv[1] + ".new"
+
+try:
+	wb = openpyxl.load_workbook(source_file)
+except Exception as e:
+	print(f"Failed to open the source file [{source_file}]: {e}")
+	sys.exit(1)
+
+try:
+	print(f"Processing file {source_file}...")
+	for s in wb.sheetnames:
+		printSheet = True
+		sheet = wb[s]
+		for r in range(1, sheet.max_row + 1):
+			for c in range(1, sheet.max_column + 1):
+				cell = openpyxl.utils.cell.get_column_letter(c) + str(r)
+				v = sheet[cell].value
+
+				# We can only modify string values
+				if type(v) != str:
+					continue
+
+				# Apply the transformers, but only the first one
+				for x in transformers:
+					n = x.apply(v)
+					if n != v:
+						if printSheet:
+							print(f"\tProcessing sheet {s}...")
+							printSheet = False
+						print(f"\t\tReplacing {cell}: [{v}] -> [{n}]")
+						sheet[cell] = n
+						updated = True
+						break
+
+	if updated:
+		print(f"\tSaving the result (backup file = [{backup_file}])")
+		shutil.copyfile(source_file, backup_file)
+		wb.save(source_file)
+
+	# Success (one way or the other :D)
+	sys.exit(0)
+except KeyboardInterrupt:
+	print(f"Aborting the process - will not save the result")
+	sys.exit(1)
+finally:
+	# The flock() acquired above will be released upon exit
+	wb.close()

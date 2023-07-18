@@ -69,6 +69,7 @@ spec:
       initContainers:
         - name: init-deploy
           {{- include "arkcase.core.image.deploy" (dict "ctx" $ "name" "deploy" "useChartTag" true) | nindent 10 }}
+          command: [ "/deploy" ]
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             - name: REALM_FIX
               value: {{ printf "arkcase.org=%s" (include "arkcase.ldap" (dict "ctx" $ "value" "domain")) | quote }}
@@ -77,6 +78,18 @@ spec:
               value: "true"
         {{- end }}
           volumeMounts:
+            - name: &configMap "config-map"
+              mountPath: "/deploy"
+              subPath: &deploy "deploy"
+              readOnly: true
+            - name: *configMap
+              mountPath: "/usr/local/bin/fixExcel"
+              subPath: &fixExcel "fixExcel"
+              readOnly: true
+            - name: *configMap
+              mountPath: "/usr/local/bin/realm-fix"
+              subPath: &realmFix "realm-fix"
+              readOnly: true
         {{- if $customConfFile }}
             - name: &confFileVolume "conf-file"
               mountPath: "/app/file/conf/00-base.zip"
@@ -165,7 +178,7 @@ spec:
           volumeMounts:
             - name: *confVolume
               mountPath: *confDir
-            - name: &configMap "config-map"
+            - name: *configMap
               mountPath: {{ $contentScript | quote }}
               subPath: &seedContent {{ $contentScript | trimPrefix "/" | quote }}
               readOnly: true
@@ -388,14 +401,6 @@ spec:
                 path: *applicationYaml
               - key: *arkcaseK8sYaml
                 path: *arkcaseK8sYaml
-              {{- if $foia }}
-              - key: *arkcasePortalServerYaml
-                path: *arkcasePortalServerYaml
-              - key: *arkcaseFoiaYaml
-                path: *arkcaseFoiaYaml
-              - key: *ldapFoiaYaml
-                path: *ldapFoiaYaml
-              {{- end }}
               - key: *ldapYaml
                 path: *ldapYaml
               - key: *camelConfigAlfrescoCmisProperties
@@ -408,29 +413,44 @@ spec:
                 path: *confYaml
               - key: *pdfnetSdkLicenseTxt
                 path: *pdfnetSdkLicenseTxt
+              {{- if $foia }}
+              - key: *arkcasePortalServerYaml
+                path: *arkcasePortalServerYaml
+              - key: *arkcaseFoiaYaml
+                path: *arkcaseFoiaYaml
+              - key: *ldapFoiaYaml
+                path: *ldapFoiaYaml
+              {{- end }}
         - name: *configMap
           configMap:
             optional: false
             name: {{ include "arkcase.fullname" $ | quote }}
             defaultMode: 0444
             items:
+              - key: *deploy
+                path: *deploy
+                mode: 0555
+              - key: *fixExcel
+                path: *fixExcel
+                mode: 0555
+              - key: *realmFix
+                path: *realmFix
+                mode: 0555
               - key: *quartzProperties
                 path: *quartzProperties
               - key: *springConfigProxyXml
                 path: *springConfigProxyXml
+              - key: *log4j2Xml
+                path: *log4j2Xml
+              - key: *seedContent
+                path: *seedContent
+                mode: 0555
               {{- if $foia }}
               - key: *lookupsK8sYaml
                 path: *lookupsK8sYaml
               - key: *emptyKs
                 path: *emptyKs
               {{- end }}
-              - key: *log4j2Xml
-                path: *log4j2Xml
-              - key: *seedContent
-                path: *seedContent
-                mode: 0555
-              - key: *seedContentYaml
-                path: *seedContentYaml
         {{- if $customConfDir }}
         - name: "conf"
           hostPath:
