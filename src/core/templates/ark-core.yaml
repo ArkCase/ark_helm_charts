@@ -445,6 +445,8 @@ spec:
               - key: *seedContent
                 path: *seedContent
                 mode: 0555
+              - key: *seedContentYaml
+                path: *seedContentYaml
               {{- if $foia }}
               - key: *lookupsK8sYaml
                 path: *lookupsK8sYaml
