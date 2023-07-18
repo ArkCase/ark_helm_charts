@@ -251,8 +251,8 @@ spec:
               subPath: &applicationYaml "application.yaml"
               readOnly: true
             - name: *secrets
-              mountPath: "/app/home/.arkcase/acm/acm-config-server-repo/arkcase-k8s.yaml"
-              subPath: &arkcaseK8sYaml "arkcase-k8s.yaml"
+              mountPath: "/app/home/.arkcase/acm/acm-config-server-repo/arkcase-server.yaml"
+              subPath: &arkcaseK8sYaml "arkcase-server.yaml"
               readOnly: true
             - name: *secrets
               mountPath: "/app/home/.arkcase/acm/acm-config-server-repo/arkcase-activemq.yaml"
@@ -294,12 +294,12 @@ spec:
               subPath: *emptyKs
               readOnly: true
             - name: *configMap
-              mountPath: "/app/home/.arkcase/acm/acm-config-server-repo/lookups/lookups-k8s.yaml"
-              subPath: &lookupsK8sYaml "lookups-k8s.yaml"
+              mountPath: "/app/home/.arkcase/acm/acm-config-server-repo/lookups/lookups-server.yaml"
+              subPath: &lookupsK8sYaml "lookups-server.yaml"
               readOnly: true
             - name: *secrets
-              mountPath: "/app/home/.arkcase/acm/acm-config-server-repo/arkcase-portal-k8s.yaml"
-              subPath: &arkcasePortalServerYaml "arkcase-portal-k8s.yaml"
+              mountPath: "/app/home/.arkcase/acm/acm-config-server-repo/arkcase-portal-server.yaml"
+              subPath: &arkcasePortalServerYaml "arkcase-portal-server.yaml"
               readOnly: true
             - name: *secrets
               mountPath: "/app/home/.arkcase/acm/acm-config-server-repo/arkcase-FOIA_server.yaml"
@@ -351,7 +351,7 @@ spec:
               subPath: *arkcaseActivemqYaml
               readOnly: true
             - name: *secrets
-              mountPath: "/app/conf/arkcase-k8s.yaml"
+              mountPath: "/app/conf/arkcase-server.yaml"
               subPath: *arkcaseK8sYaml
               readOnly: true
             - name: *secrets
@@ -360,11 +360,11 @@ spec:
               readOnly: true
             {{- if $foia }}
             - name: *configMap
-              mountPath: "/app/conf/lookups/lookups-k8s.yaml"
+              mountPath: "/app/conf/lookups/lookups-server.yaml"
               subPath: *lookupsK8sYaml
               readOnly: true
             - name: *secrets
-              mountPath: "/app/conf/arkcase-portal-k8s.yaml"
+              mountPath: "/app/conf/arkcase-portal-server.yaml"
               subPath: *arkcasePortalServerYaml
               readOnly: true
             - name: *secrets
