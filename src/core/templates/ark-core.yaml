@@ -187,7 +187,7 @@ spec:
                   # TODO: Make this autodetected via the securityContext
                   - ownership: "{{ $devUid }}:{{ $devGid }}"
                     permissions: "u=rwXs,g=rwXs,o="
-                    flags: [ "recurse", "noforced", "create", "changes" ]
+                    flags: [ "recurse", "forced", "create", "changes" ]
                     targets: [ "/app/home", "/app/conf", "/app/wars", "/app/logs", "/apps/fsrv", "/apps/foia" ]
           volumeMounts:
             - name: &confVolume "conf"
