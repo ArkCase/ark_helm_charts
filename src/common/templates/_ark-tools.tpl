@@ -187,6 +187,26 @@ result: either "" or "true"
   {{- end -}}
 {{- end -}}
 
+{{- define "arkcase.tools.validEmail" -}}
+  {{- $value := . -}}
+  {{- $result := "" -}}
+  {{- /* Make sure it's a non-empty string */ -}}
+  {{- if and $value (kindIs "string" $value) -}}
+    {{- /* Make sure it's made up of two parts split by an ampersand (i.e. user@domain) */ -}}
+    {{- $parts := ($value | splitList "@") -}}
+    {{- if (eq 2 (len $parts)) -}}
+      {{- /* Validate the hostname */ -}}
+      {{- if (include "arkcase.tools.isSingleHostname" (last $parts)) -}}
+        {{- /* Validate the username */ -}}
+        {{- if regexMatch "^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+$" (first $parts) -}}
+          {{- $result = $value -}}
+        {{- end -}}
+      {{- end -}}
+    {{- end -}}
+  {{- end }}
+  {{- $result -}}
+{{- end -}}
+
 {{- /*
 Outputs "true" if the given parameter is a hostname part that matches an RFC-1123. If the string submitted is not an RFC-1123 hostname part, nothing will be output.
 
@@ -341,6 +361,13 @@ usage: ( include "arkcase.tools.mustSingleHostname" "some.hostname.to.check" )
     {{- fail (printf "The string [%s] is not an RFC-1123 host or domain name" $param) -}}
   {{- end -}}
   {{- trim . -}}
+{{- end -}}
+
+{{- define "arkcase.tools.singleHostname" -}}
+  {{- $param := (toString (default "" .)) -}}
+  {{- if (include "arkcase.tools.isSingleHostname" $param) -}}
+    {{- trim $param -}}
+  {{- end -}}
 {{- end -}}
 
 {{- /*
@@ -549,39 +576,29 @@ Ensure that the given value is an integer value - even if in string form
   {{- $value -}}
 {{- end -}}
 
+{{- define "arkcase.tools.checkNumericPort" -}}
+  {{- $value := . -}}
+  {{- if kindIs "string" $value -}}
+    {{- $value = (regexMatch "^[1-9][0-9]*$" $value) | ternary ($value | atoi | int64) 0 -}}
+  {{- else if or (kindIs "int" $value) (kindIs "int64" $value) (kindIs "float64" $value) -}}
+    {{- $value = ($value | int64) -}}
+  {{- end -}}
+  {{- (and (ge $value 1) (le $value 65535)) | ternary $value "" -}}
+{{- end -}}
+
 {{- /*
 Check that the given value is either a numeric port (1-65535) or a potentially valid port name (per /etc/services), and
 return either the value if correct, or the empty string if not.
 */ -}}
 {{- define "arkcase.tools.checkPort" -}}
   {{- $value := . -}}
+  {{- $numeric := (include "arkcase.tools.checkNumericPort" $value) -}}
   {{- $result := "" -}}
-  {{- if kindIs "string" $value -}}
-    {{- /* Check that it's not the empty string and it contains no spaces */ -}}
-    {{- if regexMatch "^[^\\s]+$" $value -}}
-      {{- /* Might be an /etc/services port, or a port number */ -}}
-      {{- if regexMatch "^[0-9]+$" $value -}}
-        {{- /* It's a "number" (but may have leading zeros, so check) */ -}}
-        {{- if regexMatch "^[1-9][0-9]*$" $value -}}
-          {{- /* It's a valid number! Check that it's a number between 1 and 65535 */ -}}
-          {{- $value = ($value | int) -}}
-          {{- if and (ge $value 1) (le $value 65535) -}}
-            {{- $result = $value -}}
-          {{- end -}}
-        {{- end -}}
-      {{- else -}}
-        {{- /* Might be an /etc/services port */ -}}
-        {{- $result = $value -}}
-      {{- end -}}
-    {{- end -}}
-  {{- else if or (kindIs "int" $value) (kindIs "int64" $value) (kindIs "float64" $value) -}}
-    {{- /* Check that it's a number between 1 and 65535 */ -}}
-    {{- $value = ($value | int64) -}}
-    {{- if and (ge $value 1) (le $value 65535) -}}
-      {{- $result = $value -}}
-    {{- end -}}
-  {{- else -}}
-    {{- /* Most definitely not a valid port specification */ -}}
+  {{- if $numeric -}}
+    {{- $result = $numeric -}}
+  {{- else if and (kindIs "string" $value) (regexMatch "^[^\\s]+$" $value) -}}
+    {{- /* Might be an /etc/services port */ -}}
+    {{- $result = $value -}}
   {{- end -}}
   {{- $result -}}
 {{- end -}}
@@ -682,6 +699,9 @@ return either the value if correct, or the empty string if not.
         {{- $result = set $result "global" (hasPrefix "global.conf" $key) -}}
       {{- end -}}
     {{- end -}}
+  {{- end -}}
+  {{- if (not (hasKey $result "global")) -}}
+    {{- $result = set $result "global" false -}}
   {{- end -}}
   {{- if $debug -}}
     {{- fail (dict "result" $result "searched" $searched "global" (dict "conf" (($ctx.Values.global).conf | default dict)) "configuration" ($ctx.Values.configuration | default dict) | toYaml | nindent 0) -}}
