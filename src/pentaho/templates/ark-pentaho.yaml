@@ -1,4 +1,6 @@
 {{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.subsystem.external" $)) }}
+{{- $db := (include "arkcase.db.info" $ | fromYaml) }}
+{{- $foia := (include "arkcase.foia" $ | fromYaml) -}}
 {{- $cluster := (include "arkcase.cluster" $ | fromYaml) }}
 {{- $nodes := (min 4 $cluster.nodes) -}}
 {{- $maxFailed := (sub $nodes 1) -}}
@@ -52,7 +54,6 @@ roleRef:
   kind: Role
   name: {{ $roleName | quote }}
 {{- end }}
-{{- $db := (include "arkcase.db.info" $ | fromYaml) }}
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -276,6 +277,12 @@ spec:
               mountPath: "/app/init/reports/000-arkcase-base-reports.tar.gz"
               subPath: &baseReportsTarGz {{ printf "base-reports.%s.tar.gz" $db.reports | quote }}
               readOnly: true
+            {{- if $foia }}
+            - name: *configMap
+              mountPath: "/app/init/reports/000-arkcase-foia-reports.tar.gz"
+              subPath: &foiaReportsTarGz {{ printf "foia-reports.%s.tar.gz" $db.reports | quote }}
+              readOnly: true
+            {{- end }}
             - name: *configMap
               mountPath: "/lock-initializer"
               subPath: &lockInitializer "lock-initializer"
@@ -358,6 +365,10 @@ spec:
                 mode: 0555
               - key: *baseReportsTarGz
                 path: *baseReportsTarGz
+              {{- if $foia }}
+              - key: *foiaReportsTarGz
+                path: *foiaReportsTarGz
+              {{- end }}
               - key: *lockInitializer
                 path: *lockInitializer
                 mode: 0555
