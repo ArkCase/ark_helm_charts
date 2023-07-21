@@ -7,6 +7,7 @@
 * [External Databases](#external-database)
 * [External LDAP Authentication](#external-ldap)
 * [External Alfresco](#external-alfresco)
+* [E-mail Send & Receive](#email)
 * [SSL/TLS Considerations](#ssl)
 
 ## <a name="introduction"></a>Introduction
@@ -317,6 +318,43 @@ As long as the configurations (URLs, usernames, passwords, etc.) are correct, ev
 
 In particular, the ArkCase initialization data may include information regarding users and groups to be added to the ***ALFRESCO\_ADMINISTRATORS*** group during initialization. As such it's important that the `username` and `password` settings permit access to an account that's already a member of that group, or any other group/role with access to add members (either users or groups) to that group.
 
+## <a name="email"></a>E-Mail Send & Receive
+
+ArkCase will require access to a mail relay to send e-mail, and a (set of) IMAP account(s) to receive it. To configure these, use the following configruation model:
+
+```yaml
+global:
+  email:
+
+    # E-mail sending configurations
+    send:
+      # Connection mode (plaintext, ssl, starttls is default)
+      # connect: starttls
+
+      # The mail relay's hostname or IP
+      host: "my.mail-relay.com"
+
+      # Only needed if using non-standard ports.
+      # Both plaintext and starttls will use 25, ssl will use 465
+      # port: 25
+
+      # ArkCase currently requires e-mail authentication, so you MUST set these two
+      # values to non-null, non-empty strings
+      username: "my-mail-relay-user"
+      password: "MyZ00p3rZe3kr1t"
+
+      # The e-mail address to use in the From: header
+      from: "noreply-arkcase@my.domain.com"
+
+    # E-mail receiving configurations
+    receive:
+      # The host to pull e-mail from (will use IMAP+SSL)
+      host: "my.imap.server.com"
+
+      # The port is only needed if it's not 993
+      # port: 993
+```
+
 ## <a name="ssl"></a>SSL/TLS Considerations
 
 In order to consume external services using SSL/TLS, it's important to establish trust between the ArkCase stack and those services. The expectation is that those services will be utilizing certificates signed by a Certification Authority. Thus, the solution to establish trust is to enable the adding of those CA certificates into the stack's trust-at-large. The way to establish that trust is by the following configuration model:
@@ -345,7 +383,6 @@ global:
     # using openssl s_client to obtain the offered certificates, and any CA
     # certificates returned will be added to the trust.
     - psql.service.com@10.35.4.32:3434
-
 ```
 
 You can add any number of certificates or pointers/URLs to certificates here. Only CA certificates (`basicConstraints.CA=TRUE`) will be added to the trust stores.
