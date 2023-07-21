@@ -1,5 +1,6 @@
 {{- if (include "arkcase.subsystem.enabled" $) }}
 {{- $db := (include "arkcase.db.info" $ | fromYaml) -}}
+{{- $foia := (include "arkcase.foia" $ | fromYaml) -}}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -202,6 +203,12 @@ spec:
               mountPath: "/app/init/reports/000-arkcase-base-reports.tar.gz"
               subPath: &baseReportsTarGz {{ printf "base-reports.%s.tar.gz" $db.reports | quote }}
               readOnly: true
+            {{- if $foia }}
+            - name: *configMap
+              mountPath: "/app/init/reports/000-arkcase-foia-reports.tar.gz"
+              subPath: &foiaReportsTarGz {{ printf "foia-reports.%s.tar.gz" $db.reports | quote }}
+              readOnly: true
+            {{- end }}
       volumes:
         {{- include "arkcase.trusts.volume" $ | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
@@ -263,6 +270,10 @@ spec:
                 mode: 0555
               - key: *baseReportsTarGz
                 path: *baseReportsTarGz
+              {{- if $foia }}
+              - key: *foiaReportsTarGz
+                path: *foiaReportsTarGz
+              {{- end }}
       {{- with $.Values.nodeSelector }}
       nodeSelector: {{- toYaml . | nindent 8 }}
       {{- end }}
