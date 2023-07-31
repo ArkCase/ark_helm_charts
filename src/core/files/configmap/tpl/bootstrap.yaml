@@ -1,0 +1,40 @@
+{{- $foia := (include "arkcase.foia" $ | fromYaml) -}}
+{{- if $foia -}}
+{{- /* Eventually we'll need to graft other profiles in here like "ims" or "eeoc" */ -}}
+{{- $profiles := list "custom_base" "foia" "custom" "server" "runtime" -}}
+{{- $configUrl := "http://localhost:9999" -}}
+spring:
+  cloud.config:
+    name: arkcase-portal,external-portal-en,lookups,core-en
+    # TODO: Eventually softcode this to the actual location for cloudconfig
+    uri: {{ $configUrl | quote }}
+    fail-fast: true
+    retry:
+      max-attempts: 20
+      max-interval: 15000
+      initial-interval: 10000
+
+  profiles.include: {{ $profiles | compact | join "," | quote }}
+  jms.pub-sub-domain: true
+
+spring.cache.jcache.config: "classpath:ehcache.xml"
+
+spring.servlet.multipart.max-file-size: -1
+spring.servlet.multipart.max-request-size: -1
+
+logging:
+  file:
+    max-history: 10
+    max-size: 10MB
+    name: "/app/logs/externalPortal.log"
+  level:
+    com.arkcase.portal: debug
+    org:
+      springframework: warn
+      apache: warn
+    springfox: warn
+  pattern:
+    file: "%d{yyyy-MM-dd HH:mm:ss,SSS} [%thread] %-5level %logger.%M - %msg%n"
+
+management.endpoints.web.exposure.include: "*"
+{{- end -}}

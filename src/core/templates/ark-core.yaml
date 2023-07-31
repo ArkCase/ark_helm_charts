@@ -386,6 +386,10 @@ spec:
               mountPath: "/app/home/.arkcase/acm/acm-config-server-repo/lookups/lookups-server.yaml"
               subPath: &lookupsK8sYaml "lookups-server.yaml"
               readOnly: true
+            - name: *configMap
+              mountPath: "/app/tomcat/webapps/arkcase#external-portal/WEB-INF/classes/bootstrap.yaml"
+              subPath: &bootstrapYaml "bootstrap.yaml"
+              readOnly: true
             - name: *secrets
               mountPath: "/app/home/.arkcase/acm/acm-config-server-repo/arkcase-portal-server.yaml"
               subPath: &arkcasePortalServerYaml "arkcase-portal-server.yaml"
@@ -528,6 +532,8 @@ spec:
               {{- if $foia }}
               - key: *lookupsK8sYaml
                 path: *lookupsK8sYaml
+              - key: *bootstrapYaml
+                path: *bootstrapYaml
               - key: *emptyKs
                 path: *emptyKs
               {{- end }}
