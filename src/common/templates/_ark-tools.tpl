@@ -975,6 +975,26 @@ return either the value if correct, or the empty string if not.
   {{- $result -}}
 {{- end -}}
 
-{{ define "arkcase.tools.xmlAtt" -}}
-{{- . -}}
+{{- define "arkcase.xmlUnescape" -}}
+  {{- $t := (empty $) | ternary "" ($ | toString) -}}
+  {{-
+    $t | 
+      replace "&lt;" "<" |
+      replace "&gt;" ">" |
+      replace "&quot;" '"' |
+      replace "&apos;" "'" |
+      replace "&amp;" "&"
+  -}}
+{{- end -}}
+
+{{- define "arkcase.xmlEscape" -}}
+  {{- $t := (empty $) | ternary "" ($ | toString) -}}
+  {{-
+    $t | 
+      replace "&" "&amp;" |
+      replace "<" "&lt;" |
+      replace ">" "&gt;" |
+      replace '"' "&quot;" |
+      replace "'" "&apos;"
+  -}}
 {{- end -}}
