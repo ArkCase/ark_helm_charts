@@ -981,7 +981,7 @@ return either the value if correct, or the empty string if not.
     $t | 
       replace "&lt;" "<" |
       replace "&gt;" ">" |
-      replace "&quot;" '"' |
+      replace "&quot;" "\"" |
       replace "&apos;" "'" |
       replace "&amp;" "&"
   -}}
@@ -994,7 +994,7 @@ return either the value if correct, or the empty string if not.
       replace "&" "&amp;" |
       replace "<" "&lt;" |
       replace ">" "&gt;" |
-      replace '"' "&quot;" |
+      replace "\"" "&quot;" |
       replace "'" "&apos;"
   -}}
 {{- end -}}
