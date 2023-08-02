@@ -125,7 +125,7 @@ install_report() {
 	# (we support zip, tar, and tar.gz archives)
 
 	case "${SRC_FILE,,}" in
-		*.zip | *.jar ) ARCHIVE_TYPE="zip" ;;
+		*.jar ) ARCHIVE_TYPE="zip" ;;
 		*.tar ) ARCHIVE_TYPE="tar" ;;
 		*.tar.gz | *.tgz ) ARCHIVE_TYPE="tgz" ;;
 		*.tar.bz2 | *.tbz2 ) ARCHIVE_TYPE="tbz" ;;
