@@ -12,12 +12,16 @@ metadata:
 spec:
   # Must run every day at 2am
   schedule: "0 2 * * *"
+  # Make sure a single instance runs
+  concurrencyPolicy: Forbid
+  failedJobsHistoryLimit: 10
+  successfulJobsHistoryLimit: 10
   jobTemplate:
     spec:
       template:
         spec:
           containers:
-            - name: hello
+            - name: "foia-dw1"
               image: busybox:1.28
               imagePullPolicy: IfNotPresent
               command:
