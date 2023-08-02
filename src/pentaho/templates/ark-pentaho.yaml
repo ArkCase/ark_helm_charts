@@ -192,7 +192,7 @@ spec:
               subPath: &configPostSh "config-post.sh"
               readOnly: true
             - name: *configMap
-              mountPath: "/install-reports"
+              mountPath: "/usr/local/bin/install-reports"
               subPath: &installReports "install-reports"
               readOnly: true
             - name: *configMap
@@ -232,7 +232,7 @@ spec:
               subPath: &log4j2Xml "log4j2.xml"
               readOnly: true
             - name: *configMap
-              mountPath: "/app/init/reports/000-arkcase-base-reports.zip"
+              mountPath: "/app/init/reports/000-base-reports.zip"
               subPath: &baseReportsZip {{ printf "base-reports.%s.zip" $db.reports | quote }}
               readOnly: true
             {{- if $foia }}
@@ -249,8 +249,8 @@ spec:
               subPath: &arkcaseConnectionJson "arkcase_connection.json"
               readOnly: true
             - name: *configMap
-              mountPath: "/app/init/reports/000-arkcase-base-foia-reports.zip"
-              subPath: &foiaReportsZip {{ printf "foia-reports.%s.zip" $db.reports | quote }}
+              mountPath: "/app/init/reports/001-foia-base-reports.zip"
+              subPath: &foiaBaseReportsZip {{ printf "foia-base-reports.%s.zip" $db.reports | quote }}
               readOnly: true
             - name: *configMap
               mountPath: "/usr/local/bin/add-pdi-connection"
@@ -335,8 +335,8 @@ spec:
               - key: *baseReportsZip
                 path: *baseReportsZip
               {{- if $foia }}
-              - key: *foiaReportsZip
-                path: *foiaReportsZip
+              - key: *foiaBaseReportsZip
+                path: *foiaBaseReportsZip
               - key: *addPdiConnection
                 path: *addPdiConnection
                 mode: 0555

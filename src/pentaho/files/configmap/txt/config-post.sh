@@ -66,6 +66,26 @@ say "The URL [${ADMIN_URL}] responded, continuing"
 
 [ -f "${RUN_MARKER}" ] || exit 0
 
-/install-reports
+ARKCASE_CONNECTION_JSON="${PENTAHO_HOME}/.kettle/arkcase_connection.json"
+if [ -f "${ARKCASE_CONNECTION_JSON}" ] ; then
+	say "Deploying the Kettle DB connection from [${ARKCASE_CONNECTION_JSON}]"
+	/usr/local/bin/add-pdi-connection "${ARKCASE_CONNECTION_JSON}"
+fi
+
+[ -v FOIA_DIR ] || FOIA_DIR="${PENTAHO_PDI_HOME}/foia"
+if [ -v FOIA_DIR ] && [ -d "${FOIA_DIR}" ] ; then
+
+	say "Launching the dataminer process"
+	# TODO: Should this run even if the ArkCase database isn't up yet?
+	/usr/local/bin/run-dataminer
+
+	# Deploy the Mondrian schema
+	say "Deploying the Mondrian schema"
+	/usr/local/bin/install-mondrian-schema "${FOIA_DIR}/mondrian_schema/foiaSchema1.4.xml"
+fi
+
+# Install the reports ...
+say "Deploying reports"
+/usr/local/bin/install-reports
 
 exit 0
