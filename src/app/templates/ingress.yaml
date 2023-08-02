@@ -128,6 +128,15 @@ spec:
                 port:
                   number: 8080
     {{- end }}
+    {{- if $ingress.deploy }}
+          - path: "/deploy"
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ $.Chart.Name }}
+                port:
+                  number: 80
+    {{- end }}
     {{- if and $https $secretData }}
   tls:
     - secretName: {{ $secretName | quote }}

@@ -274,10 +274,34 @@ reports:
           username: *pentahoDb
           password: *pentahoDbPassword
 
-#     tomcat:
-#       proxy:
-#         name: *backendName
-#         port: 443
+service:
+  deploy:
+    ports:
+      - name: deploy
+        protocol: TCP
+        port: &deployPort 80
+
+##
+## Configure extra options for containers' liveness and readiness probes
+## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/#configure-probes
+## @param service.probes.enabled Enable liveness and readiness probes
+## @param service.probes.spec.initialDelaySeconds Initial delay seconds for liveness and readiness probes
+## @param service.probes.spec.periodSeconds Period seconds for liveness and readiness probes
+## @param service.probes.spec.timeoutSeconds Timeout seconds for liveness and readiness probes
+## @param service.probes.spec.failureThreshold Failure threshold for liveness and readiness probes
+## @param service.probes.spec.successThreshold Success threshold for liveness and readiness probes
+##
+    probes:
+      enabled: true
+      spec:
+        httpGet:
+          path: "/"
+          port: *deployPort
+        initialDelaySeconds: 5
+        periodSeconds: 5
+        timeoutSeconds: 5
+        failureThreshold: 60
+        successThreshold: 1
 
 # Please leave the `replicaCount` to 1 for the time being. Clustering is not
 # supported yet.
@@ -286,11 +310,30 @@ replicaCount: 1
 platform: ""
 
 image:
-  # pullPolicy: IfNotPresent
+  pullPolicy: IfNotPresent
+
+  pullSecrets:
+    - name: aws-arkcase-pull
+
   registry: "public.ecr.aws"
+
   repository: "arkcase/shell-operator"
+
   # Overrides the image tag whose default is the chart appVersion.
   tag: "latest"
+
+  registry: "public.ecr.aws"
+
+  # Overrides the image tag whose default is the chart appVersion.
+
+  deploy:
+    repository: "arkcase/deploy-core"
+    # tag: &arkcaseVersion "2023.01.01-01"
+
+  deploy-foia:
+    registry: "207428623785.dkr.ecr.us-east-1.amazonaws.com"
+    repository: "arkcase/deploy-foia"
+    # tag: &arkcaseVersion "2023.01.01-01"
 
 # You generally shouldn't mess with these. These exist to support some name-generation templates
 nameOverride: ""
