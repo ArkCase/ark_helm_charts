@@ -151,9 +151,10 @@ install_report() {
 	for F in "${REPORTS[@]}" ; do
 		[[ "${F}" =~ ^(.*):///:(.*)$ ]]
 		local P="${BASH_REMATCH[1]}"
+		local F="${BASH_REMATCH[2]}"
+
 		[[ "${P}" =~ ^/ ]] || P="/${P}"
 		[ "${P}" == "/." ] && P=""
-		F="${BASH_REMATCH[2]}"
 
 		read HASH rest < <(sha256sum "${F}")
 		B="${F##*/}"
