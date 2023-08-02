@@ -1,0 +1,19 @@
+{{- with (include "arkcase.db.schema" (dict "ctx" $ "schema" "arkcase") | fromYaml) }}
+changed: true
+usingConnectionPool: true
+connectSql: ""
+name: "ArkCase Database"
+hostname: {{ .hostname | quote }}
+databasePort: {{ .port | toString | quote }}
+databaseName: {{ .database | quote }}
+username: {{ .username | quote }}
+password: {{ .password | quote }}
+accessType: "NATIVE"
+attributes: {}
+connectionPoolingProperties: {}
+databaseType: 
+  defaultDatabasePort:  {{ .port | int64 }}
+  name: {{ .reports | quote }}
+  shortName: {{ .reports | upper | quote }}
+  supportedAccessTypes: [ "NATIVE", "ODBC", "JNDI" ]
+{{- end }}

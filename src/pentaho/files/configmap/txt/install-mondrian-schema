@@ -1,0 +1,52 @@
+#!/bin/bash
+
+set -euo pipefail
+
+timestamp() {
+	date -Ins -u
+}
+
+say() {
+	echo -e "$(timestamp): ${@}"
+}
+
+fail() {
+	say "${@}" 1>&2
+	exit ${EXIT_CODE:-1}
+}
+
+usage() {
+	echo -n "usage: ${BASH_SOURCE:-${0}} schema.xml"
+}
+
+
+[ -v ADMIN_USERNAME ] || ADMIN_USERNAME="admin"
+[ -v ADMIN_PASSWORD ] || ADMIN_PASSWORD="password"
+[ -v PENTAHO_URL ] || PENTAHO_URL="http://localhost:8080/pentaho"
+
+[ ${#} -eq 1 ] || usage
+
+SCHEMA_FILE="${1}"
+[ -z "${SCHEMA_FILE}" ] || fail "The schema filename may not be the empty string"
+[ -e "${SCHEMA_FILE}" ] || fail "The file [${SCHEMA_FILE}] does not exist"
+[ -f "${SCHEMA_FILE}" ] || fail "The path [${SCHEMA_FILE}] is not a regular file"
+[ -r "${SCHEMA_FILE}" ] || fail "The file [${SCHEMA_FILE}] is not readable"
+
+case "${SCHEMA_FILE,,}" in
+	*.xml ) ;;
+	* ) fail "The schema file must have an extension of .xml (case-insensitive)" ;;
+esac
+
+SCHEMA_FILE="$(readlink -f "${SCHEMA_FILE}")"
+SCHEMA_NAME="${SCHEMA_FILE##*/}"
+SCHEMA_NAME="${SCHEMA_NAME%.*}"
+
+exec curl -kL -v \
+	-H "Content-Type: multipart/form-data" \
+	-X PUT \
+	-F uploadInput="${SCHEMA_FILE}" \
+	-F overwrite="true" \
+	-F xmlaEnabledFlag="false" \
+	-F parameters="Datasource=ArkCase Database" \
+	--config <(echo -n "--user \"${ADMIN_USERNAME}:${ADMIN_PASSWORD}\"") \
+	"${PENTAHO_URL}/plugin/data-access/api/datasource/analysis/catalog/${SCHEMA_NAME}"
