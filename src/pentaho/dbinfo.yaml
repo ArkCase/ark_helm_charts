@@ -61,10 +61,10 @@ postgresql:
 sqlserver:
   dialect: &dialect sqlserver
   filesDialect: *dialect
-  reports: *dialect
+  reports: &mssql mssql
   port: 1433
   quartz: MSSQLDelegate
-  jcr: mssql
+  jcr: *mssql
   jdbc:
     driver: com.microsoft.sqlserver.jdbc.SQLServerDriver
     type: sqlserver
@@ -73,4 +73,4 @@ sqlserver:
       format: "\\${INSTANCE}"
   validationQuery: "SELECT 1"
   aliases:
-    - mssql
+    - *mssql

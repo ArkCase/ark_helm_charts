@@ -1,0 +1,113 @@
+#!/bin/bash
+
+set -euo pipefail
+
+timestamp() {
+	date -Ins -u
+}
+
+say() {
+	echo -e "$(timestamp): ${@}"
+}
+
+fail() {
+	say "${@}" 1>&2
+	exit ${EXIT_CODE:-1}
+}
+
+usage() {
+	echo -e "usage: ${BASH_SOURCE:-${0}} connection.json"
+	exit 1
+}
+
+is_http_success() {
+	local HTTP_CODE="${1}"
+	[ ${HTTP_CODE} -ge 200 ] && [ ${HTTP_CODE} -le 299 ] && return 0
+	return 1
+}
+
+run_curl() {
+	local ENDPOINT="${1}"
+	local METHOD="${2:-""}"
+	local POST_FILE="${3:-""}"
+
+	local HEADERS=()
+	if [ -n "${POST_FILE}" ] ; then
+		METHOD="POST"
+		POST_FILE=(--data "@${POST_FILE}")
+		HEADERS=(--header "Content-Type: application/json")
+	else
+		POST_FILE=()
+	fi
+
+	if [ -n "${METHOD}" ] ; then
+		METHOD=(--request "${METHOD^^}")
+	else
+		METHOD=()
+	fi
+
+	local HTTP_CODE="$(curl -kL \
+		-sS \
+		--disallow-username-in-url \
+		--config <(echo -n "--user \"${ADMIN_USERNAME}:${ADMIN_PASSWORD}\"") \
+		-w "%{http_code}" \
+		-o /dev/null \
+		"${METHOD[@]}" \
+		"${HEADERS[@]}" \
+		"${POST_FILE[@]}" \
+		"${PENTAHO_URL}${ENDPOINT}")"
+
+	# If it's a 200 code, then return 0
+	is_http_success "${HTTP_CODE}" && return 0
+
+	# Else, echo out the code, and return
+	echo -n "${HTTP_CODE}"
+	return 1
+}
+
+if [ ${#} -ne 0 ] ; then
+	[ ${#} -eq 1 ] || usage
+
+	case "${1,,}" in
+		"-?" | "--help" | "-h" ) usage ;;
+		* ) ;;
+	esac
+else
+	set -- "-"
+fi
+
+[ -v PENTAHO_URL ] || PENTAHO_URL="http://localhost:8080/pentaho"
+[ -v ADMIN_USERNAME ] || ADMIN_USERNAME="arkcase-admin"
+[ -v ADMIN_PASSWORD ] || ADMIN_PASSWORD='$arkcase-admin$'
+
+JSON_FILE="${1}"
+
+PIPED="false"
+if [ "${JSON_FILE}" == "-" ] ; then
+	JSON_FILE="$(cat)"
+	jq -r <<< "${JSON_FILE}" &>/dev/null || fail "The JSON given through STDIN is not valid"
+	CONNECTION_NAME="$(jq -r .name <<< "${JSON_FILE}")"
+	PIPED="true"
+else
+	[ -e "${JSON_FILE}" ] || fail "The file [${JSON_FILE}] does not exist"
+	[ -f "${JSON_FILE}" ] || fail "The path [${JSON_FILE}] is not a regular file"
+	[ -r "${JSON_FILE}" ] || fail "The file [${JSON_FILE}] is not readable"
+	jq -r < "${JSON_FILE}" &>/dev/null || fail "The file [${JSON_FILE}] is not properly-formatted JSON"
+	CONNECTION_NAME="$(jq -r .name < "${JSON_FILE}")"
+fi
+
+# Encode the connection name, for the deletion attempt
+CONNECTION_NAME_ENCODED="$(echo -n "${CONNECTION_NAME}" | jq -sRr @uri)"
+
+# We specifically don't care if it exists or not ... we just do the deletion every time to ensure
+# that the correct connection is created each time
+run_curl "/plugin/data-access/api/datasource/jdbc/connection/${CONNECTION_NAME_ENCODED}" "DELETE" >/dev/null || true
+
+# Now attempt to add the connection based on the given JSON
+if ${PIPED} ; then
+	RESULT="$(run_curl "/plugin/data-access/api/connection/add" "POST" <(echo -n "${JSON_FILE}"))" && exit 0
+else
+	RESULT="$(run_curl "/plugin/data-access/api/connection/add" "POST" "${JSON_FILE}")" && exit 0
+fi
+
+fail "Failed to create the database connection [${CONNECTION_NAME}] (http code = ${RESULT})"
