@@ -228,8 +228,8 @@ spec:
               subPath: &log4j2Xml "log4j2.xml"
               readOnly: true
             - name: *configMap
-              mountPath: "/app/init/reports/000-arkcase-base-reports.tar.gz"
-              subPath: &baseReportsTarGz {{ printf "base-reports.%s.tar.gz" $db.reports | quote }}
+              mountPath: "/app/init/reports/000-arkcase-base-reports.zip"
+              subPath: &baseReportsZip {{ printf "base-reports.%s.zip" $db.reports | quote }}
               readOnly: true
             {{- if $foia }}
             - name: *secrets
@@ -245,8 +245,8 @@ spec:
               subPath: &arkcaseConnectionJson "arkcase_connection.json"
               readOnly: true
             - name: *configMap
-              mountPath: "/app/init/reports/000-arkcase-foia-reports.tar.gz"
-              subPath: &foiaReportsTarGz {{ printf "foia-reports.%s.tar.gz" $db.reports | quote }}
+              mountPath: "/app/init/reports/000-arkcase-base-foia-reports.zip"
+              subPath: &foiaReportsZip {{ printf "foia-reports.%s.zip" $db.reports | quote }}
               readOnly: true
             - name: *configMap
               mountPath: "/usr/local/bin/add-pdi-connection"
@@ -328,11 +328,11 @@ spec:
               - key: *installReports
                 path: *installReports
                 mode: 0555
-              - key: *baseReportsTarGz
-                path: *baseReportsTarGz
+              - key: *baseReportsZip
+                path: *baseReportsZip
               {{- if $foia }}
-              - key: *foiaReportsTarGz
-                path: *foiaReportsTarGz
+              - key: *foiaReportsZip
+                path: *foiaReportsZip
               - key: *addPdiConnection
                 path: *addPdiConnection
                 mode: 0555
