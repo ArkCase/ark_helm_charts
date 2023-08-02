@@ -160,7 +160,7 @@ install_report() {
 		B="${F##*/}"
 
 		if is_report_installed "${P}/${B}" "${HASH}" ; then
-			say "The report for [${P}]${ARCHIVE_INFO} is already installed."
+			say "The reports in [${P}/${B}]${ARCHIVE_INFO} are already installed."
 			continue
 		fi
 
