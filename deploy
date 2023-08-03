@@ -6,6 +6,7 @@ set -euo pipefail
 [ -v FILE_DIR ] || FILE_DIR="${INIT_DIR}/deploy-src"
 [ -v DEPL_DIR ] || DEPL_DIR="${BASE_DIR}/depl"
 [ -v FORCE_HASHES ] || FORCE_HASHES="false"
+[ -v DEPL_URL ] || DEPL_URL="http://app-deploy"
 
 case "${FORCE_HASHES,,}" in
 	true | t | yes | y | 1 | enabled | enable | en | on ) FORCE_HASHES="true" ;;
@@ -106,9 +107,16 @@ deploy_zip() {
 		mkdir -p "${DEST}" || fail "Failed to create the deployment subdirectory for [${SRC}] at [${DEST}]"
 	fi
 
-	# It's OK to do this, as TGT is meant to be a volume in this container, and DEST
-	# has already been created within
-	unzip -o -d "${DEST}" "${SRC}"
+	if [[ "${SRC}" =~ ([^/]*)[.][Cc][Oo][Pp][Yy]$ ]] ; then
+		# If the file is meant to be a copy (i.e. ends with ".copy", case-insensitive)
+		# then we just copy it into the destination with its original basename, minus
+		# the ".copy" suffix.
+		cp -vf "${SRC}" "${DEST}/${BASH_REMATCH[1]}"
+	else
+		# If the file is not meant to be a copy, then we extract its contents into the
+		# destination, clobbering any existing files.
+		unzip -o -d "${DEST}" "${SRC}"
+	fi
 
 	# Add the marker record for this version
 	echo -e "$(date -u -Ins)/${SRC_NAME}/${NEW_VER}/${SUM}" >> "${MARK}"
@@ -123,8 +131,6 @@ deploy_war() {
 
 [ -v VER ] || VER="(unknown)"
 [ -n "${VER}" ] || VER="(unknown)"
-
-[ -v DEPL_URL ] || DEPL_URL="http://app-deploy"
 
 #
 # Clone the directories from the deployment
