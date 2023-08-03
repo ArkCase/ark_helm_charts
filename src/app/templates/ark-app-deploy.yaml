@@ -61,6 +61,3 @@ spec:
       {{- with $.Values.tolerations }}
       tolerations: {{- toYaml . | nindent 8 }}
       {{- end }}
-
----
-{{- include "arkcase.subsystem.service" . -}}

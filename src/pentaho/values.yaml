@@ -98,6 +98,10 @@ initDependencies:
     attempts: 12
   mode: all
   dependencies:
+    app-deploy:
+      ports:
+        - 80
+
     rdbms:
       # By using the approach that any of these ports is
       # sufficient, we cover all our bases regarding the RDBMS

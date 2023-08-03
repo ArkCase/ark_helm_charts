@@ -19,6 +19,20 @@ resources:
 
 platform: ""
 
+initDependencies:
+  enabled: true
+  template:
+    mode: any
+    initialDelay: 10
+    delay: 5
+    timeout: 5
+    attempts: 12
+  mode: all
+  dependencies:
+    app-deploy:
+      ports:
+        - 80
+
 image:
   pullPolicy: IfNotPresent
 

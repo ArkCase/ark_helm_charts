@@ -131,6 +131,9 @@ initDependencies:
     timeout: 5
     attempts: 12
   dependencies:
+    app-deploy:
+      ports:
+        - 80
     rdbms:
       ports:
         # In case of SQLServer
