@@ -107,11 +107,11 @@ deploy_zip() {
 		mkdir -p "${DEST}" || fail "Failed to create the deployment subdirectory for [${SRC}] at [${DEST}]"
 	fi
 
-	if [[ "${SRC}" =~ ([^/]*)[.][Cc][Oo][Pp][Yy]$ ]] ; then
-		# If the file is meant to be a copy (i.e. ends with ".copy", case-insensitive)
-		# then we just copy it into the destination with its original basename, minus
-		# the ".copy" suffix.
-		cp -vf "${SRC}" "${DEST}/${BASH_REMATCH[1]}"
+	if [[ "${SRC}" =~ ^(.*/)?[Cc][Oo][Pp][Yy][.]([^/]+)$ ]] ; then
+		# If the file is meant to be a copy (i.e. the filename starts with "copy.",
+		# case-insensitive) then we just copy it into the destination with its
+		# original basename, minus the "copy." prefix.
+		cp -vf "${SRC}" "${DEST}/${BASH_REMATCH[2]}"
 	else
 		# If the file is not meant to be a copy, then we extract its contents into the
 		# destination, clobbering any existing files.
