@@ -7,8 +7,8 @@
   {{- $customConfFile := and $customConf $dev.conf.file }}
   {{- $customConfDir := and $customConf (not $dev.conf.file) }}
   {{- $customWar := and (not (empty $dev)) (not (empty $dev.war)) }}
-  {{- $customWarFile := and $customConf $dev.war.file }}
-  {{- $customWarDir := and $customConf (not $dev.war.file) }}
+  {{- $customWarFile := and $customWar $dev.war.file }}
+  {{- $customWarDir := and $customWar (not $dev.war.file) }}
   {{- $foia := (include "arkcase.foia" $ | fromYaml) }}
 {{- $cluster := (include "arkcase.cluster" $ | fromYaml) }}
 {{- $nodes := (min 4 $cluster.nodes) -}}
@@ -138,8 +138,8 @@ spec:
       securityContext: {{- toYaml . | nindent 8 }}
       {{- end }}
       initContainers:
-        - name: init-deploy
-          {{- include "arkcase.core.image.deploy" (dict "ctx" $ "name" "deploy" "useChartTag" true) | nindent 10 }}
+        - name: init-deployer
+          {{- include "arkcase.image" (dict "ctx" $ "name" "deployer" "repository" "arkcase/deployer") | nindent 10 }}
           command: [ "/deploy" ]
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             - name: REALM_FIX
@@ -161,17 +161,9 @@ spec:
               mountPath: "/usr/local/bin/realm-fix"
               subPath: &realmFix "realm-fix"
               readOnly: true
-        {{- if $customConfFile }}
-            - name: &confFileVolume "conf-file"
-              mountPath: "/app/file/conf/00-base.zip"
-        {{- end }}
         {{- if not $customConfDir }}
             - name: "conf"
               mountPath: "/app/depl/conf"
-        {{- end }}
-        {{- if $customWarFile }}
-            - name: &warFileVolume "war-file"
-              mountPath: "/app/file/wars/arkcase.war"
         {{- end }}
         {{- if not $customWarDir }}
             - name: "wars"
@@ -543,35 +535,24 @@ spec:
             path: {{ $dev.conf.path | quote }}
             type: Directory
         {{- else }}
-          {{- if $customConfFile }}
-        - name: *confFileVolume
-          hostPath:
-            path: {{ $dev.conf.file | quote }}
-            type: File
-          {{- end }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "conf") | nindent 8 }}
         {{- end }}
         - name: *warsVolume
         {{- if $customWarDir }}
           hostPath:
-            # TODO: Square this with the new volume strategy which points to webapps
             path: {{ $dev.war.path | quote }}
             type: Directory
         {{- else }}
-          emptyDir: {}
-          {{- if $customWarFile }}
-        - name: *warFileVolume
-          hostPath:
-            path: {{ $dev.war.file | quote }}
-            type: File
-          {{- end }}
+          emptyDir:
+            sizeLimit: 2Gi
         {{- end }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "init") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "home") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "logs") | nindent 8 }}
         {{- if $foia }}
         - name: *foiaVolume
-          emptyDir: {}
+          emptyDir:
+            sizeLimit: 1Gi
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "fsrv") | nindent 8 }}
         {{- end }}
   volumeClaimTemplates:

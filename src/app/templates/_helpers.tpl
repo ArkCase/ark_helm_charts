@@ -1,5 +1,5 @@
-{{- define "arkcase.app.image.deploy" -}}
-  {{- $imageName := "deploy" -}}
+{{- define "arkcase.app.image.artifacts" -}}
+  {{- $imageName := "artifacts" -}}
   {{- $foia := (include "arkcase.foia" $.ctx | fromYaml) -}}
   {{- if $foia -}}
     {{- $imageName = (printf "%s-foia" $imageName) -}}

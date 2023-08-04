@@ -275,11 +275,11 @@ reports:
           password: *pentahoDbPassword
 
 service:
-  deploy:
+  artifacts:
     ports:
-      - name: deploy
+      - name: artifacts
         protocol: TCP
-        port: &deployPort 80
+        port: &artifactsPort 80
 
 ##
 ## Configure extra options for containers' liveness and readiness probes
@@ -296,7 +296,7 @@ service:
       spec:
         httpGet:
           path: "/"
-          port: *deployPort
+          port: *artifactsPort
         initialDelaySeconds: 5
         periodSeconds: 5
         timeoutSeconds: 5
@@ -326,13 +326,13 @@ image:
 
   # Overrides the image tag whose default is the chart appVersion.
 
-  deploy:
-    repository: "arkcase/deploy-core"
+  artifacts:
+    repository: "arkcase/artifacts-core"
     # tag: &arkcaseVersion "2023.01.01-01"
 
-  deploy-foia:
+  artifacts-foia:
     registry: "207428623785.dkr.ecr.us-east-1.amazonaws.com"
-    repository: "arkcase/deploy-foia"
+    repository: "arkcase/artifacts-foia"
     # tag: &arkcaseVersion "2023.01.01-01"
 
 # You generally shouldn't mess with these. These exist to support some name-generation templates

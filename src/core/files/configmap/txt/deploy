@@ -2,16 +2,10 @@
 set -euo pipefail
 
 [ -v BASE_DIR ] || BASE_DIR="/app"
-[ -v FILE_DIR ] || FILE_DIR="${BASE_DIR}/file"
 [ -v INIT_DIR ] || INIT_DIR="${BASE_DIR}/init"
 [ -v DEPL_DIR ] || DEPL_DIR="${BASE_DIR}/depl"
 [ -v CONF_DIR ] || CONF_DIR="${DEPL_DIR}/conf"
-[ -v FORCE_HASHES ] || FORCE_HASHES="false"
-
-case "${FORCE_HASHES,,}" in
-	true | t | yes | y | 1 | enabled | enable | en | on ) FORCE_HASHES="true" ;;
-	* ) FORCE_HASHES="false" ;;
-esac
+[ -v WARS_DIR ] || WARS_DIR="${DEPL_DIR}/wars"
 
 say() {
 	echo -e "$(date -u -Isec): ${@}"
@@ -22,136 +16,20 @@ fail() {
 	exit ${EXIT_CODE:-1}
 }
 
-list_files() {
-	local DIR="."
-	[ ${#} -gt 0 ] && DIR="${1}"
-	DIR="$(readlink -f "${DIR}")"
-	if [ -d "${DIR}" ] ; then
-		find "${DIR}" -mindepth 1 -maxdepth 1 | sort | sed -e "s:^${DIR}/::g"
-	else
-		echo "${DIR}"
-	fi
-}
 
-deploy_zip() {
-	local SRC="${1}"
-	local TGT="${2}"
-	local BN=""
-	[ ${#} -ge 3 ] && BN="${3}"
+#
+# Deploy all WAR files
+#
+while read war ; do
+	deploy-artifact extractdir "${war}" "${WARS_DIR}"
+done < <(list-artifacts /arkcase/wars)
 
-	if [ ! -s "${SRC}" ] ; then
-		say "There is no source file [${SRC}], or it's empty"
-		return 1
-	fi
-	local SRC_NAME="${SRC##*/}"
-
-	local SUM=""
-	if ! ${FORCE_HASHES} ; then
-		[ -s "${SRC}.sum" ] && SUM="$(<"${SRC}.sum")"
-	fi
-
-	local NEW_VER="${VER}"
-	[ -s "${SRC}.ver" ] && NEW_VER="$(<"${SRC}.ver")"
-
-	if [[ ! "${SUM,,}" =~ ^[0-9a-f]{64}$ ]] ; then
-		${FORCE_HASHES} || say "Failed to find the cached checksum for [${SRC}], or its contents are invalid. Computing it directly..."
-		read SUM REST < <(sha256sum "${SRC}")
-		if [[ ! "${SUM,,}" =~ ^[0-9a-f]{64}$ ]] ; then
-			say "Failed to compute the sha256 checksum for [${SRC}]"
-			return 1
-		fi
-	fi
-
-	local MARK="${TGT}/.version"
-	if [ -e "${MARK}" ] ; then
-		local OLD_DATE=""
-		local OLD_NAME=""
-		local OLD_VER=""
-		local OLD_SUM="<none>"
-		local EXISTING_LOADED="false"
-
-		if [ -e "${MARK}" ] ; then
-			# We explicitly don't call sort b/c we want to get the last record on the list,
-			# regardless of its contents
-			local REST=""
-			IFS="/" read OLD_DATE OLD_NAME OLD_VER OLD_SUM REST < <(grep -v '^[[:space:]]*#' "${MARK}" | grep -v '^[[:space:]]*$' | egrep "/${SRC_NAME}/" | tail -1)
-			[ -n "${OLD_SUM}" ] && EXISTING_LOADED="true"
-		fi
-
-		if "${EXISTING_LOADED}" ; then
-			if [ "${SUM}" == "${OLD_SUM}" ] ; then
-				say "The file [${SRC_NAME}] appears to already be deployed into [${TGT}] since ${OLD_DATE} (version = ${OLD_VER}, verified by checksum)."
-				return 0
-			fi
-			say "File content change detected for [${SRC_NAME}] through file checksum:\n\tEXISTING: [${OLD_VER} = ${OLD_SUM}]\n\tINCOMING: [${NEW_VER} = ${SUM}]"
-		else
-			say "Couldn't find a prior installation record for [${SRC_NAME}], deploying the file:\n\tINCOMING: [${NEW_VER} = ${SUM}]"
-		fi
-	else
-		say "Version tracking hasn't yet begun for ${TGT} (the marker file [${MARK}] is missing)"
-	fi
-
-	local DEST="${TGT}"
-	if [ -n "${BN}" ] ; then
-		DEST+="/${BN}"
-		mkdir -p "${DEST}" || fail "Failed to create the deployment subdirectory for [${SRC}] at [${DEST}]"
-	fi
-
-	# It's OK to do this, as TGT is meant to be a volume in this container, and DEST
-	# has already been created within
-	unzip -o -d "${DEST}" "${SRC}"
-
-	# Add the marker record for this version
-	echo -e "$(date -u -Ins)/${SRC_NAME}/${NEW_VER}/${SUM}" >> "${MARK}"
-}
-
-deploy_war() {
-	[[ "${1}" =~ ^(.+)[.][wW][aA][rR]$ ]] || fail "The given filename [${1}] is not a valid WAR file name"
-	local BASENAME="${BASH_REMATCH[1]}"
-	BASENAME="${BASENAME##*/}"
-	deploy_zip "${1}" "${2}" "${BASENAME}"
-}
-
-[ -v VER ] || VER="(unknown)"
-[ -n "${VER}" ] || VER="(unknown)"
-
-while read DIR ; do
-	TGT="${DEPL_DIR}/${DIR##*/}"
-
-	#
-	# Deploy ZIP files ... this is straightforward
-	#
-	if [ ! -d "${TGT}" ] ; then
-		say "There is no destination directory [${TGT}], will skip deploying files meant for it"
-		continue
-	fi
-
-	# Canonicalize the target root directory
-	TGT="$(readlink -f "${TGT}")"
-
-	# The directory is there ... find any files meant for it,
-	# and install them in alphanumeric order
-
-    # First the WARs, to afford the ZIPs an opportunity to override crap
-	#
-	# Deploy WAR files - they each go into a subdirectory that shares their basename, minus the
-	# WAR extension (case-insensitive) ... i.e. arkcase.war gets its contents dumped straight
-    # into ${TGT}/arkcase
-	#
-	while read FILE ; do
-		say "Deploying the WAR file [${FILE}] into [${TGT}]..."
-		deploy_war "$(readlink -f "${FILE}")" "${TGT}" || fail "Failed to deploy the WAR file [${FILE}] into [${TGT}]"
-	done < <(find "${DIR}" -mindepth 1 -maxdepth 1 -type f -iname '*.war' | sort)
-
-    # Second the ZIPs, in case they want to clobber anything the WARs put out
-	#
-	# Deploy ZIP files - they go straight into the subdirectory itself, no massaging, no special
-	# considerations... straight up "dump the contents into ${TGT}"
-	while read FILE ; do
-		say "Deploying the ZIP file [${FILE}] into [${TGT}]..."
-		deploy_zip "$(readlink -f "${FILE}")" "${TGT}" || fail "Failed to deploy the ZIP file [${FILE}] into [${TGT}]"
-	done < <(find "${DIR}" -mindepth 1 -maxdepth 1 -type f -iname '*.zip' | sort)
-done < <(find "${FILE_DIR}" -mindepth 1 -maxdepth 1 -type d | sort)
+#
+# Deploy all the .arkcase configurations
+#
+while read conf ; do
+	deploy-artifact extract "${conf}" "${CONF_DIR}"
+done < <(list-artifacts /arkcase/conf)
 
 #
 # This is the only fix we know must be applied FOR SURE each time

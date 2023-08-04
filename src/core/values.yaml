@@ -131,7 +131,7 @@ initDependencies:
     timeout: 5
     attempts: 12
   dependencies:
-    app-deploy:
+    app-artifacts:
       ports:
         - 80
     rdbms:
@@ -182,14 +182,9 @@ image:
 
   # Overrides the image tag whose default is the chart appVersion.
 
-  deploy:
-    repository: "arkcase/deploy-core"
-    # tag: &arkcaseVersion "2023.01.01-01"
-
-  deploy-foia:
-    registry: "207428623785.dkr.ecr.us-east-1.amazonaws.com"
-    repository: "arkcase/deploy-foia"
-    # tag: &arkcaseVersion "2023.01.01-01"
+  deployer:
+    repository: "arkcase/deployer"
+    # tag: 1.0.0-01
 
   # cloudconfig:
   #   repository: "arkcase/cloudconfig"
