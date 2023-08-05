@@ -172,6 +172,8 @@ spec:
               readOnly: true
             - name: &initVol "init"
               mountPath: &initPath "/app/init"
+            - name: &dataVol "data"
+              mountPath: &dataPath "/app/data"
         - name: set-permissions
           {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
@@ -186,8 +188,8 @@ spec:
           volumeMounts:
             - name: *initVol
               mountPath: *initPath
-            - name: &dataVol "data"
-              mountPath: &dataPath "/app/data"
+            - name: *dataVol
+              mountPath: *dataPath
             - name: &logsVol "logs"
               mountPath: &logsPath "/app/logs"
         {{- include "arkcase.initDependencies.container" $ | nindent 8 }}
