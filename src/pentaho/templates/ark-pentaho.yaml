@@ -162,6 +162,7 @@ spec:
           {{- include "arkcase.image" (dict "ctx" $ "name" "deployer" "repository" "arkcase/deployer") | nindent 10 }}
           command: [ "/deploy" ]
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            {{- include "arkcase.deployment.envvars" $ | nindent 12 }}
             - name: FOIA
               value: {{ (not (empty $foia)) | toString | quote }}
           volumeMounts:
