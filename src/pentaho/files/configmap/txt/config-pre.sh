@@ -36,13 +36,4 @@ cp -vf "${SRC_AUDIT_XML}" "${TGT_AUDIT_XML}"
 say "Running the Liquibase DB updates"
 "${LB_DIR}/run-liquibase-updates"
 
-[ -v FOIA_DIR ] || FOIA_DIR="${PENTAHO_PDI_HOME}/foia"
-
-FOIA_JOBS="${INIT_DIR}/foia-dw-jobs.tar.gz"
-if [ -f "${FOIA_JOBS}" ] ; then
-	say "Deploying the FOIA DataWarehousing Jobs to [${FOIA_DIR}]"
-	[ -d "${FOIA_DIR}" ] || mkdir -p  "${FOIA_DIR}"
-	tar -C "${FOIA_DIR}" -xzvf "${FOIA_JOBS}"
-fi
-
 exit 0

@@ -70,20 +70,11 @@ fi
 export DATA_DIR
 
 #
-# ActiveMQ Persistence
-#
-ACTIVEMQ_DATA="${DATA_DIR}/activemq"
-[ -d "${ACTIVEMQ_DATA}" ] || mkdir -p "${ACTIVEMQ_DATA}"
-export ACTIVEMQ_DATA
-
-#
 # Configure Kettle
 #
 [ -v KETTLE_HOME ] || KETTLE_HOME="${DATA_DIR}/pdi"
 [ -d "${KETTLE_HOME}" ] || mkdir -p "${KETTLE_HOME}"
 export KETTLE_HOME
-
-
 
 [ -v INIT_DIR ] || INIT_DIR="${BASE_DIR}/init"
 

@@ -34,7 +34,9 @@ set -euo pipefail
 
 [ -v BASE_DIR ] || BASE_DIR="/app"
 [ -v DATA_DIR ] || DATA_DIR="${BASE_DIR}/data"
+[ -v DWHS_DIR ] || DWHS_DIR="${DATA_DIR}/dwhs"
 [ -v LOGS_DIR ] || LOGS_DIR="${BASE_DIR}/logs"
+[ -v INIT_DIR ] || INIT_DIR="${BASE_DIR}/init"
 [ -v ADMIN_PORT ] || ADMIN_PORT="8080"
 
 if [ -d "${LOGS_DIR}" ] ; then
@@ -73,16 +75,16 @@ if [ -f "${ARKCASE_CONNECTION_JSON}" ] ; then
 	/usr/local/bin/add-pdi-connection "${ARKCASE_CONNECTION_JSON}"
 fi
 
-[ -v FOIA_DIR ] || FOIA_DIR="${PENTAHO_PDI_HOME}/foia"
+[ -v FOIA_DIR ] || FOIA_DIR="${DWHS_DIR}/foia"
 if [ -v FOIA_DIR ] && [ -d "${FOIA_DIR}" ] ; then
-
-	say "Launching the dataminer process"
-	# TODO: Should this run even if the ArkCase database isn't up yet?
-	/usr/local/bin/run-dataminer
+	# TODO: Find a way to run this until AFTER the ArkCase schema is up and running
+	# TODO: This needs to be a separate job/pod so it can be run periodically
+	# say "Launching the dataminer process"
+	# /usr/local/bin/run-dataminer
 
 	# Deploy the Mondrian schema
 	say "Deploying the Mondrian schema"
-	/usr/local/bin/install-mondrian-schema "${FOIA_DIR}/mondrian_schema/foiaSchema1.4.xml"
+	/usr/local/bin/install-mondrian-schema "${PDI_DIR}/mondrian_schema/foiaSchema1.4.xml"
 fi
 
 # Install the reports ...

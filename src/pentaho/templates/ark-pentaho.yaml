@@ -158,6 +158,19 @@ spec:
       securityContext: {{- toYaml . | nindent 8 }}
       {{- end }}
       initContainers:
+        - name: init-deployer
+          {{- include "arkcase.image" (dict "ctx" $ "name" "deployer" "repository" "arkcase/deployer") | nindent 10 }}
+          command: [ "/deploy" ]
+          env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            - name: FOIA
+              value: {{ (not (empty $foia)) | toString | quote }}
+          volumeMounts:
+            - name: &configMap "config-map"
+              mountPath: "/deploy"
+              subPath: &deploy "deploy"
+              readOnly: true
+            - name: &initVol "init"
+              mountPath: &initPath "/app/init"
         - name: set-permissions
           {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
@@ -170,10 +183,10 @@ spec:
                     flags: [ "recurse", "noforced", "create", "changes" ]
                     targets: [ "/app/data", "/app/logs", "/app/init" ]
           volumeMounts:
+            - name: *initVol
+              mountPath: *initPath
             - name: &dataVol "data"
               mountPath: &dataPath "/app/data"
-            - name: &initVol "init"
-              mountPath: &initPath "/app/init"
             - name: &logsVol "logs"
               mountPath: &logsPath "/app/logs"
         {{- include "arkcase.initDependencies.container" $ | nindent 8 }}
@@ -252,7 +265,7 @@ spec:
               mountPath: "/app/lb/run-liquibase-updates"
               subPath: &runLiquibaseUpdates "run-liquibase-updates"
               readOnly: true
-            - name: &configMap "config-map"
+            - name: *configMap "config-map"
               mountPath: "/entrypoint"
               subPath: &entrypoint "entrypoint"
               readOnly: true
