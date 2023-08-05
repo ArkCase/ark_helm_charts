@@ -294,8 +294,7 @@ service:
     probes:
       enabled: true
       spec:
-        httpGet:
-          path: "/"
+        tcpSocket:
           port: *artifactsPort
         initialDelaySeconds: 5
         periodSeconds: 5
