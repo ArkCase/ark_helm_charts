@@ -1,0 +1,35 @@
+#!/bin/bash
+
+set -euo pipefail
+
+timestamp() {
+	date -Ins -u
+}
+
+say() {
+	echo -e "$(timestamp): ${@}"
+}
+
+fail() {
+	say "${@}" 1>&2
+	exit ${EXIT_CODE:-1}
+}
+
+usage() {
+	echo -e "usage: ${BASH_SOURCE:-${0}} pod-name image [command arg1 arg2 arg3 ... argN]"
+	exit 1
+}
+
+[ ${#} -ge 2 ] || usage
+
+NAME="${1}"
+[[ "${NAME}" =~ ^([a-z0-9][-a-z0-9]*)?[a-z0-9]$ ]] || fail "The pod name must be a valid RFC-1123 hostname part (no dots!)"
+shift
+
+IMAGE="${1}"
+[ -n "${IMAGE}" ] || fail "The image name may not be empty"
+shift
+
+[ ${#} -gt 0 ] && set -- --command -- "${@}"
+set -x
+exec kubectl run "${NAME}" --restart=Never --rm -it --image="${IMAGE}" "${@}"
