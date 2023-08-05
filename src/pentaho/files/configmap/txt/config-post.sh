@@ -34,7 +34,7 @@ set -euo pipefail
 
 [ -v BASE_DIR ] || BASE_DIR="/app"
 [ -v DATA_DIR ] || DATA_DIR="${BASE_DIR}/data"
-[ -v DWHS_DIR ] || DWHS_DIR="${DATA_DIR}/dwhs"
+[ -v DWHS_DIR ] || DWHS_DIR="${DATA_DIR}/dw"
 [ -v LOGS_DIR ] || LOGS_DIR="${BASE_DIR}/logs"
 [ -v INIT_DIR ] || INIT_DIR="${BASE_DIR}/init"
 [ -v ADMIN_PORT ] || ADMIN_PORT="8080"
