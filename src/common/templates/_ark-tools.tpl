@@ -582,6 +582,8 @@ Ensure that the given value is an integer value - even if in string form
     {{- $value = (regexMatch "^[1-9][0-9]*$" $value) | ternary ($value | atoi | int64) 0 -}}
   {{- else if or (kindIs "int" $value) (kindIs "int64" $value) (kindIs "float64" $value) -}}
     {{- $value = ($value | int64) -}}
+  {{- else -}}
+    {{- $value = -1 -}}
   {{- end -}}
   {{- (and (ge $value 1) (le $value 65535)) | ternary $value "" -}}
 {{- end -}}
@@ -727,15 +729,7 @@ return either the value if correct, or the empty string if not.
 
   {{- if hasKey $data "host" -}}
     {{- /* Host may be of the form (host)?(:port)? */ -}}
-    {{- $data = set $data "hostPort" $data.host -}}
-    {{- $hostInfo := split ":" $data.hostPort -}}
-
-    {{- /* Purify the host information */ -}}
-    {{- $host := "" -}}
-    {{- if $hostInfo._0 -}}
-      {{- $host = $hostInfo._0 -}}
-    {{- end -}}
-    {{- $data = set $data "host" $host -}}
+    {{- $hostInfo := split ":" $data.host -}}
 
     {{- /* Purify the port information */ -}}
     {{- $port := 0 -}}
@@ -757,6 +751,7 @@ return either the value if correct, or the empty string if not.
       {{- $port := 22 -}}
     {{- end -}}
     {{- $data = set $data "port" $port -}}
+    {{- $data = set $data "hostPort" (printf "%s:%d" $data.hostname $data.port) -}}
   {{- end -}}
 
   {{- if hasKey $data "path" -}}

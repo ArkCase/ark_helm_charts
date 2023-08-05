@@ -27,7 +27,7 @@
 {{- define "arkcase.core.messaging.openwire" -}}
   {{- $messaging := (include "arkcase.tools.parseUrl" (include "arkcase.tools.conf" (dict "ctx" $ "value" "messaging.url")) | fromYaml) }}
   {{- $scheme := ($messaging.scheme | default "tcp") -}}
-  {{- $host := ($messaging.host | default "messaging") -}}
+  {{- $host := ($messaging.hostname | default "messaging") -}}
   {{- $port := (include "arkcase.tools.conf" (dict "ctx" $ "value" "messaging.openwire") | default "61616" | int) -}}
   {{- printf "%s://%s:%d" $scheme $host $port -}}
 {{- end -}}

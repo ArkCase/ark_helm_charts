@@ -81,23 +81,19 @@ that checks the boot order
 
     {{- $targetHostName := $hostname -}}
     {{- $targetPort := $value -}}
-    {{- $replacement := (include "arkcase.tools.conf" (dict "ctx" $ "value" $hostname "detailed" true) | fromYaml) -}}
-    {{- if and $replacement $replacement.value (kindIs "map" $replacement.value) -}}
+    {{- $replacement := (include "arkcase.dependency.target" (dict "ctx" $ "hostname" $hostname) | fromYaml) -}}
+    {{- if $replacement -}}
       {{- $newHostName := "" -}}
       {{- $portSource := dict -}}
-      {{- if (hasKey $replacement.value "url") -}}
-        {{- $url := (include "arkcase.tools.parseUrl" ($replacement.value.url | toString) | fromYaml) -}}
+      {{- if (hasKey $replacement "url") -}}
+        {{- $url := $replacement.url -}}
         {{- if hasKey $url "host" -}}
           {{- $newHostName = $url.host -}}
-          {{- $portSource = $url -}}
+          {{- $portSource = ((hasKey $url "port") | ternary $url $portSource) -}}
         {{- end -}}
       {{- else -}}
-        {{- if (hasKey $replacement.value "hostname") -}}
-          {{- $newHostName = ($replacement.value.hostname | toString) -}}
-        {{- end -}}
-        {{- if (hasKey $replacement.value "port") -}}
-          {{- $portSource = $replacement.value -}}
-        {{- end -}}
+        {{- $newHostName = ((hasKey $replacement "hostname") | ternary ($replacement.hostname | toString) "") -}}
+        {{- $portSource = ((hasKey $replacement.value "port") | ternary $replacement.value $portSource) -}}
       {{- end -}}
 
       {{- if and (hasKey $portSource "port") $portSource.port -}}
@@ -338,4 +334,47 @@ that checks the boot order (remember to |bool the outcome!)
       value: |- {{- $yaml | toYaml | nindent 8 }}
     {{- end -}}
   {{- end -}}
+{{- end -}}
+
+{{- /* Will return a YAML map with either "url" (dict), or "host" (string) and "port" (int) entries */ -}}
+{{- /* If the "url" member is present, neither "host" nor "port" will be present. */ -}}
+{{- /* If either of the "host" or "port" members are present, then the "url" member will not be present */ -}}
+{{- /* The map may empty, indicating that there is no override value */ -}}
+{{- define "arkcase.dependency.target" -}}
+  {{- $ctx := $.ctx -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "You must supply the 'ctx' parameter, pointing to the root context that contains 'Values' et al." -}}
+  {{- end -}}
+
+  {{- $hostname := $.hostname -}}
+  {{- if or (not $hostname) (not (kindIs "string" $hostname)) -}}
+    {{- fail (printf "You must supply a string value for the 'hostname' parameter (%s)" (kindOf $hostname)) -}}
+  {{- end -}}
+
+  {{- $result := dict -}}
+  {{- $replacement := (include "arkcase.tools.conf" (dict "ctx" $ctx "value" $hostname "detailed" true) | fromYaml) -}}
+  {{- if and $replacement $replacement.value (kindIs "map" $replacement.value) -}}
+    {{- if (hasKey $replacement.value "url") -}}
+      {{- $url := (include "arkcase.tools.parseUrl" ($replacement.value.url | toString) | fromYaml) -}}
+      {{- if $url -}}
+        {{- $result = dict "url" $url -}}
+      {{- end -}}
+    {{- else if or (hasKey $replacement.value "hostname") (hasKey $replacement.value "port") -}}
+      {{- $newHostName := "" -}}
+      {{- $newPort := 0 -}}
+      {{- if (hasKey $replacement.value "hostname") -}}
+        {{- $newHostName = ($replacement.value.hostname | toString) -}}
+        {{- if $newHostName -}}
+          {{- $result = set $result "host" $newHostName -}}
+        {{- end -}}
+      {{- end -}}
+      {{- if (hasKey $replacement.value "port") -}}
+        {{- $newPort = (include "arkcase.tools.checkNumericPort" $replacement.value.port | atoi) -}}
+        {{- if $newPort -}}
+          {{- $result = set $result "port" $newPort -}}
+        {{- end -}}
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
+  {{- $result | toYaml -}}
 {{- end -}}
