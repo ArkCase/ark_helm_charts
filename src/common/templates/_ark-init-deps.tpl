@@ -88,12 +88,12 @@ that checks the boot order
       {{- if (hasKey $replacement "url") -}}
         {{- $url := $replacement.url -}}
         {{- if hasKey $url "host" -}}
-          {{- $newHostName = $url.host -}}
+          {{- $newHostName = $url.hostname -}}
           {{- $portSource = ((hasKey $url "port") | ternary $url $portSource) -}}
         {{- end -}}
       {{- else -}}
         {{- $newHostName = ((hasKey $replacement "hostname") | ternary ($replacement.hostname | toString) "") -}}
-        {{- $portSource = ((hasKey $replacement.value "port") | ternary $replacement.value $portSource) -}}
+        {{- $portSource = ((hasKey $replacement "port") | ternary $replacement $portSource) -}}
       {{- end -}}
 
       {{- if and (hasKey $portSource "port") $portSource.port -}}
@@ -107,6 +107,10 @@ that checks the boot order
       {{- if $newHostName -}}
         {{- $targetHostName = $newHostName -}}
       {{- end -}}
+    {{- end -}}
+
+    {{- if (eq $targetHostName "content-main:8080") -}}
+      {{- fail ($replacement | toYaml | nindent 0) -}}
     {{- end -}}
 
     {{- if not (include "arkcase.tools.checkHostname" $targetHostName) -}}

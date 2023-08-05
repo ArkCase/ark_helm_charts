@@ -1,5 +1,5 @@
 {{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.subsystem.external" $)) }}
-{{- $db := (include "arkcase.db.info" $ | fromYaml) }}
+{{- $db := (include "arkcase.db.info" $ | fromYaml) -}}
 {{- $foia := (include "arkcase.foia" $ | fromYaml) -}}
 {{- if and "" $foia }}
 # Disabled for now ...
@@ -30,7 +30,7 @@ spec:
                 - date; echo Hello from the Kubernetes cluster
           restartPolicy: OnFailure
 {{- end }}
-{{- $cluster := (include "arkcase.cluster" $ | fromYaml) }}
+{{- $cluster := (include "arkcase.cluster" $ | fromYaml) -}}
 {{- $nodes := (min 4 $cluster.nodes) -}}
 {{- $maxFailed := (sub $nodes 1) -}}
 {{- if (gt $maxFailed 0) }}
@@ -266,7 +266,7 @@ spec:
               mountPath: "/app/lb/run-liquibase-updates"
               subPath: &runLiquibaseUpdates "run-liquibase-updates"
               readOnly: true
-            - name: *configMap "config-map"
+            - name: *configMap
               mountPath: "/entrypoint"
               subPath: &entrypoint "entrypoint"
               readOnly: true

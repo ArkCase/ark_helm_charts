@@ -5,7 +5,7 @@
   {{- $ingress = (kindIs "map" $ingress) | ternary $ingress dict -}}
   {{- $enabled := or (not (hasKey $ingress "enabled")) (eq "true" ($ingress.enabled | toString | lower)) -}}
   {{- $https := (eq "https" ($baseUrl.scheme | lower)) -}}
-  {{- $hostname := $baseUrl.host -}}
+  {{- $hostname := $baseUrl.hostname -}}
   {{- $path := $baseUrl.path | default "/" -}}
   {{- $foia := (include "arkcase.foia" $ | fromYaml) -}}
 
