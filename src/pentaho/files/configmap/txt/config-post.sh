@@ -84,7 +84,7 @@ if [ -v FOIA_DIR ] && [ -d "${FOIA_DIR}" ] ; then
 
 	# Deploy the Mondrian schema
 	say "Deploying the Mondrian schema"
-	/usr/local/bin/install-mondrian-schema "${PDI_DIR}/mondrian_schema/foiaSchema1.4.xml"
+	/usr/local/bin/install-mondrian-schema "${FOIA_DIR}/mondrian_schema/foiaSchema1.4.xml"
 fi
 
 # Install the reports ...
