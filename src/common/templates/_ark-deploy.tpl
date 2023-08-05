@@ -1,6 +1,6 @@
 {{- define "arkcase.deployment.envvars" -}}
-  {{- $artifacts := (include "arkcase.dependency.target" (dict "ctx" $ "hostname" "artifacts") | fromYaml) -}}
   {{- $url := (include "arkcase.tools.parseUrl" "http://app-artifacts" | fromYaml) -}}
+  {{- $artifacts := (include "arkcase.dependency.target" (dict "ctx" $ "hostname" "app-artifacts") | fromYaml) -}}
   {{- if $artifacts -}}
     {{- if not (hasKey $artifacts "url") -}}
       {{- fail "You must specify the artifacts endpoint using a URL, not a hostname-port combination" -}}

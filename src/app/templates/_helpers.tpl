@@ -9,7 +9,7 @@
 {{- end -}}
 
 {{- define "arkcase.artifacts.external" -}}
-  {{- $url := (include "arkcase.tools.conf" (dict "ctx" $ "value" "artifacts.url" "detailed" true) | fromYaml) -}}
+  {{- $url := (include "arkcase.tools.conf" (dict "ctx" $ "value" "app-artifacts.url" "detailed" true) | fromYaml) -}}
   {{- if or (and $url $url.global) -}}
     {{- true -}}
   {{- end -}}

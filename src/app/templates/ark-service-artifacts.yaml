@@ -1,2 +1,4 @@
-{{- include "arkcase.subsystem.service" $ -}}
+{{- if (not (include "arkcase.artifacts.external" $)) -}}
+  {{- include "arkcase.subsystem.service" $ -}}
+{{- end -}}
 
