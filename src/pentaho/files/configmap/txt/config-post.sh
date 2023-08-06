@@ -85,6 +85,15 @@ ARKCASE_CONNECTION_JSON="${PENTAHO_HOME}/.kettle/arkcase_connection.json"
 if [ -f "${ARKCASE_CONNECTION_JSON}" ] ; then
 	say "Deploying the Kettle DB connection from [${ARKCASE_CONNECTION_JSON}]"
 	/usr/local/bin/add-pdi-connection "${ARKCASE_CONNECTION_JSON}"
+
+	# This is a small hack ... we've found intermittent ConcurrentModificationExceptions
+	# puke all over report installation, so we're going to delay everything for a few
+	# seconds to let this datasource creation operation settle down a little bit
+	#
+	# Yes... waits SUCK ... but until we find a more robust means of checking
+	# if the DataSource is ready to be consumed, this should help for now
+	sleep 5 || true
+	say "Kettle DB connection deployed successfully"
 fi
 
 if [ -v FOIA_DIR ] && [ -d "${FOIA_DIR}" ] ; then
