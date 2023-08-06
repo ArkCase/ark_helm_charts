@@ -203,7 +203,7 @@ install_report() {
 list_reports() {
 	local REPORTS_DIR="${1}"
 	[ -d "${REPORTS_DIR}" ] | return 0
-	find "${REPORTS_DIR}" -type f | \
+	find "${REPORTS_DIR}" -type f -not -name '.*' | \
 		sed -e "s;^${REPORTS_DIR}/;;g" | \
 		sort
 }
