@@ -46,7 +46,7 @@ DATA="$(<"${BINDING_CONTEXT_PATH}")"
 # Get the pod's TRUE ready status
 #
 RC=0
-STATUS="$(jq -r ".[].object.status.conditions[] | select(.type == \"Ready\") .status" <<< "${DATA}" 2>&1)" || RC=${?}
+STATUS="$(jq -r '.[].object.status.conditions[] | select(.type == "Ready") .status' <<< "${DATA}" 2>&1)" || RC=${?}
 [ ${RC} -eq 0 ] || fail "Failed to parse the given data (rc=${RC}): ${STATUS}"
 
 #
