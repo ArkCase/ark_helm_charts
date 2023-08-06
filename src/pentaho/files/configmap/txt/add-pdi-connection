@@ -101,7 +101,8 @@ CONNECTION_NAME_ENCODED="$(echo -n "${CONNECTION_NAME}" | jq -sRr @uri)"
 
 # We specifically don't care if it exists or not ... we just do the deletion every time to ensure
 # that the correct connection is created each time
-run_curl "/plugin/data-access/api/datasource/jdbc/connection/${CONNECTION_NAME_ENCODED}" "DELETE" >/dev/null || true
+DELETE_RESULT="$(run_curl "/plugin/data-access/api/datasource/jdbc/connection/${CONNECTION_NAME_ENCODED}" "DELETE")" || true
+[ -z "${DELETE_RESULT}" ] || say "Failed to delete the existing connection operation error: ${DELETE_RESULT}"
 
 # Now attempt to add the connection based on the given JSON
 if ${PIPED} ; then
