@@ -45,7 +45,7 @@ SCHEMA_NAME="${SCHEMA_NAME%.*}"
 exec curl -kL -v \
 	-H "Content-Type: multipart/form-data" \
 	-X PUT \
-	-F uploadInput="${SCHEMA_FILE}" \
+	-F uploadInput="@${SCHEMA_FILE}" \
 	-F overwrite="true" \
 	-F xmlaEnabledFlag="false" \
 	-F parameters="Datasource=ArkCase Database" \
