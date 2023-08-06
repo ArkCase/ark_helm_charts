@@ -16,7 +16,8 @@ fail() {
 }
 
 usage() {
-	echo -n "usage: ${BASH_SOURCE:-${0}} schema.xml"
+	echo -e "usage: ${BASH_SOURCE:-${0}} schema.xml"
+	exit 1
 }
 
 
@@ -27,7 +28,7 @@ usage() {
 [ ${#} -eq 1 ] || usage
 
 SCHEMA_FILE="${1}"
-[ -z "${SCHEMA_FILE}" ] || fail "The schema filename may not be the empty string"
+[ -n "${SCHEMA_FILE}" ] || fail "The schema filename may not be the empty string"
 [ -e "${SCHEMA_FILE}" ] || fail "The file [${SCHEMA_FILE}] does not exist"
 [ -f "${SCHEMA_FILE}" ] || fail "The path [${SCHEMA_FILE}] is not a regular file"
 [ -r "${SCHEMA_FILE}" ] || fail "The file [${SCHEMA_FILE}] is not readable"
