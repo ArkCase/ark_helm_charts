@@ -42,7 +42,7 @@ SCHEMA_FILE="$(readlink -f "${SCHEMA_FILE}")"
 SCHEMA_NAME="${SCHEMA_FILE##*/}"
 SCHEMA_NAME="${SCHEMA_NAME%.*}"
 
-exec curl -kL -v \
+exec curl -kL -sS \
 	-H "Content-Type: multipart/form-data" \
 	-X PUT \
 	-F uploadInput="@${SCHEMA_FILE}" \
