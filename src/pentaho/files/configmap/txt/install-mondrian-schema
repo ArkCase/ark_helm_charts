@@ -48,6 +48,6 @@ exec curl -kL -sS \
 	-F uploadInput="@${SCHEMA_FILE}" \
 	-F overwrite="true" \
 	-F xmlaEnabledFlag="false" \
-	-F parameters="Datasource=ArkCase Database" \
+	-F parameters="Datasource=ArkCase" \
 	--config <(echo -n "--user \"${ADMIN_USERNAME}:${ADMIN_PASSWORD}\"") \
 	"${PENTAHO_URL}/plugin/data-access/api/datasource/analysis/catalog/${SCHEMA_NAME}"
