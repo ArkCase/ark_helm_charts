@@ -3,17 +3,22 @@ changed: true
 usingConnectionPool: true
 connectSql: ""
 name: "ArkCase"
-hostname: {{ .hostname | quote }}
-databasePort: {{ .port | toString | quote }}
 databaseName: {{ .database | quote }}
-username: {{ .username | quote }}
+databasePort: {{ .port | toString | quote }}
+hostname: {{ .hostname | quote }}
 password: {{ .password | quote }}
-accessType: "NATIVE"
-attributes: {}
+username: {{ .username | quote }}
+attributes:
+  CUSTOM_URL: {{ .jdbc.url | quote }}
+  CUSTOM_DRIVER_CLASS: {{ .jdbc.driver | quote }}
 connectionPoolingProperties: {}
+extraOptions: {}
+extraOptionsOrder: {}
+accessType: "NATIVE"
 databaseType: 
   defaultDatabasePort:  {{ .port | int64 }}
-  name: {{ .reports | quote }}
-  shortName: {{ .reports | upper | quote }}
+  extraOptionsHelpUrl: ""
+  name: "Generic"
+  shortName: "GENERIC"
   supportedAccessTypes: [ "NATIVE", "ODBC", "JNDI" ]
 {{- end }}
