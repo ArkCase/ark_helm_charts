@@ -1,8 +1,8 @@
 {{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.subsystem.external" $)) }}
 {{- $db := (include "arkcase.db.info" $ | fromYaml) -}}
 {{- $foia := (include "arkcase.foia" $ | fromYaml) -}}
-{{- if and "" $foia }}
-# Disabled for now ...
+{{- $foiaCron := (include "arkcase.tools.conf" (dict "ctx" $ "value" "foia-dw-cron")) -}}
+{{- if and $foia $foiaCron }}
 ---
 apiVersion: batch/v1
 kind: CronJob
@@ -10,10 +10,7 @@ metadata:
   name: &fullName {{ include "arkcase.fullname" $ | quote }}
   namespace: {{ $.Release.Namespace | quote }}
 spec:
-  # Must run every day at 2am
-  # TODO: Expose this via configuration
-  # TODO: If the schedule is disabled, don't render the job
-  schedule: "0 2 * * *"
+  schedule: {{ $foiaCron | quote }}
   # Make sure a single instance runs
   concurrencyPolicy: Forbid
   # Keep a history of the last failed 10 jobs
@@ -24,16 +21,50 @@ spec:
     spec:
       template:
         spec:
+          {{- include "arkcase.image.pullSecrets" $ | nindent 10 }}
+          initContainers:
+            - name: init-deployer
+              {{- include "arkcase.image" (dict "ctx" $ "name" "deployer" "repository" "arkcase/deployer") | nindent 14 }}
+              command:
+                - &cronjobDeployPath "/cronjob-deploy"
+              env: {{- include "arkcase.tools.baseEnv" $ | nindent 16 }}
+                {{- include "arkcase.deployment.envvars" $ | nindent 16 }}
+                - name: FOIA
+                  value: "true"
+              volumeMounts:
+                - name: &configMap "config-map"
+                  mountPath: *cronjobDeployPath
+                  subPath: &cronjobDeploy "cronjob-deploy"
+                  readOnly: true
+                - name: &dataVol "data"
+                  mountPath: &dataPath "/app/data"
+            - name: set-permissions
+              {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 14 }}
+              env: {{- include "arkcase.tools.baseEnv" $ | nindent 16 }}
+                - name: JOBS
+                  value: |
+                    jobs:
+                      # We know the UID for the Pentaho container is 998:996
+                      - ownership: "1998:1998"
+                        permissions: "u=rwX,g=rX,o="
+                        flags: [ "recurse", "noforced", "create", "changes" ]
+                        targets: [ "/app/data" ]
+              volumeMounts:
+                - name: *dataVol
+                  mountPath: *dataPath
+                - name: *configMap
+                  mountPath: *cronjobDeployPath
+                  subPath: *cronjobDeploy
+                  readOnly: true
           containers:
             - name: "foia-dw1"
-              {{- include "arkcase.image.pullSecrets" $ | nindent 14 }}
-              # TODO: The image must contain update-ssl to update the SSL trusts
-              # TODO: The image must contain a Pentaho-PDI installation
-              # TODO: The image must contain a launcher script that downloads the DW stuff from artifacts
-              #       and deploy it locally for execution
-              {{- include "arkcase.image" (dict "ctx" $ "name" "foia-dw" "repository" "arkcase/foia-dw") | nindent 14 }}
-              command: [ "run-scheduled-dataminer" ]
-              env:
+              # We use the same Pentaho image b/c why the hell not? :D
+              {{- include "arkcase.image" $ | nindent 14 }}
+              # We do need a custom entrypoint script, though
+              command:
+                - &cronjobEntrypointPath "/usr/local/bin/cronjob-entrypoint"
+              env: {{- include "arkcase.tools.baseEnv" $ | nindent 16 }}
+                {{- include "arkcase.deployment.envvars" $ | nindent 16 }}
                 - name: ADMIN_USERNAME
                   valueFrom:
                     secretKeyRef:
@@ -47,6 +78,8 @@ spec:
               volumeMounts:
                 {{- include "arkcase.pentaho.license.volumeMounts" (dict "ctx" $ "volume" "secrets" "path" "/app/init/licenses") | nindent 16 }}
                 {{- include "arkcase.trusts.mount" $ | nindent 16 }}
+                - name: *dataVol
+                  mountPath: *dataPath
                 - name: &secrets "secrets"
                   mountPath: "/app/pentaho/.kettle/shared.xml"
                   subPath: &sharedXml "shared.xml"
@@ -58,6 +91,10 @@ spec:
                 - name: &configMap "config-map"
                   mountPath: "/usr/local/bin/run-dataminer"
                   subPath: &runDataminer "run-dataminer"
+                  readOnly: true
+                - name: *configMap
+                  mountPath: *cronjobEntrypointPath
+                  subPath: &cronjobEntrypoint "cronjob-entrypoint"
                   readOnly: true
           volumes:
             {{- include "arkcase.trusts.volume" $ | nindent 12 }}
@@ -81,6 +118,14 @@ spec:
                   - key: *runDataminer
                     path: *runDataminer
                     mode: 0555
+                  - key: *cronjobEntrypoint
+                    path: *cronjobEntrypoint
+                    mode: 0555
+                  - key: *cronjobDeploy
+                    path: *cronjobDeploy
+                    mode: 0555
+            - name: *dataVol
+              emptyDir: {}
           restartPolicy: Never
 {{- end }}
 {{- $cluster := (include "arkcase.cluster" $ | fromYaml) -}}
