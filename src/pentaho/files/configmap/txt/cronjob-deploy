@@ -1,0 +1,28 @@
+#!/bin/bash
+set -euo pipefail
+
+[ -v BASE_DIR ] || BASE_DIR="/app"
+[ -v INIT_DIR ] || INIT_DIR="${BASE_DIR}/init"
+[ -v DATA_DIR ] || DATA_DIR="${BASE_DIR}/data"
+[ -v DWHS_DIR ] || DWHS_DIR="${DATA_DIR}/dw"
+
+say() {
+	echo -e "$(date -u -Isec): ${@}"
+}
+
+fail() {
+	say "${@}" 1>&2
+	exit ${EXIT_CODE:-1}
+}
+
+#
+# Extract all the Data Warehousing stuff
+#
+say "Deploying Analytical Transformations"
+mkdir -p "${DWHS_DIR}"
+while read dwhs ; do
+	deploy-artifact extract-dir "${dwhs}" "${DWHS_DIR}"
+done < <(list-artifacts /pentaho/analytical)
+
+say "Artifact deployment complete"
+exit 0
