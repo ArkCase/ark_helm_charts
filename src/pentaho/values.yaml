@@ -13,6 +13,14 @@ configuration:
   # Default is 2am
   foia-dw-cron: "0 2 * * *"
 
+  analytics:
+    hostname: "analytics"
+    port: 7687
+    routing: false
+    database: "neo4j"
+    username: "neo4j"
+    password: "naecoj0Como5ubee0ajohgha"
+
   ingress:
     enabled: false
     className: haproxy
