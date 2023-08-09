@@ -2,12 +2,14 @@
 {{- $db := (include "arkcase.db.info" $ | fromYaml) -}}
 {{- $foia := (include "arkcase.foia" $ | fromYaml) -}}
 {{- $foiaCron := (include "arkcase.tools.conf" (dict "ctx" $ "value" "foia-dw-cron")) -}}
+{{- $fullName := (include "arkcase.fullname" $) -}}
+{{- $serviceName := (include "arkcase.service.name" $) -}}
 {{- if and $foia $foiaCron }}
 ---
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: &fullName {{ include "arkcase.fullname" $ | quote }}
+  name: {{ printf "%s-cron" $fullName | quote }}
   namespace: {{ $.Release.Namespace | quote }}
 spec:
   schedule: {{ $foiaCron | quote }}
@@ -31,6 +33,25 @@ spec:
                 {{- include "arkcase.deployment.envvars" $ | nindent 16 }}
                 - name: FOIA
                   value: "true"
+                - name: ARKCASE_SERVER_URL
+                  value: "http://core:8080/arkcase"
+                - name: PENTAHO_SERVER_URL
+                  value: {{ printf "http://%s:8080/pentaho" $serviceName }}
+                - name: ADMIN_USERNAME
+                  valueFrom:
+                    secretKeyRef:
+                      name: &fullName {{ $fullName | quote }}
+                      key: "adminUsername"
+                - name: LDAP_DOMAIN
+                  valueFrom:
+                    secretKeyRef:
+                      name: *fullName
+                      key: "ldapDomain"
+                - name: ADMIN_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: *fullName
+                      key: "adminPassword"
               volumeMounts:
                 - name: &configMap "config-map"
                   mountPath: *cronjobDeployPath
@@ -65,11 +86,22 @@ spec:
                 - &cronjobEntrypointPath "/usr/local/bin/cronjob-entrypoint"
               env: {{- include "arkcase.tools.baseEnv" $ | nindent 16 }}
                 {{- include "arkcase.deployment.envvars" $ | nindent 16 }}
+                - name: PENTAHO_INSTALLED_LICENSE_PATH
+                  value: "/app/data/.installedLicenses.xml"
+                - name: ARKCASE_SERVER_URL
+                  value: "http://core:8080/arkcase"
+                - name: PENTAHO_SERVER_URL
+                  value: {{ printf "http://%s:8080/pentaho" $serviceName }}
                 - name: ADMIN_USERNAME
                   valueFrom:
                     secretKeyRef:
                       name: *fullName
                       key: "adminUsername"
+                - name: LDAP_DOMAIN
+                  valueFrom:
+                    secretKeyRef:
+                      name: *fullName
+                      key: "ldapDomain"
                 - name: ADMIN_PASSWORD
                   valueFrom:
                     secretKeyRef:
@@ -95,6 +127,18 @@ spec:
                 - name: *configMap
                   mountPath: *cronjobEntrypointPath
                   subPath: &cronjobEntrypoint "cronjob-entrypoint"
+                  readOnly: true
+                - name: *configMap
+                  mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/server.properties.tpl"
+                  subPath: &serverPropertiesTpl "server.properties.tpl"
+                  readOnly: true
+                - name: *configMap
+                  mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/pdi-pur-plugin/plugin.properties.tpl"
+                  subPath: &pluginPropertiesTpl "plugin.properties.tpl"
+                  readOnly: true
+                - name: *configMap
+                  mountPath: "/app/pentaho-pdi/data-integration/plugins/pdi-pur-plugin/plugin.properties.tpl"
+                  subPath: *pluginPropertiesTpl
                   readOnly: true
           volumes:
             {{- include "arkcase.trusts.volume" $ | nindent 12 }}
@@ -124,6 +168,10 @@ spec:
                   - key: *cronjobDeploy
                     path: *cronjobDeploy
                     mode: 0555
+                  - key: *serverPropertiesTpl
+                    path: *serverPropertiesTpl
+                  - key: *pluginPropertiesTpl
+                    path: *pluginPropertiesTpl
             - name: *dataVol
               emptyDir: {}
           restartPolicy: Never
@@ -136,7 +184,7 @@ spec:
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
-  name: {{ include "arkcase.fullname" $ | quote }}
+  name: {{ $fullName | quote }}
   namespace: {{ $.Release.Namespace | quote }}
 spec:
   maxUnavailable: {{ $maxFailed }}
@@ -145,7 +193,7 @@ spec:
 {{- end }}
 {{- $serviceAccountName := (include "arkcase.serviceAccountName" $) }}
 {{- if $cluster.enabled }}
-  {{- $serviceAccountName = (or (empty $serviceAccountName) (eq "default" $serviceAccountName)) | ternary (include "arkcase.fullname" $) $serviceAccountName }}
+  {{- $serviceAccountName = (or (empty $serviceAccountName) (eq "default" $serviceAccountName)) | ternary $fullName $serviceAccountName }}
   {{- $roleName := (printf "%s-cluster-membership" $serviceAccountName) }}
 ---
 apiVersion: v1
@@ -185,7 +233,7 @@ roleRef:
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ include "arkcase.fullname" $ | quote }}
+  name: &fullName {{ $fullName | quote }}
   namespace: {{ $.Release.Namespace | quote }}
   labels: {{- include "arkcase.labels" $ | nindent 4 }}
     {{- with ($.Values.labels).common }}
@@ -210,7 +258,7 @@ spec:
   podManagementPolicy: Parallel
   template:
     metadata:
-      name: {{ include "arkcase.fullname" $ | quote }}
+      name: *fullName
       namespace: {{ $.Release.Namespace | quote }}
       labels: {{- include "arkcase.labels" $ | nindent 8 }}
         {{- with ($.Values.labels).common }}
@@ -263,6 +311,25 @@ spec:
             {{- include "arkcase.deployment.envvars" $ | nindent 12 }}
             - name: FOIA
               value: {{ (not (empty $foia)) | toString | quote }}
+            - name: ARKCASE_SERVER_URL
+              value: "http://core:8080/arkcase"
+            - name: PENTAHO_SERVER_URL
+              value: {{ printf "http://%s:8080/pentaho" $serviceName }}
+            - name: ADMIN_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: &secrets {{ $fullName | quote }}
+                  key: "adminUsername"
+            - name: LDAP_DOMAIN
+              valueFrom:
+                secretKeyRef:
+                  name: *secrets
+                  key: "ldapDomain"
+            - name: ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: *secrets
+                  key: "adminPassword"
           volumeMounts:
             - name: &configMap "config-map"
               mountPath: "/deploy"
@@ -316,11 +383,20 @@ spec:
               value: {{ $db.filesDialect | quote }}
             - name: DB_SCRIPTS
               value: {{ $db.scripts | quote }}
+            - name: ARKCASE_SERVER_URL
+              value: "http://core:8080/arkcase"
+            - name: PENTAHO_SERVER_URL
+              value: {{ printf "http://%s:8080/pentaho" $serviceName }}
             - name: ADMIN_USERNAME
               valueFrom:
                 secretKeyRef:
-                  name: &secrets {{ include "arkcase.fullname" $ | quote }}
+                  name: *secrets
                   key: "adminUsername"
+            - name: LDAP_DOMAIN
+              valueFrom:
+                secretKeyRef:
+                  name: *secrets
+                  key: "ldapDomain"
             - name: ADMIN_PASSWORD
               valueFrom:
                 secretKeyRef:
@@ -362,6 +438,14 @@ spec:
               mountPath: "/app/lb/run-liquibase-updates"
               subPath: &runLiquibaseUpdates "run-liquibase-updates"
               readOnly: true
+            - name: *secrets
+              mountPath: "/app/pentaho/.kettle/shared.xml"
+              subPath: &sharedXml "shared.xml"
+              readOnly: true
+            - name: *secrets
+              mountPath: "/app/pentaho/.kettle/kettle.properties"
+              subPath: &kettleProperties "kettle.properties"
+              readOnly: true
             - name: *configMap
               mountPath: "/entrypoint"
               subPath: &entrypoint "entrypoint"
@@ -387,8 +471,16 @@ spec:
               subPath: &securityProperties "security.properties"
               readOnly: true
             - name: *configMap
-              mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/server.properties"
-              subPath: &serverProperties "server.properties"
+              mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/server.properties.tpl"
+              subPath: &serverPropertiesTpl "server.properties.tpl"
+              readOnly: true
+            - name: *configMap
+              mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/pdi-pur-plugin/plugin.properties.tpl"
+              subPath: &pluginPropertiesTpl "plugin.properties.tpl"
+              readOnly: true
+            - name: *configMap
+              mountPath: "/app/pentaho-pdi/data-integration/plugins/pdi-pur-plugin/plugin.properties.tpl"
+              subPath: *pluginPropertiesTpl
               readOnly: true
             - name: *configMap
               mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/repository.spring.properties"
@@ -419,14 +511,6 @@ spec:
               subPath: &baseReportsZip {{ printf "base-reports.%s.zip" $db.reports | quote }}
               readOnly: true
             {{- if $foia }}
-            - name: *secrets
-              mountPath: "/app/pentaho/.kettle/shared.xml"
-              subPath: &sharedXml "shared.xml"
-              readOnly: true
-            - name: *secrets
-              mountPath: "/app/pentaho/.kettle/kettle.properties"
-              subPath: &kettleProperties "kettle.properties"
-              readOnly: true
             - name: *secrets
               mountPath: "/app/pentaho/.kettle/arkcase_connection.json"
               subPath: &arkcaseConnectionJson "arkcase_connection.json"
@@ -477,7 +561,7 @@ spec:
         - name: *secrets
           secret:
             optional: false
-            secretName: {{ include "arkcase.fullname" $ | quote }}
+            secretName: *fullName
             defaultMode: 0444
             items:
               {{- include "arkcase.pentaho.license.volumes" $ | nindent 14 }}
@@ -492,18 +576,18 @@ spec:
               - key: *runLiquibaseUpdates
                 path: *runLiquibaseUpdates
                 mode: 0555
-              {{- if $foia }}
               - key: *sharedXml
                 path: *sharedXml
               - key: *kettleProperties
                 path: *kettleProperties
+              {{- if $foia }}
               - key: *arkcaseConnectionJson
                 path: *arkcaseConnectionJson
               {{- end }}
         - name: *configMap
           configMap:
             optional: false
-            name: {{ include "arkcase.fullname" $ | quote }}
+            name: *fullName
             defaultMode: 0444
             items:
               - key: *hibernateSettingsXml
@@ -514,8 +598,10 @@ spec:
                 path: *applicationContextSpringSecurityXml
               - key: *securityProperties
                 path: *securityProperties
-              - key: *serverProperties
-                path: *serverProperties
+              - key: *serverPropertiesTpl
+                path: *serverPropertiesTpl
+              - key: *pluginPropertiesTpl
+                path: *pluginPropertiesTpl
               - key: *serverXmlTpl
                 path: *serverXmlTpl
               - key: *log4j2Xml
