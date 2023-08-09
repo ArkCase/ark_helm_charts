@@ -17,6 +17,8 @@ set -euo pipefail
 
 [ -v BASE_DIR ] || BASE_DIR="/app"
 [ -v PENTAHO_HOME ] || PENTAHO_HOME="${BASE_DIR}/pentaho"
+[ -v PENTAHO_PDI_HOME ] || PENTAHO_HOME="${BASE_DIR}/pentaho"
+[ -v PENTAHO_PDI_PLUGINS ] || PENTAHO_PDI_PLUGINS="${PENTAHO_PDI_HOME}/data-integration/plugins"
 
 [ -v PENTAHO_SERVER ] || PENTAHO_SERVER="${PENTAHO_HOME}/pentaho-server"
 [ -e "${PENTAHO_SERVER}" ] || fail "The Pentaho server directory could not be found at [${PENTAHO_SERVER}], cannot continue."
@@ -144,6 +146,24 @@ else
 	touch "${INIT_MARKER}"
 	touch "${RUN_MARKER}"
 fi
+
+###################################################################
+# Render the correct server.properties file                       #
+###################################################################
+PROPERTIES_TEMPLATES=(
+	"${PENTAHO_SERVER}/pentaho-solutions/system/server.properties"
+	"${PENTAHO_SERVER}/pentaho-solutions/system/pdi-pur-plugin/plugin.properties"
+	"${PENTAHO_PDI_PLUGINS}/pdi-pur-plugin/plugin.properties"
+)
+[ -v PENTAHO_SERVER_URL ] || PENTAHO_SERVER_URL="http://$(hostname -d):8080/pentaho"
+for P in "${PROPERTIES_TEMPLATES[@]}" ; do
+	T="${P}.tpl"
+	[ -e "${T}" ] || continue
+	say "Rendering [${P}]..."
+	sed \
+		-e "s;\${PENTAHO_SERVER_URL};${PENTAHO_SERVER_URL};g" \
+		< "${T}" > "${P}"
+done
 
 ###################################################################
 # CLEAN OUT JACKRABBIT TEMPORARY FILES                            #
