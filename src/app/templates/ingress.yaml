@@ -87,6 +87,13 @@ spec:
                 name: "core"
                 port:
                   number: 8080
+          - path: "/browser"
+            pathType: Prefix
+            backend:
+              service:
+                name: "analytics"
+                port:
+                  number: 8080
     {{- if $foia }}
           - path: "/foia"
             pathType: Prefix
@@ -128,12 +135,12 @@ spec:
                 port:
                   number: 8080
     {{- end }}
-    {{- if $ingress.deploy }}
-          - path: "/deploy"
+    {{- if $ingress.artifacts }}
+          - path: "/artifacts"
             pathType: Prefix
             backend:
               service:
-                name: {{ $.Chart.Name }}
+                name: "app-artifacts"
                 port:
                   number: 80
     {{- end }}
