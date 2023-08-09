@@ -60,7 +60,7 @@ spec:
               value: |
                 jobs:
                   # We know the ActiveMQ image uses user 998 (centos), 1998 (rocky)
-                  - ownership: {{ coalesce ($.Values.persistence).ownership "2000:2000" | quote }}
+                  - ownership: {{ coalesce ($.Values.persistence).ownership "1998:1998" | quote }}
                     permissions: "u=rwX,g=rX,o="
                     flags: [ "recurse", "noforced", "create", "changes" ]
                     targets: [ "/app/data", "/app/logs" ]
@@ -121,6 +121,7 @@ spec:
                 path: *neo4jConf
               - key: *entrypoint
                 path: *entrypoint
+                mode: 0555
   volumeClaimTemplates:
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "data") | nindent 4 }}
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "logs") | nindent 4 }}
