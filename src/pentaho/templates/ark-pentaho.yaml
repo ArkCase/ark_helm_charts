@@ -1,18 +1,19 @@
 {{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.subsystem.external" $)) }}
 {{- $db := (include "arkcase.db.info" $ | fromYaml) -}}
 {{- $foia := (include "arkcase.foia" $ | fromYaml) -}}
-{{- $foiaCron := (include "arkcase.tools.conf" (dict "ctx" $ "value" "foia-dw-cron")) -}}
+{{- $cronFoia := (include "arkcase.tools.conf" (dict "ctx" $ "value" "cron.foia")) -}}
+{{- $cronAnalytics := (include "arkcase.tools.conf" (dict "ctx" $ "value" "cron.analytics")) -}}
 {{- $fullName := (include "arkcase.fullname" $) -}}
 {{- $serviceName := (include "arkcase.service.name" $) -}}
-{{- if and $foia $foiaCron }}
+{{- if $cronAnalytics }}
 ---
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: {{ printf "%s-cron" $fullName | quote }}
+  name: {{ printf "%s-analytics-cron" $fullName | quote }}
   namespace: {{ $.Release.Namespace | quote }}
 spec:
-  schedule: {{ $foiaCron | quote }}
+  schedule: {{ $cronAnalytics | quote }}
   # Make sure a single instance runs
   concurrencyPolicy: Forbid
   # Keep a history of the last failed 10 jobs
@@ -29,29 +30,11 @@ spec:
               {{- include "arkcase.image" (dict "ctx" $ "name" "deployer" "repository" "arkcase/deployer") | nindent 14 }}
               command:
                 - &cronjobDeployPath "/cronjob-deploy"
+                - "pentaho/analytical/neo4j.zip"
               env: {{- include "arkcase.tools.baseEnv" $ | nindent 16 }}
                 {{- include "arkcase.deployment.envvars" $ | nindent 16 }}
                 - name: FOIA
                   value: "true"
-                - name: ARKCASE_SERVER_URL
-                  value: "http://core:8080/arkcase"
-                - name: PENTAHO_SERVER_URL
-                  value: {{ printf "http://%s:8080/pentaho" $serviceName }}
-                - name: ADMIN_USERNAME
-                  valueFrom:
-                    secretKeyRef:
-                      name: &fullName {{ $fullName | quote }}
-                      key: "adminUsername"
-                - name: LDAP_DOMAIN
-                  valueFrom:
-                    secretKeyRef:
-                      name: *fullName
-                      key: "ldapDomain"
-                - name: ADMIN_PASSWORD
-                  valueFrom:
-                    secretKeyRef:
-                      name: *fullName
-                      key: "adminPassword"
               volumeMounts:
                 - name: &configMap "config-map"
                   mountPath: *cronjobDeployPath
@@ -78,12 +61,13 @@ spec:
                   subPath: *cronjobDeploy
                   readOnly: true
           containers:
-            - name: "foia-dw1"
+            - name: "main"
               # We use the same Pentaho image b/c why the hell not? :D
               {{- include "arkcase.image" $ | nindent 14 }}
               # We do need a custom entrypoint script, though
               command:
                 - &cronjobEntrypointPath "/usr/local/bin/cronjob-entrypoint"
+                - "/app/data/dw/neo4j/j_neo4j.kjb"
               env: {{- include "arkcase.tools.baseEnv" $ | nindent 16 }}
                 {{- include "arkcase.deployment.envvars" $ | nindent 16 }}
                 - name: PENTAHO_INSTALLED_LICENSE_PATH
@@ -95,7 +79,7 @@ spec:
                 - name: ADMIN_USERNAME
                   valueFrom:
                     secretKeyRef:
-                      name: *fullName
+                      name: &fullName {{ $fullName | quote }}
                       key: "adminUsername"
                 - name: LDAP_DOMAIN
                   valueFrom:
@@ -110,19 +94,19 @@ spec:
               volumeMounts:
                 {{- include "arkcase.pentaho.license.volumeMounts" (dict "ctx" $ "volume" "secrets" "path" "/app/init/licenses") | nindent 16 }}
                 {{- include "arkcase.trusts.mount" $ | nindent 16 }}
+                - name: &secrets "secrets"
+                  mountPath: "/.template.vars"
+                  subPath: &templateVars "template.vars"
+                  readOnly: true
                 - name: *dataVol
                   mountPath: *dataPath
-                - name: &secrets "secrets"
-                  mountPath: "/app/pentaho/.kettle/shared.xml"
-                  subPath: &sharedXml "shared.xml"
-                  readOnly: true
-                - name: *secrets
-                  mountPath: "/app/pentaho/.kettle/kettle.properties"
-                  subPath: &kettleProperties "kettle.properties"
-                  readOnly: true
                 - name: &configMap "config-map"
-                  mountPath: "/usr/local/bin/run-dataminer"
-                  subPath: &runDataminer "run-dataminer"
+                  mountPath: "/usr/local/bin/render-template"
+                  subPath: &renderTemplate "render-template"
+                  readOnly: true
+                - name: *configMap
+                  mountPath: "/usr/local/bin/run-kjb"
+                  subPath: &runKjb "run-kjb"
                   readOnly: true
                 - name: *configMap
                   mountPath: *cronjobEntrypointPath
@@ -149,18 +133,175 @@ spec:
                 defaultMode: 0444
                 items:
                   {{- include "arkcase.pentaho.license.volumes" $ | nindent 18 }}
-                  - key: *sharedXml
-                    path: *sharedXml
-                  - key: *kettleProperties
-                    path: *kettleProperties
+                  - key: *templateVars
+                    path: *templateVars
             - name: *configMap
               configMap:
                 optional: false
                 name: *fullName
                 defaultMode: 0444
                 items:
-                  - key: *runDataminer
-                    path: *runDataminer
+                  - key: *renderTemplate
+                    uath: *renderTemplate
+                    mode: 0555
+                  - key: *runKjb
+                    uath: *runKjb
+                    mode: 0555
+                  - key: *cronjobEntrypoint
+                    path: *cronjobEntrypoint
+                    mode: 0555
+                  - key: *cronjobDeploy
+                    path: *cronjobDeploy
+                    mode: 0555
+                  - key: *serverPropertiesTpl
+                    path: *serverPropertiesTpl
+                  - key: *pluginPropertiesTpl
+                    path: *pluginPropertiesTpl
+            - name: *dataVol
+              emptyDir: {}
+          restartPolicy: Never
+{{- end }}
+{{- if and $foia $cronFoia }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ printf "%s-foia-cron" $fullName | quote }}
+  namespace: {{ $.Release.Namespace | quote }}
+spec:
+  schedule: {{ $cronFoia | quote }}
+  # Make sure a single instance runs
+  concurrencyPolicy: Forbid
+  # Keep a history of the last failed 10 jobs
+  failedJobsHistoryLimit: 10
+  # Keep a history of the last 10 successful jobs
+  successfulJobsHistoryLimit: 10
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          {{- include "arkcase.image.pullSecrets" $ | nindent 10 }}
+          initContainers:
+            - name: init-deployer
+              {{- include "arkcase.image" (dict "ctx" $ "name" "deployer" "repository" "arkcase/deployer") | nindent 14 }}
+              command:
+                - &cronjobDeployPath "/cronjob-deploy"
+                - "pentaho/analytical/foia.zip"
+              env: {{- include "arkcase.tools.baseEnv" $ | nindent 16 }}
+                {{- include "arkcase.deployment.envvars" $ | nindent 16 }}
+                - name: FOIA
+                  value: "true"
+              volumeMounts:
+                - name: &configMap "config-map"
+                  mountPath: *cronjobDeployPath
+                  subPath: &cronjobDeploy "cronjob-deploy"
+                  readOnly: true
+                - name: &dataVol "data"
+                  mountPath: &dataPath "/app/data"
+            - name: set-permissions
+              {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 14 }}
+              env: {{- include "arkcase.tools.baseEnv" $ | nindent 16 }}
+                - name: JOBS
+                  value: |
+                    jobs:
+                      # We know the UID for the Pentaho container is 998:996
+                      - ownership: "1998:1998"
+                        permissions: "u=rwX,g=rX,o="
+                        flags: [ "recurse", "noforced", "create", "changes" ]
+                        targets: [ "/app/data" ]
+              volumeMounts:
+                - name: *dataVol
+                  mountPath: *dataPath
+                - name: *configMap
+                  mountPath: *cronjobDeployPath
+                  subPath: *cronjobDeploy
+                  readOnly: true
+          containers:
+            - name: "main"
+              # We use the same Pentaho image b/c why the hell not? :D
+              {{- include "arkcase.image" $ | nindent 14 }}
+              # We do need a custom entrypoint script, though
+              command:
+                - &cronjobEntrypointPath "/usr/local/bin/cronjob-entrypoint"
+                - "/app/data/dw/foia/j_foia_dw.kjb"
+              env: {{- include "arkcase.tools.baseEnv" $ | nindent 16 }}
+                {{- include "arkcase.deployment.envvars" $ | nindent 16 }}
+                - name: PENTAHO_INSTALLED_LICENSE_PATH
+                  value: "/app/data/.installedLicenses.xml"
+                - name: ARKCASE_SERVER_URL
+                  value: "http://core:8080/arkcase"
+                - name: PENTAHO_SERVER_URL
+                  value: {{ printf "http://%s:8080/pentaho" $serviceName }}
+                - name: ADMIN_USERNAME
+                  valueFrom:
+                    secretKeyRef:
+                      name: &fullName {{ $fullName | quote }}
+                      key: "adminUsername"
+                - name: LDAP_DOMAIN
+                  valueFrom:
+                    secretKeyRef:
+                      name: *fullName
+                      key: "ldapDomain"
+                - name: ADMIN_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: *fullName
+                      key: "adminPassword"
+              volumeMounts:
+                {{- include "arkcase.pentaho.license.volumeMounts" (dict "ctx" $ "volume" "secrets" "path" "/app/init/licenses") | nindent 16 }}
+                {{- include "arkcase.trusts.mount" $ | nindent 16 }}
+                - name: &secrets "secrets"
+                  mountPath: "/.template.vars"
+                  subPath: &templateVars "template.vars"
+                  readOnly: true
+                - name: *dataVol
+                  mountPath: *dataPath
+                - name: &configMap "config-map"
+                  mountPath: "/usr/local/bin/render-template"
+                  subPath: &renderTemplate "render-template"
+                  readOnly: true
+                - name: *configMap
+                  mountPath: "/usr/local/bin/run-kjb"
+                  subPath: &runKjb "run-kjb"
+                  readOnly: true
+                - name: *configMap
+                  mountPath: *cronjobEntrypointPath
+                  subPath: &cronjobEntrypoint "cronjob-entrypoint"
+                  readOnly: true
+                - name: *configMap
+                  mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/server.properties.tpl"
+                  subPath: &serverPropertiesTpl "server.properties.tpl"
+                  readOnly: true
+                - name: *configMap
+                  mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/pdi-pur-plugin/plugin.properties.tpl"
+                  subPath: &pluginPropertiesTpl "plugin.properties.tpl"
+                  readOnly: true
+                - name: *configMap
+                  mountPath: "/app/pentaho-pdi/data-integration/plugins/pdi-pur-plugin/plugin.properties.tpl"
+                  subPath: *pluginPropertiesTpl
+                  readOnly: true
+          volumes:
+            {{- include "arkcase.trusts.volume" $ | nindent 12 }}
+            - name: *secrets
+              secret:
+                optional: false
+                secretName: *fullName
+                defaultMode: 0444
+                items:
+                  {{- include "arkcase.pentaho.license.volumes" $ | nindent 18 }}
+                  - key: *templateVars
+                    path: *templateVars
+            - name: *configMap
+              configMap:
+                optional: false
+                name: *fullName
+                defaultMode: 0444
+                items:
+                  - key: *renderTemplate
+                    uath: *renderTemplate
+                    mode: 0555
+                  - key: *runKjb
+                    uath: *runKjb
                     mode: 0555
                   - key: *cronjobEntrypoint
                     path: *cronjobEntrypoint
@@ -419,8 +560,8 @@ spec:
             - name: *logsVol
               mountPath: *logsPath
             - name: &secrets "secrets"
-              mountPath: "/dbconfig.json"
-              subPath: &dbconfigJson "dbconfig.json"
+              mountPath: "/.template.vars"
+              subPath: &templateVars "template.vars"
               readOnly: true
             - name: *secrets
               mountPath: "/app/pentaho/pentaho-server/tomcat/webapps/pentaho/META-INF/context.xml"
@@ -437,14 +578,6 @@ spec:
             - name: *secrets
               mountPath: "/app/lb/run-liquibase-updates"
               subPath: &runLiquibaseUpdates "run-liquibase-updates"
-              readOnly: true
-            - name: *secrets
-              mountPath: "/app/pentaho/.kettle/shared.xml"
-              subPath: &sharedXml "shared.xml"
-              readOnly: true
-            - name: *secrets
-              mountPath: "/app/pentaho/.kettle/kettle.properties"
-              subPath: &kettleProperties "kettle.properties"
               readOnly: true
             - name: *configMap
               mountPath: "/entrypoint"
@@ -510,14 +643,13 @@ spec:
               mountPath: "/app/init/reports/000-base-reports.zip"
               subPath: &baseReportsZip {{ printf "base-reports.%s.zip" $db.reports | quote }}
               readOnly: true
-            {{- if $foia }}
-            - name: *secrets
-              mountPath: "/app/pentaho/.kettle/arkcase_connection.json"
-              subPath: &arkcaseConnectionJson "arkcase_connection.json"
+            - name: *configMap
+              mountPath: "/usr/local/bin/render-template"
+              subPath: &renderTemplate "render-template"
               readOnly: true
             - name: *configMap
-              mountPath: "/app/init/reports/001-foia-base-reports.zip"
-              subPath: &foiaBaseReportsZip {{ printf "foia-base-reports.%s.zip" $db.reports | quote }}
+              mountPath: "/usr/local/bin/run-kjb"
+              subPath: &runKjb "run-kjb"
               readOnly: true
             - name: *configMap
               mountPath: "/usr/local/bin/add-pdi-connection"
@@ -527,9 +659,10 @@ spec:
               mountPath: "/usr/local/bin/install-mondrian-schema"
               subPath: &installMondrianSchema "install-mondrian-schema"
               readOnly: true
+            {{- if $foia }}
             - name: *configMap
-              mountPath: "/usr/local/bin/run-dataminer"
-              subPath: &runDataminer "run-dataminer"
+              mountPath: "/app/init/reports/001-foia-base-reports.zip"
+              subPath: &foiaBaseReportsZip {{ printf "foia-base-reports.%s.zip" $db.reports | quote }}
               readOnly: true
             {{- end }}
             - name: *configMap
@@ -567,8 +700,8 @@ spec:
               {{- include "arkcase.pentaho.license.volumes" $ | nindent 14 }}
               - key: *contextXml
                 path: *contextXml
-              - key: *dbconfigJson
-                path: *dbconfigJson
+              - key: *templateVars
+                path: *templateVars
               - key: *repositoryXmlTpl
                 path: *repositoryXmlTpl
               - key: *applicationContextSecurityLdapProperties
@@ -576,14 +709,6 @@ spec:
               - key: *runLiquibaseUpdates
                 path: *runLiquibaseUpdates
                 mode: 0555
-              - key: *sharedXml
-                path: *sharedXml
-              - key: *kettleProperties
-                path: *kettleProperties
-              {{- if $foia }}
-              - key: *arkcaseConnectionJson
-                path: *arkcaseConnectionJson
-              {{- end }}
         - name: *configMap
           configMap:
             optional: false
@@ -627,18 +752,21 @@ spec:
                 mode: 0555
               - key: *baseReportsZip
                 path: *baseReportsZip
-              {{- if $foia }}
-              - key: *foiaBaseReportsZip
-                path: *foiaBaseReportsZip
+              - key: *renderTemplate
+                path: *renderTemplate
+                mode: 0555
+              - key: *runKjb
+                path: *runKjb
+                mode: 0555
               - key: *addPdiConnection
                 path: *addPdiConnection
                 mode: 0555
               - key: *installMondrianSchema
                 path: *installMondrianSchema
                 mode: 0555
-              - key: *runDataminer
-                path: *runDataminer
-                mode: 0555
+              {{- if $foia }}
+              - key: *foiaBaseReportsZip
+                path: *foiaBaseReportsZip
               {{- end }}
               - key: *lockInitializer
                 path: *lockInitializer

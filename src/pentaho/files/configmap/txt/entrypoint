@@ -155,14 +155,11 @@ PROPERTIES_TEMPLATES=(
 	"${PENTAHO_SERVER}/pentaho-solutions/system/pdi-pur-plugin/plugin.properties"
 	"${PENTAHO_PDI_PLUGINS}/pdi-pur-plugin/plugin.properties"
 )
-[ -v PENTAHO_SERVER_URL ] || PENTAHO_SERVER_URL="http://$(hostname -d):8080/pentaho"
 for P in "${PROPERTIES_TEMPLATES[@]}" ; do
 	T="${P}.tpl"
 	[ -e "${T}" ] || continue
 	say "Rendering [${P}]..."
-	sed \
-		-e "s;\${PENTAHO_SERVER_URL};${PENTAHO_SERVER_URL};g" \
-		< "${T}" > "${P}"
+	render-template < "${T}" > "${P}"
 done
 
 ###################################################################

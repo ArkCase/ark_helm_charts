@@ -111,7 +111,10 @@ create_connection() {
 	local NAME="$(jq -r '.name' < "${FILE}")"
 
 	if connection_exists "${NAME}" ; then
-		say "A connection named [${NAME}] already exists, will try to delete it first..."
+		local CMD="say"
+		${REPLACE} || CMD="fail"
+		"${CMD}" "A connection named [${NAME}] already exists"
+		say "\t...replacing the existing connection"
 		delete_connection "${NAME}" || return ${?}
 		say "Existing connection deleted"
 	fi
@@ -127,6 +130,12 @@ create_connection() {
 [ -v PENTAHO_URL ] || PENTAHO_URL="http://localhost:8080/pentaho"
 [ -v ADMIN_USERNAME ] || ADMIN_USERNAME="arkcase-admin"
 [ -v ADMIN_PASSWORD ] || ADMIN_PASSWORD='$arkcase-admin$'
+[ -v REPLACE ] || REPLACE="true"
+
+case "${REPLACE,,}" in
+	true | t | 1 | yes | y | on | enable | enabled | en ) REPLACE="true" ;;
+	* ) REPLACE="false" ;;
+esac
 
 JSON_FILE="${1}"
 

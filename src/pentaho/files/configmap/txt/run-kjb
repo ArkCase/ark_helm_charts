@@ -1,0 +1,71 @@
+#!/bin/bash
+
+set -euo pipefail
+
+[ -v BASE_DIR ] || BASE_DIR="/app"
+[ -v DATA_DIR ] || DATA_DIR="${BASE_DIR}/data"
+[ -v DWHS_DIR ] || DWHS_DIR="${DATA_DIR}/dw"
+[ -v CONF_KJB ] || CONF_KJB="config"
+
+[ -v PENTAHO_PDI_HOME ] || PENTAHO_PDI_HOME="${BASE_DIR}/pentaho-pdi"
+
+timestamp() {
+	date -Ins -u
+}
+
+say() {
+	echo -e "$(timestamp): ${@}"
+}
+
+fail() {
+	say "${@}" 1>&2
+	exit ${EXIT_CODE:-1}
+}
+
+usage() {
+	echo -e "usage: ${BASH_SOURCE:-${0}} file.kjb"
+	exit 1
+}
+
+[ ${#} -eq 1 ] || usage
+
+JOB="${1}"
+[ -n "${JOB}" ] || fail "The file may not be the empty string"
+[ -e "${JOB}" ] || fail "The file [${JOB}] does not exist"
+[ -f "${JOB}" ] || fail "The path [${JOB}] is not a regular file"
+[ -r "${JOB}" ] || fail "The file [${JOB}] is not readable"
+JOB="$(readlink -f "${JOB}")"
+
+################################################################################
+# See if there are any special installation files to deploy to .pentaho or
+# .kettle, just in case...
+################################################################################
+DIR="$(dirname "${JOB}")"
+if [ -d "${DIR}/${CONF_KJB}" ] ; then
+
+	CONF_KJB="${DIR}/${CONF_KJB}"
+
+	# The config directory should contain a kettle directory
+	# with all the files (or templates) that would go in .kettle,
+	# and a metastore directory with all the files (or templates)
+	# that would go in .pentaho/metastore
+
+	[ -d "${CONF_KJB}/kettle" ] && export KETTLE_HOME="${CONF_KJB}/kettle"
+	[ -d "${CONF_KJB}/metastore" ] && export PENTAHO_METASTORE_FOLDER="${CONF_KJB}/metastore"
+
+	# Find all the templates within the configuration directory
+	# and render the final files
+	while read T ; do
+		# Remove the ".tpl" extension...
+		F="${T%.*}"
+		say "Rendering [${F}]..."
+		render-template < "${T}" > "${F}"
+	done < <(find "${CONF_KJB}" -type f -iname '*.tpl' | sort)
+fi
+
+LOG_FLAG=()
+[ -v LOG_LEVEL ] && [ -n "${LOG_LEVEL}" ] && LOG_FLAG=("-level:${LOG_LEVEL}")
+
+say "Executing KJB: [${JOB}]"
+cd "${PENTAHO_PDI_HOME}/data-integration"
+exec ./kitchen.sh -file:"${JOB}" "${LOG_FLAG[@]}"

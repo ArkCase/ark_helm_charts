@@ -80,50 +80,77 @@ poll_url "${ADMIN_URL}" || fail "Cannot continue configuration if Pentaho is not
 
 [ -f "${RUN_MARKER}" ] || exit 0
 
-# Now we move into the more time-sensitive stuff
-ARKCASE_CONNECTION_JSON="${PENTAHO_HOME}/.kettle/arkcase_connection.json"
-if [ -f "${ARKCASE_CONNECTION_JSON}" ] ; then
-	say "Deploying the Kettle DB connection from [${ARKCASE_CONNECTION_JSON}]"
-	/usr/local/bin/add-pdi-connection "${ARKCASE_CONNECTION_JSON}"
+# First things first: go through every config directory in the DW reports areas,
+# and render all the templates. THEN, add all the connections and schemas, one by one
+JOBS=()
+while read CFG ; do
+	say "Processing DW reports at [${CFG}]..."
+	while read T ; do
+		# Remove the ".tpl" extension...
+		F="${T%.*}"
+		say "Rendering [${F}]..."
+		render-template < "${T}" > "${F}"
+	done < <(find "${CFG}" -type f -iname '*.tpl' | sort)
 
-	# This is a small hack ... we've found intermittent ConcurrentModificationExceptions
-	# puke all over report installation, so we're going to delay everything for a few
-	# seconds to let this datasource creation operation settle down a little bit
-	#
-	# Yes... waits SUCK ... but until we find a more robust means of checking
-	# if the DataSource is ready to be consumed, this should help for now
-	sleep 5 || true
-	say "Kettle DB connection deployed successfully"
-fi
+	# Find any connections (i.e. connection-*.json)
+	while read CONNECTION ; do
+		jq -r < "${CONNECTION}" &>/dev/null || fail "The connection at [${CONNECTION}] is not valid JSON"
+		NAME="$(jq -r .name < "${CONNECTION}")"
+		[ -z "${NAME}" ] && fail "The connection at [${CONNECTION}] lacks a name, can't continue"
 
-if [ -v FOIA_DIR ] && [ -d "${FOIA_DIR}" ] ; then
+		/usr/local/bin/add-pdi-connection "${CONNECTION}"
 
-	# Deploy the Mondrian schema
-	say "Deploying the Mondrian schema"
-	/usr/local/bin/install-mondrian-schema "${FOIA_DIR}/mondrian_schema/foiaSchema1.4.xml"
+		# This is a small hack ... we've found intermittent ConcurrentModificationExceptions
+		# puke all over report installation, so we're going to delay everything for a few
+		# seconds to let this datasource creation operation settle down a little bit
+		#
+		# Yes... waits SUCK ... but until we find a more robust means of checking
+		# if the DataSource is ready to be consumed, this should help for now
+		sleep 5 || true
 
+	done < <(find "${CFG}" -type f -iname 'connection-*.json' | sort)
+
+	# Find any Mondrian schemata (i.e. schema-*.xml)
+	while read SCHEMA ; do
+		xmllint --noout "${SCHEMA}" &>/dev/null || fail "The schema file at [${SCHEMA}] is not valid XML"
+		NAME="$(xmlstarlet sel -t -v "/Schema/@name" "${SCHEMA}")"
+		[ -z "${NAME}" ] && fail "The Mondrian schema at [${SCHEMA}] lacks a name, can't continue"
+
+		/usr/local/bin/install-mondrian-schema "${SCHEMA}"
+	done < <(find "${CFG}" -type f -iname 'schema-*.xml' | sort)
+
+	# Find the entrypoint ... it'll be called main.kjb, j_main.kjb, or be listed
+	# in the contents of the file "${CFG}/.main". Ultimately, if there's only one
+	# kjb file in the directory, we use that
+
+done < <(find "${DWHS_DIR}" -mindepth 2 -maxdepth 2 -iname config -type d | sort)
+JOBS_COUNT=${#JOBS[@]}
+
+if [ ${JOBS_COUNT} -gt 0 ] ; then
 	# Before we can run the dataminer first time, we MUST wait for
 	# ArkCase to come up ... if it doesn't, we're screwed
 	[ -v CORE_URL ] || CORE_URL="http://core:8080/arkcase/"
-	say "Launching the background poller for [${CORE_URL}]..."
+	say "Found ${JOBS_COUNT} dataminers, launching the background poller for [${CORE_URL}]..."
 	coproc { poll_url "${CORE_URL}" ; }
-
 fi
 
 # Install the reports ... this *has* to happen last b/c the FOIA/PDI stuff
 # won't install cleanly if the rest of its dependencies aren't already covered
+#
+# We also run this in parallel with waiting for ArkCase to come up, b/c
+# we try to be efficient with time :D
 say "Deploying reports"
 /usr/local/bin/install-reports
 
-if [ -v COPROC_PID ] ; then
-
-	# We only enter this if the polling coprocess was started, above
+# Ok reports are installed ... now we can rejoin the ArkCase poller
+if [ ${JOBS_COUNT} -gt 0 ] ; then
 	say "Joining the background poller for [${CORE_URL}]..."
 	wait ${COPROC_PID} || fail "Failed to wait for ArkCase to be online"
 
-	# TODO: This also needs to be a separate job/pod so it can be run periodically
-	say "Launching the first-time dataminer process"
-	/usr/local/bin/run-dataminer
+	for JOB in "${JOBS[@]}" ; do
+		say "Launching the first-time PDI job from: ${JOB}"
+		run-kjb "${JOB}"
+	done
 fi
 
 exit 0

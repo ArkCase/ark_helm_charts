@@ -14,14 +14,7 @@ set -euo pipefail
 [ -v BASE_DIR ] || BASE_DIR="/app"
 [ -v INIT_DIR ] || INIT_DIR="${BASE_DIR}/init"
 
-[ -v DBCONFIG ] || DBCONFIG="/dbconfig.json"
-[ -e "${DBCONFIG}" ] || fail "No database configuration is available to initialize with"
-[ -f "${DBCONFIG}" ] || fail "The path ${DBCONFIG} is not a regular file, cannot continue."
-[ -r "${DBCONFIG}" ] || fail "The Database configuration file ${DBCONFIG} is not readable, cannot continue."
-
 [ -v DB_DIALECT ] || fail "The DB dialect (\${DB_DIALECT}) has not been chosen"
-
-OUT="$(jq -r . < "${DBCONFIG}" 2>&1)" || fail "The Database configuration ${DBCONFIG} is malformed JSON, cannot continue:\n${OUT}"
 
 say "Initializing the Pentaho database configurations at [${PENTAHO_SERVER}]..."
 

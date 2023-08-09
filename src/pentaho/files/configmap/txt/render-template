@@ -1,0 +1,44 @@
+#!/bin/bash
+set -euo pipefail
+
+fail() {
+	echo -e "$(date -Ins -u): ${@}" 1>&2
+	exit 1
+}
+
+[ -v VARS ] || VARS="/.template.vars"
+
+if [[ "$(declare -p VARS)" =~ "declare -a VARS" ]] ; then
+	# If it's already an array, pass it on verbatim
+	FILES=("${VARS[@]}")
+else
+	# Not an array, support splitting by commas for multiple files
+	IFS="," read -a FILES < <(echo -n "${VARS}")
+fi
+
+VARS=()
+for F in "${FILES[@]}" ; do
+	[ -e "${F}" ] || fail "The variable file [${F}] does not exist"
+	[ -f "${F}" ] || fail "The path [${F}] is not a regular file"
+	[ -r "${F}" ] || fail "The variable file [${F}] is not readable"
+	VARS+=(--vars-file "${F}")
+done
+
+# Ensure we have a valid value for the missing key spec
+[ -v MISSING_KEY ] || MISSING_KEY="zero"
+
+# Fold to lowercase
+MISSING_KEY="${MISSING_KEY,,}"
+
+# Check validity ... use default if invalid
+
+# other values for missingkey:
+#  default/invalid = Do nothing and continue execution, print "<no value>" if necessary
+#  zero = Return the "zero value" for the element
+#  error (default) = Stop execution with an error
+case "${MISSING_KEY}" in
+	default | invalid | zero | error ) ;;
+	* ) MISSING_KEY="zero" ;;
+esac
+
+exec gucci -o missingkey="${MISSING_KEY}" "${VARS[@]}"

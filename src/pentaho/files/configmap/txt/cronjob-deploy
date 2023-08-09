@@ -24,23 +24,5 @@ while read dwhs ; do
 	deploy-artifact extract-dir "${dwhs}" "${DWHS_DIR}"
 done < <(list-artifacts /pentaho/analytical)
 
-[ -v ARKCASE_SERVER_URL ] || ARKCASE_SERVER_URL="http://core:8080/arkcase"
-[ -v PENTAHO_SERVER_URL ] || PENTAHO_SERVER_URL="http://reports:8080/pentaho"
-[ -v ADMIN_USERNAME ] || ADMIN_USERNAME="arkcase-admin"
-[ -v ADMIN_PASSWORD ] || ADMIN_PASSWORD='$arkcase-admin$'
-[ -v LDAP_DOMAIN ] || LDAP_DOMAIN="dev.arkcase.com"
-while read T ; do
-	[[ "${T}" =~ ^(.+)[.][Tt][Pp][Ll]$ ]] || continue
-	F="${BASH_REMATCH[1]}"
-	say "Rendering [${F}]..."
-	sed \
-		-e "s;\${PENTAHO_SERVER_URL};${PENTAHO_SERVER_URL};g" \
-		-e "s;\${ARKCASE_SERVER_URL};${ARKCASE_SERVER_URL};g" \
-		-e "s;\${ADMIN_USERNAME};${ADMIN_USERNAME};g" \
-		-e "s;\${ADMIN_PASSWORD};${ADMIN_PASSWORD};g" \
-		-e "s;\${LDAP_DOMAIN};${LDAP_DOMAIN};g" \
-		< "${T}" > "${F}"
-done < <(find "${DWHS_DIR}" -type f -iname '*.tpl')
-
 say "Artifact deployment complete"
 exit 0
