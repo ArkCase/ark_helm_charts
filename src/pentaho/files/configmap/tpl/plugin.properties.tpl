@@ -14,4 +14,4 @@
 # limitations under the License.
 #
 #
-default-url={{ (.Values.configuration).serverUrl | default "${PENTAHO_SERVER_URL}" }}
+default-url={{ (.Values.configuration).serverUrl | default "{{ .pentaho.url }}" }}
