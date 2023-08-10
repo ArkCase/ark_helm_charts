@@ -85,42 +85,43 @@ poll_url "${ADMIN_URL}" || fail "Cannot continue configuration if Pentaho is not
 JOBS=()
 while read JOB ; do
 	DPL="${JOB}/deploy"
-	[ -d "${DPL}" ] || continue
+	say "Deploying the DW reports at [${JOB}]..."
 
-	say "Processing DW reports at [${JOB}]..."
-	while read T ; do
-		# Remove the ".tpl" extension...
-		F="${T%.*}"
-		say "Rendering [${F}]..."
-		render-template < "${T}" > "${F}"
-	done < <(find "${DPL}" -type f -iname '*.tpl' | sort)
+	if [ -d "${DPL}" ] ; then
+		while read T ; do
+			# Remove the ".tpl" extension...
+			F="${T%.*}"
+			say "Rendering [${F}]..."
+			render-template < "${T}" > "${F}"
+		done < <(find "${DPL}" -type f -iname '*.tpl' | sort)
 
-	# Find any connections (i.e. connection-*.json)
-	while read CONNECTION ; do
-		jq -r < "${CONNECTION}" &>/dev/null || fail "The connection at [${CONNECTION}] is not valid JSON"
-		NAME="$(jq -r .name < "${CONNECTION}")"
-		[ -z "${NAME}" ] && fail "The connection at [${CONNECTION}] lacks a name, can't continue"
+		# Find any connections (i.e. connection-*.json)
+		while read CONNECTION ; do
+			jq -r < "${CONNECTION}" &>/dev/null || fail "The connection at [${CONNECTION}] is not valid JSON"
+			NAME="$(jq -r .name < "${CONNECTION}")"
+			[ -z "${NAME}" ] && fail "The connection at [${CONNECTION}] lacks a name, can't continue"
+	
+			/usr/local/bin/add-pdi-connection "${CONNECTION}"
 
-		/usr/local/bin/add-pdi-connection "${CONNECTION}"
+			# This is a small hack ... we've found intermittent ConcurrentModificationExceptions
+			# puke all over report installation, so we're going to delay everything for a few
+			# seconds to let this datasource creation operation settle down a little bit
+			#
+			# Yes... waits SUCK ... but until we find a more robust means of checking
+			# if the DataSource is ready to be consumed, this should help for now
+			sleep 5 || true
 
-		# This is a small hack ... we've found intermittent ConcurrentModificationExceptions
-		# puke all over report installation, so we're going to delay everything for a few
-		# seconds to let this datasource creation operation settle down a little bit
-		#
-		# Yes... waits SUCK ... but until we find a more robust means of checking
-		# if the DataSource is ready to be consumed, this should help for now
-		sleep 5 || true
+		done < <(find "${DPL}" -type f -iname 'connection-*.json' | sort)
 
-	done < <(find "${DPL}" -type f -iname 'connection-*.json' | sort)
+		# Find any Mondrian schemata (i.e. schema-*.xml)
+		while read SCHEMA ; do
+			xmllint --noout "${SCHEMA}" &>/dev/null || fail "The schema file at [${SCHEMA}] is not valid XML"
+			NAME="$(xmlstarlet sel -t -v "/Schema/@name" "${SCHEMA}")"
+			[ -z "${NAME}" ] && fail "The Mondrian schema at [${SCHEMA}] lacks a name, can't continue"
 
-	# Find any Mondrian schemata (i.e. schema-*.xml)
-	while read SCHEMA ; do
-		xmllint --noout "${SCHEMA}" &>/dev/null || fail "The schema file at [${SCHEMA}] is not valid XML"
-		NAME="$(xmlstarlet sel -t -v "/Schema/@name" "${SCHEMA}")"
-		[ -z "${NAME}" ] && fail "The Mondrian schema at [${SCHEMA}] lacks a name, can't continue"
-
-		/usr/local/bin/install-mondrian-schema "${SCHEMA}"
-	done < <(find "${DPL}" -type f -iname 'schema-*.xml' | sort)
+			/usr/local/bin/install-mondrian-schema "${SCHEMA}"
+		done < <(find "${DPL}" -type f -iname 'schema-*.xml' | sort)
+	fi
 
 	# Find the first *.kjb (case-insensitive) file in that folder, and run that
 	JOB="$(find "${JOB}" -mindepth 1 -maxdepth 1 -type f -iname '*.kjb' | sort | head -1)"
