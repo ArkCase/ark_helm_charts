@@ -87,7 +87,7 @@ while read JOB ; do
 	DPL="${JOB}/deploy"
 	[ -d "${DPL}" ] || continue
 
-	say "Processing DW reports at [${JOB_DIR}]..."
+	say "Processing DW reports at [${JOB}]..."
 	while read T ; do
 		# Remove the ".tpl" extension...
 		F="${T%.*}"
