@@ -6,14 +6,14 @@ fail() {
 	exit 1
 }
 
-[ -v VARS ] || VARS="/.template.vars"
+[ -v VARS ] || VARS="/.template-vars.yaml"
 
 if [[ "$(declare -p VARS)" =~ "declare -a VARS" ]] ; then
 	# If it's already an array, pass it on verbatim
 	FILES=("${VARS[@]}")
 else
 	# Not an array, support splitting by commas for multiple files
-	IFS="," read -a FILES < <(echo -n "${VARS}")
+	IFS="," read -a FILES < <(echo "${VARS}") || true
 fi
 
 VARS=()
@@ -21,6 +21,10 @@ for F in "${FILES[@]}" ; do
 	[ -e "${F}" ] || fail "The variable file [${F}] does not exist"
 	[ -f "${F}" ] || fail "The path [${F}] is not a regular file"
 	[ -r "${F}" ] || fail "The variable file [${F}] is not readable"
+	case "${F,,}" in
+		*.json | *.yaml | *.yml ) ;;
+		* ) fail "Template variable files must have a .yaml/.yml or .json extension: [${F}]" ;;
+	esac
 	VARS+=(--vars-file "${F}")
 done
 

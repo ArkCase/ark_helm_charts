@@ -95,12 +95,12 @@ spec:
                 {{- include "arkcase.pentaho.license.volumeMounts" (dict "ctx" $ "volume" "secrets" "path" "/app/init/licenses") | nindent 16 }}
                 {{- include "arkcase.trusts.mount" $ | nindent 16 }}
                 - name: &secrets "secrets"
-                  mountPath: "/.template.vars"
-                  subPath: &templateVars "template.vars"
+                  mountPath: "/.template-vars.yaml"
+                  subPath: &templateVars "template-vars.yaml"
                   readOnly: true
                 - name: *dataVol
                   mountPath: *dataPath
-                - name: &configMap "config-map"
+                - name: *configMap
                   mountPath: "/usr/local/bin/render-template"
                   subPath: &renderTemplate "render-template"
                   readOnly: true
@@ -142,10 +142,10 @@ spec:
                 defaultMode: 0444
                 items:
                   - key: *renderTemplate
-                    uath: *renderTemplate
+                    path: *renderTemplate
                     mode: 0555
                   - key: *runKjb
-                    uath: *runKjb
+                    path: *runKjb
                     mode: 0555
                   - key: *cronjobEntrypoint
                     path: *cronjobEntrypoint
@@ -251,12 +251,12 @@ spec:
                 {{- include "arkcase.pentaho.license.volumeMounts" (dict "ctx" $ "volume" "secrets" "path" "/app/init/licenses") | nindent 16 }}
                 {{- include "arkcase.trusts.mount" $ | nindent 16 }}
                 - name: &secrets "secrets"
-                  mountPath: "/.template.vars"
-                  subPath: &templateVars "template.vars"
+                  mountPath: "/.template-vars.yaml"
+                  subPath: &templateVars "template-vars.yaml"
                   readOnly: true
                 - name: *dataVol
                   mountPath: *dataPath
-                - name: &configMap "config-map"
+                - name: *configMap
                   mountPath: "/usr/local/bin/render-template"
                   subPath: &renderTemplate "render-template"
                   readOnly: true
@@ -298,10 +298,10 @@ spec:
                 defaultMode: 0444
                 items:
                   - key: *renderTemplate
-                    uath: *renderTemplate
+                    path: *renderTemplate
                     mode: 0555
                   - key: *runKjb
-                    uath: *runKjb
+                    path: *runKjb
                     mode: 0555
                   - key: *cronjobEntrypoint
                     path: *cronjobEntrypoint
@@ -560,8 +560,8 @@ spec:
             - name: *logsVol
               mountPath: *logsPath
             - name: &secrets "secrets"
-              mountPath: "/.template.vars"
-              subPath: &templateVars "template.vars"
+              mountPath: "/.template-vars.yaml"
+              subPath: &templateVars "template-vars.yaml"
               readOnly: true
             - name: *secrets
               mountPath: "/app/pentaho/pentaho-server/tomcat/webapps/pentaho/META-INF/context.xml"
