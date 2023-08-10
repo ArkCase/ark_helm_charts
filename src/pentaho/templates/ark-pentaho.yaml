@@ -67,7 +67,7 @@ spec:
               # We do need a custom entrypoint script, though
               command:
                 - &cronjobEntrypointPath "/usr/local/bin/cronjob-entrypoint"
-                - "/app/data/dw/neo4j/j_neo4j.kjb"
+                - "/app/data/dw/neo4j-demo/j_main.kjb"
               env: {{- include "arkcase.tools.baseEnv" $ | nindent 16 }}
                 {{- include "arkcase.deployment.envvars" $ | nindent 16 }}
                 - name: PENTAHO_INSTALLED_LICENSE_PATH

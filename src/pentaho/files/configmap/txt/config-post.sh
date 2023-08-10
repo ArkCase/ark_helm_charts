@@ -119,9 +119,10 @@ while read CFG ; do
 		/usr/local/bin/install-mondrian-schema "${SCHEMA}"
 	done < <(find "${CFG}" -type f -iname 'schema-*.xml' | sort)
 
-	# Find the entrypoint ... it'll be called main.kjb, j_main.kjb, or be listed
-	# in the contents of the file "${CFG}/.main". Ultimately, if there's only one
-	# kjb file in the directory, we use that
+
+	# Find the first *.kjb (case-insensitive) file in that folder, and run that
+	JOB="$(find "${CFG}" -mindepth 1 -maxdepth 1 -type f -iname '*.kjb' | sort | head -1)"
+	[ -z "${JOB}" ] || JOBS+=("${JOB}")
 
 done < <(find "${DWHS_DIR}" -mindepth 2 -maxdepth 2 -iname config -type d | sort)
 JOBS_COUNT=${#JOBS[@]}
@@ -142,15 +143,16 @@ fi
 say "Deploying reports"
 /usr/local/bin/install-reports
 
-# Ok reports are installed ... now we can rejoin the ArkCase poller
-if [ ${JOBS_COUNT} -gt 0 ] ; then
+# If we have to rejoin with the ArkCase poller, do so...
+if [ -v COPROC_PID ] ; then
 	say "Joining the background poller for [${CORE_URL}]..."
 	wait ${COPROC_PID} || fail "Failed to wait for ArkCase to be online"
-
-	for JOB in "${JOBS[@]}" ; do
-		say "Launching the first-time PDI job from: ${JOB}"
-		run-kjb "${JOB}"
-	done
 fi
+
+# Leave this here ... if there are no jobs, nothing will happen...
+for JOB in "${JOBS[@]}" ; do
+	say "Launching the first-time PDI job [${JOB}]..."
+	run-kjb "${JOB}"
+done
 
 exit 0
