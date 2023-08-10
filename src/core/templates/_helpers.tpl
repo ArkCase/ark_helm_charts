@@ -179,3 +179,22 @@
 
   {{- dict "email" $result | toYaml -}}
 {{- end }}
+
+{{- define "arkcase.core.payment" -}}
+  {{- $ctx := . -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "Must send the root context as the only parameter" -}}
+  {{- end -}}
+
+  {{- $result := dict -}}
+  {{- $payment := ($.Values.global).payment -}}
+  {{- $missing := list -}}
+  {{- if and $payment (kindIs "map" $payment) -}}
+    {{- $enabled := (not (empty (include "arkcase.toBoolean" $payment.enabled))) -}}
+    {{- if $enabled -}}
+      {{- $result = omit $payment "enabled" -}}
+    {{- end -}}
+  {{- end -}}
+
+  {{- $result | toYaml -}}
+{{- end -}}
