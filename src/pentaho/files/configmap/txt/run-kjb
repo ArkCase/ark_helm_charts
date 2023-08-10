@@ -51,16 +51,22 @@ if [ -d "${DIR}/${CONF_KJB}" ] ; then
 	# that would go in .pentaho/metastore
 
 	[ -d "${CONF_KJB}/.kettle" ] && export KETTLE_HOME="${CONF_KJB}"
-	[ -d "${CONF_KJB}/.metastore" ] && export PENTAHO_METASTORE_FOLDER="${CONF_KJB}/.metastore"
+	[ -d "${CONF_KJB}/metastore" ] && export JAVA_TOOL_OPTIONS="-DPENTAHO_METASTORE_FOLDER=${CONF_KJB}"
 
-	# Find all the templates within the configuration directory
-	# and render the final files
-	while read T ; do
-		# Remove the ".tpl" extension...
-		F="${T%.*}"
-		say "Rendering [${F}]..."
-		render-template < "${T}" > "${F}"
-	done < <(find "${CONF_KJB}" -type f -iname '*.tpl' | sort)
+	CONF_TPL="${CONF_KJB}.tpl"
+	if [ -d "${CONF_TPL}" ] ; then
+		# Find all the templates within the configuration
+		# templates directory and render the final files
+		# within ${CONF_KJB}
+		while read T ; do
+			# Remove the leading "./"
+			T="${T#*/}"
+			F="${CONF_KJB}/${T}"
+			mkdir -p "${F%/*}"
+			say "Rendering [${F}]..."
+			render-template < "${CONF_TPL}/${T}" > "${F}"
+		done < <(cd "${CONF_TPL}" && find . -type f | sort)
+	fi
 fi
 
 LOG_FLAG=()

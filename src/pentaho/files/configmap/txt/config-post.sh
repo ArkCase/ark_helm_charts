@@ -83,14 +83,17 @@ poll_url "${ADMIN_URL}" || fail "Cannot continue configuration if Pentaho is not
 # First things first: go through every config directory in the DW reports areas,
 # and render all the templates. THEN, add all the connections and schemas, one by one
 JOBS=()
-while read CFG ; do
-	say "Processing DW reports at [${CFG}]..."
+while read JOB ; do
+	DPL="${JOB}/deploy"
+	[ -d "${DPL}" ] || continue
+
+	say "Processing DW reports at [${JOB_DIR}]..."
 	while read T ; do
 		# Remove the ".tpl" extension...
 		F="${T%.*}"
 		say "Rendering [${F}]..."
 		render-template < "${T}" > "${F}"
-	done < <(find "${CFG}" -type f -iname '*.tpl' | sort)
+	done < <(find "${DPL}" -type f -iname '*.tpl' | sort)
 
 	# Find any connections (i.e. connection-*.json)
 	while read CONNECTION ; do
@@ -108,7 +111,7 @@ while read CFG ; do
 		# if the DataSource is ready to be consumed, this should help for now
 		sleep 5 || true
 
-	done < <(find "${CFG}" -type f -iname 'connection-*.json' | sort)
+	done < <(find "${DPL}" -type f -iname 'connection-*.json' | sort)
 
 	# Find any Mondrian schemata (i.e. schema-*.xml)
 	while read SCHEMA ; do
@@ -117,14 +120,13 @@ while read CFG ; do
 		[ -z "${NAME}" ] && fail "The Mondrian schema at [${SCHEMA}] lacks a name, can't continue"
 
 		/usr/local/bin/install-mondrian-schema "${SCHEMA}"
-	done < <(find "${CFG}" -type f -iname 'schema-*.xml' | sort)
-
+	done < <(find "${DPL}" -type f -iname 'schema-*.xml' | sort)
 
 	# Find the first *.kjb (case-insensitive) file in that folder, and run that
-	JOB="$(find "${CFG}" -mindepth 1 -maxdepth 1 -type f -iname '*.kjb' | sort | head -1)"
+	JOB="$(find "${JOB}" -mindepth 1 -maxdepth 1 -type f -iname '*.kjb' | sort | head -1)"
 	[ -z "${JOB}" ] || JOBS+=("${JOB}")
 
-done < <(find "${DWHS_DIR}" -mindepth 2 -maxdepth 2 -iname config -type d | sort)
+done < <(find "${DWHS_DIR}" -mindepth 1 -maxdepth 1 -type d | sort)
 JOBS_COUNT=${#JOBS[@]}
 
 if [ ${JOBS_COUNT} -gt 0 ] ; then
@@ -133,6 +135,8 @@ if [ ${JOBS_COUNT} -gt 0 ] ; then
 	[ -v CORE_URL ] || CORE_URL="http://core:8080/arkcase/"
 	say "Found ${JOBS_COUNT} dataminers, launching the background poller for [${CORE_URL}]..."
 	coproc { poll_url "${CORE_URL}" ; }
+else
+	say "No jobs found, will not wait for ArkCase to boot up"
 fi
 
 # Install the reports ... this *has* to happen last b/c the FOIA/PDI stuff
@@ -142,6 +146,7 @@ fi
 # we try to be efficient with time :D
 say "Deploying reports"
 /usr/local/bin/install-reports
+say "Reports deployed"
 
 # If we have to rejoin with the ArkCase poller, do so...
 if [ -v COPROC_PID ] ; then
@@ -155,4 +160,5 @@ for JOB in "${JOBS[@]}" ; do
 	run-kjb "${JOB}"
 done
 
+say "Post-configuration completed"
 exit 0
