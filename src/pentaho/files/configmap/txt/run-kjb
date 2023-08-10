@@ -50,8 +50,8 @@ if [ -d "${DIR}/${CONF_KJB}" ] ; then
 	# and a metastore directory with all the files (or templates)
 	# that would go in .pentaho/metastore
 
-	[ -d "${CONF_KJB}/kettle" ] && export KETTLE_HOME="${CONF_KJB}/kettle"
-	[ -d "${CONF_KJB}/metastore" ] && export PENTAHO_METASTORE_FOLDER="${CONF_KJB}/metastore"
+	[ -d "${CONF_KJB}/.kettle" ] && export KETTLE_HOME="${CONF_KJB}"
+	[ -d "${CONF_KJB}/.metastore" ] && export PENTAHO_METASTORE_FOLDER="${CONF_KJB}/.metastore"
 
 	# Find all the templates within the configuration directory
 	# and render the final files
