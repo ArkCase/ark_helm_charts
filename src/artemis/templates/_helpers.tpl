@@ -7,8 +7,10 @@
     {{- fail "The parameter must be the root context" -}}
   {{- end -}}
 
-  {{- $adminPassword := (include "arkcase.tools.conf" (dict "ctx" $ "value" "adminPassword")) -}}
-  {{- if not $adminPassword -}}
+  {{- $adminPassword := (include "arkcase.tools.conf" (dict "ctx" $ "value" "adminPassword" "detailed" true) | fromYaml) -}}
+  {{- if and $adminPassword $adminPassword.found -}}
+    {{- $adminPassword = $adminPassword.value -}}
+  {{- else -}}
     {{- $fullname := (include "common.fullname" $) -}}
     {{- $secretKey := (printf "%s-adminPassword" $fullname) -}}
     {{- if not (hasKey $ $secretKey) -}}
