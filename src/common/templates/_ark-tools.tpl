@@ -454,11 +454,13 @@ usage: ( include "arkcase.tools.get" (dict "ctx" $ "name" "some.name.to.find" "r
   {{- $test := (and (hasKey . "test") (eq "true" (.test | toString | trim | lower))) -}}
   {{- $yaml := (and (hasKey . "yaml") (eq "true" (.yaml | toString | trim | lower))) -}}
 
+  {{- $found := false -}}
   {{- $current := $ctx -}}
   {{- $currentKey := list -}}
   {{- $parts := (splitList "." $name) -}}
   {{- $failed := "" -}}
   {{- range $parts -}}
+    {{- $found = false -}}
     {{- if not $failed -}}
       {{- if not (hasKey $current .) -}}
         {{- $failed = (printf "Failed to find the name [%s] - got as far as [%s], which is a %s" $name ($currentKey | join ".") (kindOf $current)) -}}
@@ -468,6 +470,7 @@ usage: ( include "arkcase.tools.get" (dict "ctx" $ "name" "some.name.to.find" "r
           {{- /* If this is the last element, then it's OK for it to not be a map */ -}}
           {{- $currentKey = (append $currentKey .) -}}
           {{- $current = $next -}}
+          {{- $found = true -}}
         {{- else -}}
           {{- $currentKey = (append $currentKey .) -}}
           {{- $failed = (printf "Failed to resolve the name [%s] - got as far as [%s], which is a %s" $name ($currentKey | join ".") (kindOf $next)) -}}
@@ -482,6 +485,7 @@ usage: ( include "arkcase.tools.get" (dict "ctx" $ "name" "some.name.to.find" "r
     {{- if (.required) -}}
       {{- fail $failed -}}
     {{- end -}}
+    {{- $found = false -}}
     {{- $value = "" -}}
   {{- end -}}
 
@@ -496,7 +500,7 @@ usage: ( include "arkcase.tools.get" (dict "ctx" $ "name" "some.name.to.find" "r
   {{- else -}}
     {{- /* If we don't want to encode the value directly, we wrap it in a map */ -}}
     {{- /* and encode it all as YAML so it can be decoded using fromYaml */ -}}
-    {{- $value = dict "value" $value "type" (kindOf $value) "name" .name "search" (join "." $currentKey) | toYaml -}}
+    {{- $value = dict "value" $value "found" $found "type" (kindOf $value) "name" .name "search" (join "." $currentKey) | toYaml -}}
   {{- end -}}
   {{- $value -}}
 {{- end -}}
@@ -691,14 +695,14 @@ return either the value if correct, or the empty string if not.
   {{- $result := dict -}}
   {{- $searched := list -}}
   {{- range (list (printf "global.conf.%s" $ctx.Chart.Name) "global.conf" "configuration") -}}
-    {{- if or (not $result) (not $result.value) -}}
+    {{- if not $result -}}
       {{- $key := (empty $value) | ternary . (printf "%s.%s" . $value ) -}}
       {{- if $debug -}}
         {{- $searched = append $searched (printf "Values.%s" $key) -}}
       {{- end -}}
-      {{- $result = (include "arkcase.tools.get" (dict "ctx" $ctx "name" (printf "Values.%s" $key)) | fromYaml) -}}
-      {{- if and $result $result.value -}}
-        {{- $result = set $result "global" (hasPrefix "global.conf" $key) -}}
+      {{- $r := (include "arkcase.tools.get" (dict "ctx" $ctx "name" (printf "Values.%s" $key)) | fromYaml) -}}
+      {{- if and $r $r.found -}}
+        {{- $result = set $r "global" (hasPrefix "global.conf" $key) -}}
       {{- end -}}
     {{- end -}}
   {{- end -}}
