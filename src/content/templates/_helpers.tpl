@@ -91,3 +91,13 @@
   {{- /* We can lose at most half of our nodes */ -}}
   {{- div $nodes 2 -}}
 {{- end -}}
+
+{{- define "arkcase.content.indexing" -}}
+  {{- if not (include "arkcase.isRootContext" $) -}}
+    {{- fail "The parameter must be the root context" -}}
+  {{- end -}}
+  {{- $indexing := (include "arkcase.tools.conf" (dict "ctx" $ "value" "indexing")) -}}
+  {{- if or (not $indexing) (include "arkcase.toBoolean" $indexing) -}}
+    {{- true -}}
+  {{- end -}}
+{{- end -}}

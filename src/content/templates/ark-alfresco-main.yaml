@@ -94,6 +94,7 @@ spec:
                 -Dmetadata-keystore.metadata.algorithm=DESede
 
             {{- $content := (include "arkcase.content.info" $ | fromYaml) }}
+            {{- $indexing := (not (empty (include "arkcase.content.indexing" $))) }}
             # These parameters may eventually be used, once we determine how they work
             #    -Dalfresco_user_store.adminusername={{ $content.username | quote }}
             #    -Dalfresco_user_store.adminpassword={{ $content.password | quote }}
@@ -112,7 +113,7 @@ spec:
                 -Dsolr.sharedSecret={{ include "arkcase.alfresco.searchSecret" $ | quote }}
                 -Dsolr.base.url=/solr
                 -Dsolr.http.connection.timeout=1000
-                -Dindex.subsystem.name=solr6
+                -Dindex.subsystem.name={{ $indexing | ternary "solr6" "noindex" }}
                 -Dshare.host={{ include "arkcase.alfresco.service" (dict "ctx" $ "name" "share") | quote }}
                 -Dshare.port=8080
                 -Dalfresco.host={{ $content.url.hostname | quote }}
