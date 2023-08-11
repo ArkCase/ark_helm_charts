@@ -33,6 +33,7 @@ KEY_LDAP_DEFAULT_PASSWORD = "defaultPassword"
 KEY_LDAP_BASE_DN = "baseDn"
 KEY_LDAP_USER_OU = "userou"
 KEY_LDAP_GROUP_OU = "groupou"
+KEY_LDAP_USERNAME_AS_CN = "usernameAsCn"
 
 KEY_SECRET_DOMAIN_NAME = "NAME"
 KEY_SECRET_DOMAIN_ROOT_DN = "ROOT_DN"
@@ -91,6 +92,11 @@ logging.basicConfig(level=logging.INFO, format = '%(asctime)s - %(levelname)s - 
 def fail(msg):
 	logging.error(msg)
 	exit(1)
+
+def to_boolean(v):
+	if v and (type(v) != bool):
+		return (str(v).lower() == "true")
+	return False
 
 #
 # Read the required domain configurations
@@ -265,6 +271,13 @@ def create_user(userId, userData):
 		if (attName in userData) and userData[attName]:
 			command += [ f"--{attFlag}={userData[attName]}" ]
 
+	username_as_cn = USERNAME_AS_CN
+	if KEY_LDAP_USERNAME_AS_CN in userData:
+		username_as_cn = to_boolean(userData[KEY_LDAP_USERNAME_AS_CN])
+
+	if username_as_cn:
+		command += [ "--use-username-as-cn" ]
+
 	result = samba_tool(command)
 	if result.returncode != 0:
 		fail(f"Failed to create the user '{userId}' (rc={result})")
@@ -319,11 +332,7 @@ def grant_ldap_admin_rights(principalId, principalData):
 	# If appropriate, apply the admin permissions
 	administrator = False
 	if KEY_ADMINISTRATOR in principalData:
-		administrator = principalData[KEY_ADMINISTRATOR]
-
-		# Convert to boolean
-		if administrator and (type(administrator) != bool):
-			administrator = (str(administrator).lower() == "true")
+		administrator = to_boolean(principalData[KEY_ADMINISTRATOR])
 
 	if not administrator:
 		return False
@@ -487,6 +496,13 @@ try:
 except KeyError:
 	USER_OU = None
 	USER_OU_FULL = None
+
+USERNAME_AS_CN = False
+try:
+	USERNAME_AS_CN = to_boolean(serverInfo[KEY_LDAP_USERNAME_AS_CN])
+except KeyError:
+	# Leave it on the default value
+	pass
 
 GROUP_OU = None
 try:
