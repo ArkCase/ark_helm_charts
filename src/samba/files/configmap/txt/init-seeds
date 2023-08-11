@@ -94,9 +94,13 @@ def fail(msg):
 	exit(1)
 
 def to_boolean(v):
-	if v and (type(v) != bool):
-		return (str(v).lower() == "true")
-	return False
+	if type(v) == bool:
+		return v
+
+	if (v is None) or (not v):
+		return False
+
+	return (str(v).lower() == "true")
 
 #
 # Read the required domain configurations
@@ -276,6 +280,7 @@ def create_user(userId, userData):
 		username_as_cn = to_boolean(userData[KEY_LDAP_USERNAME_AS_CN])
 
 	if username_as_cn:
+		logging.info("\t...with the username as the CN value")
 		command += [ "--use-username-as-cn" ]
 
 	result = samba_tool(command)
@@ -503,6 +508,9 @@ try:
 except KeyError:
 	# Leave it on the default value
 	pass
+
+if USERNAME_AS_CN:
+	logging.info("Will use the username as the CN value, unless overridden by individual users")
 
 GROUP_OU = None
 try:
