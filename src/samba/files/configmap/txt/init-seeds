@@ -233,7 +233,7 @@ def ensure_ou_exists(ou):
 
 		# Ok so we haven't played with the current OU before ... is this a valid component?
 		if not currentOu.lower().startswith("ou="):
-			fail("The OU path may only contain OU elements: {currentOu} (full OU => {ou})")
+			fail(f"The OU path may only contain OU elements: {currentOu} (full OU => {ou})")
 
 		# The current OU is valid ... does it exist?
 		result = samba_tool([ "ou", "listobjects", currentOu ])
@@ -248,7 +248,7 @@ def ensure_ou_exists(ou):
 			continue
 
 		# Ooops ... something went wrong
-		fail("Failed to create the OU [{currentOu}] (rc={result}")
+		fail(f"Failed to create the OU [{currentOu}] (rc={result}")
 
 def create_user(userId, userData):
 	userId = render_user_id(userId)
@@ -267,7 +267,7 @@ def create_user(userId, userData):
 
 	result = samba_tool(command)
 	if result.returncode != 0:
-		fail("Failed to create the user '{userId}' (rc={result})")
+		fail(f"Failed to create the user '{userId}' (rc={result})")
 
 	# b) set the user's password
 	if KEY_PASSWORD in userData:
@@ -283,7 +283,7 @@ def create_user(userId, userData):
 
 	result = samba_tool(command)
 	if result.returncode != 0:
-		fail("Failed to set the password for '{userId}' (rc={result})")
+		fail(f"Failed to set the password for '{userId}' (rc={result})")
 
 	if KEY_EXPIRATION_DAYS in userData:
 		expiration = userData[KEY_EXPIRATION_DAYS]
@@ -399,7 +399,7 @@ def create_group(groupId, groupData):
 
 	result = samba_tool(command)
 	if result.returncode != 0:
-		fail("Failed to create the group '{groupId}' (rc={result})")
+		fail(f"Failed to create the group '{groupId}' (rc={result})")
 
 	grant_ldap_admin_rights(groupId, groupData)
 	return groupId
@@ -412,7 +412,7 @@ def apply_memberships(groupId, members):
 
 	result = samba_tool(command)
 	if result.returncode != 0:
-		fail("Failed to apply the memberships for group '{groupId}' (rc={result})")
+		fail(f"Failed to apply the memberships for group '{groupId}' (rc={result})")
 
 serverInfo = {}
 if KEY_LDAP in data:
