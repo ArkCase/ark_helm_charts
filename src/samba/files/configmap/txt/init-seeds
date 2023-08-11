@@ -353,6 +353,9 @@ def compile_memberships(memberships, memberId, memberData):
 	if KEY_GROUPS not in memberData:
 		return
 
+	if not memberData[KEY_GROUPS]:
+		return
+
 	for groupId in memberData[KEY_GROUPS]:
 		groupId = render_group_id(groupId)
 		if groupId not in memberships:
