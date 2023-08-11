@@ -180,21 +180,28 @@
   {{- dict "email" $result | toYaml -}}
 {{- end }}
 
-{{- define "arkcase.core.payment" -}}
-  {{- $ctx := . -}}
+{{- define "arkcase.core.integrations" -}}
+  {{- $ctx := $ -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "Must send the root context as the only parameter" -}}
   {{- end -}}
 
+  {{- $ints := ($.Values.global).integration -}}
   {{- $result := dict -}}
-  {{- $payment := ($.Values.global).payment -}}
-  {{- $missing := list -}}
-  {{- if and $payment (kindIs "map" $payment) -}}
-    {{- $enabled := (not (empty (include "arkcase.toBoolean" $payment.enabled))) -}}
-    {{- if $enabled -}}
-      {{- $result = omit $payment "enabled" -}}
+  {{- $disabled := dict "enabled" false -}}
+  {{- if and $ints (kindIs "map" $ints) -}}
+    {{- range $name, $t := $ints -}}
+      {{- if and $t (kindIs "map" $t) -}}
+        {{- if or (not (hasKey $t "enabled")) (include "arkcase.toBoolean" $t.enabled) -}}
+          {{- $t = set $t "enabled" true -}}
+        {{- else -}}
+          {{- $t = $disabled -}}
+        {{- end -}}
+      {{- else -}}
+        {{- $t = $disabled -}}
+      {{- end -}}
+      {{- $result = set $result $name $t -}}
     {{- end -}}
   {{- end -}}
-
   {{- $result | toYaml -}}
 {{- end -}}
