@@ -706,8 +706,10 @@ return either the value if correct, or the empty string if not.
       {{- end -}}
     {{- end -}}
   {{- end -}}
-  {{- if (not (hasKey $result "global")) -}}
-    {{- $result = set $result "global" false -}}
+  {{- range (list "found" "global") -}}
+    {{- if not (hasKey $result .) -}}
+      {{- $result = set $result . false -}}
+    {{- end -}}
   {{- end -}}
   {{- if $debug -}}
     {{- fail (dict "result" $result "searched" $searched "global" (dict "conf" (($ctx.Values.global).conf | default dict)) "configuration" ($ctx.Values.configuration | default dict) | toYaml | nindent 0) -}}
