@@ -257,7 +257,6 @@ def create_user(userId, userData):
 	command = [ "user", "add", userId, "--random-password" ]
 
 	if USER_OU:
-		ensure_ou_exists(USER_OU)
 		command += [ f"--userou={USER_OU}" ]
 
 	for attName, attFlag in USER_ATTRIBUTES.items():
@@ -312,41 +311,59 @@ def create_user(userId, userData):
 		if result.returncode != 0:
 			fail(f"Failed to set the password expiration for '{userId}' (rc={result})")
 
-	# Finally, if appropriate, apply the admin permissions
-	if KEY_ADMINISTRATOR in userData:
-		administrator = userData[KEY_ADMINISTRATOR]
+	grant_ldap_admin_rights(userId, userData)
+	return userId
+
+def grant_ldap_admin_rights(principalId, principalData):
+
+	# If appropriate, apply the admin permissions
+	administrator = False
+	if KEY_ADMINISTRATOR in principalData:
+		administrator = principalData[KEY_ADMINISTRATOR]
 
 		# Convert to boolean
 		if administrator and (type(administrator) != bool):
 			administrator = (str(administrator).lower() == "true")
 
-		if administrator:
-			# Get the sid:
-			result = run_command([EXE_NET, "sam", "show", f"{DOMAIN_REALM}\\{userId}"])
-			if result.returncode != 0:
-				fail(f"Failed to get the SID for LDAP administrator {userId}")
+	if not administrator:
+		return False
 
+	branches = {}
+	for n in [ USER_OU_FULL, GROUP_OU_FULL ]:
+		if n:
+			branches[n] = True
+
+	# If there are no branches to grant permissions on, don't
+	# even bother with the rest of the work... just say you did
+	# something ... b/c you would have
+	if not branches:
+		return True
+
+	# Get the sid:
+	result = run_command([EXE_NET, "sam", "show", f"{DOMAIN_REALM}\\{principalId}"])
+	if result.returncode != 0:
+		fail(f"Failed to get the SID for LDAP administrator {principalId}")
+
+	output = result.stdout.decode("utf-8")
+	if DEBUG:
+		# Render a placeholder SID so we can view the command being rendered
+		sid = "S-X-X-XX-XXXXXXXXXX-XXXXXXXXXX-XXXXXXXXXX-XXXX"
+	else:
+		m = SID_RE.match(output)
+		if not m:
+			fail(f"Unrecognized net command output looking for {principalId}'s SID: [{output}]")
+
+		# The SID is the last string that contains no spaces
+		sid = m.group(1)
+
+	for dn in branches.keys():
+		result = samba_tool(["dsacl", "set", "--action=allow", f"--sddl=(A;OICI;GA;;;{sid})", f"--objectdn={dn}"])
+		if result.returncode != 0:
 			output = result.stdout.decode("utf-8")
-			if DEBUG:
-				# Render a placeholder SID so we can view the command being rendered
-				sid = "S-X-X-XX-XXXXXXXXXX-XXXXXXXXXX-XXXXXXXXXX-XXXX"
-			else:
-				m = SID_RE.match(output)
-				if not m:
-					fail(f"Unrecognized net command output looking for {userId}'s SID: [{output}]")
+			fail(f"Failed to set LDAP administrative permissions for {principalId} on branch {dn}:\n{output}")
+		logging.info(f"\tGranted administrative priviliges to '{principalId}' on branch [{dn}]")
 
-				# The SID is the last string that contains no spaces
-				sid = m.group(1)
-
-			branches = { USER_OU_FULL : True,  GROUP_OU_FULL : True }
-			for dn in branches.keys():
-				result = samba_tool(["dsacl", "set", "--action=allow", f"--sddl=(A;OICI;GA;;;{sid})", f"--objectdn={dn}"])
-				if result.returncode != 0:
-					output = result.stdout.decode("utf-8")
-					fail(f"Failed to set LDAP administrative permissions for {userId} on branch {dn}:\n{output}")
-				logging.info(f"\tGranted administrative priviliges to '{userId}' on branch [{dn}]")
-
-	return userId
+	return True
 
 def compile_memberships(memberships, memberId, memberData):
 	# No group memberships given
@@ -365,13 +382,13 @@ def compile_memberships(memberships, memberId, memberData):
 def create_group(groupId, groupData):
 	if groupId.startswith("+"):
 		logging.info(f"The group ID [{groupId}] is not owned by ArkCase, skipping its creation")
+		return groupId
 
 	groupId = render_group_id(groupId)
 	logging.info(f"Creating group '{groupId}' from [{groupData}]")
 	command = [ "group", "add", groupId ]
 
 	if GROUP_OU:
-		ensure_ou_exists(GROUP_OU)
 		command += [ f"--groupou={GROUP_OU}" ]
 
 	for attName, attFlag in GROUP_ATTRIBUTES.items():
@@ -384,6 +401,7 @@ def create_group(groupId, groupData):
 	if result.returncode != 0:
 		fail("Failed to create the group '{groupId}' (rc={result})")
 
+	grant_ldap_admin_rights(groupId, groupData)
 	return groupId
 
 def apply_memberships(groupId, members):
@@ -468,6 +486,7 @@ try:
 		logging.info(f"User OU: {USER_OU_FULL}")
 except KeyError:
 	USER_OU = None
+	USER_OU_FULL = None
 
 GROUP_OU = None
 try:
@@ -481,9 +500,18 @@ try:
 		logging.info(f"Group OU: {GROUP_OU_FULL}")
 except KeyError:
 	GROUP_OU = None
+	GROUP_OU_FULL = None
 
 try:
 	memberships = {}
+
+	# 0) Ensure both OUs exist, since they may need to be used for granting
+	# admin access
+	if GROUP_OU:
+		ensure_ou_exists(GROUP_OU)
+
+	if USER_OU:
+		ensure_ou_exists(USER_OU)
 
 	# 1) create the groups
 	if KEY_GROUPS in data:
