@@ -355,27 +355,31 @@ that checks the boot order (remember to |bool the outcome!)
     {{- fail (printf "You must supply a string value for the 'hostname' parameter (%s)" (kindOf $hostname)) -}}
   {{- end -}}
 
+  {{- $global := (include "arkcase.tools.get" (dict "ctx" $ctx "name" (printf "Values.global.conf.%s" $hostname)) | fromYaml) -}}
+  {{- $local := (include "arkcase.tools.get" (dict "ctx" $ctx "name" (printf "Values.configuration.%s" $hostname)) | fromYaml) -}}
+
   {{- $result := dict -}}
-  {{- $replacement := (include "arkcase.tools.conf" (dict "ctx" $ctx "value" $hostname "detailed" true) | fromYaml) -}}
-  {{- if and $replacement $replacement.value (kindIs "map" $replacement.value) -}}
-    {{- if (hasKey $replacement.value "url") -}}
-      {{- $url := (include "arkcase.tools.parseUrl" ($replacement.value.url | toString) | fromYaml) -}}
-      {{- if $url -}}
-        {{- $result = dict "url" $url -}}
-      {{- end -}}
-    {{- else if or (hasKey $replacement.value "hostname") (hasKey $replacement.value "port") -}}
-      {{- $newHostName := "" -}}
-      {{- $newPort := 0 -}}
-      {{- if (hasKey $replacement.value "hostname") -}}
-        {{- $newHostName = ($replacement.value.hostname | toString) -}}
-        {{- if $newHostName -}}
-          {{- $result = set $result "host" $newHostName -}}
+  {{- range $replacement := (list $global $local) -}}
+    {{- if and (empty $result) $replacement $replacement.found (kindIs "map" $replacement.value) -}}
+      {{- if (hasKey $replacement.value "url") -}}
+        {{- $url := (include "arkcase.tools.parseUrl" ($replacement.value.url | toString) | fromYaml) -}}
+        {{- if $url -}}
+          {{- $result = dict "url" $url -}}
         {{- end -}}
-      {{- end -}}
-      {{- if (hasKey $replacement.value "port") -}}
-        {{- $newPort = (include "arkcase.tools.checkNumericPort" $replacement.value.port | atoi) -}}
-        {{- if $newPort -}}
-          {{- $result = set $result "port" $newPort -}}
+      {{- else if or (hasKey $replacement.value "hostname") (hasKey $replacement.value "port") -}}
+        {{- $newHostName := "" -}}
+        {{- $newPort := 0 -}}
+        {{- if (hasKey $replacement.value "hostname") -}}
+          {{- $newHostName = ($replacement.value.hostname | toString) -}}
+          {{- if $newHostName -}}
+            {{- $result = set $result "host" $newHostName -}}
+          {{- end -}}
+        {{- end -}}
+        {{- if (hasKey $replacement.value "port") -}}
+          {{- $newPort = (include "arkcase.tools.checkNumericPort" $replacement.value.port | atoi) -}}
+          {{- if $newPort -}}
+            {{- $result = set $result "port" $newPort -}}
+          {{- end -}}
         {{- end -}}
       {{- end -}}
     {{- end -}}

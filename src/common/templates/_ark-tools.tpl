@@ -716,7 +716,7 @@ return either the value if correct, or the empty string if not.
   {{- end -}}
   {{- if .detailed -}}
     {{- $result | toYaml -}}
-  {{- else -}}
+  {{- else if (hasKey $result "value") -}}
     {{- $v := $result.value -}}
     {{- if or (kindIs "map" $v) (kindIs "slice" $v) -}}
       {{- $v = (toYaml $v) -}}
