@@ -3,8 +3,6 @@
 set -euo pipefail
 
 [ -v BASE_DIR ] || BASE_DIR="/app"
-[ -v DATA_DIR ] || DATA_DIR="${BASE_DIR}/data"
-[ -v DWHS_DIR ] || DWHS_DIR="${DATA_DIR}/dw"
 [ -v CONF_KJB ] || CONF_KJB="config"
 
 [ -v PENTAHO_PDI_HOME ] || PENTAHO_PDI_HOME="${BASE_DIR}/pentaho-pdi"
@@ -53,8 +51,11 @@ if [ -d "${DIR}/${CONF_KJB}" ] ; then
 	[ -d "${CONF_KJB}/.kettle" ] && export KETTLE_HOME="${CONF_KJB}"
 	[ -d "${CONF_KJB}/metastore" ] && export JAVA_TOOL_OPTIONS="-DPENTAHO_METASTORE_FOLDER=${CONF_KJB}"
 
+	# This double-check makes it easier to use this script
+	# in developers' environments
+	RENDER_TPL="$(which render-template 2>/dev/null)" || true
 	CONF_TPL="${CONF_KJB}.tpl"
-	if [ -d "${CONF_TPL}" ] ; then
+	if [ -d "${CONF_TPL}" ] && [ -n "${RENDER_TPL}" ] ; then
 		# Find all the templates within the configuration
 		# templates directory and render the final files
 		# within ${CONF_KJB}
