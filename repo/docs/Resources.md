@@ -168,13 +168,13 @@ The high-level syntax is as follows: `MEMSPEC,CPUSPEC`. The elements are positio
 
 Here's a breakdown of what MEMSPEC and CPUSPEC mean, and how to formulate them:
 
-* MEMSPEC : ( MEM | REQMEM-LIMMEM )
+* MEMSPEC : ( MEM \| REQMEM-LIMMEM )
 
   * MEM : When given in this form, and the context of use allows it, it means *use this value for both requests and limits*. This is an actual memory specification as described [here](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/)
   * REQMEM : The requests value for memory (use "\*" if you wish to not use any value). This is an actual RAM specification as described [here](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/)
   * LIMMEM : The limits value for memory (use "\*" if you wish to not use any value). This is an actual RAM specification as described [here](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/)
 
-* CPUSPEC : ( CPU | REQCPU-LIMCPU )
+* CPUSPEC : ( CPU \| REQCPU-LIMCPU )
 
   * CPU : When given in this form, and the context of use allows it, it means *use this value for both requests and limits*. This is an actual CPU specification as described [here](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/)
   * REQCPU : The requests value for CPU (use "\*" if you wish to clear the value). This is an actual CPU specification as described [here](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/)
