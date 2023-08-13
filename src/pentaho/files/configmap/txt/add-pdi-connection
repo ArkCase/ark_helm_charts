@@ -95,7 +95,7 @@ delete_connection() {
 
 	local ENCODED="$(echo -n "${NAME}" | jq -sRr @uri)"
 	local RESULT="$(run_curl "/plugin/data-access/api/datasource/jdbc/connection/${ENCODED}" "DELETE")" || true
-	[ -n "${RESULT}" ] && return 0
+	[ -n "${RESULT}" ] || return 0
 	say "Failed to delete the existing connection [${NAME}](encoded = ${ENCODED}): ${RESULT}"
 	return 1
 }
