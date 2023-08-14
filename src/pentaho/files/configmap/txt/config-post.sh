@@ -87,6 +87,7 @@ while read JOB ; do
 	DPL="${JOB}/deploy"
 	say "Deploying the DW reports at [${JOB}]..."
 
+	INCOMPLETE="false"
 	if [ -d "${DPL}" ] ; then
 		while read T ; do
 			# Remove the ".tpl" extension...
@@ -101,7 +102,11 @@ while read JOB ; do
 			NAME="$(jq -r .name < "${CONNECTION}")"
 			[ -z "${NAME}" ] && fail "The connection at [${CONNECTION}] lacks a name, can't continue"
 	
-			/usr/local/bin/add-pdi-connection "${CONNECTION}"
+			if ! /usr/local/bin/add-pdi-connection "${CONNECTION}" ; then
+				say "\tconnection installation failed!"
+				INCOMPLETE="true"
+				continue
+			fi
 
 			# This is a small hack ... we've found intermittent ConcurrentModificationExceptions
 			# puke all over report installation, so we're going to delay everything for a few
@@ -119,8 +124,16 @@ while read JOB ; do
 			NAME="$(xmlstarlet sel -t -v "/Schema/@name" "${SCHEMA}")"
 			[ -z "${NAME}" ] && fail "The Mondrian schema at [${SCHEMA}] lacks a name, can't continue"
 
-			/usr/local/bin/install-mondrian-schema "${SCHEMA}"
+			if ! /usr/local/bin/install-mondrian-schema "${SCHEMA}" ; then
+				say "\tschema installation failed!"
+				INCOMPLETE="true"
+			fi
 		done < <(find "${DPL}" -type f -iname 'schema-*.xml' | sort)
+	fi
+
+	if ${INCOMPLETE} ; then
+		say "The artifacts for the job at [${JOB}] are incomplete, will not launch the job"
+		continue
 	fi
 
 	# Find the first *.kjb (case-insensitive) file in that folder, and run that
