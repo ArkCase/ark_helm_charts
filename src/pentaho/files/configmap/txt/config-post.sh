@@ -171,7 +171,11 @@ fi
 # Leave this here ... if there are no jobs, nothing will happen...
 for JOB in "${JOBS[@]}" ; do
 	say "Launching the first-time PDI job [${JOB}]..."
-	run-kjb "${JOB}" || say "Errors detected from job [${JOB}] (rc=${?}), please review the above logs."
+	if run-kjb "${JOB}" ; then
+		say "Job completed successfully"
+	else
+		say "Errors detected, please review the above logs."
+	fi
 done
 
 say "Post-configuration completed"
