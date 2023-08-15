@@ -3,7 +3,7 @@ entries:
   app:
   - apiVersion: v2
     appVersion: 2023.01.02-01
-    created: "2023-08-15T09:34:46.054631809-06:00"
+    created: "2023-08-15T12:40:06.800814619-06:00"
     dependencies:
     - alias: search
       name: solr
@@ -45,7 +45,7 @@ entries:
       repository: https://arkcase.github.io/ark_helm_charts
       version: ~0.3.0
     description: ArkCase Application Chart
-    digest: e0c6fc60bf000fbb0351e417e2646e0f1452ea7a6dcff2ce220c139db79d9a23
+    digest: 3356d630f96a5944cbf0782d18b15e4f3f7863c26c37bfd32be8efc50cc883b4
     name: app
     type: application
     urls:
@@ -54,13 +54,13 @@ entries:
   artemis:
   - apiVersion: v2
     appVersion: 2.30.0-01
-    created: "2023-08-15T09:34:46.056670003-06:00"
+    created: "2023-08-15T12:40:06.802691046-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
       version: ~0.3.0
     description: Helm chart for Apache Artemis as used by ArkCase
-    digest: e788fe0de634d174b76590bfcae55a4742d58fdadbb59b49b7e6e246a7e9cf77
+    digest: dca7a4e7aefe2164c6d8a82e99005fbede848f754e1bb2cb93f5312e7fd783c7
     keywords:
     - artemis
     - message broker
@@ -73,13 +73,13 @@ entries:
   cloudconfig:
   - apiVersion: v2
     appVersion: 2021.03.34
-    created: "2023-08-15T09:34:46.058408466-06:00"
+    created: "2023-08-15T12:40:06.804295137-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
       version: ~0.3.0
     description: A Helm chart for ArkCase cloud configurations
-    digest: a31445f9d33240ee869d6671f508c0828b44165d03fe8c016adebcfd7850fd34
+    digest: 0c3b8a389e9cd2f9dd6cbefda7ce98728c1e86c2e5bca89212dd685245167325
     name: cloudconfig
     type: application
     urls:
@@ -88,10 +88,10 @@ entries:
   common:
   - apiVersion: v2
     appVersion: 2.0.0
-    created: "2023-08-15T09:34:46.059989145-06:00"
+    created: "2023-08-15T12:40:06.805492079-06:00"
     description: A library of common templates and functions, consumable by ArkCase
       charts
-    digest: ae72e727702bf5276261aaba75a1d770896eeafd4a47677b71a3a0b5d6bfd539
+    digest: 3ebcaf05d60d6cf15f3e9b7ed9515350adbd1fa90652da0f5dd724cf8cb1a119
     name: common
     type: library
     urls:
@@ -100,14 +100,14 @@ entries:
   content:
   - apiVersion: v2
     appVersion: 1.0.0
-    created: "2023-08-15T09:34:46.06208867-06:00"
+    created: "2023-08-15T12:40:06.807636575-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
       version: ~0.3.0
     description: A Helm chart for deploying Content Storage Services as used by ArkCase
       (Alfresco v7.3.1 or Minio)
-    digest: 7dc82d050d00e6394105d0bebcd6bfbe6172b807e613d3a29203c5d928efd83b
+    digest: 31f9ae08053990d1c83fd2d725a16373fe450e7cb91475665d3f1d6158c9ecbd
     keywords:
     - content
     - content services
@@ -122,13 +122,13 @@ entries:
   core:
   - apiVersion: v2
     appVersion: 1.4.0-01
-    created: "2023-08-15T09:34:46.065209211-06:00"
+    created: "2023-08-15T12:40:06.810163244-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
       version: ~0.3.0
     description: A Helm chart for core ArkCase and ConfigServer
-    digest: d28d9a68eb13973899809f4c16e30ccee6086af9be103f34ac0fa2a1d4c17dd5
+    digest: 54c6ce98ec9e27946e629b3d332bbc2c1a8423e91fa78e85ba82ab38722fa7c8
     name: core
     type: application
     urls:
@@ -137,14 +137,14 @@ entries:
   database:
   - apiVersion: v2
     appVersion: "1.2"
-    created: "2023-08-15T09:34:46.066879605-06:00"
+    created: "2023-08-15T12:40:06.811558417-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
       version: ~0.3.0
     description: This helm chart allows deploying a database engine, which can be
       either PostgreSQL, MySQL, or MariaDB.
-    digest: 5b54e689b60b0564a53e07e7659fbbade1b0bf0a9499afeb662024799bab817b
+    digest: 6bab5e3621967319706b3ed12f9154be1f8450eb8b85f029c2102ef1dbdc169a
     keywords:
     - postgres
     - mysql
@@ -160,14 +160,14 @@ entries:
   gateway-apache:
   - apiVersion: v2
     appVersion: 1.0.0
-    created: "2023-08-15T09:34:46.068720443-06:00"
+    created: "2023-08-15T12:40:06.813700683-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
       version: ~0.3.0
     description: A Helm chart to provide a reverse proxy to all ArkCase services using
       Apache
-    digest: d1593930f4dd4c9c42059fa7f7cabfa9b1d687adfb4637426cee6e894499e40c
+    digest: 2bde8a465a58dd2b68a312a72668d28cae1e8c19f3ecd34acaa2253a4368a35a
     name: gateway-apache
     type: application
     urls:
@@ -176,14 +176,14 @@ entries:
   hostpath-provisioner:
   - apiVersion: v2
     appVersion: 0.4.1
-    created: "2023-08-15T09:34:46.073642766-06:00"
+    created: "2023-08-15T12:40:06.817763703-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
       version: ~0.3.0
     description: hostpath-provisioner is an automatic provisioner creating Persistent
       Volumes on the host's filesystem
-    digest: fa060ab020492d5cd38f8ba1b6e6a2492a7fdf8c6b1a2e7c1a15a15fdcd54ccf
+    digest: 7ed8ab139fdebe866d7021f50fc7427ddc014e391e8deffbadc7b5e3f4681e84
     home: https://github.com/ArkCase/ark_helm_charts/tree/main/src/hostpath-provisioner
     keywords:
     - hostpath
@@ -200,7 +200,7 @@ entries:
     version: 0.3.1
   - apiVersion: v2
     appVersion: 0.4.1
-    created: "2023-08-15T09:34:46.072180517-06:00"
+    created: "2023-08-15T12:40:06.8164604-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -224,7 +224,7 @@ entries:
     version: 0.3.0
   - apiVersion: v2
     appVersion: 0.3.0
-    created: "2023-08-15T09:34:46.070294838-06:00"
+    created: "2023-08-15T12:40:06.815183969-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -249,13 +249,13 @@ entries:
   neo4j:
   - apiVersion: v2
     appVersion: 4.4.24-03
-    created: "2023-08-15T09:34:46.075247508-06:00"
+    created: "2023-08-15T12:40:06.819561574-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
       version: ~0.3.0
     description: A Helm chart for Neo4J as used by ArkCase
-    digest: 03b478766cac2cbd57276039fd7d9aa655f5d6b41f664e624ecfb8f49beff1e9
+    digest: 77329e3f8a67a7024a2dc2d42e1b8b166c0a78d83204b1ec5329f5d319a29f3d
     name: neo4j
     type: application
     urls:
@@ -264,13 +264,13 @@ entries:
   pentaho:
   - apiVersion: v2
     appVersion: 9.4.0.0-343-09
-    created: "2023-08-15T09:34:46.079070581-06:00"
+    created: "2023-08-15T12:40:06.822660165-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
       version: ~0.3.0
     description: Helm chart for Pentaho as used by ArkCase
-    digest: 796c47e0c7904f95051beb6b90396701dbb98d9bf632e2134ba8d387c8804d8a
+    digest: f1319ae983fbd09dfaa8583bed21ea1c651b8f75777175bf44d260d783d2c567
     keywords:
     - pentaho
     - reports
@@ -283,13 +283,13 @@ entries:
   samba:
   - apiVersion: v2
     appVersion: 4.14.5-10
-    created: "2023-08-15T09:34:46.081059155-06:00"
+    created: "2023-08-15T12:40:06.82434026-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
       version: ~0.3.0
     description: A Helm chart for Samba 4 as used by ArkCase
-    digest: b48205e5df0c883c963f1203d2c0c86ec8ebb45d3ce00f4c401d98971ec8cd46
+    digest: 396f782a3b4ec783258b3a71545a309f7fd4a0f9439a14acf341ede277cef854
     name: samba
     type: application
     urls:
@@ -298,13 +298,13 @@ entries:
   solr:
   - apiVersion: v2
     appVersion: 8.11.2
-    created: "2023-08-15T09:34:46.083060488-06:00"
+    created: "2023-08-15T12:40:06.826342256-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
       version: ~0.3.0
     description: A Helm chart for Solr as used by ArkCase
-    digest: 40786bdbece5df95f1cec567c302acb4eb94dd09a1f082558850a356122efe06
+    digest: f6dfaad2520bb6fe7401af37e79f53b0e7212316ae1c0a368d4ccdf5779c52be
     name: solr
     type: application
     urls:
@@ -313,16 +313,16 @@ entries:
   zookeeper:
   - apiVersion: v2
     appVersion: 3.8.1-03
-    created: "2023-08-15T09:34:46.085088306-06:00"
+    created: "2023-08-15T12:40:06.82783319-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
       version: ~0.3.0
     description: A Helm chart for ZooKeeper as used by ArkCase
-    digest: 6b8c24e176a9d879ec9c70173a016fd982a46a08912d78529d62ad6bcc3aa038
+    digest: 2a481106f18ee8e46428bc4165f8ee27a775d2a9f5fbcc054d3c50789f1b2541
     name: zookeeper
     type: application
     urls:
     - https://arkcase.github.io/ark_helm_charts/zookeeper-0.3.0.tgz
     version: 0.3.0
-generated: "2023-08-15T09:34:46.032092145-06:00"
+generated: "2023-08-15T12:40:06.779787058-06:00"
