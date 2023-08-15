@@ -138,7 +138,10 @@ while read JOB ; do
 
 	# Find the first *.kjb (case-insensitive) file in that folder, and run that
 	JOB="$(find "${JOB}" -mindepth 1 -maxdepth 1 -type f -iname '*.kjb' | sort | head -1)"
-	[ -z "${JOB}" ] || JOBS+=("${JOB}")
+	if [ -n "${JOB}" ] ; then
+		say "\tAdding a PDI bootup job: [${JOB}]"
+		JOBS+=("${JOB}")
+	fi
 
 done < <(find "${DWHS_DIR}" -mindepth 1 -maxdepth 1 -type d | sort)
 JOBS_COUNT=${#JOBS[@]}
@@ -170,8 +173,9 @@ fi
 
 # Leave this here ... if there are no jobs, nothing will happen...
 for JOB in "${JOBS[@]}" ; do
+	JOB_LOG="${JOB%/*}/${JOB%.*}.init.log"
 	say "Launching the first-time PDI job [${JOB}]..."
-	if run-kjb "${JOB}" ; then
+	if run-kjb "${JOB}" < /dev/null &> "${JOB_LOG}" ; then
 		say "Job completed successfully"
 	else
 		say "Errors detected, please review the above logs."

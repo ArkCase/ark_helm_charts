@@ -75,4 +75,4 @@ LOG_FLAG=()
 
 say "Executing KJB: [${JOB}]"
 cd "${PENTAHO_PDI_HOME}/data-integration"
-exec ./kitchen.sh -file:"${JOB}" "${LOG_FLAG[@]}"
+exec ./kitchen.sh -file:"${JOB}" "${LOG_FLAG[@]}" < /dev/null
