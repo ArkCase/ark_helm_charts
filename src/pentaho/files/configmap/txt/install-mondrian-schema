@@ -39,10 +39,13 @@ case "${SCHEMA_FILE,,}" in
 esac
 
 SCHEMA_FILE="$(readlink -f "${SCHEMA_FILE}")"
-SCHEMA_NAME="${SCHEMA_FILE##*/}"
-SCHEMA_NAME="${SCHEMA_NAME%.*}"
 
-say "Installing the Mondrian schema from [${SCHEMA_FILE}]..."
+xmllint --noout "${SCHEMA_FILE}" &>/dev/null || fail "The schema file at [${SCHEMA_FILE}] is not valid XML, can't install"
+
+NAME="$(xmlstarlet sel -t -v "/Schema/@name" "${SCHEMA_FILE}")" || fail "Failed to parse the name out of the schema at [${SCHEMA_FILE}]"
+[ -n "${NAME}" ] || fail "The Mondrian schema at [${SCHEMA_FILE}] lacks a name, can't install"
+
+say "Installing the Mondrian schema [${NAME}] from [${SCHEMA_FILE}]..."
 exec curl -kL -sS --fail \
 	-H "Content-Type: multipart/form-data" \
 	-X PUT \
@@ -51,4 +54,4 @@ exec curl -kL -sS --fail \
 	-F xmlaEnabledFlag="false" \
 	-F parameters="Datasource=ArkCase" \
 	--config <(echo -n "--user \"${ADMIN_USERNAME}:${ADMIN_PASSWORD}\"") \
-	"${PENTAHO_URL}/plugin/data-access/api/datasource/analysis/catalog/${SCHEMA_NAME}"
+	"${PENTAHO_URL}/plugin/data-access/api/datasource/analysis/catalog/${NAME}"

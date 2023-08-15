@@ -109,6 +109,10 @@ create_connection() {
 	fi
 
 	local NAME="$(jq -r '.name' < "${FILE}")"
+	if [ -z "${NAME}" ] ; then
+		say "The connection at [${JSON_FILE}] doesn't have a name"
+		return 1
+	fi
 
 	if connection_exists "${NAME}" ; then
 		local CMD="say"
