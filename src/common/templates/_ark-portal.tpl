@@ -33,6 +33,7 @@
     {{- /* constant value */ -}}
     {{- $ldapServer := "foia" -}}
     {{- $ldapDomain := (include "arkcase.ldap" (dict "ctx" $ "server" $ldapServer "value" "domain")) -}}
+    {{- $ldapUserPrefix := (include "arkcase.ldap" (dict "ctx" $ "server" $ldapServer "value" "search.user.prefix") | default "") -}}
     {{- $ldapGroupPrefix := (include "arkcase.ldap" (dict "ctx" $ "server" $ldapServer "value" "search.groups.prefix") | default "") -}}
 
     {{- $generateUsers := (not (empty (include "arkcase.toBoolean" $foia.generateUsers))) -}}
@@ -77,6 +78,7 @@
         "ldap" (
           dict
             "server" $ldapServer
+            "userPrefix" $ldapUserPrefix
             "groupPrefix" $ldapGroupPrefix
             "domain" $ldapDomain
           )
