@@ -98,9 +98,18 @@ while read JOB ; do
 
 		# Find any connections (i.e. connection-*.json)
 		while read CONNECTION ; do
-			jq -r < "${CONNECTION}" &>/dev/null || fail "The connection at [${CONNECTION}] is not valid JSON"
+			if ! jq -r < "${CONNECTION}" &>/dev/null ; then
+				say "The connection at [${CONNECTION}] is not valid JSON, can't install"
+				INCOMPLETE="true"
+				continue
+			fi
+
 			NAME="$(jq -r .name < "${CONNECTION}")"
-			[ -z "${NAME}" ] && fail "The connection at [${CONNECTION}] lacks a name, can't continue"
+			if [ -z "${NAME}" ] ; then
+				say "The connection at [${CONNECTION}] lacks a name, can't install"
+				INCOMPLETE="true"
+				continue
+			fi
 	
 			if ! /usr/local/bin/add-pdi-connection "${CONNECTION}" ; then
 				say "\tconnection installation failed!"
@@ -120,9 +129,18 @@ while read JOB ; do
 
 		# Find any Mondrian schemata (i.e. schema-*.xml)
 		while read SCHEMA ; do
-			xmllint --noout "${SCHEMA}" &>/dev/null || fail "The schema file at [${SCHEMA}] is not valid XML"
+			if ! xmllint --noout "${SCHEMA}" &>/dev/null ; then
+				say "The schema file at [${SCHEMA}] is not valid XML, can't install"
+				INCOMPLETE="true"
+				continue
+			fi
+
 			NAME="$(xmlstarlet sel -t -v "/Schema/@name" "${SCHEMA}")"
-			[ -z "${NAME}" ] && fail "The Mondrian schema at [${SCHEMA}] lacks a name, can't continue"
+			if [ -z "${NAME}" ] ; then
+				say "The Mondrian schema at [${SCHEMA}] lacks a name, can't install"
+				INCOMPLETE="true"
+				continue
+			fi
 
 			if ! /usr/local/bin/install-mondrian-schema "${SCHEMA}" ; then
 				say "\tschema installation failed!"
