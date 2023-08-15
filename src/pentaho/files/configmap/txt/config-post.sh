@@ -150,7 +150,11 @@ if [ ${JOBS_COUNT} -gt 0 ] ; then
 	# Before we can run the dataminer first time, we MUST wait for
 	# ArkCase to come up ... if it doesn't, we're screwed
 	[ -v CORE_URL ] || CORE_URL="http://core:8080/arkcase/"
-	say "Found ${JOBS_COUNT} dataminers, launching the background poller for [${CORE_URL}]..."
+	say "Found ${JOBS_COUNT} dataminers:"
+	for J in "${JOBS[@]}" ; do
+		say "\t${J}"
+	done
+	say "Launching the background poller for [${CORE_URL}]..."
 	coproc { poll_url "${CORE_URL}" ; }
 else
 	say "No jobs found, will not wait for ArkCase to boot up"
