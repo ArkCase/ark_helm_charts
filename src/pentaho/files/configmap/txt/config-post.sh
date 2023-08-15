@@ -177,7 +177,7 @@ fi
 
 # Leave this here ... if there are no jobs, nothing will happen...
 for JOB in "${JOBS[@]}" ; do
-	JOB_LOG="${JOB%/*}/${JOB%.*}.init.log"
+	JOB_LOG="${JOB%.*}.log"
 	say "Launching the first-time PDI job [${JOB}]..."
 	if run-kjb "${JOB}" < /dev/null &> "${JOB_LOG}" ; then
 		say "Job completed successfully"
