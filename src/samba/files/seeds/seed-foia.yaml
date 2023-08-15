@@ -26,10 +26,6 @@ server:
 
 # Remember to apply the group prefix to the group ID
 groups:
-  ARKCASE_PORTAL_ENTITY_ADMINISTRATOR:
-    description: ArkCase Portal Entity administrators
-    # groups:
-    #   - +Administrators
   ARKCASE_PORTAL_ADMINISTRATOR:
     administrator: true
     description: ArkCase Portal Administrators
@@ -45,7 +41,6 @@ users:
     lastName: Administrator
     groups:
       - ARKCASE_PORTAL_ADMINISTRATOR
-      - ARKCASE_PORTAL_ENTITY_ADMINISTRATOR
       - ARKCASE_PORTAL_USER
       - OFFICERS
     #   - +Administrators
