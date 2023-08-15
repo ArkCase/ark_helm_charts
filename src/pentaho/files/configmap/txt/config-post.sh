@@ -7,7 +7,7 @@ case "${DEBUG,,}" in
 esac
 
 timestamp() {
-	/usr/bin/date -Isec -u
+	/usr/bin/date -Ins -u
 }
 
 say() {

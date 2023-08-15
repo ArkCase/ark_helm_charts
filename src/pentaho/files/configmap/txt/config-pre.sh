@@ -1,7 +1,7 @@
 #!/bin/bash
 
 say() {
-	echo -e "$(date -Isec -u): ${@}"
+	echo -e "$(date -Ins -u): ${@}"
 }
 
 fail() {

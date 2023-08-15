@@ -8,7 +8,7 @@ set -euo pipefail
 [ -v DWHS_DIR ] || DWHS_DIR="${DATA_DIR}/dw"
 
 say() {
-	echo -e "$(date -u -Isec): ${@}"
+	echo -e "$(date -u -Ins): ${@}"
 }
 
 fail() {
