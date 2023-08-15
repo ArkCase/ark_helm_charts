@@ -8,7 +8,7 @@ server:
   expirationDays: 0
 
   # The Base DN within which all data for this seed will be rendered
-  baseDn: "ou=FOIA"
+  baseDn: "ou=ArkCase Portal"
 
   # The OU within which to create the users. If not given, the default
   # will be used (cn=Users)
@@ -26,32 +26,26 @@ server:
 
 # Remember to apply the group prefix to the group ID
 groups:
-  FOIA_ENTITY_ADMINISTRATOR:
-    description: FOIA Entity administrators
+  ARKCASE_PORTAL_ENTITY_ADMINISTRATOR:
+    description: ArkCase Portal Entity administrators
     # groups:
     #   - +Administrators
-  FOIA_ADMINISTRATOR:
-    description: FOIA Administrators
-  FOIA_USER:
-    description: FOIA Users
+  ARKCASE_PORTAL_ADMINISTRATOR:
+    administrator: true
+    description: ArkCase Portal Administrators
+  ARKCASE_PORTAL_USER:
+    description: ArkCase Portal Users
 
 # Remember to apply the user prefix to the user ID
 # Remember to apply the group prefix to the group IDs in the membership list
 users:
-  foia-admin:
-    administrator: true
-    mail: "foia-admin@armedia.com"
-    firstName: FOIA
+  portal-admin:
+    mail: "portal-admin@armedia.com"
+    firstName: ArkCase Portal
     lastName: Administrator
     groups:
-      - FOIA_ADMINISTRATOR
-      - FOIA_ENTITY_ADMINISTRATOR
-      - FOIA_USER
+      - ARKCASE_PORTAL_ADMINISTRATOR
+      - ARKCASE_PORTAL_ENTITY_ADMINISTRATOR
+      - ARKCASE_PORTAL_USER
       - OFFICERS
     #   - +Administrators
-  foia-user:
-    mail: "foia-user@armedia.com"
-    firstName: FOIA
-    lastName: User
-    groups:
-      - FOIA_USER

@@ -78,10 +78,10 @@ configuration:
           prefix: ""
     foia:
       <<: *ldapArkcase
-      baseDn: "ou=FOIA"
+      baseDn: "ou=ArkCase Portal"
       bind:
-        dn: "cn=FOIA Administrator,ou=Users,${baseDn}"
-        password: "$foia-admin$"
+        dn: "cn=ArkCase Portal Administrator,ou=Users,${baseDn}"
+        password: "$portal-admin$"
 
   configServer:
     # For now, it's collocated ... eventually it will live elsewhere

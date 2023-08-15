@@ -96,10 +96,10 @@ configuration:
           prefix: ""
     foia:
       <<: *ldapArkcase
-      baseDn: "ou=FOIA"
+      baseDn: "ou=ArkCase Portal"
       bind:
-        dn: "cn=FOIA Administrator,ou=Users,${baseDn}"
-        password: "$foia-admin$"
+        dn: "cn=ArkCase Portal Administrator,ou=Users,${baseDn}"
+        password: "$portal-admin$"
 
 initDependencies:
   enabled: true
@@ -153,10 +153,6 @@ image:
   deployer:
     repository: "arkcase/deployer"
     tag: 1.0.2-01
-
-  foia-dw:
-    repository: "arkcase/foia-dw"
-    tag: 1.0.0-01
 
   community:
     repository: "arkcase/pentaho-ce"

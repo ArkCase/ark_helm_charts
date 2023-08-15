@@ -220,6 +220,7 @@ if ${DEBUG} || [ -x "${REPORT_INSTALLER}" ] ; then
 	#
 	# Install reports
 	#
+	ERROR="false"
 	REPORTS_DIR="${INIT_DIR}/reports"
 	while read FILE ; do
 
@@ -229,11 +230,16 @@ if ${DEBUG} || [ -x "${REPORT_INSTALLER}" ] ; then
 		# TODO: What if we want to undeploy? How do we do that?
 
 		# Install the report
-		install_report "${FILE}" || \
-			fail "Failed to install the report from [${FILE}]"
+		install_report "${FILE}" && continue
+		say "Failed to install the report from [${FILE}]"
+		ERROR="true"
 	done < <(list_reports "${REPORTS_DIR}")
-else
-	say "The reports installer executable could not be found at [${REPORT_INSTALLER}]"
+
+	${ERROR} || exit 0
+
+	say "Some reports did not install correctly."
+	exit 1
 fi
 
+say "The reports installer executable could not be found at [${REPORT_INSTALLER}]"
 exit 0
