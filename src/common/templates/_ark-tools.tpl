@@ -844,16 +844,16 @@ return either the value if correct, or the empty string if not.
 
       {{- if hasKey $dev "uid" -}}
         {{- $uid := ($dev.uid | toString) -}}
-        {{- if (not (regexMatch "^[0-9]+$" $uid)) -}}
-          {{- fail (printf "The value for global.dev.uid must be a number (%s)" $uid) -}}
+        {{- if (not (regexMatch "^[1-9][0-9]*$" $uid)) -}}
+          {{- fail (printf "The value for global.dev.uid must be a positive number (%s)" $uid) -}}
         {{- end -}}
         {{- $result = set $result "uid" ($uid | atoi) -}}
       {{- end -}}
 
       {{- if hasKey $dev "gid" -}}
         {{- $gid := ($dev.gid | toString) -}}
-        {{- if (not (regexMatch "^[0-9]+$" $gid)) -}}
-          {{- fail (printf "The value for global.dev.gid must be a number (%s)" $gid) -}}
+        {{- if (not (regexMatch "^[1-9][0-9]*$" $gid)) -}}
+          {{- fail (printf "The value for global.dev.gid must be a positive number (%s)" $gid) -}}
         {{- end -}}
         {{- $result = set $result "gid" ($gid | atoi) -}}
       {{- end -}}
