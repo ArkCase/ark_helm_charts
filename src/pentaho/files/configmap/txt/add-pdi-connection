@@ -35,7 +35,7 @@ run_curl() {
 	local HEADERS=()
 	if [ -n "${POST_FILE}" ] ; then
 		METHOD="POST"
-		POST_FILE=(--data "@${POST_FILE}")
+		POST_FILE=(--data-binary "@${POST_FILE}")
 		HEADERS=(--header "Content-Type: application/json")
 	else
 		POST_FILE=()
