@@ -2,8 +2,58 @@ apiVersion: v1
 entries:
   app:
   - apiVersion: v2
+    appVersion: 2023.01.03-01
+    created: "2023-08-16T10:47:23.618671375-06:00"
+    dependencies:
+    - alias: search
+      name: solr
+      repository: https://arkcase.github.io/ark_helm_charts
+      version: ~0.3.0
+    - alias: ldap
+      name: samba
+      repository: https://arkcase.github.io/ark_helm_charts
+      version: ~0.3.0
+    - alias: messaging
+      name: artemis
+      repository: https://arkcase.github.io/ark_helm_charts
+      version: ~0.3.0
+    - alias: core
+      name: core
+      repository: https://arkcase.github.io/ark_helm_charts
+      version: ~0.3.0
+    - alias: rdbms
+      name: database
+      repository: https://arkcase.github.io/ark_helm_charts
+      version: ~0.3.0
+    - alias: reports
+      name: pentaho
+      repository: https://arkcase.github.io/ark_helm_charts
+      version: ~0.3.0
+    - alias: content
+      name: content
+      repository: https://arkcase.github.io/ark_helm_charts
+      version: ~0.3.0
+    - alias: gateway
+      name: gateway-apache
+      repository: https://arkcase.github.io/ark_helm_charts
+      version: ~0.3.0
+    - name: zookeeper
+      repository: https://arkcase.github.io/ark_helm_charts
+      version: ~0.3.0
+    - alias: analytics
+      name: neo4j
+      repository: https://arkcase.github.io/ark_helm_charts
+      version: ~0.3.0
+    description: ArkCase Application Chart
+    digest: 7665558bbac85bf86eafe159d1049620e63b28b2d0eac7a8984ca37d2d0de1d3
+    name: app
+    type: application
+    urls:
+    - https://arkcase.github.io/ark_helm_charts/app-0.3.1.tgz
+    version: 0.3.1
+  - apiVersion: v2
     appVersion: 2023.01.02-01
-    created: "2023-08-16T10:04:49.322447436-06:00"
+    created: "2023-08-16T10:47:23.598219111-06:00"
     dependencies:
     - alias: search
       name: solr
@@ -54,7 +104,7 @@ entries:
   artemis:
   - apiVersion: v2
     appVersion: 2.30.0-01
-    created: "2023-08-16T10:04:49.324972831-06:00"
+    created: "2023-08-16T10:47:23.620531033-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -73,7 +123,7 @@ entries:
   cloudconfig:
   - apiVersion: v2
     appVersion: 2021.03.34
-    created: "2023-08-16T10:04:49.326671032-06:00"
+    created: "2023-08-16T10:47:23.622065238-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -88,7 +138,7 @@ entries:
   common:
   - apiVersion: v2
     appVersion: 2.0.0
-    created: "2023-08-16T10:04:49.327992759-06:00"
+    created: "2023-08-16T10:47:23.62333087-06:00"
     description: A library of common templates and functions, consumable by ArkCase
       charts
     digest: cc323a7a1bb71b36af82aafad0d6cea7137cb293b630123df6eaeaf847b515e0
@@ -100,7 +150,7 @@ entries:
   content:
   - apiVersion: v2
     appVersion: 1.0.0
-    created: "2023-08-16T10:04:49.330433858-06:00"
+    created: "2023-08-16T10:47:23.625875289-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -122,7 +172,7 @@ entries:
   core:
   - apiVersion: v2
     appVersion: 1.4.0-01
-    created: "2023-08-16T10:04:49.332547791-06:00"
+    created: "2023-08-16T10:47:23.628236561-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -137,7 +187,7 @@ entries:
   database:
   - apiVersion: v2
     appVersion: "1.2"
-    created: "2023-08-16T10:04:49.333976649-06:00"
+    created: "2023-08-16T10:47:23.629670528-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -160,7 +210,7 @@ entries:
   gateway-apache:
   - apiVersion: v2
     appVersion: 1.0.0
-    created: "2023-08-16T10:04:49.336478316-06:00"
+    created: "2023-08-16T10:47:23.631677017-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -176,7 +226,7 @@ entries:
   hostpath-provisioner:
   - apiVersion: v2
     appVersion: 0.4.1
-    created: "2023-08-16T10:04:49.341326854-06:00"
+    created: "2023-08-16T10:47:23.635942987-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -200,7 +250,7 @@ entries:
     version: 0.3.1
   - apiVersion: v2
     appVersion: 0.4.1
-    created: "2023-08-16T10:04:49.339570227-06:00"
+    created: "2023-08-16T10:47:23.634623107-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -224,7 +274,7 @@ entries:
     version: 0.3.0
   - apiVersion: v2
     appVersion: 0.3.0
-    created: "2023-08-16T10:04:49.337990995-06:00"
+    created: "2023-08-16T10:47:23.633383732-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -249,7 +299,7 @@ entries:
   neo4j:
   - apiVersion: v2
     appVersion: 4.4.24-03
-    created: "2023-08-16T10:04:49.34279284-06:00"
+    created: "2023-08-16T10:47:23.637761917-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -264,7 +314,7 @@ entries:
   pentaho:
   - apiVersion: v2
     appVersion: 9.4.0.0-343-10
-    created: "2023-08-16T10:04:49.345894152-06:00"
+    created: "2023-08-16T10:47:23.640798267-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -283,7 +333,7 @@ entries:
   samba:
   - apiVersion: v2
     appVersion: 4.14.5-10
-    created: "2023-08-16T10:04:49.348310762-06:00"
+    created: "2023-08-16T10:47:23.642520376-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -298,7 +348,7 @@ entries:
   solr:
   - apiVersion: v2
     appVersion: 8.11.2
-    created: "2023-08-16T10:04:49.349952266-06:00"
+    created: "2023-08-16T10:47:23.644639881-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -313,7 +363,7 @@ entries:
   zookeeper:
   - apiVersion: v2
     appVersion: 3.8.1-03
-    created: "2023-08-16T10:04:49.351328495-06:00"
+    created: "2023-08-16T10:47:23.646062223-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -325,4 +375,4 @@ entries:
     urls:
     - https://arkcase.github.io/ark_helm_charts/zookeeper-0.3.0.tgz
     version: 0.3.0
-generated: "2023-08-16T10:04:49.300757725-06:00"
+generated: "2023-08-16T10:47:23.577111156-06:00"
