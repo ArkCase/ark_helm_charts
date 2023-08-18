@@ -1,5 +1,5 @@
 {{- define "arkcase.deployment.envvars" -}}
-  {{- $url := (include "arkcase.tools.parseUrl" "http://app-artifacts" | fromYaml) -}}
+  {{- $url := (include "arkcase.tools.parseUrl" "https://app-artifacts" | fromYaml) -}}
   {{- $artifacts := (include "arkcase.dependency.target" (dict "ctx" $ "hostname" "app-artifacts") | fromYaml) -}}
   {{- if $artifacts -}}
     {{- if not (hasKey $artifacts "url") -}}
