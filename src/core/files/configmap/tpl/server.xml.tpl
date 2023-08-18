@@ -67,7 +67,8 @@
          Define a non-SSL/TLS HTTP/1.1 Connector on port 8080
     -->
     <Connector port="8080" protocol="HTTP/1.1"
-               connectionTimeout="20000" />
+               connectionTimeout="20000"
+               redirectPort="8443" />
     <!-- A "Connector" using the shared thread pool-->
     <!--
     <Connector executor="tomcatThreadPool"
@@ -98,18 +99,23 @@
          Either JSSE or OpenSSL style configuration may be used. OpenSSL style
          configuration is used below.
     -->
-    <!--
-    <Connector port="8443" protocol="org.apache.coyote.http11.Http11AprProtocol"
-               maxThreads="150" SSLEnabled="true" >
+    <Connector connectionTimeout="40000"
+               maxHttpHeaderSize="32768"
+               maxThreads="150"
+               port="8443"
+               protocol="org.apache.coyote.http11.Http11AprProtocol"
+               scheme="https"
+               secure="true"
+               SSLEnabled="true"
+               useBodyEncodingForURI="true">
         <UpgradeProtocol className="org.apache.coyote.http2.Http2Protocol" />
-        <SSLHostConfig>
-            <Certificate certificateKeyFile="conf/localhost-rsa-key.pem"
-                         certificateFile="conf/localhost-rsa-cert.pem"
-                         certificateChainFile="conf/localhost-rsa-chain.pem"
+        <SSLHostConfig protocols="TLSv1.2" certificateVerification="none">
+            <Certificate certificateKeyFile="/.ssl/key.pem"
+                         certificateFile="/.ssl/cert.pem"
+                         certificateChainFile="/.ssl/tomcat-chain.pem"
                          type="RSA" />
         </SSLHostConfig>
     </Connector>
-    -->
 
     <!-- Define an AJP 1.3 Connector on port 8009 -->
     <!--
