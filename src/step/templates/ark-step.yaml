@@ -1,0 +1,114 @@
+{{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.samba.external" $)) }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: &fullname {{ include "arkcase.fullname" $ | quote }}
+  namespace: {{ $.Release.Namespace | quote }}
+  labels: {{- include "arkcase.labels" $ | nindent 4 }}
+    {{- with ($.Values.labels).common }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with ($.Values.annotations).common }}
+  annotations: {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if not ($.Values.autoscaling).enabled }}
+  replicas: {{ $.Values.replicaCount | default 1 }}
+  {{- end }}
+  selector:
+    matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
+  serviceName: {{ include "arkcase.service.headless" $ | quote }}
+  updateStrategy:
+    type: {{ $.Values.updateStrategy }}
+    {{- if (eq "Recreate" $.Values.updateStrategy) }}
+    rollingUpdate: null
+    {{- else if $.Values.rollingUpdatePartition }}
+    rollingUpdate:
+      partition: {{ $.Values.rollingUpdatePartition }}
+    {{- end }}
+  template:
+    metadata:
+      name: *fullname
+      namespace: {{ $.Release.Namespace | quote }}
+      labels: {{- include "arkcase.labels" $ | nindent 8 }}
+        {{- with ($.Values.labels).common }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      annotations:
+        # NB: Both these annotation values must be of type "string"
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9100"
+        timestamp: {{ date "20060102150405" now | quote }}
+        {{- with ($.Values.annotations).common }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- include "arkcase.image.pullSecrets" $ | nindent 6 }}
+      {{- with $.Values.hostAliases }}
+      hostAliases: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if $.Values.schedulerName }}
+      schedulerName: {{ $.Values.schedulerName | quote }}
+      {{- end }}
+      serviceAccountName: {{ include "arkcase.serviceAccountName" $ | quote }}
+      {{- with ($.Values.securityContext).template }}
+      securityContext: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      initContainers:
+        - name: set-permissions
+          {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
+          env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            - name: JOBS
+              value: |
+                jobs:
+                  # We know the Step image uses user 1000
+                  - ownership: {{ coalesce ($.Values.persistence).ownership "1000:1000" | quote }}
+                    permissions: "u=rwX,g=rX,o="
+                    flags: [ "recurse", "noforced", "create", "changes" ]
+                    targets: [ "/app/data" ]
+          volumeMounts:
+            - name: &dataVolume "data"
+              mountPath: &dataDir "/app/data"
+        {{- end }}
+      containers:
+        - name: step
+          {{- include "arkcase.image" (dict "ctx" $ "name" "step" "repository" "arkcase/step-ca") | nindent 10 }}
+          env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            - name: DOCKER_STEPCA_INIT_NAME
+              value: "ArkCase CA"
+            - name: DOCKER_STEPCA_INIT_ACME
+              value: "true"
+            - name: DOCKER_STEPCA_INIT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: *fullname
+                  key: "CA_PASSWORD"
+          ports:
+            - name: ca
+              protocol: TCP
+              containerPort: 9000
+          volumeMounts:
+            - name: *dataVolume
+              mountPath: *datadir
+          {{- end }}
+      volumes:
+        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
+        - name: *secrets
+          secret:
+            optional: false
+            secretName: *fullname
+            defaultMode: 0444
+      {{- with $.Values.nodeSelector }}
+      nodeSelector: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $.Values.affinity }}
+      affinity: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $.Values.tolerations }}
+      tolerations: {{- toYaml . | nindent 8 }}
+      {{- end }}
+  volumeClaimTemplates:
+    {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "data") | nindent 4 }}
+
+  {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "data") | nindent 0 }}
+{{- end }}

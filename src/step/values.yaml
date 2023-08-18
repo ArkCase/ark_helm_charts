@@ -1,0 +1,127 @@
+# Default values for ark-samba.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# This can be set to "false" by parent charts. If not defined, it will be taken as true
+#enabled: true
+
+#
+# This should group all application-specific configurations
+#
+configuration:
+  password: "RaL@a5eio:heC3"
+
+resources:
+  development:
+    limits: "1268Mi,0.4"
+
+platform: ""
+
+image:
+  pullPolicy: IfNotPresent
+
+  registry: "public.ecr.aws"
+  repository: "arkcase/step-ca"
+
+  # Overrides the image tag whose default is the chart appVersion.
+  # setperm:
+  #   repository: "arkcase/step-ca"
+  #   tag: "latest"
+
+# You generally shouldn't mess with these. These exist to support some name-generation templates
+nameOverride: ""
+fullnameOverride: ""
+
+# Custom annotations to apply throughout
+annotations:
+
+# Custom labels to apply throughout
+labels:
+
+updateStrategy: RollingUpdate
+rollingUpdatePartition: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: false
+  # Annotations to add to the service account
+  annotations:
+  # Annotations to add to the service account
+  labels:
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+securityContext:
+  template:
+    # You must specify an `fsGroup` to allow ActiveMQ write access to mounted
+    # volumes (as long as ActiveMQ runs as a non-root user, which should be the
+    # case). Any random number will do.
+    # fsGroup: 2000
+    # fsGroupChangePolicy: OnRootMismatch
+  step-ca:
+    privileged: false
+    # capabilities:
+    #   drop:
+    #   - ALL
+    # readOnlyRootFilesystem: true
+    # runAsNonRoot: true
+    # runAsUser: 1000
+
+#autoscaling:
+  #enabled: false
+  #minReplicas: 1
+  #maxReplicas: 100
+  #targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+nodeSelector:
+
+tolerations:
+
+affinity:
+
+persistence:
+  # If set to `false`, an `emptyDir` will be used instead and all other `persistence.*` parameters
+  # are ignored.
+  enabled: true
+
+  # Set the default capacity for volumes in case none is assigned explicitly
+  # and the default value is insufficient
+  volumeSize:
+    data: "1Gi"
+
+#  The volumes for persistent data
+  volumes:
+# The volume where the data will be stored (RTFM for more info on how to
+# properly declare volumes)
+#     data:
+
+service:
+  #external: "192.168.3.54"
+  ports:
+    - name: ca
+      protocol: TCP
+      port: &port 9000
+##
+##
+## Configure extra options for containers' liveness and readiness probes
+## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/#configure-probes
+## @param service.probes.enabled Enable liveness and readiness probes
+## @param service.probes.spec.initialDelaySeconds Initial delay seconds for liveness and readiness probes
+## @param service.probes.spec.periodSeconds Period seconds for liveness and readiness probes
+## @param service.probes.spec.timeoutSeconds Timeout seconds for liveness and readiness probes
+## @param service.probes.spec.failureThreshold Failure threshold for liveness and readiness probes
+## @param service.probes.spec.successThreshold Success threshold for liveness and readiness probes
+##
+  probes:
+    enabled: true
+    readiness:
+    spec:
+      tcpSocket:
+        port: *port
+      initialDelaySeconds: 10
+      periodSeconds: 30
+      timeoutSeconds: 30
+      failureThreshold: 60
+      successThreshold: 1
