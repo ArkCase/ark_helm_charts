@@ -1,0 +1,23 @@
+#!/bin/bash
+
+timestamp() {
+	/usr/bin/date -Ins -u
+}
+
+say() {
+	echo -e "$(timestamp): ${@}"
+}
+
+fail() {
+	say "${@}" 1>&2
+	exit ${EXIT_CODE:-1}
+}
+
+set -euo pipefail
+
+[ -v SSL_DIR ] || export SSL_DIR="/.ssl"
+export ACME_SUPPORT_HAPROXY="true"
+acme-init
+
+say "Launching HAProxy"
+exec "/usr/local/bin/docker-entrypoint.sh" "/usr/local/sbin/haproxy" "-f" "/usr/local/etc/haproxy/haproxy.cfg"
