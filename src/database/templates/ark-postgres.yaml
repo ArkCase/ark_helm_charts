@@ -79,6 +79,7 @@ spec:
           {{- include "arkcase.image" (dict "ctx" $ "name" "postgresql" "repository" "arkcase/postgres") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.initDatabase.adminPassEnv" (dict "ctx" $ "var" "POSTGRESQL_ADMIN_PASSWORD") | nindent 12 }}
+            {{- include "arkcase.acme.env" $ | nindent 12 }}
           {{- include "arkcase.rdbms.ports" $ | nindent 10 }}
           {{- if $.Values.command }}
           command: {{- $.Values.command | toYaml | nindent 12 }}

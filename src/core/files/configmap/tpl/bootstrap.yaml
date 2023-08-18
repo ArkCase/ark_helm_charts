@@ -2,7 +2,7 @@
 {{- if $foia -}}
 {{- /* Eventually we'll need to graft other profiles in here like "ims" or "eeoc" */ -}}
 {{- $profiles := list "custom_base" "foia" "custom" "server" "runtime" -}}
-{{- $configUrl := "http://localhost:9999" -}}
+{{- $configUrl := "https://localhost:9999" -}}
 spring:
   cloud.config:
     name: arkcase-portal,external-portal-en,lookups,core-en

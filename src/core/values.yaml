@@ -13,10 +13,10 @@
 #
 configuration:
 
-  baseUrl: "http://server.dev.arkcase.com:8080/arkcase"
+  baseUrl: "https://server.dev.arkcase.com:8443/arkcase"
 
   proxy:
-    reports: "http://reports:8080"
+    reports: "https://reports:8443"
     weather: "https://api.openweathermap.org/data/2.5"
 
   db:
@@ -85,7 +85,7 @@ configuration:
 
   configServer:
     # For now, it's collocated ... eventually it will live elsewhere
-    url: "http://localhost:9999"
+    url: "https://localhost:9999"
 
   content: &content
     dialect: "alfresco"
@@ -95,17 +95,17 @@ configuration:
     password: "admin"
 
   messaging: &messaging
-    url: "tcp://messaging"
+    url: "tcp+ssl://messaging"
     stomp: 61613
     openwire: 61616
     username: "arkcase"
     password: "arkcase"
 
   reports:
-    url: "http://reports:8080"
+    url: "https://reports:8443"
 
   search:
-    url: "http://search:8983"
+    url: "https://search:8983"
 
   # Add configurations here
   cloudconfig:
@@ -318,7 +318,7 @@ service:
     ports:
       - name: arkcase
         protocol: TCP
-        port: &arkcasePort 8080
+        port: &arkcasePort 8443
       - name: debug
         protocol: TCP
         port: &debugPort 8888

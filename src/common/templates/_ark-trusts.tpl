@@ -89,7 +89,7 @@
   {{- end -}}
   {{- $volumeName := (include "arkcase.trusts.secret" $) -}}
 - name: &sslTrustSecrets {{ $volumeName | quote }}
-  mountPath: "/.ssl-trusts"
+  mountPath: "/.trusts"
   readOnly: true
 {{- end -}}
 

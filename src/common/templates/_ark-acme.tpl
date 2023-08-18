@@ -1,4 +1,4 @@
-{{- define "arkcase.acme.envvars" -}}
+{{- define "arkcase.acme.env" -}}
   {{- $url := (include "arkcase.tools.parseUrl" "https://acme:9000" | fromYaml) -}}
   {{- $acme := (include "arkcase.dependency.target" (dict "ctx" $ "hostname" "acme") | fromYaml) -}}
   {{- if $acme -}}
@@ -13,4 +13,39 @@
   {{- end -}}
 - name: ACME_URL
   value: {{ $url.url | quote }}
+{{- end -}}
+
+{{- define "arkcase.acme.sharedSecret" -}}
+  {{- if not (include "arkcase.isRootContext" $) -}}
+    {{- fail "The parameter given must be the root context (. or $)" -}}
+  {{- end -}}
+  {{- printf "%s-acme" $.Release.Name -}}
+{{- end -}}
+
+{{- define "arkcase.acme.passwordVariable" -}}
+ACME_CLIENT_PASSWORD
+{{- end -}}
+
+{{- define "arkcase.acme.volumeMount" -}}
+  {{- if not (include "arkcase.isRootContext" $) -}}
+    {{- fail "The parameter given should be the root context (. or $)" -}}
+  {{- end -}}
+- name: &acmeSecret {{ include "arkcase.acme.sharedSecret" $ | quote }}
+  mountPath: "/.acme.password"
+  subPath: &acmePassword {{ include "arkcase.acme.passwordVariable" $ | quote }}
+  readOnly: true
+{{- end -}}
+
+{{- define "arkcase.acme.volume" -}}
+  {{- if not (include "arkcase.isRootContext" $) -}}
+    {{- fail "The parameter given should be the root context (. or $)" -}}
+  {{- end -}}
+- name: *acmeSecret
+  secret:
+    optional: false
+    secretName: *name
+    defaultMode: 0444
+    items:
+      - key: *acmePassword
+        path: *acmePassword
 {{- end -}}

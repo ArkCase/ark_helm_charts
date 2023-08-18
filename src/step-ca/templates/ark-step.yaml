@@ -1,3 +1,4 @@
+{{- $secretsPath := "/.secrets" -}}
 {{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.samba.external" $)) }}
 apiVersion: apps/v1
 kind: StatefulSet
@@ -75,14 +76,12 @@ spec:
           {{- include "arkcase.image" (dict "ctx" $ "name" "step" "repository" "arkcase/step-ca") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             - name: DOCKER_STEPCA_INIT_NAME
-              value: "ArkCase CA"
-            - name: DOCKER_STEPCA_INIT_ACME
-              value: "true"
-            - name: DOCKER_STEPCA_INIT_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: *fullname
-                  key: "CA_PASSWORD"
+              value: "ArkCase on Kubernetes"
+            # Not yet ... but soon!
+            # - name: DOCKER_STEPCA_INIT_ACME
+            #   value: "true"
+            - name: DOCKER_STEPCA_INIT_PASSWORD_FILE
+              value: {{ printf "%s/%s" $secretsPath (include "arkcase.acme.passwordVariable" $) | quote }}
           ports:
             - name: ca
               protocol: TCP
@@ -90,13 +89,15 @@ spec:
           volumeMounts:
             - name: *dataVolume
               mountPath: *datadir
+            - name: &secretsVol "secrets"
+              mountPath: {{ $secretsPath | quote }}
           {{- end }}
       volumes:
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
-        - name: *secrets
+        - name: *secretsVol
           secret:
             optional: false
-            secretName: *fullname
+            secretName: {{ include "arkcase.acme.sharedSecret" $ | quote }}
             defaultMode: 0444
       {{- with $.Values.nodeSelector }}
       nodeSelector: {{- toYaml . | nindent 8 }}

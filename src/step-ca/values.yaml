@@ -9,11 +9,10 @@
 # This should group all application-specific configurations
 #
 configuration:
-  password: "RaL@a5eio:heC3"
 
 resources:
   development:
-    limits: "1268Mi,0.4"
+    limits: "1Gi,0.5"
 
 platform: ""
 
@@ -60,7 +59,7 @@ securityContext:
     # fsGroup: 2000
     # fsGroupChangePolicy: OnRootMismatch
   step-ca:
-    privileged: false
+    # privileged: false
     # capabilities:
     #   drop:
     #   - ALL
@@ -89,7 +88,7 @@ persistence:
   # Set the default capacity for volumes in case none is assigned explicitly
   # and the default value is insufficient
   volumeSize:
-    data: "1Gi"
+    data: "2Gi"
 
 #  The volumes for persistent data
   volumes:
@@ -100,7 +99,7 @@ persistence:
 service:
   #external: "192.168.3.54"
   ports:
-    - name: ca
+    - name: acme
       protocol: TCP
       port: &port 9000
 ##
@@ -118,10 +117,10 @@ service:
     enabled: true
     readiness:
     spec:
-      tcpSocket:
-        port: *port
+      exec:
+        command: [ "step", "ca", "health" ]
       initialDelaySeconds: 10
-      periodSeconds: 30
-      timeoutSeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 5
       failureThreshold: 60
       successThreshold: 1

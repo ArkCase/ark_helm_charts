@@ -86,14 +86,14 @@ gateway:
       ark-core:
         preserveHosts: true
         locations:
-          - url: &coreUrl "http://core:8080/arkcase"
+          - url: &coreUrl "https://core:8443/arkcase"
             path: "/arkcase"
 
       # ArkCase Cloud Configuration
       ark-config:
         preserveHosts: true
         locations:
-          - url: &configUrl "http://core:9999/"
+          - url: &configUrl "https://core:9999/"
             path: "/config"
             html:
               enabled: true
@@ -108,17 +108,17 @@ gateway:
       ark-messaging:
         preserveHosts: true
         locations:
-          - url: "http://messaging:8161/"
+          - url: "https://messaging:8161/"
             path: "/messaging"
             html:
               enabled: true
               extended: true
               urlMap:
-                - from: "http://messaging:8161/admin/"
+                - from: "https://messaging:8161/admin/"
                   to: "/messaging/admin/"
                 - from: "/admin/"
                   to: "/messaging/admin/"
-                - from: "http://messaging:8161/api/"
+                - from: "https://messaging:8161/api/"
                   to: "/messaging/api/"
                 - from: "/api/"
                   to: "/messaging/api/"
@@ -127,14 +127,14 @@ gateway:
       ark-search:
         preserveHosts: true
         locations:
-          - url: "http://search:8983/solr/"
+          - url: "https://search:8983/solr/"
             path: "/search"
 
       # Pentaho
       ark-reports:
         preserveHosts: true
         locations:
-          - url: &reportsUrl "http://reports:8080/pentaho/"
+          - url: &reportsUrl "https://reports:8443/pentaho/"
             path: "/pentaho"
 
       # Alfresco
@@ -270,7 +270,7 @@ reports:
     arkcase:
        adminUsername: *arkcaseAdminUsername
        adminPassword: *arkcaseAdminPassword
-    # serverUrl: "http://reports:8080/pentaho/"
+    # serverUrl: "https://reports:8443/pentaho/"
     ldap:
       <<: *ldapConfig
     db:
