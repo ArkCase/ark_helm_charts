@@ -9,7 +9,7 @@ mysql: &mysql
   jdbc:
     driver: com.mysql.cj.jdbc.Driver
     type: mysql
-    format: "jdbc:mysql://${HOSTNAME}:${PORT}/${DATABASE}"
+    format: "jdbc:mysql://${HOSTNAME}:${PORT}/${DATABASE}?sslMode=VERIFY_IDENTITY"
   validationQuery: "SELECT 1"
   aliases:
     - mariadb
@@ -55,7 +55,7 @@ postgresql:
   jdbc:
     driver: org.postgresql.Driver
     type: postgresql
-    format: "jdbc:postgresql://${HOSTNAME}:${PORT}/${DATABASE}"
+    format: "jdbc:postgresql://${HOSTNAME}:${PORT}/${DATABASE}?ssl=true"
   validationQuery: "SELECT 1"
   aliases:
     - psql
@@ -72,7 +72,7 @@ sqlserver:
   jdbc:
     driver: com.microsoft.sqlserver.jdbc.SQLServerDriver
     type: sqlserver
-    format: "jdbc:sqlserver://${HOSTNAME}${INSTANCE}:${PORT};DatabaseName=${DATABASE}"
+    format: "jdbc:sqlserver://${HOSTNAME}${INSTANCE}:${PORT};DatabaseName=${DATABASE};encrypt=true;trustServerCertificate=false;"
     instance:
       format: "\\${INSTANCE}"
   validationQuery: "SELECT 1"

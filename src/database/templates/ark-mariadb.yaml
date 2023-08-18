@@ -79,12 +79,14 @@ spec:
           {{- include "arkcase.image" (dict "ctx" $ "name" "mysql" "repository" "arkcase/mysql") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.initDatabase.adminPassEnv" (dict "ctx" $ "var" "MYSQL_ROOT_PASSWORD") | nindent 12 }}
+            {{- include "arkcase.acme.env" $ | nindent 12 }}
           {{- include "arkcase.rdbms.ports" $ | nindent 10 }}
           {{- if $.Values.command }}
           command: {{- $.Values.command | toYaml | nindent 12 }}
           {{- end }}
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           volumeMounts:
+            {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
             - name: "init"
               mountPath: "/opt/app-root/src/mysql-init"
             - name: "data"
@@ -93,6 +95,7 @@ spec:
               mountPath: "/app/secrets"
               readOnly: true
       volumes:
+        {{- include "arkcase.acme.volume" $ | nindent 8 }}
         {{- include "arkcase.initDatabase.secretVolume" $ | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "init") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}

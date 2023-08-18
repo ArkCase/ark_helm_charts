@@ -1,17 +1,8 @@
 {{- if (include "arkcase.subsystem.enabledOrExternal" .) -}}
-Samba Domain specs:
 
-    {{- $domain := (include "arkcase.ldap" (dict "ctx" $ "value" "domain")) }}
-    {{- $administrator := (include "arkcase.ldap" (dict "ctx" $ "value" "administrator") | default "administrator") }}
-    {{- $password := (include "arkcase.ldap" (dict "ctx" $ "value" "password")) }}
-    {{- $baseDn := (include "arkcase.ldap.baseDn" $) }}
-    {{- $userBaseDn := (include "arkcase.ldap" (dict "ctx" $ "value" "search.users.base") | default "cn=Users") }}
-	{{- $realm := (include "arkcase.ldap.realm" $) }}
-	Domain: {{ $domain }}
-	Realm: {{ $realm }}
-	LDAP Base DN: {{ $baseDn }}
+Step CA:
 
-Check that LDAPS is running by using the following command:
+  - The connectivity password is on the secret '{{ include "arkcase.acme.sharedSecret" $ }}'
+    under the key '{{ include "arkcase.acme.passwordVariable" $ }}'
 
-    $ LDAPTLS_REQCERT=never ldapsearch -H ldaps://{{ include "arkcase.fullname" $ }} -D {{ $realm }}\{{ $administrator }} -w {{ $password | quote }} -b {{ $baseDn | quote }} {{ $userBaseDn | quote }} dn
 {{- end -}}

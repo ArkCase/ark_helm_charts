@@ -1,5 +1,5 @@
 {{- $secretsPath := "/.secrets" -}}
-{{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.samba.external" $)) }}
+{{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.acme.external" $)) }}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -70,10 +70,9 @@ spec:
           volumeMounts:
             - name: &dataVolume "data"
               mountPath: &dataDir "/app/data"
-        {{- end }}
       containers:
         - name: step
-          {{- include "arkcase.image" (dict "ctx" $ "name" "step" "repository" "arkcase/step-ca") | nindent 10 }}
+          {{- include "arkcase.image" $ | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             - name: DOCKER_STEPCA_INIT_NAME
               value: "ArkCase on Kubernetes"
@@ -88,10 +87,9 @@ spec:
               containerPort: 9000
           volumeMounts:
             - name: *dataVolume
-              mountPath: *datadir
+              mountPath: *dataDir
             - name: &secretsVol "secrets"
               mountPath: {{ $secretsPath | quote }}
-          {{- end }}
       volumes:
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
         - name: *secretsVol

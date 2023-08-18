@@ -19,7 +19,7 @@
   {{- if not (include "arkcase.isRootContext" $) -}}
     {{- fail "The parameter given must be the root context (. or $)" -}}
   {{- end -}}
-  {{- printf "%s-acme" $.Release.Name -}}
+  {{- printf "%s-acme-shared" $.Release.Name -}}
 {{- end -}}
 
 {{- define "arkcase.acme.passwordVariable" -}}
@@ -30,7 +30,7 @@ ACME_CLIENT_PASSWORD
   {{- if not (include "arkcase.isRootContext" $) -}}
     {{- fail "The parameter given should be the root context (. or $)" -}}
   {{- end -}}
-- name: &acmeSecret {{ include "arkcase.acme.sharedSecret" $ | quote }}
+- name: &acmeVolume "acme"
   mountPath: "/.acme.password"
   subPath: &acmePassword {{ include "arkcase.acme.passwordVariable" $ | quote }}
   readOnly: true
@@ -40,10 +40,10 @@ ACME_CLIENT_PASSWORD
   {{- if not (include "arkcase.isRootContext" $) -}}
     {{- fail "The parameter given should be the root context (. or $)" -}}
   {{- end -}}
-- name: *acmeSecret
+- name: *acmeVolume
   secret:
     optional: false
-    secretName: *name
+    secretName: {{ include "arkcase.acme.sharedSecret" $ | quote }}
     defaultMode: 0444
     items:
       - key: *acmePassword
