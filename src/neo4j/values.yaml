@@ -34,10 +34,8 @@ initDependencies:
     timeout: 5
     attempts: 12
   dependencies:
-    ldap:
+    acme:
       ports:
-        - 389
-        - 636
         - 9000
 
 # You generally shouldn't mess with these. These exist to support some name-generation templates

@@ -29,6 +29,9 @@ initDependencies:
     attempts: 12
   mode: all
   dependencies:
+    acme:
+      ports:
+        - 9000
     app-artifacts:
       ports:
         - 80
@@ -39,12 +42,9 @@ image:
   registry: "public.ecr.aws"
   repository: "arkcase/samba"
 
-  step:
-    repository: "arkcase/step-ca"
-
   # Overrides the image tag whose default is the chart appVersion.
   # setperm:
-  #   repository: "arkcase/step-ca"
+  #   repository: "arkcase/setperm"
   #   tag: "latest"
 
 # You generally shouldn't mess with these. These exist to support some name-generation templates

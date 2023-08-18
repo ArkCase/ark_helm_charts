@@ -91,11 +91,13 @@ initDependencies:
     app-artifacts:
       ports:
         - 80
+    acme:
+      ports:
+        - 9000
     ldap:
       ports:
         - 389
         - 636
-        - 9000
     rdbms:
       ports:
         # In case of SQLServer

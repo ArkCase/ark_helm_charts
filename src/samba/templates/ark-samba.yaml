@@ -55,22 +55,6 @@ spec:
       securityContext: {{- toYaml . | nindent 8 }}
       {{- end }}
       initContainers:
-        {{- if (include "arkcase.samba.step" $) }}
-        - name: set-permissions
-          {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
-          env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
-            - name: JOBS
-              value: |
-                jobs:
-                  # We know the Step image uses user 1000
-                  - ownership: {{ coalesce ($.Values.persistence).ownership "1000:1000" | quote }}
-                    permissions: "u=rwX,g=rX,o="
-                    flags: [ "recurse", "noforced", "create", "changes" ]
-                    targets: [ "/step" ]
-          volumeMounts:
-            - name: &stepVolume "step"
-              mountPath: "/step"
-        {{- end }}
         {{- include "arkcase.initDependencies.container" $ | nindent 8 }}
       containers:
         - name: samba
@@ -79,6 +63,7 @@ spec:
           {{- end }}
           {{- include "arkcase.image" $ | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            {{- include "arkcase.acme.env" $ | nindent 12 }}
             - name: DOMAIN
               valueFrom:
                 secretKeyRef:
@@ -103,18 +88,13 @@ spec:
               value: {{ include "arkcase.name" $ | quote }}
             - name: SEED_DIR
               value: "/app/secrets"
-          {{- if (include "arkcase.samba.step" $) }}
-            - name: STEP_URL
-              value: "https://localhost:9000"
-            - name: STEP_PASSWORD_FILE
-              value: "/app/secrets/step.password"
-          {{- end }}
           {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
           {{- if $.Values.command }}
           command: {{- $.Values.command | toYaml | nindent 12 }}
           {{- end }}
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           volumeMounts:
+            {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
             - name: "init"
               mountPath: "/app/init"
             - name: "conf"
@@ -134,35 +114,12 @@ spec:
               mountPath: "/usr/local/bin/init-seeds"
               subPath: &initSeeds "init-seeds"
               readOnly: true
-          {{- if (include "arkcase.samba.step" $) }}
-        - name: step
-          {{- include "arkcase.image" (dict "ctx" $ "name" "step" "repository" "arkcase/step-ca") | nindent 10 }}
-          env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
-            - name: DOCKER_STEPCA_INIT_NAME
-              value: "ArkCase Samba"
-            - name: DOCKER_STEPCA_INIT_DNS_NAMES
-              value: "localhost"
-            - name: DOCKER_STEPCA_INIT_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: *secretName
-                  key: "step.password"
-          # ports:
-          #   - name: https
-          #     protocol: TCP
-          #     containerPort: 9000
-          volumeMounts:
-            - name: *stepVolume
-              mountPath: "/home/step"
-          {{- end }}
       volumes:
+        {{- include "arkcase.acme.volume" $ | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "init") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "conf") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "logs") | nindent 8 }}
-        {{- if (include "arkcase.samba.step" $) }}
-          {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "step") | nindent 8 }}
-        {{- end }}
         - name: *secrets
           secret:
             optional: false
@@ -194,16 +151,10 @@ spec:
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "conf") | nindent 4 }}
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "data") | nindent 4 }}
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "logs") | nindent 4 }}
-    {{- if (include "arkcase.samba.step" $) }}
-      {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "step") | nindent 4 }}
-    {{- end }}
 
   {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "init") | nindent 0 }}
   {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "conf") | nindent 0 }}
   {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "data") | nindent 0 }}
   {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "logs") | nindent 0 }}
-  {{- if (include "arkcase.samba.step" $) }}
-    {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "step") | nindent 0 }}
-  {{- end }}
 
 {{- end }}

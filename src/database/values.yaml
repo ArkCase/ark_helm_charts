@@ -29,6 +29,21 @@ resources:
   development:
     limits: "100Mi,0.1"
 
+initDependencies:
+  enabled: true
+  mode: all
+  template:
+    # Any of the required ports are enough to succeed
+    mode: any
+    initialDelay: 10
+    delay: 5
+    timeout: 5
+    attempts: 12
+  dependencies:
+    acme:
+      ports:
+        - 9000
+
 # Please leave the `replicaCount` to 1 for the time being. Clustering is not
 # supported yet.
 replicaCount: 1

@@ -87,8 +87,6 @@ spec:
           {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
           {{- if $.Values.command }}
           command: {{ toJson $.Values.command }}
-          {{- else }}
-          command: [ "/entrypoint" ]
           {{- end }}
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           volumeMounts:
@@ -101,10 +99,6 @@ spec:
             - name: &configMap "config-map"
               mountPath: "/app/conf/neo4j.conf"
               subPath: &neo4jConf "neo4j.conf"
-              readOnly: true
-            - name: *configMap
-              mountPath: "/entrypoint"
-              subPath: &entrypoint "entrypoint"
               readOnly: true
       volumes:
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
@@ -119,8 +113,6 @@ spec:
             items:
               - key: *neo4jConf
                 path: *neo4jConf
-              - key: *entrypoint
-                path: *entrypoint
                 mode: 0555
   volumeClaimTemplates:
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "data") | nindent 4 }}
