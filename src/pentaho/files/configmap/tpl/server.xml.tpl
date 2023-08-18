@@ -113,6 +113,34 @@
                port="8009"
                redirectPort="{{ $httpsPort }}" />
     -->
+    <Connector connectionTimeout="20000"
+               maxHttpHeaderSize="65536"
+               maxThreads="150"
+               relaxedPathChars="[]|"
+               relaxedQueryChars="^{}[]|&amp;"
+               port="{{ $httpsPort }}"
+               protocol="org.apache.coyote.http11.Http11AprProtocol"
+               {{- if and $proxyName $proxyPort }}
+               {{- $proxyName = (include "arkcase.tools.mustSingleHostname" $proxyName) }}
+               proxyName="{{ $proxyName }}"
+               {{- $proxyPort = ($proxyPort | toString | int) }}
+               {{- if or (lt $proxyPort 1) (gt $proxyPort 65535) }}
+                 {{- fail (printf "The port number %d is invalid - must be within [1..65535]" $proxyPort) }}
+               {{- end }}
+               proxyPort="{{ $proxyPort }}"
+               {{- end }}
+               scheme="https"
+               secure="true"
+               SSLEnabled="true"
+               useBodyEncodingForURI="true">
+        <UpgradeProtocol className="org.apache.coyote.http2.Http2Protocol" />
+        <SSLHostConfig protocols="TLSv1.2" certificateVerification="none">
+            <Certificate certificateKeyFile="/.ssl/key.pem"
+                         certificateFile="/.ssl/cert.pem"
+                         certificateChainFile="/.ssl/tomcat-chain.pem"
+                         type="RSA" />
+        </SSLHostConfig>
+    </Connector>
 
     <!-- An Engine represents the entry point (within Catalina) that processes
          every request.  The Engine implementation for Tomcat stand alone

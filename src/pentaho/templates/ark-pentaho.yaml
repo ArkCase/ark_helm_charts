@@ -672,6 +672,8 @@ spec:
               mountPath: "/usr/local/etc/curator-wrapper.yaml"
               subPath: &curatorWrapperYaml "curator-wrapper.yaml"
               readOnly: true
+            - name: &ssl "ssl"
+              mountPath: "/.ssl"
         {{- if $cluster.enabled }}
         - name: haproxy
           {{- with ($.Values.securityContext).pentaho }}
@@ -679,18 +681,27 @@ spec:
           {{- end }}
           {{- include "arkcase.image" (dict "ctx" $ "name" "haproxy" "repository" "haproxy") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
-          # command: [ "sleep", "infinity" ]
+          command: [ "/entrypoint" ]
           volumeMounts:
             - name: *configMap
               mountPath: "/usr/local/etc/haproxy/haproxy.cfg"
               subPath: &haproxyCfg "haproxy.cfg"
               readOnly: true
+            - name: *configMap
+              mountPath: "/entrypoint"
+              subPath: &entrypointHaproxy "entrypoint-haproxy"
+              readOnly: true
+            - name: *ssl
+              mountPath: *sslDir
         {{- end }}
       volumes:
         {{- include "arkcase.trusts.volume" $ | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "init") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "logs") | nindent 8 }}
+        - name: *ssl
+          emptyDir:
+            sizeLimit: 16Mi
         - name: *secrets
           secret:
             optional: false
@@ -740,6 +751,9 @@ spec:
                 mode: 0555
               - key: *entrypoint
                 path: *entrypoint
+                mode: 0555
+              - key: *entrypointHaproxy
+                path: *entrypointHaproxy
                 mode: 0555
               - key: *configPreSh
                 path: *configPreSh
