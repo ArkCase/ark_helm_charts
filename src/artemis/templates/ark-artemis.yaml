@@ -113,6 +113,7 @@ spec:
           securityContext: {{- toYaml . | nindent 12 }}
           {{- end }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            {{- include "arkcase.acme.env" $ | nindent 12 }}
             - name: ARTEMIS_ADMIN_PASSWORD
               valueFrom:
                 secretKeyRef:
@@ -131,6 +132,7 @@ spec:
           {{- end }}
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           volumeMounts:
+            {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
             - name: *confVol
               mountPath: *confPath
             - name: *dataVol
@@ -174,6 +176,7 @@ spec:
               subPath: &managementXml "management.xml"
               readOnly: true
       volumes:
+        {{- include "arkcase.acme.volume" $ | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
         - name: *secrets
           secret:

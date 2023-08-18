@@ -109,6 +109,7 @@ spec:
           {{- end }}
           {{- include "arkcase.image" $ | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            {{- include "arkcase.acme.env" $ | nindent 12 }}
             {{- $zk := (include "arkcase.cluster.zookeeper" $) -}}
             {{- if $zk }}
             - name: ZK_HOST
@@ -137,6 +138,7 @@ spec:
                 command: [ "/config-post.sh" ]
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           volumeMounts:
+            {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
             - name: *dataVolume
               mountPath: *dataPath
             - name: *initVolume
@@ -166,6 +168,7 @@ spec:
               subPath: &createCoresSh "create-cores.sh"
               readOnly: true
       volumes:
+        {{- include "arkcase.acme.volume" $ | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "init") | nindent 8 }}
         - name: *configMap
