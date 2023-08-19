@@ -674,8 +674,6 @@ spec:
               mountPath: "/usr/local/etc/curator-wrapper.yaml"
               subPath: &curatorWrapperYaml "curator-wrapper.yaml"
               readOnly: true
-            - name: &ssl "ssl"
-              mountPath: "/.ssl"
         {{- if $cluster.enabled }}
         - name: haproxy
           {{- with ($.Values.securityContext).pentaho }}
@@ -693,8 +691,6 @@ spec:
               mountPath: "/entrypoint"
               subPath: &entrypointHaproxy "entrypoint-haproxy"
               readOnly: true
-            - name: *ssl
-              mountPath: *sslDir
         {{- end }}
       volumes:
         {{- include "arkcase.trusts.volume" $ | nindent 8 }}
@@ -702,9 +698,6 @@ spec:
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "init") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "logs") | nindent 8 }}
-        - name: *ssl
-          emptyDir:
-            sizeLimit: 16Mi
         - name: *secrets
           secret:
             optional: false
