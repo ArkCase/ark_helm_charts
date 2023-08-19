@@ -245,12 +245,9 @@ licenses:
 service:
   #external: host-or-IP
   ports:
-    - name: console
-      protocol: TCP
-      port: &db 2002
     - name: http
       protocol: TCP
-      port: &http 8080
+      port: &http 8443
 ##
 ## Configure extra options for containers' liveness and readiness probes
 ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/#configure-probes
