@@ -43,15 +43,14 @@ fi
 [ -v INIT_MAX_WAIT ] || INIT_MAX_WAIT=90
 [[ "${INIT_MAX_WAIT}" =~ ^[1-9][0-9]*$ ]] || INIT_MAX_WAIT=90
 
-[ -v SOLR_URL ] || SOLR_URL="http://localhost:8983/solr"
+[ -v SOLR_URL ] || SOLR_URL="https://localhost:8983/solr"
 SOLR_URL+="/admin/info/health"
 
 START="$(date +%s)"
 say "Starting the polling cycle"
 while true ; do
-	/usr/bin/curl -k -m 5 "${SOLR_URL}" &>/dev/null && break
-	say "\tURL is not up yet at [${SOLR_URL}]"
-	 NOW="$(date +%s)"
+	/usr/bin/curl -kL --fail -m 5 "${SOLR_URL}" &>/dev/null && break
+	NOW="$(date +%s)"
 	[ $(( NOW - START )) -ge ${INIT_MAX_WAIT} ] && fail "Timed out waiting for the URL [${SOLR_URL}] to come up"
 	# If sleep didn't succeed, it means it got signaled, which
 	# Means we need to stop what we're doing and puke out
