@@ -1,7 +1,3 @@
-{{- $scheme := "http" -}}
-{{- with (include "arkcase.tools.conf" (dict "ctx" $ "value" "baseUrl")) -}}
-  {{- $scheme = get (include "arkcase.tools.parseUrl" . | fromYaml) "scheme" -}}
-{{- end -}}
 <?xml version="1.0" encoding="UTF-8"?>
 <beans xmlns="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.1.xsd">
@@ -14,7 +10,7 @@
             <props>
                 <!-- TODO: parameterize the URLs -->
                 <prop key="targetUri">{{- include "arkcase.tools.conf" (dict "ctx" $ "value" "proxy.reports") -}}</prop>
-                <prop key="relativeRedirectScheme">{{- $scheme | default "http" -}}</prop>
+                <prop key="relativeRedirectScheme">https</prop>
                 <prop key="http.protocol.handle-redirects">true</prop>
                 <!-- resource names regex patterns separated with comma "," if multiple.
                 Will be processed and override urls inside the response-->
@@ -53,7 +49,7 @@
         <property name="initParameters">
             <props>
                 <prop key="targetUri">{{- include "arkcase.tools.conf" (dict "ctx" $ "value" "proxy.weather") -}}</prop>
-                <prop key="relativeRedirectScheme">{{- $scheme | default "http" -}}</prop>
+                <prop key="relativeRedirectScheme">https</prop>
             </props>
         </property>
     </bean>
