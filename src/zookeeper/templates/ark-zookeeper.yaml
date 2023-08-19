@@ -111,6 +111,7 @@ spec:
           {{- end }}
           {{- include "arkcase.image" $ | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            {{- include "arkcase.acme.env" $ | nindent 12 }}
             - name: ZOOCFGDIR
               value: *confPath
             - name: ZOO_LOG_DIR
@@ -126,6 +127,7 @@ spec:
           {{- end }}
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           volumeMounts:
+            {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
             - name: *dataVolume
               mountPath: *dataPath
             - name: &configMap "configmap"
@@ -137,6 +139,7 @@ spec:
               subPath: &logbackXml "logback.xml"
               readOnly: true
       volumes:
+        {{- include "arkcase.acme.volume" $ | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "conf") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "logs") | nindent 8 }}
