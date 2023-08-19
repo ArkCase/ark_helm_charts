@@ -20,15 +20,13 @@ set -euo pipefail
 #
 [ -v SSL_DIR ] || export SSL_DIR="/.ssl"
 
-export ACME_KEYSTORE_PASSWORD="$(tr -dc '[:alnum:]' < /dev/urandom | fold -w ${1:-32} | head -1)"
 acme-init
-unset ACME_KEYSTORE_PASSWORD
 
 [ -v SERVER_DIR ] || SERVER_DIR="${HOME_DIR}/server"
 [ -v ETC_DIR ] || ETC_DIR="${SERVER_DIR}/etc"
 
 [ -v JAVA_TOOL_OPTIONS ] || JAVA_TOOL_OPTIONS=""
-JAVA_TOOL_OPTIONS+=" -Dorg.eclipse.jetty.ssl.keystore=${SSL_DIR}/keystore.pkcs12 -Dorg.eclipse.jetty.ssl.keypassword=$(<"${SSL_DIR}/keystore.pass") "
+JAVA_TOOL_OPTIONS+=" -Dorg.eclipse.jetty.ssl.keystore=${SSL_DIR}/keystore.pkcs12 -Dorg.eclipse.jetty.ssl.keypassword=$(<"${SSL_DIR}/keystore.pass") -Dzookeeper.client.secure=true "
 
 #
 # Now, continue with the boot
