@@ -141,7 +141,7 @@ JOBS_COUNT=${#JOBS[@]}
 if [ ${JOBS_COUNT} -gt 0 ] ; then
 	# Before we can run the dataminer first time, we MUST wait for
 	# ArkCase to come up ... if it doesn't, we're screwed
-	[ -v CORE_URL ] || CORE_URL="http://core:8080/arkcase/"
+	[ -v CORE_URL ] || CORE_URL="https://core:8443/arkcase/"
 	say "Found ${JOBS_COUNT} dataminers:"
 	for J in "${JOBS[@]}" ; do
 		say "\t${J}"
