@@ -20,21 +20,15 @@ set -euo pipefail
 #
 [ -v SSL_DIR ] || export SSL_DIR="/.ssl"
 
+export ACME_KEYSTORE_PASSWORD="$(tr -dc '[:alnum:]' < /dev/urandom | fold -w ${1:-32} | head -1)"
 acme-init
+unset ACME_KEYSTORE_PASSWORD
 
-# Enables HTTPS. It is implicitly true if you set SOLR_SSL_KEY_STORE. Use this config
-# to enable https module with custom jetty configuration.
-export SOLR_SSL_ENABLED="true"
+[ -v SERVER_DIR ] || SERVER_DIR="${HOME_DIR}/server"
+[ -v ETC_DIR ] || ETC_DIR="${SERVER_DIR}/etc"
 
-export SOLR_SSL_KEY_STORE="${SSL_DIR}/keystore.pkcs12"
-export SOLR_SSL_KEY_STORE_PASSWORD="$(<"${SSL_DIR}/keystore.pass")"
-
-# Require clients to authenticate
-# TODO: We eventually want to do this instead of using shared secrets
-export SOLR_SSL_NEED_CLIENT_AUTH="false"
-
-# Enable clients to authenticate (but not require)
-export SOLR_SSL_WANT_CLIENT_AUTH="false"
+[ -v JAVA_TOOL_OPTIONS ] || JAVA_TOOL_OPTIONS=""
+JAVA_TOOL_OPTIONS+=" -Dorg.eclipse.jetty.ssl.keystore=${SSL_DIR}/keystore.pkcs12 -Dorg.eclipse.jetty.ssl.keypassword=$(<"${SSL_DIR}/keystore.pass") "
 
 #
 # Now, continue with the boot

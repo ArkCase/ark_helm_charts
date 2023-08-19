@@ -119,7 +119,7 @@
                relaxedPathChars="[]|"
                relaxedQueryChars="^{}[]|&amp;"
                port="{{ $httpsPort }}"
-               protocol="org.apache.coyote.http11.Http11AprProtocol"
+               protocol="HTTP/1.1"
                {{- if and $proxyName $proxyPort }}
                {{- $proxyName = (include "arkcase.tools.mustSingleHostname" $proxyName) }}
                proxyName="{{ $proxyName }}"
@@ -135,9 +135,9 @@
                useBodyEncodingForURI="true">
         <UpgradeProtocol className="org.apache.coyote.http2.Http2Protocol" />
         <SSLHostConfig protocols="TLSv1.2" certificateVerification="none">
-            <Certificate certificateKeyFile="/.ssl/key.pem"
+            <Certificate certificateKeyFile="/.ssl/cert.key"
                          certificateFile="/.ssl/cert.pem"
-                         certificateChainFile="/.ssl/tomcat-chain.pem"
+                         certificateChainFile="/.ssl/ca-chain.pem"
                          type="RSA" />
         </SSLHostConfig>
     </Connector>

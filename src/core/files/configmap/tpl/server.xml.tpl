@@ -103,16 +103,16 @@
                maxHttpHeaderSize="32768"
                maxThreads="150"
                port="8443"
-               protocol="org.apache.coyote.http11.Http11AprProtocol"
+               protocol="HTTP/1.1"
                scheme="https"
                secure="true"
                SSLEnabled="true"
                useBodyEncodingForURI="true">
         <UpgradeProtocol className="org.apache.coyote.http2.Http2Protocol" />
         <SSLHostConfig protocols="TLSv1.2" certificateVerification="none">
-            <Certificate certificateKeyFile="/.ssl/key.pem"
+            <Certificate certificateKeyFile="/.ssl/cert.key"
                          certificateFile="/.ssl/cert.pem"
-                         certificateChainFile="/.ssl/tomcat-chain.pem"
+                         certificateChainFile="/.ssl/ca-chain.pem"
                          type="RSA" />
         </SSLHostConfig>
     </Connector>

@@ -507,6 +507,7 @@ spec:
           {{- include "arkcase.image" $ | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.cluster.tomcat.env" $ | nindent 12 }}
+            {{- include "arkcase.acme.env" $ | nindent 12 }}
             {{- if $cluster.enabled }}
               {{- $zk := (include "arkcase.cluster.zookeeper" $) }}
               {{- if $zk }}
@@ -553,6 +554,7 @@ spec:
           volumeMounts:
             {{- include "arkcase.pentaho.license.volumeMounts" (dict "ctx" $ "volume" "secrets" "path" "/app/init/licenses") | nindent 12 }}
             {{- include "arkcase.trusts.mount" $ | nindent 12 }}
+            {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
             - name: *dataVol
               mountPath: *dataPath
             - name: *initVol
@@ -696,6 +698,7 @@ spec:
         {{- end }}
       volumes:
         {{- include "arkcase.trusts.volume" $ | nindent 8 }}
+        {{- include "arkcase.acme.volume" $ | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "init") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "logs") | nindent 8 }}
@@ -752,9 +755,6 @@ spec:
               - key: *entrypoint
                 path: *entrypoint
                 mode: 0555
-              - key: *entrypointHaproxy
-                path: *entrypointHaproxy
-                mode: 0555
               - key: *configPreSh
                 path: *configPreSh
                 mode: 0555
@@ -790,6 +790,9 @@ spec:
               {{- if $cluster.enabled }}
               - key: *haproxyCfg
                 path: *haproxyCfg
+              - key: *entrypointHaproxy
+                path: *entrypointHaproxy
+                mode: 0555
               {{- end }}
       {{- with $.Values.nodeSelector }}
       nodeSelector: {{- toYaml . | nindent 8 }}

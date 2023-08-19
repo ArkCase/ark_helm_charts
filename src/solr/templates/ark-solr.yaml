@@ -130,12 +130,13 @@ spec:
           {{- if $.Values.command }}
           command: {{ toJson $.Values.command }}
           {{- else }}
-          command: [ "/entrypoint" ]
+          command: [ "sleep", "infinity" ]
+          # command: [ "/entrypoint" ]
           {{- end }}
-          lifecycle:
-            postStart:
-              exec:
-                command: [ "/config-post.sh" ]
+          # lifecycle:
+          #   postStart:
+          #     exec:
+          #       command: [ "/config-post.sh" ]
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           volumeMounts:
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
