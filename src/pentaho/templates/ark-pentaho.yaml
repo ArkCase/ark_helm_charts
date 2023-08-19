@@ -550,7 +550,7 @@ spec:
               value: {{ $cluster.enabled | ternary 4443 8443 | toString | quote }}
             - name: PENTAHO_INSTALLED_LICENSE_PATH
               value: "/app/data/.installedLicenses.xml"
-          {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
+          {{- include "arkcase.subsystem.ports" ($cluster.enabled | ternary ($.Values.service).clustered ($.Values.service).pentaho) | nindent 10 }}
           command: [ "/entrypoint" ]
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           volumeMounts:
@@ -686,6 +686,7 @@ spec:
           {{- include "arkcase.image" (dict "ctx" $ "name" "haproxy" "repository" "haproxy") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
           command: [ "/entrypoint" ]
+          {{- include "arkcase.subsystem.ports" ($.Values.service).pentaho | nindent 10 }}
           volumeMounts:
             - name: *ssl
               mountPath: *sslDir

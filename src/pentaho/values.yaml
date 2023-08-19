@@ -243,11 +243,38 @@ licenses:
   - "pentaho"
 
 service:
-  #external: host-or-IP
-  ports:
-    - name: http
-      protocol: TCP
-      port: &http 8443
+  pentaho:
+    ports:
+      - name: https
+        protocol: TCP
+        port: &https 8443
+    probes:
+      enabled: true
+      spec:
+        tcpSocket:
+          port: *https
+        initialDelaySeconds: 30
+        periodSeconds: 10
+        timeoutSeconds: 10
+        failureThreshold: 60
+        successThreshold: 1
+
+  clustered:
+    ports:
+      - name: clustered-https
+        protocol: TCP
+        port: &clustered 4443
+    probes:
+      enabled: true
+      spec:
+        tcpSocket:
+          port: *clustered
+        initialDelaySeconds: 30
+        periodSeconds: 10
+        timeoutSeconds: 10
+        failureThreshold: 60
+        successThreshold: 1
+
 ##
 ## Configure extra options for containers' liveness and readiness probes
 ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/#configure-probes
@@ -258,14 +285,3 @@ service:
 ## @param service.probes.spec.failureThreshold Failure threshold for liveness and readiness probes
 ## @param service.probes.spec.successThreshold Success threshold for liveness and readiness probes
 ##
-  probes:
-    enabled: true
-    spec:
-      httpGet:
-        path: "/pentaho/Login"
-        port: *http
-      initialDelaySeconds: 30
-      periodSeconds: 5
-      timeoutSeconds: 5
-      failureThreshold: 60
-      successThreshold: 1
