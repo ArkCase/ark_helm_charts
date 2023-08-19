@@ -51,7 +51,7 @@ if [ -d "${LOGS_DIR}" ] ; then
 	say "Logs redirected to [${LOG_FILE}]"
 fi
 
-[ -v ADMIN_URL ] || ADMIN_URL="http://localhost:8080/pentaho/"
+[ -v ADMIN_URL ] || ADMIN_URL="https://localhost:8443/pentaho/"
 
 # We have to sanitize the Admin URL to remove any trailing slashes
 shopt -s extglob

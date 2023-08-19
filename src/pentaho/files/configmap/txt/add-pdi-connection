@@ -131,7 +131,7 @@ create_connection() {
 
 [ ${#} -eq 1 ] || usage
 
-[ -v PENTAHO_URL ] || PENTAHO_URL="http://localhost:8080/pentaho"
+[ -v PENTAHO_URL ] || PENTAHO_URL="https://localhost:8443/pentaho"
 [ -v ADMIN_USERNAME ] || ADMIN_USERNAME="arkcase-admin"
 [ -v ADMIN_PASSWORD ] || ADMIN_PASSWORD='$arkcase-admin$'
 [ -v REPLACE ] || REPLACE="true"

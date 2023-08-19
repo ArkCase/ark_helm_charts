@@ -59,7 +59,7 @@ set -euo pipefail
 [ -v DWHS_DIR ] || DWHS_DIR="${DATA_DIR}/dw"
 [ -v LOGS_DIR ] || LOGS_DIR="${BASE_DIR}/logs"
 [ -v INIT_DIR ] || INIT_DIR="${BASE_DIR}/init"
-[ -v ADMIN_PORT ] || ADMIN_PORT="8080"
+[ -v ADMIN_PORT ] || ADMIN_PORT="8443"
 
 if [ -d "${LOGS_DIR}" ] ; then
 	LOG_FILE="${LOGS_DIR}/config-post.log"
@@ -74,7 +74,7 @@ fi
 [ -v INIT_MAX_WAIT ] || INIT_MAX_WAIT=900
 [[ "${INIT_MAX_WAIT}" =~ ^[1-9][0-9]*$ ]] || INIT_MAX_WAIT=900
 
-[ -v ADMIN_URL ] || ADMIN_URL="http://localhost:${ADMIN_PORT}/pentaho/"
+[ -v ADMIN_URL ] || ADMIN_URL="https://localhost:${ADMIN_PORT}/pentaho/"
 poll_url "${ADMIN_URL}" || fail "Cannot continue configuration if Pentaho is not online"
 
 [ -f "${RUN_MARKER}" ] || exit 0
