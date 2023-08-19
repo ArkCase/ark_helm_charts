@@ -32,9 +32,8 @@ initDependencies:
     acme:
       ports:
         - 9000
-    app-artifacts:
-      ports:
-        - 80
+
+command: [ "sleep", "infinity" ]
 
 image:
   pullPolicy: IfNotPresent

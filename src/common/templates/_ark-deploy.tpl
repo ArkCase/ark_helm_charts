@@ -1,4 +1,7 @@
-{{- define "arkcase.deployment.envvars" -}}
+{{- define "arkcase.deployment.env" -}}
+  {{- if not (include "arkcase.isRootContext" $) -}}
+    {{- fail "The parameter given must be the root context (. or $)" -}}
+  {{- end -}}
   {{- $url := (include "arkcase.tools.parseUrl" "http://app-artifacts" | fromYaml) -}}
   {{- $artifacts := (include "arkcase.dependency.target" (dict "ctx" $ "hostname" "app-artifacts") | fromYaml) -}}
   {{- if $artifacts -}}

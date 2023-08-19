@@ -76,6 +76,8 @@ spec:
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             - name: DOCKER_STEPCA_INIT_NAME
               value: "ArkCase on Kubernetes"
+            - name: DOCKER_STEPCA_INIT_SERVICE_NAME
+              value: {{ include "arkcase.service.name" $ | quote }}
             # Not yet ... but soon!
             # - name: DOCKER_STEPCA_INIT_ACME
             #   value: "true"

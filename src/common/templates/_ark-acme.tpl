@@ -1,4 +1,7 @@
 {{- define "arkcase.acme.env" -}}
+  {{- if not (include "arkcase.isRootContext" $) -}}
+    {{- fail "The parameter given must be the root context (. or $)" -}}
+  {{- end -}}
   {{- $url := (include "arkcase.tools.parseUrl" "https://acme:9000" | fromYaml) -}}
   {{- $acme := (include "arkcase.dependency.target" (dict "ctx" $ "hostname" "acme") | fromYaml) -}}
   {{- if $acme -}}
@@ -13,6 +16,8 @@
   {{- end -}}
 - name: ACME_URL
   value: {{ $url.url | quote }}
+- name: ACME_SERVICE_NAME
+  value: {{ include "arkcase.service.name" $ | quote }}
 {{- end -}}
 
 {{- define "arkcase.acme.sharedSecret" -}}

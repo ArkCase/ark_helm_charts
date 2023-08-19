@@ -142,7 +142,7 @@ spec:
           {{- include "arkcase.image" (dict "ctx" $ "name" "deployer" "repository" "arkcase/deployer") | nindent 10 }}
           command: [ "/deploy" ]
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
-            {{- include "arkcase.deployment.envvars" $ | nindent 12 }}
+            {{- include "arkcase.deployment.env" $ | nindent 12 }}
             - name: REALM_FIX
               value: {{ printf "arkcase.org=%s" (include "arkcase.ldap" (dict "ctx" $ "value" "domain")) | quote }}
         {{- if or $customConfFile $customWarFile }}
@@ -258,6 +258,7 @@ spec:
           {{- include "arkcase.image" (dict "ctx" $ "name" "arkcase" "repository" "arkcase/core") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.cluster.tomcat.env" $ | nindent 12 }}
+            {{- include "arkcase.acme.env" $ | nindent 12 }}
             - name: INIT_DIR
               value: *initDir
             - name: HOME_DIR
@@ -303,6 +304,7 @@ spec:
           {{- end }}
           volumeMounts:
             {{- include "arkcase.trusts.mount" $ | nindent 12 }}
+            {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
             - name: *initVolume
               mountPath: *initDir
             - name: *homeVolume
@@ -402,6 +404,7 @@ spec:
           {{- end }}
           {{- include "arkcase.image" (dict "ctx" $ "name" "cloudconfig" "repository" "arkcase/cloudconfig") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            {{- include "arkcase.acme.env" $ | nindent 12 }}
             {{- with (($.Values.configuration).cloudconfig).env }}
               {{- toYaml . | nindent 12 }}
             {{- end }}
@@ -421,6 +424,7 @@ spec:
           {{- end }}
           volumeMounts:
             {{- include "arkcase.trusts.mount" $ | nindent 12 }}
+            {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
             - name: *confVolume
               mountPath: *confDir
               subPath: "acm/acm-config-server-repo"
@@ -464,6 +468,7 @@ spec:
             {{- end }}
       volumes:
         {{- include "arkcase.trusts.volume" $ | nindent 8 }}
+        {{- include "arkcase.acme.volume" $ | nindent 8 }}
         - name: *secrets
           secret:
             optional: false
