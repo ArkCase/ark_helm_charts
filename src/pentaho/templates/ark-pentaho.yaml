@@ -555,6 +555,8 @@ spec:
             {{- include "arkcase.pentaho.license.volumeMounts" (dict "ctx" $ "volume" "secrets" "path" "/app/init/licenses") | nindent 12 }}
             {{- include "arkcase.trusts.mount" $ | nindent 12 }}
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
+            - name: &ssl "ssl"
+              mountPath: &sslDir "/.ssl"
             - name: *dataVol
               mountPath: *dataPath
             - name: *initVol
@@ -683,6 +685,9 @@ spec:
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
           command: [ "/entrypoint" ]
           volumeMounts:
+            - name: *ssl
+              mountPath: *sslDir
+              readOnly: true
             - name: *configMap
               mountPath: "/usr/local/etc/haproxy/haproxy.cfg"
               subPath: &haproxyCfg "haproxy.cfg"
@@ -698,6 +703,10 @@ spec:
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "init") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "logs") | nindent 8 }}
+        - name: *ssl
+          emptyDir:
+            medium: Memory
+            sizeLimit: 1Mi
         - name: *secrets
           secret:
             optional: false
