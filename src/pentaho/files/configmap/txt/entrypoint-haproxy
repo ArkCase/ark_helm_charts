@@ -1,7 +1,7 @@
 #!/bin/bash
 
 timestamp() {
-	/usr/bin/date -Ins -u
+	date -Ins -u
 }
 
 say() {
@@ -15,9 +15,20 @@ fail() {
 
 set -euo pipefail
 
-[ -v SSL_DIR ] || export SSL_DIR="/.ssl"
-export ACME_SUPPORT_HAPROXY="true"
-acme-init
+[ -v SSL_DIR ] || SSL_DIR="/.ssl"
+CERT="${SSL_DIR}/haproxy-cert.pem"
+
+[ -v MAX_WAIT ] || MAX_WAIT="30"
+[[ "${MAX_WAIT}" =~ ^[1-9][0-9]*$ ]] || MAX_WAIT="30"
+
+say "Waiting up to ${MAX_WAIT} seconds for the SSL certificates to become available"
+START="$(date +%s)"
+while true ; do
+	[ -f "${CERT}" ] && break
+	NOW="$(date +%s)"
+	[ $(( NOW - START )) -lt ${MAX_WAIT} ] || fail "Timed out waiting for the SSL certificates to become available at [${CERT}]"
+	sleep 1 || fail "Sleep interrupted, can't continue waiting for the certificate at [${CERT}]"
+done
 
 say "Launching HAProxy"
 exec "/usr/local/bin/docker-entrypoint.sh" "/usr/local/sbin/haproxy" "-f" "/usr/local/etc/haproxy/haproxy.cfg"
