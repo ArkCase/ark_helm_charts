@@ -65,6 +65,7 @@ export CURATOR_WRAPPER_JAR="/usr/local/bin/curator-wrapper.jar"
 export CURATOR_WRAPPER_CONF="/usr/local/etc/curator-wrapper.yaml"
 
 (
+	export JAVA_TOOL_OPTIONS="-Dzookeeper.client.secure=true"
 	set -x
 	exec java -jar "${CURATOR_WRAPPER_JAR}" -c "${CURATOR_WRAPPER_CONF}"
 )
