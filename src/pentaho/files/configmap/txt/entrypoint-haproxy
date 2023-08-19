@@ -24,7 +24,7 @@ CERT="${SSL_DIR}/haproxy-cert.pem"
 say "Waiting up to ${MAX_WAIT} seconds for the SSL certificates to become available"
 START="$(date +%s)"
 while true ; do
-	[ -f "${CERT}" ] && break
+	[ -s "${CERT}" ] && [ -r "${CERT}" ] && break
 	NOW="$(date +%s)"
 	[ $(( NOW - START )) -lt ${MAX_WAIT} ] || fail "Timed out waiting for the SSL certificates to become available at [${CERT}]"
 	sleep 1 || fail "Sleep interrupted, can't continue waiting for the certificate at [${CERT}]"
