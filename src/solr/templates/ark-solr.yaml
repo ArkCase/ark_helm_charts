@@ -118,9 +118,15 @@ spec:
             - name: NODES
               value: {{ $cluster.nodes | toString | quote }}
             - name: SOLR_OPTS
+            {{- if $cluster.enabled }}
+              value: "-Dsolr.autoSoftCommit.maxTime=1000 -Dzookeeper.client.secure=true"
+            {{- else }}
               value: "-Dsolr.autoSoftCommit.maxTime=1000"
+            {{- end }}
             - name: SOLR_HOME
               value: "/app/data/solr"
+            - name: SOLR_SERVER
+              value: "/app/data/solr/server"
             - name: SOLR_CORES
               value: "acmAdvancedSearch=arkcase,acmQuickSearch=arkcase"
             {{- if $.Values.env }}
@@ -130,13 +136,12 @@ spec:
           {{- if $.Values.command }}
           command: {{ toJson $.Values.command }}
           {{- else }}
-          command: [ "sleep", "infinity" ]
-          # command: [ "/entrypoint" ]
+          command: [ "/entrypoint" ]
           {{- end }}
-          # lifecycle:
-          #   postStart:
-          #     exec:
-          #       command: [ "/config-post.sh" ]
+          lifecycle:
+            postStart:
+              exec:
+                command: [ "/config-post.sh" ]
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           volumeMounts:
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
@@ -144,6 +149,10 @@ spec:
               mountPath: *dataPath
             - name: *initVolume
               mountPath: *initPath
+            - name: &secrets "secrets"
+              mountPath: "/app/solr/bin/solr.in.sh"
+              subPath: &solrInSh "solr.in.sh"
+              readOnly: true
             - name: &configMap "configmap"
               mountPath: "/entrypoint"
               subPath: &entrypoint "entrypoint"
@@ -172,6 +181,14 @@ spec:
         {{- include "arkcase.acme.volume" $ | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "init") | nindent 8 }}
+        - name: *secrets
+          secret:
+            secretName: {{ include "arkcase.fullname" $ | quote }}
+            optional: false
+            defaultMode: 0444
+            items:
+              - key: *solrInSh
+                path: *solrInSh
         - name: *configMap
           configMap:
             name: {{ include "arkcase.fullname" $ | quote }}

@@ -14,6 +14,8 @@
     {{- end -}}
     {{- $url = $acme.url -}}
   {{- end -}}
+- name: SSL_DIR
+  value: "/.ssl"
 - name: ACME_URL
   value: {{ $url.url | quote }}
 - name: ACME_SERVICE_NAME

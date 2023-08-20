@@ -22,12 +22,6 @@ set -euo pipefail
 
 acme-init
 
-[ -v SERVER_DIR ] || SERVER_DIR="${HOME_DIR}/server"
-[ -v ETC_DIR ] || ETC_DIR="${SERVER_DIR}/etc"
-
-[ -v JAVA_TOOL_OPTIONS ] || JAVA_TOOL_OPTIONS=""
-JAVA_TOOL_OPTIONS+=" -Dorg.eclipse.jetty.ssl.keystore=${SSL_DIR}/keystore.pkcs12 -Dorg.eclipse.jetty.ssl.keypassword=$(<"${SSL_DIR}/keystore.pass") -Dzookeeper.client.secure=true "
-
 #
 # Now, continue with the boot
 #

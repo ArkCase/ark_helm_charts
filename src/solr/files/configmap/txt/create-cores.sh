@@ -46,7 +46,7 @@ exists() {
 	local RC=0
 
 	# Run the query
-	local JSON="$(curl -kL "http://localhost:8983/solr/admin/collections?action=colstatus&collection=${NAME}")" || RC=${?}
+	local JSON="$(curl -L --fail "https://localhost:8983/solr/admin/collections?action=colstatus&collection=${NAME}")" || RC=${?}
 	[ ${RC} -eq 0 ] || return ${RC}
 
 	# Examine the result
