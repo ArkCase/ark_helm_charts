@@ -69,6 +69,15 @@ if [ -v ZK_HOST ] ; then
 
 	say "Setting the ZK_HOST value [${ZK_HOST}]"
 	export ZK_HOST="$(echo -n "${ZK[@]}" | tr ' ' ',')"
+
+	# Enable HTTPS on the cluster
+	say "Enabling SSL on the cluster"
+	(
+		set -euo pipefail
+		cd "/app/solr"
+		exec server/scripts/cloud-scripts/zkcli.sh -zkhost "${ZK_HOST}" -cmd clusterprop -name urlScheme -val https
+	)
+	say "SSL Enabled!"
 fi
 
 set -- "${HOME_DIR}/bin/solr" start -f -cloud
