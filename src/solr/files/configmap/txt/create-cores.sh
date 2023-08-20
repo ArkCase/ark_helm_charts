@@ -121,7 +121,7 @@ for C in "${CORES[@]}" ; do
 			break
 		fi
 
-		if ! create "${NAME}" "${CONF}" "${SHARDS}" "${REPLICAS}" ; then
+		if create "${NAME}" "${CONF}" "${SHARDS}" "${REPLICAS}" ; then
 			say "The [${NAME}] collection was created successfully"
 			(( CREATED += 1 ))
 			SUCCESS="true"
