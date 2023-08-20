@@ -152,8 +152,8 @@ SOLR_SSL_ENABLED=true
 # Be sure to update the paths to the correct keystore for your environment
 SOLR_SSL_KEY_STORE="${SSL_DIR}/keystore.pkcs12"
 SOLR_SSL_KEY_STORE_PASSWORD="$(<"${SSL_DIR}/keystore.pass")"
-SOLR_SSL_TRUST_STORE="${SOLR_SSL_KEY_STORE}"
-SOLR_SSL_TRUST_STORE_PASSWORD="${SOLR_SSL_KEY_STORE_PASSWORD}"
+SOLR_SSL_TRUST_STORE="/etc/pki/java/cacerts"
+SOLR_SSL_TRUST_STORE_PASSWORD="changeit"
 # Require clients to authenticate
 SOLR_SSL_NEED_CLIENT_AUTH=false
 # Enable clients to authenticate (but not require)
@@ -165,7 +165,7 @@ SOLR_SSL_CLIENT_HOSTNAME_VERIFICATION=false
 #SOLR_SSL_CHECK_PEER_NAME=true
 # Override Key/Trust Store types if necessary
 SOLR_SSL_KEY_STORE_TYPE="PKCS12"
-SOLR_SSL_TRUST_STORE_TYPE="${SOLR_SSL_KEY_STORE_TYPE}"
+SOLR_SSL_TRUST_STORE_TYPE="JKS"
 
 # Uncomment if you want to override previously defined SSL values for HTTP client
 # otherwise keep them commented and the above values will automatically be set for HTTP clients
