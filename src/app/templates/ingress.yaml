@@ -58,6 +58,8 @@ metadata:
       {{- toYaml .value | nindent 4 }}
     {{- end }}
   annotations:
+    haproxy-ingress.github.io/backend-protocol: "h1-ssl"
+    haproxy-ingress.github.io/ssl-redirect: "true"
     timestamp: {{ date "20060102150405" now | quote }}
     {{- with (include "arkcase.values" (dict "ctx" $ "base" "annotations") | fromYaml) }}
       {{- toYaml . | nindent 4 }}
@@ -86,14 +88,14 @@ spec:
               service:
                 name: "core"
                 port:
-                  number: 8080
+                  number: 8443
           - path: "/browser"
             pathType: Prefix
             backend:
               service:
                 name: "analytics"
                 port:
-                  number: 8080
+                  number: 8443
     {{- if $foia }}
           - path: "/foia"
             pathType: Prefix
@@ -101,7 +103,7 @@ spec:
               service:
                 name: "core"
                 port:
-                  number: 8080
+                  number: 8443
     {{- end }}
     {{- if $ingress.content }}
           - path: "/alfresco"
@@ -133,7 +135,7 @@ spec:
               service:
                 name: "reports"
                 port:
-                  number: 8080
+                  number: 8443
     {{- end }}
     {{- if $ingress.artifacts }}
           - path: "/artifacts"
