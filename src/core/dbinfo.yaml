@@ -1,20 +1,21 @@
-mariadb:
-  platform: MySQL
+mariadb: &mariaDb
+  platform: MariaDB
   quartz: StdJdbcDelegate
   activiti: mysql
   port: 3306
   jdbc:
     driver: org.mariadb.jdbc.Driver
-    format: "jdbc:mariadb://${HOSTNAME}:${PORT}/${DATABASE}?useSSL=true"
+    format: "jdbc:mariadb://${HOSTNAME}:${PORT}/${DATABASE}?useSSL=true&requireSsl=true&enabledSslProtocolSuites=TLSv1.2"
 
 mysql:
-  platform: MySQL
-  quartz: StdJdbcDelegate
-  activiti: mysql
-  port: 3306
-  jdbc:
-    driver: com.mysql.cj.jdbc.Driver
-    format: "jdbc:mysql://${HOSTNAME}:${PORT}/${DATABASE}?sslMode=VERIFY_IDENTITY"
+  <<: *mariaDb
+  # platform: MySQL
+  # quartz: StdJdbcDelegate
+  # activiti: mysql
+  # port: 3306
+  # jdbc:
+  #   driver: com.mysql.cj.jdbc.Driver
+  #   format: "jdbc:mysql://${HOSTNAME}:${PORT}/${DATABASE}?sslMode=VERIFY_IDENTITY"
 
 oracle:
   platform: Oracle

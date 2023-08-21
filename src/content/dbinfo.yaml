@@ -2,7 +2,7 @@ mariadb:
   port: 3306
   jdbc:
     driver: org.mariadb.jdbc.Driver
-    format: "jdbc:mariadb://${HOSTNAME}:${PORT}/${DATABASE}?useSSL=true"
+    format: "jdbc:mariadb://${HOSTNAME}:${PORT}/${DATABASE}?useSSL=true&requireSsl=true&enabledSslProtocolSuites=TLSv1.2"
 
 mysql:
   port: 3306
