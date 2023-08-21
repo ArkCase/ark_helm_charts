@@ -15,10 +15,6 @@
 
   {{- $global := (($ctx.Values.global).conf).rdbms -}}
   {{- if not $global -}}
-    {{- /* This small trick helps the init dependencies to not be wasteful */ -}}
-    {{- /* because as we "alter" the main map, we also allow initDependencies */ -}}
-    {{- /* to only look at the port(s) we're actually interested in for this */ -}}
-    {{- /* specific dialect as-configured */ -}}
     {{- $global = $ctx.Values -}}
 
     {{- if or (not (hasKey $global "global")) (not (kindIs "map" $global.global)) -}}
@@ -51,11 +47,11 @@
   {{- $dbInfo := (.Files.Get "dbinfo.yaml" | fromYaml ) -}}
   {{- range $key, $db := $dbInfo -}}
     {{- if not (hasKey $db "scripts") -}}
-      {{- $db = set $db "scripts" $db.dialect -}}
+      {{- $db = set $db "scripts" ($db.dialect | default $key) -}}
     {{- end -}}
     {{- if hasKey $db "aliases" -}}
       {{- range $alias := $db.aliases -}}
-        {{- $dbInfo = set $dbInfo $alias $db -}}
+        {{- $dbInfo = set $dbInfo $alias (omit $db "aliases") -}}
       {{- end -}}
     {{- end -}}
     {{- $db = set $db "name" $key -}}
@@ -68,7 +64,7 @@
 
   {{- /* Step two: merge in the server and schema definitions */ -}}
   {{- $dbInfo = get $dbInfo $dialect -}}
-  {{- $dbConf := deepCopy $local | merge $global -}}
+  {{- $dbConf := merge (deepCopy $global) $local -}}
 
   {{- /* Make sure there's a hostname */ -}}
   {{- if not (hasKey $dbConf "hostname") -}}
