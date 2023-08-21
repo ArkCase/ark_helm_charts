@@ -15,10 +15,6 @@
 
   {{- $global := (($ctx.Values.global).conf).analytics -}}
   {{- if not $global -}}
-    {{- /* This small trick helps the init dependencies to not be wasteful */ -}}
-    {{- /* because as we "alter" the main map, we also allow initDependencies */ -}}
-    {{- /* to only look at the port(s) we're actually interested in for this */ -}}
-    {{- /* specific dialect as-configured */ -}}
     {{- $global = $ctx.Values -}}
 
     {{- if or (not (hasKey $global "global")) (not (kindIs "map" $global.global)) -}}
@@ -31,7 +27,7 @@
     {{- end -}}
     {{- $global = $global.conf -}}
 
-    {{- if or (not (hasKey $global "rdbms")) (not (kindIs "map" $global.rdbms)) -}}
+    {{- if or (not (hasKey $global "analytics")) (not (kindIs "map" $global.analytics)) -}}
       {{- $global = set $global "analytics" dict -}}
     {{- end -}}
     {{- $global = $global.analytics -}}
