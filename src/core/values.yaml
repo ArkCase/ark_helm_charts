@@ -328,8 +328,8 @@ service:
       spec:
         tcpSocket:
           port: *arkcasePort
-        initialDelaySeconds: 300
-        periodSeconds: 30
-        timeoutSeconds: 10
-        failureThreshold: 150
+        initialDelaySeconds: 120
+        periodSeconds: 5
+        timeoutSeconds: 5
+        failureThreshold: 180
         successThreshold: 1
