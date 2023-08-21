@@ -65,7 +65,7 @@ Return a map which contains the subsystem data map as required by other API call
   {{- end -}}
   {{- $crap := set $map "data" $data -}}
 
-  {{- $map | toYaml | nindent 0 -}}
+  {{- $map | toYaml -}}
 {{- end -}}
 
 {{- /*

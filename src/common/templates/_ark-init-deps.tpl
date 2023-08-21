@@ -109,10 +109,6 @@ that checks the boot order
       {{- end -}}
     {{- end -}}
 
-    {{- if (eq $targetHostName "content-main:8080") -}}
-      {{- fail ($replacement | toYaml | nindent 0) -}}
-    {{- end -}}
-
     {{- if not (include "arkcase.tools.checkHostname" $targetHostName) -}}
       {{- if eq $targetHostName $hostname -}}
         {{- fail (printf "The hostname '%s' is not a valid hostname per RFC-1123" $hostname) -}}

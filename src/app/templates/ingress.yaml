@@ -112,21 +112,21 @@ spec:
               service:
                 name: "content-main"
                 port:
-                  number: 8080
+                  number: 8443
           - path: "/api-explorer"
             pathType: Prefix
             backend:
               service:
                 name: "content-share"
                 port:
-                  number: 8080
+                  number: 8443
           - path: "/share"
             pathType: Prefix
             backend:
               service:
                 name: "content-share"
                 port:
-                  number: 8080
+                  number: 8443
     {{- end }}
     {{- if $ingress.reports }}
           - path: "/pentaho"
