@@ -2,13 +2,11 @@
 {{- if $foia -}}
 {{- /* Eventually we'll need to graft other profiles in here like "ims" or "eeoc" */ -}}
 {{- $profiles := list "custom_base" "foia" "custom" "server" "runtime" -}}
-{{- /* Eventually softcode to a configurable value */ -}}
-{{- $configUrl := "https://localhost:9999" -}}
 spring:
   cloud:
     config:
       name: arkcase-portal,external-portal-en,lookups,core-en
-      uri: {{ $configUrl | quote }}
+      uri: {{ include "arkcase.tools.conf" (dict "ctx" $ "value" "configServer.url") | quote }}
       tls:
         enabled: true
       fail-fast: true
