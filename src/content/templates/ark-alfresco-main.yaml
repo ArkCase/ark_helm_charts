@@ -82,6 +82,7 @@ spec:
           {{- include "arkcase.image" $ | nindent 10 }}
           {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
           env:
+            {{- include "arkcase.acme.env" $ | nindent 12 }}
             - name: JAVA_TOOL_OPTIONS
               value: >-
                 -Dencryption.keystore.type=JCEKS
@@ -138,6 +139,7 @@ spec:
           volumeMounts:
             {{- include "arkcase.alfresco.license.volumeMounts" (dict "ctx" $ "volume" "secrets" "path" "/usr/local/tomcat/shared/classes/alfresco/extension/license") | nindent 12 }}
             {{- include "arkcase.trusts.mount" $ | nindent 12 }}
+            {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
             - name: *dataVolume
               mountPath: *dataDir
             - name: *initVolume
@@ -152,6 +154,7 @@ spec:
               readOnly: true
       volumes:
         {{- include "arkcase.trusts.volume" $ | nindent 8 }}
+        {{- include "arkcase.acme.volume" $ | nindent 8 }}
         - name: *secrets
           secret:
             optional: false

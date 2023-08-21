@@ -66,6 +66,7 @@ spec:
           {{- include "arkcase.image" $ | nindent 10 }}
           {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
           env:
+            {{- include "arkcase.acme.env" $ | nindent 12 }}
             - name: REPO_HOST
               value: {{ include "arkcase.alfresco.service" (dict "ctx" $ "name" "main") | quote }}
             - name: REPO_PORT
@@ -82,6 +83,10 @@ spec:
           command: {{ toJson .value }}
           {{- end }}
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
+          volumeMounts:
+            {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
+      volumes:
+        {{- include "arkcase.acme.volume" $ | nindent 8 }}
       {{- with (include "arkcase.values" (dict "ctx" $ "base" "nodeSelector") | fromYaml) }}
       nodeSelector: {{- toYaml .value | nindent 8 }}
       {{- end }}
