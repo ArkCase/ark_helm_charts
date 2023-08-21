@@ -37,7 +37,7 @@
     {{- $global = $global.analytics -}}
   {{- end -}}
 
-  {{- $conf := deepCopy $local | merge $global -}}
+  {{- $conf := merge (deepCopy $global) $local -}}
 
   {{- /* Make sure there's a hostname */ -}}
   {{- if not (hasKey $conf "hostname") -}}
