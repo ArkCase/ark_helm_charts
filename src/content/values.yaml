@@ -15,8 +15,8 @@ configuration:
 
   content:
     dialect: "alfresco"
-    url: "http://content:8080/alfresco"
-    shareUrl: "http://share:8080/share"
+    url: "https://content:8443/alfresco"
+    shareUrl: "https://share:8443/share"
     username: "admin"
     password: "admin"
 
@@ -140,15 +140,15 @@ image:
 
   activemq:
     repository: "arkcase/alfresco-activemq"
-    tag: "5.17.1"
+    tag: "5.17.1-01"
 
   search:
     repository: "arkcase/alfresco-search"
-    tag: "2.0.5"
+    tag: "2.0.5-01"
 
   transform-core-aio:
     repository: "arkcase/alfresco-transform-core"
-    tag: "3.0.0"
+    tag: "3.0.0-01"
 
   # setperm:
   #   repository: "arkcase/setperm"
@@ -180,11 +180,11 @@ image:
 
     sfs:
       repository: "arkcase/alfresco-ee-fileshare"
-      tag: "2.0.0"
+      tag: "2.0.0-01"
 
     transform-router:
       repository: "arkcase/alfresco-ee-transform-router"
-      tag: "2.0.0"
+      tag: "2.0.0-01"
 
 # You generally shouldn't mess with these. These exist to support some name-generation templates
 nameOverride: ""
@@ -285,9 +285,9 @@ service:
   main:
     <<: *serviceTemplate
     ports:
-      - name: "cmis"
+      - name: "https"
         protocol: TCP
-        port: 8080
+        port: 8443
       - name: "s3"
         protocol: TCP
         port: 9000
@@ -298,14 +298,14 @@ service:
   share:
     <<: *serviceTemplate
     ports:
-      - name: "http"
+      - name: "https"
         protocol: TCP
-        port: 8080
+        port: 8443
   
   sfs:
     <<: *serviceTemplate
     ports:
-      - name: "http"
+      - name: "https"
         protocol: TCP
         port: 8099
   
@@ -338,13 +338,13 @@ service:
   transform-router:
     <<: *serviceTemplate
     ports:
-      - name: "http"
+      - name: "https"
         protocol: TCP
         port: 8095
   
   transform-core-aio:
     <<: *serviceTemplate
     ports:
-      - name: "http"
+      - name: "https"
         protocol: TCP
         port: 8090

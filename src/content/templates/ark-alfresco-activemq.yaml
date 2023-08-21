@@ -62,6 +62,7 @@ spec:
         - name: {{ include "arkcase.part.name" $ | quote }}
           {{- include "arkcase.image" $ | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            {{- include "arkcase.acme.env" $ | nindent 12 }}
             - name: JAVA_TOOL_OPTIONS
               value: >-
                 -XX:MinRAMPercentage=50
@@ -71,6 +72,8 @@ spec:
           command: {{ toJson .value }}
           {{- end }}
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
+          volumeMounts:
+            {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
       {{- with (include "arkcase.values" (dict "ctx" $ "base" "nodeSelector") | fromYaml) }}
       nodeSelector: {{- toYaml .value | nindent 8 }}
       {{- end }}
@@ -80,4 +83,6 @@ spec:
       {{- with (include "arkcase.values" (dict "ctx" $ "base" "tolerations") | fromYaml) }}
       tolerations: {{- toYaml .value | nindent 8 }}
       {{- end }}
+      volumes:
+        {{- include "arkcase.acme.volume" $ | nindent 8 }}
 {{- end }}

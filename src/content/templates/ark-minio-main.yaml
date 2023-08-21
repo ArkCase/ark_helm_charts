@@ -113,6 +113,7 @@ spec:
           {{- include "arkcase.image" (dict "ctx" $ "name" "minio" "repository" "arkcase/minio") | nindent 10 }}
           {{- include "arkcase.subsystem.ports" (dict "ctx" $ "name" "minio") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            {{- include "arkcase.acme.env" $ | nindent 12 }}
             - name: NODES
               value: {{ $nodes | quote }}
             - name: DATA_DIR
@@ -193,6 +194,7 @@ spec:
           {{- end }}
           volumeMounts:
             {{- include "arkcase.trusts.mount" $ | nindent 12 }}
+            {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
             - name: *dataVolume
               mountPath: *dataDir
             - name: *initVolume
@@ -203,6 +205,7 @@ spec:
               readOnly: true
       volumes:
         {{- include "arkcase.trusts.volume" $ | nindent 8 }}
+        {{- include "arkcase.acme.volume" $ | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "init") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
         - name: *configMap

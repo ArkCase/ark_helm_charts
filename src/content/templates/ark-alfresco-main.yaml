@@ -122,15 +122,15 @@ spec:
                 -Daos.baseUrlOverwrite={{ printf "%s/aos" $content.url.url | quote }}
                 -Dopencmis.server.override=true
                 -Dopencmis.server.value={{ printf "%s/api" $content.url.url | quote }}
-                -Dmessaging.broker.url="failover:(nio://{{- include "arkcase.alfresco.service" (dict "ctx" $ "name" "activemq") -}}:61616)?timeout=3000&jms.useCompression=true"
+                -Dmessaging.broker.url="failover:(nio+ssl://{{- include "arkcase.alfresco.service" (dict "ctx" $ "name" "activemq") -}}:61616)?timeout=3000&jms.useCompression=true"
                 -Ddeployment.method=DOCKER_COMPOSE
                 -Dcsrf.filter.enabled=false
-                -DlocalTransform.core-aio.url=http://{{- include "arkcase.alfresco.service" (dict "ctx" $ "name" "transform-core-aio") -}}:8090/
+                -DlocalTransform.core-aio.url=https://{{- include "arkcase.alfresco.service" (dict "ctx" $ "name" "transform-core-aio") -}}:8090/
               {{- if (include "arkcase.enterprise" $) }}
-                -Dsfs.url=http://{{- include "arkcase.alfresco.service" (dict "ctx" $ "name" "sfs") -}}:8099/
+                -Dsfs.url=https://{{- include "arkcase.alfresco.service" (dict "ctx" $ "name" "sfs") -}}:8099/
                 -Dtransform.service.enabled=true
-                -Dtransform.service.url=http://{{- include "arkcase.alfresco.service" (dict "ctx" $ "name" "transform-router") -}}:8095
-                -Ddsync.service.uris=http://localhost:9090/alfresco
+                -Dtransform.service.url=https://{{- include "arkcase.alfresco.service" (dict "ctx" $ "name" "transform-router") -}}:8095
+                -Ddsync.service.uris=https://localhost:9090/alfresco
               {{- end }}
           {{- with (include "arkcase.values" (dict "ctx" $ "base" "command") | fromYaml) }}
           command: {{ toJson .value }}

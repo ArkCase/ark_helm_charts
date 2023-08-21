@@ -63,12 +63,13 @@ spec:
           {{- include "arkcase.image" $ | nindent 10 }}
           {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
           env:
+            {{- include "arkcase.acme.env" $ | nindent 12 }}
             - name: ACTIVEMQ_URL
               value: nio://{{- include "arkcase.alfresco.service" (dict "ctx" $ "name" "activemq") -}}:61616
           {{- if not (include "arkcase.enterprise" $) }}
             - name: FILE_STORE_URL
               value: >-
-                http://{{- include "arkcase.alfresco.service" (dict "ctx" $ "name" "sfs") -}}:8099/alfresco/api/-default-/private/sfs/versions/1/file
+                https://{{- include "arkcase.alfresco.service" (dict "ctx" $ "name" "sfs") -}}:8099/alfresco/api/-default-/private/sfs/versions/1/file
           {{- end }}
             - name: JAVA_OPTS
               value: >-
@@ -78,6 +79,8 @@ spec:
           command: {{ toJson .value }}
           {{- end }}
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
+          volumeMounts:
+            {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
       {{- with (include "arkcase.values" (dict "ctx" $ "base" "nodeSelector") | fromYaml) }}
       nodeSelector: {{- toYaml .value | nindent 8 }}
       {{- end }}
@@ -87,4 +90,6 @@ spec:
       {{- with (include "arkcase.values" (dict "ctx" $ "base" "tolerations") | fromYaml) }}
       tolerations: {{- toYaml .value | nindent 8 }}
       {{- end }}
+      volumes:
+        {{- include "arkcase.acme.volume" $ | nindent 8 }}
 {{- end }}
