@@ -307,8 +307,7 @@ service:
     probes:
       enabled: true
       spec:
-        httpGet:
-          path: "/actuator/health"
+        tcpSocket:
           port: *cloudconfigPort
         initialDelaySeconds: 10
         periodSeconds: 5
@@ -327,8 +326,7 @@ service:
     probes:
       enabled: true
       spec:
-        httpGet:
-          path: "/arkcase"
+        tcpSocket:
           port: *arkcasePort
         initialDelaySeconds: 300
         periodSeconds: 30
