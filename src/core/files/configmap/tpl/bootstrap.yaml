@@ -2,17 +2,20 @@
 {{- if $foia -}}
 {{- /* Eventually we'll need to graft other profiles in here like "ims" or "eeoc" */ -}}
 {{- $profiles := list "custom_base" "foia" "custom" "server" "runtime" -}}
+{{- /* Eventually softcode to a configurable value */ -}}
 {{- $configUrl := "https://localhost:9999" -}}
 spring:
-  cloud.config:
-    name: arkcase-portal,external-portal-en,lookups,core-en
-    # TODO: Eventually softcode this to the actual location for cloudconfig
-    uri: {{ $configUrl | quote }}
-    fail-fast: true
-    retry:
-      max-attempts: 20
-      max-interval: 15000
-      initial-interval: 10000
+  cloud:
+    config:
+      name: arkcase-portal,external-portal-en,lookups,core-en
+      uri: {{ $configUrl | quote }}
+      tls:
+        enabled: true
+      fail-fast: true
+      retry:
+        max-attempts: 20
+        max-interval: 15000
+        initial-interval: 10000
 
   profiles.include: {{ $profiles | compact | join "," | quote }}
   jms.pub-sub-domain: true
