@@ -67,7 +67,7 @@ spec:
             - name: SOLR_ALFRESCO_HOST
               value: {{ include "arkcase.alfresco.service" (dict "ctx" $ "name" "main") | quote }}
             - name: SOLR_ALFRESCO_PORT
-              value: "8080"
+              value: "8999"
             - name: SOLR_SOLR_HOST
               value: {{ include "arkcase.alfresco.service" (dict "ctx" $ "name" "search") | quote }}
             - name: SOLR_SOLR_PORT
@@ -75,7 +75,7 @@ spec:
             - name: SOLR_CREATE_ALFRESCO_DEFAULTS
               value: "alfresco,archive"
             - name: ALFRESCO_SECURE_COMMS
-              value: "secret"
+              value: "https"
             - name: JAVA_TOOL_OPTIONS
               value: >-
                 -XX:MinRAMPercentage=50

@@ -142,7 +142,7 @@ if data is None:
 	fail("Data is not in YAML format")
 
 # Use --endpoint-url parameter to set this value
-CONTENT = "http://content-main:9000/"
+CONTENT = "https://content-main:9000/"
 if args.content:
 	CONTENT = args.content[0]
 elif ENV_INIT_SEED_CONTENT in os.environ:

@@ -84,7 +84,7 @@ else:
 if data is None:
 	fail("Data is not in YAML format")
 
-CONTENT = "http://content-main:8080/alfresco"
+CONTENT = "https://content-main:8443/alfresco"
 if args.content:
 	CONTENT = args.content[0]
 elif ENV_INIT_SEED_CONTENT in os.environ:
@@ -93,7 +93,7 @@ if not CONTENT:
 	fail("Must provide a CONTENT URL to connect to")
 logging.info(f"Using CONTENT URL [{CONTENT}]")
 
-SHARE = "http://content-share:8080/share"
+SHARE = "https://content-share:8443/share"
 if args.share:
 	SHARE = args.share[0]
 elif ENV_INIT_SEED_SHARE in os.environ:

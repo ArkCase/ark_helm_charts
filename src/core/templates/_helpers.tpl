@@ -41,9 +41,9 @@
   {{- if not ($contentUrl) -}}
     {{- $dialect := (include "arkcase.tools.conf" (dict "ctx" $ "value" "content.dialect")) -}}
     {{- if or (not $dialect) (eq "alfresco" $dialect) -}}
-      {{- $contentUrl = "http://content-main:8080/alfresco" -}}
+      {{- $contentUrl = "https://content-main:8443/alfresco" -}}
     {{- else if (eq "s3" $dialect) -}}
-      {{- $contentUrl = "http://content-minio:9000/" -}}
+      {{- $contentUrl = "https://content-minio:9000/" -}}
     {{- else -}}
       {{- fail (printf "Unsupported content dialect [%s]" $dialect) -}}
     {{- end -}}
@@ -58,7 +58,7 @@
 
   {{- $shareUrl := (include "arkcase.tools.conf" (dict "ctx" $ "value" "content.shareUrl")) -}}
   {{- if not ($shareUrl) -}}
-    {{- $shareUrl = "http://content-share:8080/share" -}}
+    {{- $shareUrl = "https://content-share:8443/share" -}}
   {{- end -}}
   {{- $shareUrl -}}
 {{- end -}}

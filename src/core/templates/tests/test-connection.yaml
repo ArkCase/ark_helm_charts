@@ -24,6 +24,6 @@ spec:
     - name: wget
       image: busybox
       command: [ "wget" ]
-      args: [ {{ printf "http://%s:9999" (include "arkcase.fullname" .) | quote }} ]
+      args: [ {{ printf "https://%s:9999" (include "arkcase.fullname" .) | quote }} ]
   restartPolicy: Never
 {{- end }}
