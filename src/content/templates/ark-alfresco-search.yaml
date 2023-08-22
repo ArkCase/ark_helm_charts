@@ -78,9 +78,13 @@ spec:
               value: "https"
             - name: JAVA_TOOL_OPTIONS
               value: >-
+                -Dalfresco.secureComms=https
+                -Dalfresco.host={{ include "arkcase.alfresco.service" (dict "ctx" $ "name" "main") }}
+                -Dalfresco.port.ssl=8999
+                -Dalfresco.baseurl=/alfresco
+                -Dsolr.alfresco.secureComms=https
                 -XX:MinRAMPercentage=50
                 -XX:MaxRAMPercentage=80
-                -Dalfresco.secureComms.secret={{ include "arkcase.alfresco.searchSecret" $ }}
           {{- with (include "arkcase.values" (dict "ctx" $ "base" "command") | fromYaml) }}
           command: {{ toJson .value }}
           {{- end }}

@@ -108,9 +108,9 @@ spec:
                 -Ddb.username={{ $schema.username | quote }}
                 -Ddb.password={{ $schema.password | quote }}
                 -Ddb.url={{ $schema.jdbc.url | quote }}
-                -Dsolr.host={{ include "arkcase.alfresco.service" (dict "ctx" $ "name" "search") | quote }}
-                -Dsolr.port=8983
                 -Dsolr.secureComms=https
+                -Dsolr.host={{ include "arkcase.alfresco.service" (dict "ctx" $ "name" "search") | quote }}
+                -Dsolr.port.ssl=8983
                 -Dsolr.base.url=/solr
                 -Dsolr.http.connection.timeout=1000
                 -Dindex.subsystem.name={{ $indexing | ternary "solr6" "noindex" }}
