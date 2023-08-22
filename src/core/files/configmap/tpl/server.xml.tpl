@@ -103,7 +103,7 @@
                maxHttpHeaderSize="32768"
                maxThreads="150"
                port="8443"
-               protocol="HTTP/1.1"
+               protocol="org.apache.coyote.http11.Http11AprProtocol"
                scheme="https"
                secure="true"
                SSLEnabled="true"

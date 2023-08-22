@@ -119,7 +119,7 @@
                relaxedPathChars="[]|"
                relaxedQueryChars="^{}[]|&amp;"
                port="{{ $httpsPort }}"
-               protocol="HTTP/1.1"
+               protocol="org.apache.coyote.http11.Http11AprProtocol"
                {{- if and $proxyName $proxyPort }}
                {{- $proxyName = (include "arkcase.tools.mustSingleHostname" $proxyName) }}
                proxyName="{{ $proxyName }}"
