@@ -49,13 +49,12 @@ fi
 [ -v INIT_MAX_WAIT ] || INIT_MAX_WAIT=300
 [[ "${INIT_MAX_WAIT}" =~ ^[1-9][0-9]*$ ]] || INIT_MAX_WAIT=300
 
-[ -v ADMIN_URL ] || ADMIN_URL="http://localhost:9000"
+[ -v ADMIN_URL ] || ADMIN_URL="https://localhost:9000"
 
 START="$(date +%s)"
 say "Starting the polling cycle"
 while true ; do
-	/usr/bin/curl -Lk -m 5 "${ADMIN_URL}" &>/dev/null && break
-	say "\tURL is not up yet at [${ADMIN_URL}]"
+	/usr/bin/curl -L -m 5 "${ADMIN_URL}" &>/dev/null && break
 	NOW="$(date +%s)"
 	[ $(( NOW - START )) -ge ${INIT_MAX_WAIT} ] && fail "Timed out waiting for the URL [${ADMIN_URL}] to come up"
 	# If sleep didn't succeed, it means it got signaled, which
