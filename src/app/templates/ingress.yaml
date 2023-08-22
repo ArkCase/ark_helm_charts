@@ -60,6 +60,8 @@ metadata:
   annotations:
     haproxy-ingress.github.io/backend-protocol: "h1-ssl"
     haproxy-ingress.github.io/ssl-redirect: "true"
+    haproxy-ingress.github.io/secure-backends: "true"
+    haproxy-ingress.github.io/secure-sni: "host"
     timestamp: {{ date "20060102150405" now | quote }}
     {{- with (include "arkcase.values" (dict "ctx" $ "base" "annotations") | fromYaml) }}
       {{- toYaml . | nindent 4 }}
