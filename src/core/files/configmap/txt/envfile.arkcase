@@ -1,0 +1,31 @@
+#!/bin/bash
+
+[ -v SSL_DIR ] || SSL_DIR="/.ssl"
+
+#
+# Set the required values for TLS/SSL
+#
+KS="${SSL_DIR}/keystore.pkcs12"
+KS_TYPE="PKCS12"
+KS_PASS="$(<"${SSL_DIR}/keystore.pass")"
+
+[ -v JAVA_TOOL_OPTIONS ] || JAVA_TOOL_OPTIONS=""
+# Base JVM
+# JAVA_TOOL_OPTIONS+=" -Djavax.net.ssl.keyStore=${KS} -Djavax.net.ssl.keyStoreType=${KS_TYPE} -Djavax.net.ssl.keyStorePassword=${KS_PASS}"
+
+# Common values
+JAVA_TOOL_OPTIONS+=" -Dk8s.keystore.file=${KS} -Dk8s.keystore.type=${KS_TYPE} -Dk8s.keystore.pass=${KS_PASS}"
+
+# Base Spring CloudConfig TLS
+# JAVA_TOOL_OPTIONS+=" -Dspring.cloud.config.tls.keyStore=${KS} -Dspring.cloud.config.tls.keyStoreType=${KS_TYPE} -Dspring.cloud.config.tls.keyStorePassword=${KS_PASS}"
+
+# WebSockets
+# JAVA_TOOL_OPTIONS+=" -Dacm.websockets.stomp_broker_relay.keystore=${KS} -Dacm.websockets.stomp_broker_relay.keystore_pass=${KS_PASS} -D-Dacm.websockets.stomp_broker_relay.keystore_type=${KS_TYPE}"
+
+# Portal
+# JAVA_TOOL_OPTIONS+=" -Dportal.keystore=${KS} -Dportal.keystorePassword=${KS_PASS}"
+
+# FOIA Stomp
+# JAVA_TOOL_OPTIONS+=" -Dgov.foia.broker.keystore=${KS} -Dgov.foia.broker.keystore.password=${KS_PASS}"
+
+export JAVA_TOOL_OPTIONS

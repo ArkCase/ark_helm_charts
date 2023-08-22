@@ -5,23 +5,37 @@
 spring:
   cloud:
     config:
-      name: arkcase-portal,external-portal-en,lookups,core-en
-      uri: {{ include "arkcase.tools.conf" (dict "ctx" $ "value" "configServer.url") | quote }}
       tls:
         enabled: true
+        keyStore: "file:${k8s.keystore.file}"
+        keyStoreType: "${k8s.keystore.type}"
+        keyStorePassword: "${k8s.keystore.pass}"
+        keyPassword: "${k8s.keystore.pass}"
+        trustStore: "file:/etc/pki/java/cacerts"
+        trustStoreType: "JKS"
+        trustStorePassword: "changeit"
+      name: arkcase-portal,external-portal-en,lookups,core-en
+      uri: {{ include "arkcase.tools.conf" (dict "ctx" $ "value" "configServer.url") | quote }}
       fail-fast: true
       retry:
         max-attempts: 20
         max-interval: 15000
         initial-interval: 10000
 
-  profiles.include: {{ $profiles | compact | join "," | quote }}
-  jms.pub-sub-domain: true
+  profiles:
+    include: {{ $profiles | compact | join "," | quote }}
 
-spring.cache.jcache.config: "classpath:ehcache.xml"
+  jms:
+    pub-sub-domain: true
 
-spring.servlet.multipart.max-file-size: -1
-spring.servlet.multipart.max-request-size: -1
+  cache:
+    jcache:
+      config: "classpath:ehcache.xml"
+
+  servlet:
+    multipart:
+      max-file-size: -1
+      max-request-size: -1
 
 logging:
   file:

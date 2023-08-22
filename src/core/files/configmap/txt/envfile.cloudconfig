@@ -1,0 +1,14 @@
+#!/bin/bash
+
+[ -v SSL_DIR ] || SSL_DIR="/.ssl"
+
+#
+# Set the required values for TLS/SSL
+#
+KS="${SSL_DIR}/keystore.pkcs12"
+KS_TYPE="PKCS12"
+KS_PASS="$(<"${SSL_DIR}/keystore.pass")"
+
+[ -v JAVA_TOOL_OPTIONS ] || JAVA_TOOL_OPTIONS=""
+
+# Add more stuff...

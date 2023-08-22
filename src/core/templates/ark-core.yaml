@@ -330,6 +330,10 @@ spec:
               mountPath: "/app/home/.arkcase/acm/spring/proxy-config/spring-config-proxy.xml"
               subPath: &springConfigProxyXml "spring-config-proxy.xml"
               readOnly: true
+            - name: *configMap
+              mountPath: "/.env"
+              subPath: &envfileArkcase "envfile.arkcase"
+              readOnly: true
             - name: &secrets "secrets"
               mountPath: "/app/home/.arkcase/acm/acm-config-server-repo/application.yaml"
               subPath: &applicationYaml "application.yaml"
@@ -369,14 +373,6 @@ spec:
               mountPath: *fsrvDir
             - name: *foiaVolume
               mountPath: "/app/home/.external-portal-api"
-            - name: *configMap
-              mountPath: "/app/home/.external-portal-api/arkcase.ks"
-              subPath: &emptyKs "empty.ks"
-              readOnly: true
-            - name: *configMap
-              mountPath: "/app/home/.external-portal-api/arkcase.ts"
-              subPath: *emptyKs
-              readOnly: true
             - name: *configMap
               mountPath: "/app/home/.arkcase/acm/acm-config-server-repo/lookups/lookups-server.yaml"
               subPath: &lookupsK8sYaml "lookups-server.yaml"
@@ -425,6 +421,10 @@ spec:
           volumeMounts:
             {{- include "arkcase.trusts.mount" $ | nindent 12 }}
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
+            - name: *configMap
+              mountPath: "/.env"
+              subPath: &envfileCloudconfig "envfile.cloudconfig"
+              readOnly: true
             - name: *confVolume
               mountPath: *confDir
               subPath: "acm/acm-config-server-repo"
@@ -527,13 +527,15 @@ spec:
                 mode: 0555
               - key: *seedContentYaml
                 path: *seedContentYaml
+              - key: *envfileArkcase
+                path: *envfileArkcase
+              - key: *envfileCloudconfig
+                path: *envfileCloudconfig
               {{- if $foia }}
               - key: *lookupsK8sYaml
                 path: *lookupsK8sYaml
               - key: *bootstrapYaml
                 path: *bootstrapYaml
-              - key: *emptyKs
-                path: *emptyKs
               {{- end }}
         {{- if $customConfDir }}
         - name: "conf"
