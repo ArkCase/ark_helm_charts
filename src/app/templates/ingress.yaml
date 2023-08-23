@@ -91,6 +91,7 @@ spec:
                 name: "core"
                 port:
                   number: 8443
+    {{- if $foia }}
           - path: "/browser"
             pathType: Prefix
             backend:
@@ -98,7 +99,6 @@ spec:
                 name: "analytics"
                 port:
                   number: 8443
-    {{- if $foia }}
           - path: "/foia"
             pathType: Prefix
             backend:
