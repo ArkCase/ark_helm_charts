@@ -65,7 +65,7 @@ spec:
           env:
             {{- include "arkcase.acme.env" $ | nindent 12 }}
             - name: ACTIVEMQ_URL
-              value: nio://{{- include "arkcase.alfresco.service" (dict "ctx" $ "name" "activemq") -}}:61616
+              value: nio+ssl://{{- include "arkcase.alfresco.service" (dict "ctx" $ "name" "activemq") -}}:61616
             - name: CORE_AIO_URL
               value: https://{{- include "arkcase.alfresco.service" (dict "ctx" $ "name" "transform-core-aio") -}}:8090
             - name: FILE_STORE_URL
