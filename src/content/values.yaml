@@ -288,6 +288,9 @@ service:
       - name: "https"
         protocol: TCP
         port: 8443
+      - name: "https-solr"
+        protocol: TCP
+        port: 8999
       - name: "s3"
         protocol: TCP
         port: 9000
@@ -331,7 +334,7 @@ service:
   search:
     <<: *serviceTemplate
     ports:
-      - name: "http"
+      - name: "https"
         protocol: TCP
         port: 8983
   
