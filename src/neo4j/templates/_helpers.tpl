@@ -4,3 +4,9 @@
     {{- true -}}
   {{- end -}}
 {{- end -}}
+
+{{- define "arkcase.neo4j.enabled" -}}
+  {{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.neo4j.external" $)) -}}
+    {{- (not (empty (include "arkcase.foia" $ | fromYaml))) | ternary "true" "" -}}
+  {{- end -}}
+{{- end -}}

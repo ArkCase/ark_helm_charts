@@ -1,4 +1,4 @@
-{{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.neo4j.external" $)) }}
+{{- if (include "arkcase.neo4j.enabled" $) -}}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -122,4 +122,4 @@ spec:
 
   {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "data") | nindent 0 }}
   {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "logs") | nindent 0 }}
-{{- end }}
+{{- end -}}
