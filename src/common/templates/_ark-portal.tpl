@@ -1,3 +1,34 @@
+{{- define "arkcase.foia.enabled" -}}
+  {{- $ctx := $ -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "The single parameter must be the root context ($ or .)" -}}
+  {{- end -}}
+
+  {{- /* This value must be a map with configs, or a true-false string */ -}}
+  {{- $foia := (($ctx.Values.global).foia) -}}
+  {{- if $foia -}}
+    {{- if or (kindIs "bool" $foia) (kindIs "string" $foia) -}}
+      {{- $foia = (not (empty (include "arkcase.toBoolean" $foia))) | ternary (dict "enabled" true) dict -}}
+    {{- else if (kindIs "map" $foia) -}}
+      {{- /* All is well, sanitize the "enabled" flag */ -}}
+      {{- if (hasKey $foia "enabled") -}}
+        {{- $foia = set $foia "enabled" (not (empty (include "arkcase.toBoolean" $foia.enabled))) -}}
+      {{- else -}}
+        {{- /* Unlike other features, FOIA must be explicitly enabled */ -}}
+        {{- $foia = set $foia "enabled" false -}}
+      {{- end -}}
+    {{- else -}}
+      {{- fail (printf "The global.foia configuration is bad - must be a bool, a string, or a map (%s)" (kindOf $foia)) -}}
+    {{- end -}}
+  {{- else -}}
+    {{- /* Empty value or equivalent, we don't care about the type and simply don't activate anything */ -}}
+    {{- $foia = dict -}}
+  {{- end -}}
+  {{- if $foia.enabled -}}
+    {{- true -}}
+  {{- end -}}
+{{- end -}}
+
 {{- define "arkcase.foia" -}}
   {{- $ctx := $ -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
