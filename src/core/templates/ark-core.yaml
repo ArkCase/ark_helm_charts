@@ -313,7 +313,6 @@ spec:
               mountPath: "/app/home/.arkcase"
             - name: *warsVolume
               mountPath: "/app/tomcat/webapps"
-              readOnly: true
             - name: *configMap
               mountPath: "/app/tomcat/conf/server.xml.tpl"
               subPath: &serverXmlTpl "server.xml.tpl"
