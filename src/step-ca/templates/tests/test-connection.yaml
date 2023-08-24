@@ -21,18 +21,11 @@ metadata:
     {{- end }}
 spec:
   containers:
-    - name: step
-      image: public.ecr.aws/base:8.8-01
+    - name: step-ca-test
+      image: public.ecr.aws/arkcase/nettest:latest
       command: [ "/usr/local/bin/acme-init" ]
       env: {{- include "arkcase.tools.baseEnv" $ | nindent 8 }}
         {{- include "arkcase.acme.env" $ | nindent 8 }}
-        - name: LDAPTLS_REQCERT
-          value: "never"
-        - name: ADMIN_PASS
-          valueFrom:
-            secretKeyRef:
-              name: {{ include "arkcase.fullname" $ | quote }}
-              key: DOMAIN_PASSWORD
       volumeMounts:
         {{- include "arkcase.acme.volumeMount" $ | nindent 8 }}
   volumes:

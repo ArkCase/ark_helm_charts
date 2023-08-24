@@ -1,0 +1,37 @@
+#!/bin/bash
+SCRIPT="$(readlink -f "${BASH_SOURCE:-${0}}")"
+BASEDIR="$(dirname "${SCRIPT}")"
+
+set -euo pipefail
+
+say() {
+	echo -e "$(date -Ins -u): ${@}"
+}
+
+fail() {
+	say "${@}" 1>&2
+	exit ${EXIT_CODE:-1}
+}
+
+usage() {
+	echo -e "usage: ${BASH_SOURCE:-${0}} chart" 1>&2
+	exit 1
+}
+
+HELM_REPO_URL="https://arkcase.github.io/ark_helm_charts/"
+HELM_REPO_DIR="${BASEDIR}/repo"
+HELM_SRC_DIR="${BASEDIR}/src"
+
+[ ${#} -eq 1 ] || usage
+CHART="${1}"
+[ -n "${CHART}" ] || fail "The chart name may not be empty"
+
+CHART_DIR="${HELM_SRC_DIR}/${CHART}"
+[ -d "${CHART_DIR}" ] || fail "No chart directory [${CHART}] was found"
+
+say "Updating chart dependencies for [${CHART}]"
+helm dependency update "${CHART_DIR}"
+say "Packaging the chart [${CHART}]..."
+helm package -d "${HELM_REPO_DIR}" "${CHART_DIR}"
+say "Re-indexing the repository..."
+helm repo index --url "${HELM_REPO_URL}" "${HELM_REPO_DIR}"
