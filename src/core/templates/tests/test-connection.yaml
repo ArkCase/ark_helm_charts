@@ -1,4 +1,5 @@
-{{- if (include "arkcase.subsystem.enabled" .) }}
+{{- if (include "arkcase.subsystem.enabled" .) -}}
+{{- $foia := (include "arkcase.foia" $ | fromYaml) -}}
 apiVersion: v1
 kind: Pod
 metadata:
@@ -21,9 +22,19 @@ metadata:
     {{- end }}
 spec:
   containers:
-    - name: wget
-      image: busybox
-      command: [ "wget" ]
-      args: [ {{ printf "https://%s:9999" (include "arkcase.fullname" .) | quote }} ]
+    - name: test
+      image: public.ecr.aws/arkcase/nettest:latest
+      command: [ "/usr/local/bin/run-from-env" ]
+      args: [ "SCRIPT" ]
+      env:
+        - name: SERVICE_NAME
+          value: {{ include "arkcase.service.name" $ | quote }}
+        - name: SCRIPT
+          value: |-
+            curl -L --fail https://${SERVICE_NAME}:9999
+            curl -L --fail https://${SERVICE_NAME}:8443/arkcase
+            {{- if $foia -}}
+            curl -L --fail https://${SERVICE_NAME}:8443/foia
+            {{- end -}}
   restartPolicy: Never
-{{- end }}
+{{- end -}}
