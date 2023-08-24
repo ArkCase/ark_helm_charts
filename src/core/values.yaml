@@ -193,7 +193,7 @@ image:
 
   arkcase:
     repository: "arkcase/core"
-    tag: "2.0.0-02"
+    tag: "2.0.0-03"
 
   # setperm:
   #   registry: "alternate-registry"
@@ -306,8 +306,8 @@ service:
     probes:
       enabled: true
       spec:
-        tcpSocket:
-          port: *cloudconfigPort
+        exec:
+          command: [ "check-ready" ]
         initialDelaySeconds: 10
         periodSeconds: 5
         timeoutSeconds: 5
@@ -322,11 +322,12 @@ service:
       - name: debug
         protocol: TCP
         port: &debugPort 8888
+
     probes:
       enabled: true
       spec:
-        tcpSocket:
-          port: *arkcasePort
+        exec:
+          command: [ "check-ready" ]
         initialDelaySeconds: 120
         periodSeconds: 5
         timeoutSeconds: 5
