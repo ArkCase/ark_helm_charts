@@ -205,7 +205,7 @@ spec:
           {{- $contentDialect := (include "arkcase.content.info.dialect" $) }}
           {{- $contentScript := printf "/seed-content.%s" $contentDialect }}
           {{- $contentData := printf "%s.yaml" $contentScript }}
-          command: [ "/only-once" ]
+          command: [ "/usr/local/bin/only-once" ]
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             - name: WRAPPED_STATE
               value: *confDir
