@@ -21,22 +21,28 @@ metadata:
     {{- end }}
 spec:
   containers:
-    - name: openldap
-      image: bitnami/openldap
-      command: [ "/opt/bitnami/openldap/bin/ldapsearch" ]
+    - name: samba-test
+      image: public.ecr.aws/arkcase/nettest:latest
       {{- $domain := (include "arkcase.ldap" (dict "ctx" $ "value" "domain")) }}
       {{- $administrator := (include "arkcase.ldap" (dict "ctx" $ "value" "administator") | default "administrator") }}
       {{- $baseDn := (include "arkcase.ldap.baseDn" $) }}
       {{- $userBaseDn := (include "arkcase.ldap" (dict "ctx" $ "value" "search.users.base")) }}
-      {{- $password := (include "arkcase.ldap" (dict "ctx" $ "value" "password")) }}
-      args: [ "-H", "ldaps://{{ include "arkcase.fullname" $ }}", "-D", "{{ include "arkcase.ldap.realm" $ }}\{{ $administrator }}", "-w", {{ $password | quote }}, "-b", {{ $baseDn | quote }}, {{ $userBaseDn | quote }}, "dn" ]
+      command: [ "/usr/local/bin/run-from-env" ]
+      args: [ "SCRIPT" ]
       env: {{- include "arkcase.tools.baseEnv" $ | nindent 8 }}
-        - name: LDAPTLS_REQCERT
-          value: "never"
         - name: ADMIN_PASS
           valueFrom:
             secretKeyRef:
               name: {{ include "arkcase.fullname" $ | quote }}
               key: DOMAIN_PASSWORD
+        - name: ADMIN_USER
+          value: {{ printf "%s\\%s" (include "arkcase.ldap.realm" $) $administrator | quote }}
+        - name: SERVICE_NAME
+          value: {{ include "arkcase.service.name" $ | quote }}
+        - name: TEST_SCRIPT
+          value: |-
+            set -euo pipefail
+            acme-init
+            ldapsearch -H "ldaps://${SERVICE_NAME}" -D "${ADMIN_USER}" -w "${ADMIN_PASS}" -b {{ $baseDn | quote }} {{ $userBaseDn | quote }} dn
   restartPolicy: Never
 {{- end }}
