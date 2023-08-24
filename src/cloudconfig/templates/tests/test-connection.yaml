@@ -30,6 +30,8 @@ spec:
           value: {{ include "arkcase.service.name" $ | quote }}
         - name: SCRIPT
           value: |
+            set -euo pipefail
+            acme-init
             curl -L https://${SERVICE_NAME}:9999
   restartPolicy: Never
 {{- end }}
