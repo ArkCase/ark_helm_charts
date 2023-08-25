@@ -118,13 +118,18 @@ spec:
                 secretKeyRef:
                   name: &secretName {{ include "arkcase.fullname" $ | quote }}
                   key: ADMIN_PASSWORD
-            - name: JAVA_MEM_ARGS
-              value: "-Xms2g -Xmx2g"
+            - name: ARTEMIS_CLUSTER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: *secretName
+                  key: CLUSTER_PASSWORD
             - name: ARTEMIS_ENCRYPTION_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: *secretName
                   key: ENCRYPTION_PASSWORD
+            - name: JAVA_MEM_ARGS
+              value: "-Xms2g -Xmx2g"
           {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
           {{- with (include "arkcase.values" (dict "ctx" $ "base" "command") | fromYaml) }}
           command: {{ toJson .value }}

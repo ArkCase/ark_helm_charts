@@ -2,6 +2,24 @@
   {{- include "arkcase.tools.conf" (dict "ctx" $ "value" "adminUsername") -}}
 {{- end -}}
 
+{{- define "arkcase.artemis.adminPassword.render" -}}
+  {{- if not (include "arkcase.isRootContext" $) -}}
+    {{- fail "The parameter must be the root context" -}}
+  {{- end -}}
+
+  {{- $secretObj := (lookup "v1" "Secret" $.Release.Namespace (include "arkcase.fullname" $) | default dict) -}}
+  {{- $secretData := (get $secretObj "data") | default dict -}}
+
+  {{- $adminPassword := "" -}}
+  {{- if (not $adminPassword) -}}
+    {{- $adminPassword = (get $secretData "ADMIN_PASSWORD") -}}
+  {{- end -}}
+  {{- if (not $adminPassword) -}}
+    {{- $adminPassword = (randAlphaNum 12 | b64enc) -}}
+  {{- end -}}
+  {{- $adminPassword -}}
+{{- end -}}
+
 {{- define "arkcase.artemis.adminPassword" -}}
   {{- if not (include "arkcase.isRootContext" $) -}}
     {{- fail "The parameter must be the root context" -}}
@@ -14,7 +32,7 @@
     {{- $fullname := (include "common.fullname" $) -}}
     {{- $secretKey := (printf "%s-adminPassword" $fullname) -}}
     {{- if not (hasKey $ $secretKey) -}}
-      {{- $newSecret := (randAlphaNum 12 | b64enc) -}}
+      {{- $newSecret := (include "arkcase.artemis.adminPassword.render" $) -}}
       {{- $crap := set $ $secretKey $newSecret -}}
       {{- $secretKey = $newSecret -}}
     {{- else -}}
@@ -27,10 +45,6 @@
 
 {{- define "arkcase.artemis.adminRole" -}}
   {{- include "arkcase.tools.conf" (dict "ctx" $ "value" "adminRole") -}}
-{{- end -}}
-
-{{- define "arkcase.artemis.encryptionPassword" -}}
-  {{- include "arkcase.tools.conf" (dict "ctx" $ "value" "encryptionPassword") -}}
 {{- end -}}
 
 {{- define "arkcase.artemis.users" -}}
@@ -97,21 +111,4 @@
 {{ $role }}={{ join "," (get $roles $role) }}
     {{- end }}
   {{- end -}}
-{{- end -}}
-
-{{- define "arkcase.artemis.clusterPassword" -}}
-  {{- if not (include "arkcase.isRootContext" $) -}}
-    {{- fail "The parameter must be the root context" -}}
-  {{- end -}}
-
-  {{- $fullname := (include "common.fullname" $) -}}
-  {{- $secretKey := (printf "%s-clusterPassword" $fullname) -}}
-  {{- if not (hasKey $ $secretKey) -}}
-    {{- $newSecret := (randAlphaNum 63 | b64enc) -}}
-    {{- $crap := set $ $secretKey $newSecret -}}
-    {{- $secretKey = $newSecret -}}
-  {{- else -}}
-    {{- $secretKey = get $ $secretKey -}}
-  {{- end -}}
-  {{- $secretKey -}}
 {{- end -}}
