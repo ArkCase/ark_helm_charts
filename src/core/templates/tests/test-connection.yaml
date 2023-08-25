@@ -35,8 +35,8 @@ spec:
             acme-init
             curl -L --fail https://${SERVICE_NAME}:9999
             curl -L --fail https://${SERVICE_NAME}:8443/arkcase
-            {{- if $foia -}}
+            {{- if $foia }}
             curl -L --fail https://${SERVICE_NAME}:8443/foia
-            {{- end -}}
+            {{- end }}
   restartPolicy: Never
 {{- end -}}

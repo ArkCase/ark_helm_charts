@@ -1,4 +1,5 @@
 {{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.subsystem.external" $)) }}
+{{- $fullname := (include "arkcase.fullname" $) -}}
 {{- $cluster := (include "arkcase.cluster" $ | fromYaml) -}}
 {{- $maxFailed := ( $cluster.enabled | ternary 1 0 ) -}}
 {{- if (gt $maxFailed 0) }}
@@ -17,7 +18,7 @@ spec:
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ include "arkcase.fullname" $ | quote }}
+  name: {{ $fullname | quote }}
   namespace: {{ $.Release.Namespace | quote }}
   labels: {{- include "arkcase.labels" $ | nindent 4 }}
     {{- with ($.Values.labels).common }}
@@ -43,7 +44,7 @@ spec:
   podManagementPolicy: Parallel
   template:
     metadata:
-      name: {{ include "arkcase.fullname" $ | quote }}
+      name: {{ $fullname | quote }}
       namespace: {{ $.Release.Namespace | quote }}
       labels: {{- include "arkcase.labels" $ | nindent 8 }}
         {{- with ($.Values.labels).common }}
@@ -116,15 +117,20 @@ spec:
             - name: ARTEMIS_ADMIN_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: &secretName {{ include "arkcase.fullname" $ | quote }}
+                  name: &secretName {{ $fullname | quote }}
                   key: ADMIN_PASSWORD
-            - name: JAVA_MEM_ARGS
-              value: "-Xms2g -Xmx2g"
+            - name: ARTEMIS_CLUSTER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: *secretName
+                  key: CLUSTER_PASSWORD
             - name: ARTEMIS_ENCRYPTION_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: *secretName
                   key: ENCRYPTION_PASSWORD
+            - name: JAVA_MEM_ARGS
+              value: "-Xms2g -Xmx2g"
           {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
           {{- with (include "arkcase.values" (dict "ctx" $ "base" "command") | fromYaml) }}
           command: {{ toJson .value }}
@@ -138,15 +144,15 @@ spec:
               mountPath: *dataPath
             - name: *logsVol
               mountPath: *logsPath
-            - name: &secrets "secrets"
+            - name: &secretFiles "secret-files"
               mountPath: "/app/conf/artemis-users.properties"
               subPath: &artemisUsersProperties "artemis-users.properties"
               readOnly: true
-            - name: *secrets
+            - name: *secretFiles
               mountPath: "/app/conf/artemis-roles.properties"
               subPath: &artemisRolesProperties "artemis-roles.properties"
               readOnly: true
-            - name: *secrets
+            - name: *secretFiles
               mountPath: "/app/conf/broker.xml.template"
               subPath: &brokerXmlTemplate "broker.xml.template"
               readOnly: true
@@ -177,10 +183,10 @@ spec:
       volumes:
         {{- include "arkcase.acme.volume" $ | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
-        - name: *secrets
+        - name: *secretFiles
           secret:
             optional: false
-            secretName: *secretName
+            secretName: {{ printf "%s-files" $fullname | quote }}
             defaultMode: 0644
             items:
               - key: *artemisUsersProperties
@@ -192,7 +198,7 @@ spec:
         - name: *configMap
           configMap:
             optional: false
-            name: {{ include "arkcase.fullname" $ | quote }}
+            name: {{ $fullname | quote }}
             defaultMode: 0644
             items:
               - key: *bootstrapXml
