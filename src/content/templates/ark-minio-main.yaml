@@ -55,7 +55,6 @@ spec:
         # NB: Both these annotation values must be of type "string"
         prometheus.io/scrape: "true"
         prometheus.io/port: "9100"
-        timestamp: {{ date "20060102150405" now | quote }}
         {{- with (include "arkcase.values" (dict "ctx" $ "base" "annotations") | fromYaml) }}
           {{- toYaml .value | nindent 8 }}
         {{- end }}
