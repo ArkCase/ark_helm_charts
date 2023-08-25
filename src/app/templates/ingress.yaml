@@ -30,7 +30,6 @@ metadata:
           {{- toYaml . | nindent 4 }}
         {{- end }}
   annotations:
-    timestamp: {{ date "20060102150405" now | quote }}
         {{- with (include "arkcase.values" (dict "ctx" $ "base" "annotations") | fromYaml) }}
           {{- toYaml . | nindent 4 }}
         {{- end }}
