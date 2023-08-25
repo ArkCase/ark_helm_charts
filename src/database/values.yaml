@@ -55,12 +55,12 @@ image:
 
   postgresql:
     repository: "arkcase/postgres"
-    tag: "13-02"
+    tag: "13-03"
 
   mysql:
     # We use MariaDB here for convenience
     repository: "arkcase/mariadb"
-    tag: "10.5-02"
+    tag: "10.5-03"
 
 # You generally shouldn't mess with these. These exist to support some name-generation templates
 nameOverride: ""
@@ -129,30 +129,63 @@ persistence:
 # properly declare volumes)
 #     data:
 
+probes: &probesTemplate
+  enabled: true
+  spec: &probesSpecTemplate
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 5
+    failureThreshold: 60
+    successThreshold: 1
+
 service:
   mysql:
     ports:
       - name: mysql
         protocol: TCP
-        port: 3306
+        port: &mysql 3306
+    probes:
+      <<: *probesTemplate
+      spec:
+        <<: *probesSpecTemplate
+        tcpSocket:
+          port: *mysql
 
   postgresql:
     ports:
       - name: postgresql
         protocol: TCP
-        port: 5432
+        port: &psql 5432
+    probes:
+      <<: *probesTemplate
+      spec:
+        <<: *probesSpecTemplate
+        tcpSocket:
+          port: *psql
 
   oracle:
     ports:
       - name: orcl
         protocol: TCP
-        port: 1521
+        port: &orcl 1521
+    probes:
+      <<: *probesTemplate
+      spec:
+        <<: *probesSpecTemplate
+        tcpSocket:
+          port: *orcl
 
   sqlserver:
     ports:
       - name: orcl
         protocol: TCP
-        port: 1433
+        port: &mssql 1433
+    probes:
+      <<: *probesTemplate
+      spec:
+        <<: *probesSpecTemplate
+        tcpSocket:
+          port: *mssql
 
 ##
 ## Configure extra options for containers' liveness and readiness probes
@@ -164,12 +197,3 @@ service:
 ## @param service.probes.spec.failureThreshold Failure threshold for liveness and readiness probes
 ## @param service.probes.spec.successThreshold Success threshold for liveness and readiness probes
 ##
-  probes:
-    # TODO: How to enable probes that work for all databases?
-    enabled: false
-    spec:
-      initialDelaySeconds: 5
-      periodSeconds: 5
-      timeoutSeconds: 5
-      failureThreshold: 60
-      successThreshold: 1
