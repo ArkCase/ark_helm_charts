@@ -35,6 +35,8 @@ KEY_LDAP_USER_OU = "userou"
 KEY_LDAP_GROUP_OU = "groupou"
 KEY_LDAP_USERNAME_AS_CN = "usernameAsCn"
 
+DEFAULT_USERNAME_AS_CN = True
+
 KEY_SECRET_DOMAIN_NAME = "NAME"
 KEY_SECRET_DOMAIN_ROOT_DN = "ROOT_DN"
 KEY_SECRET_DOMAIN_BASE_DN = "BASE_DN"
@@ -93,13 +95,30 @@ def fail(msg):
 	logging.error(msg)
 	exit(1)
 
-def to_boolean(v):
+def to_boolean(v, d=False):
+	# If it's a boolean, return it
 	if type(v) == bool:
 		return v
 
-	if (v is None) or (not v):
+	# If there's no value given, return the default
+	if (v is None):
+		if type(d) == bool:
+			return d
+		return to_boolean(d)
+
+	# Empty values evaluate to false
+	if (not v):
 		return False
 
+	# Non-empty lists or dicts also evaluate to true
+	if (type(v) == dict) or (type(v) == list):
+		return True
+
+	# Numeric values that are non-0 are also true
+	if (type(v) == int) or (type(v) == float):
+		return (v != 0)
+
+	# Anything else gets stringed and compared with "true"
 	return (str(v).lower() == "true")
 
 #
@@ -277,7 +296,7 @@ def create_user(userId, userData):
 
 	username_as_cn = USERNAME_AS_CN
 	if KEY_LDAP_USERNAME_AS_CN in userData:
-		username_as_cn = to_boolean(userData[KEY_LDAP_USERNAME_AS_CN])
+		username_as_cn = to_boolean(userData[KEY_LDAP_USERNAME_AS_CN], USERNAME_AS_CN)
 
 	if username_as_cn:
 		logging.info("\t...with the username as the CN value")
@@ -502,9 +521,9 @@ except KeyError:
 	USER_OU = None
 	USER_OU_FULL = None
 
-USERNAME_AS_CN = False
+USERNAME_AS_CN = DEFAULT_USERNAME_AS_CN
 try:
-	USERNAME_AS_CN = to_boolean(serverInfo[KEY_LDAP_USERNAME_AS_CN])
+	USERNAME_AS_CN = to_boolean(serverInfo[KEY_LDAP_USERNAME_AS_CN], DEFAULT_USERNAME_AS_CN)
 except KeyError:
 	# Leave it on the default value
 	pass
