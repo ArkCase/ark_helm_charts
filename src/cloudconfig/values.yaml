@@ -147,8 +147,9 @@ service:
     enabled: true
     spec:
       httpGet:
-        path: "/actuator/health"
+        scheme: HTTPS
         port: *servicePort
+        path: "/actuator/health"
       initialDelaySeconds: 0
       periodSeconds: 5
       timeoutSeconds: 5

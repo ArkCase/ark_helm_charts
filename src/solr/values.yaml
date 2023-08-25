@@ -131,8 +131,9 @@ service:
   probes:
     enabled: true
     spec:
-      tcpSocket:
-        # path: "/solr/admin/info/health"
+      httpGet:
+        scheme: HTTPS
+        path: "/solr/admin/info/health"
         port: *solr
       initialDelaySeconds: 10
       periodSeconds: 10

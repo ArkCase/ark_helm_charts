@@ -306,8 +306,10 @@ service:
     probes:
       enabled: true
       spec:
-        exec:
-          command: [ "check-ready" ]
+        httpGet:
+          scheme: HTTPS
+          path: "/actuator/health"
+          port: *cloudconfigPort
         initialDelaySeconds: 10
         periodSeconds: 5
         timeoutSeconds: 5
@@ -326,8 +328,10 @@ service:
     probes:
       enabled: true
       spec:
-        exec:
-          command: [ "check-ready" ]
+        httpGet:
+          scheme: HTTPS
+          path: "/arkcase"
+          port: *arkcasePort
         initialDelaySeconds: 120
         periodSeconds: 5
         timeoutSeconds: 5
