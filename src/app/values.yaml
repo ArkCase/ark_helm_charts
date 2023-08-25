@@ -310,8 +310,10 @@ service:
     probes:
       enabled: true
       spec:
-        tcpSocket:
+        httpGet:
+          scheme: HTTPS
           port: *artifactsPort
+          path: "/"
         initialDelaySeconds: 5
         periodSeconds: 5
         timeoutSeconds: 5

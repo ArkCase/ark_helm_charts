@@ -253,8 +253,10 @@ service:
     probes:
       enabled: true
       spec:
-        tcpSocket:
+        httpGet:
+          scheme: HTTPS
           port: *https
+          path: "/pentaho"
         initialDelaySeconds: 30
         periodSeconds: 10
         timeoutSeconds: 10
@@ -269,8 +271,10 @@ service:
     probes:
       enabled: true
       spec:
-        tcpSocket:
+        httpGet:
+          scheme: HTTPS
           port: *clustered
+          path: "/pentaho"
         initialDelaySeconds: 30
         periodSeconds: 10
         timeoutSeconds: 10

@@ -298,56 +298,107 @@ service:
         protocol: TCP
         port: 9001
 
+    probes:
+      <<: *probesTemplate
+      spec:
+        <<: *probesSpecTemplate
+        failureThreshold: 120
+        httpGet:
+          scheme: HTTPS
+          path: "/alfresco"
+          port: 8443
+
   share:
     <<: *serviceTemplate
     ports:
       - name: "https"
         protocol: TCP
         port: 8443
-  
+
+    probes:
+      <<: *probesTemplate
+      spec:
+        <<: *probesSpecTemplate
+        httpGet:
+          scheme: HTTPS
+          path: "/share"
+          port: 8443
+
   sfs:
     <<: *serviceTemplate
     ports:
       - name: "https"
         protocol: TCP
         port: 8099
-  
+
+    probes:
+      <<: *probesTemplate
+      spec:
+        <<: *probesSpecTemplate
+        tcpSocket:
+          port: 8099
+
   activemq:
     <<: *serviceTemplate
     ports:
       - name: "amqp"
         protocol: TCP
         port: 5672
-  
+
       - name: "console"
         protocol: TCP
         port: 8161
-  
+
       - name: "stomp"
         protocol: TCP
         port: 61613
-  
+
       - name: "openwire"
         protocol: TCP
         port: 61616
-  
+
+    probes:
+      <<: *probesTemplate
+      spec:
+        <<: *probesSpecTemplate
+        tcpSocket:
+          port: 61616
+
   search:
     <<: *serviceTemplate
     ports:
       - name: "https"
         protocol: TCP
         port: 8983
-  
+
   transform-router:
     <<: *serviceTemplate
     ports:
       - name: "https"
         protocol: TCP
         port: 8095
-  
+
+    probes:
+      <<: *probesTemplate
+      spec:
+        <<: *probesSpecTemplate
+        httpGet:
+          scheme: HTTPS
+          path: "/actuator/health"
+          port: 8095
+
   transform-core-aio:
     <<: *serviceTemplate
     ports:
       - name: "https"
         protocol: TCP
         port: 8090
+
+    probes:
+      <<: *probesTemplate
+      spec:
+        <<: *probesSpecTemplate
+        httpGet:
+          scheme: HTTPS
+          path: "/actuator/health"
+          port: 8090
