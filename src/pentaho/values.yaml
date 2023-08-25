@@ -73,10 +73,10 @@ configuration:
       # Base DN will be taken as relative from the root DN
       baseDn: "ou=ArkCase"
       bind:
-        dn: "cn=ArkCase Administrator,ou=Users,${baseDn}"
+        dn: "cn=arkcase-admin,ou=Users,${baseDn}"
         password: "$arkcase-admin$"
       admin:
-        dn: "cn=ArkCase Administrator"
+        dn: "cn=arkcase-admin"
         role: "cn=ARKCASE_ADMINISTRATOR"
       search:
         users:
@@ -99,7 +99,7 @@ configuration:
       <<: *ldapArkcase
       baseDn: "ou=ArkCase Portal"
       bind:
-        dn: "cn=ArkCase Portal Administrator,ou=Users,${baseDn}"
+        dn: "cn=portal-admin,ou=Users,${baseDn}"
         password: "$portal-admin$"
 
 initDependencies:
