@@ -284,7 +284,7 @@ that checks the boot order (remember to |bool the outcome!)
     {{- $containerName := (.name | toString) -}}
   {{- end -}}
   {{- if not $containerName -}}
-    {{- $containerName = "database-init" -}}
+    {{- $containerName = "init-database" -}}
   {{- end -}}
   {{- $ctx := . -}}
   {{- if hasKey . "ctx" -}}
