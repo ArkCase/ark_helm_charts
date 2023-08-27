@@ -197,7 +197,7 @@ spec:
             - name: ADMIN_USERNAME
               valueFrom:
                 secretKeyRef:
-                  name: *secrets
+                  name: &secrets "secrets"
                   key: "adminUsername"
             - name: LDAP_DOMAIN
               valueFrom:
@@ -232,7 +232,7 @@ spec:
               mountPath: *initPath
             - name: *logsVol
               mountPath: *logsPath
-            - name: &secrets "secrets"
+            - name: *secrets
               mountPath: "/.template-vars.yaml"
               subPath: &templateVars "template-vars.yaml"
               readOnly: true
