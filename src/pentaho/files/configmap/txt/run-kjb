@@ -29,6 +29,10 @@ usage() {
 }
 
 cleanup_logs() {
+	if [ -n "${LOG}" ] && [ -f "${LOG}" ] ; then
+		# Compress the newly-produced log, if it exists
+		gzip -9 "${LOG}"
+	fi
 	while read log ; do
 		rm -f "${log}" &>/dev/null || true
 	done < <(find "${LOGS_DIR}" -type f -name "${JOB_NAME}-*.log.gz" | sort -r | tail -n +$(( LOG_KEEP + 1 )) )
@@ -50,7 +54,7 @@ LOGS_DIR="${JOB_DIR}/logs"
 
 LOG="${LOGS_DIR}/${JOB_NAME}-$(date -u +%Y%m%d-%H%M%S).log"
 say "Log will be stored at: [${LOG}]"
-exec &> >(tee --output-error=exit >(gzip -9 > "${LOG}.gz")) || fail "Failed to initialize script logging to [${LOG}]"
+exec &> >(tee --output-error=exit "${LOG}") || fail "Failed to initialize script logging to [${LOG}]"
 trap cleanup_logs EXIT
 
 # To temporarily disable template rendering, for debugging purposes
@@ -101,7 +105,16 @@ if [ -d "${DIR}/${CONF_KJB}" ] ; then
 fi
 
 LOG_FLAG=()
+
+# Allow the log level to be set via environment variable
 [ -v LOG_LEVEL ] && [ -n "${LOG_LEVEL}" ] && LOG_FLAG=("-level:${LOG_LEVEL}")
+
+# If the log level isn't set by environment, then allow
+# for it to be set via a companion file?
+if [ ${#LOG_FLAG[@]} -eq 0 ] && [ -f "${JOB}.debug" ] ; then
+	read LOG_LEVEL REST < <(sed -e 's;#.*$;;g' -e '/^\s*$/d' < "${JOB}.debug" | head -1) || true
+	[ -n "${LOG_LEVEL}" ] && LOG_FLAG=("-level:${LOG_LEVEL}")
+fi
 
 say "Executing KJB: [${JOB}]"
 cd "${PENTAHO_PDI_HOME}/data-integration"

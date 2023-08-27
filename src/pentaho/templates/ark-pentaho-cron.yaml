@@ -1,5 +1,4 @@
-{{- $foia := (include "arkcase.foia" $ | fromYaml) -}}
-{{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.subsystem.external" $)) $foia -}}
+{{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.subsystem.external" $)) -}}
 {{- $db := (include "arkcase.db.info" $ | fromYaml) -}}
 {{- $fullName := (include "arkcase.fullname" $) -}}
 {{- $mainName := (include "common.fullname" $) -}}
@@ -62,20 +61,18 @@ spec:
       initContainers:
         - name: init-deployer
           {{- include "arkcase.image" (dict "ctx" $ "name" "deployer" "repository" "arkcase/deployer") | nindent 10 }}
-          command:
-            - &deployCronPath "/usr/local/bin/deploy-cron"
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.deployment.env" $ | nindent 12 }}
           volumeMounts:
             - name: &configMap "config-map"
-              mountPath: *deployCronPath
+              mountPath: "/deploy"
               subPath: &deployCron "deploy-cron"
               readOnly: true
             - name: &initVol "init"
               mountPath: &initPath "/app/init"
             - name: &dataVol "data"
               mountPath: &dataPath "/app/data"
-        - name: set-permissions
+        - name: init-set-permissions
           {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             - name: JOBS
@@ -86,17 +83,11 @@ spec:
                     permissions: "u=rwX,g=rX,o="
                     flags: [ "recurse", "noforced", "create", "changes" ]
                     targets: [ "/app/data", "/app/init" ]
-                  - ownership: "0:0"
-                    permissions: "u=rwX,go="
-                    flags: [ "recurse", "forced", "create", "changes" ]
-                    targets: [ "/app/cron" ]
           volumeMounts:
             - name: *initVol
               mountPath: *initPath
             - name: *dataVol
               mountPath: *dataPath
-            - name: &cronVol "cron"
-              mountPath: "/app/cron"
         {{- include "arkcase.initDependencies.container" $ | nindent 8 }}
       containers:
         - name: cron
@@ -142,8 +133,6 @@ spec:
               mountPath: *dataPath
             - name: *initVol
               mountPath: *initPath
-            - name: *cronVol
-              mountPath: "/var/spool/cron"
             - name: *configMap
               mountPath: "/usr/local/bin/render-template"
               subPath: &renderTemplate "render-template"
@@ -176,7 +165,6 @@ spec:
         {{- include "arkcase.trusts.volume" $ | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "init") | nindent 8 }}
-        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "cron") | nindent 8 }}
         - name: *secrets
           secret:
             optional: false
@@ -226,10 +214,8 @@ spec:
   volumeClaimTemplates:
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "data") | nindent 4 }}
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "init") | nindent 4 }}
-    {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "cron") | nindent 4 }}
 
   {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "data") | nindent 0 }}
   {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "init") | nindent 0 }}
-  {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "cron") | nindent 0 }}
 
 {{- end -}}

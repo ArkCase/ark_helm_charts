@@ -134,30 +134,8 @@ spec:
       initContainers:
         - name: init-deployer
           {{- include "arkcase.image" (dict "ctx" $ "name" "deployer" "repository" "arkcase/deployer") | nindent 10 }}
-          command: [ "/deploy" ]
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.deployment.env" $ | nindent 12 }}
-            - name: FOIA
-              value: {{ (not (empty $foia)) | toString | quote }}
-            - name: ARKCASE_SERVER_URL
-              value: "https://core:8443/arkcase"
-            - name: PENTAHO_SERVER_URL
-              value: {{ printf "https://%s:8443/pentaho" $serviceName }}
-            - name: ADMIN_USERNAME
-              valueFrom:
-                secretKeyRef:
-                  name: &secrets {{ $fullName | quote }}
-                  key: "adminUsername"
-            - name: LDAP_DOMAIN
-              valueFrom:
-                secretKeyRef:
-                  name: *secrets
-                  key: "ldapDomain"
-            - name: ADMIN_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: *secrets
-                  key: "adminPassword"
           volumeMounts:
             - name: &configMap "config-map"
               mountPath: "/deploy"
@@ -167,7 +145,7 @@ spec:
               mountPath: &initPath "/app/init"
             - name: &dataVol "data"
               mountPath: &dataPath "/app/data"
-        - name: set-permissions
+        - name: init-set-permissions
           {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             - name: JOBS
@@ -219,7 +197,7 @@ spec:
             - name: ADMIN_USERNAME
               valueFrom:
                 secretKeyRef:
-                  name: *secrets
+                  name: &secrets "secrets"
                   key: "adminUsername"
             - name: LDAP_DOMAIN
               valueFrom:
@@ -254,7 +232,7 @@ spec:
               mountPath: *initPath
             - name: *logsVol
               mountPath: *logsPath
-            - name: &secrets "secrets"
+            - name: *secrets
               mountPath: "/.template-vars.yaml"
               subPath: &templateVars "template-vars.yaml"
               readOnly: true
