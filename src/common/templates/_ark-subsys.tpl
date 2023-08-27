@@ -127,18 +127,23 @@ Parameter: either the root context (i.e. "." or "$"), or
   {{- $cluster.enabled | ternary (printf "%s-dns" $name) $name -}}
 {{- end -}}
 
-{{- define "arkcase.subsystem.service.render" }}
-  {{- $ctx := .ctx }}
-  {{- $data := .data }}
-  {{- $global := .global }}
-  {{- if (include "arkcase.subsystem.enabledOrExternal" $ctx) }}
-    {{- $external := (coalesce $data.external $ctx.Values.service.external "") }}
-    {{- $ports := (coalesce $data.ports list) }}
-    {{- $type := (coalesce $data.type "ClusterIP") }}
+{{- define "arkcase.subsystem.service.render" -}}
+  {{- $ctx := .ctx -}}
+  {{- $data := .data -}}
+  {{- $global := .global -}}
+  {{- if (include "arkcase.subsystem.enabledOrExternal" $ctx) -}}
+    {{- $external := (coalesce $data.external $ctx.Values.service.external "") -}}
+    {{- $ports := (coalesce $data.ports list) -}}
+    {{- $type := (coalesce $data.type "ClusterIP") -}}
+    {{- $enableDebug := false -}}
+    {{- if (include "arkcase.toBoolean" $data.canDebug) -}}
+      {{- $dev := (include "arkcase.dev" $ctx | fromYaml) -}}
+      {{- $enableDebug = and (not (empty $dev)) (not (empty $dev.debug)) -}}
+    {{- end -}}
     {{- $cluster := (include "arkcase.cluster" $ctx | fromYaml) -}}
-    {{- if and (empty $ports) (not $external) }}
-      {{- fail (printf "No ports are defined for chart %s, and no external server was given" (include "common.name" $ctx)) }}
-    {{- end }}
+    {{- if and (empty $ports) (not $external) -}}
+      {{- fail (printf "No ports are defined for chart %s, and no external server was given" (include "common.name" $ctx)) -}}
+    {{- end -}}
     {{- $name := (include "arkcase.name" $ctx) -}}
     {{- $overrides := (include "arkcase.subsystem.service.global" $ctx | fromYaml) -}}
     {{- if hasKey $overrides $name -}}
@@ -149,10 +154,9 @@ Parameter: either the root context (i.e. "." or "$"), or
     {{- if and (hasKey $overrides "type") ($overrides.type) -}}
       {{- $type = $overrides.type -}}
     {{- end -}}
-
     {{- $serviceName := (include "arkcase.service.name" $ctx) -}}
     {{- $headlessName := (include "arkcase.service.headless" $ctx) -}}
-    {{- if not $external }}
+    {{- if not $external -}}
       {{- if ne $serviceName $headlessName }}
 ---
 apiVersion: v1
@@ -227,7 +231,7 @@ metadata:
       {{- toYaml . | nindent 4 }}
     {{- end }}
 spec:
-  publishNotReadyAddresses: false
+  publishNotReadyAddresses: {{ $enableDebug }}
     {{- if or (not $external) (include "arkcase.tools.isIp" $external) }}
   # This is either an internal service, or an external service using an IP address
   type: {{ coalesce $type "ClusterIP" }}
@@ -306,10 +310,10 @@ subsets:
       - name: {{ (required "Port specifications must contain a name" .name) | quote }}
         protocol: {{ coalesce .protocol "TCP" }}
         port: {{ required (printf "Port [%s] doesn't have a port number" .name) .port }}
-      {{- end }}
-    {{- end }}
-  {{- end }}
-{{- end }}
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
 
 {{- define "arkcase.subsystem.service.parseType" -}}
   {{- $type := (kindIs "string" .) | ternary . (. | toString) | default "ClusterIP" | lower -}}
@@ -499,7 +503,7 @@ Parameter: the root context (i.e. "." or "$")
 
   {{- if (include "arkcase.subsystem.enabledOrExternal" $ctx) }}
     {{- /* Gather the global ports */ -}}
-    {{- $service := pick $ctx.Values.service "ports" "type" "probes" "external" }}
+    {{- $service := pick $ctx.Values.service "ports" "type" "probes" "external" "canDebug" }}
     {{- $ports := list }}
     {{- if $service.ports }}
       {{- if not (kindIs "slice" $service.ports) }}
@@ -508,7 +512,7 @@ Parameter: the root context (i.e. "." or "$")
       {{- $ports = $service.ports }}
     {{- end }}
 
-    {{- $parts := omit $ctx.Values.service "ports" "type" "probes" "external" }}
+    {{- $parts := omit $ctx.Values.service "ports" "type" "probes" "external" "canDebug" }}
     {{- $external := ($service.external | default "") -}}
 
     {{- /* Render the work to be performed */ -}}
@@ -521,7 +525,7 @@ Parameter: the root context (i.e. "." or "$")
       {{- end }}
     {{- else }}
       {{- /* Render a global service with all the ports */ -}}
-      {{- $data := pick $service "type" "external" }}
+      {{- $data := pick $service "type" "external" "canDebug" }}
       {{- range $pn, $p := $parts -}}
         {{- $ports = concat $ports $p.ports -}}
       {{- end -}}
