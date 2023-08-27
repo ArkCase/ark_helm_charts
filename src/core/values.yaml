@@ -288,6 +288,15 @@ persistence:
 # properly declare volumes)
 
 service:
+  # This enables the main service to be rendered with
+  # publishNotReadyAddresses == true, which allows the
+  # main service to route connectivity to pods that are
+  # yet to come up (i.e. to debug the bootup process).
+  #
+  # This behavior will *only* be enabled if debug mode is
+  # also enabled as part of developer mode
+  canDebug: true
+
   cloudconfig:
     ports:
       - name: cloudconfig
