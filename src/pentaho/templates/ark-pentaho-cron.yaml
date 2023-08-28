@@ -2,7 +2,7 @@
 {{- $db := (include "arkcase.db.info" $ | fromYaml) -}}
 {{- $fullName := (include "arkcase.fullname" $) -}}
 {{- $mainName := (include "common.fullname" $) -}}
-{{- $serviceName := (include "arkcase.service.name" $) -}}
+{{- $pentahoService := (include "arkcase.service.name" (dict "ctx" $ "subname" "")) -}}
 {{- $serviceAccountName := (include "arkcase.serviceAccountName" $) -}}
 ---
 apiVersion: apps/v1
@@ -21,6 +21,7 @@ spec:
   replicas: 1
   selector: &labelSelector
     matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
+  serviceName: {{ include "arkcase.service.headless" $ | quote }}
   updateStrategy:
     type: {{ $.Values.updateStrategy }}
     {{- if (eq "Recreate" $.Values.updateStrategy) }}
@@ -102,7 +103,7 @@ spec:
             - name: ARKCASE_SERVER_URL
               value: "https://core:8443/arkcase"
             - name: PENTAHO_SERVER_URL
-              value: {{ printf "https://%s:8443/pentaho" $serviceName }}
+              value: {{ printf "https://%s:8443/pentaho" $pentahoService }}
             - name: ADMIN_USERNAME
               valueFrom:
                 secretKeyRef:
