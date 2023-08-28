@@ -467,7 +467,7 @@ Render the image name taking into account the registry, repository, image name, 
 {{- define "arkcase.image" -}}
   {{- $imageInfo := (include "arkcase.image.info" . | fromYaml) -}}
 image: {{ $imageInfo.image | quote }}
-  {{- with $imageInfo.pullPolicy }}
+  {{- with ($imageInfo.pullPolicy | default "Always") }}
 imagePullPolicy: {{ . }}
   {{- end }}
 {{- end -}}
