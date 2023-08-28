@@ -802,24 +802,30 @@ return either the value if correct, or the empty string if not.
     {{- $enabled := (or (not (hasKey $dev "enabled")) (not (empty (include "arkcase.toBoolean" $dev.enabled)))) -}}
     {{- if $enabled -}}
       {{- $result = set $result "enabled" true -}}
-      {{- if and $dev.war (kindIs "string" $dev.war) -}}
-        {{- $war := $dev.war | toString -}}
-        {{- $file := (hasPrefix "file://" $war) -}}
-        {{- if or (hasPrefix "path://" $war) (hasPrefix "file://" $war) -}}
-          {{- $war = (include "arkcase.tools.parseUrl" $war | fromYaml) -}}
-          {{- $path := $war.path -}}
-          {{- if not $path -}}
-            {{- fail (printf "The value for global.dev.war must contain a path: [%s]" $war) -}}
+
+      {{- /* Handle the custom WAR files */ -}}
+      {{- if and $dev.wars (kindIs "map" $dev.wars) -}}
+        {{- $wars := dict -}}
+        {{- range $k, $v := $dev.wars -}}
+          {{- $war := $v | toString -}}
+          {{- $file := (hasPrefix "file://" $war) -}}
+          {{- if or (hasPrefix "path://" $war) (hasPrefix "file://" $war) -}}
+            {{- $war = (include "arkcase.tools.parseUrl" $war | fromYaml) -}}
+            {{- $path := $war.path -}}
+            {{- if not $path -}}
+              {{- fail (printf "The value for global.dev.wars.%s must contain a path: [%s]" $k $war) -}}
+            {{- end -}}
+            {{- $war = $path -}}
           {{- end -}}
-          {{- $war = $path -}}
+          {{- $war = (include "arkcase.tools.normalizePath" $war) -}}
+          {{- if not (isAbs $war) -}}
+            {{- fail (printf "The value for global.dev.wars.%s must be an absolute path: [%s]" $k $war) -}}
+          {{- end -}}
+          {{- $wars = set $wars $k (dict "file" $file "path" $war) -}}
         {{- end -}}
-        {{- $war = (include "arkcase.tools.normalizePath" $war) -}}
-        {{- if not (isAbs $war) -}}
-          {{- fail (printf "The value for global.dev.war must be an absolute path: [%s]" $war) -}}
-        {{- end -}}
-        {{- $result = set $result "war" (dict "file" $file "path" $war) -}}
-      {{- else if $dev.war -}}
-        {{- fail (printf "The value for global.dev.war must be a string (%s)" (kindOf $dev.war)) -}}
+        {{- $result = set $result "wars" $wars -}}
+      {{- else if $dev.wars -}}
+        {{- fail (printf "The value for global.dev.wars must be a map (%s)" (kindOf $dev.war)) -}}
       {{- end -}}
 
       {{- if and $dev.conf (kindIs "string" $dev.conf) -}}
