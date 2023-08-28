@@ -197,17 +197,17 @@ spec:
             - name: ADMIN_USERNAME
               valueFrom:
                 secretKeyRef:
-                  name: &secrets "secrets"
+                  name: *fullName
                   key: "adminUsername"
             - name: LDAP_DOMAIN
               valueFrom:
                 secretKeyRef:
-                  name: *secrets
+                  name: *fullName
                   key: "ldapDomain"
             - name: ADMIN_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: *secrets
+                  name: *fullName
                   key: "adminPassword"
             - name: CLUSTER_ENABLED
               value: {{ $cluster.enabled | toString | quote }}
@@ -232,7 +232,7 @@ spec:
               mountPath: *initPath
             - name: *logsVol
               mountPath: *logsPath
-            - name: *secrets
+            - name: &secrets "secrets"
               mountPath: "/.template-vars.yaml"
               subPath: &templateVars "template-vars.yaml"
               readOnly: true
