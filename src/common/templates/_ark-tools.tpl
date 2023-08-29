@@ -808,7 +808,7 @@ return either the value if correct, or the empty string if not.
         {{- $wars := dict -}}
         {{- range $k, $v := $dev.wars -}}
           {{- $war := $v | toString -}}
-          {{- $file := (hasPrefix "file://" $war) -}}
+          {{- $file := (hasPrefix "file:/" $war) -}}
           {{- if or (hasPrefix "path:/" $war) (hasPrefix "file:/" $war) -}}
             {{- $path := (regexReplaceAll "^(path|file):" $war "") -}}
             {{- if not $path -}}
@@ -829,8 +829,8 @@ return either the value if correct, or the empty string if not.
 
       {{- if and $dev.conf (kindIs "string" $dev.conf) -}}
         {{- $conf := $dev.conf | toString -}}
-        {{- $file := (hasPrefix "file://" $conf) -}}
-        {{- if or (hasPrefix "path://" $conf) (hasPrefix "file://" $conf) -}}
+        {{- $file := (hasPrefix "file:/" $conf) -}}
+        {{- if or (hasPrefix "path:/" $conf) (hasPrefix "file:/" $conf) -}}
           {{- $path := (regexReplaceAll "^(path|file):" $conf "") -}}
           {{- if not $path -}}
             {{- fail (printf "The value for global.dev.conf must contain a path: [%s]" $conf) -}}
