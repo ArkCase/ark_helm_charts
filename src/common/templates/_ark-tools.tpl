@@ -809,9 +809,8 @@ return either the value if correct, or the empty string if not.
         {{- range $k, $v := $dev.wars -}}
           {{- $war := $v | toString -}}
           {{- $file := (hasPrefix "file://" $war) -}}
-          {{- if or (hasPrefix "path://" $war) (hasPrefix "file://" $war) -}}
-            {{- $war = (include "arkcase.tools.parseUrl" $war | fromYaml) -}}
-            {{- $path := $war.path -}}
+          {{- if or (hasPrefix "path:/" $war) (hasPrefix "file:/" $war) -}}
+            {{- $path := (regexReplaceAll "^(path|file):/" $war "") -}}
             {{- if not $path -}}
               {{- fail (printf "The value for global.dev.wars.%s must contain a path: [%s]" $k $war) -}}
             {{- end -}}
@@ -832,8 +831,7 @@ return either the value if correct, or the empty string if not.
         {{- $conf := $dev.conf | toString -}}
         {{- $file := (hasPrefix "file://" $conf) -}}
         {{- if or (hasPrefix "path://" $conf) (hasPrefix "file://" $conf) -}}
-          {{- $conf = (include "arkcase.tools.parseUrl" $conf | fromYaml) -}}
-          {{- $path := $conf.path -}}
+          {{- $path := (regexReplaceAll "^(path|file):/" $conf "") -}}
           {{- if not $path -}}
             {{- fail (printf "The value for global.dev.conf must contain a path: [%s]" $conf) -}}
           {{- end -}}
