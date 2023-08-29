@@ -246,6 +246,10 @@ spec:
             {{- if $dev }}
             - name: DEVELOPMENT
               value: "true"
+            - name: DEV_UID
+              value: {{ $devUid | toString | quote }}
+            - name: DEV_GID
+              value: {{ $devGid | toString | quote }}
             {{- end }}
             {{- with (($.Values.configuration).arkcase).env }}
               {{- toYaml . | nindent 12 }}
@@ -381,6 +385,14 @@ spec:
               value: >-
                 -XX:MinRAMPercentage=50
                 -XX:MaxRAMPercentage=80
+            {{- if $dev }}
+            - name: DEVELOPMENT
+              value: "true"
+            - name: DEV_UID
+              value: {{ $devUid | toString | quote }}
+            - name: DEV_GID
+              value: {{ $devGid | toString | quote }}
+            {{- end }}
           {{- include "arkcase.subsystem.ports" ($.Values.service).cloudconfig | nindent 10 }}
           {{- with ($.Values.command).cloudconfig }}
           command: {{ toJson . }}
