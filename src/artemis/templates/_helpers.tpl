@@ -11,11 +11,11 @@
   {{- $secretData := (get $secretObj "data") | default dict -}}
 
   {{- $adminPassword := "" -}}
-  {{- if (not $adminPassword) -}}
-    {{- $adminPassword = (get $secretData "ADMIN_PASSWORD") -}}
+  {{- if and (not $adminPassword) (hasKey $secretData "ADMIN_PASSWORD") -}}
+    {{- $adminPassword = (get $secretData "ADMIN_PASSWORD" | b64dec) -}}
   {{- end -}}
   {{- if (not $adminPassword) -}}
-    {{- $adminPassword = (randAlphaNum 12 | b64enc) -}}
+    {{- $adminPassword = (randAlphaNum 12) -}}
   {{- end -}}
   {{- $adminPassword -}}
 {{- end -}}
