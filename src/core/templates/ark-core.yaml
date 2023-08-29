@@ -4,10 +4,10 @@
   {{- $devUid := or (empty $dev) (not (hasKey $dev "uid")) | ternary "1997" $dev.uid }}
   {{- $devGid := or (empty $dev) (not (hasKey $dev "gid")) | ternary "1997" $dev.gid }}
   {{- $foia := (include "arkcase.foia" $ | fromYaml) }}
-{{- $cluster := (include "arkcase.cluster" $ | fromYaml) }}
-{{- $nodes := (min 4 $cluster.nodes) -}}
-{{- $maxFailed := (sub $nodes 1) -}}
-{{- if (gt $maxFailed 0) }}
+  {{- $cluster := (include "arkcase.cluster" $ | fromYaml) }}
+  {{- $nodes := (min 4 $cluster.nodes) -}}
+  {{- $maxFailed := (sub $nodes 1) -}}
+  {{- if (gt $maxFailed 0) }}
 ---
 apiVersion: policy/v1
 kind: PodDisruptionBudget
@@ -18,11 +18,11 @@ spec:
   maxUnavailable: {{ $maxFailed }}
   selector:
     matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
-{{- end }}
-{{- $serviceAccountName := (include "arkcase.serviceAccountName" $) }}
-{{- if $cluster.enabled }}
-  {{- $serviceAccountName = (or (empty $serviceAccountName) (eq "default" $serviceAccountName)) | ternary (include "arkcase.fullname" $) $serviceAccountName }}
-  {{- $roleName := (printf "%s-cluster-membership" $serviceAccountName) }}
+  {{- end }}
+  {{- $serviceAccountName := (include "arkcase.serviceAccountName" $) }}
+  {{- if $cluster.enabled }}
+    {{- $serviceAccountName = (or (empty $serviceAccountName) (eq "default" $serviceAccountName)) | ternary (include "arkcase.fullname" $) $serviceAccountName }}
+    {{- $roleName := (printf "%s-cluster-membership" $serviceAccountName) }}
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -56,7 +56,7 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
   name: {{ $roleName | quote }}
-{{- end }}
+  {{- end }}
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -127,9 +127,7 @@ spec:
       {{- if $serviceAccountName }}
       serviceAccountName: {{ $serviceAccountName | quote }}
       {{- end }}
-      {{- with ($.Values.securityContext).template }}
-      securityContext: {{- toYaml . | nindent 8 }}
-      {{- end }}
+      securityContext: {{- include "arkcase.core.securityContext" $ | nindent 8 }}
       initContainers:
         - name: init-deployer
           {{- include "arkcase.image" (dict "ctx" $ "name" "deployer" "repository" "arkcase/deployer") | nindent 10 }}
@@ -163,7 +161,7 @@ spec:
                   - ownership: "{{ $devUid }}:{{ $devGid }}"
                     permissions: "u=rwX,g=rwX,o="
                     flags: [ "recurse", "forced", "create", "changes" ]
-                    targets: [ "/app/home", "/app/conf", "/app/wars", "/app/logs", "/apps/fsrv", "/apps/foia" ]
+                    targets: [ "/app/home", "/app/conf", "/app/wars", "/app/logs", "/app/fsrv", "/app/foia" ]
           volumeMounts:
             - name: &warsVolume "wars"
               mountPath: &warsDir "/app/wars"
@@ -233,9 +231,6 @@ spec:
               readOnly: true
       containers:
         - name: arkcase
-          {{- with ($.Values.securityContext).arkcase }}
-          securityContext: {{- toYaml . | nindent 12 }}
-          {{- end }}
           {{- include "arkcase.image" (dict "ctx" $ "name" "arkcase" "repository" "arkcase/core") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.cluster.tomcat.env" $ | nindent 12 }}
@@ -280,9 +275,7 @@ spec:
           command: {{ toJson . }}
           {{- end }}
           resources: {{- include "arkcase.resources" (dict "ctx" $ "part" "arkcase") | nindent 12 }}
-          {{- with ($.Values.securityContext).arkcase }}
-          securityContext: {{- toYaml . | nindent 12 }}
-          {{- end }}
+          securityContext: {{- include "arkcase.core.securityContext" (dict "ctx" $ "container" "arkcase") | nindent 12 }}
           volumeMounts:
             {{- include "arkcase.trusts.mount" $ | nindent 12 }}
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
@@ -376,9 +369,6 @@ spec:
               readOnly: true
             {{- end }}
         - name: cloudconfig
-          {{- with ($.Values.securityContext).cloudconfig }}
-          securityContext: {{- toYaml . | nindent 12 }}
-          {{- end }}
           {{- include "arkcase.image" (dict "ctx" $ "name" "cloudconfig" "repository" "arkcase/cloudconfig") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
@@ -396,9 +386,7 @@ spec:
           command: {{ toJson . }}
           {{- end }}
           resources: {{- include "arkcase.resources" (dict "ctx" $ "part" "cloudconfig") | nindent 12 }}
-          {{- with ($.Values.securityContext).cloudconfig }}
-          securityContext: {{- toYaml . | nindent 12 }}
-          {{- end }}
+          securityContext: {{- include "arkcase.core.securityContext" (dict "ctx" $ "container" "cloudconfig") | nindent 12 }}
           volumeMounts:
             {{- include "arkcase.trusts.mount" $ | nindent 12 }}
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
