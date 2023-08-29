@@ -127,7 +127,7 @@ spec:
       {{- if $serviceAccountName }}
       serviceAccountName: {{ $serviceAccountName | quote }}
       {{- end }}
-      securityContext: {{- include "arkcase.core.securityContext" $ | nindent 8 }}
+      securityContext: {{- include "arkcase.securityContext" $ | nindent 8 }}
       initContainers:
         - name: init-deployer
           {{- include "arkcase.image" (dict "ctx" $ "name" "deployer" "repository" "arkcase/deployer") | nindent 10 }}
@@ -275,7 +275,7 @@ spec:
           command: {{ toJson . }}
           {{- end }}
           resources: {{- include "arkcase.resources" (dict "ctx" $ "part" "arkcase") | nindent 12 }}
-          securityContext: {{- include "arkcase.core.securityContext" (dict "ctx" $ "container" "arkcase") | nindent 12 }}
+          securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "arkcase") | nindent 12 }}
           volumeMounts:
             {{- include "arkcase.trusts.mount" $ | nindent 12 }}
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
@@ -386,7 +386,7 @@ spec:
           command: {{ toJson . }}
           {{- end }}
           resources: {{- include "arkcase.resources" (dict "ctx" $ "part" "cloudconfig") | nindent 12 }}
-          securityContext: {{- include "arkcase.core.securityContext" (dict "ctx" $ "container" "cloudconfig") | nindent 12 }}
+          securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "cloudconfig") | nindent 12 }}
           volumeMounts:
             {{- include "arkcase.trusts.mount" $ | nindent 12 }}
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
