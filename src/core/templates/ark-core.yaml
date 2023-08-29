@@ -3,12 +3,6 @@
   {{- $debug := $dev.debug | default dict }}
   {{- $devUid := or (empty $dev) (not (hasKey $dev "uid")) | ternary "1997" $dev.uid }}
   {{- $devGid := or (empty $dev) (not (hasKey $dev "gid")) | ternary "1997" $dev.gid }}
-  {{- $customConf := and (not (empty $dev)) (not (empty $dev.conf)) }}
-  {{- $customConfFile := and $customConf $dev.conf.file }}
-  {{- $customConfDir := and $customConf (not $dev.conf.file) }}
-  {{- $customWar := and (not (empty $dev)) (not (empty $dev.war)) }}
-  {{- $customWarFile := and $customWar $dev.war.file }}
-  {{- $customWarDir := and $customWar (not $dev.war.file) }}
   {{- $foia := (include "arkcase.foia" $ | fromYaml) }}
 {{- $cluster := (include "arkcase.cluster" $ | fromYaml) }}
 {{- $nodes := (min 4 $cluster.nodes) -}}
@@ -139,16 +133,13 @@ spec:
       initContainers:
         - name: init-deployer
           {{- include "arkcase.image" (dict "ctx" $ "name" "deployer" "repository" "arkcase/deployer") | nindent 10 }}
-          command: [ "/deploy" ]
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.deployment.env" $ | nindent 12 }}
+            {{- include "arkcase.core.dev.deployEnv" $ | nindent 12 }}
             - name: REALM_FIX
               value: {{ printf "arkcase.org=%s" (include "arkcase.ldap" (dict "ctx" $ "value" "domain")) | quote }}
-        {{- if or $customConfFile $customWarFile }}
-            - name: FORCE_HASHES
-              value: "true"
-        {{- end }}
           volumeMounts:
+            {{- include "arkcase.core.dev.deployMounts" $ | nindent 12 }}
             - name: &configMap "config-map"
               mountPath: "/deploy"
               subPath: &deploy "deploy"
@@ -161,14 +152,6 @@ spec:
               mountPath: "/usr/local/bin/realm-fix"
               subPath: &realmFix "realm-fix"
               readOnly: true
-        {{- if not $customConfDir }}
-            - name: "conf"
-              mountPath: "/app/depl/conf"
-        {{- end }}
-        {{- if not $customWarDir }}
-            - name: "wars"
-              mountPath: "/app/depl/wars"
-        {{- end }}
         - name: init-permissions
           {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
@@ -178,15 +161,14 @@ spec:
                   # We know the Cloudconfig image uses user 997i (centos) , 1997 (rocky)
                   # TODO: Make this autodetected via the securityContext
                   - ownership: "{{ $devUid }}:{{ $devGid }}"
-                    permissions: "u=rwXs,g=rwXs,o="
+                    permissions: "u=rwX,g=rwX,o="
                     flags: [ "recurse", "forced", "create", "changes" ]
                     targets: [ "/app/home", "/app/conf", "/app/wars", "/app/logs", "/apps/fsrv", "/apps/foia" ]
           volumeMounts:
-            - name: &confVolume "conf"
-              mountPath: &confDir "/app/conf"
             - name: &warsVolume "wars"
               mountPath: &warsDir "/app/wars"
-            - name: &initVolume "home"
+            {{- include "arkcase.core.dev.permissionMounts" $ | nindent 12 }}
+            - name: &initVolume "init"
               mountPath: &initDir "/app/init"
             - name: &homeVolume "home"
               mountPath: &homeDir "/app/home"
@@ -312,6 +294,7 @@ spec:
               mountPath: "/app/home/.arkcase"
             - name: *warsVolume
               mountPath: "/app/tomcat/webapps"
+            {{- include "arkcase.core.dev.runMounts" $ | nindent 12 }}
             - name: *configMap
               mountPath: "/app/tomcat/conf/server.xml.tpl"
               subPath: &serverXmlTpl "server.xml.tpl"
@@ -535,23 +518,10 @@ spec:
               - key: *bootstrapYaml
                 path: *bootstrapYaml
               {{- end }}
-        {{- if $customConfDir }}
-        - name: "conf"
-          hostPath:
-            path: {{ $dev.conf.path | quote }}
-            type: Directory
-        {{- else }}
-        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "conf") | nindent 8 }}
-        {{- end }}
         - name: *warsVolume
-        {{- if $customWarDir }}
-          hostPath:
-            path: {{ $dev.war.path | quote }}
-            type: Directory
-        {{- else }}
           emptyDir:
             sizeLimit: 2Gi
-        {{- end }}
+        {{- include "arkcase.core.dev.volumes" $ | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "init") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "home") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "logs") | nindent 8 }}
@@ -562,7 +532,7 @@ spec:
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "fsrv") | nindent 8 }}
         {{- end }}
   volumeClaimTemplates:
-    {{- if not $customConfDir }}
+    {{- if not $dev.conf }}
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "conf") | nindent 4 }}
     {{- end }}
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "init") | nindent 4 }}
@@ -572,7 +542,7 @@ spec:
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "fsrv") | nindent 4 }}
     {{- end }}
 
-  {{- if not $customConfDir }}
+  {{- if not $dev.conf }}
   {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "conf") | nindent 0 }}
   {{- end }}
   {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "init") | nindent 0 }}
