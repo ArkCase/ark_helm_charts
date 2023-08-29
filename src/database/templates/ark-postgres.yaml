@@ -50,9 +50,7 @@ spec:
       schedulerName: {{ $.Values.schedulerName | quote }}
       {{- end }}
       serviceAccountName: {{ include "arkcase.serviceAccountName" $ | quote }}
-      {{- with ($.Values.securityContext).template }}
-      securityContext: {{- toYaml . | nindent 8 }}
-      {{- end }}
+      securityContext: {{- include "arkcase.securityContext" $ | nindent 8 }}
       initContainers:
         - name: init-set-permissions
           {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
@@ -72,9 +70,6 @@ spec:
         {{- include "arkcase.initDependencies.container" $ | nindent 8 }}
       containers:
         - name: postgres
-          {{- with ($.Values.securityContext).postgres }}
-          securityContext: {{- toYaml . | nindent 12 }}
-          {{- end }}
           {{- include "arkcase.image" (dict "ctx" $ "name" "postgresql" "repository" "arkcase/postgres") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.initDatabase.adminPassEnv" (dict "ctx" $ "var" "POSTGRESQL_ADMIN_PASSWORD") | nindent 12 }}
@@ -84,6 +79,7 @@ spec:
           command: {{- $.Values.command | toYaml | nindent 12 }}
           {{- end }}
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
+          securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "postgres") | nindent 12 }}
           volumeMounts:
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
             - name: "init"

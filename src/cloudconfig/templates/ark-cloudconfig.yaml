@@ -53,9 +53,7 @@ spec:
       schedulerName: {{ .Values.schedulerName | quote }}
       {{- end }}
       serviceAccountName: {{ include "arkcase.serviceAccountName" $ | quote }}
-      {{- with ($.Values.securityContext).template }}
-      securityContext: {{- toYaml . | nindent 8 }}
-      {{- end }}
+      securityContext: {{- include "arkcase.securityContext" $ | nindent 8 }}
       initContainers:
         - name: init-set-permissions
           {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
@@ -76,9 +74,6 @@ spec:
       containers:
         - name: cloudconfig
           {{- include "arkcase.image" $ | nindent 10 }}
-          {{- with ($.Values.securityContext).config }}
-          securityContext: {{- toYaml . | nindent 12 }}
-          {{- end }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             - name: DATA_DIR
               value: "/app/data"
@@ -89,9 +84,7 @@ spec:
           {{- with (include "arkcase.values" (dict "ctx" $ "base" "resources") | fromYaml) }}
           resources: {{- toYaml . | nindent 12 }}
           {{- end }}
-          {{- with ($.Values.securityContext).config }}
-          securityContext: {{- toYaml . | nindent 12 }}
-          {{- end }}
+          securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "cloudconfig") | nindent 12 }}
           volumeMounts:
             - name: "data"
               mountPath: *dataDir

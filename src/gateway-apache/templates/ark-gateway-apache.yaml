@@ -50,25 +50,19 @@ spec:
       schedulerName: {{ $.Values.schedulerName | quote }}
       {{- end }}
       serviceAccountName: {{ include "arkcase.serviceAccountName" $ | quote }}
-      {{- with ($.Values.securityContext).template }}
-      securityContext: {{- toYaml . | nindent 8 }}
-      {{- end }}
+      securityContext: {{- include "arkcase.securityContext" $ | nindent 8 }}
       initContainers:
         {{- include "arkcase.initDependencies.container" $ | nindent 8 }}
       containers:
         - name: apache
-          {{- with ($.Values.securityContext).apache }}
-          securityContext: {{- toYaml . | nindent 12 }}
-          {{- end }}
           {{- include "arkcase.image" $ | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
           {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
           {{- if $.Values.command }}
           command: {{- $.Values.command | toYaml | nindent 12 }}
           {{- end }}
-          {{- with $.Values.resources }}
-          resources: {{- toYaml . | nindent 12 }}
-          {{- end }}
+          resources: {{- include "arkcase.resources" $ | nindent 12 }}
+          securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "apache") | nindent 12 }}
           volumeMounts:
             {{- if ($.Values.configuration).customDocumentRoot }}
             - name: "www"
