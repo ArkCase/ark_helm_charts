@@ -1055,6 +1055,25 @@ return either the value if correct, or the empty string if not.
           "windowsOptions"
       -}}
     {{- end -}}
+
+    {{- /* Only apply the patched development IDs if and only if it's a container and we've been asked to do so */ -}}
+    {{- if (include "arkcase.toBoolean" .useDevId) -}}
+      {{- $dev := (include "arkcase.dev" $ctx | fromYaml) -}}
+      {{- if $dev -}}
+        {{- if (hasKey $dev "uid") -}}
+          {{- $uid := get $dev "uid" -}}
+          {{- if (regexMatch "^(0|[1-9][0-9]*)$" ($uid | toString)) -}}
+            {{- $result = set $result "runAsUser" ($uid | toString | atoi) -}}
+          {{- end -}}
+        {{- end -}}
+        {{- if (hasKey $dev "gid") -}}
+          {{- $gid := get $dev "gid" -}}
+          {{- if (regexMatch "^(0|[1-9][0-9]*)$" ($gid | toString)) -}}
+            {{- $result = set $result "runAsGroup" ($gid | toString | atoi) -}}
+          {{- end -}}
+        {{- end -}}
+      {{- end -}}
+    {{- end -}}
   {{- else -}}
     {{- /* If a container name wasn't given, this must be for a pod */ -}}
     {{-
@@ -1071,6 +1090,7 @@ return either the value if correct, or the empty string if not.
         "windowsOptions"
     -}}
   {{- end -}}
+
 
   {{- $result | toYaml -}}
 {{- end -}}
