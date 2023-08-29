@@ -52,12 +52,11 @@ serviceAccount:
   name: ""
 
 securityContext:
-  template:
-    # You must specify an `fsGroup` to allow ActiveMQ write access to mounted
-    # volumes (as long as ActiveMQ runs as a non-root user, which should be the
-    # case). Any random number will do.
-    # fsGroup: 2000
-    # fsGroupChangePolicy: OnRootMismatch
+  # You must specify an `fsGroup` to allow ActiveMQ write access to mounted
+  # volumes (as long as ActiveMQ runs as a non-root user, which should be the
+  # case). Any random number will do.
+  # fsGroup: 1000
+  # fsGroupChangePolicy: OnRootMismatch
   step-ca:
     # privileged: false
     # capabilities:

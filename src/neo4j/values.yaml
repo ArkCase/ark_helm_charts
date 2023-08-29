@@ -63,13 +63,13 @@ serviceAccount:
   name: ""
 
 securityContext:
-  template:
-    # You must specify an `fsGroup` to allow Solr write access to mounted
-    # volumes (as long as Solr runs as a non-root user, which should be the
-    # case). Any random number will do.
-    fsGroup: 2002
-    fsGroupChangePolicy: OnRootMismatch
-  solr:
+  # You must specify an `fsGroup` to allow Solr write access to mounted
+  # volumes (as long as Solr runs as a non-root user, which should be the
+  # case). Any random number will do.
+  # fsGroup: 1998
+  # fsGroupChangePolicy: OnRootMismatch
+
+  neo4j:
     # capabilities:
     #   drop:
     #   - ALL

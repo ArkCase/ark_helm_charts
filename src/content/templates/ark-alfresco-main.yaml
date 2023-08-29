@@ -53,11 +53,7 @@ spec:
       schedulerName: {{ .value | quote }}
       {{- end }}
       serviceAccountName: {{ include "arkcase.serviceAccountName" $ | quote }}
-      {{- with (include "arkcase.values" (dict "ctx" $ "base" "securityContext") | fromYaml) }}
-        {{- with .template }}
-      securityContext: {{- toYaml .value | nindent 8 }}
-        {{- end }}
-      {{- end }}
+      securityContext: {{- include "arkcase.securityContext" $ | nindent 8 }}
       initContainers:
         - name: init-set-permissions
           {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
@@ -77,7 +73,8 @@ spec:
               mountPath: &dataDir "/app/data"
         {{- include "arkcase.initDependencies.container" $ | nindent 8 }}
       containers:
-        - name: {{ include "arkcase.part.name" $ | quote }}
+        {{- $partName := (include "arkcase.part.name" $) }}
+        - name: {{ $partName | quote }}
           {{- include "arkcase.image" $ | nindent 10 }}
           {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
           env:
@@ -136,6 +133,7 @@ spec:
           command: {{ toJson .value }}
           {{- end }}
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
+          securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" $partName) | nindent 12 }}
           volumeMounts:
             {{- include "arkcase.alfresco.license.volumeMounts" (dict "ctx" $ "volume" "secrets" "path" "/usr/local/tomcat/shared/classes/alfresco/extension/license") | nindent 12 }}
             {{- include "arkcase.trusts.mount" $ | nindent 12 }}

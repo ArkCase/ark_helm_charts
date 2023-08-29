@@ -802,32 +802,36 @@ return either the value if correct, or the empty string if not.
     {{- $enabled := (or (not (hasKey $dev "enabled")) (not (empty (include "arkcase.toBoolean" $dev.enabled)))) -}}
     {{- if $enabled -}}
       {{- $result = set $result "enabled" true -}}
-      {{- if and $dev.war (kindIs "string" $dev.war) -}}
-        {{- $war := $dev.war | toString -}}
-        {{- $file := (hasPrefix "file://" $war) -}}
-        {{- if or (hasPrefix "path://" $war) (hasPrefix "file://" $war) -}}
-          {{- $war = (include "arkcase.tools.parseUrl" $war | fromYaml) -}}
-          {{- $path := $war.path -}}
-          {{- if not $path -}}
-            {{- fail (printf "The value for global.dev.war must contain a path: [%s]" $war) -}}
+
+      {{- /* Handle the custom WAR files */ -}}
+      {{- if and $dev.wars (kindIs "map" $dev.wars) -}}
+        {{- $wars := dict -}}
+        {{- range $k, $v := $dev.wars -}}
+          {{- $war := $v | toString -}}
+          {{- $file := (hasPrefix "file:/" $war) -}}
+          {{- if or (hasPrefix "path:/" $war) (hasPrefix "file:/" $war) -}}
+            {{- $path := (regexReplaceAll "^(path|file):" $war "") -}}
+            {{- if not $path -}}
+              {{- fail (printf "The value for global.dev.wars.%s must contain a path: [%s]" $k $war) -}}
+            {{- end -}}
+            {{- $war = $path -}}
           {{- end -}}
-          {{- $war = $path -}}
+          {{- $war = (include "arkcase.tools.normalizePath" $war) -}}
+          {{- if not (isAbs $war) -}}
+            {{- fail (printf "The value for global.dev.wars.%s must be an absolute path: [%s]" $k $war) -}}
+          {{- end -}}
+          {{- $wars = set $wars $k (dict "file" $file "path" $war) -}}
         {{- end -}}
-        {{- $war = (include "arkcase.tools.normalizePath" $war) -}}
-        {{- if not (isAbs $war) -}}
-          {{- fail (printf "The value for global.dev.war must be an absolute path: [%s]" $war) -}}
-        {{- end -}}
-        {{- $result = set $result "war" (dict "file" $file "path" $war) -}}
-      {{- else if $dev.war -}}
-        {{- fail (printf "The value for global.dev.war must be a string (%s)" (kindOf $dev.war)) -}}
+        {{- $result = set $result "wars" $wars -}}
+      {{- else if $dev.wars -}}
+        {{- fail (printf "The value for global.dev.wars must be a map (%s)" (kindOf $dev.war)) -}}
       {{- end -}}
 
       {{- if and $dev.conf (kindIs "string" $dev.conf) -}}
         {{- $conf := $dev.conf | toString -}}
-        {{- $file := (hasPrefix "file://" $conf) -}}
-        {{- if or (hasPrefix "path://" $conf) (hasPrefix "file://" $conf) -}}
-          {{- $conf = (include "arkcase.tools.parseUrl" $conf | fromYaml) -}}
-          {{- $path := $conf.path -}}
+        {{- $file := (hasPrefix "file:/" $conf) -}}
+        {{- if or (hasPrefix "path:/" $conf) (hasPrefix "file:/" $conf) -}}
+          {{- $path := (regexReplaceAll "^(path|file):" $conf "") -}}
           {{- if not $path -}}
             {{- fail (printf "The value for global.dev.conf must contain a path: [%s]" $conf) -}}
           {{- end -}}
@@ -998,4 +1002,95 @@ return either the value if correct, or the empty string if not.
       replace "\"" "&quot;" |
       replace "'" "&apos;"
   -}}
+{{- end -}}
+
+{{- define "arkcase.securityContext" -}}
+  {{- $ctx := . -}}
+  {{- $container := "" -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- $ctx = .ctx -}}
+    {{- if not (include "arkcase.isRootContext" $ctx) -}}
+      {{- fail "Must send the root context as either the only parameter, or the 'ctx' parameter" -}}
+    {{- end -}}
+    {{- $container = .container -}}
+    {{- if or (not $container) (not (kindIs "string" $container)) -}}
+      {{- fail "The container name must be a non-empty string" -}}
+    {{- end -}}
+  {{- end -}}
+  {{- $part := (include "arkcase.part.name" $) -}}
+
+  {{- $result := dict -}}
+
+  {{- $securityContext := $ctx.Values.securityContext | default dict -}}
+  {{- if not (kindIs "map" $securityContext) -}}
+    {{- $securityContext = dict -}}
+  {{- end -}}
+
+  {{- if and $part (hasKey $securityContext $part) -}}
+    {{- $securityContext = get $securityContext $part -}}
+    {{- if or (not $securityContext) (not (kindIs "map" $securityContext)) -}}
+      {{- $securityContext = dict -}}
+    {{- end -}}
+  {{- end -}}
+
+  {{- if $container -}}
+    {{- /* If a container name was given, this must be for a container */ -}}
+    {{- if (hasKey $securityContext $container) -}}
+      {{- $securityContext = get $securityContext $container -}}
+      {{- if or (not $securityContext) (not (kindIs "map" $securityContext)) -}}
+        {{- $securityContext = dict -}}
+      {{- end -}}
+      {{-
+        $result = pick $securityContext
+          "allowPrivilegeEscalation"
+          "capabilities"
+          "privileged"
+          "procMount"
+          "readOnlyRootFilesystem"
+          "runAsGroup"
+          "runAsNonRoot"
+          "runAsUser"
+          "seLinuxOptions"
+          "seccompProfile"
+          "windowsOptions"
+      -}}
+    {{- end -}}
+
+    {{- /* Only apply the patched development IDs if and only if it's a container and we've been asked to do so */ -}}
+    {{- if (include "arkcase.toBoolean" .useDevId) -}}
+      {{- $dev := (include "arkcase.dev" $ctx | fromYaml) -}}
+      {{- if $dev -}}
+        {{- if (hasKey $dev "uid") -}}
+          {{- $uid := get $dev "uid" -}}
+          {{- if (regexMatch "^(0|[1-9][0-9]*)$" ($uid | toString)) -}}
+            {{- $result = set $result "runAsUser" ($uid | toString | atoi) -}}
+          {{- end -}}
+        {{- end -}}
+        {{- if (hasKey $dev "gid") -}}
+          {{- $gid := get $dev "gid" -}}
+          {{- if (regexMatch "^(0|[1-9][0-9]*)$" ($gid | toString)) -}}
+            {{- $result = set $result "runAsGroup" ($gid | toString | atoi) -}}
+          {{- end -}}
+        {{- end -}}
+      {{- end -}}
+    {{- end -}}
+  {{- else -}}
+    {{- /* If a container name wasn't given, this must be for a pod */ -}}
+    {{-
+      $result = pick $securityContext
+        "fsGroup"
+        "fsGroupChangePolicy"
+        "runAsGroup"
+        "runAsNonRoot"
+        "runAsUser"
+        "seLinuxOptions"
+        "seccompProfile"
+        "supplementalGroups"
+        "sysctls"
+        "windowsOptions"
+    -}}
+  {{- end -}}
+
+
+  {{- $result | toYaml -}}
 {{- end -}}

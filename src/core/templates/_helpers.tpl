@@ -1,3 +1,144 @@
+{{- define "arkcase.core.dev.deployEnv" -}}
+  {{- $ctx := . -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "Must send the root context as the only parameter" -}}
+  {{- end -}}
+
+  {{- $wars := list -}}
+  {{- $conf := "" -}}
+  {{- $dev := (include "arkcase.dev" $ctx | fromYaml) -}}
+  {{- if $dev.wars -}}
+    {{- range $name := (keys $dev.wars | sortAlpha) -}}
+      {{- $war := get $dev.wars $name -}}
+      {{- if not $war.file -}}
+        {{- $wars = append $wars $name -}}
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
+  {{- if and $dev.conf (not ($dev.conf).file) -}}
+    {{- $conf = "true" -}}
+  {{- end -}}
+
+  {{- $dev = false -}}
+  {{- if $wars }}
+    {{- $dev = true }}
+- name: SKIP_WARS
+  value: {{ $wars | join "/" | quote }}
+  {{- end }}
+  {{- if $conf }}
+    {{- $dev = true }}
+- name: SKIP_CONF
+  value: {{ $conf | quote }}
+  {{- end }}
+- name: DEV
+  value: {{ $dev | toString | quote }}
+{{- end -}}
+
+{{- define "arkcase.core.dev.deployMounts" -}}
+  {{- $ctx := . -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "Must send the root context as the only parameter" -}}
+  {{- end -}}
+
+- name: "wars"
+  mountPath: "/app/depl/wars"
+  {{- $dev := (include "arkcase.dev" $ctx | fromYaml) -}}
+  {{- if $dev.wars }}
+    {{- $num := 0 -}}
+    {{- range $name := (keys $dev.wars | sortAlpha) }}
+      {{- $war := get $dev.wars $name }}
+      {{- if $war.file }}
+- name: {{ printf "dev-war-%02d" $num | quote }}
+  mountPath: {{ printf "/app/dev/wars/%s.war" $name | quote }}
+      {{- end }}
+      {{- $num = add 1 $num }}
+    {{- end }}
+  {{- end }}
+  {{- if or (not $dev.conf) ($dev.conf).file }}
+- name: "conf"
+  mountPath: "/app/depl/conf"
+  {{- end }}
+  {{- if $dev.conf }}
+- name: "dev-conf"
+  mountPath: {{ $dev.conf.file | ternary "/app/dev/conf/01-conf.zip" "/app/depl/conf" | quote }}
+  {{- end }}
+{{- end -}}
+
+{{- define "arkcase.core.dev.permissionMounts" -}}
+  {{- $ctx := . -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "Must send the root context as the only parameter" -}}
+  {{- end -}}
+
+  {{- $dev := (include "arkcase.dev" $ctx | fromYaml) -}}
+  {{- $num := 0 -}}
+  {{- $confVolumeName := "conf" -}}
+  {{- if and $dev.conf (not ($dev.conf).file) -}}
+    {{- $confVolumeName = "dev-conf" -}}
+  {{- end -}}
+- name: &confVolume {{ $confVolumeName | quote }}
+  mountPath: &confDir "/app/conf"
+  {{- if $dev.wars }}
+    {{- range $name := (keys $dev.wars | sortAlpha) }}
+      {{- $war := get $dev.wars $name }}
+      {{- if not $war.file }}
+- name: {{ printf "dev-war-%02d" $num | quote }}
+  mountPath: {{ printf "/app/wars/%s" $name | quote }}
+      {{- end }}
+      {{- $num = add 1 $num }}
+    {{- end }}
+  {{- end }}
+{{- end -}}
+
+{{- define "arkcase.core.dev.runMounts" -}}
+  {{- $ctx := . -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "Must send the root context as the only parameter" -}}
+  {{- end -}}
+
+  {{- $dev := (include "arkcase.dev" $ctx | fromYaml) -}}
+  {{- if $dev.wars -}}
+    {{- $num := 0 -}}
+    {{- range $name := (keys $dev.wars | sortAlpha) }}
+      {{- $war := get $dev.wars $name }}
+      {{- if not $war.file }}
+- name: {{ printf "dev-war-%02d" $num | quote }}
+  mountPath: {{ printf "/app/tomcat/webapps/%s" $name | quote }}
+      {{- end }}
+      {{- $num = add 1 $num }}
+    {{- end }}
+  {{- end -}}
+{{- end -}}
+
+{{- define "arkcase.core.dev.volumes" -}}
+  {{- $ctx := . -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "Must send the root context as the only parameter" -}}
+  {{- end -}}
+
+  {{- $dev := (include "arkcase.dev" $ctx | fromYaml) -}}
+  {{- $num := 0 -}}
+  {{- if or (not $dev.conf) $dev.conf.file }}
+    {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "conf") }}
+  {{- end }}
+  {{- if $dev.conf }}
+- name: "dev-conf"
+  hostPath:
+    path: {{ $dev.conf.path | quote }}
+    type: {{ $dev.conf.file | ternary "File" "Directory" | quote }}
+  {{- end }}
+  {{- if $dev.wars }}
+    {{- range $name := (keys $dev.wars | sortAlpha) }}
+      {{- $war := get $dev.wars $name }}
+- name: {{ printf "dev-war-%02d" $num | quote }}
+  hostPath:
+    path: {{ $war.path | quote }}
+    type: {{ $war.file | ternary "File" "Directory" | quote }}
+      {{- $num = add 1 $num }}
+    {{- end }}
+  {{- end }}
+{{- end -}}
+
 {{- define "arkcase.core.configPriority" -}}
   {{- $ctx := . -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}

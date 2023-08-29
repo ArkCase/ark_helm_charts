@@ -87,12 +87,12 @@ serviceAccount:
   name: ""
 
 securityContext:
-  template:
-    # You must specify an `fsGroup` to allow MariaDB write access to mounted
-    # volumes (as long as MariaDB runs as a non-root user, which should be the
-    # case). Any random number will do.
-    fsGroup: 26
-    fsGroupChangePolicy: OnRootMismatch
+  # You must specify an `fsGroup` to allow MariaDB write access to mounted
+  # volumes (as long as MariaDB runs as a non-root user, which should be the
+  # case). Any random number will do.
+  # fsGroup: 999
+  # fsGroupChangePolicy: OnRootMismatch
+
   postgres:
     # capabilities:
     #   drop:

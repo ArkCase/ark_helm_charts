@@ -128,9 +128,7 @@ spec:
       {{- if $serviceAccountName }}
       serviceAccountName: {{ $serviceAccountName | quote }}
       {{- end }}
-      {{- with ($.Values.securityContext).template }}
-      securityContext: {{- toYaml . | nindent 8 }}
-      {{- end }}
+      securityContext: {{- include "arkcase.securityContext" $ | nindent 8 }}
       initContainers:
         - name: init-deployer
           {{- include "arkcase.image" (dict "ctx" $ "name" "deployer" "repository" "arkcase/deployer") | nindent 10 }}
@@ -166,9 +164,6 @@ spec:
         {{- include "arkcase.initDependencies.container" $ | nindent 8 }}
       containers:
         - name: pentaho
-          {{- with ($.Values.securityContext).pentaho }}
-          securityContext: {{- toYaml . | nindent 12 }}
-          {{- end }}
           {{- include "arkcase.image" $ | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.cluster.tomcat.env" $ | nindent 12 }}
@@ -220,6 +215,7 @@ spec:
           command: {{ . | toYaml }}
           {{- end }}
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
+          securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "pentaho") | nindent 12 }}
           volumeMounts:
             {{- include "arkcase.pentaho.license.volumeMounts" (dict "ctx" $ "volume" "secrets" "path" "/app/init/licenses") | nindent 12 }}
             {{- include "arkcase.trusts.mount" $ | nindent 12 }}
@@ -347,13 +343,11 @@ spec:
               readOnly: true
         {{- if $cluster.enabled }}
         - name: haproxy
-          {{- with ($.Values.securityContext).pentaho }}
-          securityContext: {{- toYaml . | nindent 12 }}
-          {{- end }}
           {{- include "arkcase.image" (dict "ctx" $ "name" "haproxy" "repository" "haproxy") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
           command: [ "/entrypoint" ]
           {{- include "arkcase.subsystem.ports" ($.Values.service).pentaho | nindent 10 }}
+          securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "haproxy") | nindent 12 }}
           volumeMounts:
             - name: *ssl
               mountPath: *sslDir

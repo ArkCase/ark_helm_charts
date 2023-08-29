@@ -80,9 +80,7 @@ spec:
       {{- if $.Values.schedulerName }}
       schedulerName: {{ $.Values.schedulerName | quote }}
       {{- end }}
-      {{- with ($.Values.securityContext).template }}
-      securityContext: {{- toYaml . | nindent 8 }}
-      {{- end }}
+      securityContext: {{- include "arkcase.securityContext" $ | nindent 8 }}
       initContainers:
         - name: init-set-permissions
           {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
@@ -103,9 +101,6 @@ spec:
         {{- include "arkcase.initDependencies.container" $ | nindent 8 }}
       containers:
         - name: solr
-          {{- with ($.Values.securityContext).solr }}
-          securityContext: {{- toYaml . | nindent 12 }}
-          {{- end }}
           {{- include "arkcase.image" $ | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
@@ -142,6 +137,7 @@ spec:
               exec:
                 command: [ "/config-post.sh" ]
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
+          securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "solr") | nindent 12 }}
           volumeMounts:
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
             - name: *dataVolume
@@ -192,7 +188,7 @@ spec:
           configMap:
             name: {{ include "arkcase.fullname" $ | quote }}
             optional: false
-            defaultMode: 0550
+            defaultMode: 0555
             items:
               - key: *entrypoint
                 path: *entrypoint
@@ -204,7 +200,7 @@ spec:
                 path: *deployConfigsSh
               - key: *arkcaseConfTarGz
                 path: *arkcaseConfTarGz
-                mode: 0440
+                mode: 0444
               - key: *createCoresSh
                 path: *createCoresSh
   volumeClaimTemplates:
