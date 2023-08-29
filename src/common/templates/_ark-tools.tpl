@@ -1003,3 +1003,74 @@ return either the value if correct, or the empty string if not.
       replace "'" "&apos;"
   -}}
 {{- end -}}
+
+{{- define "arkcase.securityContext" -}}
+  {{- $ctx := . -}}
+  {{- $container := "" -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- $ctx = .ctx -}}
+    {{- if not (include "arkcase.isRootContext" $ctx) -}}
+      {{- fail "Must send the root context as either the only parameter, or the 'ctx' parameter" -}}
+    {{- end -}}
+    {{- $container = .container -}}
+    {{- if or (not $container) (not (kindIs "string" $container)) -}}
+      {{- fail "The container name must be a non-empty string" -}}
+    {{- end -}}
+  {{- end -}}
+  {{- $part := (include "arkcase.part.name" $) -}}
+
+  {{- $result := dict -}}
+
+  {{- $securityContext := $ctx.Values.securityContext | default dict -}}
+  {{- if not (kindIs "map" $securityContext) -}}
+    {{- $securityContext = dict -}}
+  {{- end -}}
+
+  {{- if and $part (hasKey $securityContext $part) -}}
+    {{- $securityContext = get $securityContext $part -}}
+    {{- if or (not $securityContext) (not (kindIs "map" $securityContext)) -}}
+      {{- $securityContext = dict -}}
+    {{- end -}}
+  {{- end -}}
+
+  {{- if $container -}}
+    {{- /* If a container name was given, this must be for a container */ -}}
+    {{- if (hasKey $securityContext $container) -}}
+      {{- $securityContext = get $securityContext $container -}}
+      {{- if or (not $securityContext) (not (kindIs "map" $securityContext)) -}}
+        {{- $securityContext = dict -}}
+      {{- end -}}
+      {{-
+        $result = pick $securityContext
+          "allowPrivilegeEscalation"
+          "capabilities"
+          "privileged"
+          "procMount"
+          "readOnlyRootFilesystem"
+          "runAsGroup"
+          "runAsNonRoot"
+          "runAsUser"
+          "seLinuxOptions"
+          "seccompProfile"
+          "windowsOptions"
+      -}}
+    {{- end -}}
+  {{- else -}}
+    {{- /* If a container name wasn't given, this must be for a pod */ -}}
+    {{-
+      $result = pick $securityContext
+        "fsGroup"
+        "fsGroupChangePolicy"
+        "runAsGroup"
+        "runAsNonRoot"
+        "runAsUser"
+        "seLinuxOptions"
+        "seccompProfile"
+        "supplementalGroups"
+        "sysctls"
+        "windowsOptions"
+    -}}
+  {{- end -}}
+
+  {{- $result | toYaml -}}
+{{- end -}}
