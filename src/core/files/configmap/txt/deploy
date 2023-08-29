@@ -31,8 +31,9 @@ if ${DEV} ; then
 		* ) SKIP_CONF="false" ;;
 	esac
 
-	DEV_WARS_DIR="${BASE_DIR}/dev/wars"
-	DEV_CONF_DIR="${BASE_DIR}/dev/conf"
+	[ -v DEV_DIR ] || DEV_DIR="${BASE_DIR}/dev"
+	DEV_WARS_DIR="${DEV_DIR}/wars"
+	DEV_CONF_DIR="${DEV_DIR}/conf"
 fi
 
 #

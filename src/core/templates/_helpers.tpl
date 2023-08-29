@@ -40,28 +40,27 @@
     {{- fail "Must send the root context as the only parameter" -}}
   {{- end -}}
 
-  {{- $dev := (include "arkcase.dev" $ctx | fromYaml) -}}
-  {{- $num := 0 -}}
-  {{- if $dev.conf }}
-    {{- if and $dev.conf ($dev.conf).file }}
-- name: "dev-file-conf"
-  mountPath: "/app/dev/conf/01-conf.zip"
-    {{- end }}
-  {{- else }}
-- name: "conf"
-  mountPath: "/app/depl/conf"
-  {{- end }}
 - name: "wars"
   mountPath: "/app/depl/wars"
+  {{- $dev := (include "arkcase.dev" $ctx | fromYaml) -}}
   {{- if $dev.wars }}
+    {{- $num := 0 -}}
     {{- range $name := (keys $dev.wars | sortAlpha) }}
       {{- $war := get $dev.wars $name }}
       {{- if $war.file }}
-- name: {{ printf "dev-file-war-%02d" $num | quote }}
+- name: {{ printf "dev-war-%02d" $num | quote }}
   mountPath: {{ printf "/app/dev/wars/%s.war" $name | quote }}
       {{- end }}
       {{- $num = add 1 $num }}
     {{- end }}
+  {{- end }}
+  {{- if or (not $dev.conf) ($dev.conf).file }}
+- name: "conf"
+  mountPath: "/app/depl/conf"
+  {{- end }}
+  {{- if $dev.conf }}
+- name: "dev-conf"
+  mountPath: {{ $dev.conf.file | ternary "/app/dev/conf/01-conf.zip" "/app/depl/conf" | quote }}
   {{- end }}
 {{- end -}}
 
@@ -75,7 +74,7 @@
   {{- $num := 0 -}}
   {{- $confVolumeName := "conf" -}}
   {{- if and $dev.conf (not ($dev.conf).file) -}}
-    {{- $confVolumeName = "dev-dir-conf" -}}
+    {{- $confVolumeName = "dev-conf" -}}
   {{- end -}}
 - name: &confVolume {{ $confVolumeName | quote }}
   mountPath: &confDir "/app/conf"
@@ -83,7 +82,7 @@
     {{- range $name := (keys $dev.wars | sortAlpha) }}
       {{- $war := get $dev.wars $name }}
       {{- if not $war.file }}
-- name: {{ printf "dev-dir-war-%02d" $num | quote }}
+- name: {{ printf "dev-war-%02d" $num | quote }}
   mountPath: {{ printf "/app/wars/%s" $name | quote }}
       {{- end }}
       {{- $num = add 1 $num }}
@@ -103,7 +102,7 @@
     {{- range $name := (keys $dev.wars | sortAlpha) }}
       {{- $war := get $dev.wars $name }}
       {{- if not $war.file }}
-- name: {{ printf "dev-dir-war-%02d" $num | quote }}
+- name: {{ printf "dev-war-%02d" $num | quote }}
   mountPath: {{ printf "/app/tomcat/webapps/%s" $name | quote }}
       {{- end }}
       {{- $num = add 1 $num }}
@@ -123,22 +122,18 @@
     {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "conf") }}
   {{- end }}
   {{- if $dev.conf }}
-    {{- $t := $dev.conf.file | ternary "file" "dir" }}
-    {{- $type := $dev.conf.file | ternary "File" "Directory" }}
-- name: {{ printf "dev-%s-conf" $t | quote }}
+- name: "dev-conf"
   hostPath:
     path: {{ $dev.conf.path | quote }}
-    type: {{ $type | quote }}
+    type: {{ $dev.conf.file | ternary "File" "Directory" | quote }}
   {{- end }}
   {{- if $dev.wars }}
     {{- range $name := (keys $dev.wars | sortAlpha) }}
       {{- $war := get $dev.wars $name }}
-      {{- $t := $war.file | ternary "file" "dir" }}
-      {{- $type := $war.file | ternary "File" "Directory" }}
-- name: {{ printf "dev-%s-war-%02d" $t $num | quote }}
+- name: {{ printf "dev-war-%02d" $num | quote }}
   hostPath:
     path: {{ $war.path | quote }}
-    type: {{ $type | quote }}
+    type: {{ $war.file | ternary "File" "Directory" | quote }}
       {{- $num = add 1 $num }}
     {{- end }}
   {{- end }}
