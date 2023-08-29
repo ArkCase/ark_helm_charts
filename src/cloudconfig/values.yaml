@@ -72,20 +72,18 @@ serviceAccount:
   name: ""
 
 securityContext:
-  template:
-    # You must specify an `fsGroup` to allow ActiveMQ write access to mounted
-    # volumes (as long as ActiveMQ runs as a non-root user, which should be the
-    # case). Any random number will do.
-    fsGroup: &fsGroup 1997
-    fsGroupChangePolicy: OnRootMismatch
+  # You must specify an `fsGroup` to allow ActiveMQ write access to mounted
+  # volumes (as long as ActiveMQ runs as a non-root user, which should be the
+  # case). Any random number will do.
+  # fsGroup: &fsGroup 1997
+  # fsGroupChangePolicy: OnRootMismatch
+
   cloudconfig:
     # capabilities:
     #   drop:
     #   - ALL
     # readOnlyRootFilesystem: true
-    runAsNonRoot: true
-    runAsUser: &runAsUser 1997
-    runAsGroup: *fsGroup
+
 resources:
   # We usually recommend not to specify default resources and to leave this as a conscious
   # choice for the user. This also increases chances charts run on environments with little

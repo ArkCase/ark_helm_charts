@@ -188,7 +188,7 @@ spec:
           configMap:
             name: {{ include "arkcase.fullname" $ | quote }}
             optional: false
-            defaultMode: 0550
+            defaultMode: 0555
             items:
               - key: *entrypoint
                 path: *entrypoint
@@ -200,7 +200,7 @@ spec:
                 path: *deployConfigsSh
               - key: *arkcaseConfTarGz
                 path: *arkcaseConfTarGz
-                mode: 0440
+                mode: 0444
               - key: *createCoresSh
                 path: *createCoresSh
   volumeClaimTemplates:
