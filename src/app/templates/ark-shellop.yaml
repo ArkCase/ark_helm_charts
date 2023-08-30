@@ -101,7 +101,7 @@ spec:
           configMap:
             name: {{ $fullName | quote }}
             optional: false
-            defaultMode: 0440
+            defaultMode: 0444
             items:
               - key: *hookReadyMarkerSh
                 path: *hookReadyMarkerSh
