@@ -63,11 +63,11 @@ serviceAccount:
   name: ""
 
 securityContext:
-  # You must specify an `fsGroup` to allow Solr write access to mounted
+  # You must specify an `fsGroup` to allow Neo4j write access to mounted
   # volumes (as long as Solr runs as a non-root user, which should be the
   # case). Any random number will do.
-  # fsGroup: 1998
-  # fsGroupChangePolicy: OnRootMismatch
+  fsGroup: 1998
+  fsGroupChangePolicy: OnRootMismatch
 
   neo4j:
     # capabilities:
