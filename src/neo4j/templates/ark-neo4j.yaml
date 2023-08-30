@@ -107,7 +107,7 @@ spec:
           configMap:
             name: {{ include "arkcase.fullname" $ | quote }}
             optional: false
-            defaultMode: 0440
+            defaultMode: 0444
             items:
               - key: *neo4jConf
                 path: *neo4jConf
