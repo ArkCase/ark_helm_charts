@@ -37,6 +37,9 @@ for CHART in "${@}" ; do
 
 	say "Packaging the chart [${CHART}]..."
 	helm package -d "${HELM_REPO_DIR}" "${CHART_DIR}"
+
+    git add "${CHART_DIR}"
 done
 say "Re-indexing the repository..."
 helm repo index --url "${HELM_REPO_URL}" "${HELM_REPO_DIR}"
+git add "${HELM_REPO_DIR}"

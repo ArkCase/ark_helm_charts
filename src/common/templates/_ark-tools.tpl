@@ -54,6 +54,11 @@
   {{- end -}}
 {{- end -}}
 
+{{- define "arkcase.labels.service" -}}
+  {{- include "arkcase.labels.standard" . }}
+app.kubernetes.io/service-support: "true"
+{{- end -}}
+
 {{- define "arkcase.labels" -}}
   {{- $partname := (include "arkcase.part.name" .) -}}
   {{- $ctx := . -}}
@@ -66,17 +71,17 @@
     {{- fail "Incorrect context given - either submit the root context as the only parameter, or a 'ctx' parameter pointing to it" -}}
   {{- end -}}
 
-{{ include "arkcase.labels.standard" . }}
-{{- if $ctx.Chart.AppVersion }}
+  {{- include "arkcase.labels.standard" . }}
+  {{- if $ctx.Chart.AppVersion }}
 app.kubernetes.io/version: {{ $ctx.Chart.AppVersion | quote }}
-{{- end }}
+  {{- end }}
 app: {{ $ctx.Chart.Name | quote }}
 version: {{ $ctx.Chart.AppVersion | quote }}
 {{- end -}}
 
 {{- define "arkcase.selectorLabels" -}}
   {{- include "arkcase.labels.matchLabels" . -}}
-{{- end }}
+{{- end -}}
 
 {{/*
 Kubernetes standard labels
@@ -93,9 +98,9 @@ Kubernetes standard labels
     {{- fail "Incorrect context given - either submit the root context as the only parameter, or a 'ctx' parameter pointing to it" -}}
   {{- end -}}
 
-{{ include "arkcase.selectorLabels" . }}
-app.kubernetes.io/managed-by: {{ $ctx.Release.Service }}
-helm.sh/chart: {{ include "common.names.chart" $ctx }}
+  {{- include "arkcase.selectorLabels" . }}
+app.kubernetes.io/managed-by: {{ $ctx.Release.Service | quote }}
+helm.sh/chart: {{ include "common.names.chart" $ctx | quote }}
 {{- end -}}
 
 {{/*
@@ -113,11 +118,16 @@ Labels to use on deploy.spec.selector.matchLabels and svc.spec.selector
     {{- fail "Incorrect context given - either submit the root context as the only parameter, or a 'ctx' parameter pointing to it" -}}
   {{- end -}}
 
-app.kubernetes.io/instance: {{ $ctx.Release.Name }}
-app.kubernetes.io/name: {{ include "common.names.name" $ctx }}
+app.kubernetes.io/instance: {{ $ctx.Release.Name | quote }}
+app.kubernetes.io/name: {{ include "common.names.name" $ctx | quote }}
   {{- if $partname }}
-app.kubernetes.io/part: {{ $partname }}
+app.kubernetes.io/part: {{ $partname | quote }}
   {{- end }}
+{{- end -}}
+
+{{- define "arkcase.labels.matchLabels.service" -}}
+  {{- include "arkcase.labels.matchLabels" . }}
+app.kubernetes.io/service-support: "true"
 {{- end -}}
 
 {{- define "arkcase.tools.normalizePath" -}}

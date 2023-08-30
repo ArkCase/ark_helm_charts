@@ -21,7 +21,7 @@ kind: StatefulSet
 metadata:
   name: {{ include "arkcase.fullname" $ | quote }}
   namespace: {{ $.Release.Namespace | quote }}
-  labels: {{- include "arkcase.labels" $ | nindent 4 }}
+  labels: {{- include "arkcase.labels.service" $ | nindent 4 }}
     {{- with (include "arkcase.values" (dict "ctx" $ "base" "labels") | fromYaml) }}
       {{- toYaml .value | nindent 4 }}
     {{- end }}
@@ -47,7 +47,7 @@ spec:
     metadata:
       name: {{ include "arkcase.fullname" $ | quote }}
       namespace: {{ $.Release.Namespace | quote }}
-      labels: {{- include "arkcase.labels" $ | nindent 8 }}
+      labels: {{- include "arkcase.labels.service" $ | nindent 8 }}
         {{- with (include "arkcase.values" (dict "ctx" $ "base" "labels") | fromYaml) }}
           {{- toYaml .value | nindent 8 }}
         {{- end }}
