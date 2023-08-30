@@ -201,7 +201,7 @@ spec:
       targetPort: {{ int .targetPort }}
             {{- end }}
           {{- end }}
-  selector: {{- include "arkcase.labels.matchLabels" $ctx | nindent 4 }}
+  selector: {{- include "arkcase.labels.matchLabels.service" $ctx | nindent 4 }}
         {{- end }}
       {{- end }}
 ---
@@ -265,7 +265,7 @@ spec:
           {{- end }}
         {{- end }}
       {{- end }}
-  selector: {{- include "arkcase.labels.matchLabels" $ctx | nindent 4 }}
+  selector: {{- include "arkcase.labels.matchLabels.service" $ctx | nindent 4 }}
     {{- else }}
   # This is an external service, but using a hostname. This will cause a CNAME to
   # be created to route service requests to the external hostname
