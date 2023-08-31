@@ -15,22 +15,29 @@ global:
     # and this flag is not explicitly set to false, development features will be enabled.
     enabled: true
 
-    # Use the ArkCase WAR file or exploded WAR directory at this location for execution. It must be
-    # an absolute path. If it's an absolute path, it's assumed to be an "exploded WAR" directory.
-    # To indicate a file, you must use the syntax file://${absolutePathToFile}. If you want to be specific,
-    # you can also use path://${absolutePathToDirectory} to also indicate an exploded WAR directory.
+    # Use the given WAR files or exploded WAR directories listed for execution. The path must be
+    # an absolute path. If the path specification has a "path:" prefix, it's assumed to be a
+    # local directory containing an "exploded WAR" directory structure.
     #
-    # This will result in the use of a hostPath volume by the core pod(s)
-    war: "path:///mnt/c/Users/developer/workspace/ArkCase/WAR"
-    # war: "file:///mnt/c/Users/developer/workspace/ArkCase/target/arkcase-webapp.war"
+    # To indicate a file (i.e. an actual WAR file), you must use the prefix "file:".
+    #
+    # This will result in the use of a hostPath volume by the core pod(s) that will point to
+    # either the given file or directory.
+    #
+    # Directories will be directly accessible by the Tomcat runtime, while files will instead
+    # be treated like normal artifacts and be extracted and deployed during the deployment phase.
+    wars:
+      arkcase: "path:/mnt/c/Users/developer/workspace/ArkCase/WAR"
+      foia: "file:/mnt/c/Users/developer/workspace/ArkCase/foia.war"
+      # another#war: "file:/mnt/c/Users/developer/workspace/ArkCase/some/other/path.war"
 
     # Use the ArkCase configuration zip file or exploded zip directory at this location for execution.
     # the syntax and logic is identical for the war component, except this is for the .arkcase configuration
     # file set.
     #
     # This will result in the use of a hostPath volume by the core pod(s)
-    conf: "path:///mnt/c/Users/developer/.arkcase"
-    # conf: "file:///mnt/c/Users/developer/workspace/ArkCase/target/.arkcase.zip"
+    conf: "path:/mnt/c/Users/developer/.arkcase"
+    # conf: "file:/mnt/c/Users/developer/workspace/ArkCase/target/.arkcase.zip"
 
     # The settings in this map govern the debugging features
     debug:
