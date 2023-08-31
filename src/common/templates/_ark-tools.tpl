@@ -856,21 +856,25 @@ return either the value if correct, or the empty string if not.
         {{- fail (printf "The value for global.dev.conf must be a string (%s)" (kindOf $dev.conf)) -}}
       {{- end -}}
 
+      {{- $uid := 1000 -}}
       {{- if hasKey $dev "uid" -}}
         {{- $uid := ($dev.uid | toString) -}}
         {{- if (not (regexMatch "^[1-9][0-9]*$" $uid)) -}}
           {{- fail (printf "The value for global.dev.uid must be a positive number (%s)" $uid) -}}
         {{- end -}}
-        {{- $result = set $result "uid" ($uid | atoi) -}}
+        {{- $uid = atoi $uid -}}
       {{- end -}}
+      {{- $result = set $result "uid" $uid -}}
 
+      {{- $gid := 1000 -}}
       {{- if hasKey $dev "gid" -}}
-        {{- $gid := ($dev.gid | toString) -}}
+        {{- $gid = ($dev.gid | toString) -}}
         {{- if (not (regexMatch "^[1-9][0-9]*$" $gid)) -}}
           {{- fail (printf "The value for global.dev.gid must be a positive number (%s)" $gid) -}}
         {{- end -}}
-        {{- $result = set $result "gid" ($gid | atoi) -}}
+        {{- $gid = atoi $gid -}}
       {{- end -}}
+      {{- $result = set $result "gid" $gid -}}
 
       {{- $resources := true -}}
       {{- if (hasKey $dev "resources") -}}
