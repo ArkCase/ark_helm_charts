@@ -1,8 +1,8 @@
 {{- if (include "arkcase.subsystem.enabled" $) }}
   {{- $dev := (include "arkcase.dev" $ | fromYaml) }}
   {{- $debug := $dev.debug | default dict }}
-  {{- $devUid := (empty $dev) | ternary "1997" ((hasKey $dev "uid") | ternary $dev.uid "") | toString | default "1000" }}
-  {{- $devGid := (empty $dev) | ternary "1997" ((hasKey $dev "gid") | ternary $dev.gid "") | toString | default "1000" }}
+  {{- $devUid := (empty $dev) | ternary 1997 $dev.uid | int64 -}}
+  {{- $devGid := (empty $dev) | ternary 1997 $dev.gid | int64 -}}
   {{- $foia := (include "arkcase.foia" $ | fromYaml) }}
   {{- $cluster := (include "arkcase.cluster" $ | fromYaml) }}
   {{- $nodes := (min 4 $cluster.nodes) -}}
@@ -158,7 +158,7 @@ spec:
                 jobs:
                   # We know the Cloudconfig image uses user 997i (centos) , 1997 (rocky)
                   # TODO: Make this autodetected via the securityContext
-                  - ownership: "{{ $devUid }}:{{ $devGid }}"
+                  - ownership: {{ printf "%d:%d" $devUid $devGid | quote }}
                     permissions: "u=rwX,g=rwX,o="
                     flags: [ "recurse", "forced", "create", "changes" ]
                     targets: [ "/app/home", "/app/conf", "/app/wars", "/app/logs", "/app/fsrv", "/app/foia" ]
