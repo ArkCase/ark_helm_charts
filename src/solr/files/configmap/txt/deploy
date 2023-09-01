@@ -19,35 +19,54 @@ fail() {
 
 cleanup() {
 	[ -v WORK_DIR ] && rm -rf "${WORK_DIR}" &>/dev/null
+	[ -v COPROC_PID ] && kill -TERM "${COPROC_PID}" && wait "${COPROC_PID}"
 }
 
-list_configs_with_cores() {
+list_configs_with_collections() {
 	curl -L --fail -s "${SOLR_URL}/admin/collections?action=CLUSTERSTATUS" | \
 			jq -r '.cluster.collections | to_entries[] | "\(.value | .configName)/\(.key)"'  | \
 			sort
 	return ${PIPESTATUS[0]}
 }
 
+zk() {
+	solr zk "${@}" 2>/dev/null
+}
+
 upload_state() {
 	local SRC="${1}"
-	solr zk cp "${DST}" zk:/arkcase.deployment
+	zk cp "${SRC}" zk:/arkcase.deployment
 }
 
 download_state() {
 	local DST="${1}"
-	solr zk cp zk:/arkcase.deployment "${DST}"
+	zk cp zk:/arkcase.deployment "${DST}"
+}
+
+compute_desired_state() {
+	local CONF_DIR="${1}"
+	local CORE_LST="${2}"
+	# TODO: Do something here...
+}
+
+compare_old_state_to() {
+	local NEW_STATE="${1}"
+
+	download_state "${WORK_DIR}/state.old"
+	diff -burN "${OLD_STATE}" "${NEW_STATE}" &>/dev/null
+	return ${?}
 }
 
 upload_config() {
 	local SOURCE_DIR="${1}"
 	local CONF_NAME="${2}"
-	solr zk upconfig -d "${SOURCE_DIR}" -n "${CONF_NAME}"
+	zk upconfig -d "${SOURCE_DIR}" -n "${CONF_NAME}"
 }
 
 download_config() {
 	local CONF_NAME="${1}"
 	local TARGET_DIR="${2}"
-	solr zk downconfig -d "${TARGET_DIR}" -n "${CONF_NAME}"
+	zk downconfig -d "${TARGET_DIR}" -n "${CONF_NAME}"
 }
 
 get_config_sum() {
@@ -99,29 +118,69 @@ while true ; do
 done
 say "The URL [${SOLR_URL}] responded, continuing"
 
-# 0) Compare the incoming desired state with the existing desired state in ZK ... if it
-#	matches, then we're OK and don't need to proceed.
-
 WORK_DIR="$(mktemp -d -p "${INIT_DIR}" ".work.XXXXXXXX")"
 
 #
-# 1) Identify the names of the existing configurations, and which cores are using them
-#
-while IFS="/" read CONFIG CORE ; do
-	VAR="__CFG_${CONFIG}"
-	[ -v ${VAR} ] || eval "${VAR}=()"
-	eval "${VAR}+=(${CORE@Q})"
-done < <(list_configs_with_cores)
+# 0) Compare the incoming desired state with the existing desired state in ZK ... if it
+#	matches, then we're OK and don't need to proceed.
+NEW_STATE="${WORK_DIR}/state.new"
+
+# We only do this once, as it won't change for us...
+compute_desired_state "" "" > "${NEW_STATE}"
+
+if compare_old_state_to "${NEW_STATE}" ; then
+	say "✅ the existing state is consistent with the desired state, will not re-deploy"
+	exit 0
+fi
 
 #
-# 2) Identify the names of the incoming configurations, and which cores are using them
+# The state didn't match ... acquire the leadership lock, and test it again
+#
+
+#
+# TODO: Maybe acquire the lock through a coproc, which (once again) tells us
+# via stdout that it's acquired the lock and thus we can keep going? Just remember
+# to kill the coproc at exit time
+#
+
+# We have the lock, so let's try to compare things again
+if compare_old_state_to "${NEW_STATE}" ; then
+	say "✅ the existing state is consistent with the desired state, will not re-deploy"
+	exit 0
+fi
+
+# OK ... so if we've made it this far, the existing state and
+# the incoming states are different ... let's reconcile
+
+#
+# 1) Identify the names of the existing configurations, and which collections are using them
+#
+CONF_PREFIX="__CONF_"
+while IFS="/" read CONFIG COLLECTION ; do
+	VAR="${CONF_PREFIX}${CONFIG}"
+	if [ ! -v ${VAR} ] ; then
+		# Declare the array to hold the collections
+		eval "${VAR}=()"
+
+		# Find the config's checksum in the stored state
+		SUMVAR="${CONF_PREFIX}${CONFIG}_SUM"
+		IFS="|" read NAME SUM DATE < <(grep "^${CONFIG}[|]" "${OLD_STATE}")
+		eval "${SUMVAR}=${SUM@Q}"
+	fi
+	eval "${VAR}+=(${COLLECTION@Q})"
+done < <(list_configs_with_collections)
+
+#
+# 2) Identify the names of the incoming configurations, and which collections are using them
+#
+
 #
 # 3) Compare existing configurations with incoming configurations
 #		3.1) If there's no name match, add the new configuration
 #		3.2) If there's a name match, then compare the contents... if they match, leave
 #			it alone and move on to the next configuration
 #		3.3) If there's a name match but a contents mismatch, the old config
-#			must be removed and replaced with the new one, but first all cores
+#			must be removed and replaced with the new one, but first all collections
 #			that use it must also be removed
 #
 # 4) Create all new configurations (they'll be consumed by the incoming collections)
