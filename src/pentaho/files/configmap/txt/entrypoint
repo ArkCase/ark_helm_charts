@@ -253,6 +253,15 @@ if [ -n "${LAUNCH}" ] ; then
 	while read zip ; do
 		mv -vf "${zip}" "${zip}.installed"
 	done < <(find "${PENTAHO_SERVER}/pentaho-solutions/system/default-content" -type f -name '*.zip')
+
+	#
+	# Launch the config-post script here, since it now has a mutex that it will grab, and based on
+	# that we ensure that only one of the Pentaho nodes does the initializations required. We know
+    # this code path only happens if this isn't the first Pentaho to boot up *ever* ... however:
+    # we still have to account for the fact that we're about to exec into Pentaho, so the job must
+	# run asynchronously, and completely separately ...
+	#
+	# ( "/config-post.sh" &>/dev/null & disown ) &>/dev/null
 fi
 say "Launching Pentaho as: ${CMD[@]@Q}"
 "${CMD[@]}"
