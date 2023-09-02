@@ -1,0 +1,16 @@
+session:
+  connect: ${ZK_HOST}
+  sessionTimeout: 1000
+  connectionTimeout: 5000
+  basePath: "/"
+
+  retry:
+    count: 0
+    delay: 1000
+
+wrapper:
+  mode: "mutex"
+  name: "arkcase.deploy"
+
+  exec:
+    command: ${WRAPPED_SCRIPT}

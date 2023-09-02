@@ -1,4 +1,5 @@
 #!/bin/bash
+SCRIPT="$(readlink -f "${BASH_SOURCE:-${0}}")"
 
 timestamp() {
 	/usr/bin/date -Ins -u
@@ -29,44 +30,62 @@ list_configs_with_collections() {
 	return ${PIPESTATUS[0]}
 }
 
+SOLR() {
+	solr "${@}" 2>/dev/null
+}
+
 zk() {
-	solr zk "${@}" 2>/dev/null
+	SOLR zk "${@}"
 }
 
-upload_state() {
+set_deployment() {
 	local SRC="${1}"
-	zk cp "${SRC}" zk:/arkcase.deployment
+	zk cp "${SRC}" "zk:${STATE_LOCATION}"
 }
 
-download_state() {
+get_deployment() {
 	local DST="${1}"
-	zk cp zk:/arkcase.deployment "${DST}"
+	zk cp "zk:${STATE_LOCATION}" "${DST}"
 }
 
 compute_desired_state() {
 	local CONF_DIR="${1}"
 	local CORE_LST="${2}"
 	# TODO: Do something here...
+	# Need to identify 
 }
 
 compare_old_state_to() {
 	local NEW_STATE="${1}"
 
-	download_state "${WORK_DIR}/state.old"
+	get_deployment "${WORK_DIR}/state.old"
 	diff -burN "${OLD_STATE}" "${NEW_STATE}" &>/dev/null
 	return ${?}
 }
 
-upload_config() {
+add_config() {
 	local SOURCE_DIR="${1}"
 	local CONF_NAME="${2}"
 	zk upconfig -d "${SOURCE_DIR}" -n "${CONF_NAME}"
 }
 
-download_config() {
+get_config() {
 	local CONF_NAME="${1}"
 	local TARGET_DIR="${2}"
 	zk downconfig -d "${TARGET_DIR}" -n "${CONF_NAME}"
+}
+
+del_collection() {
+	local COLL_NAME="${1}"
+	SOLR delete -c "${COLL_NAME}" 2>/dev/null
+}
+
+add_collection() {
+	local COLL_NAME="${1}"
+	local CONF_NAME="${2}"
+	local SHARDS="${3}"
+	local REPLICAS="${4}"
+	SOLR create -c "${COLL_NAME}" -n "${CONF_NAME}" -shards ${SHARDS} -replicationFactor ${REPLICAS} -V
 }
 
 get_config_sum() {
@@ -118,10 +137,35 @@ while true ; do
 done
 say "The URL [${SOLR_URL}] responded, continuing"
 
+STATE_LOCATION="/arkcase.deployment"
+
+#
+# First things first: acquire the lock.
+#
+# We do it like this because there really is no need to implement a complex
+# double-check-lock thing here. The only thing that matters is that only ONE of the
+# nodes perform the initialization steps so we're not constantly doing it.
+#
+# Which node is irrelevant.
+#
+if [ -v CURATOR_WRAPPED ] ; then
+	case "${CURATOR_WRAPPED,,}" in
+
+		# If we're already wrapped by the curator, we do nothing b/c we hold the lock already
+		true ) ;;
+
+		# We don't hold the lock, so we try to acquire it ...
+		* )	export WRAPPED_SCRIPT="${SCRIPT}" ; exec java -jar "/usr/local/bin/curator-wrapper.jar" ;;
+	esac
+fi
+
+#
+# Create the work directory where everything will be done
+#
 WORK_DIR="$(mktemp -d -p "${INIT_DIR}" ".work.XXXXXXXX")"
 
 #
-# 0) Compare the incoming desired state with the existing desired state in ZK ... if it
+# 1) Compare the incoming desired state with the existing desired state in ZK ... if it
 #	matches, then we're OK and don't need to proceed.
 NEW_STATE="${WORK_DIR}/state.new"
 
@@ -134,68 +178,73 @@ if compare_old_state_to "${NEW_STATE}" ; then
 fi
 
 #
-# The state didn't match ... acquire the leadership lock, and test it again
+# 2) Identify the names of the existing configurations, and which collections are using them
 #
-
-#
-# TODO: Maybe acquire the lock through a coproc, which (once again) tells us
-# via stdout that it's acquired the lock and thus we can keep going? Just remember
-# to kill the coproc at exit time
-#
-
-# We have the lock, so let's try to compare things again
-if compare_old_state_to "${NEW_STATE}" ; then
-	say "✅ the existing state is consistent with the desired state, will not re-deploy"
-	exit 0
-fi
-
-# OK ... so if we've made it this far, the existing state and
-# the incoming states are different ... let's reconcile
-
-#
-# 1) Identify the names of the existing configurations, and which collections are using them
-#
-CONF_PREFIX="__CONF_"
+OLD_CONF_PREFIX="__OLD_CONF_"
 while IFS="/" read CONFIG COLLECTION ; do
-	VAR="${CONF_PREFIX}${CONFIG}"
-	if [ ! -v ${VAR} ] ; then
+	VAR="${OLD_CONF_PREFIX}${CONFIG}"
+	if [ ! -v "${VAR}" ] ; then
 		# Declare the array to hold the collections
-		eval "${VAR}=()"
+		declare -a "${VAR}"
 
 		# Find the config's checksum in the stored state
-		SUMVAR="${CONF_PREFIX}${CONFIG}_SUM"
-		IFS="|" read NAME SUM DATE < <(grep "^${CONFIG}[|]" "${OLD_STATE}")
+		SUMVAR="${OLD_CONF_PREFIX}${CONFIG}_SUM"
+		IFS="/" read NAME SUM DATE < <(grep "^${CONFIG}/" "${OLD_STATE}")
 		eval "${SUMVAR}=${SUM@Q}"
 	fi
 	eval "${VAR}+=(${COLLECTION@Q})"
 done < <(list_configs_with_collections)
 
+# At this point we have a set of arrays named __CONF_${configName} whose members are
+# the names of the collections that use that configuration. That's how we'll do the
+# comparisons below.
+
 #
-# 2) Identify the names of the incoming configurations, and which collections are using them
+# 3) Identify the names of the incoming configurations, and which collections are using them
 #
 
 #
-# 3) Compare existing configurations with incoming configurations
-#		3.1) If there's no name match, add the new configuration
-#		3.2) If there's a name match, then compare the contents... if they match, leave
+# 4) Compare existing configurations with incoming configurations
+#		4.1) If there's no name match, add the new configuration
+#		4.2) If there's a name match, then compare the contents... if they match, leave
 #			it alone and move on to the next configuration
-#		3.3) If there's a name match but a contents mismatch, the old config
+#		4.3) If there's a name match but a contents mismatch, the old config
 #			must be removed and replaced with the new one, but first all collections
 #			that use it must also be removed
 #
-# 4) Create all new configurations (they'll be consumed by the incoming collections)
+eval "CONFIG_VARS=(\${!${OLD_CONF_PREFIX}@})"
+for CV in "${CONFIG_VARS[@]}" ; do
+	# Get the config's name without the prefix
+	CONFIG_NAME="${CV:${#OLD_CONF_PREFIX}}"
+
+	# Is this config part of the incoming configs?
+	#	If not, add it to the nuke list, add the collections to the nuke list
+	# Is this config equals to the incoming config of the same name?
+	#	If so, continue
+	# Add it to the nuke list, add the collections to the nuke list
+done
+
 #
-# 5) Compare existing collections with incoming collections
-#		5.1) If there's no name match, add the new collection
-#		5.2) If there's a name match, then compare the config names... if they match,
+# 5) Create all new configurations (they'll be consumed by the incoming collections)
+#
+
+#
+# 6) Compare existing collections with incoming collections
+#		6.1) If there's no name match, add the new collection
+#		6.2) If there's a name match, then compare the config names... if they match,
 #			leave it alone and move on to the next collection
-#		5.3) If there's a name match, but a config name mismatch, the old
+#		6.3) If there's a name match, but a config name mismatch, the old
 #			collection must be removed
 #
-# 6) Create all new collections using the named configurations, which must already exist
-#	since step 4
+
 #
-# 7) Rejoice, the state is synchronized!! Make note of it in Zookeeper "somehow", to
-#	accelerate the process in the future, so that it's easy to avoid the full algorithm
-#	if nothing has changed
+# 7) Create all new collections using the named configurations, which must already exist
+#	since step 5
 #
+
+#
+# 8) Rejoice, the state is synchronized!! Make note of it in Zookeeper to
+#	accelerate the process in the future, so that it's easy to avoid the
+#	full algorithm if nothing has changed
+#
+set_deployment "${NEW_STATE}"
