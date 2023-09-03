@@ -44,10 +44,10 @@ deploy_config() {
 
 	say "Copying the ${CONF_SOURCE} configuration into ${CONF_TARGET}..."
 	cp -Rprfv "${CONF_SOURCE}" "${CONF_TARGET}" || return 1
-	say "Extracting the bundled configuration"
-	tar -C "${CONF_TARGET}/conf" -xzvf "${CONF}" || return 1
 	say "Removing extraneous files"
 	rm -fv "${CONF_TARGET}/conf/managed-schema" || return 1
+	say "Extracting the bundled configuration"
+	tar -C "${CONF_TARGET}/conf" -xzvf "${CONF}" || return 1
 	say "Initialization complete"
 	popd
 	return 0
