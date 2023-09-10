@@ -153,8 +153,8 @@ spec:
               subPath: &brokerXmlTemplate "broker.xml.template"
               readOnly: true
             - name: &configMap "config-map"
-              mountPath: "/app/conf/bootstrap.xml"
-              subPath: &bootstrapXml "bootstrap.xml"
+              mountPath: "/app/conf/bootstrap.xml.template"
+              subPath: &bootstrapXmlTemplate "bootstrap.xml.template"
               readOnly: true
             - name: *configMap
               mountPath: "/check-health"
@@ -197,8 +197,8 @@ spec:
             name: {{ $fullname | quote }}
             defaultMode: 0644
             items:
-              - key: *bootstrapXml
-                path: *bootstrapXml
+              - key: *bootstrapXmlTemplate
+                path: *bootstrapXmlTemplate
               - key: *checkHealth
                 path: *checkHealth
                 mode: 0755
