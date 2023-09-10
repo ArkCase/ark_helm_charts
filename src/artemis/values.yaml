@@ -149,7 +149,7 @@ service:
   ports:
     - name: console
       protocol: TCP
-      port: &console 8161
+      port: &console 8443
     - name: openwire
       protocol: TCP
       port: &openwire 61616
@@ -170,6 +170,7 @@ service:
     enabled: true
     spec:
       httpGet:
+        scheme: HTTPS
         path: "/console"
         port: *console
       initialDelaySeconds: 10
