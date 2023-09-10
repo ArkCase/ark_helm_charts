@@ -82,7 +82,7 @@ spec:
     - host: {{ $hostname | quote }}
       http:
         paths:
-          - path: "/arkcase"
+          - path: "/"
             pathType: Prefix
             backend:
               service:
@@ -90,20 +90,24 @@ spec:
                 port:
                   number: 8443
     {{- if $foia }}
-          - path: "/browser"
+          # We'll re-enable this when we figure out how to cleanly
+          # expose Neo4j for user consumption
+          # - path: "/browser"
+          #   pathType: Prefix
+          #   backend:
+          #     service:
+          #       name: "analytics"
+          #       port:
+          #         number: 8443
+    {{- end }}
+    {{- if $ingress.artifacts }}
+          - path: "/artifacts"
             pathType: Prefix
             backend:
               service:
-                name: "analytics"
+                name: "app-artifacts"
                 port:
-                  number: 8443
-          - path: "/foia"
-            pathType: Prefix
-            backend:
-              service:
-                name: "core"
-                port:
-                  number: 8443
+                  number: 443
     {{- end }}
     {{- if $ingress.content }}
           - path: "/alfresco"
@@ -128,6 +132,15 @@ spec:
                 port:
                   number: 8443
     {{- end }}
+    {{- if $ingress.messaging }}
+          - path: "/console"
+            pathType: Prefix
+            backend:
+              service:
+                name: "messaging"
+                port:
+                  number: 8443
+    {{- end }}
     {{- if $ingress.reports }}
           - path: "/pentaho"
             pathType: Prefix
@@ -137,14 +150,14 @@ spec:
                 port:
                   number: 8443
     {{- end }}
-    {{- if $ingress.artifacts }}
-          - path: "/artifacts"
+    {{- if $ingress.search }}
+          - path: "/solr"
             pathType: Prefix
             backend:
               service:
-                name: "app-artifacts"
+                name: "search"
                 port:
-                  number: 80
+                  number: 8983
     {{- end }}
     {{- if and $https $secretData }}
   tls:
