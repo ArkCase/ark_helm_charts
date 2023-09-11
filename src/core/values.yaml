@@ -129,7 +129,7 @@ initDependencies:
     initialDelay: 10
     delay: 5
     timeout: 5
-    attempts: 12
+    attempts: 120
   dependencies:
     app-artifacts:
       ports:
@@ -137,7 +137,7 @@ initDependencies:
     rdbms:
       ports:
         # In case of SQLServer
-        - 1443
+        - 1433
         # In case of Oracle
         - 1521
         # In case of MySQL/MariaDB
