@@ -122,7 +122,7 @@ spec:
             - name: SOLR_SERVER
               value: "/app/data/solr/server"
             - name: SOLR_CORES
-              value: "acmAdvancedSearch=arkcase,acmQuickSearch=arkcase"
+              value: "acmAdvancedSearch=arkcaseConfig"
             {{- if $.Values.env }}
               {{- $.Values.env | toYaml | nindent 12 }}
             {{- end }}

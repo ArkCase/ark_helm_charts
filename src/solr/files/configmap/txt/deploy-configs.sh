@@ -60,4 +60,4 @@ CONF_HOME="${SOLR_HOME}/configsets"
 [ -d "${CONF_HOME}" ] || fail "Can't find the configsets directory at [${CONF_HOME}]"
 
 # Deploy the configuration
-deploy_config "arkcase-conf.tar.gz" "_default" "arkcase"
+deploy_config "arkcase-conf.tar.gz" "_default" "arkcaseConfig"
