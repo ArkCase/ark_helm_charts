@@ -121,6 +121,9 @@ if not PASSWORD:
 
 def login():
 	session = requests.Session()
+	adapter = requests.adapters.HTTPAdapter(max_retries=10)
+	session.mount("https://", adapter)
+	session.mount("http://", adapter)
 
 	try:
 		session.auth = ( USERNAME, PASSWORD )
