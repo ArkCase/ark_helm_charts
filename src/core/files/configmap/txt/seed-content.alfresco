@@ -121,6 +121,9 @@ if not PASSWORD:
 
 def login():
 	session = requests.Session()
+	adapter = requests.adapters.HTTPAdapter(max_retries=10)
+	session.mount("https://", adapter)
+	session.mount("http://", adapter)
 
 	try:
 		session.auth = ( USERNAME, PASSWORD )
@@ -163,7 +166,10 @@ def login():
 	logging.info("Logged in, and CSRF token retrieved.")
 	return session
 
-def add_administrator(session, name, group):
+def add_administrator(session, name, group, required):
+
+	required = to_boolean(required)
+
 	entity_type = "GROUP" if group else "PERSON"
 	logging.info(f"\tAdding the {entity_type} named [{name}] to the ALFRESCO_ADMINISTRATORS group...")
 
@@ -184,6 +190,17 @@ def add_administrator(session, name, group):
 				if briefSummary.upper().startswith("DUPLICATE "):
 					# We're OK ... it's just a duplicate member, so return True
 					logging.info(f"\t\tDuplicate entry!")
+					return True
+			except KeyError:
+				# We're fine... just keep processing the error
+				pass
+
+		# If the entity wasn't found, but was also not required, skip it!
+		if (rsp.status_code == 404) and (not required):
+			try:
+				briefSummary = rsp.json()["error"]["briefSummary"]
+				if briefSummary.index(f"The entity with id: {name} was not found") >= 0:
+					logging.warning(f"\t\tThe {entity_type} named [{name}] was not found, but wasn't required - skipping!")
 					return True
 			except KeyError:
 				# We're fine... just keep processing the error
@@ -398,10 +415,8 @@ try:
 
 		admins_added = False
 
-		for user, enabled in admin_users.items():
-			if not enabled:
-				continue
-			add_administrator(session, user, False)
+		for user, required in admin_users.items():
+			add_administrator(session, user, False, required)
 			admins_added = True
 
 		admin_groups = {}
@@ -410,10 +425,8 @@ try:
 		if admin_groups and (type(admin_users) != dict):
 			fail("The configuration data is malformed - the 'admins.groups' value must be a map")
 
-		for group, enabled in admin_groups.items():
-			if not enabled:
-				continue
-			add_administrator(session, group, True)
+		for group, required in admin_groups.items():
+			add_administrator(session, group, True, required)
 			admins_added = True
 
 		if admins_added:
