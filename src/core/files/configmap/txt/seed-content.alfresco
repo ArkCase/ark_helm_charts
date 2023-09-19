@@ -124,7 +124,8 @@ def login():
 	session = requests.Session()
 
 	# Retry up to 30 times, sleeping 10 seconds between attempts (up to 5 minutes)
-	retry_strategy = urllib3.Retry(total = 30, backoff_factor=10, backoff_max=10)
+	retry_strategy = urllib3.Retry(total = 30, backoff_factor=10)
+	retry_strategy.BACKOFF_MAX = 10
 	adapter = requests.adapters.HTTPAdapter(max_retries=retry_strategy)
 	session.mount("https://", adapter)
 	session.mount("http://", adapter)
