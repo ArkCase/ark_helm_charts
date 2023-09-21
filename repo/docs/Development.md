@@ -39,6 +39,19 @@ global:
     conf: "path:/mnt/c/Users/developer/.arkcase"
     # conf: "file:/mnt/c/Users/developer/workspace/ArkCase/target/.arkcase.zip"
 
+    # This section allows you to modify existing loggers, or add new ones.  The format
+    # is a map, where the key is the name of the logger, and the value is the Log4J level
+    # (for safety, quote the strings ... we've had some strange behavior with unquoted
+    # strings).
+    #
+    # Importantly, a master flag (enabled) is supported, and can be used to turn on or off
+    # all the custom logs at once. Its value is assumed as "true" if it's not specified.
+    logs:
+      # enabled: true
+      my.new.logger: "debug"
+      org.eclipse.persistence.logging.metadata: "off"
+      # ... etc
+
     # The settings in this map govern the debugging features
     debug:
       # Whether to enable or disable debugger features. Debugger features will be enabled if the debug map
