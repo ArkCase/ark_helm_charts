@@ -95,23 +95,5 @@ fi
 #
 realm-fix
 
-#
-# Apply customizations and reconfigurations
-#
-if [ ! -d "${INIT_DIR}" ] ; then
-	say "No initialization to perform, exiting"
-	exit 0
-fi
-
-cd "${INIT_DIR}"
-while read f ; do
-	[ -s "${f}" ] || continue
-	[ -r "${f}" ] || continue
-	[ -x "${f}" ] || continue
-
-	say "Executing initialization script [${f}]..."
-	( "${f}" ) || fail "\tInitialization script [${f}] failed (rc=${?})"
-done < <(list_files)
-
 say "Configuration Initialization Complete"
 exit 0
