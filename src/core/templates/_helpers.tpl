@@ -346,3 +346,31 @@
   {{- end -}}
   {{- $result | toYaml -}}
 {{- end -}}
+
+{{- define "arkcase.core.renderLoggers" -}}
+  {{- $ctx := $.ctx -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "Must send the root context as the 'ctx' parameter" -}}
+  {{- end -}}
+
+  {{- $dev := (include "arkcase.dev" $ctx | fromYaml) -}}
+
+  {{- $loggers := $.loggers -}}
+  {{- if or (not $loggers) (not (kindIs "map" $loggers)) -}}
+    {{- $loggers = dict -}}
+  {{- end -}}
+  {{- $loggers = (include "arkcase.sanitizeLoggers" $loggers | fromYaml) -}}
+
+  {{- if $dev.logs -}}
+    {{- $loggers = merge $dev.logs $loggers -}}
+  {{- end -}}
+
+  {{- /* Make sure we render them alphabetically */ -}}
+  {{- range $name := (keys $loggers | sortAlpha) }}
+    {{- $level := get $loggers $name }}
+<Logger name={{ include "arkcase.xmlEscape" $name | quote }} level={{ include "arkcase.xmlEscape" $level | quote }} additivity="false">
+    <AppenderRef ref="Console"/>
+    <AppenderRef ref="file-log"/>
+</Logger>
+  {{- end }}
+{{- end -}}

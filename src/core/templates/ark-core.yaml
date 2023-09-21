@@ -166,8 +166,6 @@ spec:
             - name: &warsVolume "wars"
               mountPath: &warsDir "/app/wars"
             {{- include "arkcase.core.dev.permissionMounts" $ | nindent 12 }}
-            - name: &initVolume "init"
-              mountPath: &initDir "/app/init"
             - name: &homeVolume "home"
               mountPath: &homeDir "/app/home"
             - name: &logsVolume "logs"
@@ -187,7 +185,7 @@ spec:
           command: [ "/usr/local/bin/only-once" ]
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             - name: WRAPPED_STATE
-              value: *confDir
+              value: *homeDir
             - name: WRAPPED_SCRIPT
               value: {{ $contentScript | quote }}
             # - name: WRAPPED_SCRIPT_ARGS
@@ -219,8 +217,8 @@ spec:
                   key: "contentShareUrl"
             {{- end }}
           volumeMounts:
-            - name: *confVolume
-              mountPath: *confDir
+            - name: *homeVolume
+              mountPath: *homeDir
             - name: *configMap
               mountPath: {{ $contentScript | quote }}
               subPath: &seedContent {{ $contentScript | trimPrefix "/" | quote }}
@@ -235,8 +233,6 @@ spec:
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.cluster.tomcat.env" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
-            - name: INIT_DIR
-              value: *initDir
             - name: HOME_DIR
               value: *homeDir
             - name: CONF_DIR
@@ -283,8 +279,6 @@ spec:
           volumeMounts:
             {{- include "arkcase.trusts.mount" $ | nindent 12 }}
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
-            - name: *initVolume
-              mountPath: *initDir
             - name: *homeVolume
               mountPath: *homeDir
             - name: *confVolume
@@ -522,7 +516,6 @@ spec:
           emptyDir:
             sizeLimit: 2Gi
         {{- include "arkcase.core.dev.volumes" $ | nindent 8 }}
-        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "init") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "home") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "logs") | nindent 8 }}
         {{- if $foia }}
@@ -535,7 +528,6 @@ spec:
     {{- if not $dev.conf }}
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "conf") | nindent 4 }}
     {{- end }}
-    {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "init") | nindent 4 }}
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "home") | nindent 4 }}
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "logs") | nindent 4 }}
     {{- if $foia }}
@@ -545,7 +537,6 @@ spec:
   {{- if not $dev.conf }}
   {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "conf") | nindent 0 }}
   {{- end }}
-  {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "init") | nindent 0 }}
   {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "home") | nindent 0 }}
   {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "logs") | nindent 0 }}
   {{- if $foia }}
