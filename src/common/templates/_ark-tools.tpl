@@ -794,6 +794,26 @@ return either the value if correct, or the empty string if not.
   {{- $data | toYaml -}}
 {{- end -}}
 
+{{- define "arkcase.sanitizeLoggers" -}}
+  {{- $loggers := $ -}}
+  {{- $finalLogs := dict -}}
+  {{- if and $loggers (kindIs "map" $loggers) -}}
+    {{- $levels := list "ALL" "TRACE" "DEBUG" "INFO" "WARN" "ERROR" "FATAL" "OFF" -}}
+    {{- /* Each key is a logger name, and the value is the log level */ -}}
+    {{- range $logger, $level := $loggers -}}
+      {{- if not $logger -}}
+        {{- fail (printf "Logger names must be non-empty and non-null: [%s] (%s)" $logger (kindOf $logger)) -}}
+      {{- end -}}
+      {{- $level = ($level | toString | upper) -}}
+      {{- if not (has $level $levels) -}}
+        {{- fail (printf "Invalid log level [%s] specified for logger [%s], must be one of %s" $level $logger $levels) -}}
+      {{- end -}}
+      {{- $finalLogs = set $finalLogs $logger $level -}}
+    {{- end -}}
+  {{- end -}}
+  {{- $finalLogs | toYaml -}}
+{{- end -}}
+
 {{- define "arkcase.dev.compute" -}}
   {{- $ctx := . -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
@@ -876,7 +896,8 @@ return either the value if correct, or the empty string if not.
       {{- end -}}
       {{- $result = set $result "gid" $gid -}}
 
-      {{- $resources := true -}}
+      {{- /* For now, we don't use development-mode resources, b/c they're borked! */ -}}
+      {{- $resources := false -}}
       {{- if (hasKey $dev "resources") -}}
         {{- $resources = (not (empty (include "arkcase.toBoolean" ($dev.resources | toString)))) -}}
       {{- end -}}
@@ -899,6 +920,19 @@ return either the value if correct, or the empty string if not.
         {{- $debug = dict -}}
       {{- end -}}
       {{- $result = set $result "debug" $debug -}}
+
+      {{- $logs := $dev.logs -}}
+      {{- if and $logs (kindIs "map" $logs) -}}
+        {{- $enabled := or (not (hasKey $logs "enabled")) (not (empty (include "arkcase.toBoolean" $logs.enabled))) -}}
+        {{- if $enabled -}}
+          {{- $logs = (include "arkcase.sanitizeLoggers" (omit $logs "enabled") | fromYaml) -}}
+        {{- else -}}
+          {{- $logs = dict -}}
+        {{- end -}}
+      {{- else -}}
+        {{- $logs = dict -}}
+      {{- end -}}
+      {{- $result = set $result "logs" $logs -}}
 
       {{- /* Copy all the other keys verbatim */ -}}
       {{- $result = merge $result (omit $dev "enabled" "war" "conf" "debug" "uid" "gid" "resources") -}}
