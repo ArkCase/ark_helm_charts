@@ -794,6 +794,24 @@ return either the value if correct, or the empty string if not.
   {{- $data | toYaml -}}
 {{- end -}}
 
+{{- define "arkcase.sanitizeLoggers" -}}
+  {{- $loggers := $ -}}
+  {{- $levels := list "ALL" "TRACE" "DEBUG" "INFO" "WARN" "ERROR" "FATAL" "OFF" -}}
+  {{- /* Each key is a logger name, and the value is the log level */ -}}
+  {{- $finalLogs := dict -}}
+  {{- range $logger, $level := $loggers -}}
+    {{- if not $logger -}}
+      {{- fail (printf "Logger names must be non-empty and non-null: [%s] (%s)" $logger (kindOf $logger)) -}}
+    {{- end -}}
+    {{- $level = ($level | toString | upper) -}}
+    {{- if not (has $level $levels) -}}
+      {{- fail (printf "Invalid log level [%s] specified for logger [%s], must be one of %s" $level $logger $levels) -}}
+    {{- end -}}
+    {{- $finalLogs = set $finalLogs $logger $level -}}
+  {{- end -}}
+  {{- $finalLogs | toYaml -}}
+{{- end -}}
+
 {{- define "arkcase.dev.compute" -}}
   {{- $ctx := . -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
@@ -905,19 +923,7 @@ return either the value if correct, or the empty string if not.
       {{- if and $logs (kindIs "map" $logs) -}}
         {{- $enabled := or (not (hasKey $logs "enabled")) (not (empty (include "arkcase.toBoolean" $logs.enabled))) -}}
         {{- if $enabled -}}
-          {{- $levels := list "ALL" "TRACE" "DEBUG" "INFO" "WARN" "ERROR" "FATAL" "OFF" -}}
-          {{- /* Each key is a logger name, and the value is the log level */ -}}
-          {{- $finalLogs := dict -}}
-          {{- range $logger, $level := $logs -}}
-            {{- if $logger $level -}}
-              {{- $level = $level | upper -}}
-              {{- if not (has $level $levels) -}}
-                {{- fail (printf "Invalid log level specified for logger [%s]: [%s] ... must be one of %s" $logger $level $levels) -}}
-              {{- end -}}
-              {{- $finalLogs = set $finalLogs $logger $level -}}
-            {{- end -}}
-          {{- end -}}
-          {{- $logs = $finalLogs -}}
+          {{- $logs = (include "arkcase.sanitizeLoggers" $logs | fromYaml) -}}
         {{- else -}}
           {{- $logs = dict -}}
         {{- end -}}
