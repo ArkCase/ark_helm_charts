@@ -3,6 +3,7 @@
 
 - [Enabling Host Path Persistence](#hostpath)
 - [Developer Workstations](#workstations)
+- [Developer Ingress](#ingress)
 
 This document describes the model and configuration for developers to integrate their local development environments with an ArkCase Helm chart deployment. As with any community-release project, Issues and PRs are always welcome to help move this code further along.
 
@@ -89,3 +90,31 @@ The path must normalize (i.e. after removing `.` and `..` components) to an abso
 ## <a name="workstations"></a>Developer Workstations
 
 ***This documentation will be added soon***
+
+## <a name="ingress"></a>Developer Ingress
+
+For development mode, the Ingress that's normally created for production access is also created, with some key additions:
+
+* The ingress supports access by both the `global.baseUrl` value, as well as the hostname `localhost.localdomain`. You can create an entry in your `/etc/hosts` file pointing that name to 127.0.0.1 (if one doesn't exist already), and access the application at [https://localhost.localdomain:8443/arkcase](https://localhost.localdomain:8443/arkcase)
+* If a certificate is declared for the ingress, then that certificate must be valid, trusted, and match the hostname value from the `global.baseUrl` setting
+* If a certificate is _*not*_ declared for the Ingress, a temporary one will be created each time, since HTTPS access is now required.
+  * Chrome may have some HSTS complaints, which can be resolved following this procedure:
+    1. Access this link: [chrome://flags/#allow-insecure-localhost](chrome://flags/#allow-insecure-localhost)
+    1. Toggle the setting _*Allow invalid certificates for resources loaded from localhost*_ to _*Enabled*_
+    1. Access this link: [chrome://net-internals/#hsts](chrome://net-internals/#hsts)
+    1. Enter "localhost.localdomain" in the text box for _*Delete domain security policies*_
+    1. Click "Delete"
+    1. Enter "localhost" in the text box for _*Delete domain security policies*_
+    1. Click "Delete"
+    1. Enter "localhost.localdomain" in the text box for _*Query HSTS/PKP domain*_
+    1. Click "Query" ... You should receive a result of _*Not found*_
+    1. Enter "localhost" in the text box for _*Query HSTS/PKP domain*_
+    1. Click "Query" ... You should receive a result of _*Not found*_
+  * Firefox may be more flexible in terms of the SSL requirements
+  * It's up to each developer to resolve this for other browsers
+* In development mode, all supporting applications are made available in the same endpoint as the application (and thus the same SSL issues listed above apply):
+  * /alfresco (for Alfresco Content Server)
+  * /share (for Alfresco Share)
+  * /pentaho (for Pentaho)
+  * /solr (for Solr)
+  * /console (for Artemis)

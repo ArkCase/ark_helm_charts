@@ -1,24 +1,38 @@
 {{- $baseUrl := (include "arkcase.tools.conf" (dict "ctx" $ "value" "baseUrl") | toString) -}}
 {{- if $baseUrl -}}
   {{- $baseUrl = ((include "arkcase.tools.parseUrl" $baseUrl) | fromYaml) -}}
+  {{- if (ne "https" ($baseUrl.scheme | lower)) -}}
+    {{- fail (printf "The baseUrl must be an https:// URL - [%s]" $baseUrl) -}}
+  {{- end -}}
+
   {{- $ingress := ($.Values.global.ingress | default dict) -}}
   {{- $ingress = (kindIs "map" $ingress) | ternary $ingress dict -}}
-  {{- $enabled := or (not (hasKey $ingress "enabled")) (eq "true" ($ingress.enabled | toString | lower)) -}}
-  {{- $https := (eq "https" ($baseUrl.scheme | lower)) -}}
-  {{- $hostname := $baseUrl.hostname -}}
+  {{- $enabled := or (not (hasKey $ingress "enabled")) (not (empty (include "arkcase.toBoolean" $ingress.enabled))) -}}
+
   {{- $path := $baseUrl.path | default "/" -}}
   {{- $foia := (include "arkcase.foia" $ | fromYaml) -}}
+  {{- $dev := (include "arkcase.dev" $ | fromYaml) -}}
+
+  {{- $hostnames := list $baseUrl.hostname -}}
+  {{- /* For development mode, we enable other hostnames */ -}}
+  {{- if $dev -}}
+    {{- $hostnames = append $hostnames "localhost.localdomain" -}}
+  {{- end -}}
 
   {{- $secretData := $ingress.secret -}}
-  {{- if and $https (not $secretData) -}}
-    {{- fail "The base URL is an HTTPS URL, but no information was given regarding the secret to use for the certificates" -}}
+  {{- if (not $secretData) -}}
+    {{- /* Render temporary TLS certificates */ -}}
+    {{- if not $dev -}}
+      {{- fail "You must provide the secret information for the SSL ingress" -}}
+    {{- end -}}
+    {{- $cert := genSelfSignedCert (first $hostnames) (list "127.0.0.1") $hostnames 365 -}}
+    {{- $secretData = dict "crt" $cert.Cert "key" $cert.Key -}}
   {{- end -}}
-  {{- $secretName := (include "arkcase.fullname" $) -}}
-  {{- if and $enabled $hostname -}}
-    {{- if and $https $secretData -}}
-      {{- if (kindIs "string" $secretData) }}
-        {{- $secretName = $secretData }}
-      {{- else if (kindIs "map" $secretData) -}}
+  {{- $secretName := (printf "%s-ingress" (include "arkcase.fullname" $)) -}}
+  {{- if and $enabled $hostnames -}}
+    {{- if (kindIs "string" $secretData) }}
+      {{- $secretName = $secretData }}
+    {{- else if (kindIs "map" $secretData) -}}
 ---
 apiVersion: v1
 kind: Secret
@@ -26,25 +40,24 @@ metadata:
   name: {{ $secretName | quote }}
   namespace: {{ $.Release.Namespace | quote }}
   labels: {{- include "arkcase.labels" $ | nindent 4 }}
-        {{- with (include "arkcase.values" (dict "ctx" $ "base" "labels") | fromYaml) }}
-          {{- toYaml . | nindent 4 }}
-        {{- end }}
+      {{- with (include "arkcase.values" (dict "ctx" $ "base" "labels") | fromYaml) }}
+        {{- toYaml . | nindent 4 }}
+      {{- end }}
   annotations:
-        {{- with (include "arkcase.values" (dict "ctx" $ "base" "annotations") | fromYaml) }}
-          {{- toYaml . | nindent 4 }}
-        {{- end }}
+      {{- with (include "arkcase.values" (dict "ctx" $ "base" "annotations") | fromYaml) }}
+        {{- toYaml . | nindent 4 }}
+      {{- end }}
 type: kubernetes.io/tls
 stringData:
-        {{- with $secretData }}
+      {{- with $secretData }}
   tls.crt: |- {{- .crt | required "Must provide a certificate in the TLS section (label = 'crt')" | nindent 4 }}
   tls.key: |- {{- .key | required "Must provide a private key in the TLS section (label = 'key')" | nindent 4 }}
-          {{- if .ca }}
-  tls.ca: |- {{- .ca | nindent 4 }}
-          {{- end }}
+        {{- if .ca }}
+  ca.crt: |- {{- .ca | nindent 4 }}
         {{- end }}
-      {{- else }}
-        {{- fail (printf "The ingress secret must either be a string or a map (is a %s)" (kindOf $secretData)) -}}
       {{- end }}
+    {{- else }}
+      {{- fail (printf "The ingress secret must either be a string or a map (is a %s)" (kindOf $secretData)) -}}
     {{- end }}
 ---
 apiVersion: networking.k8s.io/v1
@@ -71,15 +84,9 @@ spec:
     {{- with $ingress.className }}
   ingressClassName: {{ . | quote }}
     {{- end }}
-    {{- if $ingress.gateway }}
-  defaultBackend:
-    service:
-      name: "gateway"
-      port:
-        number: 80
-    {{- end }}
   rules:
-    - host: {{ $hostname | quote }}
+    {{- range $host := $hostnames }}
+    - host: {{ $host | quote }}
       http:
         paths:
           - path: "/"
@@ -89,7 +96,7 @@ spec:
                 name: "core"
                 port:
                   number: 8443
-    {{- if $foia }}
+      {{- if $foia }}
           # We'll re-enable this when we figure out how to cleanly
           # expose Neo4j for user consumption
           # - path: "/browser"
@@ -99,8 +106,8 @@ spec:
           #       name: "analytics"
           #       port:
           #         number: 8443
-    {{- end }}
-    {{- if $ingress.artifacts }}
+      {{- end }}
+      {{- if or $dev $ingress.artifacts }}
           - path: "/artifacts"
             pathType: Prefix
             backend:
@@ -108,8 +115,8 @@ spec:
                 name: "app-artifacts"
                 port:
                   number: 443
-    {{- end }}
-    {{- if $ingress.content }}
+      {{- end }}
+      {{- if or $dev $ingress.content }}
           - path: "/alfresco"
             pathType: Prefix
             backend:
@@ -131,8 +138,8 @@ spec:
                 name: "content-share"
                 port:
                   number: 8443
-    {{- end }}
-    {{- if $ingress.messaging }}
+      {{- end }}
+      {{- if or $dev $ingress.messaging }}
           - path: "/console"
             pathType: Prefix
             backend:
@@ -140,8 +147,8 @@ spec:
                 name: "messaging"
                 port:
                   number: 8443
-    {{- end }}
-    {{- if $ingress.reports }}
+      {{- end }}
+      {{- if or $dev $ingress.reports }}
           - path: "/pentaho"
             pathType: Prefix
             backend:
@@ -149,8 +156,8 @@ spec:
                 name: "reports"
                 port:
                   number: 8443
-    {{- end }}
-    {{- if $ingress.search }}
+      {{- end }}
+      {{- if or $dev $ingress.search }}
           - path: "/solr"
             pathType: Prefix
             backend:
@@ -158,12 +165,10 @@ spec:
                 name: "search"
                 port:
                   number: 8983
+      {{- end }}
     {{- end }}
-    {{- if and $https $secretData }}
   tls:
     - secretName: {{ $secretName | quote }}
-      hosts:
-        - {{ $hostname | quote }}
-    {{- end }}
+      hosts: {{- $hostnames | toYaml | nindent 8 }}
   {{- end }}
 {{- end }}
