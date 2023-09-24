@@ -16,7 +16,7 @@
   {{- $hostnames := list $baseUrl.hostname -}}
   {{- /* For development mode, we enable other hostnames */ -}}
   {{- if $dev -}}
-    {{- $hostnames = concat $hostnames (list "localhost.localdomain" "localhost") -}}
+    {{- $hostnames = append $hostnames "localhost.localdomain" -}}
   {{- end -}}
 
   {{- $secretData := $ingress.secret -}}
@@ -25,9 +25,8 @@
     {{- if not $dev -}}
       {{- fail "You must provide the secret information for the SSL ingress" -}}
     {{- end -}}
-    {{- $ca := genCA "ArkCase Development Ingress CA" 7 -}}
-    {{- $cert := genSignedCert (first $hostnames) (list "127.0.0.1") $hostnames 7 $ca -}}
-    {{- $secretData = dict "crt" $cert.Cert "key" $cert.Key "ca" $ca.Cert -}}
+    {{- $cert := genSelfSignedCert (first $hostnames) (list "127.0.0.1") $hostnames 365 -}}
+    {{- $secretData = dict "crt" $cert.Cert "key" $cert.Key -}}
   {{- end -}}
   {{- $secretName := (printf "%s-ingress" (include "arkcase.fullname" $)) -}}
   {{- if and $enabled $hostnames -}}
