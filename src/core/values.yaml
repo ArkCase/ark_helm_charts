@@ -187,13 +187,15 @@ image:
     repository: "arkcase/deployer"
     # tag: 1.1.1-01
 
-  # cloudconfig:
-  #   repository: "arkcase/cloudconfig"
-  #   tag: "some-tag"
+  cloudconfig:
+    registry: &privateRegistry "207428623785.dkr.ecr.us-east-1.amazonaws.com"
+    repository: "arkcase/cloudconfig"
+    tag: "devel-2022.04-SNAPSHOT-01"
 
   arkcase:
+    registry: *privateRegistry
     repository: "arkcase/core"
-    tag: "3.0.0-01"
+    tag: "devel-3.0.0-01"
 
   # setperm:
   #   registry: "alternate-registry"

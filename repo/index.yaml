@@ -2,8 +2,58 @@ apiVersion: v1
 entries:
   app:
   - apiVersion: v2
+    appVersion: 2022.04-SNAPSHOT-01
+    created: "2023-09-26T09:03:15.067566621-06:00"
+    dependencies:
+    - alias: search
+      name: solr
+      repository: https://arkcase.github.io/ark_helm_charts
+      version: ~0.5.0
+    - alias: ldap
+      name: samba
+      repository: https://arkcase.github.io/ark_helm_charts
+      version: ~0.5.0
+    - alias: messaging
+      name: artemis
+      repository: https://arkcase.github.io/ark_helm_charts
+      version: ~0.5.0
+    - alias: core
+      name: core
+      repository: https://arkcase.github.io/ark_helm_charts
+      version: ~0.6.0
+    - alias: rdbms
+      name: database
+      repository: https://arkcase.github.io/ark_helm_charts
+      version: ~0.5.0
+    - alias: reports
+      name: pentaho
+      repository: https://arkcase.github.io/ark_helm_charts
+      version: ~0.5.0
+    - alias: content
+      name: content
+      repository: https://arkcase.github.io/ark_helm_charts
+      version: ~0.5.0
+    - name: zookeeper
+      repository: https://arkcase.github.io/ark_helm_charts
+      version: ~0.5.0
+    - alias: analytics
+      name: neo4j
+      repository: https://arkcase.github.io/ark_helm_charts
+      version: ~0.5.0
+    - alias: acme
+      name: step-ca
+      repository: https://arkcase.github.io/ark_helm_charts
+      version: ~0.5.0
+    description: ArkCase Application Chart
+    digest: 2c405e198abf157aeca419636fd46d016a6ad48e263d0291beff1fd37a787f05
+    name: app
+    type: application
+    urls:
+    - https://arkcase.github.io/ark_helm_charts/app-0.6.0.tgz
+    version: 0.6.0
+  - apiVersion: v2
     appVersion: 2022.04-SNAPSHOT
-    created: "2023-09-26T08:50:22.284104006-06:00"
+    created: "2023-09-26T09:03:14.882127802-06:00"
     dependencies:
     - alias: search
       name: solr
@@ -53,7 +103,7 @@ entries:
     version: 0.5.19
   - apiVersion: v2
     appVersion: 2023.01.04-03
-    created: "2023-09-26T08:50:22.263855844-06:00"
+    created: "2023-09-26T09:03:14.861423621-06:00"
     dependencies:
     - alias: search
       name: solr
@@ -103,7 +153,7 @@ entries:
     version: 0.5.18
   - apiVersion: v2
     appVersion: 2023.01.04-03
-    created: "2023-09-26T08:50:22.243521875-06:00"
+    created: "2023-09-26T09:03:14.840534327-06:00"
     dependencies:
     - alias: search
       name: solr
@@ -153,7 +203,7 @@ entries:
     version: 0.5.17
   - apiVersion: v2
     appVersion: 2023.01.04-03
-    created: "2023-09-26T08:50:22.222086789-06:00"
+    created: "2023-09-26T09:03:14.819441748-06:00"
     dependencies:
     - alias: search
       name: solr
@@ -203,7 +253,7 @@ entries:
     version: 0.5.16
   - apiVersion: v2
     appVersion: 2023.01.04-03
-    created: "2023-09-26T08:50:22.193668556-06:00"
+    created: "2023-09-26T09:03:14.79917935-06:00"
     dependencies:
     - alias: search
       name: solr
@@ -253,7 +303,7 @@ entries:
     version: 0.5.15
   - apiVersion: v2
     appVersion: 2023.01.04-03
-    created: "2023-09-26T08:50:22.171554508-06:00"
+    created: "2023-09-26T09:03:14.777437386-06:00"
     dependencies:
     - alias: search
       name: solr
@@ -303,7 +353,7 @@ entries:
     version: 0.5.14
   - apiVersion: v2
     appVersion: 2023.01.04-03
-    created: "2023-09-26T08:50:22.150148196-06:00"
+    created: "2023-09-26T09:03:14.756683071-06:00"
     dependencies:
     - alias: search
       name: solr
@@ -353,7 +403,7 @@ entries:
     version: 0.5.13
   - apiVersion: v2
     appVersion: 2023.01.04-03
-    created: "2023-09-26T08:50:22.130430351-06:00"
+    created: "2023-09-26T09:03:14.73605806-06:00"
     dependencies:
     - alias: search
       name: solr
@@ -403,7 +453,7 @@ entries:
     version: 0.5.12
   - apiVersion: v2
     appVersion: 2023.01.04-03
-    created: "2023-09-26T08:50:22.1102103-06:00"
+    created: "2023-09-26T09:03:14.714731883-06:00"
     dependencies:
     - alias: search
       name: solr
@@ -453,7 +503,7 @@ entries:
     version: 0.5.11
   - apiVersion: v2
     appVersion: 2023.01.04-03
-    created: "2023-09-26T08:50:22.0893614-06:00"
+    created: "2023-09-26T09:03:14.693818867-06:00"
     dependencies:
     - alias: search
       name: solr
@@ -503,7 +553,7 @@ entries:
     version: 0.5.10
   - apiVersion: v2
     appVersion: 2023.01.04-03
-    created: "2023-09-26T08:50:22.452597542-06:00"
+    created: "2023-09-26T09:03:15.04769795-06:00"
     dependencies:
     - alias: search
       name: solr
@@ -553,7 +603,7 @@ entries:
     version: 0.5.9
   - apiVersion: v2
     appVersion: 2023.01.04-03
-    created: "2023-09-26T08:50:22.429006589-06:00"
+    created: "2023-09-26T09:03:15.027979978-06:00"
     dependencies:
     - alias: search
       name: solr
@@ -603,7 +653,7 @@ entries:
     version: 0.5.8
   - apiVersion: v2
     appVersion: 2023.01.04-03
-    created: "2023-09-26T08:50:22.407259602-06:00"
+    created: "2023-09-26T09:03:15.006839616-06:00"
     dependencies:
     - alias: search
       name: solr
@@ -653,7 +703,7 @@ entries:
     version: 0.5.7
   - apiVersion: v2
     appVersion: 2023.01.04-03
-    created: "2023-09-26T08:50:22.388054128-06:00"
+    created: "2023-09-26T09:03:14.984623792-06:00"
     dependencies:
     - alias: search
       name: solr
@@ -703,7 +753,7 @@ entries:
     version: 0.5.6
   - apiVersion: v2
     appVersion: 2023.01.04-03
-    created: "2023-09-26T08:50:22.368773262-06:00"
+    created: "2023-09-26T09:03:14.963948927-06:00"
     dependencies:
     - alias: search
       name: solr
@@ -753,7 +803,7 @@ entries:
     version: 0.5.5
   - apiVersion: v2
     appVersion: 2023.01.04-03
-    created: "2023-09-26T08:50:22.34927418-06:00"
+    created: "2023-09-26T09:03:14.943874423-06:00"
     dependencies:
     - alias: search
       name: solr
@@ -803,7 +853,7 @@ entries:
     version: 0.5.4
   - apiVersion: v2
     appVersion: 2023.01.04-03
-    created: "2023-09-26T08:50:22.330105271-06:00"
+    created: "2023-09-26T09:03:14.923115333-06:00"
     dependencies:
     - alias: search
       name: solr
@@ -853,7 +903,7 @@ entries:
     version: 0.5.3
   - apiVersion: v2
     appVersion: 2023.01.04-03
-    created: "2023-09-26T08:50:22.307293498-06:00"
+    created: "2023-09-26T09:03:14.903070639-06:00"
     dependencies:
     - alias: search
       name: solr
@@ -903,7 +953,7 @@ entries:
     version: 0.5.2
   - apiVersion: v2
     appVersion: 2023.01.04-03
-    created: "2023-09-26T08:50:22.068582529-06:00"
+    created: "2023-09-26T09:03:14.672378264-06:00"
     dependencies:
     - alias: search
       name: solr
@@ -953,7 +1003,7 @@ entries:
     version: 0.5.1
   - apiVersion: v2
     appVersion: 2023.01.04-03
-    created: "2023-09-26T08:50:22.04858558-06:00"
+    created: "2023-09-26T09:03:14.650819502-06:00"
     dependencies:
     - alias: search
       name: solr
@@ -1003,7 +1053,7 @@ entries:
     version: 0.5.0
   - apiVersion: v2
     appVersion: 2023.01.04-02
-    created: "2023-09-26T08:50:22.028809167-06:00"
+    created: "2023-09-26T09:03:14.629280133-06:00"
     dependencies:
     - alias: search
       name: solr
@@ -1053,7 +1103,7 @@ entries:
     version: 0.4.6
   - apiVersion: v2
     appVersion: 2023.01.04-02
-    created: "2023-09-26T08:50:22.00794226-06:00"
+    created: "2023-09-26T09:03:14.603381255-06:00"
     dependencies:
     - alias: search
       name: solr
@@ -1103,7 +1153,7 @@ entries:
     version: 0.4.5
   - apiVersion: v2
     appVersion: 2023.01.04-01
-    created: "2023-09-26T08:50:21.987284743-06:00"
+    created: "2023-09-26T09:03:14.582227267-06:00"
     dependencies:
     - alias: search
       name: solr
@@ -1153,7 +1203,7 @@ entries:
     version: 0.4.4
   - apiVersion: v2
     appVersion: 2023.01.04-01
-    created: "2023-09-26T08:50:21.967078093-06:00"
+    created: "2023-09-26T09:03:14.560969076-06:00"
     dependencies:
     - alias: search
       name: solr
@@ -1203,7 +1253,7 @@ entries:
     version: 0.4.3
   - apiVersion: v2
     appVersion: 2023.01.04-01
-    created: "2023-09-26T08:50:21.947721292-06:00"
+    created: "2023-09-26T09:03:14.533771929-06:00"
     dependencies:
     - alias: search
       name: solr
@@ -1253,7 +1303,7 @@ entries:
     version: 0.4.2
   - apiVersion: v2
     appVersion: 2023.01.04-01
-    created: "2023-09-26T08:50:21.927482617-06:00"
+    created: "2023-09-26T09:03:14.511998029-06:00"
     dependencies:
     - alias: search
       name: solr
@@ -1303,7 +1353,7 @@ entries:
     version: 0.4.1
   - apiVersion: v2
     appVersion: 2023.01.03-02
-    created: "2023-09-26T08:50:21.906890844-06:00"
+    created: "2023-09-26T09:03:14.491065228-06:00"
     dependencies:
     - alias: search
       name: solr
@@ -1353,7 +1403,7 @@ entries:
     version: 0.4.0
   - apiVersion: v2
     appVersion: 2023.01.03-01
-    created: "2023-09-26T08:50:21.885801706-06:00"
+    created: "2023-09-26T09:03:14.469625053-06:00"
     dependencies:
     - alias: search
       name: solr
@@ -1403,7 +1453,7 @@ entries:
     version: 0.3.3
   - apiVersion: v2
     appVersion: 2023.01.02-01
-    created: "2023-09-26T08:50:21.863824814-06:00"
+    created: "2023-09-26T09:03:14.436293013-06:00"
     dependencies:
     - alias: search
       name: solr
@@ -1453,7 +1503,7 @@ entries:
     version: 0.3.2
   - apiVersion: v2
     appVersion: 2023.01.03-01
-    created: "2023-09-26T08:50:21.840155027-06:00"
+    created: "2023-09-26T09:03:14.41559965-06:00"
     dependencies:
     - alias: search
       name: solr
@@ -1503,7 +1553,7 @@ entries:
     version: 0.3.1
   - apiVersion: v2
     appVersion: 2023.01.02-01
-    created: "2023-09-26T08:50:21.81962701-06:00"
+    created: "2023-09-26T09:03:14.395288575-06:00"
     dependencies:
     - alias: search
       name: solr
@@ -1554,7 +1604,7 @@ entries:
   artemis:
   - apiVersion: v2
     appVersion: 2.30.0-05
-    created: "2023-09-26T08:50:22.473138205-06:00"
+    created: "2023-09-26T09:03:15.085661201-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -1572,7 +1622,7 @@ entries:
     version: 0.5.6
   - apiVersion: v2
     appVersion: 2.30.0-04
-    created: "2023-09-26T08:50:22.471355765-06:00"
+    created: "2023-09-26T09:03:15.0840085-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -1590,7 +1640,7 @@ entries:
     version: 0.5.5
   - apiVersion: v2
     appVersion: 2.30.0-04
-    created: "2023-09-26T08:50:22.469623788-06:00"
+    created: "2023-09-26T09:03:15.082032075-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -1608,7 +1658,7 @@ entries:
     version: 0.5.4
   - apiVersion: v2
     appVersion: 2.30.0-04
-    created: "2023-09-26T08:50:22.466781559-06:00"
+    created: "2023-09-26T09:03:15.080334479-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -1626,7 +1676,7 @@ entries:
     version: 0.5.3
   - apiVersion: v2
     appVersion: 2.30.0-04
-    created: "2023-09-26T08:50:22.464204974-06:00"
+    created: "2023-09-26T09:03:15.078657887-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -1644,7 +1694,7 @@ entries:
     version: 0.5.2
   - apiVersion: v2
     appVersion: 2.30.0-03
-    created: "2023-09-26T08:50:22.461315595-06:00"
+    created: "2023-09-26T09:03:15.076412577-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -1662,7 +1712,7 @@ entries:
     version: 0.5.1
   - apiVersion: v2
     appVersion: 2.30.0-03
-    created: "2023-09-26T08:50:22.459583496-06:00"
+    created: "2023-09-26T09:03:15.074735264-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -1680,7 +1730,7 @@ entries:
     version: 0.5.0
   - apiVersion: v2
     appVersion: 2.30.0-02
-    created: "2023-09-26T08:50:22.457952683-06:00"
+    created: "2023-09-26T09:03:15.07312111-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -1698,7 +1748,7 @@ entries:
     version: 0.4.1
   - apiVersion: v2
     appVersion: 2.30.0-02
-    created: "2023-09-26T08:50:22.456318727-06:00"
+    created: "2023-09-26T09:03:15.071057042-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -1716,7 +1766,7 @@ entries:
     version: 0.4.0
   - apiVersion: v2
     appVersion: 2.30.0-01
-    created: "2023-09-26T08:50:22.454273211-06:00"
+    created: "2023-09-26T09:03:15.069356928-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -1735,7 +1785,7 @@ entries:
   cloudconfig:
   - apiVersion: v2
     appVersion: 2023.01.04-02
-    created: "2023-09-26T08:50:22.488755434-06:00"
+    created: "2023-09-26T09:03:15.101268585-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -1749,7 +1799,7 @@ entries:
     version: 0.5.5
   - apiVersion: v2
     appVersion: 2023.01.04-02
-    created: "2023-09-26T08:50:22.486928482-06:00"
+    created: "2023-09-26T09:03:15.099824117-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -1763,7 +1813,7 @@ entries:
     version: 0.5.4
   - apiVersion: v2
     appVersion: 2023.01.04-02
-    created: "2023-09-26T08:50:22.485544135-06:00"
+    created: "2023-09-26T09:03:15.097836188-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -1777,7 +1827,7 @@ entries:
     version: 0.5.3
   - apiVersion: v2
     appVersion: 2023.01.04-02
-    created: "2023-09-26T08:50:22.484130862-06:00"
+    created: "2023-09-26T09:03:15.096483546-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -1791,7 +1841,7 @@ entries:
     version: 0.5.2
   - apiVersion: v2
     appVersion: 2023.01.04-02
-    created: "2023-09-26T08:50:22.482696219-06:00"
+    created: "2023-09-26T09:03:15.09506683-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -1805,7 +1855,7 @@ entries:
     version: 0.5.1
   - apiVersion: v2
     appVersion: 2023.01.04-02
-    created: "2023-09-26T08:50:22.480949405-06:00"
+    created: "2023-09-26T09:03:15.093653388-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -1819,7 +1869,7 @@ entries:
     version: 0.5.0
   - apiVersion: v2
     appVersion: 2023.01.04-02
-    created: "2023-09-26T08:50:22.479527124-06:00"
+    created: "2023-09-26T09:03:15.091681778-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -1833,7 +1883,7 @@ entries:
     version: 0.4.2
   - apiVersion: v2
     appVersion: 2023.01.04-01
-    created: "2023-09-26T08:50:22.478120684-06:00"
+    created: "2023-09-26T09:03:15.090200073-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -1847,7 +1897,7 @@ entries:
     version: 0.4.1
   - apiVersion: v2
     appVersion: 2023.01.03
-    created: "2023-09-26T08:50:22.476663629-06:00"
+    created: "2023-09-26T09:03:15.088775575-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -1861,7 +1911,7 @@ entries:
     version: 0.4.0
   - apiVersion: v2
     appVersion: 2021.03.34
-    created: "2023-09-26T08:50:22.474711976-06:00"
+    created: "2023-09-26T09:03:15.087108425-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -1876,7 +1926,7 @@ entries:
   common:
   - apiVersion: v2
     appVersion: 3.2.5
-    created: "2023-09-26T08:50:22.501058513-06:00"
+    created: "2023-09-26T09:03:15.111143555-06:00"
     description: A library of common templates and functions, consumable by ArkCase
       charts
     digest: cddca10ddbcaada9db26aab5ac3f22a037dab6542332ead3b788117d7e12ef35
@@ -1887,7 +1937,7 @@ entries:
     version: 0.5.11
   - apiVersion: v2
     appVersion: 3.2.4
-    created: "2023-09-26T08:50:22.499413309-06:00"
+    created: "2023-09-26T09:03:15.109930079-06:00"
     description: A library of common templates and functions, consumable by ArkCase
       charts
     digest: a3886e618b0c3ffb87de23b733aa17bd265fc5b63f373e30a4f754d18bfbc27a
@@ -1898,7 +1948,7 @@ entries:
     version: 0.5.10
   - apiVersion: v2
     appVersion: 3.2.3
-    created: "2023-09-26T08:50:22.510588511-06:00"
+    created: "2023-09-26T09:03:15.119339542-06:00"
     description: A library of common templates and functions, consumable by ArkCase
       charts
     digest: 2c66ee9822381d9763e781e6b0882e68d1b4c9d09a3016833fa8889334d360d0
@@ -1909,7 +1959,7 @@ entries:
     version: 0.5.9
   - apiVersion: v2
     appVersion: 3.2.2
-    created: "2023-09-26T08:50:22.509408204-06:00"
+    created: "2023-09-26T09:03:15.118213174-06:00"
     description: A library of common templates and functions, consumable by ArkCase
       charts
     digest: ac8143f0ef8ef93c39cdfdd4492680a3a24d35f7717b1d8687e5732e91a75ea6
@@ -1920,7 +1970,7 @@ entries:
     version: 0.5.8
   - apiVersion: v2
     appVersion: 3.2.1
-    created: "2023-09-26T08:50:22.50824667-06:00"
+    created: "2023-09-26T09:03:15.117059044-06:00"
     description: A library of common templates and functions, consumable by ArkCase
       charts
     digest: aade4637fdabf8a45475576b927cdac759f8a19037b203afc93dd3bce1250227
@@ -1931,7 +1981,7 @@ entries:
     version: 0.5.7
   - apiVersion: v2
     appVersion: 3.2.0
-    created: "2023-09-26T08:50:22.506645941-06:00"
+    created: "2023-09-26T09:03:15.115906523-06:00"
     description: A library of common templates and functions, consumable by ArkCase
       charts
     digest: 62365849594480b256b527b33a1f76f88c3268b42403625a568c62b654f8f1e4
@@ -1942,7 +1992,7 @@ entries:
     version: 0.5.6
   - apiVersion: v2
     appVersion: 3.2.0
-    created: "2023-09-26T08:50:22.504748944-06:00"
+    created: "2023-09-26T09:03:15.114559063-06:00"
     description: A library of common templates and functions, consumable by ArkCase
       charts
     digest: 1848677f36311e39361cd6fa7984289b44b1ea3f44063366c970c03432265acd
@@ -1953,7 +2003,7 @@ entries:
     version: 0.5.4
   - apiVersion: v2
     appVersion: 3.2.0
-    created: "2023-09-26T08:50:22.503372906-06:00"
+    created: "2023-09-26T09:03:15.113420589-06:00"
     description: A library of common templates and functions, consumable by ArkCase
       charts
     digest: 8ca51f79199879e720dd5a62013b79b6472e8d2bf0099e8013d59ffe96a92484
@@ -1964,7 +2014,7 @@ entries:
     version: 0.5.3
   - apiVersion: v2
     appVersion: 3.2.0
-    created: "2023-09-26T08:50:22.502197065-06:00"
+    created: "2023-09-26T09:03:15.112301148-06:00"
     description: A library of common templates and functions, consumable by ArkCase
       charts
     digest: 78488f53f3ad3cc69c58c0444f4aa2703e50f2a5deeda685e0b298af4c370651
@@ -1975,7 +2025,7 @@ entries:
     version: 0.5.2
   - apiVersion: v2
     appVersion: 3.2.0
-    created: "2023-09-26T08:50:22.497651665-06:00"
+    created: "2023-09-26T09:03:15.108556049-06:00"
     description: A library of common templates and functions, consumable by ArkCase
       charts
     digest: 7b9d936981d34356c2759b6549fb911ae8f3d3d90788f51a3bd0449aeb9e18eb
@@ -1986,7 +2036,7 @@ entries:
     version: 0.5.1
   - apiVersion: v2
     appVersion: 3.2.0
-    created: "2023-09-26T08:50:22.49592397-06:00"
+    created: "2023-09-26T09:03:15.107424847-06:00"
     description: A library of common templates and functions, consumable by ArkCase
       charts
     digest: 4c50426c1b221fd10a4e8cfe15a3f648d7afea8be3a937e7578da69d00d31370
@@ -1997,7 +2047,7 @@ entries:
     version: 0.5.0
   - apiVersion: v2
     appVersion: 3.2.0
-    created: "2023-09-26T08:50:22.494102317-06:00"
+    created: "2023-09-26T09:03:15.106289588-06:00"
     description: A library of common templates and functions, consumable by ArkCase
       charts
     digest: b7f75cdfa656bc1022b9d06b71064e1e3e1f57a0fe424fa5a0b512932dc9984c
@@ -2008,7 +2058,7 @@ entries:
     version: 0.4.2
   - apiVersion: v2
     appVersion: 3.1.0
-    created: "2023-09-26T08:50:22.492163766-06:00"
+    created: "2023-09-26T09:03:15.105100966-06:00"
     description: A library of common templates and functions, consumable by ArkCase
       charts
     digest: 4542bd897ab150dd6a7953dba90b80a55dcba49606e8a1d00567de957bd557cf
@@ -2019,7 +2069,7 @@ entries:
     version: 0.4.1
   - apiVersion: v2
     appVersion: 3.0.0
-    created: "2023-09-26T08:50:22.490995254-06:00"
+    created: "2023-09-26T09:03:15.103603901-06:00"
     description: A library of common templates and functions, consumable by ArkCase
       charts
     digest: 392e5c0006762facc006d93182f2caab60c4d0a9876c0c165c3e5231b0f430e7
@@ -2030,7 +2080,7 @@ entries:
     version: 0.4.0
   - apiVersion: v2
     appVersion: 2.0.0
-    created: "2023-09-26T08:50:22.489879716-06:00"
+    created: "2023-09-26T09:03:15.102443211-06:00"
     description: A library of common templates and functions, consumable by ArkCase
       charts
     digest: 471ad499c586de360ab3d07f9ecd6cb0551c381eabff22aec2eaf60bc5af1e1c
@@ -2042,7 +2092,7 @@ entries:
   content:
   - apiVersion: v2
     appVersion: 2.0.0
-    created: "2023-09-26T08:50:22.534033788-06:00"
+    created: "2023-09-26T09:03:15.143839971-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -2063,7 +2113,7 @@ entries:
     version: 0.5.6
   - apiVersion: v2
     appVersion: 2.0.0
-    created: "2023-09-26T08:50:22.532005124-06:00"
+    created: "2023-09-26T09:03:15.14175139-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -2084,7 +2134,7 @@ entries:
     version: 0.5.5
   - apiVersion: v2
     appVersion: 2.0.0
-    created: "2023-09-26T08:50:22.529983523-06:00"
+    created: "2023-09-26T09:03:15.139450545-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -2105,7 +2155,7 @@ entries:
     version: 0.5.4
   - apiVersion: v2
     appVersion: 2.0.0
-    created: "2023-09-26T08:50:22.527619198-06:00"
+    created: "2023-09-26T09:03:15.136307554-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -2126,7 +2176,7 @@ entries:
     version: 0.5.3
   - apiVersion: v2
     appVersion: 2.0.0
-    created: "2023-09-26T08:50:22.525552409-06:00"
+    created: "2023-09-26T09:03:15.134249868-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -2147,7 +2197,7 @@ entries:
     version: 0.5.2
   - apiVersion: v2
     appVersion: 2.0.0
-    created: "2023-09-26T08:50:22.523483568-06:00"
+    created: "2023-09-26T09:03:15.132258377-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -2168,7 +2218,7 @@ entries:
     version: 0.5.1
   - apiVersion: v2
     appVersion: 2.0.0
-    created: "2023-09-26T08:50:22.521219802-06:00"
+    created: "2023-09-26T09:03:15.129856488-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -2189,7 +2239,7 @@ entries:
     version: 0.5.0
   - apiVersion: v2
     appVersion: 2.0.0
-    created: "2023-09-26T08:50:22.519174557-06:00"
+    created: "2023-09-26T09:03:15.127878782-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -2210,7 +2260,7 @@ entries:
     version: 0.4.2
   - apiVersion: v2
     appVersion: 2.0.0
-    created: "2023-09-26T08:50:22.517134221-06:00"
+    created: "2023-09-26T09:03:15.1258978-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -2231,7 +2281,7 @@ entries:
     version: 0.4.1
   - apiVersion: v2
     appVersion: 2.0.0
-    created: "2023-09-26T08:50:22.514827345-06:00"
+    created: "2023-09-26T09:03:15.123511158-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -2252,7 +2302,7 @@ entries:
     version: 0.4.0
   - apiVersion: v2
     appVersion: 1.0.0
-    created: "2023-09-26T08:50:22.512814139-06:00"
+    created: "2023-09-26T09:03:15.121525629-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -2273,8 +2323,22 @@ entries:
     version: 0.3.0
   core:
   - apiVersion: v2
+    appVersion: develop-3.0.0-01
+    created: "2023-09-26T09:03:15.184405493-06:00"
+    dependencies:
+    - name: common
+      repository: https://arkcase.github.io/ark_helm_charts
+      version: ~0.6.0
+    description: A Helm chart for core ArkCase and ConfigServer
+    digest: b7f909b942670a6dd5eea7ed346bca76dddc482a527f6268b91d012e6d9c5bf8
+    name: core
+    type: application
+    urls:
+    - https://arkcase.github.io/ark_helm_charts/core-0.6.0.tgz
+    version: 0.6.0
+  - apiVersion: v2
     appVersion: 2.0.0-03
-    created: "2023-09-26T08:50:22.554595281-06:00"
+    created: "2023-09-26T09:03:15.162616696-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -2288,7 +2352,7 @@ entries:
     version: 0.5.10
   - apiVersion: v2
     appVersion: 2.0.0-03
-    created: "2023-09-26T08:50:22.575192752-06:00"
+    created: "2023-09-26T09:03:15.181643463-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -2302,7 +2366,7 @@ entries:
     version: 0.5.9
   - apiVersion: v2
     appVersion: 2.0.0-03
-    created: "2023-09-26T08:50:22.57293245-06:00"
+    created: "2023-09-26T09:03:15.179246435-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -2316,7 +2380,7 @@ entries:
     version: 0.5.8
   - apiVersion: v2
     appVersion: 2.0.0-03
-    created: "2023-09-26T08:50:22.570671025-06:00"
+    created: "2023-09-26T09:03:15.177009973-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -2330,7 +2394,7 @@ entries:
     version: 0.5.7
   - apiVersion: v2
     appVersion: 2.0.0-03
-    created: "2023-09-26T08:50:22.56784394-06:00"
+    created: "2023-09-26T09:03:15.174482035-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -2344,7 +2408,7 @@ entries:
     version: 0.5.6
   - apiVersion: v2
     appVersion: 2.0.0-03
-    created: "2023-09-26T08:50:22.56468651-06:00"
+    created: "2023-09-26T09:03:15.172337195-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -2358,7 +2422,7 @@ entries:
     version: 0.5.5
   - apiVersion: v2
     appVersion: 2.0.0-03
-    created: "2023-09-26T08:50:22.562374623-06:00"
+    created: "2023-09-26T09:03:15.169576837-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -2372,7 +2436,7 @@ entries:
     version: 0.5.4
   - apiVersion: v2
     appVersion: 2.0.0-03
-    created: "2023-09-26T08:50:22.559698423-06:00"
+    created: "2023-09-26T09:03:15.167410657-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -2386,7 +2450,7 @@ entries:
     version: 0.5.3
   - apiVersion: v2
     appVersion: 2.0.0-03
-    created: "2023-09-26T08:50:22.557344614-06:00"
+    created: "2023-09-26T09:03:15.165188889-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -2400,7 +2464,7 @@ entries:
     version: 0.5.2
   - apiVersion: v2
     appVersion: 2.0.0-03
-    created: "2023-09-26T08:50:22.552063425-06:00"
+    created: "2023-09-26T09:03:15.160384048-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -2414,7 +2478,7 @@ entries:
     version: 0.5.1
   - apiVersion: v2
     appVersion: 2.0.0-02
-    created: "2023-09-26T08:50:22.548835303-06:00"
+    created: "2023-09-26T09:03:15.158099201-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -2428,7 +2492,7 @@ entries:
     version: 0.5.0
   - apiVersion: v2
     appVersion: 2.0.0-01
-    created: "2023-09-26T08:50:22.545966154-06:00"
+    created: "2023-09-26T09:03:15.155575222-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -2442,7 +2506,7 @@ entries:
     version: 0.4.3
   - apiVersion: v2
     appVersion: 2.0.0-01
-    created: "2023-09-26T08:50:22.543621629-06:00"
+    created: "2023-09-26T09:03:15.153449301-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -2456,7 +2520,7 @@ entries:
     version: 0.4.2
   - apiVersion: v2
     appVersion: 2.0.0-01
-    created: "2023-09-26T08:50:22.541394983-06:00"
+    created: "2023-09-26T09:03:15.151202388-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -2470,7 +2534,7 @@ entries:
     version: 0.4.1
   - apiVersion: v2
     appVersion: 2.0.0-01
-    created: "2023-09-26T08:50:22.538829564-06:00"
+    created: "2023-09-26T09:03:15.148628337-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -2484,7 +2548,7 @@ entries:
     version: 0.4.0
   - apiVersion: v2
     appVersion: 1.4.0-01
-    created: "2023-09-26T08:50:22.536580709-06:00"
+    created: "2023-09-26T09:03:15.146354323-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -2499,7 +2563,7 @@ entries:
   database:
   - apiVersion: v2
     appVersion: "2.0"
-    created: "2023-09-26T08:50:22.590171792-06:00"
+    created: "2023-09-26T09:03:15.198755258-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -2521,7 +2585,7 @@ entries:
     version: 0.5.5
   - apiVersion: v2
     appVersion: "2.0"
-    created: "2023-09-26T08:50:22.588569578-06:00"
+    created: "2023-09-26T09:03:15.197228241-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -2543,7 +2607,7 @@ entries:
     version: 0.5.4
   - apiVersion: v2
     appVersion: "2.0"
-    created: "2023-09-26T08:50:22.586506444-06:00"
+    created: "2023-09-26T09:03:15.195646213-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -2565,7 +2629,7 @@ entries:
     version: 0.5.3
   - apiVersion: v2
     appVersion: "2.0"
-    created: "2023-09-26T08:50:22.584985307-06:00"
+    created: "2023-09-26T09:03:15.193785177-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -2587,7 +2651,7 @@ entries:
     version: 0.5.2
   - apiVersion: v2
     appVersion: "2.0"
-    created: "2023-09-26T08:50:22.583421913-06:00"
+    created: "2023-09-26T09:03:15.192167922-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -2609,7 +2673,7 @@ entries:
     version: 0.5.1
   - apiVersion: v2
     appVersion: "2.0"
-    created: "2023-09-26T08:50:22.581527462-06:00"
+    created: "2023-09-26T09:03:15.190548716-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -2631,7 +2695,7 @@ entries:
     version: 0.5.0
   - apiVersion: v2
     appVersion: "2.0"
-    created: "2023-09-26T08:50:22.580043698-06:00"
+    created: "2023-09-26T09:03:15.188779542-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -2653,7 +2717,7 @@ entries:
     version: 0.4.1
   - apiVersion: v2
     appVersion: "2.0"
-    created: "2023-09-26T08:50:22.578572039-06:00"
+    created: "2023-09-26T09:03:15.187313374-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -2675,7 +2739,7 @@ entries:
     version: 0.4.0
   - apiVersion: v2
     appVersion: "1.2"
-    created: "2023-09-26T08:50:22.577027354-06:00"
+    created: "2023-09-26T09:03:15.185875541-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -2698,7 +2762,7 @@ entries:
   gateway-apache:
   - apiVersion: v2
     appVersion: 1.0.0
-    created: "2023-09-26T08:50:22.609049848-06:00"
+    created: "2023-09-26T09:03:15.21386932-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -2713,7 +2777,7 @@ entries:
     version: 0.5.4
   - apiVersion: v2
     appVersion: 1.0.0
-    created: "2023-09-26T08:50:22.607129732-06:00"
+    created: "2023-09-26T09:03:15.211759115-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -2728,7 +2792,7 @@ entries:
     version: 0.5.3
   - apiVersion: v2
     appVersion: 1.0.0
-    created: "2023-09-26T08:50:22.605289642-06:00"
+    created: "2023-09-26T09:03:15.210014836-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -2743,7 +2807,7 @@ entries:
     version: 0.5.2
   - apiVersion: v2
     appVersion: 1.0.0
-    created: "2023-09-26T08:50:22.602704926-06:00"
+    created: "2023-09-26T09:03:15.208199357-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -2758,7 +2822,7 @@ entries:
     version: 0.5.1
   - apiVersion: v2
     appVersion: 1.0.0
-    created: "2023-09-26T08:50:22.599926831-06:00"
+    created: "2023-09-26T09:03:15.206068146-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -2773,7 +2837,7 @@ entries:
     version: 0.5.0
   - apiVersion: v2
     appVersion: 1.0.0
-    created: "2023-09-26T08:50:22.59718931-06:00"
+    created: "2023-09-26T09:03:15.204414313-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -2788,7 +2852,7 @@ entries:
     version: 0.4.1
   - apiVersion: v2
     appVersion: 1.0.0
-    created: "2023-09-26T08:50:22.594389893-06:00"
+    created: "2023-09-26T09:03:15.202614183-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -2803,7 +2867,7 @@ entries:
     version: 0.4.0
   - apiVersion: v2
     appVersion: 1.0.0
-    created: "2023-09-26T08:50:22.591968658-06:00"
+    created: "2023-09-26T09:03:15.20048624-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -2819,7 +2883,7 @@ entries:
   hostpath-provisioner:
   - apiVersion: v2
     appVersion: 0.4.1
-    created: "2023-09-26T08:50:22.621276789-06:00"
+    created: "2023-09-26T09:03:15.22543203-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -2843,7 +2907,7 @@ entries:
     version: 0.5.2
   - apiVersion: v2
     appVersion: 0.4.1
-    created: "2023-09-26T08:50:22.619498778-06:00"
+    created: "2023-09-26T09:03:15.223753265-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -2867,7 +2931,7 @@ entries:
     version: 0.5.1
   - apiVersion: v2
     appVersion: 0.4.1
-    created: "2023-09-26T08:50:22.618145859-06:00"
+    created: "2023-09-26T09:03:15.222400807-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -2891,7 +2955,7 @@ entries:
     version: 0.5.0
   - apiVersion: v2
     appVersion: 0.4.1
-    created: "2023-09-26T08:50:22.616754785-06:00"
+    created: "2023-09-26T09:03:15.221063355-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -2915,7 +2979,7 @@ entries:
     version: 0.4.1
   - apiVersion: v2
     appVersion: 0.4.1
-    created: "2023-09-26T08:50:22.615030152-06:00"
+    created: "2023-09-26T09:03:15.219619141-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -2939,7 +3003,7 @@ entries:
     version: 0.4.0
   - apiVersion: v2
     appVersion: 0.4.1
-    created: "2023-09-26T08:50:22.613665908-06:00"
+    created: "2023-09-26T09:03:15.217875283-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -2963,7 +3027,7 @@ entries:
     version: 0.3.1
   - apiVersion: v2
     appVersion: 0.4.1
-    created: "2023-09-26T08:50:22.612257545-06:00"
+    created: "2023-09-26T09:03:15.216545856-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -2987,7 +3051,7 @@ entries:
     version: 0.3.0
   - apiVersion: v2
     appVersion: 0.3.0
-    created: "2023-09-26T08:50:22.610859384-06:00"
+    created: "2023-09-26T09:03:15.215231587-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3012,7 +3076,7 @@ entries:
   neo4j:
   - apiVersion: v2
     appVersion: 4.4.24-05
-    created: "2023-09-26T08:50:22.637379794-06:00"
+    created: "2023-09-26T09:03:15.241403172-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3026,7 +3090,7 @@ entries:
     version: 0.5.4
   - apiVersion: v2
     appVersion: 4.4.24-05
-    created: "2023-09-26T08:50:22.635892727-06:00"
+    created: "2023-09-26T09:03:15.239767861-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3040,7 +3104,7 @@ entries:
     version: 0.5.3
   - apiVersion: v2
     appVersion: 4.4.24-05
-    created: "2023-09-26T08:50:22.63436674-06:00"
+    created: "2023-09-26T09:03:15.238254189-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3054,7 +3118,7 @@ entries:
     version: 0.5.2
   - apiVersion: v2
     appVersion: 4.4.24-05
-    created: "2023-09-26T08:50:22.632503211-06:00"
+    created: "2023-09-26T09:03:15.236748416-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3068,7 +3132,7 @@ entries:
     version: 0.5.1
   - apiVersion: v2
     appVersion: 4.4.24-05
-    created: "2023-09-26T08:50:22.630965799-06:00"
+    created: "2023-09-26T09:03:15.234843656-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3082,7 +3146,7 @@ entries:
     version: 0.5.0
   - apiVersion: v2
     appVersion: 4.4.24-04
-    created: "2023-09-26T08:50:22.62942633-06:00"
+    created: "2023-09-26T09:03:15.233323012-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3096,7 +3160,7 @@ entries:
     version: 0.4.3
   - apiVersion: v2
     appVersion: 4.4.24-04
-    created: "2023-09-26T08:50:22.627821379-06:00"
+    created: "2023-09-26T09:03:15.231706411-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3110,7 +3174,7 @@ entries:
     version: 0.4.2
   - apiVersion: v2
     appVersion: 4.4.24-04
-    created: "2023-09-26T08:50:22.625878929-06:00"
+    created: "2023-09-26T09:03:15.229930108-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3124,7 +3188,7 @@ entries:
     version: 0.4.1
   - apiVersion: v2
     appVersion: 4.4.24-04
-    created: "2023-09-26T08:50:22.624370308-06:00"
+    created: "2023-09-26T09:03:15.228445676-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3138,7 +3202,7 @@ entries:
     version: 0.4.0
   - apiVersion: v2
     appVersion: 4.4.24-03
-    created: "2023-09-26T08:50:22.622851652-06:00"
+    created: "2023-09-26T09:03:15.226949613-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3153,7 +3217,7 @@ entries:
   pentaho:
   - apiVersion: v2
     appVersion: 9.4.0.0-343-13
-    created: "2023-09-26T08:50:22.664699236-06:00"
+    created: "2023-09-26T09:03:15.266383943-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3171,7 +3235,7 @@ entries:
     version: 0.5.10
   - apiVersion: v2
     appVersion: 9.4.0.0-343-13
-    created: "2023-09-26T08:50:22.692396716-06:00"
+    created: "2023-09-26T09:03:15.29355934-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3189,7 +3253,7 @@ entries:
     version: 0.5.9
   - apiVersion: v2
     appVersion: 9.4.0.0-343-13
-    created: "2023-09-26T08:50:22.689103968-06:00"
+    created: "2023-09-26T09:03:15.290317117-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3207,7 +3271,7 @@ entries:
     version: 0.5.8
   - apiVersion: v2
     appVersion: 9.4.0.0-343-13
-    created: "2023-09-26T08:50:22.685505932-06:00"
+    created: "2023-09-26T09:03:15.286771172-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3225,7 +3289,7 @@ entries:
     version: 0.5.7
   - apiVersion: v2
     appVersion: 9.4.0.0-343-13
-    created: "2023-09-26T08:50:22.682133537-06:00"
+    created: "2023-09-26T09:03:15.283587565-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3243,7 +3307,7 @@ entries:
     version: 0.5.6
   - apiVersion: v2
     appVersion: 9.4.0.0-343-13
-    created: "2023-09-26T08:50:22.678301847-06:00"
+    created: "2023-09-26T09:03:15.280351487-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3261,7 +3325,7 @@ entries:
     version: 0.5.5
   - apiVersion: v2
     appVersion: 9.4.0.0-343-13
-    created: "2023-09-26T08:50:22.674932185-06:00"
+    created: "2023-09-26T09:03:15.276768258-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3279,7 +3343,7 @@ entries:
     version: 0.5.4
   - apiVersion: v2
     appVersion: 9.4.0.0-343-12
-    created: "2023-09-26T08:50:22.671388976-06:00"
+    created: "2023-09-26T09:03:15.273426336-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3297,7 +3361,7 @@ entries:
     version: 0.5.3
   - apiVersion: v2
     appVersion: 9.4.0.0-343-12
-    created: "2023-09-26T08:50:22.668126896-06:00"
+    created: "2023-09-26T09:03:15.269562491-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3315,7 +3379,7 @@ entries:
     version: 0.5.2
   - apiVersion: v2
     appVersion: 9.4.0.0-343-12
-    created: "2023-09-26T08:50:22.661483652-06:00"
+    created: "2023-09-26T09:03:15.262603363-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3333,7 +3397,7 @@ entries:
     version: 0.5.1
   - apiVersion: v2
     appVersion: 9.4.0.0-343-12
-    created: "2023-09-26T08:50:22.658232758-06:00"
+    created: "2023-09-26T09:03:15.259370889-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3351,7 +3415,7 @@ entries:
     version: 0.5.0
   - apiVersion: v2
     appVersion: 9.4.0.0-343-11
-    created: "2023-09-26T08:50:22.653727545-06:00"
+    created: "2023-09-26T09:03:15.255651236-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3369,7 +3433,7 @@ entries:
     version: 0.4.2
   - apiVersion: v2
     appVersion: 9.4.0.0-343-11
-    created: "2023-09-26T08:50:22.648503666-06:00"
+    created: "2023-09-26T09:03:15.252398107-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3387,7 +3451,7 @@ entries:
     version: 0.4.1
   - apiVersion: v2
     appVersion: 9.4.0.0-343-11
-    created: "2023-09-26T08:50:22.644121346-06:00"
+    created: "2023-09-26T09:03:15.248174017-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3405,7 +3469,7 @@ entries:
     version: 0.4.0
   - apiVersion: v2
     appVersion: 9.4.0.0-343-10
-    created: "2023-09-26T08:50:22.640947883-06:00"
+    created: "2023-09-26T09:03:15.244930501-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3424,7 +3488,7 @@ entries:
   samba:
   - apiVersion: v2
     appVersion: 4.14.5-10-01
-    created: "2023-09-26T08:50:22.71007108-06:00"
+    created: "2023-09-26T09:03:15.310798586-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3438,7 +3502,7 @@ entries:
     version: 0.5.5
   - apiVersion: v2
     appVersion: 4.14.5-10-01
-    created: "2023-09-26T08:50:22.708214853-06:00"
+    created: "2023-09-26T09:03:15.308638141-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3452,7 +3516,7 @@ entries:
     version: 0.5.4
   - apiVersion: v2
     appVersion: 4.14.5-10-01
-    created: "2023-09-26T08:50:22.705990233-06:00"
+    created: "2023-09-26T09:03:15.306821267-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3466,7 +3530,7 @@ entries:
     version: 0.5.3
   - apiVersion: v2
     appVersion: 4.14.5-10-01
-    created: "2023-09-26T08:50:22.704181473-06:00"
+    created: "2023-09-26T09:03:15.304713772-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3480,7 +3544,7 @@ entries:
     version: 0.5.2
   - apiVersion: v2
     appVersion: 4.14.5-10-01
-    created: "2023-09-26T08:50:22.702321335-06:00"
+    created: "2023-09-26T09:03:15.302969129-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3494,7 +3558,7 @@ entries:
     version: 0.5.1
   - apiVersion: v2
     appVersion: 4.14.5-10-01
-    created: "2023-09-26T08:50:22.70010251-06:00"
+    created: "2023-09-26T09:03:15.301137999-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3508,7 +3572,7 @@ entries:
     version: 0.5.0
   - apiVersion: v2
     appVersion: 4.14.5-10-01
-    created: "2023-09-26T08:50:22.698276607-06:00"
+    created: "2023-09-26T09:03:15.299031713-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3522,7 +3586,7 @@ entries:
     version: 0.4.1
   - apiVersion: v2
     appVersion: 4.14.5-10-01
-    created: "2023-09-26T08:50:22.69649174-06:00"
+    created: "2023-09-26T09:03:15.297362742-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3536,7 +3600,7 @@ entries:
     version: 0.4.0
   - apiVersion: v2
     appVersion: 4.14.5-10
-    created: "2023-09-26T08:50:22.694491248-06:00"
+    created: "2023-09-26T09:03:15.295672522-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3551,7 +3615,7 @@ entries:
   solr:
   - apiVersion: v2
     appVersion: 8.11.2-03
-    created: "2023-09-26T08:50:22.731799292-06:00"
+    created: "2023-09-26T09:03:15.333496856-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3565,7 +3629,7 @@ entries:
     version: 0.5.6
   - apiVersion: v2
     appVersion: 8.11.2-02
-    created: "2023-09-26T08:50:22.729928208-06:00"
+    created: "2023-09-26T09:03:15.331160775-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3579,7 +3643,7 @@ entries:
     version: 0.5.5
   - apiVersion: v2
     appVersion: 8.11.2-02
-    created: "2023-09-26T08:50:22.728035621-06:00"
+    created: "2023-09-26T09:03:15.329250677-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3593,7 +3657,7 @@ entries:
     version: 0.5.4
   - apiVersion: v2
     appVersion: 8.11.2-02
-    created: "2023-09-26T08:50:22.725785029-06:00"
+    created: "2023-09-26T09:03:15.327365362-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3607,7 +3671,7 @@ entries:
     version: 0.5.3
   - apiVersion: v2
     appVersion: 8.11.2-02
-    created: "2023-09-26T08:50:22.723953591-06:00"
+    created: "2023-09-26T09:03:15.325183408-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3621,7 +3685,7 @@ entries:
     version: 0.5.2
   - apiVersion: v2
     appVersion: 8.11.2-02
-    created: "2023-09-26T08:50:22.722024629-06:00"
+    created: "2023-09-26T09:03:15.323273222-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3635,7 +3699,7 @@ entries:
     version: 0.5.1
   - apiVersion: v2
     appVersion: 8.11.2-02
-    created: "2023-09-26T08:50:22.719704955-06:00"
+    created: "2023-09-26T09:03:15.321399571-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3649,7 +3713,7 @@ entries:
     version: 0.5.0
   - apiVersion: v2
     appVersion: 8.11.2-01
-    created: "2023-09-26T08:50:22.717869555-06:00"
+    created: "2023-09-26T09:03:15.31915875-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3663,7 +3727,7 @@ entries:
     version: 0.4.3
   - apiVersion: v2
     appVersion: 8.11.2-01
-    created: "2023-09-26T08:50:22.716004334-06:00"
+    created: "2023-09-26T09:03:15.316356862-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3677,7 +3741,7 @@ entries:
     version: 0.4.1
   - apiVersion: v2
     appVersion: 8.11.2-01
-    created: "2023-09-26T08:50:22.714038354-06:00"
+    created: "2023-09-26T09:03:15.314452345-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3691,7 +3755,7 @@ entries:
     version: 0.4.0
   - apiVersion: v2
     appVersion: 8.11.2
-    created: "2023-09-26T08:50:22.711835761-06:00"
+    created: "2023-09-26T09:03:15.312614547-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3706,7 +3770,7 @@ entries:
   step-ca:
   - apiVersion: v2
     appVersion: 0.24.2-01
-    created: "2023-09-26T08:50:22.7440669-06:00"
+    created: "2023-09-26T09:03:15.345466261-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3720,7 +3784,7 @@ entries:
     version: 0.5.4
   - apiVersion: v2
     appVersion: 0.24.2-01
-    created: "2023-09-26T08:50:22.742603885-06:00"
+    created: "2023-09-26T09:03:15.343608663-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3734,7 +3798,7 @@ entries:
     version: 0.5.3
   - apiVersion: v2
     appVersion: 0.24.2-01
-    created: "2023-09-26T08:50:22.741180874-06:00"
+    created: "2023-09-26T09:03:15.342134629-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3748,7 +3812,7 @@ entries:
     version: 0.5.2
   - apiVersion: v2
     appVersion: 0.24.2-01
-    created: "2023-09-26T08:50:22.739532224-06:00"
+    created: "2023-09-26T09:03:15.340782826-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3762,7 +3826,7 @@ entries:
     version: 0.5.1
   - apiVersion: v2
     appVersion: 0.24.2-01
-    created: "2023-09-26T08:50:22.738057638-06:00"
+    created: "2023-09-26T09:03:15.339295775-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3776,7 +3840,7 @@ entries:
     version: 0.5.0
   - apiVersion: v2
     appVersion: 0.24.2
-    created: "2023-09-26T08:50:22.736637841-06:00"
+    created: "2023-09-26T09:03:15.337663489-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3790,7 +3854,7 @@ entries:
     version: 0.4.2
   - apiVersion: v2
     appVersion: 0.24.2
-    created: "2023-09-26T08:50:22.735126302-06:00"
+    created: "2023-09-26T09:03:15.336311712-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3804,7 +3868,7 @@ entries:
     version: 0.4.1
   - apiVersion: v2
     appVersion: 0.24.2
-    created: "2023-09-26T08:50:22.733318793-06:00"
+    created: "2023-09-26T09:03:15.33485679-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3819,7 +3883,7 @@ entries:
   zookeeper:
   - apiVersion: v2
     appVersion: 3.8.2-02
-    created: "2023-09-26T08:50:22.756790518-06:00"
+    created: "2023-09-26T09:03:15.358114113-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3833,7 +3897,7 @@ entries:
     version: 0.5.4
   - apiVersion: v2
     appVersion: 3.8.2-02
-    created: "2023-09-26T08:50:22.755303218-06:00"
+    created: "2023-09-26T09:03:15.356649208-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3847,7 +3911,7 @@ entries:
     version: 0.5.3
   - apiVersion: v2
     appVersion: 3.8.2-02
-    created: "2023-09-26T08:50:22.753801261-06:00"
+    created: "2023-09-26T09:03:15.355071202-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3861,7 +3925,7 @@ entries:
     version: 0.5.2
   - apiVersion: v2
     appVersion: 3.8.2-02
-    created: "2023-09-26T08:50:22.752256336-06:00"
+    created: "2023-09-26T09:03:15.353343987-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3875,7 +3939,7 @@ entries:
     version: 0.5.1
   - apiVersion: v2
     appVersion: 3.8.2-02
-    created: "2023-09-26T08:50:22.750394079-06:00"
+    created: "2023-09-26T09:03:15.351787291-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3889,7 +3953,7 @@ entries:
     version: 0.5.0
   - apiVersion: v2
     appVersion: 3.8.2-01
-    created: "2023-09-26T08:50:22.748888352-06:00"
+    created: "2023-09-26T09:03:15.350331869-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3903,7 +3967,7 @@ entries:
     version: 0.4.1
   - apiVersion: v2
     appVersion: 3.8.2-01
-    created: "2023-09-26T08:50:22.747360216-06:00"
+    created: "2023-09-26T09:03:15.348465551-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3917,7 +3981,7 @@ entries:
     version: 0.4.0
   - apiVersion: v2
     appVersion: 3.8.1-03
-    created: "2023-09-26T08:50:22.745737075-06:00"
+    created: "2023-09-26T09:03:15.346916821-06:00"
     dependencies:
     - name: common
       repository: https://arkcase.github.io/ark_helm_charts
@@ -3929,4 +3993,4 @@ entries:
     urls:
     - https://arkcase.github.io/ark_helm_charts/zookeeper-0.3.0.tgz
     version: 0.3.0
-generated: "2023-09-26T08:50:21.798530197-06:00"
+generated: "2023-09-26T09:03:14.373479613-06:00"
