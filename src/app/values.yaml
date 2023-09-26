@@ -331,17 +331,16 @@ image:
   # Overrides the image tag whose default is the chart appVersion.
   tag: "latest"
 
-  registry: "public.ecr.aws"
-
   # Overrides the image tag whose default is the chart appVersion.
 
   artifacts:
-    repository: "arkcase/artifacts-core"
+    registry: "207428623785.dkr.ecr.us-east-1.amazonaws.com"
+    repository: "arkcase/artifacts-next"
     # tag: &arkcaseVersion "2023.01.01-02"
 
   artifacts-foia:
     registry: "207428623785.dkr.ecr.us-east-1.amazonaws.com"
-    repository: "arkcase/artifacts-foia"
+    repository: "arkcase/artifacts-next-foia"
     # tag: &arkcaseVersion "2023.01.01-02"
 
 # You generally shouldn't mess with these. These exist to support some name-generation templates
