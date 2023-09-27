@@ -19,20 +19,24 @@ fail() {
 #
 # Deploy all reports
 #
-say "Deploying any base reports for automated installation"
+REPORT="$(list-artifacts /pentaho/reports)" || fail "Failed to list the reports for deployment"
+readarray -t REPORT <<< "${REPORT}"
+say "Deploying ${#REPORT[@]} reports for automated installation: [${REPORT[@]}]"
 mkdir -p "${REPS_DIR}"
-while read report ; do
+for report in "${REPORT[@]}" ; do
 	deploy-artifact copy "${report}" "${REPS_DIR}"
-done < <(list-artifacts /pentaho/reports)
+done
 
 #
 # Extract all the Data Warehousing stuff
 #
-say "Deploying Analytical Transformations"
+DWHS="$(list-artifacts /pentaho/analytical)" || fail "Failed to list the analytical transformations for deployment"
+readarray -t DWHS <<< "${REPORT}"
+say "Deploying ${#DWHS[@]} Analytical Transformations: [${DWHS[@]}]"
 mkdir -p "${DWHS_DIR}"
-while read dwhs ; do
+for dwhs in "${DWHS[@]}" ; do
 	deploy-artifact extract-dir "${dwhs}" "${DWHS_DIR}"
-done < <(list-artifacts /pentaho/analytical)
+done
 
 say "Artifact deployment complete"
 exit 0
