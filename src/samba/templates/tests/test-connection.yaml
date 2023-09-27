@@ -28,7 +28,7 @@ spec:
       {{- $baseDn := (include "arkcase.ldap.baseDn" $) }}
       {{- $userBaseDn := (include "arkcase.ldap" (dict "ctx" $ "value" "search.users.base")) }}
       command: [ "/usr/local/bin/run-from-env" ]
-      args: [ "SCRIPT" ]
+      args: [ "TEST_SCRIPT" ]
       env: {{- include "arkcase.tools.baseEnv" $ | nindent 8 }}
         - name: ADMIN_PASS
           valueFrom:
