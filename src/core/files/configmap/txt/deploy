@@ -39,7 +39,7 @@ fi
 # Deploy all WAR files
 #
 WAR="$(list-artifacts /arkcase/wars)" || fail "Failed to list the WAR files to be deployed"
-readarray -t WAR <<< "${WAR}"
+readarray -t WAR < <(echo -n "${WAR}")
 say "Found ${#WAR[@]} WAR files to deploy: [${WAR[@]}]"
 for war in "${WAR[@]}" ; do
 
@@ -88,7 +88,7 @@ if ! ${SKIP_CONF} ; then
 	# Deploy all the .arkcase configurations
 	#
 	CONF="$(list-artifacts /arkcase/conf)" || fail "Failed to list the CONF files to be deployed"
-	readarray -t CONF <<< "${CONF[@]}"
+	readarray -t CONF < <(echo -n "${CONF}")
 	say "Found ${#CONF[@]} CONF files to deploy: [${CONF[@]}]"
 	for conf in "${CONF[@]}" ; do
 		deploy-artifact extract "${conf}" "${CONF_DIR}" || fail "Failed to deploy the configuration from [${conf}]"
