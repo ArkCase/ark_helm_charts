@@ -313,7 +313,13 @@ def create_user(userId, userData):
 		password = DEFAULT_PASSWORD
 
 	if not password:
+		# Use this value if there's no default password set, and
+		# the user doesn't have a password configured, either
 		password = f"${userId}$"
+
+	# Support expanding environment variables ... this allows us
+	# to define admin passwords in the env, which means SECRETS SUPPORT!
+	password = os.path.expandvars(password)
 
 	logging.info(f"\tSetting the password for '{userId}' to [{password}]")
 	command = [ "user", "setpassword", userId, f"--newpassword={password}" ]
