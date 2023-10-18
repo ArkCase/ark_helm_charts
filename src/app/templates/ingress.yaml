@@ -74,6 +74,18 @@ metadata:
     haproxy-ingress.github.io/ssl-redirect: "true"
     haproxy-ingress.github.io/secure-backends: "true"
     haproxy-ingress.github.io/secure-sni: "host"
+    # Maximum time to wait for a connection to a backend
+    # haproxy-ingress.github.io/timeout-connect: "5s"
+    # Maximum time to wait for a complete HTTP request
+    # haproxy-ingress.github.io/timeout-http-request: "5s"
+    # Maximum time to wait for a new HTTP request on keep-alive connections
+    # haproxy-ingress.github.io/timeout-keep-alive: "1m"
+    # Maximum time a connection should wait on a server queue before return a 503 error to the client
+    # haproxy-ingress.github.io/timeout-queue: "15s"
+    # Maximum inactivity time on the backend side
+    # haproxy-ingress.github.io/timeout-server: "50s"
+    # Maximum inactivity time on the backend side for half-closed connections - FIN_WAIT state
+    # haproxy-ingress.github.io/timeout-server-fin: "50s"
     {{- with (include "arkcase.values" (dict "ctx" $ "base" "annotations") | fromYaml) }}
       {{- toYaml . | nindent 4 }}
     {{- end }}
