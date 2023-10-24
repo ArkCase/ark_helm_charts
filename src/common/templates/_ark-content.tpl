@@ -50,7 +50,6 @@
   {{- $dialect := (include "arkcase.content.info.get" (set $getParams "value" "dialect")) -}}
   {{- $dialect = (include "arkcase.content.sanitizeDialect" $dialect) -}}
 
-  {{- $auth := dict -}}
   {{- $authValues := dict -}}
   {{- if (eq "alfresco" $dialect) -}}
     {{-
@@ -59,6 +58,7 @@
           "username" true
           "password" true
           "shareUrl" false
+          "sync" false
     -}}
   {{- else if (eq "s3" $dialect) -}}
     {{-
@@ -72,13 +72,14 @@
     -}}
   {{- end -}}
 
+  {{- $auth := dict -}}
   {{- $failures := list -}}
-  {{- range $v, $r := $authValues -}}
-    {{- $V := (include "arkcase.content.info.get" (set $getParams "value" $v)) -}}
-    {{- if $V -}}
-      {{- $auth = set $auth $v $V -}}
-    {{- else if $r -}}
-      {{- $failures = append $failures $v -}}
+  {{- range $valueName, $required := $authValues -}}
+    {{- $value := (include "arkcase.content.info.get" (set $getParams "value" $valueName)) -}}
+    {{- if $value -}}
+      {{- $auth = set $auth $valueName $value -}}
+    {{- else if $required -}}
+      {{- $failures = append $failures $value -}}
     {{- end -}}
   {{- end -}}
   {{- if $failures -}}
