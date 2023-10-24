@@ -150,6 +150,12 @@ spec:
               mountPath: "/usr/local/tomcat/shared/classes/alfresco/extension/subsystems/Authentication/ldap-ad/ldap1/ldap-ad.properties"
               subPath: &ldapAdProperties "ldap-ad.properties"
               readOnly: true
+            {{- if (include "arkcase.toBoolean" $content.sync) }}
+            - name: &configMap "config-map"
+              mountPath: "/usr/local/tomcat/shared/classes/alfresco/extension/audit/alfresco-audit-arkcase-extractors.xml"
+              subPath: &alfrescoAuditArkcaseExtractorsXml "alfresco-audit-arkcase-extractors.xml"
+              readOnly: true
+            {{- end }}
       volumes:
         {{- include "arkcase.trusts.volume" $ | nindent 8 }}
         {{- include "arkcase.acme.volume" $ | nindent 8 }}
@@ -164,6 +170,16 @@ spec:
                 path: *alfrescoGlobalProperties
               - key: *ldapAdProperties
                 path: *ldapAdProperties
+        {{- if (include "arkcase.toBoolean" $content.sync) }}
+        - name: *configMap
+          configMap:
+            optional: false
+            name: {{ include "arkcase.fullname" $ | quote }}
+            defaultMode: 0444
+            items:
+              - key: *alfrescoAuditArkcaseExtractorsXml
+                path: *alfrescoAuditArkcaseExtractorsXml
+        {{- end }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "init") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
       {{- with (include "arkcase.values" (dict "ctx" $ "base" "nodeSelector") | fromYaml) }}
