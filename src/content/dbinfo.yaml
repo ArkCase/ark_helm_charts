@@ -8,7 +8,7 @@ mysql:
   port: 3306
   jdbc:
     driver: com.mysql.cj.jdbc.Driver
-    format: "jdbc:mysql://${HOSTNAME}:${PORT}/${DATABASE}?sslMode=VERIFY_IDENTITY"
+    format: "jdbc:mysql://${HOSTNAME}:${PORT}/${DATABASE}?useSSL=true&autoReconnect=true&useUnicode=true&characterEncoding=UTF-8&enabledTLSProtocols=TLSv1.2"
 
 oracle:
   port: 1521
