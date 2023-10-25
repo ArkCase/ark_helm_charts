@@ -4,11 +4,9 @@
   {{- $value := $.value -}}
 
   {{- $local = (include "arkcase.tools.get" (dict "ctx" $local "name" $value) | fromYaml) -}}
-  {{- $local = (eq "string" $local.type) | ternary $local.value "" -}}
   {{- $global = (include "arkcase.tools.get" (dict "ctx" $global "name" $value) | fromYaml) -}}
-  {{- $global = (eq "string" $global.type) | ternary $global.value "" -}}
 
-  {{- (empty $global) | ternary $local $global -}}
+  {{- $global.found | ternary $global.value $local.value -}}
 {{- end -}}
 
 {{- define "arkcase.content.sanitizeDialect" -}}
