@@ -14,6 +14,13 @@ say() {
 	echo -e "${@}"
 }
 
+unique_dependencies()
+{
+	for n in "${@}" ; do
+		echo "${n}"
+	done | sort -u
+}
+
 set -euo pipefail
 
 cd "${BASEDIR}"
@@ -39,6 +46,13 @@ while true ; do
 			) |& sed -e 's;^;\t\t;g'
 			NEW_DEPS+=("${DEPENDENCY}")
 		done < <(find src -type f -name "${CHART_NAME}-*.tgz" | sort)
+
+		# If there are no new dependencies, ditch!
+		[ ${#NEW_DEPS[@]} -gt 0 ] || continue
+
+		# Remove duplicates in the new dependencies
+		readarray -t NEW_DEPS < <(unique_dependencies "${NEW_DEPS[@]}")
+
 		say "\tFound ${#NEW_DEPS[@]} dependencies for ${CHART_NAME}:"
 		for D in "${NEW_DEPS[@]}" ; do
 			say "\t\t${D}"
@@ -46,7 +60,7 @@ while true ; do
 		NEXT_ITERATION+=("${NEW_DEPS[@]}")
 	done
 
-	readarray -t NI < <( for n in "${NEXT_ITERATION[@]}" ; do echo "${n}" ; done | sort -u )
+	readarray -t NI < <(unique_dependencies "${NEXT_ITERATION[@]}")
 	set -- "${NI[@]}"
     [ "${#}" -lt 1 ] && break
 done
