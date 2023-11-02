@@ -134,12 +134,15 @@ service:
 ##
   probes:
     enabled: true
-    readiness:
+    startup:
       exec:
-        command: [ "/test-ready.sh" ]
+        command: [ "/test-startup.sh" ]
     liveness:
       exec:
         command: [ "/test-live.sh" ]
+    readiness:
+      exec:
+        command: [ "/test-ready.sh" ]
     spec:
       initialDelaySeconds: 10
       periodSeconds: 30
