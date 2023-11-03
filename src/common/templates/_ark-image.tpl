@@ -23,7 +23,7 @@
   {{- $repository := .repository -}}
   {{- $data := .data -}}
 
-  {{- $imageAttributes := list "repository" "tag" -}}
+  {{- $imageAttributes := list "repository" "tag" "digest" -}}
   {{- $commonAttributes := list "registry" "pullPolicy" -}}
 
   {{- $search := list -}}
@@ -152,9 +152,9 @@
     {{- end -}}
   {{- end -}}
 
-  {{- /* Finally, if this is the "default" image, and doesn't have a tag, */ -}}
+  {{- /* Finally, if this is the "default" image, and doesn't have a tag or a digest, */ -}}
   {{- /* then by default use the chart's appversion value as the image tag. */ -}}
-  {{- if and (not $image) (not (hasKey $result "tag")) -}}
+  {{- if and (not $image) (and (not (hasKey $result "tag")) (not (hasKey $result "digest"))) -}}
     {{- $result = set $result "tag" ($ctx.Chart.AppVersion | toString) -}}
     {{- $pending = omit $pending "tag" -}}
   {{- end -}}
@@ -350,6 +350,10 @@ community) in order to choose the correct image.
   {{- $name := .name -}}
   {{- $repository := .repository -}}
   {{- $tag := .tag -}}
+  {{- $digest := .digest -}}
+  {{- if and $tag $digest -}}
+    {{- fail "You may only supply a tag or a digest, not both!" -}}
+  {{- end -}}
   {{- $useChartTag := .useChartTag -}}
 
   {{- if not (hasKey . "enterprise") -}}
@@ -387,16 +391,29 @@ community) in order to choose the correct image.
   {{- end -}}
   {{- $image = set $image "image" $finalRepository -}}
 
-  {{- /* Append the tag, if necessary */ -}}
-  {{- $finalTag := $image.tag -}}
-  {{- if not $finalTag -}}
-    {{- $finalTag = $tag -}}
+  {{- /* Append the tag or digest, if necessary. First non-empty value wins. */ -}}
+  {{- $imageSuffix := "" -}}
+  {{- if and (not $imageSuffix) $image.digest -}}
+    {{- $imageSuffix = (printf "@%s" $image.digest) -}}
   {{- end -}}
-  {{- if and (not $finalTag) $useChartTag -}}
-    {{- $finalTag = $ctx.Chart.AppVersion -}}
+  {{- if and (not $imageSuffix) $image.tag -}}
+    {{- $imageSuffix = (printf ":%s" $image.tag) -}}
   {{- end -}}
-  {{- if $finalTag -}}
-    {{- $image = set $image "image" (printf "%s:%s" $image.image $finalTag) -}}
+  {{- if and (not $imageSuffix) $digest -}}
+    {{- $imageSuffix = (printf "@%s" $digest) -}}
+  {{- end -}}
+  {{- if and (not $imageSuffix) $tag -}}
+    {{- $imageSuffix = (printf ":%s" $tag) -}}
+  {{- end -}}
+
+  {{- /* Last resort: the chart's application version */ -}}
+  {{- if and (not $imageSuffix) $useChartTag -}}
+    {{- $imageSuffix = (printf ":%s" $ctx.Chart.AppVersion) -}}
+  {{- end -}}
+
+  {{- /* Append the suffix, if applicable */ -}}
+  {{- if $imageSuffix -}}
+    {{- $image = set $image "image" (printf "%s%s" $image.image $imageSuffix) -}}
   {{- end -}}
 
   {{- /* Append the registry, if necessary */ -}}
@@ -414,6 +431,7 @@ Fetch and compute if necessary the image information for the named image
   {{- $name := "" -}}
   {{- $repository := "" -}}
   {{- $tag := "" -}}
+  {{- $digest := "" -}}
   {{- $useChartTag := false -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- $ctx = .ctx -}}
@@ -427,7 +445,8 @@ Fetch and compute if necessary the image information for the named image
     {{- end -}}
     {{- $repository = .repository -}}
     {{- $tag = .tag -}}
-    {{- $useChartTag = (eq "true" (.useChartTag | toString | default "false" | lower)) -}}
+    {{- $digest = .digest -}}
+    {{- $useChartTag = (not (empty (include "arkcase.toBoolean" .useChartTag))) -}}
   {{- else -}}
     {{- $useChartTag = true -}}
   {{- end -}}
@@ -453,7 +472,7 @@ Fetch and compute if necessary the image information for the named image
   {{- $imageName := (printf "%s-%s-%s" (include "common.fullname" $ctx) $name) -}}
   {{- $yamlResult := "" -}}
   {{- if not (hasKey $masterCache $imageName) -}}
-    {{- $yamlResult = include "arkcase.image.info.cached" (dict "ctx" $ctx "name" $name "enterprise" $enterprise "repository" $repository "tag" $tag "useChartTag" $useChartTag) -}}
+    {{- $yamlResult = include "arkcase.image.info.cached" (dict "ctx" $ctx "name" $name "enterprise" $enterprise "repository" $repository "tag" $tag "digest" $digest "useChartTag" $useChartTag) -}}
     {{- $masterCache = set $masterCache $imageName ($yamlResult | fromYaml) -}}
   {{- else -}}
     {{- $yamlResult = get $masterCache $imageName | toYaml -}}
