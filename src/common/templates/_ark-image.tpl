@@ -406,11 +406,11 @@ community) in order to choose the correct image.
   {{- /* Append the tag, if applicable */ -}}
   {{- if $finalTag -}}
     {{- /* If the tag is a digest, it needs a "@" as a separator. Otherwise, a ":" is required */ -}}
-    {{- if ((regexMatch "^sha256:[0-9a-fA-F]{64}$" $finalTag) -}}
+    {{- if (regexMatch "^sha256:[0-9a-fA-F]{64}$" $finalTag) -}}
       {{- /* Make sure the digest is always in lowercase, just in case */ -}}
       {{- $finalTag = (printf "@%s" ($finalTag | lower)) -}}
     {{- else -}}
-      {{- $finalTag = (printf ":%s" $finalTag -}}
+      {{- $finalTag = (printf ":%s" $finalTag) -}}
     {{- end -}}
     {{- $image = set $image "image" (printf "%s%s" $image.image $finalTag) -}}
   {{- end -}}
