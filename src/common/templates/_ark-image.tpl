@@ -429,7 +429,7 @@ community) in order to choose the correct image.
 
   {{- /* Last resort: the chart's application version */ -}}
   {{- if and (not $finalTag) $useChartTag -}}
-    {{- $finalTag = (printf ":%s" $ctx.Chart.AppVersion) -}}
+    {{- $finalTag = $ctx.Chart.AppVersion -}}
   {{- end -}}
 
   {{- /* Append the tag, if applicable */ -}}
