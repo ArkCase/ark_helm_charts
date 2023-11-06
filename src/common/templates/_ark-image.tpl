@@ -382,8 +382,8 @@ community) in order to choose the correct image.
   {{- if not $finalRepository -}}
     {{- $finalRepository = $repository -}}
   {{- end -}}
-  {{- if not $finalRepository -}}
-    {{- fail (printf "Failed to find a repository value for image [%s], chart [%s] (%s)" $name $chart $edition) -}}
+  {{- if not (regexMatch "^[a-z0-9]+(([.]|[_]{1,2}|[-]+)[a-z0-9]+)*(/[a-z0-9]+(([.]|[_]{1,2}|[-]+)[a-z0-9]+)*)*$" $finalRepository) -}}
+    {{- fail (printf "The repository value [%s] for image [%s], chart [%s] (%s) is invalid" $finalRepository $name $chart $edition) -}}
   {{- end -}}
   {{- $image = set $image "image" $finalRepository -}}
 
@@ -407,16 +407,25 @@ community) in order to choose the correct image.
   {{- if $finalTag -}}
     {{- /* If the tag is a digest, it needs a "@" as a separator. Otherwise, a ":" is required */ -}}
     {{- if (regexMatch "^sha256:[0-9a-fA-F]{64}$" $finalTag) -}}
-      {{- /* Make sure the digest is always in lowercase, just in case */ -}}
+      {{- /* Make sure the digest is always in lowercase, just in case, and tack on the "@" up front */ -}}
       {{- $finalTag = (printf "@%s" ($finalTag | lower)) -}}
-    {{- else -}}
+    {{- else if (regexMatch "^[a-zA-Z0-9_][a-zA-Z0-9_.-]{0,127}$" $finalTag) -}}
+      {{- /* This is a regular tag, prefix it with a ":" */ -}}
       {{- $finalTag = (printf ":%s" $finalTag) -}}
+    {{- else -}}
+      {{- fail (printf "The container image tag [%s] for image [%s], chart [%s] (%s) is invalid" $finalTag $name $chart $edition) -}}
     {{- end -}}
+
+    {{- /* Tack on the tag at the end of the image's path */ -}}
     {{- $image = set $image "image" (printf "%s%s" $image.image $finalTag) -}}
   {{- end -}}
 
   {{- /* Append the registry, if necessary */ -}}
   {{- if $image.registry -}}
+    {{- /* Validate the registry as a hostname */ -}}
+    {{- if not (include "arkcase.tools.checkHostname" $image.registry) -}}
+      {{- fail (printf "The container registry [%s] for image [%s], chart [%s] (%s) is invalid" $image.registry $name $chart $edition) -}}
+    {{- end -}}
     {{- $image = set $image "image" (printf "%s/%s" $image.registry $image.image) -}}
   {{- end -}}
   {{- $image | toYaml -}}
