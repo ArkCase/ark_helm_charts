@@ -391,31 +391,6 @@ community) in order to choose the correct image.
   {{- end -}}
   {{- $image = set $image "image" $finalRepository -}}
 
-<<<<<<< HEAD
-  {{- /* Append the tag or digest, if necessary. First non-empty value wins. */ -}}
-  {{- $imageSuffix := "" -}}
-  {{- if and (not $imageSuffix) $image.digest -}}
-    {{- $imageSuffix = (printf "@%s" $image.digest) -}}
-  {{- end -}}
-  {{- if and (not $imageSuffix) $image.tag -}}
-    {{- $imageSuffix = (printf ":%s" $image.tag) -}}
-  {{- end -}}
-  {{- if and (not $imageSuffix) $digest -}}
-    {{- $imageSuffix = (printf "@%s" $digest) -}}
-  {{- end -}}
-  {{- if and (not $imageSuffix) $tag -}}
-    {{- $imageSuffix = (printf ":%s" $tag) -}}
-  {{- end -}}
-
-  {{- /* Last resort: the chart's application version */ -}}
-  {{- if and (not $imageSuffix) $useChartTag -}}
-    {{- $imageSuffix = (printf ":%s" $ctx.Chart.AppVersion) -}}
-  {{- end -}}
-
-  {{- /* Append the suffix, if applicable */ -}}
-  {{- if $imageSuffix -}}
-    {{- $image = set $image "image" (printf "%s%s" $image.image $imageSuffix) -}}
-=======
   {{- /* Append the tag, if necessary. First non-empty value wins. */ -}}
   {{- $finalTag := "" -}}
 
@@ -442,7 +417,6 @@ community) in order to choose the correct image.
       {{- $finalTag = (printf ":%s" $finalTag) -}}
     {{- end -}}
     {{- $image = set $image "image" (printf "%s%s" $image.image $finalTag) -}}
->>>>>>> main
   {{- end -}}
 
   {{- /* Append the registry, if necessary */ -}}
@@ -474,10 +448,6 @@ Fetch and compute if necessary the image information for the named image
     {{- end -}}
     {{- $repository = .repository -}}
     {{- $tag = .tag -}}
-<<<<<<< HEAD
-    {{- $digest = .digest -}}
-=======
->>>>>>> main
     {{- $useChartTag = (not (empty (include "arkcase.toBoolean" .useChartTag))) -}}
   {{- else -}}
     {{- $useChartTag = true -}}
