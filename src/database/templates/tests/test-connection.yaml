@@ -16,8 +16,10 @@ metadata:
     {{- with ($.Values.test).labels }}
       {{- toYaml . | nindent 4 }}
     {{- end }}
+    arkcase.com/task: test
   annotations:
     helm.sh/hook: test
+    helm.sh/hook-delete-policy: hook-succeeded
     {{- with ($.Values.annotations).common }}
       {{- toYaml . | nindent 4 }}
     {{- end }}
