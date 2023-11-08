@@ -21,14 +21,10 @@ metadata:
     {{- end }}
 spec:
   containers:
-    - name: step-ca-test
+    - name: test
       image: public.ecr.aws/arkcase/nettest:latest
       command: [ "/usr/local/bin/acme-init" ]
       env: {{- include "arkcase.tools.baseEnv" $ | nindent 8 }}
         {{- include "arkcase.acme.env" $ | nindent 8 }}
-      volumeMounts:
-        {{- include "arkcase.acme.volumeMount" $ | nindent 8 }}
-  volumes:
-    {{- include "arkcase.acme.volume" $ | nindent 4 }}
   restartPolicy: Never
 {{- end -}}
