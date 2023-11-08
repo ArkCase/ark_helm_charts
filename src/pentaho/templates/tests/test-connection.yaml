@@ -1,0 +1,37 @@
+{{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.acme.external" $)) -}}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ printf "%s-test" (include "arkcase.fullname" $) | quote }}
+  namespace: {{ $.Release.Namespace | quote }}
+  labels: {{- include "arkcase.labels" $ | nindent 4 }}
+    {{- with ($.Values.labels).common }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- with ($.Values.test).labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  annotations:
+    helm.sh/hook: test
+    {{- with ($.Values.annotations).common }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- with ($.Values.test).annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  containers:
+    - name: test
+      image: public.ecr.aws/arkcase/nettest:latest
+      command: [ "/usr/local/bin/run-from-env" ]
+      args: [ "SCRIPT" ]
+      env:
+        - name: SERVICE_NAME
+          value: {{ include "arkcase.service.name" $ | quote }}
+        - name: SCRIPT
+          value: |-
+            set -xeuo pipefail
+            /usr/local/bin/acme-init
+            /usr/bin/curl -LfsS -o /dev/null "https://${SERVICE_NAME}:8443/pentaho"
+  restartPolicy: Never
+{{- end -}}
