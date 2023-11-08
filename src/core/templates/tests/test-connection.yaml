@@ -14,6 +14,7 @@ metadata:
     {{- end }}
   annotations:
     helm.sh/hook: test
+    helm.sh/hook-delete-policy: hook-succeeded
     {{- with ($.Values.annotations).common }}
       {{- toYaml . | nindent 4 }}
     {{- end }}
