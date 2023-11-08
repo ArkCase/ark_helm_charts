@@ -33,10 +33,11 @@ spec:
           value: |-
             set -xeuo pipefail
             /usr/local/bin/acme-init
-            /usr/bin/curl -L --fail "https://${SERVICE_NAME}:9999/actuator/health"
-            /usr/bin/curl -L --fail "https://${SERVICE_NAME}:8443/arkcase/login"
+            /usr/bin/curl -LfsS -o /dev/null "https://${SERVICE_NAME}:9999/actuator/health"
+            /usr/bin/curl -LfsS -o /dev/null "https://${SERVICE_NAME}:8443/arkcase/login"
             {{- if $foia }}
-            /usr/bin/curl -L --fail "https://${SERVICE_NAME}:8443/foia/"
+            /usr/bin/curl -LfsS -o /dev/null "https://${SERVICE_NAME}:8443/arkcase/external-portal/rest/request/authenticatedMode"
+            /usr/bin/curl -LfsS -o /dev/null "https://${SERVICE_NAME}:8443/foia/"
             {{- end }}
   restartPolicy: Never
 {{- end -}}
