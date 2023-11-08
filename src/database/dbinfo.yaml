@@ -4,6 +4,7 @@ mysql:
     - mariadb
     - mysql5
     - mysql8
+  starttls: mysql
 
 oracle:
   port: 1521
@@ -15,6 +16,7 @@ postgresql:
   aliases:
     - psql
     - postgres
+  starttls: postgres
 
 sqlserver:
   port: 1433
