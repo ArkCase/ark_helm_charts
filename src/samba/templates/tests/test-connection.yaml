@@ -6,43 +6,48 @@ metadata:
   namespace: {{ $.Release.Namespace | quote }}
   labels: {{- include "arkcase.labels" $ | nindent 4 }}
     {{- with ($.Values.labels).common }}
-    {{- toYaml . | nindent 4 }}
+      {{- toYaml . | nindent 4 }}
     {{- end }}
     {{- with ($.Values.test).labels }}
-    {{- toYaml . | nindent 4 }}
+      {{- toYaml . | nindent 4 }}
     {{- end }}
   annotations:
     helm.sh/hook: test
     {{- with ($.Values.annotations).common }}
-    {{- toYaml . | nindent 4 }}
+      {{- toYaml . | nindent 4 }}
     {{- end }}
     {{- with ($.Values.test).annotations }}
-    {{- toYaml . | nindent 4 }}
+      {{- toYaml . | nindent 4 }}
     {{- end }}
 spec:
   containers:
-    - name: samba-test
+    - name: test
       image: public.ecr.aws/arkcase/nettest:latest
       {{- $domain := (include "arkcase.ldap" (dict "ctx" $ "value" "domain")) }}
       {{- $administrator := (include "arkcase.ldap" (dict "ctx" $ "value" "administator") | default "administrator") }}
       {{- $baseDn := (include "arkcase.ldap.baseDn" $) }}
       {{- $userBaseDn := (include "arkcase.ldap" (dict "ctx" $ "value" "search.users.base")) }}
       command: [ "/usr/local/bin/run-from-env" ]
-      args: [ "TEST_SCRIPT" ]
+      args: [ "SCRIPT" ]
       env: {{- include "arkcase.tools.baseEnv" $ | nindent 8 }}
-        - name: ADMIN_PASS
-          valueFrom:
-            secretKeyRef:
-              name: {{ include "arkcase.fullname" $ | quote }}
-              key: DOMAIN_PASSWORD
-        - name: ADMIN_USER
-          value: {{ printf "%s\\%s" (include "arkcase.ldap.realm" $) $administrator | quote }}
         - name: SERVICE_NAME
           value: {{ include "arkcase.service.name" $ | quote }}
-        - name: TEST_SCRIPT
-          value: |-
-            set -euo pipefail
-            acme-init
-            ldapsearch -H "ldaps://${SERVICE_NAME}" -D "${ADMIN_USER}" -w "${ADMIN_PASS}" -b {{ $baseDn | quote }} {{ $userBaseDn | quote }} dn
+        - name: SCRIPT
+          value: |
+            set -xeuo pipefail
+            /usr/local/bin/acme-init
+            /usr/bin/ldapsearch -H "ldaps://${SERVICE_NAME}" -D "$(echo -n "${ADMIN_USER}")" -y "/app/secrets/DOMAIN_PASSWORD" -b {{ $baseDn | quote }} {{ $userBaseDn | quote }} dn
+        - name: ADMIN_USER
+          value: {{ printf "%s\\%s" (include "arkcase.ldap.realm" $) $administrator | quote }}
+      volumeMounts:
+        - name: &secrets "secrets"
+          mountPath: "/app/secrets"
+          readOnly: true
+  volumes:
+    - name: *secrets
+      secret:
+        optional: false
+        secretName: {{ include "arkcase.fullname" $ | quote }}
+        defaultMode: 0444
   restartPolicy: Never
 {{- end }}
