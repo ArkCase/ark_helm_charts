@@ -1,5 +1,9 @@
-{{- if (include "arkcase.subsystem.enabled" $) }}
-{{- $foia := (include "arkcase.foia" $ | fromYaml) -}}
+{{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.rdbms.external" $)) }}
+{{- $db := (include "arkcase.db.info" $ | fromYaml) -}}
+{{- $startTls := "" -}}
+{{- if and (hasKey $db "starttls") $db.starttls -}}
+  {{- $startTls = (printf "-starttls %s" ($db.starttls | quote)) -}}
+{{- end -}}
 apiVersion: v1
 kind: Pod
 metadata:
@@ -33,11 +37,6 @@ spec:
           value: |
             set -xeuo pipefail
             /usr/local/bin/acme-init
-            /usr/bin/curl -LfsS -o /dev/null "https://${SERVICE_NAME}:9999/actuator/health"
-            /usr/bin/curl -LfsS -o /dev/null "https://${SERVICE_NAME}:8443/arkcase/login"
-            {{- if $foia }}
-            /usr/bin/curl -LfsS -o /dev/null "https://${SERVICE_NAME}:8443/arkcase/external-portal/rest/request/authenticatedMode"
-            /usr/bin/curl -LfsS -o /dev/null "https://${SERVICE_NAME}:8443/foia/"
-            {{- end }}
+            /usr/bin/timeout 3 /usr/bin/openssl s_client -connect "${SERVICE_NAME}:{{ $db.port }}" -verify_quiet -verify_return_error -showcerts {{ $startTls }} < /dev/null
   restartPolicy: Never
 {{- end }}
