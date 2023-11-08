@@ -1,4 +1,4 @@
-{{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.subsystem.external" $)) }}
+{{- if (include "arkcase.neo4j.enabled" $) }}
 apiVersion: v1
 kind: Pod
 metadata:
@@ -35,4 +35,4 @@ spec:
 			/usr/bin/curl -LfsS -o /dev/null "https://${SERVICE_NAME}:8443/"
             /usr/bin/timeout 3 /usr/bin/openssl s_client -connect "${SERVICE_NAME}:7687" -verify_quiet -verify_return_error -showcerts </dev/null
   restartPolicy: Never
-{{- end -}}
+{{- end }}
