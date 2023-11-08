@@ -30,19 +30,25 @@ spec:
       command: [ "/usr/local/bin/run-from-env" ]
       args: [ "TEST_SCRIPT" ]
       env: {{- include "arkcase.tools.baseEnv" $ | nindent 8 }}
-        - name: ADMIN_PASS
-          valueFrom:
-            secretKeyRef:
-              name: {{ include "arkcase.fullname" $ | quote }}
-              key: DOMAIN_PASSWORD
         - name: ADMIN_USER
           value: {{ printf "%s\\%s" (include "arkcase.ldap.realm" $) $administrator | quote }}
         - name: SERVICE_NAME
           value: {{ include "arkcase.service.name" $ | quote }}
         - name: TEST_SCRIPT
           value: |-
-            set -euo pipefail
-            acme-init
-            ldapsearch -H "ldaps://${SERVICE_NAME}" -D "${ADMIN_USER}" -w "${ADMIN_PASS}" -b {{ $baseDn | quote }} {{ $userBaseDn | quote }} dn
+            set -xeuo pipefail
+            /usr/local/bin/acme-init
+            /usr/bin/ldapsearch -H "ldaps://${SERVICE_NAME}" -D "$(echo -n "${ADMIN_USER}")" -y "/app/secrets/DOMAIN_PASSWORD" -b {{ $baseDn | quote }} {{ $userBaseDn | quote }} dn
+      volumeMounts:
+        - name: &secrets "secrets"
+          mountPath: "/app/secrets"
+          readOnly: true
+  volumes:
+    - name: *secrets
+      secret:
+        optional: false
+        secretName: {{ include "arkcase.fullname" $ | quote }}
+        defaultMode: 0444
+
   restartPolicy: Never
 {{- end }}
