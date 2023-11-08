@@ -23,15 +23,15 @@ spec:
   containers:
     - name: test
       image: public.ecr.aws/arkcase/nettest:latest
-      command: [ "run-from-env" ]
+      command: [ "/usr/local/bin/run-from-env" ]
       args: [ "SCRIPT" ]
       env:
         - name: SERVICE_NAME
           value: {{ include "arkcase.service.name" $ | quote }}
         - name: SCRIPT
           value: |
-            set -euo pipefail
-            acme-init
-            curl -L https://${SERVICE_NAME}:9999
+            set -xeuo pipefail
+            /usr/local/bin/acme-init
+            /usr/bin/curl -LfsS -o /dev/null https://${SERVICE_NAME}:9999/actuator/health
   restartPolicy: Never
 {{- end }}
