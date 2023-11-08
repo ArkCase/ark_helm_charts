@@ -23,8 +23,15 @@ spec:
   containers:
     - name: test
       image: public.ecr.aws/arkcase/nettest:latest
-      command: [ "/usr/local/bin/acme-init" ]
-      env: {{- include "arkcase.tools.baseEnv" $ | nindent 8 }}
-        {{- include "arkcase.acme.env" $ | nindent 8 }}
+      command: [ "/usr/local/bin/run-from-env" ]
+      args: [ "SCRIPT" ]
+      env:
+        - name: SERVICE_NAME
+          value: {{ include "arkcase.service.name" $ | quote }}
+        - name: SCRIPT
+          value: |-
+            set -xeuo pipefail
+            /usr/local/bin/acme-init
+            /usr/bin/curl -LfsS -o /dev/null "https://${SERVICE_NAME}:9000/health"
   restartPolicy: Never
 {{- end -}}
