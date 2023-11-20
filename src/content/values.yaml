@@ -140,7 +140,7 @@ image:
 
   activemq:
     repository: "arkcase/alfresco-activemq"
-    tag: "5.17.1"
+    tag: "5.17.6"
 
   search:
     repository: "arkcase/alfresco-search"
@@ -157,11 +157,11 @@ image:
   community:
     main:
       repository: "arkcase/alfresco-ce-content"
-      tag: &alfrescoVersion "7.3.1"
+      tag: &alfrescoCeVersion "7.3.1"
 
     share:
       repository: "arkcase/alfresco-ce-share"
-      tag: *alfrescoVersion
+      tag: *alfrescoCeVersion
 
   enterprise: 
 
@@ -172,11 +172,11 @@ image:
 
     main:
       repository: "arkcase/alfresco-ee-content"
-      tag: *alfrescoVersion
+      tag: &alfrescoEeVersion "7.3.1.2"
 
     share:
       repository: "arkcase/alfresco-ee-share"
-      tag: *alfrescoVersion
+      tag: *alfrescoEeVersion
 
     sfs:
       repository: "arkcase/alfresco-ee-fileshare"
