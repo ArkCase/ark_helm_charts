@@ -253,12 +253,13 @@ spec:
             - name: LD_LIBRARY_PATH
               value: "/app/home/.arkcase/libraries"
             - name: CATALINA_OPTS
+              {{- $oidc := (include "arkcase.oidc" $ | fromYaml) -}}
+              {{- $springProfiles := (not (empty $oidc)) | ternary "externalOidc" "ldap" }}
+              {{- if $foia }}
+                {{- $springProfiles = (printf "extension-foia,%s" $springProfiles) }}
+              {{- end }}
               # For Java 8, these percentages must be given as doubles. The JVM may
               # choke if the ".0" isn't provided at the end
-             {{- $springProfiles := "ldap" }}
-             {{- if $foia }}
-                {{- $springProfiles = (printf "extension-foia,%s" $springProfiles) }}
-             {{- end }}
               value: >-
                 -XX:MinRAMPercentage=50.0
                 -XX:MaxRAMPercentage=80.0
