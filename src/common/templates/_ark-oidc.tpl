@@ -29,19 +29,22 @@
           {{- fail (printf "OIDC configuration for client '%s' is of type [%s], but it should be a map" $id (kindOf $client)) -}}
         {{- end -}}
 
-        {{- /* TODO: Is this correct? Do we want to check ALL settings? */ -}}
-        {{- $missing := list -}}
-        {{- range $key := $required -}}
-          {{- if (not (hasKey $client $key)) -}}
-            {{- $missing = append $missing $key -}}
+        {{- /* Allow clients to be enabled/disabled individually */ -}}
+        {{- if or (not (hasKey $client "enabled")) (include "arkcase.toBoolean" $client.enabled) -}}
+          {{- /* TODO: Is this correct? Do we want to check ALL settings? */ -}}
+          {{- $missing := list -}}
+          {{- range $key := $required -}}
+            {{- if (not (hasKey $client $key)) -}}
+              {{- $missing = append $missing $key -}}
+            {{- end -}}
           {{- end -}}
-        {{- end -}}
-        {{- if $missing -}}
-          {{- fail (printf "OIDC Configuration for client '%s' is missing the following configurations: %s" $id $missing) -}}
-        {{- end -}}
+          {{- if $missing -}}
+            {{- fail (printf "OIDC Configuration for client '%s' is missing the following configurations: %s" $id $missing) -}}
+          {{- end -}}
 
-        {{- /* The client is valid! */ -}}
-        {{- $results = set $results $id $client -}}
+          {{- /* The client is valid! */ -}}
+          {{- $results = set $results $id (omit $client "enabled") -}}
+        {{- end -}}
       {{- end -}}
     {{- end -}}
   {{- end -}}
