@@ -320,6 +320,10 @@ spec:
               subPath: &arkcaseActivemqYaml "arkcase-activemq.yaml"
               readOnly: true
             - name: *secrets
+              mountPath: "/app/home/.arkcase/acm/acm-config-server-repo/arkcase-oidc.yaml"
+              subPath: &arkcaseOidcYaml "arkcase-oidc.yaml"
+              readOnly: true
+            - name: *secrets
               mountPath: "/app/home/.arkcase/acm/acm-config-server-repo/ldap/ldap.yaml"
               subPath: &ldapYaml "ldap.yaml"
               readOnly: true
@@ -417,6 +421,10 @@ spec:
               subPath: *arkcaseActivemqYaml
               readOnly: true
             - name: *secrets
+              mountPath: "/app/conf/arkcase-oidc.yaml"
+              subPath: *arkcaseOidcYaml
+              readOnly: true
+            - name: *secrets
               mountPath: "/app/conf/arkcase-server.yaml"
               subPath: *arkcaseK8sYaml
               readOnly: true
@@ -463,6 +471,8 @@ spec:
                 path: *camelConfigOpenCmisCmisProperties
               - key: *arkcaseActivemqYaml
                 path: *arkcaseActivemqYaml
+              - key: *arkcaseOidcYaml
+                path: *arkcaseOidcYaml
               - key: *confYaml
                 path: *confYaml
               - key: *pdfnetSdkLicenseTxt
