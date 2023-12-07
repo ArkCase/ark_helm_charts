@@ -253,12 +253,13 @@ spec:
             - name: LD_LIBRARY_PATH
               value: "/app/home/.arkcase/libraries"
             - name: CATALINA_OPTS
+              {{- $oidc := (include "arkcase.oidc" $ | fromYaml) -}}
+              {{- $springProfiles := (not (empty $oidc)) | ternary "externalOidc" "ldap" }}
+              {{- if $foia }}
+                {{- $springProfiles = (printf "extension-foia,%s" $springProfiles) }}
+              {{- end }}
               # For Java 8, these percentages must be given as doubles. The JVM may
               # choke if the ".0" isn't provided at the end
-             {{- $springProfiles := "ldap" }}
-             {{- if $foia }}
-                {{- $springProfiles = (printf "extension-foia,%s" $springProfiles) }}
-             {{- end }}
               value: >-
                 -XX:MinRAMPercentage=50.0
                 -XX:MaxRAMPercentage=80.0
@@ -317,6 +318,10 @@ spec:
             - name: *secrets
               mountPath: "/app/home/.arkcase/acm/acm-config-server-repo/arkcase-activemq.yaml"
               subPath: &arkcaseActivemqYaml "arkcase-activemq.yaml"
+              readOnly: true
+            - name: *secrets
+              mountPath: "/app/home/.arkcase/acm/acm-config-server-repo/arkcase-oidc.yaml"
+              subPath: &arkcaseOidcYaml "arkcase-oidc.yaml"
               readOnly: true
             - name: *secrets
               mountPath: "/app/home/.arkcase/acm/acm-config-server-repo/ldap/ldap.yaml"
@@ -416,6 +421,10 @@ spec:
               subPath: *arkcaseActivemqYaml
               readOnly: true
             - name: *secrets
+              mountPath: "/app/conf/arkcase-oidc.yaml"
+              subPath: *arkcaseOidcYaml
+              readOnly: true
+            - name: *secrets
               mountPath: "/app/conf/arkcase-server.yaml"
               subPath: *arkcaseK8sYaml
               readOnly: true
@@ -462,6 +471,8 @@ spec:
                 path: *camelConfigOpenCmisCmisProperties
               - key: *arkcaseActivemqYaml
                 path: *arkcaseActivemqYaml
+              - key: *arkcaseOidcYaml
+                path: *arkcaseOidcYaml
               - key: *confYaml
                 path: *confYaml
               - key: *pdfnetSdkLicenseTxt
