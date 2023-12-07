@@ -423,7 +423,7 @@ community) in order to choose the correct image.
   {{- /* Append the registry, if necessary */ -}}
   {{- if $image.registry -}}
     {{- /* Validate the registry as a hostname */ -}}
-    {{- if not (include "arkcase.tools.checkHostname" $image.registry) -}}
+    {{- if not (include "arkcase.tools.checkHostnameWithPort" $image.registry) -}}
       {{- fail (printf "The container registry [%s] for image [%s], chart [%s] (%s) is invalid" $image.registry $name $chart $edition) -}}
     {{- end -}}
     {{- $image = set $image "image" (printf "%s/%s" $image.registry $image.image) -}}
