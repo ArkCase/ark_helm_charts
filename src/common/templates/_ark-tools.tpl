@@ -255,6 +255,36 @@ result: either "" or "true"
 {{- end -}}
 
 {{- /*
+Outputs "true" if the given parameter is a string that matches an RFC-1123 host or domain name with an optional port specifier at the end. If the string submitted does not match, the empty string will be output.
+
+usage: ( include "arkcase.tools.checkHostname" "some.hostname.to.check:13245" )
+       ( include "arkcase.tools.checkHostname" "some.hostname.to.check" )
+result: either "" or "true"
+*/ -}}
+{{- define "arkcase.tools.checkHostnameWithPort" -}}
+  {{- $host := (default "" .) -}}
+  {{- $type := (kindOf $host) -}}
+  {{- if (not (eq "string" $type)) -}}
+    {{- $host = (toString $host) -}}
+  {{- end -}}
+  {{- $fail := false -}}
+  {{- if (regexMatch "^[.a-z0-9-]+(:[1-9][0-9]*)?$" (lower $host)) -}}
+    {{- $parts := splitList ":" $host -}}
+    {{- if not (include "arkcase.tools.checkHostname" (first $parts)) -}}
+      {{- $fail = true -}}
+    {{- end -}}
+    {{- if and (gt (len $parts) 1) (not (include "arkcase.tools.checkNumericPort" (last $parts))) -}}
+      {{- $fail = true -}}
+    {{- end -}}
+  {{- else -}}
+      {{- $fail = true -}}
+  {{- end -}}
+  {{- if not $fail -}}
+    {{- true -}}
+  {{- end -}}
+{{- end -}}
+
+{{- /*
 Ensures that the given parameter is a string that matches an IPv4 address (4 dot-separated octets between 0 and 255), a list (slice) of IP addresses, or a comma-separated string of IP addresses. If any of the strings submitted is not an IP address, template processing will be halted. Will output the original parameter if it passes the checks. If the parameter is a list, the list will be sorted (alphabetically), uniqued, and compacted (empty strings removed).
 
 usage: ( include "arkcase.tools.mustIp" "some.ip.to.check" )
