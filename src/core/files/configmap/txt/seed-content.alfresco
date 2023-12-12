@@ -17,7 +17,7 @@ import yaml
 
 ENV_INIT_SEED_CONF         = "INIT_SEED_CONF"
 ENV_INIT_SEED_CONTENT      = "INIT_SEED_CONTENT"
-ENV_INIT_SEED_SHARE        = "INIT_SEED_SHARE"
+ENV_INIT_SEED_UI           = "INIT_SEED_UI"
 ENV_INIT_SEED_USERNAME     = "INIT_SEED_USERNAME"
 ENV_INIT_SEED_PASSWORD     = "INIT_SEED_PASSWORD"
 ENV_INIT_SEED_IGNORE_DUPES = "INIT_SEED_IGNORE_DUPES"
@@ -25,7 +25,7 @@ ENV_INIT_SEED_IGNORE_DUPES = "INIT_SEED_IGNORE_DUPES"
 parser = argparse.ArgumentParser(description="Alfresco Content Seeder")
 parser.add_argument("config", metavar="config", action="store", help=f"The configuration to use (if not given, it will be read from the {ENV_INIT_SEED_CONF} environment variable)", type=str, nargs="?")
 parser.add_argument("--content", metavar="content", action="store", help=f"The Alfresco content URL (if not given, it will be read from the {ENV_INIT_SEED_CONTENT} environment variable)", type=str, nargs=1)
-parser.add_argument("--share", metavar="share", action="store", help=f"The Alfresco share URL (if not given, it will be read from the {ENV_INIT_SEED_SHARE} environment variable)", type=str, nargs=1)
+parser.add_argument("--ui", metavar="ui", action="store", help=f"The Alfresco Share UI URL (if not given, it will be read from the {ENV_INIT_SEED_UI} environment variable)", type=str, nargs=1)
 parser.add_argument("--username", metavar="username", action="store", help=f"The username to authenticate with (if not given, it will be read from the {ENV_INIT_SEED_USERNAME} environment variable)", type=str, nargs=1)
 parser.add_argument("--password", metavar="password", action="store", help=f"The password to authenticate with (if not given, it will be read from the {ENV_INIT_SEED_PASSWORD} environment variable)", type=str, nargs=1)
 parser.add_argument("--ignore-dupes", action="store_true", help=f"A flag to indicate whether to continue processing even if duplicate sites are encountered (if not given, it will be read from the {ENV_INIT_SEED_IGNORE_DUPES} environment variable)", default=False)
@@ -85,7 +85,7 @@ else:
 if data is None:
 	fail("Data is not in YAML format")
 
-CONTENT = "https://content-main:8443/alfresco"
+CONTENT = None
 if args.content:
 	CONTENT = args.content[0]
 elif ENV_INIT_SEED_CONTENT in os.environ:
@@ -94,16 +94,16 @@ if not CONTENT:
 	fail("Must provide a CONTENT URL to connect to")
 logging.info(f"Using CONTENT URL [{CONTENT}]")
 
-SHARE = "https://content-share:8443/share"
+UI = None
 if args.share:
-	SHARE = args.share[0]
-elif ENV_INIT_SEED_SHARE in os.environ:
-	SHARE = os.environ[ENV_INIT_SEED_SHARE]
-if not SHARE:
-	fail("Must provide a SHARE URL to connect to")
-logging.info(f"Using SHARE URL [{SHARE}]")
+	UI = args.ui[0]
+elif ENV_INIT_SEED_UI in os.environ:
+	UI = os.environ[ENV_INIT_SEED_UI]
+if not UI:
+	fail("Must provide a UI URL to connect to")
+logging.info(f"Using UI URL [{UI}]")
 
-USERNAME = "admin"
+USERNAME = None
 if args.username:
 	USERNAME = args.username[0]
 elif ENV_INIT_SEED_USERNAME in os.environ:
@@ -112,7 +112,7 @@ if not USERNAME:
 	USERNAME = "admin"
 logging.info(f"Using username [{USERNAME}]")
 
-PASSWORD = "admin"
+PASSWORD = None
 if args.password:
 	PASSWORD = args.password[0]
 elif ENV_INIT_SEED_PASSWORD in os.environ:
@@ -135,38 +135,38 @@ def login():
 		headers = { "Content-Type" : "application/x-www-form-urlencoded" }
 
 		# Base login
-		logging.info(f"Logging into {SHARE} ...")
-		rsp = session.post(f"{SHARE}/page/dologin", headers = headers, data = {
+		logging.info(f"Logging into {UI} ...")
+		rsp = session.post(f"{UI}/page/dologin", headers = headers, data = {
 			"success": "/share/page/",
 			"failure": "/share/page/?error=true",
 			"username": USERNAME,
 			"password": PASSWORD
 		})
 		if rsp.status_code > 400:
-			fail(f"Failed to log into share at {SHARE} - rc: {rsp.status_code}")
+			fail(f"Failed to log into share at {UI} - rc: {rsp.status_code}")
 		else:
 			logging.info(f"\tLogged in! (rc: {rsp.status_code})")
 
 		cookies = requests.utils.dict_from_cookiejar(session.cookies)
 		if "alfLogin" not in cookies:
-			fail(f"Login failed - unable to authenticate to {SHARE} using the given credentials (user = {USERNAME})")
+			fail(f"Login failed - unable to authenticate to {UI} using the given credentials (user = {USERNAME})")
 
 		if "Alfresco-CSRFToken" not in cookies:
 			# If we didn't get it the first time around, execute a request to get it
 			logging.info("CSRF Token not found in the login response, fetching it explicitly")
-			rsp = session.get("{SHARE}/service/modules/authenticated?a=user")
+			rsp = session.get("{UI}/service/modules/authenticated?a=user")
 			if rsp.status_code > 400:
-				fail(f"Failed to fetch the CSRF token from {SHARE} - rc: {rsp.status_code}")
+				fail(f"Failed to fetch the CSRF token from {UI} - rc: {rsp.status_code}")
 			else:
 				logging.info(f"\tRequest complete! (rc: {rsp.status_code})")
 
 			cookies = requests.utils.dict_from_cookiejar(session.cookies)
 			if "Alfresco-CSRFToken" not in cookies:
-				fail(f"Failed to fetch the CSRF token from {SHARE} - the token was not returned as a cookie")
+				fail(f"Failed to fetch the CSRF token from {UI} - the token was not returned as a cookie")
 
 		session.headers["Alfresco-CSRFToken"] = urllib.parse.unquote(cookies["Alfresco-CSRFToken"])
 	except Exception as e:
-		fail(f"Failed to login and obtain the CSRF token from {SHARE}\n{traceback.format_exc()}")
+		fail(f"Failed to login and obtain the CSRF token from {UI}\n{traceback.format_exc()}")
 
 	logging.info("Logged in, and CSRF token retrieved.")
 	return session
@@ -475,7 +475,7 @@ try:
 			creator = create_categories
 
 		logging.info(f"Creating the {desc} site [{name}]...")
-		rsp = session.post(f"{SHARE}/service/modules/create-site", json=site_info)
+		rsp = session.post(f"{UI}/service/modules/create-site", json=site_info)
 
 		if rsp.status_code >= 400:
 			result = rsp.json()

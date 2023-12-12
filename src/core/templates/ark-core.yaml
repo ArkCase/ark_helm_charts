@@ -209,13 +209,13 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: *secretName
-                  key: "contentUrl"
+                  key: "contentApi"
             {{- if (eq $contentDialect "alfresco") }}
-            - name: INIT_SEED_SHARE
+            - name: INIT_SEED_UI
               valueFrom:
                 secretKeyRef:
                   name: *secretName
-                  key: "contentShareUrl"
+                  key: "contentUi"
             {{- end }}
           volumeMounts:
             - name: *homeVolume

@@ -26,7 +26,7 @@
     {{- fail "The parameter must be the root context" -}}
   {{- end -}}
   {{- $content := (include "arkcase.cm.info" $ | fromYaml) -}}
-  {{- if $content.api.global -}}
+  {{- if $content.url.global -}}
     {{- true -}}
   {{- end -}}
 {{- end -}}

@@ -64,21 +64,21 @@
   {{- $cmConf := merge (deepCopy $global) $local $cmInfo -}}
 
   {{- /* We have to give these two special treatment */ -}}
-  {{- $cmConf = omit $cmConf "api" "ui" -}}
+  {{- $cmConf = omit $cmConf "url" "ui" -}}
 
-  {{- $api := "" -}}
+  {{- $url := "" -}}
   {{- $ui := "" -}}
   {{- $g := true -}}
   {{- range $c := list $global $local $cmInfo -}}
-    {{- if and (empty $api) (hasKey $c "api") -}}
-      {{- $api = get $c "api" -}}
-      {{- if (kindIs "string" $api) -}}
-        {{- $a := (include "arkcase.tools.parseUrl" $api | fromYaml) -}}
+    {{- if and (empty $url) (hasKey $c "url") -}}
+      {{- $url = get $c "url" -}}
+      {{- if (kindIs "string" $url) -}}
+        {{- $a := (include "arkcase.tools.parseUrl" $url | fromYaml) -}}
         {{- if not $a.scheme -}}
-          {{- fail (printf "Invalid content server API URL syntax [%s]" $api) -}}
+          {{- fail (printf "Invalid content server API URL syntax [%s]" $url) -}}
         {{- end -}}
-        {{- $api = (omit $a "userinfo") -}}
-        {{- $api = set $api "global" $g -}}
+        {{- $url = (omit $a "userinfo") -}}
+        {{- $url = set $url "global" $g -}}
 
         {{- if (hasKey $c "ui") -}}
           {{- $ui = get $c "ui" -}}
@@ -92,7 +92,7 @@
           {{- end -}}
         {{- end -}}
         {{- if not $ui -}}
-          {{- $ui = $api -}}
+          {{- $ui = $url -}}
         {{- end -}}
       {{- end -}}
     {{- end -}}
@@ -100,8 +100,8 @@
   {{- end -}}
 
   {{- /* Make sure there's an API url */ -}}
-  {{- if not $api -}}
-    {{- fail "Must provide the content store API URL in the 'content.api' configuration value" -}}
+  {{- if not $url -}}
+    {{- fail "Must provide the content store API URL in the 'content.url' configuration value" -}}
   {{- end -}}
 
   {{- $settings := dict -}}
@@ -113,7 +113,7 @@
   {{- $cmConf = set $cmConf "settings" $settings -}}
 
   {{- /* Grab the host + port from the URL */ -}}
-  {{- $cmConf = set $cmConf "api" $api -}}
+  {{- $cmConf = set $cmConf "url" $url -}}
   {{- $cmConf = set $cmConf "ui" $ui -}}
 
   {{- if or (not (hasKey $cmConf "username")) (not (kindIs "string" $cmConf.username)) (empty $cmConf.username) -}}
