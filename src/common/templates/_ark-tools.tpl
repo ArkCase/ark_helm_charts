@@ -820,6 +820,10 @@ return either the value if correct, or the empty string if not.
 
   {{- $data = set $data "url" $url -}}
 
+  {{- if and $data.scheme $data.host -}}
+    {{- $data = set $data "baseUrl" (printf "%s://%s%s" $data.scheme $data.host $data.path) -}}
+  {{- end -}}
+
   {{- /* Return the nice result */ -}}
   {{- $data | toYaml -}}
 {{- end -}}

@@ -6,7 +6,7 @@
 * [General Use Pattern](#general-pattern)
 * [External Databases](#external-database)
 * [External LDAP Authentication](#external-ldap)
-* [External Alfresco](#external-alfresco)
+* [External Content Store](#external-content-store)
 * [E-mail Send & Receive](#email)
 * [SSL/TLS Considerations](#ssl)
 
@@ -260,24 +260,30 @@ In more nuanced cases you may also have to provide the baseDn (`global.conf.ldap
 
 ArkCase's user management features require the bind DN user to be able to create or modify users and groups. These permissions must be managed manually, or these features will not work as desired.
 
-## <a name="external-alfresco"></a>External Alfresco
+## <a name="external-content-store"></a>External Content Store
 
-To configure an external Alfrseco instance, things are also a little bit different since you must provide two URLs: one for the content server, and one for the Alfresco Share application, like so:
+To configure an external content store instance, things are also a little bit different since you must provide two URLs: one for the content server API, and one for the content server UI, like so:
 
 ```yaml
 global:
   conf:
     content:
-      url: https://some-server.domain.com/alfresco
-      shareUrl: https://another-server.domain.com/share
-      # More settings ...
+      # The content store dialect to use. Minio is an alias for S3, and Alfresco is an alias for CMIS.
+      # dialect: s3|minio|cmis|alfresco
+      api: https://some-server.domain.com/alfresco
+      ui: https://another-server.domain.com/share
       # username: "admin"
       # password: "admin's password"
+      # settings:
+      #   indexing: true
+      #   # More settings ...
 ```
 
-Specifically, and consistent with Alfresco's capabilities, content server and share need **not** be co-located on the same hostname. As long as the share instance (indicated by `shareUrl`) is connected to the same content server URL instance (indicated by `url`), everything will work just fine.
+Specifically, and consistent with Alfresco's capabilities, the API server (i.e Alfresco Content Server) and UI server (i.e. Share) need **not** be co-located on the same server. As long as the UI instance (indicated by `ui`) is connected to the same content server URL instance (indicated by `api`), everything will work just fine.
 
-If you want to use an external Alfresco instance, you ***must*** set the value `global.conf.content.url` to point to the content server URL. Only changing the `global.conf.content.shareUrl` value will not be enough. You must also take care to change the `shareUrl` setting to match the correct value to a Share instance which connects to the given content server url.
+If you want to use an external content server instance, you ***must*** set the value `global.conf.content.api` to point to the content server's API base URL. Only changing the `global.conf.content.ui` value will not be enough. You must also take care to change the `ui` setting to match the correct value to the UI instance which connects to the given content server API URL.
+
+### <a name="external-alfresco-init"></a>Initializing an External Alfresco
 
 Depending on the ArkCase deployment, the Alfresco content structures may vary, and thus not all permutations can be covered here. However, we can cover the default configuration supported by the charts.
 
@@ -309,8 +315,6 @@ ArkCase will require two sites (depending on configuration):
     * Requests
     * SAR
     * Tasks
-
-### <a name="external-alfresco-init"></a>Initializing an External Alfresco
 
 The ArkCase application will attempt to initialize the Alfresco contents on bootup - whether internal or external -, and as such there should not be any need for manual intervention on the deployer's part. This effort will only be done once, and its success will be tracked within ArkCase's persistence areas.
 

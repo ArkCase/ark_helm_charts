@@ -22,13 +22,11 @@
 {{- end -}}
 
 {{- define "arkcase.content.external" -}}
-  {{- $url := (include "arkcase.tools.conf" (dict "ctx" $ "value" "content.url" "detailed" true) | fromYaml) -}}
-
-  {{- $dialect := (include "arkcase.content.info.dialect" $) -}}
-  {{- /* Small trick: for S3, use the same URL as before ... for Alfresco, use the configured shareUrl value */ -}}
-  {{- $shareUrl := (eq "s3" $dialect) | ternary $url (include "arkcase.tools.conf" (dict "ctx" $ "value" "content.shareUrl" "detailed" true) | fromYaml) -}}
-
-  {{- if or (and $url $url.global) (and $shareUrl $shareUrl.global) -}}
+  {{- if not (include "arkcase.isRootContext" $) -}}
+    {{- fail "The parameter must be the root context" -}}
+  {{- end -}}
+  {{- $content := (include "arkcase.cm.info" $ | fromYaml) -}}
+  {{- if $content.api.global -}}
     {{- true -}}
   {{- end -}}
 {{- end -}}
@@ -37,9 +35,9 @@
   {{- if not (include "arkcase.isRootContext" $) -}}
     {{- fail "The parameter must be the root context" -}}
   {{- end -}}
-  {{- $nodes := (include "arkcase.tools.conf" (dict "ctx" $ "value" "content.nodes") | default 1) -}}
-  {{- $nodes = ($nodes | toString | atoi) -}}
+  {{- $content := (include "arkcase.cm.info" $ | fromYaml) -}}
 
+  {{- $nodes := ($content.settings.nodes | default 1 | toString | atoi) -}}
   {{- if (lt $nodes 1) -}}
     {{- $nodes = 1 -}}
   {{- else if (gt $nodes 1) -}}
@@ -54,7 +52,12 @@
 {{- end -}}
 
 {{- define "arkcase.content.minio.nodes" -}}
-  {{- $nodes := (include "arkcase.tools.conf" (dict "ctx" $ "value" "nodes")) -}}
+  {{- if not (include "arkcase.isRootContext" $) -}}
+    {{- fail "The parameter must be the root context" -}}
+  {{- end -}}
+  {{- $content := (include "arkcase.cm.info" $ | fromYaml) -}}
+
+  {{- $nodes := ($content.settings.nodes | default 1 | toString | atoi) -}}
 
   {{- /* If it's not set at all, use the default of 1 node */ -}}
   {{- if not $nodes -}}
@@ -96,8 +99,8 @@
   {{- if not (include "arkcase.isRootContext" $) -}}
     {{- fail "The parameter must be the root context" -}}
   {{- end -}}
-  {{- $indexing := (include "arkcase.tools.conf" (dict "ctx" $ "value" "indexing")) -}}
-  {{- if or (not $indexing) (include "arkcase.toBoolean" $indexing) -}}
+  {{- $content := (include "arkcase.cm.info" $ | fromYaml) -}}
+  {{- if or (not (hasKey $content.settings "indexing")) (include "arkcase.toBoolean" $content.settings.indexing) -}}
     {{- true -}}
   {{- end -}}
 {{- end -}}

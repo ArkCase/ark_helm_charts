@@ -1,127 +1,155 @@
-{{- define "arkcase.content.info.get" -}}
-  {{- $local := $.local -}}
-  {{- $global := $.global -}}
-  {{- $value := $.value -}}
-
-  {{- $local = (include "arkcase.tools.get" (dict "ctx" $local "name" $value) | fromYaml) -}}
-  {{- $global = (include "arkcase.tools.get" (dict "ctx" $global "name" $value) | fromYaml) -}}
-
-  {{- $global.found | ternary $global.value $local.value -}}
+{{- define "arkcase.cm.external" -}}
+  {{- $hostname := (include "arkcase.tools.conf" (dict "ctx" $ "value" "content.url" "detailed" true) | fromYaml) -}}
+  {{- if and $hostname $hostname.global -}}
+    {{- true -}}
+  {{- end -}}
 {{- end -}}
 
-{{- define "arkcase.content.sanitizeDialect" -}}
-  {{- $dialect := $ -}}
+{{- define "arkcase.cm.info.compute" -}}
+  {{- $ctx := . -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "The parameter given must be the root context (. or $)" -}}
+  {{- end -}}
+
+  {{- $local := (($ctx.Values.configuration).content | default dict) -}}
+
+  {{- $global := (($ctx.Values.global).conf).content -}}
+  {{- if not $global -}}
+    {{- $global = $ctx.Values -}}
+
+    {{- if or (not (hasKey $global "global")) (not (kindIs "map" $global.global)) -}}
+      {{- $global = set $global "global" dict -}}
+    {{- end -}}
+    {{- $global = $ctx.Values.global -}}
+
+    {{- if or (not (hasKey $global "conf")) (not (kindIs "map" $global.conf)) -}}
+      {{- $global = set $global "conf" dict -}}
+    {{- end -}}
+    {{- $global = $global.conf -}}
+
+    {{- if or (not (hasKey $global "content")) (not (kindIs "map" $global.content)) -}}
+      {{- $global = set $global "content" dict -}}
+    {{- end -}}
+    {{- $global = $global.content -}}
+  {{- end -}}
+
+  {{- $dialect := coalesce $global.dialect $local.dialect -}}
   {{- if not $dialect -}}
-    {{- fail "The content service dialect may not be the empty string" -}}
-  {{- end -}}
-  {{- if (not (kindIs "string" $dialect)) -}}
-    {{- fail (printf "The dialect to sanitize must be a non-empty string value: (%s)" (kindOf $dialect)) -}}
+    {{- fail "Must provide the name of the content engine dialect to use in global.conf.content.dialect" -}}
   {{- end -}}
 
-  {{- /* Sanitize the engine dialect */ -}}
-  {{- $ldialect := ($dialect | lower) -}}
-  {{-
-    $aliases :=
-      dict
-        "minio" "s3"
-        "s3" "s3"
-        "alfresco" "alfresco"
-        "alf" "alfresco"
-        "cmis" "alfresco"
-  -}}
-  {{- if not (hasKey $aliases $ldialect) -}}
-    {{- fail (printf "Invalid content engine dialect [%s] - must be one of %s" $dialect (keys $aliases | sortAlpha)) -}}
+  {{- if not (kindIs "string" $dialect) -}}
+    {{- $dialect = toString $dialect -}}
   {{- end -}}
-  {{- get $aliases $ldialect -}}
-{{- end -}}
+  {{- $dialect = lower $dialect -}}
 
-{{- define "arkcase.content.info.compute" -}}
-  {{- if not (include "arkcase.isRootContext" $) -}}
-    {{- fail "The parameter given must be the root context (. or $)" -}}
-  {{- end -}}
-
-  {{- $global := ((($.Values.global).conf).content | default dict) -}}
-  {{- $local := (($.Values.configuration).content | default dict) -}}
-  {{- $getParams := dict "local" $local "global" $global -}}
-
-  {{- /* Get the engine dialect */ -}}
-  {{- $dialect := (include "arkcase.content.info.get" (set $getParams "value" "dialect")) -}}
-  {{- $dialect = (include "arkcase.content.sanitizeDialect" $dialect) -}}
-
-  {{- $authValues := dict -}}
-  {{- if (eq "alfresco" $dialect) -}}
-    {{-
-      $authValues =
-        dict
-          "username" true
-          "password" true
-          "shareUrl" false
-          "sync" false
-    -}}
-  {{- else if (eq "s3" $dialect) -}}
-    {{-
-      $authValues =
-        dict
-          "username" true
-          "password" true
-          "bucket" false
-          "prefix" false
-          "region" false
-    -}}
-  {{- end -}}
-
-  {{- $auth := dict -}}
-  {{- $failures := list -}}
-  {{- range $valueName, $required := $authValues -}}
-    {{- $value := (include "arkcase.content.info.get" (set $getParams "value" $valueName)) -}}
-    {{- if $value -}}
-      {{- $auth = set $auth $valueName $value -}}
-    {{- else if $required -}}
-      {{- $failures = append $failures $value -}}
-    {{- end -}}
-  {{- end -}}
-  {{- if $failures -}}
-    {{- fail (printf "Missing content configuration values for content engine dialect %s (must be non-empty strings): %s" $dialect $failures) -}}
-  {{- end -}}
-
-  {{- $url := (include "arkcase.content.info.get" (set $getParams "value" "url")) -}}
-  {{- if not $url -}}
-    {{- fail "Must provide a non-empty content url configuration (global.conf.content.url or configuration.content.url)" -}}
-  {{- end -}}
-  {{- /* Parse the URL, to ensure it's valid */ -}}
-  {{- $url = (include "arkcase.tools.parseUrl" $url | fromYaml) -}}
-
-  {{- if eq "s3" $dialect -}}
-    {{- /* Special case - if we have an S3 prefix, we must sanitize it as a path and make sure it starts with a slash */ -}}
-    {{- $prefix := (hasKey $auth "prefix") | ternary $auth.prefix "" -}}
-    {{- if $prefix -}}
-      {{- $prefix := (include "arkcase.tools.normalizePath" $auth.prefix) -}}
-      {{- if and $prefix (not (hasPrefix "/" $prefix)) -}}
-        {{- $prefix = (printf "/%s" $prefix) -}}
+  {{- /* Step one: load the common content engine configurations */ -}}
+  {{- $cmInfo := (.Files.Get "cminfo.yaml" | fromYaml ) -}}
+  {{- range $key, $cm := $cmInfo -}}
+    {{- if hasKey $cm "aliases" -}}
+      {{- $aliases := $cm.aliases -}}
+      {{- $cm = (omit $cm "aliases") -}}
+      {{- range $alias := $aliases -}}
+        {{- $cmInfo = set $cmInfo $alias (set $cm "name" $alias) -}}
       {{- end -}}
-      {{- $auth = set $auth "prefix" $prefix -}}
     {{- end -}}
+    {{- $cmInfo = set $cmInfo $key (set $cm "name" $key) -}}
   {{- end -}}
 
-  {{- if eq "alfresco" $dialect -}}
-    {{- /* Special case - if we have an Alfresco shareUrl, parse it */ -}}
-    {{- if not $auth.shareUrl -}}
-      {{- fail "Must provide a non-empty content share url configuration (global.conf.content.shareUrl or configuration.content.shareUrl)" -}}
-    {{- end -}}
-    {{- $auth = set $auth "shareUrl" (include "arkcase.tools.parseUrl" $auth.shareUrl | fromYaml) -}}
+  {{- if not (hasKey $cmInfo $dialect) -}}
+    {{- fail (printf "Unsupported content engine type '%s' - must be one of %s" $dialect (keys $cmInfo | sortAlpha)) -}}
   {{- end -}}
 
-  {{- /* Return the configuration data */ -}}
-  {{- merge (dict "dialect" $dialect "url" $url) $auth | toYaml -}}
+  {{- $cmInfo = get $cmInfo $dialect -}}
+  {{- $cmConf := merge (deepCopy $global) $local $cmInfo -}}
+
+  {{- /* We have to give these two special treatment */ -}}
+  {{- $cmConf = omit $cmConf "api" "ui" -}}
+
+  {{- $api := "" -}}
+  {{- $ui := "" -}}
+  {{- $g := true -}}
+  {{- range $c := list $global $local $cmInfo -}}
+    {{- if and (empty $api) (hasKey $c "api") -}}
+      {{- $api = get $c "api" -}}
+      {{- if (kindIs "string" $api) -}}
+        {{- $a := (include "arkcase.tools.parseUrl" $api | fromYaml) -}}
+        {{- if not $a.scheme -}}
+          {{- fail (printf "Invalid content server API URL syntax [%s]" $api) -}}
+        {{- end -}}
+        {{- $api = (omit $a "userinfo") -}}
+        {{- $api = set $api "global" $g -}}
+
+        {{- if (hasKey $c "ui") -}}
+          {{- $ui = get $c "ui" -}}
+          {{- if (kindIs "string" $ui) -}}
+            {{- $u := (include "arkcase.tools.parseUrl" $ui | fromYaml) -}}
+            {{- if not $u.scheme -}}
+              {{- fail (printf "Invalid content server UI URL syntax [%s]" $ui) -}}
+            {{- end -}}
+            {{- $ui = (omit $u "userinfo") -}}
+            {{- $ui = set $ui "global" $g -}}
+          {{- end -}}
+        {{- end -}}
+        {{- if not $ui -}}
+          {{- $ui = $api -}}
+        {{- end -}}
+      {{- end -}}
+    {{- end -}}
+    {{- $g = false -}}
+  {{- end -}}
+
+  {{- /* Make sure there's an API url */ -}}
+  {{- if not $api -}}
+    {{- fail "Must provide the content store API URL in the 'content.api' configuration value" -}}
+  {{- end -}}
+
+  {{- $settings := dict -}}
+  {{- range $c := list $global $local $cmInfo -}}
+    {{- if and $c (hasKey $c "settings") (kindIs "map" $c.settings) -}}
+      {{- $settings = merge $settings $c.settings -}}
+    {{- end -}}
+  {{- end -}}
+  {{- $cmConf = set $cmConf "settings" $settings -}}
+
+  {{- /* Grab the host + port from the URL */ -}}
+  {{- $cmConf = set $cmConf "api" $api -}}
+  {{- $cmConf = set $cmConf "ui" $ui -}}
+
+  {{- if or (not (hasKey $cmConf "username")) (not (kindIs "string" $cmConf.username)) (empty $cmConf.username) -}}
+    {{- $cmConf = set $cmConf "username" "arkcase" -}}
+  {{- end -}}
+
+  {{- if or (not (hasKey $cmConf "password")) (not (kindIs "string" $cmConf.password)) (empty $cmConf.password) -}}
+    {{- $cmConf = set $cmConf "password" (sha1sum "arkcase" | lower) -}}
+  {{- end -}}
+
+  {{- $cmConf | toYaml -}}
 {{- end -}}
 
-{{- define "arkcase.content.info" -}}
-  {{- if not (include "arkcase.isRootContext" $) -}}
+{{- define "arkcase.cm.info" -}}
+  {{- $ctx := . -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "The parameter given must be the root context (. or $)" -}}
   {{- end -}}
-  {{- $ctx := $ -}}
 
-  {{- $cacheKey := "ContentInfo" -}}
+  {{- /* First things first: do we have any global overrides? */ -}}
+  {{- $global := $ctx.Values.global -}}
+  {{- if or (not $global) (not (kindIs "map" $global)) -}}
+    {{- $global = dict -}}
+  {{- end -}}
+
+  {{- /* Now get the local values */ -}}
+  {{- $local := $ctx.Values.configuration -}}
+  {{- if or (not $local) (not (kindIs "map" $local)) -}}
+    {{- $local = dict -}}
+  {{- end -}}
+
+  {{- /* The keys on this map are the images in the local repository */ -}}
+  {{- $chart := $ctx.Chart.Name -}}
+  {{- $data := dict "local" $local "global" $global -}}
+
+  {{- $cacheKey := "DBInfo" -}}
   {{- $masterCache := dict -}}
   {{- if (hasKey $ctx $cacheKey) -}}
     {{- $masterCache = get $ctx $cacheKey -}}
@@ -135,18 +163,10 @@
   {{- $chartName := (include "common.fullname" $ctx) -}}
   {{- $yamlResult := dict -}}
   {{- if not (hasKey $masterCache $chartName) -}}
-    {{- $yamlResult = (include "arkcase.content.info.compute" $ctx) -}}
+    {{- $yamlResult = (include "arkcase.cm.info.compute" $ctx) -}}
     {{- $masterCache = set $masterCache $chartName ($yamlResult | fromYaml) -}}
   {{- else -}}
     {{- $yamlResult = get $masterCache $chartName | toYaml -}}
   {{- end -}}
   {{- $yamlResult -}}
-{{- end -}}
-
-{{- define "arkcase.content.info.dialect" -}}
-  {{- if not (include "arkcase.isRootContext" $) -}}
-    {{- fail "The parameter given must be the root context (. or $)" -}}
-  {{- end -}}
-  {{- $dialect := (include "arkcase.tools.conf" (dict "ctx" $ "value" "content.dialect")) -}}
-  {{- include "arkcase.content.sanitizeDialect" $dialect -}}
 {{- end -}}
