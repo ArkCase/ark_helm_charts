@@ -45,9 +45,6 @@ spec:
         {{- end }}
     spec:
       {{- include "arkcase.image.pullSecrets" $ | nindent 6 }}
-      {{- with (include "arkcase.values" (dict "ctx" $ "base" "imagePullSecrets") | fromYaml) }}
-      imagePullSecrets: {{- toYaml .value | nindent 8 }}
-      {{- end }}
       {{- with (include "arkcase.values" (dict "ctx" $ "base" "hostAliases") | fromYaml) }}
       hostAliases: {{- toYaml .value | nindent 8 }}
       {{- end }}
