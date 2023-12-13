@@ -149,7 +149,7 @@
   {{- $chart := $ctx.Chart.Name -}}
   {{- $data := dict "local" $local "global" $global -}}
 
-  {{- $cacheKey := "DBInfo" -}}
+  {{- $cacheKey := "CMInfo" -}}
   {{- $masterCache := dict -}}
   {{- if (hasKey $ctx $cacheKey) -}}
     {{- $masterCache = get $ctx $cacheKey -}}

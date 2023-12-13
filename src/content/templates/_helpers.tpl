@@ -31,6 +31,14 @@
   {{- end -}}
 {{- end -}}
 
+{{- define "arkcase.content.info.dialect" -}}
+  {{- if not (include "arkcase.isRootContext" $) -}}
+    {{- fail "The parameter must be the root context" -}}
+  {{- end -}}
+  {{- $content := (include "arkcase.cm.info" $ | fromYaml) -}}
+  {{- $content.dialect -}}
+{{- end -}}
+
 {{- define "arkcase.content.minio.nodeCount" -}}
   {{- if not (include "arkcase.isRootContext" $) -}}
     {{- fail "The parameter must be the root context" -}}
@@ -57,7 +65,7 @@
   {{- end -}}
   {{- $content := (include "arkcase.cm.info" $ | fromYaml) -}}
 
-  {{- $nodes := ($content.settings.nodes | default 1 | toString | atoi) -}}
+  {{- $nodes := ($content.settings.nodes | default 1 | toString) -}}
 
   {{- /* If it's not set at all, use the default of 1 node */ -}}
   {{- if not $nodes -}}
