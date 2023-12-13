@@ -138,11 +138,17 @@ spec:
             {{- include "arkcase.alfresco.license.volumeMounts" (dict "ctx" $ "volume" "secrets" "path" "/usr/local/tomcat/shared/classes/alfresco/extension/license") | nindent 12 }}
             {{- include "arkcase.trusts.mount" $ | nindent 12 }}
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
+            - name: &configMap "config-map"
+              mountPath: "/app/config"
+              readOnly: true
+            - name: &secrets "secrets"
+              mountPath: "/app/secrets"
+              readOnly: true
             - name: *dataVolume
               mountPath: *dataDir
             - name: *initVolume
               mountPath: *initDir
-            - name: &secrets "secrets"
+            - name: *secrets
               mountPath: "/usr/local/tomcat/shared/classes/alfresco-global.properties"
               subPath: &alfrescoGlobalProperties "alfresco-global.properties"
               readOnly: true
@@ -151,7 +157,7 @@ spec:
               subPath: &ldapAdProperties "ldap-ad.properties"
               readOnly: true
             {{- if and (eq "alfresco" $content.dialect) (include "arkcase.toBoolean" $content.settings.sync) }}
-            - name: &configMap "config-map"
+            - name: *configMap
               mountPath: "/usr/local/tomcat/shared/classes/alfresco/extension/audit/alfresco-audit-arkcase-extractors.xml"
               subPath: &alfrescoAuditArkcaseExtractorsXml "alfresco-audit-arkcase-extractors.xml"
               readOnly: true
