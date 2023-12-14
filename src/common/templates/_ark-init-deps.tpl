@@ -81,7 +81,23 @@ that checks the boot order
 
     {{- $targetHostName := $hostname -}}
     {{- $targetPort := $value -}}
-    {{- $replacement := (include "arkcase.dependency.target" (dict "ctx" $ "hostname" $hostname) | fromYaml) -}}
+    {{- $replacement := "" -}}
+
+    {{- /* Not entirely happy about this one, but it's required due to how things work overall. */ -}}
+    {{- /* By doing it like this we allow the configuration libraries to do their jobs, even here. */ -}}
+    {{- if (eq "content" $hostname) -}}
+      {{- $replacement = (include "arkcase.cm.info" $ | fromYaml) -}}
+      {{- $replacement = $replacement.url -}}
+    {{- else if (eq "rdbms" $hostname) -}}
+      {{- $replacement = (include "arkcase.db.info" $ | fromYaml) -}}
+    {{- end -}}
+
+    {{- if (kindIs "map" $replacement) -}}
+      {{- $replacement = pick $replacement "hostname" "port" -}}
+    {{- else -}}
+      {{- $replacement = (include "arkcase.dependency.target" (dict "ctx" $ "hostname" $hostname) | fromYaml) -}}
+    {{- end -}}
+
     {{- if $replacement -}}
       {{- $newHostName := "" -}}
       {{- $portSource := dict -}}

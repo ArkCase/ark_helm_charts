@@ -4,6 +4,7 @@
   {{- $devUid := (empty $dev) | ternary 1997 $dev.uid | int64 -}}
   {{- $devGid := (empty $dev) | ternary 1997 $dev.gid | int64 -}}
   {{- $foia := (include "arkcase.foia" $ | fromYaml) }}
+  {{- $content := (include "arkcase.cm.info" $ | fromYaml) }}
   {{- $cluster := (include "arkcase.cluster" $ | fromYaml) }}
   {{- $nodes := (min 4 $cluster.nodes) -}}
   {{- $maxFailed := (sub $nodes 1) -}}
@@ -179,8 +180,7 @@ spec:
         {{- include "arkcase.initDependencies.container" (dict "ctx" $ "name" "init-dependencies") | nindent 8 }}
         - name: init-seed-content
           {{- include "arkcase.image" (dict "ctx" $ "name" "seed-content" "repository" "arkcase/nettest") | nindent 10 }}
-          {{- $contentDialect := (include "arkcase.content.info.dialect" $) }}
-          {{- $contentScript := printf "/seed-content.%s" $contentDialect }}
+          {{- $contentScript := printf "/seed-content.%s" $content.dialect }}
           {{- $contentData := printf "%s.yaml" $contentScript }}
           command: [ "/usr/local/bin/only-once" ]
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
@@ -208,13 +208,18 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: *secretName
-                  key: "contentUrl"
-            {{- if (eq $contentDialect "alfresco") }}
-            - name: INIT_SEED_SHARE
+                  key: "contentApi"
+            {{- if (eq $content.dialect "alfresco") }}
+            - name: INIT_SEED_UI
               valueFrom:
                 secretKeyRef:
                   name: *secretName
-                  key: "contentShareUrl"
+                  key: "contentUi"
+            {{- end }}
+            {{- if (eq $content.dialect "s3") }}
+            # This is required so the AWS CLI stuff uses our local SSL trusts
+            - name: AWS_CA_BUNDLE
+              value: "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem"
             {{- end }}
           volumeMounts:
             - name: *homeVolume
@@ -327,6 +332,7 @@ spec:
               mountPath: "/app/home/.arkcase/acm/acm-config-server-repo/ldap/ldap.yaml"
               subPath: &ldapYaml "ldap.yaml"
               readOnly: true
+            {{- if (eq "alfresco" $content.dialect) }}
             - name: *secrets
               mountPath: "/app/home/.arkcase/acm/cmis/camel-config-alfresco-cmis.properties"
               subPath: &camelConfigAlfrescoCmisProperties "camel-config-alfresco-cmis.properties"
@@ -335,6 +341,7 @@ spec:
               mountPath: "/app/home/.arkcase/acm/cmis/camel-config-opencmis-cmis.properties"
               subPath: &camelConfigOpenCmisCmisProperties "camel-config-opencmis-cmis.properties"
               readOnly: true
+            {{- end }}
             - name: *secrets
               mountPath: "/app/home/.arkcase/acm/conf.yml"
               subPath: &confYaml "conf.yml"
@@ -465,10 +472,12 @@ spec:
                 path: *arkcaseK8sYaml
               - key: *ldapYaml
                 path: *ldapYaml
+              {{- if (eq "alfresco" $content.dialect) }}
               - key: *camelConfigAlfrescoCmisProperties
                 path: *camelConfigAlfrescoCmisProperties
               - key: *camelConfigOpenCmisCmisProperties
                 path: *camelConfigOpenCmisCmisProperties
+              {{- end }}
               - key: *arkcaseActivemqYaml
                 path: *arkcaseActivemqYaml
               - key: *arkcaseOidcYaml
