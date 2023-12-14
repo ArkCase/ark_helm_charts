@@ -16,7 +16,6 @@ import yaml
 
 ENV_INIT_SEED_CONF         = "INIT_SEED_CONF"
 ENV_INIT_SEED_CONTENT      = "INIT_SEED_CONTENT"
-ENV_INIT_SEED_SHARE        = "INIT_SEED_SHARE"
 ENV_INIT_SEED_USERNAME     = "INIT_SEED_USERNAME"
 ENV_INIT_SEED_PASSWORD     = "INIT_SEED_PASSWORD"
 ENV_INIT_SEED_TOKEN        = "INIT_SEED_TOKEN"
@@ -26,7 +25,7 @@ ENV_INIT_SEED_DEBUG        = "INIT_SEED_DEBUG"
 
 parser = argparse.ArgumentParser(description="Alfresco Content Seeder")
 parser.add_argument("config", metavar="config", action="store", help=f"The configuration to use (if not given, it will be read from the {ENV_INIT_SEED_CONF} environment variable)", type=str, nargs="?")
-parser.add_argument("--content", metavar="content", action="store", help=f"The Alfresco content URL (if not given, it will be read from the {ENV_INIT_SEED_CONTENT} environment variable)", type=str, nargs=1)
+parser.add_argument("--content", metavar="content", action="store", help=f"The S3 content URL (if not given, it will be read from the {ENV_INIT_SEED_CONTENT} environment variable)", type=str, nargs=1)
 parser.add_argument("--username", metavar="username", action="store", help=f"The username to authenticate with (if not given, it will be read from the {ENV_INIT_SEED_USERNAME} environment variable)", type=str, nargs=1)
 parser.add_argument("--password", metavar="password", action="store", help=f"The password to authenticate with (if not given, it will be read from the {ENV_INIT_SEED_PASSWORD} environment variable)", type=str, nargs=1)
 parser.add_argument("--token", metavar="token", action="store", help=f"The session token to authenticate with (if not given, it will be read from the {ENV_INIT_SEED_TOKEN} environment variable)", type=str, nargs=1)
@@ -142,7 +141,7 @@ if data is None:
 	fail("Data is not in YAML format")
 
 # Use --endpoint-url parameter to set this value
-CONTENT = "https://content-main:9000/"
+CONTENT = None
 if args.content:
 	CONTENT = args.content[0]
 elif ENV_INIT_SEED_CONTENT in os.environ:
@@ -151,7 +150,7 @@ if not CONTENT:
 	fail("Must provide a CONTENT URL to connect to")
 logging.info(f"Using CONTENT URL [{CONTENT}]")
 
-USERNAME = "admin"
+USERNAME = None
 if args.username:
 	USERNAME = args.username[0]
 elif ENV_INIT_SEED_USERNAME in os.environ:
@@ -160,7 +159,7 @@ if not USERNAME:
 	USERNAME = "admin"
 logging.info(f"Using username [{USERNAME}]")
 
-PASSWORD = "admin"
+PASSWORD = None
 if args.password:
 	PASSWORD = args.password[0]
 elif ENV_INIT_SEED_PASSWORD in os.environ:
@@ -174,7 +173,7 @@ if args.region:
 elif ENV_INIT_SEED_REGION in os.environ:
 	REGION = os.environ[ENV_INIT_SEED_REGION]
 
-TOKEN = ""
+TOKEN = None
 if args.token:
 	TOKEN = args.token[0]
 elif ENV_INIT_SEED_TOKEN in os.environ:

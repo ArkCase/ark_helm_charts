@@ -177,31 +177,16 @@
   {{- if not (include "arkcase.isRootContext" $) -}}
     {{- fail "Must send the root context as the only parameter" -}}
   {{- end -}}
-
-  {{- $contentUrl := (include "arkcase.tools.conf" (dict "ctx" $ "value" "content.url")) -}}
-  {{- if not ($contentUrl) -}}
-    {{- $dialect := (include "arkcase.tools.conf" (dict "ctx" $ "value" "content.dialect")) -}}
-    {{- if or (not $dialect) (eq "alfresco" $dialect) -}}
-      {{- $contentUrl = "https://content-main:8443/alfresco" -}}
-    {{- else if (eq "s3" $dialect) -}}
-      {{- $contentUrl = "https://content-minio:9000/" -}}
-    {{- else -}}
-      {{- fail (printf "Unsupported content dialect [%s]" $dialect) -}}
-    {{- end -}}
-  {{- end -}}
-  {{- $contentUrl -}}
+  {{- $content := (include "arkcase.cm.info" $ | fromYaml) -}}
+  {{- $content.url.baseUrl -}}
 {{- end -}}
 
-{{- define "arkcase.core.content.share" -}}
+{{- define "arkcase.core.content.ui" -}}
   {{- if not (include "arkcase.isRootContext" $) -}}
     {{- fail "Must send the root context as the only parameter" -}}
   {{- end -}}
-
-  {{- $shareUrl := (include "arkcase.tools.conf" (dict "ctx" $ "value" "content.shareUrl")) -}}
-  {{- if not ($shareUrl) -}}
-    {{- $shareUrl = "https://content-share:8443/share" -}}
-  {{- end -}}
-  {{- $shareUrl -}}
+  {{- $content := (include "arkcase.cm.info" $ | fromYaml) -}}
+  {{- $content.ui.baseUrl -}}
 {{- end -}}
 
 {{- define "arkcase.core.image.deploy" -}}
