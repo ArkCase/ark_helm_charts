@@ -180,8 +180,7 @@ spec:
         {{- include "arkcase.initDependencies.container" (dict "ctx" $ "name" "init-dependencies") | nindent 8 }}
         - name: init-seed-content
           {{- include "arkcase.image" (dict "ctx" $ "name" "seed-content" "repository" "arkcase/nettest") | nindent 10 }}
-          {{- $contentDialect := $content.dialect }}
-          {{- $contentScript := printf "/seed-content.%s" $contentDialect }}
+          {{- $contentScript := printf "/seed-content.%s" $content.dialect }}
           {{- $contentData := printf "%s.yaml" $contentScript }}
           command: [ "/usr/local/bin/only-once" ]
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
@@ -210,12 +209,17 @@ spec:
                 secretKeyRef:
                   name: *secretName
                   key: "contentApi"
-            {{- if (eq $contentDialect "alfresco") }}
+            {{- if (eq $content.dialect "alfresco") }}
             - name: INIT_SEED_UI
               valueFrom:
                 secretKeyRef:
                   name: *secretName
                   key: "contentUi"
+            {{- end }}
+            {{- if (eq $content.dialect "s3") }}
+            # This is required so the AWS CLI stuff uses our local SSL trusts
+            - name: AWS_CA_BUNDLE
+              value: "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem"
             {{- end }}
           volumeMounts:
             - name: *homeVolume
