@@ -332,6 +332,7 @@ spec:
               mountPath: "/app/home/.arkcase/acm/acm-config-server-repo/ldap/ldap.yaml"
               subPath: &ldapYaml "ldap.yaml"
               readOnly: true
+            {{- if (eq "alfresco" $content.dialect) }}
             - name: *secrets
               mountPath: "/app/home/.arkcase/acm/cmis/camel-config-alfresco-cmis.properties"
               subPath: &camelConfigAlfrescoCmisProperties "camel-config-alfresco-cmis.properties"
@@ -340,6 +341,7 @@ spec:
               mountPath: "/app/home/.arkcase/acm/cmis/camel-config-opencmis-cmis.properties"
               subPath: &camelConfigOpenCmisCmisProperties "camel-config-opencmis-cmis.properties"
               readOnly: true
+            {{- end }}
             - name: *secrets
               mountPath: "/app/home/.arkcase/acm/conf.yml"
               subPath: &confYaml "conf.yml"
@@ -470,10 +472,12 @@ spec:
                 path: *arkcaseK8sYaml
               - key: *ldapYaml
                 path: *ldapYaml
+              {{- if (eq "alfresco" $content.dialect) }}
               - key: *camelConfigAlfrescoCmisProperties
                 path: *camelConfigAlfrescoCmisProperties
               - key: *camelConfigOpenCmisCmisProperties
                 path: *camelConfigOpenCmisCmisProperties
+              {{- end }}
               - key: *arkcaseActivemqYaml
                 path: *arkcaseActivemqYaml
               - key: *arkcaseOidcYaml
