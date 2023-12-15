@@ -130,7 +130,7 @@ spec:
                   number: 443
       {{- end }}
       {{- if or $dev $ingress.content }}
-        {{- if (eq $content.dialect "alfresco") -}}
+        {{- if (eq $content.dialect "alfresco") }}
           - path: "/alfresco"
             pathType: Prefix
             backend:
