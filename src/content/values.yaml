@@ -254,7 +254,7 @@ serviceTemplates: &serviceTemplate
       initialDelaySeconds: 5
       periodSeconds: 5
       timeoutSeconds: 1
-      failureThreshold: 60
+      failureThreshold: 1
       successThreshold: 1
 
   ports: &ports {}
@@ -281,7 +281,15 @@ service:
       <<: *probesTemplate
       spec:
         <<: *probesSpecTemplate
+      startup:
+        exec: &tomcatLive
+          command: [ "/usr/local/bin/tomcat-live" ]
+        initialDelaySeconds: 30
         failureThreshold: 120
+      liveness:
+        exec:
+          <<: *tomcatLive
+      readiness:
         httpGet:
           scheme: HTTPS
           path: "/alfresco"
@@ -298,6 +306,15 @@ service:
       <<: *probesTemplate
       spec:
         <<: *probesSpecTemplate
+      startup:
+        exec: &tomcatLive
+          command: [ "/usr/local/bin/tomcat-live" ]
+        initialDelaySeconds: 30
+        failureThreshold: 120
+      liveness:
+        exec:
+          <<: *tomcatLive
+      readiness:
         httpGet:
           scheme: HTTPS
           path: "/share"
