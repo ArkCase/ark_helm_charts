@@ -95,7 +95,7 @@ if not CONTENT:
 logging.info(f"Using CONTENT URL [{CONTENT}]")
 
 UI = None
-if args.share:
+if args.ui:
 	UI = args.ui[0]
 elif ENV_INIT_SEED_UI in os.environ:
 	UI = os.environ[ENV_INIT_SEED_UI]
