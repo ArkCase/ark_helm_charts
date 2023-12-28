@@ -18,10 +18,12 @@ fail() {
 # Extract all the Data Warehousing stuff
 #
 say "Deploying Analytical Transformations"
+DWHS="$(list-artifacts /pentaho/analytical)" || fail "Failed to list the analytical transformations for deployment"
+readarray -t DWHS < <(echo -n "${DWHS}")
 mkdir -p "${DATA_DIR}"
-while read dwhs ; do
+for dwhs in "${DWHS[@]}" ; do
 	deploy-artifact extract-dir "${dwhs}" "${DATA_DIR}"
-done < <(list-artifacts /pentaho/analytical)
+done
 
 say "Artifact deployment complete"
 exit 0
