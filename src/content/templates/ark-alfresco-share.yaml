@@ -81,8 +81,21 @@ spec:
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" $partName) | nindent 12 }}
           volumeMounts:
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
+            - name: &configMap "config-map"
+              mountPath: "/usr/local/bin/tomcat-live"
+              subPath: &tomcatLive "tomcat-live"
+              readOnly: true
       volumes:
         {{- include "arkcase.acme.volume" $ | nindent 8 }}
+        - name: *configMap
+          configMap:
+            optional: false
+            name: {{ include "arkcase.fullname" $ | quote }}
+            defaultMode: 0444
+            items:
+              - key: *tomcatLive
+                path: *tomcatLive
+                mode: 0555
       {{- with (include "arkcase.values" (dict "ctx" $ "base" "nodeSelector") | fromYaml) }}
       nodeSelector: {{- toYaml .value | nindent 8 }}
       {{- end }}

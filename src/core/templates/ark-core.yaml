@@ -293,6 +293,10 @@ spec:
               mountPath: "/app/tomcat/webapps"
             {{- include "arkcase.core.dev.runMounts" $ | nindent 12 }}
             - name: *configMap
+              mountPath: "/usr/local/bin/tomcat-live"
+              subPath: &tomcatLive "tomcat-live"
+              readOnly: true
+            - name: *configMap
               mountPath: "/app/tomcat/conf/server.xml.tpl"
               subPath: &serverXmlTpl "server.xml.tpl"
               readOnly: true
@@ -508,6 +512,9 @@ spec:
                 mode: 0555
               - key: *realmFix
                 path: *realmFix
+                mode: 0555
+              - key: *tomcatLive
+                path: *tomcatLive
                 mode: 0555
               - key: *serverXmlTpl
                 path: *serverXmlTpl
