@@ -265,6 +265,10 @@ spec:
               subPath: &installReports "install-reports"
               readOnly: true
             - name: *configMap
+              mountPath: "/usr/local/bin/tomcat-live"
+              subPath: &tomcatLive "tomcat-live"
+              readOnly: true
+            - name: *configMap
               mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/arkcase-preauth.xml"
               subPath: &arkcasePreauthXml "arkcase-preauth.xml"
               readOnly: true
@@ -429,6 +433,9 @@ spec:
                 mode: 0555
               - key: *installReports
                 path: *installReports
+                mode: 0555
+              - key: *tomcatLive
+                path: *tomcatLive
                 mode: 0555
               - key: *baseReportsZip
                 path: *baseReportsZip

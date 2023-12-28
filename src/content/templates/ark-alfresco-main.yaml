@@ -156,6 +156,10 @@ spec:
               mountPath: "/usr/local/tomcat/shared/classes/alfresco/extension/subsystems/Authentication/ldap-ad/ldap1/ldap-ad.properties"
               subPath: &ldapAdProperties "ldap-ad.properties"
               readOnly: true
+            - name: *configMap
+              mountPath: "/usr/local/bin/tomcat-live"
+              subPath: &tomcatLive "tomcat-live"
+              readOnly: true
             {{- if and (eq "alfresco" $content.dialect) (include "arkcase.toBoolean" $content.settings.sync) }}
             - name: *configMap
               mountPath: "/usr/local/tomcat/shared/classes/alfresco/extension/audit/alfresco-audit-arkcase-extractors.xml"
@@ -182,6 +186,9 @@ spec:
             name: {{ include "arkcase.fullname" $ | quote }}
             defaultMode: 0444
             items:
+              - key: *tomcatLive
+                path: *tomcatLive
+                mode: 0555
             {{- if and (eq "alfresco" $content.dialect) (include "arkcase.toBoolean" $content.settings.sync) }}
               - key: *alfrescoAuditArkcaseExtractorsXml
                 path: *alfrescoAuditArkcaseExtractorsXml

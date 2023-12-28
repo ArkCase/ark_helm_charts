@@ -333,12 +333,21 @@ service:
     probes:
       enabled: true
       spec:
+        periodSeconds: 5
+        timeoutSeconds: 5
+        successThreshold: 1
+        initialDelaySeconds: 5
+        failureThreshold: 1
+      startup:
+        exec: &tomcatLive
+          command: [ "/usr/local/bin/tomcat-live" ]
+        initialDelaySeconds: 120
+        failureThreshold: 180
+      liveness:
+        exec:
+          <<: *tomcatLive
+      readiness:
         httpGet:
           scheme: HTTPS
           path: "/arkcase/login"
           port: *arkcasePort
-        initialDelaySeconds: 120
-        periodSeconds: 5
-        timeoutSeconds: 5
-        failureThreshold: 180
-        successThreshold: 1
