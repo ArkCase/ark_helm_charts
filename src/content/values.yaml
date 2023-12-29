@@ -256,6 +256,8 @@ serviceTemplates: &serviceTemplate
       timeoutSeconds: 1
       failureThreshold: 1
       successThreshold: 1
+    startup:
+      failureThreshold: 12
 
   ports: &ports {}
 
