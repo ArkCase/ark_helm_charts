@@ -42,6 +42,7 @@
   {{- end -}}
 
   {{- /* Next, identify which server we're supposed to narrow the search down to */ -}}
+  {{- $serverNames := (include "arkcase.ldap.serverNames" $.ctx | fromYaml) -}}
   {{- $server := "" -}}
   {{- if and (hasKey $ "server") (kindIs "string" $.server) $.server -}}
     {{- $server = $.server -}}
@@ -51,14 +52,20 @@
     {{- if and $default (kindIs "string" $default.value) $default.value -}}
       {{- $server = $default.value -}}
     {{- else -}}
-      {{- fail "Configuration error - the 'ldap.default' entry must be a non-empty string" -}}
+      {{- if (eq 1 (len $serverNames.result)) -}}
+        {{- /* We only have one server definition, use that */ -}}
+        {{- $server = (first $serverNames.result) -}}
+      {{- else -}}
+        {{- /* We have more than one server definition, no default set, and we were not given a server name to use ... this is a problem */ -}}
+        {{- fail "Configuration error - the 'ldap.default' entry must be a non-empty string" -}}
+      {{- end -}}
     {{- end -}}
   {{- end -}}
+
   {{- if eq "default" $server -}}
     {{- fail "The LDAP server name 'default' is reserved and may not be used" -}}
   {{- end -}}
 
-  {{- $serverNames := (include "arkcase.ldap.serverNames" $.ctx | fromYaml) -}}
   {{- if not ($serverNames.result | has $server) -}}
     {{- fail (printf "The LDAP server name '%s' is invalid - must be one of %s" $server $serverNames.result) -}}
   {{- end -}}
