@@ -50,11 +50,12 @@ As an example, the following configuration would cause ArkCase to connect to an 
 global:
   conf:
     ldap:
-      url: "ldaps://dc-01.myexample.domain.com"
-      domain: "example.domain.com"
-      bind:
-        dn: "cn=svc-bind-dn-account,cn=Users,${baseDn}"
-        password: "phieDuquiy_o@o4ierae5Eex"
+      arkcase:
+        url: "ldaps://dc-01.myexample.domain.com"
+        domain: "example.domain.com"
+        bind:
+          dn: "cn=svc-bind-dn-account,cn=Users,${baseDn}"
+          password: "phieDuquiy_o@o4ierae5Eex"
 ```
 
 The above configuration will cause the ***ark-samba*** chart, which provides the `ldap` services, to not render the requisite pods during deployment. Simultaneously, other charts that consume LDAP services will automatically utilize the given parameters to configure their LDAP access and interaction.
@@ -219,42 +220,48 @@ global:
 
 To configure external LDAP Authentication, things are also a little bit different. In addition to providing the LDAP(S) URL, you must also provide some information regarding how the directory is configured. The default organization assumes an [Active Directory](https://learn.microsoft.com/en-us/windows-server/identity/ad-ds/get-started/virtual-dc/active-directory-domain-services-overview) organization.
 
-This is the complete configuration available for LDAP services. Not all values are required - for example, it's generally sufficient to provide the URL (`global.conf.ldap.url`), the domain specification (`global.conf.ldap.domain`), and the bind details (`global.conf.ldap.bind.dn` and `global.conf.ldap.bind.password`):
+Note that within the `ldap` stanza, the next level down is the name of the LDAP _directory_ (i.e. configuration set). Multiple directory configuration sets are supported, though currently only _arkcase_ and _foia_ are used actively in the charts. Other directories defined may be visible within the application, but are not directly used within the charts.
+
+In the below configuration example, the `${directory}` value is _arkcase_, for demonstration purposes. The `default:` value describes the name of the directory configuration to use as the deployment's default. This affects chart rendering for cases where a chart doesn't consume a specific configuration name and instead just seeks to consume the default configuration's values. If the `default:` value is left unspecified, a hardcoded default value of _"arkcase"_ will be used. The value in the `default:` field must be a valid directory configuration name (i.e. _arkcase_, in the below example).
+
+This is the complete configuration available for LDAP services. Not all values are required - for example, it's generally sufficient to provide the URL (`global.conf.ldap.${directory}.url`), the domain specification (`global.conf.ldap.${directory}.domain`), and the bind details (`global.conf.ldap.${directory}.bind.dn` and `global.conf.ldap.${directory}.bind.password`):
 
 ```yaml
 global:
   conf:
     ldap:
-      url: "ldaps://ldap:636"
-      domain: "my.external-ldap.domain.com"
-      # Don't declare a baseDn unless absolutely necessary
-      # baseDn: "ou=Case Management,dc=my,dc=external-ldap,dc=domain,dc=com"
-      bind:
-        dn: "cn=ArkCase Administrator,cn=Users,${baseDn}"
-        password: "someUserBindPassword"
-      admin:
-        dn: "cn=ArkCase Administrator"
-        role: "cn=ARKCASE_ADMINISTRATOR"
-      search:
-        users:
-          base: "cn=Users"
-          attribute: "sAMAccountName"
-          filter: "(&(objectClass=user)(sAMAccountName={0}))"
-          allFilter: "(objectClass=user)"
-          prefix: ""
-        groups:
-          base: "cn=Users"
-          attribute: "cn"
-          filter: "(&(objectClass=group)(cn={0}))"
-          allFilter: "(objectClass=group)"
-          membership: "(&(objectClass=group)(member={0}))"
-          ignoreCase: "false"
-          subtree: "true"
-          rolePrefix: ""
-          prefix: ""
+      default: "arkcase"
+      arkcase:
+        url: "ldaps://ldap:636"
+        domain: "my.external-ldap.domain.com"
+        # Don't declare a baseDn unless absolutely necessary
+        # baseDn: "ou=Case Management,dc=my,dc=external-ldap,dc=domain,dc=com"
+        bind:
+          dn: "cn=ArkCase Administrator,cn=Users,${baseDn}"
+          password: "someUserBindPassword"
+        admin:
+          dn: "cn=ArkCase Administrator"
+          role: "cn=ARKCASE_ADMINISTRATOR"
+        search:
+          users:
+            base: "cn=Users"
+            attribute: "sAMAccountName"
+            filter: "(&(objectClass=user)(sAMAccountName={0}))"
+            allFilter: "(objectClass=user)"
+            prefix: ""
+          groups:
+            base: "cn=Users"
+            attribute: "cn"
+            filter: "(&(objectClass=group)(cn={0}))"
+            allFilter: "(objectClass=group)"
+            membership: "(&(objectClass=group)(member={0}))"
+            ignoreCase: "false"
+            subtree: "true"
+            rolePrefix: ""
+            prefix: ""
 ```
 
-In more nuanced cases you may also have to provide the baseDn (`global.conf.ldap.baseDn`), as well as other values describing how to find users, groups, memberships, etc.  Please note that the configurations that appear to be missing a complete DN specification (i.e. like `global.conf.ldap.search.users.base` or `global.conf.ldap.search.groups.base`) are set in that manner by design, because when they're consumed while rendering configuration files, the baseDn value is appended unto them at that moment.
+In more nuanced cases you may also have to provide the baseDn (`global.conf.ldap.${directory}.baseDn`), as well as other values describing how to find users, groups, memberships, etc.  Please note that the configurations that appear to be missing a complete DN specification (i.e. like `global.conf.ldap.search.users.base` or `global.conf.ldap.search.groups.base`) are set in that manner by design, because when they're consumed while rendering configuration files, the baseDn value is appended unto them at that moment.
 
 ### User Management
 
