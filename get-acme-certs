@@ -1,0 +1,113 @@
+#!/bin/bash
+
+set -euo pipefail
+
+say()
+{
+	echo -e "$(/usr/bin/date -u -Ins): ${@}"
+}
+
+err()
+{
+	say "❌ ERROR: ${@}" 1>&2
+}
+
+fail()
+{
+	say "❌ ${@}" 1>&2
+	exit ${EXIT_CODE:-1}
+}
+
+is_valid_hostname() {
+	local NAME="${1,,}"
+	[[ "${NAME}" =~ ^([a-z0-9][-a-z0-9]*)?[a-z0-9]([.]([a-z0-9][-a-z0-9]*)?[a-z0-9])*$ ]] || return 1
+	return 0
+}
+
+is_valid_port() {
+	local PORT="${1}"
+	[[ "${PORT}" =~ ^(0|[1-9][0-9]*)$ ]] || return 1
+	[ ${PORT} -gt 0 ] || return 1
+	[ ${PORT} -lt 65536 ] || return 1
+	return 0
+}
+
+is_valid_url()
+{
+	local URL="${1}"
+	[[ "${URL}" =~ ^([^:/?#]+)://([^/?#]*)?([^?#]*)([?]([^#]*))?(#(.*))?$ ]] || return 1
+	return 0
+}
+
+usage()
+{
+	echo -e "usage: ${BASH_ARGV0:-${BASH_SOURCE:-${0}}} acme-url" 1>&2
+	exit 1
+}
+
+[ ${#} -eq 1 ] || usage
+ACME_URL="${1}"
+[ -n "${ACME_URL}" ] || fail "The ACME_URL may not be the empty string"
+
+# Validate the URL
+[[ "${ACME_URL}" =~ ^http(s)?://([^:/]+)(:([1-9][0-9]*))?(/.*)?$ ]] || fail "Malformed URL for the ACME CA: [${ACME_URL}]"
+
+ACME_HOST="${BASH_REMATCH[2]}"
+ACME_PORT="80"
+[ -z "${BASH_REMATCH[1]}" ] || ACME_PORT="443"
+[ -z "${BASH_REMATCH[4]}" ] || ACME_PORT="${BASH_REMATCH[4]}"
+
+# Validate the values captured above ... must have a valid host and port
+is_valid_hostname "${ACME_HOST}" || fail "Malformed URL for the ACME CA: bad hostname [${ACME_URL}]"
+[ ${ACME_PORT} -ge 1 ] || fail "The port in the URL must be between 1 and 65535"
+[ ${ACME_PORT} -le 65535 ] || fail "The port in the URL must be between 1 and 65535"
+
+TGT_DIR="$(readlink -f "${PWD}")"
+ACME_ROOT_CA_ANCHOR="${TGT_DIR}/acme-root-ca.crt"
+ACME_INT_CA_ANCHOR="${TGT_DIR}/acme-int-ca.crt"
+
+################################################################################
+#
+# Before we start ... do we already have what we need?
+#
+################################################################################
+CURL="$(type -P curl 2>/dev/null)" || fail "cURL is not installed, cannot continue!"
+CSPLIT="$(type -P csplit 2>/dev/null)" || fail "Csplit is not installed, cannot continue!"
+OPENSSL="$(type -P openssl 2>/dev/null)" || fail "OpenSSL is not installed, cannot continue!"
+
+################################################################################
+#
+# Download the root CA we'll use to trust everything from this cluster
+#
+################################################################################
+
+# Wait up to 5 minutes for the CA to come up
+MAX_WAIT=300
+START="$(/usr/bin/date +%s)"
+say "👉 Fetching the root CA certificate from [${ACME_HOST}]"
+while true ; do
+	# TODO: What's the standard way to do this in ACME-land?
+	OUT="$("${CURL}" -kL --fail --silent --show-error -o "${ACME_ROOT_CA_ANCHOR}" "${ACME_URL}/roots.pem" 2>&1)" && break
+	err "Failed to get the step root CA (rc=${?}):\n${OUT}"
+	NOW="$(/usr/bin/date +%s)"
+	[ $(( NOW - START )) -ge ${MAX_WAIT} ] && fail "Timed out trying to reach the CA issuer at [${ACME_URL}]"
+	sleep 5 || fail "Sleep interrupted trying to wait for [${ACME_URL}] - cannot continue"
+done
+say "\t✅ Fetch OK as [${ACME_ROOT_CA_ANCHOR}]!"
+
+# Fetch the intermediate CA as well
+# TODO: What's the standard way to do this in ACME-land?
+say "👉 Fetching the intermediate CA certificate from [${ACME_HOST}]"
+(
+	set -euo pipefail
+	D="$(/usr/bin/mktemp -d)"
+	cd "${D}"
+	INT_FILE="xx02"
+	"${CSPLIT}" <("${OPENSSL}" s_client -connect "${ACME_HOST}:${ACME_PORT}" -showcerts </dev/null 2>/dev/null) \
+		'/BEGIN CERTIFICATE/' '{*}' &>/dev/null
+	/usr/bin/sed -i -e '/^-\+END CERTIFICATE-\+$/q' "${INT_FILE}"
+	/usr/bin/mv -f "${INT_FILE}" "${ACME_INT_CA_ANCHOR}"
+	cd /
+	/usr/bin/rm -rf "${D}" || true
+) || fail "Failed to fetch the intermediate CA from [${ACME_URL}]"
+say "\t✅ Fetch OK as [${ACME_INT_CA_ANCHOR}]!"
