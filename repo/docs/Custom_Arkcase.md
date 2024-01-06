@@ -236,8 +236,8 @@ There are multiple ways to add artifacts into your custom container images. Here
     * example: `prep-artifact https://my-web-server.com/custom-arkcase/test-war-1.2.3.war files/arkcase/wars/arkcase.war 1.2.3`
     * Authentication is supported using the `CURL_ENCRYPTION_KEY`, `CURL_USERNAME`, and `CURL_PASSWORD` environment variables
         * `CURL_ENCRYPTION_KEY` is the encryption key used to encrypt/decrypt values, and is ***required*** if you wish to utilize authentication (try to use a STRONG value, and manage its security wisely)
-        * `CURL_USERNAME` is the username with which CURL will authenticate, and **may** be encrypted using `CURL_ENCRYPTION_KEY` (see the algorithm below)
-        * `CURL_PASSWORD` is the password with which CURL will authenticate, and **MUST** be encrypted using `CURL_ENCRYPTION_KEY`
+        * `CURL_USERNAME` is the username with which CURL will authenticate, and **may** be encrypted using `CURL_ENCRYPTION_KEY` (see the <a href="#encrypting-values">algorithm below</a>)
+        * `CURL_PASSWORD` is the password with which CURL will authenticate, and **MUST** be encrypted using `CURL_ENCRYPTION_KEY` (see the <a href="#encrypting-values">algorithm below</a>)
         * There's an advanced option of using an authentication file for large, and complex artifact download processes which require many different authentications fo rmany different servers. This will not be covered here as documentation for this mechanism already exists elsewhere (you'll know it when you see it ;) )
 
 * Download your custom artifacts from a Maven repository, using the ***mvn-get*** script, and using Maven coordinates. This will also download your artifact, and create the support files (sum + ver), but since Maven data is available, the version will be filled accurately with the artifact's **actual**, **real** version (as Maven understands it to be)
@@ -252,8 +252,8 @@ There are multiple ways to add artifacts into your custom container images. Here
 
     * Authentication is also supported with the `MVN_GET_ENCRYPTION_KEY`, `MVN_GET_USERNAME`, and `MVN_GET_PASSWORD` environment variables
         * `MVN_GET_ENCRYPTION_KEY` is the encryption key used to encrypt/decrypt values, and is ***required*** if you wish to utilize authentication (try to use a STRONG value, and manage its security wisely)
-        * `MVN_GET_USERNAME` is the username with which the `mvn-get` script will authenticate, and **may** be encrypted using `MVN_GET_ENCRYPTION_KEY` (see the algorithm below)
-        * `MVN_GET_PASSWORD` is the password with which the `mvn-get` script will authenticate, and **MUST** be encrypted using `MVN_GET_ENCRYPTION_KEY`
+        * `MVN_GET_USERNAME` is the username with which the `mvn-get` script will authenticate, and **may** be encrypted using `MVN_GET_ENCRYPTION_KEY` (see the <a href="#encrypting-values">algorithm below</a>)
+        * `MVN_GET_PASSWORD` is the password with which the `mvn-get` script will authenticate, and **MUST** be encrypted using `MVN_GET_ENCRYPTION_KEY` (see the <a href="#encrypting-values">algorithm below</a>)
 
 As mentioned <a href="#artifacts-containers">above</a>, **the important thing is for the artifacts to have the correct names, and be organized using the correct folder structure**. Otherwise, the deployers for the containers will not find your customizations, and thus not deploy them for use.
 
