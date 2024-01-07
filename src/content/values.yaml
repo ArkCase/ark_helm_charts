@@ -284,13 +284,13 @@ service:
       spec:
         <<: *probesSpecTemplate
       startup:
-        exec: &tomcatLive
-          command: [ "/usr/local/bin/tomcat-live" ]
+        exec:
+          command: [ "/usr/local/bin/tomcat-live", "STARTUP" ]
         initialDelaySeconds: 30
         failureThreshold: 120
       liveness:
         exec:
-          <<: *tomcatLive
+          command: [ "/usr/local/bin/tomcat-live", "LIVENESS" ]
       readiness:
         httpGet:
           scheme: HTTPS
