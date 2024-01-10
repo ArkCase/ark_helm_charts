@@ -40,10 +40,10 @@ spec:
             /usr/bin/curl -LfsS -o /dev/null "https://${SERVICE_NAME}-main:8443/alfresco/"
             /usr/bin/timeout 3 /usr/bin/openssl s_client -connect "${SERVICE_NAME}-search:8983" -verify_quiet -verify_return_error -showcerts </dev/null
             /usr/bin/curl -LfsS -o /dev/null "https://${SERVICE_NAME}-share:8443/share/"
-            /usr/bin/curl -LfsS -o /dev/null "https://${SERVICE_NAME}-transform-core-aio:8090/actuator/health"
+            /usr/bin/curl -LfsS -o /dev/null "https://${SERVICE_NAME}-xform-core-aio:8090/actuator/health"
               {{- if $enterprise }}
             /usr/bin/timeout 3 /usr/bin/openssl s_client -connect "${SERVICE_NAME}-sfs:8099" -verify_quiet -verify_return_error -showcerts </dev/null
-            /usr/bin/curl -LfsS -o /dev/null "https://${SERVICE_NAME}-transform-router:8095/actuator/health"
+            /usr/bin/curl -LfsS -o /dev/null "https://${SERVICE_NAME}-xform-router:8095/actuator/health"
               {{- end }}
             {{- end }}
             {{- if (eq "s3" (include "arkcase.content.info.dialect" $)) }}
