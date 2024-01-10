@@ -63,7 +63,7 @@ spec:
             - name: ACTIVEMQ_URL
               value: nio+ssl://{{- include "arkcase.alfresco.service" (dict "ctx" $ "name" "activemq") -}}:61616
             - name: CORE_AIO_URL
-              value: https://{{- include "arkcase.alfresco.service" (dict "ctx" $ "name" "transform-core-aio") -}}:8090
+              value: https://{{- include "arkcase.alfresco.service" (dict "ctx" $ "name" "xform-core-aio") -}}:8090
             - name: FILE_STORE_URL
               value: >-
                 https://{{- include "arkcase.alfresco.service" (dict "ctx" $ "name" "sfs") -}}:8099/alfresco/api/-default-/private/sfs/versions/1/file
