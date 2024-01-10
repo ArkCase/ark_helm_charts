@@ -261,13 +261,13 @@ service:
         initialDelaySeconds: 5
         failureThreshold: 1
       startup:
-        exec: &tomcatLive
-          command: [ "/usr/local/bin/tomcat-live" ]
+        exec: &tomcatStartup
+          command: [ "/usr/local/bin/tomcat-live", "STARTUP" ]
         failureThreshold: 60
         initialDelaySeconds: 30
       liveness:
-        exec:
-          <<: *tomcatLive
+        exec: &tomcatLiveness
+          command: [ "/usr/local/bin/tomcat-live", "LIVENESS" ]
       readiness:
         httpGet:
           scheme: HTTPS
@@ -289,12 +289,12 @@ service:
         failureThreshold: 1
       startup:
         exec:
-          <<: *tomcatLive
+          <<: *tomcatStartup
         failureThreshold: 60
         initialDelaySeconds: 30
       liveness:
         exec:
-          <<: *tomcatLive
+          <<: *tomcatLiveness
       readiness:
         httpGet:
           scheme: HTTPS

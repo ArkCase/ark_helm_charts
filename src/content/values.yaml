@@ -112,8 +112,8 @@ resources:
     search: "2Gi,*-1"
     sfs: "512Mi"
     share: "1Gi,*-1"
-    transform-core-aio: "1536Mi"
-    transform-router: "1Gi"
+    xform-core-aio: "1536Mi"
+    xform-router: "1Gi"
 
   development:
     activemq: "1Gi,100m-500m"
@@ -121,8 +121,8 @@ resources:
     search: "2Gi,200m-500m"
     # sfs: "...?"
     share: "1Gi,200m-500m"
-    transform-core-aio: "1536Mi,300m-500m"
-    # transform-router: "...?"
+    xform-core-aio: "1536Mi,300m-500m"
+    # xform-router: "...?"
 
 platform: ""
 
@@ -142,8 +142,8 @@ image:
     repository: "arkcase/alfresco-search"
     tag: "2.0.5"
 
-  transform-core-aio:
-    repository: "arkcase/alfresco-transform-core"
+  xform-core-aio:
+    repository: "arkcase/alfresco-xform-core"
     tag: "3.0.0"
 
   # setperm:
@@ -178,8 +178,8 @@ image:
       repository: "arkcase/alfresco-ee-fileshare"
       tag: "2.0.0"
 
-    transform-router:
-      repository: "arkcase/alfresco-ee-transform-router"
+    xform-router:
+      repository: "arkcase/alfresco-ee-xform-router"
       tag: "2.0.0"
 
 # You generally shouldn't mess with these. These exist to support some name-generation templates
@@ -284,13 +284,13 @@ service:
       spec:
         <<: *probesSpecTemplate
       startup:
-        exec: &tomcatLive
-          command: [ "/usr/local/bin/tomcat-live" ]
+        exec:
+          command: [ "/usr/local/bin/tomcat-live", "STARTUP" ]
         initialDelaySeconds: 30
         failureThreshold: 120
       liveness:
         exec:
-          <<: *tomcatLive
+          command: [ "/usr/local/bin/tomcat-live", "LIVENESS" ]
       readiness:
         httpGet:
           scheme: HTTPS
@@ -369,7 +369,7 @@ service:
         protocol: TCP
         port: 8983
 
-  transform-router:
+  xform-router:
     <<: *serviceTemplate
     ports:
       - name: "https"
@@ -385,7 +385,7 @@ service:
           path: "/actuator/health"
           port: 8095
 
-  transform-core-aio:
+  xform-core-aio:
     <<: *serviceTemplate
     ports:
       - name: "https"
