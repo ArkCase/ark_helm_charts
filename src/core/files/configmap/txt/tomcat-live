@@ -14,12 +14,76 @@ fail()
 }
 
 #
+# Identify if we're in debug mode
+#
+[ -v DEV_DEBUG_PROBES ] || DEV_DEBUG_PROBES=""
+[ -n "${DEV_DEBUG_PROBES}" ] || DEV_DEBUG_PROBES="false"
+
+#
+# Sanitize the variable value
+#
+case "${DEV_DEBUG_PROBES,,}" in
+	true | 1 | on | en | enabled | y | yes ) DEV_DEBUG_PROBES="true" ;;
+	* ) DEV_DEBUG_PROBES="false" ;;
+esac
+
+#
+# Get the port configuration, or set the default
+#
+[ -v LIVE_PORT ] || LIVE_PORT=""
+[ -n "${LIVE_PORT}" ] || LIVE_PORT="8005"
+
+#
+# Get the host to probe
+#
+[ -v LIVE_HOST ] || LIVE_HOST=""
+[ -n "${LIVE_HOST}" ] || LIVE_HOST="localhost"
+
+#
+# Ensure it's a valid port
+#
+[[ "${LIVE_PORT}" =~ ^[1-9][0-9]*$ ]] || fail "The LIVE_PORT value [${LIVE_PORT}] is not a valid number"
+[ ${LIVE_PORT} -ge 1 ] && [ ${LIVE_PORT} -le 65535 ] || fail "The LIVE_PORT value must be between 1 and 65535"
+
+#
+# Set the probe message to display on the Tomcat logs
+#
+MSG=""
+[ ${#} -lt 1 ] || MSG="${@}"
+[ -n "${MSG}" ] || MSG="PING"
+
+#
 # Ping Tomcat's internal communications port, which is only opened once
 # Tomcat successfully completes its bootup sequence
 #
-( timeout --signal=KILL 5 cat < /dev/null > "/dev/tcp/localhost/8005" ) &>/dev/null || fail "Tomcat is not started (${?})"
+RC=0
+
+
+( timeout --signal=KILL 5 python -c "import socket; print(True) if 0 == socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect_ex(('${LIVE_HOST}',${LIVE_PORT})) else False"
+
+
+timeout --signal=KILL 5 /usr/local/bin/tcp-send "${LIVE_HOST}:${LIVE_PORT}" "PROBE: ${MSG}" || RC=${?}
+
+#
+# If we're in debug mode, then treat a timeout as a non-error since it's possible the threads are paused
+#
+if "${DEV_DEBUG_PROBES}" ; then
+	case "${RC}" in
+		# 1 = Connection Refused
+		# 137 = Timeout
+		1 | 137 )
+			say "✅ Tomcat is live (possible VM debugging detected ... ${RC})!"
+			exit 0
+			;;
+	esac
+fi
+
+#
+# If the exit status isn't 0 by now, it's an error!
+#
+[ ${RC} -eq 0 ] || fail "Tomcat is not live (${RC})"
 
 #
 # All is well... ready to go!
 #
-say "✅ Tomcat is started!"
+say "✅ Tomcat is live!"

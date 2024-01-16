@@ -253,6 +253,10 @@ spec:
               value: {{ $devUid | toString | quote }}
             - name: DEV_GID
               value: {{ $devGid | toString | quote }}
+              {{- if $dev.debug }}
+            - name: DEV_DEBUG_PROBES
+              value: {{ $dev.debug.probes | toString | quote }}
+              {{- end }}
             {{- end }}
             {{- with (($.Values.configuration).arkcase).env }}
               {{- toYaml . | nindent 12 }}
@@ -297,6 +301,14 @@ spec:
             - name: *configMap
               mountPath: "/usr/local/bin/tomcat-live"
               subPath: &tomcatLive "tomcat-live"
+              readOnly: true
+            - name: *configMap
+              mountPath: "/usr/local/bin/tomcat-ready"
+              subPath: &tomcatReady "tomcat-ready"
+              readOnly: true
+            - name: *configMap
+              mountPath: "/usr/local/bin/tcp-send"
+              subPath: &tcpSend "tcp-send"
               readOnly: true
             - name: *configMap
               mountPath: "/app/tomcat/conf/server.xml.tpl"
@@ -517,6 +529,12 @@ spec:
                 mode: 0555
               - key: *tomcatLive
                 path: *tomcatLive
+                mode: 0555
+              - key: *tomcatReady
+                path: *tomcatReady
+                mode: 0555
+              - key: *tcpSend
+                path: *tcpSend
                 mode: 0555
               - key: *serverXmlTpl
                 path: *serverXmlTpl

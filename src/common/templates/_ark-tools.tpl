@@ -942,11 +942,12 @@ return either the value if correct, or the empty string if not.
         {{- $enabled := or (not (hasKey $debug "enabled")) (not (empty (include "arkcase.toBoolean" $debug.enabled))) -}}
         {{- if $enabled -}}
           {{- $suspend := and (hasKey $debug "suspend") (not (empty (include "arkcase.toBoolean" $debug.suspend))) | ternary "y" "n" -}}
+          {{- $probes := and (hasKey $debug "probes") (not (empty (include "arkcase.toBoolean" $debug.probes))) -}}
           {{- $flags := dict -}}
           {{- range $k, $v := (omit $debug "port" "suspend" "enabled") -}}
             {{- $flags = set $flags $k (not (empty (include "arkcase.toBoolean" $v))) -}}
           {{- end -}}
-          {{- $debug = dict "enabled" $enabled "suspend" $suspend "flags" $flags -}}
+          {{- $debug = dict "enabled" $enabled "suspend" $suspend "flags" $flags "probes" $probes -}}
         {{- else -}}
           {{- $debug = dict -}}
         {{- end -}}

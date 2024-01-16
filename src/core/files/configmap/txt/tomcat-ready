@@ -1,0 +1,97 @@
+#!/bin/bash
+
+set -euo pipefail
+
+say()
+{
+	echo -e "${@}"
+}
+
+fail()
+{
+	say "❌ ${@}" 1>&2
+	exit ${EXIT_CODE:-1}
+}
+
+#
+# Identify if we're in debug mode
+#
+[ -v DEV_DEBUG_PROBES ] || DEV_DEBUG_PROBES=""
+[ -n "${DEV_DEBUG_PROBES}" ] || DEV_DEBUG_PROBES="false"
+
+#
+# Sanitize the variable value
+#
+case "${DEV_DEBUG_PROBES,,}" in
+	true | 1 | on | en | enabled | y | yes ) DEV_DEBUG_PROBES="true" ;;
+	* ) DEV_DEBUG_PROBES="false" ;;
+esac
+
+#
+# Get the hostname configuration, or set the default
+#
+[ -v READY_HOST ] || READY_HOST=""
+[ -n "${READY_HOST}" ] || READY_HOST="$(/usr/bin/hostname -f)"
+
+#
+# Ensure it's a valid hostname per RFC-1123
+#
+[[ "${READY_HOST}" =~ ^([a-z0-9][-a-z0-9]*)?[a-z0-9]([.]([a-z0-9][-a-z0-9]*)?[a-z0-9])*$ ]] || fail "The READY_HOST value [${READY_HOST}] is invalid - must be a valid hostname per RFC-1123"
+
+#
+# Get the path configuration, or set the default
+#
+[ -v READY_PATH ] || READY_PATH=""
+[ -n "${READY_PATH}" ] || READY_PATH="/arkcase/login"
+
+#
+# Remove leading slashes
+#
+[[ "${READY_PATH}" =~ ^/*(.*?)$ ]] && READY_PATH="${BASH_REMATCH[1]}"
+
+#
+# Get the port configuration, or set the default
+#
+[ -v READY_PORT ] || READY_PORT=""
+[ -n "${READY_PORT}" ] || READY_PORT="8443"
+
+#
+# Ensure it's a valid port
+#
+[[ "${READY_PORT}" =~ ^[1-9][0-9]*$ ]] || fail "The READY_PORT value [${READY_PORT}] is not a valid number"
+[ ${READY_PORT} -ge 1 ] && [ ${READY_PORT} -le 65535 ] || fail "The READY_PORT value must be between 1 and 65535"
+
+#
+# Construct the final URL
+#
+READY_URL="https://${READY_HOST}:${READY_PORT}/${READY_PATH}"
+
+#
+# Ping the ArkCase application's login page
+#
+RC=0
+/usr/bin/curl --max-time 5 -fsSL -o /dev/null "${READY_URL}" || RC=${?}
+
+#
+# If we're in debug mode, then treat a timeout as a non-error since it's possible the threads are paused
+#
+if "${DEV_DEBUG_PROBES}" ; then
+	case "${RC}" in
+		# 7 = Connection Refused
+		# 28 = Timeout
+		7 | 28 )
+			say "✅ Tomcat is ready (possible VM debugging detected ... ${RC})!"
+			exit 0
+			;;
+	esac
+fi
+
+#
+# If the exit status isn't 0 by now, it's an error!
+#
+[ ${RC} -eq 0 ] || fail "Tomcat is not ready (${RC})"
+
+#
+# All is well... ready to go!
+#
+say "✅ Tomcat is ready!"

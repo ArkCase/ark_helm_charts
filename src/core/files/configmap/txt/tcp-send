@@ -1,0 +1,43 @@
+#!/bin/bash
+
+say()
+{
+	echo -e "${@}"
+}
+
+fail()
+{
+	say "❌ ${@}" 1>&2
+	exit ${EXIT_CODE:-1}
+}
+
+usage()
+{
+	say "usage: ${BASH_ARGV0:-${BASH_SOURCE:-${0}}} host:port [message]"
+	exit 1
+}
+
+[ ${#} -ge 1 ] || usage
+
+TGT="${1}"
+shift
+
+[[ "${TGT}" =~ ^([-.a-zA-Z0-9]+):([1-9][0-9]*)$ ]] || fail "The target specification [${TGT}] is not valid"
+
+MIN_PORT=1
+MAX_PORT=65535
+
+TGT_HOST="${BASH_REMATCH[1],,}"
+TGT_PORT="${BASH_REMATCH[2]}"
+
+[[ "${TGT_HOST}" =~ ^([a-z0-9][-a-z0-9]*)?[a-z0-9]([.]([a-z0-9][-a-z0-9]*)?[a-z0-9])*$ ]] || fail "The target host specification [${TGT_HOST}] is invalid - must be a valid hostname per RFC-1123"
+
+[ ${TGT_PORT} -ge ${MIN_PORT} ] && [ ${TGT_PORT} -le ${MAX_PORT} ] || fail "The target port specification [${TGT_PORT}] must be between ${MIN_PORT} and ${MAX_PORT}"
+
+MSG="${@}"
+[ -n "${MSG}" ] || MSG="PING"
+
+say "👉 Sending [${MSG}] to ${TGT_HOST} on ${TGT_PORT}/tcp..."
+OUT="$( ( echo -n "${MSG}" > /dev/tcp/${TGT_HOST}/${TGT_PORT} ) 2>&1 )" || fail "Failed to send the message (rc=${?}): ${OUT}"
+say "\t✅ Message sent!"
+exit 0
