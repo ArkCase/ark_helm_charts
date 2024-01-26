@@ -17,7 +17,10 @@ fail()
 # Ping Tomcat's internal communications port, which is only opened once
 # Tomcat successfully completes its bootup sequence
 #
-( timeout --signal=KILL 5 cat < /dev/null > "/dev/tcp/localhost/8005" ) &>/dev/null || fail "Tomcat is not started (${?})"
+MSG=""
+[ ${#} -lt 1 ] || MSG="${@}"
+[ -n "${MSG}" ] || MSG="PING"
+( timeout --signal=KILL 5 echo -n "PROBE: ${MSG}" > "/dev/tcp/localhost/8005" ) &>/dev/null || fail "Tomcat is not started (${?})"
 
 #
 # All is well... ready to go!
