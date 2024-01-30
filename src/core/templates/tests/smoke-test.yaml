@@ -12,7 +12,9 @@ metadata:
     {{- with ($.Values.test).labels }}
       {{- toYaml . | nindent 4 }}
     {{- end }}
-    arkcase.com/task: test
+    arkcase.com/task: "test"
+    arkcase.com/test-type: "smoke"
+    arkcase.com/test-subsystem: {{ include "arkcase.subsystem.name" $ | quote }}
   annotations:
     helm.sh/hook: test
     helm.sh/hook-delete-policy: hook-succeeded
