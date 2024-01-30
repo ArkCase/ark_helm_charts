@@ -1,9 +1,4 @@
-{{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.rdbms.external" $)) }}
-{{- $db := (include "arkcase.db.info" $ | fromYaml) -}}
-{{- $startTls := "" -}}
-{{- if and (hasKey $db "starttls") $db.starttls -}}
-  {{- $startTls = (printf "-starttls %s" ($db.starttls | quote)) -}}
-{{- end -}}
+{{- if and (include "arkcase.subsystem.enabled" $) (include "arkcase.zookeeper.required" $) }}
 apiVersion: v1
 kind: Pod
 metadata:
@@ -16,7 +11,9 @@ metadata:
     {{- with ($.Values.test).labels }}
       {{- toYaml . | nindent 4 }}
     {{- end }}
-    arkcase.com/task: test
+    arkcase.com/task: "test"
+    arkcase.com/test-type: "smoke"
+    arkcase.com/test-subsystem: {{ include "arkcase.subsystem.name" $ | quote }}
   annotations:
     helm.sh/hook: test
     helm.sh/hook-delete-policy: hook-succeeded
@@ -39,6 +36,6 @@ spec:
           value: |
             set -xeuo pipefail
             /usr/local/bin/acme-init
-            /usr/bin/timeout 3 /usr/bin/openssl s_client -connect "${SERVICE_NAME}:{{ $db.port }}" -verify_quiet -verify_return_error -showcerts {{ $startTls }} < /dev/null
+            /usr/bin/timeout 3 /usr/bin/openssl s_client -connect "${SERVICE_NAME}:2181" -verify_quiet -verify_return_error -showcerts </dev/null
   restartPolicy: Never
 {{- end }}

@@ -51,7 +51,7 @@
     {{- end -}}
     {{- if hasKey $db "aliases" -}}
       {{- range $alias := $db.aliases -}}
-        {{- $dbInfo = set $dbInfo $alias (omit $db "aliases") -}}
+        {{- $dbInfo = set $dbInfo $alias (merge (dict "name" $key) (omit $db "aliases")) -}}
       {{- end -}}
     {{- end -}}
     {{- $db = set $db "name" $key -}}
