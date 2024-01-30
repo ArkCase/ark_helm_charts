@@ -27,6 +27,9 @@ configuration:
     cloudconfig:
       name: &cloudConfigMessagingUser "cloudconfig"
       password: *cloudConfigMessagingUser
+    experimental:
+      name: &experimentalMessagingUser "experimental"
+      password: "wnqpxHKhl3h1zByU8+6u2ujdQ/zykHNB7nU/PvKctXtSDjgOM4LS4ylvkP63bWaQ"
     # For now, disable the guest user until we're positive we need it
     # guest:
     #   name: &guestUser "guest"
@@ -36,6 +39,7 @@ configuration:
     administrator:
       - *arkcaseMessagingUser
       - *cloudConfigMessagingUser
+      - *experimentalMessagingUser
 
   # Limit, in GiB, of how big the KahaDB store can grow
   maxStoreUsageGb: 50

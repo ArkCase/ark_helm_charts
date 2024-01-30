@@ -1,4 +1,4 @@
-{{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.subsystem.external" $)) }}
+{{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.acme.external" $)) }}
 apiVersion: v1
 kind: Pod
 metadata:
@@ -11,7 +11,9 @@ metadata:
     {{- with ($.Values.test).labels }}
       {{- toYaml . | nindent 4 }}
     {{- end }}
-    arkcase.com/task: test
+    arkcase.com/task: "test"
+    arkcase.com/test-type: "smoke"
+    arkcase.com/test-subsystem: {{ include "arkcase.subsystem.name" $ | quote }}
   annotations:
     helm.sh/hook: test
     helm.sh/hook-delete-policy: hook-succeeded
@@ -31,9 +33,9 @@ spec:
         - name: SERVICE_NAME
           value: {{ include "arkcase.service.name" $ | quote }}
         - name: SCRIPT
-          value: |
+          value: |-
             set -xeuo pipefail
             /usr/local/bin/acme-init
-            /usr/bin/curl -LfsS -o /dev/null "https://${SERVICE_NAME}:8443/pentaho"
+            /usr/bin/curl -LfsS -o /dev/null "https://${SERVICE_NAME}:9000/health"
   restartPolicy: Never
 {{- end }}
