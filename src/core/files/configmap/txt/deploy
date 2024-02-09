@@ -108,7 +108,7 @@ if ! ${SKIP_CONF} ; then
 	#
 	# Deploy all the .arkcase extensions
 	#
-	EXTS="$(list-artifacts /arkcase/conf)" || fail "Failed to list the EXTS files to be deployed"
+	EXTS="$(list-artifacts /arkcase/exts)" || fail "Failed to list the EXTS files to be deployed"
 	readarray -t EXTS < <(echo -n "${EXTS}")
 	say "Found ${#EXTS[@]} EXTS files to deploy: [${EXTS[@]}]"
 
