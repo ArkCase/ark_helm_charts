@@ -98,7 +98,7 @@ if [ -d "${DIR}/${CONF_KJB}" ] ; then
 				F="${CONF_KJB}/${T}"
 				mkdir -p "${F%/*}"
 				say "Rendering [${F}]..."
-				render-template < "${CONF_TPL}/${T}" > "${F}"
+				"${RENDER_TPL}" < "${CONF_TPL}/${T}" > "${F}"
 			done < <(cd "${CONF_TPL}" && find . -type f | sort)
 		fi
 	fi
