@@ -228,7 +228,8 @@ result: either "" or the value
   {{- if not (kindIs "string" $part) -}}
     {{- $part = (toString $part) -}}
   {{- end -}}
-  {{- if (regexMatch "^([a-z0-9][-a-z0-9]*)?[a-z0-9]$" (lower $part)) -}}
+  {{- $part = ($part | lower) -}}
+  {{- if (regexMatch "^([a-z0-9][-a-z0-9]*)?[a-z0-9]$" $part) -}}
     {{- $part -}}
   {{- end -}}
 {{- end -}}
