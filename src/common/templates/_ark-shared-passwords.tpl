@@ -287,7 +287,7 @@ stringData: {{- $finalAccounts | toYaml | nindent 2 }}
   -}}
 
   {{- $params := dict "ctx" $ctx -}}
-  {{- range $type := (keys $secrets | sortAlpha) -}}
-    {{- include "__arkcase.accounts.secret" (merge (dict "type" $type "keep" (get $secrets $type)) $params) -}}
-  {{- end -}}
+  {{- range $type := (keys $secrets | sortAlpha) }}
+    {{- include "__arkcase.accounts.secret" (merge (dict "type" $type "keep" (get $secrets $type)) $params) | nindent 0 }}
+  {{- end }}
 {{- end -}}
