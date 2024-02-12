@@ -315,7 +315,7 @@
     {{- fail "The parameter given must be the root context (. or $)" -}}
   {{- end -}}
 
-  {{- $cacheKey := "Resources" -}}
+  {{- $cacheKey := "ArkCase-Resources" -}}
   {{- $masterCache := dict -}}
   {{- if (hasKey $ctx $cacheKey) -}}
     {{- $masterCache = get $ctx $cacheKey -}}

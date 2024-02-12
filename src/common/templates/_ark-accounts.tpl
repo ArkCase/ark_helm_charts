@@ -84,7 +84,7 @@
 {{- define "__arkcase.accounts" -}}
   {{- $ctx := $.ctx -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
-    {{- fail "The 'ctx' parameter given must be the root context (. or $)" -}}
+    {{- fail "The 'ctx' parameter must be the root context (. or $)" -}}
   {{- end -}}
 
   {{- $type := $.type -}}
@@ -92,7 +92,7 @@
     {{- fail "The secret type must be a non-empty string" -}}
   {{- end -}}
 
-  {{- $cacheKey := "CommonAccounts" -}}
+  {{- $cacheKey := "ArkCase-CommonAccounts" -}}
   {{- $masterCache := dict -}}
   {{- if (hasKey $ctx $cacheKey) -}}
     {{- $masterCache = get $ctx $cacheKey -}}
@@ -292,7 +292,7 @@ stringData: {{- $finalAccounts | toYaml | nindent 2 }}
 {{- define "__arkcase.accounts.secret" -}}
   {{- $ctx := $.ctx -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
-    {{- fail "The 'ctx' parameter must be the root context ($)" -}}
+    {{- fail "The 'ctx' parameter must be the root context (. or $)" -}}
   {{- end -}}
 
   {{- $type := $.type -}}
@@ -302,7 +302,7 @@ stringData: {{- $finalAccounts | toYaml | nindent 2 }}
 
   {{- $keep := (not (empty (include "arkcase.toBoolean" ($.keep | default false)))) -}}
 
-  {{- $cacheKey := "CommonAccountsSecrets" -}}
+  {{- $cacheKey := "ArkCase-CommonAccountsSecrets" -}}
   {{- $masterCache := dict -}}
   {{- if (hasKey $ctx $cacheKey) -}}
     {{- $masterCache = get $ctx $cacheKey -}}

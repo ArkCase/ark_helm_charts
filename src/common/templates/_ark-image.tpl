@@ -299,7 +299,7 @@
   {{- $chart := $ctx.Chart.Name -}}
   {{- $data := dict "local" $local "global" $global -}}
 
-  {{- $cacheKey := "PullSecret" -}}
+  {{- $cacheKey := "ArkCase-PullSecret" -}}
   {{- $masterCache := dict -}}
   {{- if (hasKey $ctx $cacheKey) -}}
     {{- $masterCache = get $ctx $cacheKey -}}
@@ -464,7 +464,7 @@ Fetch and compute if necessary the image information for the named image
 
   {{- $enterprise := (not (empty (include "arkcase.enterprise" $ctx))) -}}
 
-  {{- $cacheKey := "ContainerImages" -}}
+  {{- $cacheKey := "ArkCase-ContainerImages" -}}
   {{- $masterCache := dict -}}
   {{- if (hasKey $ctx $cacheKey) -}}
     {{- $masterCache = get $ctx $cacheKey -}}
