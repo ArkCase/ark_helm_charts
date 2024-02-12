@@ -12,7 +12,7 @@
   {{- (printf "%s-accounts-%s" $ctx.Release.Name $type) -}}
 {{- end -}}
 
-{{- define "__arkcase.accounts.credentials" -}}
+{{- define "__arkcase.accounts.findcreds" -}}
   {{- /* TODO: seek out credentials from configurations to re-use here */ -}}
   {{- dict "username" $ "password" (randAlphaNum 64) | toYaml -}}
 {{- end -}}
@@ -56,7 +56,7 @@
         {{- $value = (get $secretData $account | b64dec) -}}
       {{- else -}}
         {{- /* Render a new auth info */ -}}
-        {{- $value = (include "__arkcase.accounts.credentials" $account) -}}
+        {{- $value = (include "__arkcase.accounts.findcreds" $account) -}}
       {{- end -}}
       {{- $accounts = set $accounts $account ($value | fromYaml) -}}
     {{- end -}}
@@ -211,17 +211,13 @@
     {{- $accounts = dict -}}
   {{- end -}}
 
-  {{- if $accounts }}
-    {{- $secretName := (include "__arkcase.accounts.secret.name" (pick $ "ctx" "type")) -}}
-    {{- $namespace := $ctx.Release.Namespace -}}
+  {{- $secretName := (include "__arkcase.accounts.secret.name" (pick $ "ctx" "type")) -}}
+  {{- $namespace := $ctx.Release.Namespace -}}
 
-    {{- /* If the secret doesn't exist already, create it */ -}}
-    {{- $secretObj := (lookup "v1" "Secret" $namespace $secretName | default dict) -}}
-    {{- if not (and (hasKey $secretObj "metadata") (hasKey $secretObj "kind") (hasKey $secretObj "apiVersion")) -}}
-      {{- $finalAccounts := dict -}}
-      {{- range $account := (keys $accounts | sortAlpha) -}}
-        {{- $finalAccounts = set $finalAccounts $account (get $accounts $account | toYaml) -}}
-      {{- end -}}
+  {{- $finalAccounts := dict -}}
+  {{- range $account := (keys $accounts | sortAlpha) -}}
+    {{- $finalAccounts = set $finalAccounts $account (get $accounts $account | toYaml) -}}
+  {{- end -}}
 
 ---
 apiVersion: v1
@@ -230,13 +226,11 @@ metadata:
   name: {{ $secretName | quote }}
   namespace: {{ $namespace | quote }}
   labels: {{- include "arkcase.labels" $ctx | nindent 4 }}
-      {{- if $keep }}
+  {{- if $keep }}
   annotations:
     helm.sh/resource-policy: "keep"
-      {{- end }}
-stringData: {{- $finalAccounts | toYaml | nindent 2 }}
-    {{- end }}
   {{- end }}
+stringData: {{- $finalAccounts | toYaml | nindent 2 }}
 {{- end -}}
 
 {{- /* Render ONE secret, per the gien parameters, ONCE */ -}}
