@@ -12,6 +12,11 @@
   {{- (printf "%s-accounts-%s" $ctx.Release.Name $type) -}}
 {{- end -}}
 
+{{- define "__arkcase.accounts.credentials" -}}
+  {{- /* TODO: seek out credentials from configurations to re-use here */ -}}
+  {{- dict "username" $ "password" (randAlphaNum 64) | toYaml -}}
+{{- end -}}
+
 {{- define "__arkcase.accounts.render" -}}
   {{- $ctx := $.ctx -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
@@ -35,9 +40,9 @@
     {{- end -}}
 
     {{- $secretName := (include "__arkcase.accounts.secret.name" (pick $ "ctx" "type")) -}}
-    {{- $typespace := $ctx.Release.Namespace -}}
+    {{- $namespace := $ctx.Release.Namespace -}}
 
-    {{- $secretObj := (lookup "v1" "Secret" $typespace $secretName | default dict) -}}
+    {{- $secretObj := (lookup "v1" "Secret" $namespace $secretName | default dict) -}}
     {{- $secretData := (get $secretObj "data") | default dict -}}
 
     {{- /* First, make sure we copy all the data */ -}}
@@ -45,13 +50,15 @@
 
     {{- /* Find each of the shared accounts in the existing secret data. If there, reuse */ -}}
     {{- range $account := $names -}}
+      {{- $value := dict -}}
       {{- if (hasKey $secretData $account) -}}
-        {{- /* Re-use the old password */ -}}
-        {{- $accounts = set $accounts $account (get $secretData $account | b64dec) -}}
+        {{- /* Re-use the old auth info */ -}}
+        {{- $value = (get $secretData $account | b64dec) -}}
       {{- else -}}
-        {{- /* Render a new password */ -}}
-        {{- $accounts = set $accounts $account (randAlphaNum 64) -}}
+        {{- /* Render a new auth info */ -}}
+        {{- $value = (include "__arkcase.accounts.credentials" $account) -}}
       {{- end -}}
+      {{- $accounts = set $accounts $account ($value | fromYaml) -}}
     {{- end -}}
   {{- end -}}
   {{- $accounts | toYaml -}}
@@ -107,7 +114,7 @@
 
   {{- $accounts := (include (printf "arkcase.accounts.%s" $type) $ctx | fromYaml) -}}
   {{- if (hasKey $accounts $name) -}}
-    {{- get $accounts $name -}}
+    {{- get $accounts $name | toYaml -}}
   {{- end -}}
 {{- end -}}
 
@@ -204,10 +211,18 @@
     {{- $accounts = dict -}}
   {{- end -}}
 
-  {{- $secretName := (include "__arkcase.accounts.secret.name" (pick $ "ctx" "type")) -}}
-  {{- $namespace := $ctx.Release.Namespace -}}
+  {{- if $accounts }}
+    {{- $secretName := (include "__arkcase.accounts.secret.name" (pick $ "ctx" "type")) -}}
+    {{- $namespace := $ctx.Release.Namespace -}}
 
-  {{- with $accounts }}
+    {{- /* If the secret doesn't exist already, create it */ -}}
+    {{- $secretObj := (lookup "v1" "Secret" $namespace $secretName | default dict) -}}
+    {{- if not (and (hasKey $secretObj "metadata") (hasKey $secretObj "kind") (hasKey $secretObj "apiVersion")) -}}
+      {{- $finalAccounts := dict -}}
+      {{- range $account := (keys $accounts | sortAlpha) -}}
+        {{- $finalAccounts = set $finalAccounts $account (get $accounts $account | toYaml) -}}
+      {{- end -}}
+
 ---
 apiVersion: v1
 kind: Secret
@@ -215,11 +230,12 @@ metadata:
   name: {{ $secretName | quote }}
   namespace: {{ $namespace | quote }}
   labels: {{- include "arkcase.labels" $ctx | nindent 4 }}
-    {{- if $keep }}
+      {{- if $keep }}
   annotations:
     helm.sh/resource-policy: "keep"
+      {{- end }}
+stringData: {{- $finalAccounts | toYaml | nindent 2 }}
     {{- end }}
-stringData: {{- $accounts | toYaml | nindent 2 }}
   {{- end }}
 {{- end -}}
 

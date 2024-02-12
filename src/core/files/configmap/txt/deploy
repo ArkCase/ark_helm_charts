@@ -5,6 +5,7 @@ set -euo pipefail
 [ -v DEPL_DIR ] || DEPL_DIR="${BASE_DIR}/depl"
 [ -v CONF_DIR ] || CONF_DIR="${DEPL_DIR}/conf"
 [ -v WARS_DIR ] || WARS_DIR="${DEPL_DIR}/wars"
+[ -v FORCE_DEPLOY ] || FORCE_DEPLOY="false"
 
 # Temporarily put them here... eventually they'll have
 # a dedicated place to live
@@ -113,15 +114,13 @@ if ! ${SKIP_CONF} ; then
 	say "Found ${#EXTS[@]} EXTS files to deploy: [${EXTS[@]}]"
 
 	# Make sure the extensions are deployed ALWAYS
-	# (we do this in a sub-shell so we can mess with the environment and not have to worry about
-	# re-setting the value of FORCE_DEPLOY to whatever it was before)
-	(
-		set -euo pipefail
-		export FORCE_DEPLOY="true"
-		for ext in "${EXTS[@]}" ; do
-			deploy-artifact extract "${ext}" "${EXTS_DIR}" || fail "Failed to deploy the extension from [${ext}]"
-		done
-	) || exit ${?}
+	export OLD_FORCE_DEPLOY="${FORCE_DEPLOY}"
+	export FORCE_DEPLOY="true"
+	for ext in "${EXTS[@]}" ; do
+		deploy-artifact extract "${ext}" "${EXTS_DIR}" || fail "Failed to deploy the extension from [${ext}]"
+	done
+	export FORCE_DEPLOY="${OLD_FORCE_DEPLOY}"
+	unset OLD_FORCE_DEPLOY
 fi
 
 #
