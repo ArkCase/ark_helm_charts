@@ -21,10 +21,17 @@ fail() {
 
 [ -v SKIP_WARS ] || SKIP_WARS=""
 [ -v SKIP_CONF ] || SKIP_CONF="false"
+
 [ -v DEV ] || DEV="false"
 case "${DEV,,}" in
 	true | t | yes | y | on | en | enabled | enable | 1 ) DEV="true" ;;
 	* ) DEV="false" ;;
+esac
+
+[ -v FORCE_DEPLOY ] || FORCE_DEPLOY="false"
+case "${FORCE_DEPLOY,,}" in
+	true | t | yes | y | on | en | enabled | enable | 1 ) FORCE_DEPLOY="true" ;;
+	* ) FORCE_DEPLOY="false" ;;
 esac
 
 if ${DEV} ; then
@@ -113,10 +120,7 @@ if ! ${SKIP_CONF} ; then
 	say "Found ${#EXTS[@]} EXTS files to deploy: [${EXTS[@]}]"
 
 	# Make sure the extensions are deployed ALWAYS
-	# (we do this in a sub-shell so we can mess with the environment and not have to worry about
-	# re-setting the value of FORCE_DEPLOY to whatever it was before)
 	(
-		set -euo pipefail
 		export FORCE_DEPLOY="true"
 		for ext in "${EXTS[@]}" ; do
 			deploy-artifact extract "${ext}" "${EXTS_DIR}" || fail "Failed to deploy the extension from [${ext}]"
