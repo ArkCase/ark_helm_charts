@@ -228,7 +228,7 @@
     {{- fail "The parameter must be the root context (. or $)" -}}
   {{- end -}}
 
-  {{- $cacheKey := "PersistenceSettings" -}}
+  {{- $cacheKey := "ArkCase-PersistenceSettings" -}}
   {{- $masterCache := dict -}}
   {{- if (hasKey . $cacheKey) -}}
     {{- $masterCache = get . $cacheKey -}}
@@ -607,7 +607,7 @@ Parse a volume declaration and return a map that contains the following (possibl
     {{- $name = (printf "%s-%s" $partname $name) -}}
   {{- end -}}
 
-  {{- $cacheKey := "PersistenceVolumes" -}}
+  {{- $cacheKey := "ArkCase-PersistenceVolumes" -}}
   {{- $masterCache := dict -}}
   {{- if (hasKey $ctx $cacheKey) -}}
     {{- $masterCache = get $ctx $cacheKey -}}
