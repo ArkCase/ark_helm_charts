@@ -323,7 +323,7 @@ stringData: {{- $finalAccounts | toYaml | nindent 2 }}
           "keep" $keep
     -}}
     {{- include "__arkcase.accounts.secret.render" $params -}}
-    {{- $masterCache = set $masterCache $masterKey $params -}}
+    {{- $masterCache = set $masterCache $masterKey (omit $params "ctx") -}}
   {{- end -}}
 {{- end -}}
 
@@ -346,4 +346,40 @@ stringData: {{- $finalAccounts | toYaml | nindent 2 }}
   {{- range $type := (keys $secrets | sortAlpha) }}
     {{- include "__arkcase.accounts.secret" (merge (dict "type" $type "keep" (get $secrets $type)) $params) | nindent 0 }}
   {{- end }}
+{{- end -}}
+
+{{- define "arkcase.accounts.volumeMount" -}}
+  {{- $ctx := $.ctx -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "The 'ctx' parameter given must be the root context (. or $)" -}}
+  {{- end -}}
+
+  {{- $type := $.type -}}
+  {{- if or (not $type) (not (kindIs "string" $type)) -}}
+    {{- fail (printf "The type parameter must be a non-empty string: (%s) [%s]" (kindOf $type) $type) -}}
+  {{- end -}}
+
+  {{- $anchor := (printf "&%sAccounts" $type) -}}
+- name: {{ $anchor }} {{ include "__arkcase.accounts.secret.name" (dict "ctx" $ctx "type" $type) | quote }}
+  mountPath: {{ printf "/.accounts/%s" $type }}
+  readOnly: true
+{{- end -}}
+
+{{- define "arkcase.accounts.volume" -}}
+  {{- $ctx := $.ctx -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "The 'ctx' parameter given must be the root context (. or $)" -}}
+  {{- end -}}
+
+  {{- $type := $.type -}}
+  {{- if or (not $type) (not (kindIs "string" $type)) -}}
+    {{- fail (printf "The type parameter must be a non-empty string: (%s) [%s]" (kindOf $type) $type) -}}
+  {{- end -}}
+
+  {{- $anchor := (printf "*%sAccounts" $type) -}}
+- name: {{ $anchor }}
+  secret:
+    optional: true
+    secretName: {{ $anchor }}
+    defaultMode: 0444
 {{- end -}}
