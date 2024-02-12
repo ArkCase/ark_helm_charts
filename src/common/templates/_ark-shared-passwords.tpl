@@ -13,8 +13,25 @@
 {{- end -}}
 
 {{- define "__arkcase.accounts.findcreds" -}}
+  {{- $ctx := $.ctx -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "The 'ctx' parameter must be the root context ($)" -}}
+  {{- end -}}
+
+  {{- $account := $.account -}}
+  {{- if or (not $account) (not (kindIs "string" $account)) -}}
+    {{- fail (printf "The account name must be a non-empty string [%s]" $account) -}}
+  {{- end -}}
+
+  {{- $type := $.type -}}
+  {{- if or (not $type) (not (kindIs "string" $type)) -}}
+    {{- fail (printf "The account type must be a non-empty string [%s]" $type) -}}
+  {{- end -}}
+
   {{- /* TODO: seek out credentials from configurations to re-use here */ -}}
-  {{- dict "username" $ "password" (randAlphaNum 64) | toYaml -}}
+  {{- /* TODO: use $type and $account to identify where to look for the credentials to be re-used here */ -}}
+  {{- /* TODO: Perhaps use a "hardcoded" (no better choice available, really) map that describes the search locations? */ -}}
+  {{- dict "username" $account "password" (randAlphaNum 64) | toYaml -}}
 {{- end -}}
 
 {{- define "__arkcase.accounts.render" -}}
@@ -56,7 +73,7 @@
         {{- $value = (get $secretData $account | b64dec) -}}
       {{- else -}}
         {{- /* Render a new auth info */ -}}
-        {{- $value = (include "__arkcase.accounts.findcreds" $account) -}}
+        {{- $value = (include "__arkcase.accounts.findcreds" (dict "ctx" $ctx "account" $account "type" $type)) -}}
       {{- end -}}
       {{- $accounts = set $accounts $account ($value | fromYaml) -}}
     {{- end -}}
@@ -193,6 +210,44 @@
   {{- include "__arkcase.accounts.get" (merge (dict "type" "admin") (pick $ "ctx" "name")) -}}
 {{- end -}}
 
+{{- define "arkcase.accounts.rdbms" -}}
+  {{- /* TODO: Should this be configurable... *somewhere*? */ -}}
+  {{-
+    $names := (
+      list
+        "arkcase-db"
+        "arkcase-config"
+        "pentaho-db"
+        "pentaho-jcr"
+        "pentaho-quartz"
+    )
+  -}}
+
+  {{-
+    $params :=
+      dict
+        "ctx" $
+        "type" "rdbms"
+        "names" $names
+  -}}
+  {{- include "__arkcase.accounts" $params -}}
+{{- end -}}
+
+{{- define "arkcase.accounts.rdbms.get" -}}
+  {{- $ctx := $.ctx -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "The 'ctx' parameter given must be the root context (. or $)" -}}
+  {{- end -}}
+
+  {{- $name := $.name -}}
+  {{- if or (not $name) (not (kindIs "string" $name)) -}}
+    {{- fail (printf "The name parameter must be a non-empty string: (%s) [%s]" (kindOf $name) $name) -}}
+  {{- end -}}
+
+  {{- include "__arkcase.accounts.get" (merge (dict "type" "admin") (pick $ "ctx" "name")) -}}
+{{- end -}}
+
+
 {{- define "__arkcase.accounts.secret.render" -}}
   {{- $ctx := $.ctx -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
@@ -283,6 +338,7 @@ stringData: {{- $finalAccounts | toYaml | nindent 2 }}
     $secrets :=
       dict
         "admin" true
+        "rdbms" false
         "shared" false
   -}}
 
