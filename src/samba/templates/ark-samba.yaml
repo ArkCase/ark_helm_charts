@@ -90,6 +90,8 @@ spec:
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "samba") | nindent 12 }}
           volumeMounts:
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
+            {{- include "arkcase.accounts.volumeMount" (dict "ctx" $ "type" "admin") | nindex 12 }}
+            {{- include "arkcase.accounts.volumeMount" (dict "ctx" $ "type" "shared") | nindex 12 }}
             - name: "init"
               mountPath: "/app/init"
             - name: "conf"
@@ -111,6 +113,8 @@ spec:
               readOnly: true
       volumes:
         {{- include "arkcase.acme.volume" $ | nindent 8 }}
+        {{- include "arkcase.accounts.volume" (dict "ctx" $ "type" "admin") | nindex 8 }}
+        {{- include "arkcase.accounts.volume" (dict "ctx" $ "type" "shared") | nindex 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "init") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "conf") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
