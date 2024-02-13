@@ -18,20 +18,41 @@
     {{- fail "The 'ctx' parameter must be the root context ($)" -}}
   {{- end -}}
 
-  {{- $account := $.account -}}
-  {{- if or (not $account) (not (kindIs "string" $account)) -}}
-    {{- fail (printf "The account name must be a non-empty string [%s]" $account) -}}
-  {{- end -}}
-
   {{- $type := $.type -}}
   {{- if or (not $type) (not (kindIs "string" $type)) -}}
     {{- fail (printf "The account type must be a non-empty string [%s]" $type) -}}
   {{- end -}}
 
+  {{- $account := $.account -}}
+  {{- if or (not $account) (not (kindIs "string" $account)) -}}
+    {{- fail (printf "The account name must be a non-empty string [%s]" $account) -}}
+  {{- end -}}
+
   {{- /* TODO: seek out credentials from configurations to re-use here */ -}}
   {{- /* TODO: use $type and $account to identify where to look for the credentials to be re-used here */ -}}
   {{- /* TODO: Perhaps use a "hardcoded" (no better choice available, really) map that describes the search locations? */ -}}
-  {{- dict "username" $account "password" (randAlphaNum 64) | toYaml -}}
+  {{- /* $password := (randAlphaNum 64) */ -}}
+
+  {{- /*
+      So ... we have some problems to resolve. The caches aren't shared among
+      all charts, so we can't just render values that will be reused. I'll have
+      to figure that one out ... an operator may be our only reliable solution.
+
+      That said, we can create a bit of a "predictable algorithm" that will help
+      us render hard-to-guess, quasi-random passwords by using information that can
+      be expected to be stable during the deployment, but is not likely to be
+      repeated in the future and thus not likely to produce a guessable password.
+
+      We generate a password using the account $type, the name ($account), and
+      the SHA256 hashes for the YAML representations of the $.Values.Release and
+      $.Values.Capabilities maps, and the last 10 minute boundary
+  */ -}}
+  {{- $hashRelease := ($ctx.Release | toYaml | sha256sum) -}}
+  {{- $hashCapabilities := ($ctx.Capabilities | toYaml | sha256sum) -}}
+  {{- $timeBoundary := "12345" -}}
+  {{- $password := (printf "%s|%s|%s|%s|%d" $type $account $hashRelease $hashCapabilities $timeBoundary | sha256sum | lower) -}}
+
+  {{- dict "username" $account "password" $password | toYaml -}}
 {{- end -}}
 
 {{- define "__arkcase.accounts.render" -}}
@@ -73,7 +94,7 @@
         {{- $value = (get $secretData $account | b64dec) -}}
       {{- else -}}
         {{- /* Render a new auth info */ -}}
-        {{- $value = (include "__arkcase.accounts.findcreds" (dict "ctx" $ctx "account" $account "type" $type)) -}}
+        {{- $value = (include "__arkcase.accounts.findcreds" (dict "ctx" $ctx "type" $type "account" $account)) -}}
       {{- end -}}
       {{- $accounts = set $accounts $account ($value | fromYaml) -}}
     {{- end -}}
