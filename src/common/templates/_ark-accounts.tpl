@@ -49,8 +49,21 @@
   */ -}}
   {{- $hashRelease := ($ctx.Release | toYaml | sha256sum) -}}
   {{- $hashCapabilities := ($ctx.Capabilities | toYaml | sha256sum) -}}
-  {{- $timeBoundary := "12345" -}}
-  {{- $password := (printf "%s|%s|%s|%s|%d" $type $account $hashRelease $hashCapabilities $timeBoundary | sha256sum | lower) -}}
+
+  {{- /*
+      We need a (quasi-)random value here, to ensure that we don't always generate the
+      same password for the same inputs on different renderings.
+
+      The IDEAL value would be the timestamp of when the entire rendering process began
+      because it's "random enough", but still a value that remains stable through the
+      entire rendering process, so all the rendered passwords will be reproducible at
+      any time during that specific execution of the chart render.
+
+      But for now, we make do with this until we find a better/cleanner way to
+      do the password generation (kustomize? an operator?)
+  */ -}}
+  {{- $randomFactor := "54fdcb64-5109-4012-82e2-e2d6b8e3487a" -}}
+  {{- $password := (printf "%s|%s|%s|%s|%d" $type $account $hashRelease $hashCapabilities $randomFactor | sha256sum | lower) -}}
 
   {{- dict "username" $account "password" $password | toYaml -}}
 {{- end -}}
