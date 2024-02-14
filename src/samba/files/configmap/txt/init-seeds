@@ -2,6 +2,7 @@
 import argparse
 import concurrent.futures
 import errno
+import hashlib
 import json
 import logging
 import re
@@ -28,11 +29,13 @@ KEY_LDAP_ADMIN_PASS = "adminPass"
 KEY_LDAP_USER_PREFIX = "userPrefix"
 KEY_LDAP_GROUP_PREFIX = "groupPrefix"
 KEY_LDAP_DEFAULT_PASSWORD = "defaultPassword"
+KEY_LDAP_RESET_PASSWORD = "resetPassword"
 KEY_LDAP_BASE_DN = "baseDn"
 KEY_LDAP_USER_OU = "userou"
 KEY_LDAP_GROUP_OU = "groupou"
 KEY_LDAP_USERNAME_AS_CN = "usernameAsCn"
 
+DEFAULT_RESET_PASSWORD = False
 DEFAULT_USERNAME_AS_CN = True
 
 KEY_SECRET_DOMAIN_NAME = "NAME"
@@ -199,7 +202,7 @@ except Exception as e:
 		sys.exit(1)
 
 if show_data:
-	logging.info(f"Loaded configuration: [{json.dumps(data, indent=4)}]")
+	logging.debug(f"Loaded configuration: [{json.dumps(data, indent=4)}]")
 
 def render_auth_info():
 	# TODO: Find the admin user and password
@@ -277,34 +280,7 @@ def ensure_ou_exists(ou):
 		# Ooops ... something went wrong
 		fail(f"Failed to create the OU [{currentOu}] (rc={result}")
 
-def create_user(userId, userData):
-	userId = render_user_id(userId)
-	# a) create the user
-	logging.info(f"Creating user '{userId}' from [{userData}]")
-	command = [ "user", "add", userId, "--random-password" ]
-
-	if USER_OU:
-		command += [ f"--userou={USER_OU}" ]
-
-	for attName, attFlag in USER_ATTRIBUTES.items():
-		if attFlag is None:
-			attFlag = attName
-		if (attName in userData) and userData[attName]:
-			command += [ f"--{attFlag}={userData[attName]}" ]
-
-	username_as_cn = USERNAME_AS_CN
-	if KEY_LDAP_USERNAME_AS_CN in userData:
-		username_as_cn = to_boolean(userData[KEY_LDAP_USERNAME_AS_CN], USERNAME_AS_CN)
-
-	if username_as_cn:
-		logging.info("\t...with the username as the CN value")
-		command += [ "--use-username-as-cn" ]
-
-	result = samba_tool(command)
-	if result.returncode != 0:
-		fail(f"Failed to create the user '{userId}' (rc={result})")
-
-	# b) set the user's password
+def set_user_password(userId, userData):
 	if KEY_PASSWORD in userData:
 		password = userData[KEY_PASSWORD]
 	else:
@@ -319,7 +295,8 @@ def create_user(userId, userData):
 	# to define admin passwords in the env, which means SECRETS SUPPORT!
 	password = os.path.expandvars(password)
 
-	logging.info(f"\tSetting the password for '{userId}' to [{password}]")
+	sha256 = hashlib.sha256(password.encode("UTF-8")).hexdigest()
+	logging.info(f"\tSetting the password for '{userId}' (sha256:{sha256})...")
 	command = [ "user", "setpassword", userId, f"--newpassword={password}" ]
 
 	result = samba_tool(command)
@@ -337,20 +314,68 @@ def create_user(userId, userData):
 	else:
 		expiration = EXPIRATION_DAYS
 
-	if expiration is not None:
-		if expiration > 0:
-			expiration = f"--days={expiration}"
-			expirationDesc = f"expire after {expiration} day(s)"
+	if expiration is None:
+		return
+
+	if expiration > 0:
+		expiration = f"--days={expiration}"
+		expirationDesc = f"expire after {expiration} day(s)"
+	else:
+		expiration = f"--noexpiry"
+		expirationDesc = "never expire"
+
+	logging.info(f"\tSetting the password for '{userId}' to {expirationDesc}")
+	command = [ "user", "setexpiry", userId, expiration ]
+
+	result = samba_tool(command)
+	if result.returncode != 0:
+		fail(f"Failed to set the password expiration for '{userId}' (rc={result})")
+
+def create_user(userId, userData):
+	userId = render_user_id(userId)
+
+	command = [ "user", "show", userId ]
+
+	result = samba_tool(command)
+	if result.returncode == 0:
+		# The user exists ... so at worst reset the password...
+
+		if KEY_LDAP_RESET_PASSWORD in userData:
+			resetPassword = to_boolean(userData[KEY_LDAP_RESET_PASSWORD], RESET_PASSWORD)
 		else:
-			expiration = f"--noexpiry"
-			expirationDesc = "never expire"
+			resetPassword = RESET_PASSWORD
 
-		logging.info(f"\tSetting the password for '{userId}' to {expirationDesc}")
-		command = [ "user", "setexpiry", userId, expiration ]
+		if resetPassword:
+			set_user_password(userId, userData)
 
-		result = samba_tool(command)
-		if result.returncode != 0:
-			fail(f"Failed to set the password expiration for '{userId}' (rc={result})")
+		return None
+
+	# Create the new user
+	logging.info(f"Creating user '{userId}' from [{userData}]")
+	command = [ "user", "add", userId, "--random-password" ]
+
+	if USER_OU:
+		command += [ f"--userou={USER_OU}" ]
+
+	for attName, attFlag in USER_ATTRIBUTES.items():
+		if attFlag is None:
+			attFlag = attName
+		if (attName in userData) and userData[attName]:
+			command += [ f"--{attFlag}={userData[attName]}" ]
+
+	usernameAsCn = USERNAME_AS_CN
+	if KEY_LDAP_USERNAME_AS_CN in userData:
+		usernameAsCn = to_boolean(userData[KEY_LDAP_USERNAME_AS_CN], USERNAME_AS_CN)
+
+	if usernameAsCn:
+		logging.info("\t...with the username as the CN value")
+		command += [ "--use-username-as-cn" ]
+
+	result = samba_tool(command)
+	if result.returncode != 0:
+		fail(f"Failed to create the user '{userId}' (rc={result})")
+
+	set_user_password(userId, userData)
 
 	grant_ldap_admin_rights(userId, userData)
 	return userId
@@ -419,9 +444,18 @@ def compile_memberships(memberships, memberId, memberData):
 def create_group(groupId, groupData):
 	if groupId.startswith("+"):
 		logging.info(f"The group ID [{groupId}] is not owned by ArkCase, skipping its creation")
+		return None
+
+	# Render the final group ID, applying prefixes and all that jazz
+	groupId = render_group_id(groupId)
+
+	# First: check to see if the group exists...
+	command = [ "group", "show", groupId ]
+
+	result = samba_tool(command)
+	if result.returncode == 0:
 		return groupId
 
-	groupId = render_group_id(groupId)
 	logging.info(f"Creating group '{groupId}' from [{groupData}]")
 	command = [ "group", "add", groupId ]
 
@@ -535,6 +569,17 @@ except KeyError:
 if USERNAME_AS_CN:
 	logging.info("Will use the username as the CN value, unless overridden by individual users")
 
+RESET_PASSWORD = DEFAULT_RESET_PASSWORD
+try:
+	RESET_PASSWORD = to_boolean(serverInfo[KEY_LDAP_RESET_PASSWORD], DEFAULT_RESET_PASSWORD)
+except KeyError:
+	# Leave it on the default value
+	pass
+
+if RESET_PASSWORD:
+	logging.info("Will reset the user passwords, unless overridden by individual users")
+
+
 GROUP_OU = None
 try:
 	GROUP_OU = serverInfo[KEY_LDAP_GROUP_OU]
@@ -566,8 +611,9 @@ try:
 		if type(groups) == dict:
 			for groupId, groupData in groups.items():
 				groupId = create_group(groupId, groupData)
-				memberships[groupId] = set()
-				compile_memberships(memberships, groupId, groupData)
+				if groupId is not None:
+					memberships[groupId] = set()
+					compile_memberships(memberships, groupId, groupData)
 		else:
 			logging.error(f"The '{KEY_GROUPS}' item in the configuration data is not a map, skipping its processing")
 
@@ -577,7 +623,8 @@ try:
 		if type(users) == dict:
 			for userId, userData in users.items():
 				userId = create_user(userId, userData)
-				compile_memberships(memberships, userId, userData)
+				if userId is not None:
+					compile_memberships(memberships, userId, userData)
 		else:
 			logging.error(f"The '{KEY_USERS}' item in the configuration data is not a map, skipping its processing")
 
