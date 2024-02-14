@@ -96,9 +96,6 @@
     {{- $secretObj := (lookup "v1" "Secret" $namespace $secretName | default dict) -}}
     {{- $secretData := (get $secretObj "data") | default dict -}}
 
-    {{- /* First, make sure we copy all the data */ -}}
-    {{- $accounts = deepCopy $secretData -}}
-
     {{- /* Find each of the shared accounts in the existing secret data. If there, reuse */ -}}
     {{- range $account := $names -}}
       {{- $value := dict -}}
@@ -174,12 +171,11 @@
   {{-
     $names := (
       list
-        "ldap-client"
-        "ldap-admin"
-        "arkcase-content"
-        "arkcase-messaging"
-        "arkcase-reports"
-        "arkcase-search"
+        "arkcase-content-user"
+        "arkcase-ldap-user"
+        "arkcase-messaging-user"
+        "arkcase-reports-user"
+        "arkcase-search-user"
     )
   -}}
 
@@ -213,10 +209,11 @@
     $names := (
       list
         "administrator"
-        "admin-content"
-        "admin-messaging"
-        "admin-reports"
-        "admin-search"
+        "arkcase-content-admin"
+        "arkcase-ldap-admin"
+        "arkcase-messaging-admin"
+        "arkcase-reports-admin"
+        "arkcase-search-admin"
     )
   -}}
 
@@ -249,11 +246,11 @@
   {{-
     $names := (
       list
-        "arkcase-db"
-        "arkcase-config"
-        "pentaho-db"
-        "pentaho-jcr"
-        "pentaho-quartz"
+        "arkcase-data"
+        "arkcase-conf"
+        "arkcase-pentaho-db"
+        "arkcase-pentaho-jcr"
+        "arkcase-pentaho-quartz"
     )
   -}}
 
