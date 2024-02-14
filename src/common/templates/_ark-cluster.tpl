@@ -109,7 +109,7 @@
     {{- fail "The parameter value must be the root context" -}}
   {{- end -}}
 
-  {{- $cacheKey := "Clustering" -}}
+  {{- $cacheKey := "ArkCase-Clustering" -}}
   {{- $masterCache := dict -}}
   {{- if (hasKey $ $cacheKey) -}}
     {{- $masterCache = get $ $cacheKey -}}

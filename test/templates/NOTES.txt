@@ -6,3 +6,15 @@
 
 {{ include "arkcase.accounts.admin" $ | nindent 0 }}
 {{ include "arkcase.accounts.shared" $ | nindent 0 }}
+
+{{ $ctx := $ }}
+
+volumesMounts:
+{{- range $type := (list "admin" "shared" "rdbms") }}
+  {{- include "arkcase.accounts.volumeMount" (dict "ctx" $ctx "type" $type) | nindent 2 }}
+{{- end }}
+
+volumes:
+{{- range $type := (list "admin" "shared" "rdbms") }}
+  {{- include "arkcase.accounts.volume" (dict "ctx" $ctx "type" $type) | nindent 2 }}
+{{- end }}

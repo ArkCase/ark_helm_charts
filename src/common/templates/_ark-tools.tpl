@@ -982,7 +982,7 @@ return either the value if correct, or the empty string if not.
     {{- fail "The parameter must be the root context (. or $)" -}}
   {{- end -}}
 
-  {{- $cacheKey := "DevelopmentMode" -}}
+  {{- $cacheKey := "ArkCase-DevelopmentMode" -}}
   {{- $masterCache := dict -}}
   {{- $result := dict -}}
   {{- if (hasKey $ctx $cacheKey) -}}
@@ -1042,7 +1042,7 @@ return either the value if correct, or the empty string if not.
     {{- fail "The parameter must be the root context (. or $)" -}}
   {{- end -}}
 
-  {{- $cacheKey := "EnterpriseMode" -}}
+  {{- $cacheKey := "ArkCase-EnterpriseMode" -}}
   {{- $masterCache := dict -}}
   {{- if (hasKey $ctx $cacheKey) -}}
     {{- $masterCache = get $ctx $cacheKey -}}
