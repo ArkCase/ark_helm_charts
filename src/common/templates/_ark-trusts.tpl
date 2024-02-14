@@ -55,7 +55,7 @@
     {{- fail "The parameter given must be the root context (. or $)" -}}
   {{- end -}}
 
-  {{- $cacheKey := "SSLTrusts" -}}
+  {{- $cacheKey := "ArkCase-SSLTrusts" -}}
   {{- $masterCache := dict -}}
   {{- if (hasKey $ctx $cacheKey) -}}
     {{- $masterCache = get $ctx $cacheKey -}}
