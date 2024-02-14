@@ -186,7 +186,7 @@
   {{- $chart := $ctx.Chart.Name -}}
   {{- $data := dict "local" $local "global" $global -}}
 
-  {{- $cacheKey := "DBInfo" -}}
+  {{- $cacheKey := "ArkCase-DatabaseInfo" -}}
   {{- $masterCache := dict -}}
   {{- if (hasKey $ctx $cacheKey) -}}
     {{- $masterCache = get $ctx $cacheKey -}}

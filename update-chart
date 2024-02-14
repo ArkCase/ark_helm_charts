@@ -8,8 +8,6 @@ BASEDIR="$(dirname "${SCRIPT}")"
 # It automatically triggers downstream builds as required on dependent charts.
 #
 
-HELM_REPO_URL="https://arkcase.github.io/ark_helm_charts/"
-
 say() {
 	echo -e "${@}"
 }
@@ -64,4 +62,4 @@ while true ; do
 	set -- "${NI[@]}"
     [ "${#}" -lt 1 ] && break
 done
-( cd "repo" && helm repo index --url "${HELM_REPO_URL}" . )
+git restore repo

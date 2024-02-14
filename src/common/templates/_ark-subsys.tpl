@@ -39,10 +39,11 @@ Return a map which contains the subsystem data map as required by other API call
 
   {{- /* Cache the information */ -}}
   {{- $subsys := dict -}}
-  {{- if (hasKey $ctx "ArkCaseSubsystem") -}}
-    {{- $subsys = get $ctx "ArkCaseSubsystem" -}}
+  {{- $cacheKey := "ArkCase-Subsystem" -}}
+  {{- if (hasKey $ctx $cacheKey) -}}
+    {{- $subsys = get $ctx $cacheKey -}}
   {{- else -}}
-    {{- $crap := set $ctx "ArkCaseSubsystem" $subsys -}}
+    {{- $crap := set $ctx $cacheKey $subsys -}}
   {{- end -}}
 
   {{- $data := dict -}}
@@ -461,7 +462,7 @@ subsets:
     {{- fail "The parameter given must be the root context (. or $)" -}}
   {{- end -}}
 
-  {{- $cacheKey := "GlobalServiceOverrides" -}}
+  {{- $cacheKey := "ArkCase-GlobalServiceOverrides" -}}
   {{- $masterCache := dict -}}
   {{- if (hasKey $ctx $cacheKey) -}}
     {{- $masterCache = get $ctx $cacheKey -}}

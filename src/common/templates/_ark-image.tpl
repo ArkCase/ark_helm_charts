@@ -299,7 +299,7 @@
   {{- $chart := $ctx.Chart.Name -}}
   {{- $data := dict "local" $local "global" $global -}}
 
-  {{- $cacheKey := "PullSecret" -}}
+  {{- $cacheKey := "ArkCase-PullSecret" -}}
   {{- $masterCache := dict -}}
   {{- if (hasKey $ctx $cacheKey) -}}
     {{- $masterCache = get $ctx $cacheKey -}}
@@ -464,7 +464,7 @@ Fetch and compute if necessary the image information for the named image
 
   {{- $enterprise := (not (empty (include "arkcase.enterprise" $ctx))) -}}
 
-  {{- $cacheKey := "ContainerImages" -}}
+  {{- $cacheKey := "ArkCase-ContainerImages" -}}
   {{- $masterCache := dict -}}
   {{- if (hasKey $ctx $cacheKey) -}}
     {{- $masterCache = get $ctx $cacheKey -}}
@@ -475,7 +475,7 @@ Fetch and compute if necessary the image information for the named image
   {{- $ctx = set $ctx $cacheKey $masterCache -}}
 
   {{- /* We do not use arkcase.fullname b/c we don't want to deal with partnames */ -}}
-  {{- $imageName := (printf "%s-%s-%s" (include "common.fullname" $ctx) $name) -}}
+  {{- $imageName := (printf "%s-%s" (include "common.fullname" $ctx) $name) -}}
   {{- $yamlResult := "" -}}
   {{- if not (hasKey $masterCache $imageName) -}}
     {{- $yamlResult = include "arkcase.image.info.cached" (dict "ctx" $ctx "name" $name "enterprise" $enterprise "repository" $repository "tag" $tag "useChartTag" $useChartTag) -}}
