@@ -29,3 +29,6 @@ JAVA_TOOL_OPTIONS+=" -Dk8s.keystore.file=${KS} -Dk8s.keystore.type=${KS_TYPE} -D
 # JAVA_TOOL_OPTIONS+=" -Dgov.foia.broker.keystore=${KS} -Dgov.foia.broker.keystore.password=${KS_PASS}"
 
 export JAVA_TOOL_OPTIONS
+
+read ARKCASE_PENTAHO_SHARED_KEY rest < <(sha256sum "${SSL_DIR}/ca-chain.pem")
+export ARKCASE_PENTAHO_SHARED_KEY
