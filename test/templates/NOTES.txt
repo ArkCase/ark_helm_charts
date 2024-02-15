@@ -1,20 +1,24 @@
-{{ include "arkcase.accounts.secrets" $ | nindent 0 }}
-{{ include "arkcase.accounts.secrets" $ | nindent 0 }}
-{{ include "arkcase.accounts.secrets" $ | nindent 0 }}
-{{ include "arkcase.accounts.secrets" $ | nindent 0 }}
-{{ include "arkcase.accounts.secrets" $ | nindent 0 }}
+{{- include "arkcase.accounts.secrets" $ | nindent 0 }}
+{{- include "arkcase.accounts.secrets" $ | nindent 0 }}
+{{- include "arkcase.accounts.secrets" $ | nindent 0 }}
+{{- include "arkcase.accounts.secrets" $ | nindent 0 }}
+{{- include "arkcase.accounts.secrets" $ | nindent 0 }}
 
-{{ include "arkcase.accounts.admin" $ | nindent 0 }}
-{{ include "arkcase.accounts.shared" $ | nindent 0 }}
+{{- $types := (list "admin" "user" "db" | sortAlpha) -}}
+{{- $ctx := $ -}}
 
-{{ $ctx := $ }}
+accounts:
+{{- range $type := $types }}
+  {{ $type }}: {{- include (printf "arkcase.accounts.%s" $type) $ | nindent 4 -}}
+{{- end }}
+
 
 volumesMounts:
-{{- range $type := (list "admin" "shared" "rdbms") }}
+{{- range $type := $types }}
   {{- include "arkcase.accounts.volumeMount" (dict "ctx" $ctx "type" $type) | nindent 2 }}
 {{- end }}
 
 volumes:
-{{- range $type := (list "admin" "shared" "rdbms") }}
+{{- range $type := $types }}
   {{- include "arkcase.accounts.volume" (dict "ctx" $ctx "type" $type) | nindent 2 }}
 {{- end }}
