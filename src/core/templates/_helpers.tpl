@@ -19,19 +19,16 @@
     {{- $conf = "true" -}}
   {{- end -}}
 
-  {{- $dev = false -}}
   {{- if $wars }}
-    {{- $dev = true }}
 - name: SKIP_WARS
   value: {{ $wars | join "/" | quote }}
   {{- end }}
   {{- if $conf }}
-    {{- $dev = true }}
 - name: SKIP_CONF
   value: {{ $conf | quote }}
   {{- end }}
 - name: DEV
-  value: {{ $dev | toString | quote }}
+  value: {{ not (empty $dev) | toString | quote }}
 {{- end -}}
 
 {{- define "arkcase.core.dev.deployMounts" -}}
