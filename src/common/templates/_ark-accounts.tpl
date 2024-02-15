@@ -63,6 +63,15 @@
       do the password generation (kustomize? an operator?)
   */ -}}
   {{- $randomFactor := "54fdcb64-5109-4012-82e2-e2d6b8e3487a" -}}
+
+  {{- /*
+      We execute an algorithmic password generation algorithm since we can't easily
+      share the passwords live across charts during rendering. So we need a stable
+      value that can be computed repeatedly, but isn't likely to be repeatable across
+      template rendering runs.  In the end, we just use a sha256sum of the resulting
+      value as our password, which makes it long, hard to guess and anticipate, and
+      is secure enough for our intended purposes.
+  */ -}}
   {{- $password := (printf "%s|%s|%s|%s|%d" $type $account $hashRelease $hashCapabilities $randomFactor | sha256sum | lower) -}}
 
   {{- dict "username" $account "password" $password | toYaml -}}
@@ -166,30 +175,34 @@
   {{- end -}}
 {{- end -}}
 
-{{- define "arkcase.accounts.shared" -}}
+{{- define "__arkcase.accounts.subsystems" -}}
   {{- /* TODO: Should this be configurable... *somewhere*? */ -}}
   {{-
-    $names := (
       list
-        "arkcase-content-user"
-        "arkcase-ldap-user"
-        "arkcase-messaging-user"
-        "arkcase-reports-user"
-        "arkcase-search-user"
-    )
+        "content"
+        "ldap"
+        "messaging"
+        "reports"
+        "search" | join ","
   -}}
+{{- end -}}
 
+{{- define "arkcase.accounts.user" -}}
+  {{- $names := list -}}
+  {{- range $n := ( include "__arkcase.accounts.subsystems" $ | splitList "," | compact | sortAlpha ) -}}
+    {{- $names = append $names (printf "arkcase-%s-user" $n) -}}
+  {{- end -}}
   {{-
     $params :=
       dict
         "ctx" $
-        "type" "shared"
+        "type" "user"
         "names" $names
   -}}
   {{- include "__arkcase.accounts" $params -}}
 {{- end -}}
 
-{{- define "arkcase.accounts.shared.get" -}}
+{{- define "arkcase.accounts.user.get" -}}
   {{- $ctx := $.ctx -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "The 'ctx' parameter given must be the root context (. or $)" -}}
@@ -200,23 +213,14 @@
     {{- fail (printf "The name parameter must be a non-empty string: (%s) [%s]" (kindOf $name) $name) -}}
   {{- end -}}
 
-  {{- include "__arkcase.accounts.get" (merge (dict "type" "shared") (pick $ "ctx" "name")) -}}
+  {{- include "__arkcase.accounts.get" (merge (dict "type" "user") (pick $ "ctx" "name")) -}}
 {{- end -}}
 
 {{- define "arkcase.accounts.admin" -}}
-  {{- /* TODO: Should this be configurable... *somewhere*? */ -}}
-  {{-
-    $names := (
-      list
-        "administrator"
-        "arkcase-content-admin"
-        "arkcase-ldap-admin"
-        "arkcase-messaging-admin"
-        "arkcase-reports-admin"
-        "arkcase-search-admin"
-    )
-  -}}
-
+  {{- $names := list -}}
+  {{- range $n := ( include "__arkcase.accounts.subsystems" $ | splitList "," | compact | sortAlpha ) -}}
+    {{- $names = append $names (printf "arkcase-%s-admin" $n) -}}
+  {{- end -}}
   {{-
     $params :=
       dict
@@ -241,30 +245,29 @@
   {{- include "__arkcase.accounts.get" (merge (dict "type" "admin") (pick $ "ctx" "name")) -}}
 {{- end -}}
 
-{{- define "arkcase.accounts.rdbms" -}}
+{{- define "arkcase.accounts.db" -}}
   {{- /* TODO: Should this be configurable... *somewhere*? */ -}}
   {{-
-    $names := (
+    $names :=
       list
-        "arkcase-data"
         "arkcase-conf"
-        "arkcase-pentaho-db"
+        "arkcase-data"
+        "arkcase-pentaho"
         "arkcase-pentaho-jcr"
         "arkcase-pentaho-quartz"
-    )
   -}}
 
   {{-
     $params :=
       dict
         "ctx" $
-        "type" "rdbms"
+        "type" "db"
         "names" $names
   -}}
   {{- include "__arkcase.accounts" $params -}}
 {{- end -}}
 
-{{- define "arkcase.accounts.rdbms.get" -}}
+{{- define "arkcase.accounts.db.get" -}}
   {{- $ctx := $.ctx -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "The 'ctx' parameter given must be the root context (. or $)" -}}
@@ -277,7 +280,6 @@
 
   {{- include "__arkcase.accounts.get" (merge (dict "type" "admin") (pick $ "ctx" "name")) -}}
 {{- end -}}
-
 
 {{- define "__arkcase.accounts.secret.render" -}}
   {{- $ctx := $.ctx -}}
@@ -369,8 +371,8 @@ stringData: {{- $finalAccounts | toYaml | nindent 2 }}
     $secrets :=
       dict
         "admin" true
-        "rdbms" false
-        "shared" false
+        "db" false
+        "user" false
   -}}
 
   {{- $params := dict "ctx" $ctx -}}
