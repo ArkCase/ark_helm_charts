@@ -76,11 +76,11 @@ metadata:
     haproxy-ingress.github.io/secure-backends: "true"
     haproxy-ingress.github.io/secure-sni: "host"
     # Maximum time to wait for a connection to a backend
-    # haproxy-ingress.github.io/timeout-connect: "5s"
+    haproxy-ingress.github.io/timeout-connect: "30s"
     # Maximum time to wait for a complete HTTP request
-    # haproxy-ingress.github.io/timeout-http-request: "5s"
+    haproxy-ingress.github.io/timeout-http-request: "2m"
     # Maximum time to wait for a new HTTP request on keep-alive connections
-    # haproxy-ingress.github.io/timeout-keep-alive: "1m"
+    haproxy-ingress.github.io/timeout-keep-alive: "5m"
     # Maximum time a connection should wait on a server queue before return a 503 error to the client
     # haproxy-ingress.github.io/timeout-queue: "15s"
     # Maximum inactivity time on the backend side
