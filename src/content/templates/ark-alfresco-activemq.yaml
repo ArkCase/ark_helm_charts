@@ -60,8 +60,8 @@ spec:
             - name: JOBS
               value: |
                 jobs:
-                  # We know the image uses user 33000:1000
-                  - ownership: {{ coalesce ($.Values.persistence).ownership "33030:1000" | quote }}
+                  # We know the image uses user 33031:1000
+                  - ownership: {{ coalesce ($.Values.persistence).ownership "33031:1000" | quote }}
                     permissions: "u=rwX,g=rX,o="
                     flags: [ "recurse", "noforced", "create", "changes" ]
                     targets: [ "/app/data" ]
