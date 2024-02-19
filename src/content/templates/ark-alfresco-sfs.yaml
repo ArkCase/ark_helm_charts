@@ -83,6 +83,8 @@ spec:
               value: "86400000"
             - name: scheduler.cleanup.interval
               value: "86400000"
+            - name: fileStorePath
+              value: *dataDir
           {{- with (include "arkcase.values" (dict "ctx" $ "base" "command") | fromYaml) }}
           command: {{ toJson .value }}
           {{- end }}
