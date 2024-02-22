@@ -79,13 +79,13 @@ spec:
         {{- if $customConfFile }}
         - name: *confFileVolume
           hostPath:
-            path: {{ $dev.conf.file | quote }}
+            path: {{ $dev.conf.path | quote }}
             type: File
         {{- end }}
         {{- if $customWarFile }}
         - name: *warFileVolume
           hostPath:
-            path: {{ $dev.war.file | quote }}
+            path: {{ $dev.war.path | quote }}
             type: File
         {{- end }}
       {{- with $.Values.nodeSelector }}
