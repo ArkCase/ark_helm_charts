@@ -53,6 +53,21 @@ spec:
       {{- end }}
       serviceAccountName: {{ include "arkcase.serviceAccountName" $ | quote }}
       securityContext: {{- include "arkcase.securityContext" $ | nindent 8 }}
+      initContainers:
+        - name: init-set-permissions
+          {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
+          env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            - name: JOBS
+              value: |
+                jobs:
+                  # We know the image uses user 33031:1000
+                  - ownership: {{ coalesce ($.Values.persistence).ownership "33031:1000" | quote }}
+                    permissions: "u=rwX,g=rX,o="
+                    flags: [ "recurse", "noforced", "create", "changes" ]
+                    targets: [ "/app/data" ]
+          volumeMounts:
+            - name: &dataVolume "data"
+              mountPath: &dataDir "/app/data"
       containers:
         {{- $partName := (include "arkcase.part.name" $) }}
         - name: {{ $partName | quote }}
@@ -71,6 +86,11 @@ spec:
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" $partName) | nindent 12 }}
           volumeMounts:
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
+            - name: *dataVolume
+              mountPath: "/opt/activemq/data"
+      volumes:
+        {{- include "arkcase.acme.volume" $ | nindent 8 }}
+        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
       {{- with (include "arkcase.values" (dict "ctx" $ "base" "nodeSelector") | fromYaml) }}
       nodeSelector: {{- toYaml .value | nindent 8 }}
       {{- end }}
@@ -80,6 +100,8 @@ spec:
       {{- with (include "arkcase.values" (dict "ctx" $ "base" "tolerations") | fromYaml) }}
       tolerations: {{- toYaml .value | nindent 8 }}
       {{- end }}
-      volumes:
-        {{- include "arkcase.acme.volume" $ | nindent 8 }}
+  volumeClaimTemplates:
+    {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "data") | nindent 4 }}
+
+  {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "data") | nindent 0 }}
 {{- end }}
