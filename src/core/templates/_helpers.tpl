@@ -114,9 +114,8 @@
   {{- end -}}
 
   {{- $dev := (include "arkcase.dev" $ctx | fromYaml) -}}
-  {{- $num := 0 -}}
   {{- if or (not $dev.conf) $dev.conf.file }}
-    {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "conf") }}
+    {{- include "arkcase.persistence.volume" (dict "ctx" $ctx "name" "conf") }}
   {{- end }}
   {{- if $dev.conf }}
 - name: "dev-conf"
@@ -125,6 +124,7 @@
     type: {{ $dev.conf.file | ternary "File" "Directory" | quote }}
   {{- end }}
   {{- if $dev.wars }}
+    {{- $num := 0 -}}
     {{- range $name := (keys $dev.wars | sortAlpha) }}
       {{- $war := get $dev.wars $name }}
 - name: {{ printf "dev-war-%02d" $num | quote }}

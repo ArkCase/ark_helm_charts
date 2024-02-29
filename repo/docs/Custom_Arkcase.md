@@ -6,6 +6,7 @@
 * [Deployment Mechanics](#deployment-mechanics)
     * [Deployer Container](#deployer-container)
     * [Artifacts Containers](#artifacts-containers)
+* [Creating an ArkCase Extension](#create-extension)
 * [Creating a Custom Artifacts Image](#create-custom-image)
     * [Adding Artifacts](#adding-artifacts)
     * [Encrypting Values](#encrypting-values)
@@ -30,18 +31,18 @@ For instance:
 
 * if you deploy ArkCase WAR version X, but the ArkCase configuration set (.arkcase) version Y, the application may fail to start up, or even start up but operate incorrectly
 * if you deploy the Pentaho reports version Z with the ArkCase version Y, then the reports won't work properly b/c the DB schema may not match expectations
-* if you deploy the wrong the Solr configuration for ArkCase A, but deploy ArkCase B, then the application may boot correctly, but fail to correctly display information in the queues, for instance
+* if you deploy the the Solr configuration for ArkCase A, but then deploy ArkCase B, then the application may boot correctly, but fail to correctly display information in the queues, for instance
 * etc...
 
 Of the above items, #5 is the most frequently customized. However, it's still tightly coupled to the other artifacts - especially #1 and #2.
 
-Therefore, it's ***critically*** important that **all** artifacts be served from the same place (the ***artifacts*** container). At the same time, by doing so we enable a homogenized artifact retrieval process that works "more or less the same" for all containers in the ecosystem.
+Therefore, it's ***critically*** important that **all** artifacts be served from the same place: the ***artifacts*** container. At the same time, by doing so a homogenized artifact retrieval process can be enabled that works "more or less the same" for all containers in the ecosystem.
 
-For these Helm charts the deployment mechanics are somewhat different than would normally be expected in a containerized application, precisely to allow for easy customization for the overall application, but without necessarily requiring changing many runtime container images un order to support it. This is why the WAR files are delivered separate from their execution environment.
+For these Helm charts the deployment mechanics are somewhat different than would normally be expected in a containerized application, precisely to allow for easy customization for the overall application, but without necessarily requiring changing many runtime container images un order to support it. This is why the WAR files are delivered separate from their execution environment. In a normal, single-container application, the container assembly team would produce a single container image with all the required tidbits for the application to function properly.  This is not the case for ArkCase, given the myriad of components it must interact with, as well as the many different combinations of components that are supported to be deployed.
 
 ## <a name="deployment-mechanics"></a>Deployment Mechanics
 
-The ArkCase helm charts use a single container image to provide all the runtime artifacts required to assemble the final application. This image is generally referred to as the ***artifacts container***. Each ***type*** of ArkCase deployment requires a different set of artifacts, and as a result a different *artifact image*.
+The ArkCase helm charts use a single container image to provide all the runtime artifacts required to assemble the final application ecosystem. This image is generally referred to as the ***artifacts container***. Each ***type*** of ArkCase deployment requires a different set of artifacts, and as a result a different *artifacts container* image.
 
 For instance:
 * A "default" (i.e. *core* or *legal*) ArkCase deployment utilizes the ***arkcase/artifacts-core*** image
@@ -49,25 +50,25 @@ For instance:
 * The customer XYZ may utilize the ***arkcase/artifacts-xyz*** image
 * and so on
 
-The artifacts container is meant to run passively, simply hosting an HTTP(S) server which can be queried by other containers' ***deployer*** *initContainer* in order to download artifacts of interest for different runtime scenarios, and extract/place them in the correct locations.
+The artifacts container is meant to run passively, simply hosting an HTTP(S) server which can be queried by other containers' ***deployer*** *initContainer* in order to download any artifacts of interest for different runtime scenarios, and extract/place them in the correct locations for the component being configured.
 
-For example: the **core** container's ***deployer*** would download the main ArkCase WAR (along with any other supporting WARs), the ArkCase configuration archive, along with any additional customizations. It would then extract files as required into the correct volumes for the runtime Pod, such that the ArkCase application can be booted up and execute successfully.
+For example: the **core** container's ***deployer*** would download the main ArkCase WAR (along with any other supporting WARs), the ArkCase configuration archive, and any additional customizations. It would then extract files as required into the correct volumes for the runtime Pod, such that the ArkCase application can be booted up and execute successfully.
 
-By contrast, Pentaho's ***deployer*** would only download the reports and make them available to Pentaho for consumption and installation during boot.
+By contrast, Pentaho's ***deployer*** would only download any specific reports or datawarehousing jobs, and make them available to Pentaho for consumption and installation during boot.
 
-Similar things would happen with Solr's and Alfresco's deployer.
+Similar things would happen with Solr's and Alfresco's deployer, but clearly adjusting to each of those components' configuration requirements.
 
-Thus, the intention is that through providing a central place where all interrelated artifacts can be obtained, each component can download and deploy the correct configuration it requires to work correctly and in concert with the other components.
+Thus, the intention is that through providing a central place where all interrelated artifacts can be obtained, each component can download and deploy the correct configuration it requires to work correctly and in concert with the other components for the desired version of ArkCase that's being deployed.
 
 ### <a name="deployer-container"></a>Deployer Container
 
 The ***deployer*** container is based off of the ***arkcase/deployer*** image. It houses all the scripts that facilitate pulling, validating, and deploying artifacts from the ***artifacts*** container. It also supports ***version-controlling*** the deployed artifacts such that the system does not attempt repeat installation or deployment of artifacts if they've not changed since the last time they were deployed.
 
-This is done primarily through file hash validation (SHA256).  When deploying an artifact, the scripts will verify that the SHA256 sum for the new file is different to the SHA256 sum of the previous file deployed. If no file has been previously deployed, then clearly the sum will be treated as different. The ***artifacts*** container **generally** contains cached SHA256 sum values for the each of artifacts it contains, to accelerate this process.
+This is done primarily through file hash validation (SHA-256).  When deploying an artifact, the scripts will verify that the SHA-256 value for the new file is different to the SHA-256 sum of the previous file deployed. If no file has been previously deployed, then clearly the sum will be treated as different. The ***artifacts*** container **generally** contains cached SHA-256 sum values for the each of artifacts it contains, to accelerate this process. These values are computed during container construction. However, during bootup, the artifacts container will re-generate any missing SHA-256 sums for included artifacts, in case their generation was somehow missed during image construction.
 
-There are some instances in which some artifacts are NOT version-controlled because the volumes into which they're deployed are not meant to be persistent. Because they're not persistent, they can't remember which prior versions were installed into it, and always behave as if every install is a first-time install. Notably, the ArkCase WARs are treated in this manner to ensure that the correct application (per the ***artifacts*** container) is ***always*** deployed. The ArkCase configuration, however, **is** stored persistently, since this is required.
+There are some instances in which some artifacts are NOT version-controlled because the volumes into which they're deployed are not meant to be persistent. Because they're not persistent, the deployer scripts can't track prior versions have already been deployed onto that ephemeral volume, and thus the deployer will always behave as if every install is a first-time install. Notably, the ArkCase WARs are treated in this manner to ensure that the correct application (per the ***artifacts*** container) is ***always*** deployed. The ArkCase configuration, however, **is** stored persistently, since this is required.
 
-Deployment is generally performed by an init container within the pods. This is intentionally so, in order to facilitate bootup and loosely couple the deployment mechanics from the actual components' runtime mechanics. This way we can change the means/mechanism for deployment without having to adjust the components to the new model.
+Deployment is generally performed by an init container within the pods. This is intentionally so, in order to facilitate bootup and loosely couple the deployment mechanics from the actual components' runtime mechanics. This way it is possible to change the deployment implementation without having to adjust the runtime model in any way.
 
 ### <a name="artifacts-containers"></a>Artifacts Containers
 
@@ -91,8 +92,9 @@ The ***artifacts*** container must house a directory structure similar to the fo
     ├── arkcase
     │   ├── conf
     │   │   ├── 00-conf.zip
-    │   │   ├── 00-pdftron.zip
-    │   │   └── 01-ksbn.zip
+    │   │   └── 00-pdftron.zip
+    │   ├── exts
+    │   │   └── 01-client-customization.zip
     │   └── wars
     │       ├── arkcase#external-portal.war
     │       ├── arkcase.war
@@ -108,30 +110,41 @@ The ***artifacts*** container must house a directory structure similar to the fo
         └── solrconfig.zip
 ```
 
-Each of the above ***files*** *may* be accompanied by a **.ver** file which contains the version number for the file being deployed, for traceability, and a **.sum** file containing the SHA256 sum for the file. The base container image provides mechanisms with which one can easily generate these files if missing, or during the creation of a customized container (see below for details).
+Each of the above ***files*** *may* be accompanied by a **.ver** file which contains the version number for the file being deployed, for traceability, and a **.sum** file containing the SHA-256 sum for the file. The base container image provides mechanisms with which one can easily generate these files if missing, or during the creation of a customized container (see below for details).
 
 The base ***arkcase/artifacts*** image should generally not require modification, unless it's a bugfix, a feature enhancement, or a review of the deployment mechanics (which will generally be accompanied by a documentation update as well as modifications to the overall deployment mechanics).
+
+## <a name="create-extension"></a>Creating an ArkCase Extension
+
+Though strictly speaking this is out-of-scope for this document, the inclusion of ArkCase extensions is important when constructiong customized deployment artifacts. There's an [example git project](https://github.com/ArkCase/example-extension-project) that can be used as a template for an extension project, which will end up producing the correct artifacts for deployment.
 
 ## <a name="create-custom-image"></a>Creating a Custom Artifacts Image
 
 As mentioned above, you don't need to create a custom ***deployer*** image, as that container image. However, should you wish to deploy your own customized version of ArkCase, you ***will*** need to create a custom artifacts image. The deployment mechanism generally doesn't care ***how*** your artifacts container image is built, as long as it follows the following rules:
 
 1. it's built using ***public.ecr.aws/arkcase/artifacts*** as the base image (to ensure proper run-time execution)
-1. all artifact files are housed within /app/file, and any and all modifications to the container are limited to adding files within /app/file, ***no exceptions!!!***
-1. the directory structure within /app/file matches what the target containers expect:
+1. all artifact files are housed within ***/app/file***, and any and all modifications to the container are limited to adding files within ***/app/file***, ***no exceptions!!!***
+1. the directory structure within ***/app/file*** matches what the target containers expect:
     * ArkCase
-        * expects the folders *arkcase/conf* and *arkcase/wars* to exist, both are required
+        * expects the folders ***arkcase/conf*** and ***arkcase/wars*** to exist, both are required
         * WAR files to be deployed are to be stored in native, WAR format, with their base name being their Tomcat deployment context (i.e. *ROOT.war* is permissible, to populate the **/** context, *abcde.war* is permissible to populate the **/abcde** context, etc.)
         * Configuration files to be deployed are stored in ZIP format
-            * They will be extracted directly into the ***.arkcase*** directory (this meansy they must contain a mirror directory structure that exactly matches .arkcase)
+            * They will be extracted directly into the ***.arkcase*** directory (this means they must contain a mirror directory structure that exactly matches .arkcase)
             * Files will be extracted in (US-ASCII) alphabetical order
             * Filenames are irrelevant except for the purposes of version tracking
             * It is allowable to overwrite files from earlier archives with files from latter archives, hence the strict extraction order
             * ***No files will be deleted from an existing configuration directory prior to deployment***  *(this **may** change soon, though)*
+        * Extension files to be deployed are stored in ZIP format
+            * They will be extracted directly into the ***.arkcase*** directory (this means they must contain a mirror directory structure that exactly matches .arkcase)
+            * Files will be extracted in (US-ASCII) alphabetical order
+            * Filenames are irrelevant except for the purposes of version tracking
+            * It is allowable to overwrite files from earlier archives with files from latter archives, hence the strict extraction order
+            * ***The contents of .arkcase/custom/WEB-INF will be deleted prior to extension file deployment***
+            * ***Extension files will be deployed every time, REGARDLESS - no version tracking!***
   * Pentaho
-      * supports the folders *pentaho/analytical* and *pentaho/reports*, neither is required
-      * files within *pentaho/reports* are reports bundles which will be copied into Pentaho's **init** volume, and consumed during startup for installation
-      * files within *pentaho/analytics* are PDI data warehousing scripts which will be executed once on initial installation, but will generally only be consumed by the Pentaho cron container
+      * supports the folders ***pentaho/analytical*** and ***pentaho/reports***, neither is required
+      * files within ***pentaho/reports*** are reports bundles which will be copied into Pentaho's **init** volume, and consumed during startup for installation
+      * files within ***pentaho/analytics*** are PDI data warehousing scripts which will be executed once on initial installation, but will generally only be consumed by the Pentaho cron container
   * Solr
       * ***TBD...***
   * Alfresco
@@ -208,7 +221,7 @@ LABEL ORG="Custom Builder LLC" \
 ADD file "${FILE_DIR}"
 
 #
-# The last command, to make sure everything is kosher
+# The last command, to make sure everything is kosher (i.e. generates any missing *.sum files)
 #
 RUN rebuild-helpers
 ```
@@ -217,33 +230,35 @@ Feel free to customize your Dockerfile's metadata to your liking.
 
 You can then build that container image, like so:
 
-    $ docker build [-f Dockerfile.blank] -t my-image-repository/my-test-arkcase:1.2.3 .
+    $ docker build [-f Dockerfile] -t my-image-repository/my-test-arkcase:1.2.3 .
 
 ### <a name="adding-artifacts"></a>Adding Artifacts
 
-There are multiple ways to add artifacts into your custom container images. Here are some simple ones:
+There are multiple ways to add artifacts into your custom container images. Here are some simple ones that you can use in your own, ***custom Dockerfile***:
 
 * Copy your custom artifacts into their correct locations within the container
     * i.e. copy the local file ***my-test-arkcase.war*** as ***${FILE_DIR}/arkcase/wars/arkcase.war***
     * i.e. copy the local file ***my-test-arkcase-config.zip*** as ***${FILE_DIR}/arkcase/conf/01-conf.zip***
+    * i.e. copy the local file ***my-test-extension.zip*** as ***${FILE_DIR}/arkcase/exts/01-extension.zip***
     * ... etc ...
     * Run the ***render-helpers*** as your last step, to generate the ***.sum*** and ***.ver*** files automatically for each added file
         * Please note that if there is no companion ***.ver*** file with each artifact you upload, the default version string ***(unknown)*** will be used
         * Thus, it's not advisable to omit this particular file, since this isn't a value that can be reliably deduced
-    * Recall that by using Docker's `ADD` Dockerfile command instead of `COPY` you may have the build process reach out and download resources from URLs of your choosing. However, if this is your preferred method for obtaining the desired artifacts, then may we suggest you instead ...
-* Download your custom artifacts using a (HTTP) URL, using the ***prep-artifact*** script, which will not only download your artifact, but also simultaneously create the SHA256 sum file **and** the version file (based on the version information provided).  The script uses `curl`, and supports SSL security albeit it bypasses certificate validation
+        * The *version* file is valuable for tracing the deployment history for persistent artifacts (i.e. the configuration files)
+    * Recall that by using Docker's `ADD` command instead of `COPY` you may have the build process reach out and download resources from URLs of your choosing. However, if this is your preferred method for obtaining the desired artifacts, then may we suggest you instead ...
+* Download your custom artifacts using a (HTTP) URL, using the ***prep-artifact*** script, which will not only download your artifact, but also simultaneously create the SHA-256 sum file **and** the version file (based on the version information provided).  The script uses `curl`, and supports SSL security albeit it bypasses certificate validation
     * usage: `prep-artifact source targetFile [version]`
     * example: `prep-artifact https://my-web-server.com/custom-arkcase/test-war-1.2.3.war files/arkcase/wars/arkcase.war 1.2.3`
     * Authentication is supported using the `CURL_ENCRYPTION_KEY`, `CURL_USERNAME`, and `CURL_PASSWORD` environment variables
-        * `CURL_ENCRYPTION_KEY` is the encryption key used to encrypt/decrypt values, and is ***required*** if you wish to utilize authentication (try to use a STRONG value, and manage its security wisely)
-        * `CURL_USERNAME` is the username with which CURL will authenticate, and **may** be encrypted using `CURL_ENCRYPTION_KEY` (see the <a href="#encrypting-values">algorithm below</a>)
+        * `CURL_ENCRYPTION_KEY` is the encryption key used to encrypt/decrypt values, and is ***REQUIRED*** if you wish to utilize authentication (try to use a STRONG value, and manage its security wisely)
+        * `CURL_USERNAME` is the username with which CURL will authenticate, and **MAY** be encrypted using `CURL_ENCRYPTION_KEY` (see the <a href="#encrypting-values">algorithm below</a>)
         * `CURL_PASSWORD` is the password with which CURL will authenticate, and **MUST** be encrypted using `CURL_ENCRYPTION_KEY` (see the <a href="#encrypting-values">algorithm below</a>)
-        * There's an advanced option of using an authentication file for large, and complex artifact download processes which require many different authentications fo rmany different servers. This will not be covered here as documentation for this mechanism already exists elsewhere (you'll know it when you see it ;) )
+        * There's an advanced option of using an authentication file for large, and complex artifact download processes which require many different authentications for many different servers. This will not be covered here as documentation for this mechanism already exists elsewhere (you'll know it when you see it ;) )
 
-* Download your custom artifacts from a Maven repository, using the ***mvn-get*** script, and using Maven coordinates. This will also download your artifact, and create the support files (sum + ver), but since Maven data is available, the version will be filled accurately with the artifact's **actual**, **real** version (as Maven understands it to be)
+* Download your custom artifacts from a Maven repository, using the ***mvn-get*** script, and using Maven coordinates. This will also download your artifact, and create the support files (sum + ver), but since Maven data is available, the version will be filled accurately with the artifact's ***actual***, ***real*** version (as Maven understands it to be)
     * usage:
 
-            mvn-get artifactSpec repoUrl target`
+            mvn-get artifactSpec repoUrl target
 
                 artifactSpec: groupId:artifactId[:version[:packaging[:classifier]]]
                 repoUrl:      URL to the Maven repository housing the artifact (http:// or https://)
@@ -251,8 +266,8 @@ There are multiple ways to add artifacts into your custom container images. Here
                               a directory, the downloaded filename will be preserved.
 
     * Authentication is also supported with the `MVN_GET_ENCRYPTION_KEY`, `MVN_GET_USERNAME`, and `MVN_GET_PASSWORD` environment variables
-        * `MVN_GET_ENCRYPTION_KEY` is the encryption key used to encrypt/decrypt values, and is ***required*** if you wish to utilize authentication (try to use a STRONG value, and manage its security wisely)
-        * `MVN_GET_USERNAME` is the username with which the `mvn-get` script will authenticate, and **may** be encrypted using `MVN_GET_ENCRYPTION_KEY` (see the <a href="#encrypting-values">algorithm below</a>)
+        * `MVN_GET_ENCRYPTION_KEY` is the encryption key used to encrypt/decrypt values, and is ***REQUIRED*** if you wish to utilize authentication (try to use a STRONG value, and manage its security wisely)
+        * `MVN_GET_USERNAME` is the username with which the `mvn-get` script will authenticate, and **MAY** be encrypted using `MVN_GET_ENCRYPTION_KEY` (see the <a href="#encrypting-values">algorithm below</a>)
         * `MVN_GET_PASSWORD` is the password with which the `mvn-get` script will authenticate, and **MUST** be encrypted using `MVN_GET_ENCRYPTION_KEY` (see the <a href="#encrypting-values">algorithm below</a>)
 
 As mentioned <a href="#artifacts-containers">above</a>, **the important thing is for the artifacts to have the correct names, and be organized using the correct folder structure**. Otherwise, the deployers for the containers will not find your customizations, and thus not deploy them for use.
@@ -357,7 +372,7 @@ global:
 
 ```
 
-This will cause the container image `my-private-registry.my-domain.com/artifacts/arkcase-core:${VERSION}` to be used in the deployment. Note that `${VERSION}` represents the current ArkCase version referenced by default from the Helm charts.
+This will cause the container image `my-private-registry.my-domain.com/artifacts/arkcase-core:${VERSION}` to be used in the deployment. Note that `${VERSION}` represents the current ArkCase version referenced by default from the Helm charts. The documentation for [creating an image pull secret](https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/) covers everything you may need to know regarding that topic.
 
 ### Example #3: deploy a local image:
 
