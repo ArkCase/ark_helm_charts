@@ -868,47 +868,31 @@ return either the value if correct, or the empty string if not.
     {{- if $enabled -}}
       {{- $result = set $result "enabled" true -}}
 
-      {{- /* Handle the custom WAR files */ -}}
-      {{- if and $dev.wars (kindIs "map" $dev.wars) -}}
-        {{- $wars := dict -}}
-        {{- range $k, $v := $dev.wars -}}
-          {{- $war := $v | toString -}}
-          {{- $file := (hasPrefix "file:/" $war) -}}
-          {{- if or (hasPrefix "path:/" $war) (hasPrefix "file:/" $war) -}}
-            {{- $path := (regexReplaceAll "^(path|file):" $war "") -}}
-            {{- if not $path -}}
-              {{- fail (printf "The value for global.dev.wars.%s must contain a path: [%s]" $k $war) -}}
+      {{- /* Handle the custom deployable files */ -}}
+      {{- range $fileType := (list "conf" "exts" "wars") -}}
+        {{- $map := get $dev $fileType -}}
+        {{- if and $map (kindIs "map" $map) -}}
+          {{- $files := dict -}}
+          {{- range $k, $v := $map -}}
+            {{- $name := $v | toString -}}
+            {{- $file := (hasPrefix "file:/" $name) -}}
+            {{- if or (hasPrefix "path:/" $name) (hasPrefix "file:/" $name) -}}
+              {{- $path := (regexReplaceAll "^(path|file):" $name "") -}}
+              {{- if not $path -}}
+                {{- fail (printf "The value for global.dev.%s.%s must contain a path to a file or a directory: [%s]" $fileType $k $name) -}}
+              {{- end -}}
+              {{- $name = $path -}}
             {{- end -}}
-            {{- $war = $path -}}
+            {{- $name = (include "arkcase.tools.normalizePath" $name) -}}
+            {{- if not (isAbs $name) -}}
+              {{- fail (printf "The value for global.dev.%s.%s must be an absolute path: [%s]" $fileType $k $name) -}}
+            {{- end -}}
+            {{- $files = set $files $k (dict "file" $file "path" $name) -}}
           {{- end -}}
-          {{- $war = (include "arkcase.tools.normalizePath" $war) -}}
-          {{- if not (isAbs $war) -}}
-            {{- fail (printf "The value for global.dev.wars.%s must be an absolute path: [%s]" $k $war) -}}
-          {{- end -}}
-          {{- $wars = set $wars $k (dict "file" $file "path" $war) -}}
+          {{- $result = set $result $fileType $files -}}
+        {{- else if $map -}}
+          {{- fail (printf "The value for global.dev.%s must be a map (%s)" $fileType (kindOf $map)) -}}
         {{- end -}}
-        {{- $result = set $result "wars" $wars -}}
-      {{- else if $dev.wars -}}
-        {{- fail (printf "The value for global.dev.wars must be a map (%s)" (kindOf $dev.war)) -}}
-      {{- end -}}
-
-      {{- if and $dev.conf (kindIs "string" $dev.conf) -}}
-        {{- $conf := $dev.conf | toString -}}
-        {{- $file := (hasPrefix "file:/" $conf) -}}
-        {{- if or (hasPrefix "path:/" $conf) (hasPrefix "file:/" $conf) -}}
-          {{- $path := (regexReplaceAll "^(path|file):" $conf "") -}}
-          {{- if not $path -}}
-            {{- fail (printf "The value for global.dev.conf must contain a path: [%s]" $conf) -}}
-          {{- end -}}
-          {{- $conf = $path -}}
-        {{- end -}}
-        {{- $conf = (include "arkcase.tools.normalizePath" $conf) -}}
-        {{- if not (isAbs $conf) -}}
-          {{- fail (printf "The value for global.dev.conf must be an absolute path: [%s]" $conf) -}}
-        {{- end -}}
-        {{- $result = set $result "conf" (dict "file" $file "path" $conf) -}}
-      {{- else if $dev.conf -}}
-        {{- fail (printf "The value for global.dev.conf must be a string (%s)" (kindOf $dev.conf)) -}}
       {{- end -}}
 
       {{- $uid := 1000 -}}

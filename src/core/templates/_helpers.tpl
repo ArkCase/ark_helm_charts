@@ -4,31 +4,26 @@
     {{- fail "Must send the root context as the only parameter" -}}
   {{- end -}}
 
-  {{- $wars := list -}}
-  {{- $conf := "" -}}
   {{- $dev := (include "arkcase.dev" $ctx | fromYaml) -}}
-  {{- if $dev.wars -}}
-    {{- range $name := (keys $dev.wars | sortAlpha) -}}
-      {{- $war := get $dev.wars $name -}}
-      {{- if not $war.file -}}
-        {{- $wars = append $wars $name -}}
-      {{- end -}}
-    {{- end -}}
-  {{- end -}}
-  {{- if and $dev.conf (not ($dev.conf).file) -}}
-    {{- $conf = "true" -}}
-  {{- end -}}
 
-  {{- if $wars }}
-- name: SKIP_WARS
-  value: {{ $wars | join "/" | quote }}
-  {{- end }}
-  {{- if $conf }}
-- name: SKIP_CONF
-  value: {{ $conf | quote }}
-  {{- end }}
 - name: DEV
   value: {{ not (empty $dev) | toString | quote }}
+  {{- range $key := (list "conf" "exts" "wars") }}
+    {{- $map := (get $dev $key) }}
+    {{- $skip := list }}
+    {{- if and $map (kindIs "dict" $map) }}
+      {{- range $name := (keys $map | sortAlpha) }}
+        {{- $value := get $map $name }}
+        {{- if not $value.file }}
+          {{- $skip = append $skip $name }}
+        {{- end }}
+      {{- end }}
+      {{- if $skip }}
+- name: {{ printf "SKIP_%s" ($key | upper) }}
+  value: {{ $skip | join "/" | quote }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
 {{- end -}}
 
 {{- define "arkcase.core.dev.deployMounts" -}}
@@ -37,27 +32,32 @@
     {{- fail "Must send the root context as the only parameter" -}}
   {{- end -}}
 
-- name: "wars"
-  mountPath: "/app/depl/wars"
   {{- $dev := (include "arkcase.dev" $ctx | fromYaml) -}}
-  {{- if $dev.wars }}
-    {{- $num := 0 -}}
-    {{- range $name := (keys $dev.wars | sortAlpha) }}
-      {{- $war := get $dev.wars $name }}
-      {{- if $war.file }}
-- name: {{ printf "dev-war-%02d" $num | quote }}
-  mountPath: {{ printf "/app/dev/wars/%s.war" $name | quote }}
+  {{- if $dev }}
+    {{-
+      $extensions := dict
+        "conf" "zip"
+        "exts" "zip"
+        "wars" "war"
+    }}
+    {{- range $type := (keys $extensions | sortAlpha) }}
+      {{- $map := get $dev $type }}
+      {{- if (not $map) }}
+        {{- continue }}
       {{- end }}
-      {{- $num = add 1 $num }}
+- name: {{ $type | quote }}
+  mountPath: {{ printf "/app/depl/%s" $type | quote }}
+      {{- $num := 0 }}
+      {{- $ext := get $extensions $type }}
+      {{- range $name := (keys $map | sortAlpha) }}
+        {{- $file := get $map $name }}
+        {{- if $file.file }}
+- name: {{ printf "dev-%s-%02d" $type $num | quote }}
+  mountPath: {{ printf "/app/dev/%s/%s.%s" $type $name $ext | quote }}
+        {{- end }}
+        {{- $num = add 1 $num }}
+      {{- end }}
     {{- end }}
-  {{- end }}
-  {{- if or (not $dev.conf) ($dev.conf).file }}
-- name: "conf"
-  mountPath: "/app/depl/conf"
-  {{- end }}
-  {{- if $dev.conf }}
-- name: "dev-conf"
-  mountPath: {{ $dev.conf.file | ternary "/app/dev/conf/01-conf.zip" "/app/depl/conf" | quote }}
   {{- end }}
 {{- end -}}
 
