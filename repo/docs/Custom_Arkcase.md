@@ -6,6 +6,7 @@
 * [Deployment Mechanics](#deployment-mechanics)
     * [Deployer Container](#deployer-container)
     * [Artifacts Containers](#artifacts-containers)
+* [Creating an ArkCase Extension](#create-extension)
 * [Creating a Custom Artifacts Image](#create-custom-image)
     * [Adding Artifacts](#adding-artifacts)
     * [Encrypting Values](#encrypting-values)
@@ -112,6 +113,10 @@ The ***artifacts*** container must house a directory structure similar to the fo
 Each of the above ***files*** *may* be accompanied by a **.ver** file which contains the version number for the file being deployed, for traceability, and a **.sum** file containing the SHA-256 sum for the file. The base container image provides mechanisms with which one can easily generate these files if missing, or during the creation of a customized container (see below for details).
 
 The base ***arkcase/artifacts*** image should generally not require modification, unless it's a bugfix, a feature enhancement, or a review of the deployment mechanics (which will generally be accompanied by a documentation update as well as modifications to the overall deployment mechanics).
+
+## <a name="create-extension"></a>Creating an ArkCase Extension
+
+Though strictly speaking this is out-of-scope for this document, the inclusion of ArkCase extensions is important when constructiong customized deployment artifacts. There's an [example git project](https://github.com/ArkCase/example-extension-project) that can be used as a template for an extension project, which will end up producing the correct artifacts for deployment.
 
 ## <a name="create-custom-image"></a>Creating a Custom Artifacts Image
 
