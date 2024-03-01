@@ -333,7 +333,7 @@ service:
     probes:
       enabled: true
       spec:
-        periodSeconds: 5
+        periodSeconds: 10
         timeoutSeconds: 5
         successThreshold: 1
         initialDelaySeconds: 5
@@ -342,10 +342,11 @@ service:
         exec:
           command: [ "/usr/local/bin/tomcat-live", "STARTUP" ]
         initialDelaySeconds: 120
-        failureThreshold: 180
+        failureThreshold: 90
       liveness:
         exec:
           command: [ "/usr/local/bin/tomcat-live", "LIVENESS" ]
+        failureThreshold: 6
       readiness:
         httpGet:
           scheme: HTTPS
