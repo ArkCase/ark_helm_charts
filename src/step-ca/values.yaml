@@ -114,7 +114,6 @@ service:
 ##
   probes:
     enabled: true
-    readiness:
     spec:
       exec:
         command: [ "step", "ca", "health" ]
@@ -125,3 +124,6 @@ service:
       successThreshold: 1
     startup:
       failureThreshold: 90
+    readiness:
+      exec:
+        command: [ "/check-ready" ]
