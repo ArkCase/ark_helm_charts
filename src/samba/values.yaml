@@ -24,9 +24,9 @@ initDependencies:
   template:
     mode: any
     initialDelay: 10
-    delay: 5
-    timeout: 5
-    attempts: 12
+    delay: 10
+    timeout: 10
+    attempts: 60
   mode: all
   dependencies:
     acme:
@@ -134,18 +134,19 @@ service:
 ##
   probes:
     enabled: true
+    spec:
+      initialDelaySeconds: 0
+      periodSeconds: 10
+      timeoutSeconds: 10
+      failureThreshold: 1
+      successThreshold: 1
     startup:
       exec:
         command: [ "/test-startup.sh" ]
+      failureThreshold: 90
     liveness:
       exec:
         command: [ "/test-live.sh" ]
     readiness:
       exec:
         command: [ "/test-ready.sh" ]
-    spec:
-      initialDelaySeconds: 10
-      periodSeconds: 30
-      timeoutSeconds: 30
-      failureThreshold: 60
-      successThreshold: 1

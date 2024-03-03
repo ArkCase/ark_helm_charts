@@ -123,8 +123,8 @@ initDependencies:
     # Any of the required ports are enough to succeed
     mode: any
     initialDelay: 10
-    delay: 5
-    timeout: 5
+    delay: 10
+    timeout: 10
     attempts: 120
   dependencies:
     app-artifacts:
@@ -153,8 +153,6 @@ initDependencies:
         - 61616
     search:
       ports:
-        - 80
-        - 443
         - 8983
     content:
       ports:
@@ -315,11 +313,13 @@ service:
           scheme: HTTPS
           path: "/actuator/health"
           port: *cloudconfigPort
-        initialDelaySeconds: 10
-        periodSeconds: 5
-        timeoutSeconds: 5
-        failureThreshold: 60
+        initialDelaySeconds: 0
+        periodSeconds: 10
+        timeoutSeconds: 10
+        failureThreshold: 1
         successThreshold: 1
+      startup:
+        failureThreshold: 90
 
   arkcase:
     ports:
@@ -333,19 +333,23 @@ service:
     probes:
       enabled: true
       spec:
-        periodSeconds: 5
-        timeoutSeconds: 5
+        initialDelaySeconds: 0
+        periodSeconds: 10
+        timeoutSeconds: 10
         successThreshold: 1
-        initialDelaySeconds: 5
         failureThreshold: 1
       startup:
         exec:
           command: [ "/usr/local/bin/tomcat-live", "STARTUP" ]
-        initialDelaySeconds: 120
-        failureThreshold: 180
+        failureThreshold: 90
       liveness:
         exec:
           command: [ "/usr/local/bin/tomcat-live", "LIVENESS" ]
+        # For our liveness probe, we allow up to 6 probes to fail in case
+        # the pod is too resource-starved to respond to probes. This is a
+        # bad thing anyway, but we have yet to reach a point where we can
+        # safely pare down this number to a more reasonable count.
+        failureThreshold: 6
       readiness:
         httpGet:
           scheme: HTTPS

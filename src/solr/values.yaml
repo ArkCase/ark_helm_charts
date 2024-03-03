@@ -16,9 +16,9 @@ initDependencies:
   template:
     mode: any
     initialDelay: 10
-    delay: 5
-    timeout: 5
-    attempts: 12
+    delay: 10
+    timeout: 10
+    attempts: 60
   mode: all
   dependencies:
     app-artifacts:
@@ -135,8 +135,10 @@ service:
         scheme: HTTPS
         path: "/solr/admin/info/health"
         port: *solr
-      initialDelaySeconds: 10
+      initialDelaySeconds: 0
       periodSeconds: 10
       timeoutSeconds: 10
-      failureThreshold: 60
+      failureThreshold: 1
       successThreshold: 1
+    startup:
+      failureThreshold: 90
