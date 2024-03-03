@@ -118,8 +118,10 @@ service:
     spec:
       exec:
         command: [ "step", "ca", "health" ]
-      initialDelaySeconds: 10
+      initialDelaySeconds: 0
       periodSeconds: 10
-      timeoutSeconds: 5
-      failureThreshold: 60
+      timeoutSeconds: 10
+      failureThreshold: 1
       successThreshold: 1
+    startup:
+      failureThreshold: 90

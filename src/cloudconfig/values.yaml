@@ -16,8 +16,9 @@ initDependencies:
   template:
     mode: any
     initialDelay: 10
-    delay: 5
-    attempts: 12
+    delay: 10
+    timeout: 10
+    attempts: 60
   dependencies:
     acme:
       ports:
@@ -149,7 +150,9 @@ service:
         port: *servicePort
         path: "/actuator/health"
       initialDelaySeconds: 0
-      periodSeconds: 5
-      timeoutSeconds: 5
-      failureThreshold: 60
+      periodSeconds: 10
+      timeoutSeconds: 10
+      failureThreshold: 1
       successThreshold: 1
+    startup:
+      failureThreshold: 90
