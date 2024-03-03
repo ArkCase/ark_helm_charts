@@ -102,9 +102,9 @@ initDependencies:
   template:
     mode: any
     initialDelay: 10
-    delay: 5
-    timeout: 5
-    attempts: 12
+    delay: 10
+    timeout: 10
+    attempts: 60
   mode: all
   dependencies:
     acme:
@@ -128,9 +128,7 @@ initDependencies:
 
     ldap:
       ports:
-        - 389
         - 636
-        - 9000
 
     zookeeper:
       clusterOnly: true
@@ -255,16 +253,15 @@ service:
     probes:
       enabled: true
       spec:
+        initialDelaySeconds: 0
         periodSeconds: 10
         timeoutSeconds: 10
-        successThreshold: 1
-        initialDelaySeconds: 5
         failureThreshold: 1
+        successThreshold: 1
       startup:
         exec: &tomcatStartup
           command: [ "/usr/local/bin/tomcat-live", "STARTUP" ]
-        failureThreshold: 60
-        initialDelaySeconds: 30
+        failureThreshold: 90
       liveness:
         exec: &tomcatLiveness
           command: [ "/usr/local/bin/tomcat-live", "LIVENESS" ]
@@ -282,16 +279,15 @@ service:
     probes:
       enabled: true
       spec:
+        initialDelaySeconds: 0
         periodSeconds: 10
         timeoutSeconds: 10
-        successThreshold: 1
-        initialDelaySeconds: 5
         failureThreshold: 1
+        successThreshold: 1
       startup:
         exec:
           <<: *tomcatStartup
-        failureThreshold: 60
-        initialDelaySeconds: 30
+        failureThreshold: 90
       liveness:
         exec:
           <<: *tomcatLiveness

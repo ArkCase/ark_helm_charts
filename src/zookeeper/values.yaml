@@ -41,9 +41,9 @@ initDependencies:
     # Any of the required ports are enough to succeed
     mode: any
     initialDelay: 10
-    delay: 5
-    timeout: 5
-    attempts: 12
+    delay: 10
+    timeout: 10
+    attempts: 60
   dependencies:
     acme:
       ports:
@@ -141,8 +141,10 @@ service:
     spec:
       exec:
         command: [ "/app/zookeeper/bin/zkServer.sh", "status" ]
-      initialDelaySeconds: 10
-      periodSeconds: 30
-      timeoutSeconds: 30
-      failureThreshold: 60
+      initialDelaySeconds: 0
+      periodSeconds: 10
+      timeoutSeconds: 10
+      failureThreshold: 1
       successThreshold: 1
+    startup:
+      failureThreshold: 90
