@@ -52,9 +52,9 @@ initDependencies:
   template:
     mode: any
     initialDelay: 10
-    delay: 5
-    timeout: 5
-    attempts: 12
+    delay: 10
+    timeout: 10
+    attempts: 60
   mode: all
   dependencies:
     acme:
@@ -177,13 +177,13 @@ service:
         scheme: HTTPS
         path: "/console"
         port: *console
-      initialDelaySeconds: 10
-      periodSeconds: 5
-      timeoutSeconds: 5
-      failureThreshold: 60
+      initialDelaySeconds: 0
+      periodSeconds: 10
+      timeoutSeconds: 10
+      failureThreshold: 1
       successThreshold: 1
+    startup:
+      failureThreshold: 90
     readiness:
       tcpSocket:
         port: *openwire
-      periodSeconds: 1
-      timeoutSeconds: 1

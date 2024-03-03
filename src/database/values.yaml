@@ -36,9 +36,9 @@ initDependencies:
     # Any of the required ports are enough to succeed
     mode: any
     initialDelay: 10
-    delay: 5
-    timeout: 5
-    attempts: 12
+    delay: 10
+    timeout: 10
+    attempts: 60
   dependencies:
     acme:
       ports:
@@ -132,11 +132,13 @@ persistence:
 probes: &probesTemplate
   enabled: true
   spec: &probesSpecTemplate
-    initialDelaySeconds: 10
-    periodSeconds: 5
-    timeoutSeconds: 5
-    failureThreshold: 60
+    initialDelaySeconds: 0
+    periodSeconds: 10
+    timeoutSeconds: 10
+    failureThreshold: 1
     successThreshold: 1
+  startup:
+    failureThreshold: 90
 
 service:
   mysql:

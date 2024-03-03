@@ -302,11 +302,13 @@ service:
           scheme: HTTPS
           port: *artifactsPort
           path: "/"
-        initialDelaySeconds: 5
-        periodSeconds: 5
-        timeoutSeconds: 5
-        failureThreshold: 60
+        initialDelaySeconds: 0
+        periodSeconds: 10
+        timeoutSeconds: 10
+        failureThreshold: 1
         successThreshold: 1
+      startup:
+        failureThreshold: 90
 
 # Please leave the `replicaCount` to 1 for the time being. Clustering is not
 # supported yet.

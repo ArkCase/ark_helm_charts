@@ -81,8 +81,9 @@ initDependencies:
     # Any of the required ports are enough to succeed
     mode: any
     initialDelay: 10
-    delay: 5
-    attempts: 12
+    delay: 10
+    timeout: 10
+    attempts: 60
   dependencies:
     app-artifacts:
       ports:
@@ -92,7 +93,6 @@ initDependencies:
         - 9000
     ldap:
       ports:
-        - 389
         - 636
     rdbms:
       ports:
@@ -252,13 +252,13 @@ serviceTemplates: &serviceTemplate
   probes: &probesTemplate
     enabled: true
     spec: &probesSpecTemplate
-      initialDelaySeconds: 5
-      periodSeconds: 5
+      initialDelaySeconds: 0
+      periodSeconds: 10
       timeoutSeconds: 10
       failureThreshold: 1
       successThreshold: 1
     startup:
-      failureThreshold: 24
+      failureThreshold: 90
 
   ports: &ports {}
 
@@ -287,8 +287,7 @@ service:
       startup:
         exec:
           command: [ "/usr/local/bin/tomcat-live", "STARTUP" ]
-        initialDelaySeconds: 30
-        failureThreshold: 120
+        failureThreshold: 90
       liveness:
         exec:
           command: [ "/usr/local/bin/tomcat-live", "LIVENESS" ]
@@ -312,8 +311,7 @@ service:
       startup:
         exec: &tomcatLive
           command: [ "/usr/local/bin/tomcat-live" ]
-        initialDelaySeconds: 30
-        failureThreshold: 120
+        failureThreshold: 90
       liveness:
         exec:
           <<: *tomcatLive
