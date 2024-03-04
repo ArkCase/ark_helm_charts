@@ -87,6 +87,13 @@ metadata:
     # haproxy-ingress.github.io/timeout-server: "50s"
     # Maximum inactivity time on the backend side for half-closed connections - FIN_WAIT state
     # haproxy-ingress.github.io/timeout-server-fin: "50s"
+    #
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/preserve-trailing-slash: "true"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "30"
+    nginx.ingress.kubernetes.io/auth-keepalive-timeout: "300"
+
     {{- with (include "arkcase.values" (dict "ctx" $ "base" "annotations") | fromYaml) }}
       {{- toYaml . | nindent 4 }}
     {{- end }}
