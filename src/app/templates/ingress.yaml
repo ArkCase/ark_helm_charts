@@ -99,6 +99,7 @@ metadata:
     nginx.ingress.kubernetes.io/preserve-trailing-slash: "true"
     nginx.ingress.kubernetes.io/proxy-connect-timeout: "30"
     nginx.ingress.kubernetes.io/auth-keepalive-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
     {{- with $rancher }}
       {{- . | toYaml | nindent 4 }}
     {{- end }}
