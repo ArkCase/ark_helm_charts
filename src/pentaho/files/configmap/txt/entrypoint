@@ -225,8 +225,9 @@ LOCK_END="$(date +%s)"
 # ENABLE THE ARKCASE SHARED KEY                                   #
 ###################################################################
 
-read ARKCASE_SHARED_KEY rest < <(sha256sum "${SSL_DIR}/ca-chain.pem")
-export ARKCASE_SHARED_KEY
+# Disable this for now - AdHoc reports pukes if this is enabled
+# read ARKCASE_SHARED_KEY rest < <(sha256sum "${SSL_DIR}/ca-chain.pem")
+# export ARKCASE_SHARED_KEY
 
 ###################################################################
 # LAUNCH THE SERVER PROCESS                                       #
