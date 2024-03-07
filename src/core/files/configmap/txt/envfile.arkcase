@@ -30,5 +30,6 @@ JAVA_TOOL_OPTIONS+=" -Dk8s.keystore.file=${KS} -Dk8s.keystore.type=${KS_TYPE} -D
 
 export JAVA_TOOL_OPTIONS
 
-read ARKCASE_PENTAHO_SHARED_KEY rest < <(sha256sum "${SSL_DIR}/ca-chain.pem")
-export ARKCASE_PENTAHO_SHARED_KEY
+# Disable this for now. Ad-hoc reports pukes if this is set
+# read ARKCASE_PENTAHO_SHARED_KEY rest < <(sha256sum "${SSL_DIR}/ca-chain.pem")
+# export ARKCASE_PENTAHO_SHARED_KEY
