@@ -36,10 +36,20 @@
 
   {{- $result := dict -}}
   {{- if and (hasKey $ingress "ai5-rancher") (not (empty (include "arkcase.toBoolean" (get $ingress "ai5-rancher")))) -}}
+    {{- $dnsName := $baseUrl.hostname -}}
+    {{- if (hasKey $ingress "ai5-hostname") -}}
+      {{- $dnsName = (include "arkcase.tools.mustSingleHostname" (get $ingress "ai5-hostname" | toString)) -}}
+      {{- /* Make sure the hostname has at least 3 components ... can't be a domain, or a tld */ -}}
+      {{- if (lt (splitList "." $dnsName | len) 3) -}}
+        {{- fail (printf "The ai5-hostname value [%s] is not valid - must have at least 3 components" $dnsName) -}}
+      {{- end -}}
+    {{- end -}}
+
     {{- /* TODO: Gate these based on specific flags? */ -}}
-    {{- $result = set $result "external-dns.alpha.kubernetes.io/hostname" $baseUrl.hostname -}}
-    {{- $result = set $result "cert-manager.io/common-name" $baseUrl.hostname -}}
-    {{- $result = set $result "cert-manager.io/cluster-issuer" (include "arkcase.app.issuerByDomain" $baseUrl.hostname) -}}
+    {{- /* We use "toString" everywhere to ensure that the values are strings ... paranoia ;) */ -}}
+    {{- $result = set $result "external-dns.alpha.kubernetes.io/hostname" ($dnsName | toString) -}}
+    {{- $result = set $result "cert-manager.io/common-name" ($baseUrl.hostname | toString) -}}
+    {{- $result = set $result "cert-manager.io/cluster-issuer" (include "arkcase.app.issuerByDomain" $baseUrl.hostname | toString) -}}
   {{- end -}}
 
   {{- $result | toYaml -}}
