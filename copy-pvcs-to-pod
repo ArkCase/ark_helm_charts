@@ -1,0 +1,94 @@
+#!/bin/bash
+set -euo pipefail
+
+timestamp()
+{
+	/usr/bin/date -Ins -u
+}
+
+say()
+{
+	echo -e "$(timestamp): ${@}"
+}
+
+ok()
+{
+	say "✅ ${@}"
+}
+
+fail()
+{
+	say "❌ ${@}" 1>&2
+	exit ${EXIT_CODE:-1}
+}
+
+usage()
+{
+	echo -e "usage: ${BASH_ARGV0:-${BASH_SOURCE:-${0}}} baseDir targetPod"
+	exit 1
+}
+
+path_to_pvc()
+{
+	local ROOT_DIR="${1}"
+	local RELEASE="$(basename "${BASE_DIR}")"
+	while read dir ; do
+			IFS="/" read pod vol id rest < <(echo "${dir}")
+
+			if [ -n "${rest}" ] ; then
+					pod="${pod}-${vol}"
+					vol="${id}"
+					id="${rest}"
+			fi
+
+			pvc="${vol}-${RELEASE}-${pod}-${id}"
+
+			echo "${pvc} ${ROOT_DIR}/${dir}"
+	done < <(cd "${ROOT_DIR}" && find * -mindepth 2 -maxdepth 2 | sed -e 's;-;/;g' | sort)
+}
+
+[ ${#} -eq 2 ] || usage
+
+BASE_DIR="${1}"
+[ -e "${BASE_DIR}" ] || fail "The directory [${BASE_DIR}] does not exist"
+[ -d "${BASE_DIR}" ] || fail "The path [${BASE_DIR}] is not a directory"
+[ -r "${BASE_DIR}" ] || fail "The directory [${BASE_DIR}] is not readable"
+[ -x "${BASE_DIR}" ] || fail "The directory [${BASE_DIR}] is not executable"
+
+TARGET_POD="${2}"
+[[ "${TARGET_POD}" =~ ^(([a-z0-9]([a-z0-9-]*[a-z0-9])?)::)?([a-z0-9]([a-z0-9-]*[a-z0-9])?)$ ]] || fail "Invalid pod specification: [${TARGET_POD}]"
+
+LOG_BASE="$(basename "${0}")"
+STAMP="$(date -u "+%Y%m%d-%H%M%SZ")"
+MAIN_LOG="${LOG_BASE}.${STAMP}.log"
+
+exec > >(/usr/bin/tee "${MAIN_LOG}")
+exec 2>&1
+
+say "👉 Starting PVC transfers from [${BASE_DIR}] into ${TARGET_POD}"
+
+NAMESPACE="${BASH_REMATCH[1]}"
+TARGET_POD="${BASH_REMATCH[4]}"
+
+NSMSG=""
+[ -n "${NAMESPACE}" ] && NSMSG="${NAMESPACE}::"
+
+say "👉 Copying from [${BASE_DIR}] into the pod ${NSMSG}${TARGET_POD}"
+while read pvc src ; do
+	STAMP="$(/usr/bin/date -u +%Y%m%d-%H%M%SZ)"
+	PVC_LOG="${LOG_BASE}.${pvc}.${STAMP}.log"
+	(
+		exec > >(/usr/bin/tee "${PVC_LOG}")
+		exec 2>&1
+
+		NSFLAG=()
+		[ -n "${NAMESPACE}" ] && NSFLAG=(-n "${NAMESPACE}")
+
+		say "👉 Copying files from [${src}] into [${NSMSG}${pvc}]..."
+		kubectl exec "${NSFLAG[@]}" -i ${TARGET_POD} -- tar -C "/pvc/${pvc}" -xzvf - < <( cd "${path}" && tar -czf - . )
+		RC=${?}
+		[ ${RC} -ne 0 ] || fail "Failed to copy the data"
+		ok "File copy complete!"
+		exit 0
+	) || exit ${?}
+done < <(path_to_pvc "${BASE_DIR}")
