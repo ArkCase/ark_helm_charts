@@ -82,10 +82,17 @@ render_pod()
 	$(render_namespace)
 	spec:
 	  containers:
-	  - name: nettest
-	    image: public.ecr.aws/arkcase/nettest
+	  - name: main
+	    image: "${IMAGE}"
 	    command: [ "sleep", "infinity" ]
 	    imagePullPolicy: Always
+	    resources:
+	      requests:
+	        cpu: 4000m
+	        memory: 12Gi
+	      limits:
+	        cpu: 8000m
+	        memory: 24Gi
 	    volumeMounts:
 	$(render_volume_mounts "${@}")
 	  volumes:
