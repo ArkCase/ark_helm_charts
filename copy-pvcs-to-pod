@@ -1,4 +1,7 @@
 #!/bin/bash
+SCRIPT="$(readlink -f "${BASH_ARGV0:-${BASH_SOURCE:-${0}}}")"
+SCRIPTDIR="$(dirname "${SCRIPT}")"
+
 set -euo pipefail
 
 timestamp()
@@ -69,6 +72,13 @@ SED="$(type -P sed)" || fail "Failed to find sed in the path"
 TEE="$(type -P tee)" || fail "Failed to find tee in the path"
 TAR="$(type -P tar)" || fail "Failed to find tar in the path"
 SORT="$(type -P sort)" || fail "Failed to find sort in the path"
+RSYNC="$(type -P rsync)" || fail "Failed to find rsync in the path"
+
+RSYNC_HELPER="${SCRIPTDIR}/rsync-helper"
+[ -e "${RSYNC_HELPER}" ] || fail "The rsync-helper could not be found at [${RSYNC_HELPER}]"
+[ -f "${RSYNC_HELPER}" ] || fail "The path [${RSYNC_HELPER}] is not a regular file"
+[ -r "${RSYNC_HELPER}" ] || fail "The file [${RSYNC_HELPER}] is not readable"
+[ -x "${RSYNC_HELPER}" ] || fail "The file [${RSYNC_HELPER}] is not executable"
 
 LOG_BASE="$(basename "${0}")"
 STAMP="$(date -u "+%Y%m%d-%H%M%SZ")"
@@ -91,11 +101,26 @@ exec 2>&1
 say "👉 Copying from [${BASE_DIR}] into the pod ${NSMSG}${TARGET_POD}"
 while read pvc src ; do
 	STAMP="$(/usr/bin/date -u +%Y%m%d-%H%M%SZ)"
-	say "👉 Copying files from [${src}] into [${NSMSG}${pvc}]..."
+	PVC_LOG="${LOG_BASE}.${pvc}.${STAMP}.log"
+	say "👉 Copying files from [${src}] into [${NSMSG}${pvc}]..." | "${TEE}" "${PVC_LOG}"
 	(
+		[ -n "${NAMESPACE}" ] && TARGET_POD+="@${NAMESPACE}"
+		say "👉 Copying files from [${src}] into [${NSMSG}${pvc}]..."
 		set -euo pipefail
 		cd "${src}"
-		exec "${KUBECTL}" cp --retries=999 . "${TARGET_POD}:/pvc/${pvc}"
-	) || fail "Failed to copy the data (rc = ${?})"
-	ok "File copy complete!"
+		MAX_ATTEMPTS=5
+		ATTEMPT=0
+		while [ ${ATTEMPT} -lt ${MAX_ATTEMPTS} ] ; do
+			(( ATTEMPT++ ))
+			say "Starting rsync (attempt # ${ATTEMPT})..."
+			"${RSYNC}" --exclude="lost+found" --blocking-io --timeout=5 --rsh="${RSYNC_HELPER}" -RavzhH --delete-delay . "${TARGET_POD}:/pvc/${pvc}"
+			RC=${?}
+			case ${RC} in
+				0 ) exit 0 ;;
+				30 ) warn "Timeout detected, will try reconnecting..." ;;
+				* ) exit ${?} ;;
+			esac
+		done
+	) &>> "${PVC_LOG}" || fail "Failed to copy the data (rc = ${?})"
+	ok "File copy complete!" | "${TEE}" -a "${PVC_LOG}"
 done < <(path_to_pvc "${BASE_DIR}" | "${SORT}")
