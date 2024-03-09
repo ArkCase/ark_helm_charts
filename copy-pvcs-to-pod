@@ -44,7 +44,7 @@ path_to_pvc()
 			pvc="${vol}-${RELEASE}-${pod}-${id}"
 
 			echo "${pvc} ${ROOT_DIR}/${dir}"
-	done < <(cd "${ROOT_DIR}" && find * -mindepth 2 -maxdepth 2 | sort)
+	done < <(cd "${ROOT_DIR}" && find * -mindepth 2 -maxdepth 2 | "${SORT}")
 }
 
 [ ${#} -eq 2 ] || usage
@@ -62,6 +62,7 @@ KUBECTL="$(type -P kubectl)" || fail "Failed to find kubectl in the path"
 SED="$(type -P sed)" || fail "Failed to find sed in the path"
 TEE="$(type -P tee)" || fail "Failed to find tee in the path"
 TAR="$(type -P tar)" || fail "Failed to find tar in the path"
+SORT="$(type -P sort)" || fail "Failed to find sort in the path"
 
 LOG_BASE="$(basename "${0}")"
 STAMP="$(date -u "+%Y%m%d-%H%M%SZ")"
@@ -91,10 +92,10 @@ while read pvc src ; do
 
 		say "👉 Copying files from [${src}] into [${NSMSG}${pvc}]..."
 		# The first tar command isn't substituted b/c it's a remote command
-		"${KUBECTL}" exec "${NSFLAG[@]}" -i ${TARGET_POD} -- tar -C "/pvc/${pvc}" -xzvf - < <( cd "${src}" && "${TAR}" -czf - . )
+		"${KUBECTL}" exec "${NSFLAG[@]}" -i ${TARGET_POD} -- tar -C "/pvc/${pvc}" -xvf - < <( cd "${src}" && "${TAR}" -cf - . )
 		RC=${?}
 		[ ${RC} -eq 0 ] || fail "Failed to copy the data (rc = ${RC})"
 		ok "File copy complete!"
 		exit 0
 	) || exit ${?}
-done < <(path_to_pvc "${BASE_DIR}")
+done < <(path_to_pvc "${BASE_DIR}" | "${SORT}")
