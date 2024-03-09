@@ -74,8 +74,8 @@ def fail(message, *args):
 	sys.exit(1)
 
 class StreamThread(threading.Thread):
-	def __init__(self, tracker, source, target):
-		super(StreamThread, self).__init__(daemon=True)
+	def __init__(self, tracker, name, source, target):
+		super(StreamThread, self).__init__(name=name, daemon=True)
 		self.tracker = tracker
 		self.source = source
 		self.target = target
@@ -237,11 +237,11 @@ try:
 	child = subprocess.Popen(cli.rest, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
 	debug(2, "Creating the stdin thread")
-	stdinThread = StreamThread(tracker, sys.stdin.buffer, child.stdin)
+	stdinThread = StreamThread(tracker, "stdin", sys.stdin.buffer, child.stdin)
 	debug(2, "Creating the stdout thread")
-	stdoutThread = StreamThread(tracker, child.stdout, sys.stdout.buffer)
+	stdoutThread = StreamThread(tracker, "stdout", child.stdout, sys.stdout.buffer)
 	debug(2, "Creating the stderr thread")
-	stderrThread = StreamThread(tracker, child.stderr, sys.stderr.buffer)
+	stderrThread = StreamThread(tracker, "stderr", child.stderr, sys.stderr.buffer)
 
 	debug(2, "Starting the stdin thread")
 	stdinThread.start()
