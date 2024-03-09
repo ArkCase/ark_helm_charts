@@ -118,7 +118,7 @@ while read pvc src ; do
 			case ${RC} in
 				0 ) exit 0 ;;
 				30 ) warn "Timeout detected, will try reconnecting..." ;;
-				* ) exit ${?} ;;
+				* ) fail "Failed to copy the data (rc = ${?})" ;;
 			esac
 		done
 	) &>> "${PVC_LOG}" || fail "Failed to copy the data (rc = ${?})"
