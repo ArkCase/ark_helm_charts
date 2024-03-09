@@ -58,21 +58,26 @@ BASE_DIR="${1}"
 TARGET_POD="${2}"
 [[ "${TARGET_POD}" =~ ^(([a-z0-9]([a-z0-9-]*[a-z0-9])?)::)?([a-z0-9]([a-z0-9-]*[a-z0-9])?)$ ]] || fail "Invalid pod specification: [${TARGET_POD}]"
 
+KUBECTL="$(type -P kubectl)" || fail "Failed to find kubectl in the path"
+
 LOG_BASE="$(basename "${0}")"
 STAMP="$(date -u "+%Y%m%d-%H%M%SZ")"
 MAIN_LOG="${LOG_BASE}.${STAMP}.log"
-
-exec > >(/usr/bin/tee "${MAIN_LOG}")
-exec 2>&1
-
-say "👉 Starting PVC transfers from [${BASE_DIR}] into ${TARGET_POD}"
 
 NAMESPACE="${BASH_REMATCH[1]}"
 TARGET_POD="${BASH_REMATCH[4]}"
 
 NSMSG=""
-[ -n "${NAMESPACE}" ] && NSMSG="${NAMESPACE}::"
+NSFLAG=()
+if [ -n "${NAMESPACE}" ] ; then
+	NSMSG="${NAMESPACE}::"
+	NSFLAG=(-n "${NAMESPACE}")
+fi
 
+"${KUBECTL}" get pod "${NSFLAG[@]}" "${TARGET_POD}" -o name &>/dev/null || fail "Could not find the pod ${NSMSG}${TARGET_POD}"
+
+exec > >(/usr/bin/tee "${MAIN_LOG}")
+exec 2>&1
 say "👉 Copying from [${BASE_DIR}] into the pod ${NSMSG}${TARGET_POD}"
 while read pvc src ; do
 	STAMP="$(/usr/bin/date -u +%Y%m%d-%H%M%SZ)"
@@ -81,13 +86,10 @@ while read pvc src ; do
 		exec > >(/usr/bin/tee "${PVC_LOG}")
 		exec 2>&1
 
-		NSFLAG=()
-		[ -n "${NAMESPACE}" ] && NSFLAG=(-n "${NAMESPACE}")
-
 		say "👉 Copying files from [${src}] into [${NSMSG}${pvc}]..."
-		kubectl exec "${NSFLAG[@]}" -i ${TARGET_POD} -- tar -C "/pvc/${pvc}" -xzvf - < <( cd "${path}" && tar -czf - . )
+		"${KUBECTL}" exec "${NSFLAG[@]}" -i ${TARGET_POD} -- tar -C "/pvc/${pvc}" -xzvf - < <( cd "${src}" && tar -czf - . )
 		RC=${?}
-		[ ${RC} -ne 0 ] || fail "Failed to copy the data"
+		[ ${RC} -eq 0 ] || fail "Failed to copy the data (rc = ${RC})"
 		ok "File copy complete!"
 		exit 0
 	) || exit ${?}
