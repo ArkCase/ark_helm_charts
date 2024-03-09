@@ -1,0 +1,104 @@
+#!/bin/bash
+
+timestamp()
+{
+	/usr/bin/date -Ins
+}
+
+say()
+{
+	echo -e "$(timestamp): ${@}"
+}
+
+ok()
+{
+	say "✅ ${@}"
+}
+
+warn()
+{
+	say "⚠️ ${@}"
+}
+
+err()
+{
+	say "❌ ${@}" 1>&2
+}
+
+fail()
+{
+	err "${@}"
+	exit ${EXIT_CODE:-1}
+}
+
+KUBECTL="$(type -P kubectl)" || fail "Could not find 'kubectl' in the path"
+EGREP="$(type -P egrep)" || fail "Could not find 'egrep' in the path"
+JQ="$(type -P jq)" || fail "Could not find 'jq' in the path"
+AWK="$(type -P awk)" || fail "Could not find 'awk' in the path"
+SED="$(type -P sed)" || fail "Could not find 'sed' in the path"
+SORT="$(type -P sort)" || fail "Could not find 'sort' in the path"
+
+NSFLAG=()
+if [ ${#} -gt 1 ] ; then
+	say "👉 Will process ${#} PVCs given on the command line"
+	ALL_PVC=("${@}")
+else
+	[ -v NAMESPACE ] || NAMESPACE=""
+	NSLABEL="current"
+	if [ -n "${NAMESPACE}" ] ; then
+		[[ "${NAMESPACE}" =~ ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$ ]] || fail "The NAMESPACE value [${NAMESPACE}] is not valid"
+		NSFLAG=(-n "${NAMESPACE}")
+
+		"${KUBECTL}" get namespace "${NAMESPACE}" &>/dev/null || fail "The namespace [${NAMESPACE}] does not exist"
+		NSLABEL="${NAMESPACE}"
+	fi
+
+	# Get all the PVCs in the currently default namespace
+	say "👉 Listing all the PVCs in the ${NSLABEL} namespace..."
+	readarray -t ALL_PVC < <("${KUBECTL}" get "${NSFLAG[@]}" pvc -o name 2>/dev/null | "${SED}" -e 's;^[^/]\+/;;g' | "${SORT}" -u)
+	ok "Found ${#ALL_PVC[@]} PVCs"
+
+	DEFAULT_NAMESPACE="${NAMESPACE}"
+fi
+
+NODES="$("${KUBECTL}" get node -o name 2>/dev/null | "${SED}" -e 's;^[^/]\+/;;g' | "${SORT}" -u)"
+[ -n "${NODES}" ] || fail "No cluster nodes found, cannot continue"
+
+for PVC in "${ALL_PVC[@]}" ; do
+
+	if [[ "${PVC}" =~ ^(([a-z0-9]([-a-z0-9]*[a-z0-9]))::)?([a-z0-9]([-a-z0-9]*[a-z0-9])?)$ ]] ; then
+		NAMESPACE="${BASH_REMATCH[2]}"
+		PVC="${BASH_REMATCH[4]}"
+	else
+		err "PVC name [${PVC}] is not valid"
+		continue
+	fi
+
+	say "Scanning the ${NSLABEL} namespace for PVC ${PVC}..."
+
+	if ! PV="$("${KUBECTL}" get pvc "${NSFLAG[@]}" "${PVC}" -o json | "${JQ}" -r '.spec.volumeName')" ; then
+		err "No PVC [${PVC}] was found in the ${NSLABEL} namespace"
+		continue
+	fi
+
+	if [ -z "${PV}" ] || ! "${KUBECTL}" get pv "${PV}" &>/dev/null ; then
+		err "No volume ${PV} found ... referenced by PVC ${PVC}"
+		continue
+	fi
+
+	# For each PVC, identify the pod(s) it's attached to
+
+	readarray -t ATTACHMENTS < <("${KUBECTL}" get volumeattachments.storage.k8s.io 2>/dev/null | "${EGREP}" "\s${PV}\s" | "${AWK}" '{ print $1 }')
+
+	if [ "${#ATTACHMENTS[@]}" -lt 1 ] ; then
+		warn "No attachments found for PVC ${NAMESPACE}::${PVC}"
+		continue
+	fi
+
+	say "Attachments for ${NAMESPACE}::${PVC} -> [${ATTACHMENTS[@]}]"
+
+	# For each attachment, identify the node it's on
+
+	# Validate that all the attachments point to valid nodes with attached pods running on them ... any discrepancies
+	# must be listed for eradication ...?
+done
