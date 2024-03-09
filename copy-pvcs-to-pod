@@ -24,7 +24,7 @@ fail()
 
 usage()
 {
-	echo -e "usage: ${BASH_ARGV0:-${BASH_SOURCE:-${0}}} baseDir targetPod"
+	echo -e "usage: ${BASH_ARGV0:-${BASH_SOURCE:-${0}}} target-pod [base-dir]"
 	exit 1
 }
 
@@ -47,16 +47,22 @@ path_to_pvc()
 	done < <(cd "${ROOT_DIR}" && find * -mindepth 2 -maxdepth 2 | "${SORT}")
 }
 
-[ ${#} -eq 2 ] || usage
+[ ${#} -ge 1 ] || usage
+[ ${#} -le 2 ] || usage
 
-BASE_DIR="${1}"
+TARGET_POD="${1}"
+[[ "${TARGET_POD}" =~ ^(([a-z0-9]([a-z0-9-]*[a-z0-9])?)::)?([a-z0-9]([a-z0-9-]*[a-z0-9])?)$ ]] || fail "Invalid pod specification: [${TARGET_POD}]"
+
+if [ ${#} -gt 1 ] ; then
+	BASE_DIR="${2}"
+else
+	BASE_DIR="${PWD}"
+fi
+
 [ -e "${BASE_DIR}" ] || fail "The directory [${BASE_DIR}] does not exist"
 [ -d "${BASE_DIR}" ] || fail "The path [${BASE_DIR}] is not a directory"
 [ -r "${BASE_DIR}" ] || fail "The directory [${BASE_DIR}] is not readable"
 [ -x "${BASE_DIR}" ] || fail "The directory [${BASE_DIR}] is not executable"
-
-TARGET_POD="${2}"
-[[ "${TARGET_POD}" =~ ^(([a-z0-9]([a-z0-9-]*[a-z0-9])?)::)?([a-z0-9]([a-z0-9-]*[a-z0-9])?)$ ]] || fail "Invalid pod specification: [${TARGET_POD}]"
 
 KUBECTL="$(type -P kubectl)" || fail "Failed to find kubectl in the path"
 SED="$(type -P sed)" || fail "Failed to find sed in the path"
