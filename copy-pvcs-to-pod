@@ -33,7 +33,7 @@ path_to_pvc()
 	local ROOT_DIR="${1}"
 	local RELEASE="$(basename "${BASE_DIR}")"
 	while read dir ; do
-			IFS="/" read pod vol id rest < <(echo "${dir}")
+			IFS="/" read pod vol id rest < <(echo "${dir}" | "${SED}" -e 's;-;/;g')
 
 			if [ -n "${rest}" ] ; then
 					pod="${pod}-${vol}"
@@ -44,7 +44,7 @@ path_to_pvc()
 			pvc="${vol}-${RELEASE}-${pod}-${id}"
 
 			echo "${pvc} ${ROOT_DIR}/${dir}"
-	done < <(cd "${ROOT_DIR}" && find * -mindepth 2 -maxdepth 2 | sed -e 's;-;/;g' | sort)
+	done < <(cd "${ROOT_DIR}" && find * -mindepth 2 -maxdepth 2 | sort)
 }
 
 [ ${#} -eq 2 ] || usage
@@ -59,6 +59,9 @@ TARGET_POD="${2}"
 [[ "${TARGET_POD}" =~ ^(([a-z0-9]([a-z0-9-]*[a-z0-9])?)::)?([a-z0-9]([a-z0-9-]*[a-z0-9])?)$ ]] || fail "Invalid pod specification: [${TARGET_POD}]"
 
 KUBECTL="$(type -P kubectl)" || fail "Failed to find kubectl in the path"
+SED="$(type -P sed)" || fail "Failed to find sed in the path"
+TEE="$(type -P tee)" || fail "Failed to find tee in the path"
+TAR="$(type -P tar)" || fail "Failed to find tar in the path"
 
 LOG_BASE="$(basename "${0}")"
 STAMP="$(date -u "+%Y%m%d-%H%M%SZ")"
@@ -76,18 +79,19 @@ fi
 
 "${KUBECTL}" get pod "${NSFLAG[@]}" "${TARGET_POD}" -o name &>/dev/null || fail "Could not find the pod ${NSMSG}${TARGET_POD}"
 
-exec > >(/usr/bin/tee "${MAIN_LOG}")
+exec > >("${TEE}" "${MAIN_LOG}")
 exec 2>&1
 say "👉 Copying from [${BASE_DIR}] into the pod ${NSMSG}${TARGET_POD}"
 while read pvc src ; do
 	STAMP="$(/usr/bin/date -u +%Y%m%d-%H%M%SZ)"
 	PVC_LOG="${LOG_BASE}.${pvc}.${STAMP}.log"
 	(
-		exec > >(/usr/bin/tee "${PVC_LOG}")
+		exec > >("${TEE}" "${PVC_LOG}")
 		exec 2>&1
 
 		say "👉 Copying files from [${src}] into [${NSMSG}${pvc}]..."
-		"${KUBECTL}" exec "${NSFLAG[@]}" -i ${TARGET_POD} -- tar -C "/pvc/${pvc}" -xzvf - < <( cd "${src}" && tar -czf - . )
+		# The first tar command isn't substituted b/c it's a remote command
+		"${KUBECTL}" exec "${NSFLAG[@]}" -i ${TARGET_POD} -- tar -C "/pvc/${pvc}" -xzvf - < <( cd "${src}" && "${TAR}" -czf - . )
 		RC=${?}
 		[ ${RC} -eq 0 ] || fail "Failed to copy the data (rc = ${RC})"
 		ok "File copy complete!"
