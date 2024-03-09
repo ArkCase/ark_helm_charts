@@ -87,14 +87,16 @@ while read pvc src ; do
 	STAMP="$(/usr/bin/date -u +%Y%m%d-%H%M%SZ)"
 	PVC_LOG="${LOG_BASE}.${pvc}.${STAMP}.log"
 	(
+		set -euo pipefail
 		exec > >("${TEE}" "${PVC_LOG}")
 		exec 2>&1
 
 		say "👉 Copying files from [${src}] into [${NSMSG}${pvc}]..."
 		# The first tar command isn't substituted b/c it's a remote command
-		"${KUBECTL}" exec "${NSFLAG[@]}" -i ${TARGET_POD} -- tar -C "/pvc/${pvc}" -xvf - < <( cd "${src}" && "${TAR}" -cf - . )
-		RC=${?}
-		[ ${RC} -eq 0 ] || fail "Failed to copy the data (rc = ${RC})"
+		( cd "${src}" && "${TAR}" -czf - . ) | "${KUBECTL}" exec "${NSFLAG[@]}" -i "${TARGET_POD}" -- tar -C "/pvc/${pvc}" -xzvf -
+		for RC in "${PIPESTATUS[@]}" ; do
+			[ ${RC} -eq 0 ] || fail "Failed to copy the data (rc = [${PIPESTATUS[@]}])"
+		done
 		ok "File copy complete!"
 		exit 0
 	) || exit ${?}
