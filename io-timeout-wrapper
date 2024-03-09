@@ -1,0 +1,293 @@
+#!/usr/bin/env python3
+
+import argparse
+import fcntl
+import os
+import signal
+import subprocess
+import sys
+import time
+import threading
+import traceback
+import datetime
+
+import __main__ as main
+
+SCRIPT_NAME = os.path.basename(main.__file__)
+
+DEFAULT_TIMEOUT=10
+
+MIN_BUFFER_SIZE_KB=1
+DEFAULT_BUFFER_SIZE_KB=10
+MAX_BUFFER_SIZE_KB=102400
+
+parser = argparse.ArgumentParser(description = "Exit with a status code if data doesn't flow through this process (via STDIN/STDOUT) for a given amount of time")
+parser.add_argument("-t", "--timeout", action="store", metavar="timeout", help=f"I/O Timeout (default {DEFAULT_TIMEOUT}s)", default=DEFAULT_TIMEOUT, type=int)
+parser.add_argument("-b", "--buffer", action="store", metavar="buffer", help=f"Size of the I/O buffer (default {DEFAULT_BUFFER_SIZE_KB}KB)", default=DEFAULT_BUFFER_SIZE_KB, type=int)
+parser.add_argument("-d", "--debug", action="count", default=0, help="Enable debugging")
+parser.add_argument("rest", nargs=argparse.REMAINDER)
+
+cli = parser.parse_args()
+
+#
+# Ensure a valid timeout
+#
+TIMEOUT = DEFAULT_TIMEOUT
+if cli.timeout < 0:
+	TIMEOUT = 0
+else:
+	TIMEOUT = cli.timeout
+
+#
+# Ensure a sane buffer size
+#
+BUFFER_SIZE_BYTES = DEFAULT_BUFFER_SIZE_KB
+if cli.buffer < MIN_BUFFER_SIZE_KB:
+	BUFFER_SIZE_BYTES = MIN_BUFFER_SIZE_KB
+elif cli.buffer > MAX_BUFFER_SIZE_KB:
+	BUFFER_SIZE_BYTES = MAX_BUFFER_SIZE_KB
+
+# Convert to bytes
+BUFFER_SIZE_BYTES *= 1024
+
+def init_log(exeName, debug):
+	if debug < 1: return None
+	timestamp = time.strftime("%Y%m%d-%H%M%S")
+	logName = f"{exeName}.{timestamp}.log"
+	return open(logName, "at")
+
+def log(message, *args):
+	if not LOG: return None
+	msg = message.format(*args)
+	timestamp = time.strftime("%Y/%m/%d %H:%M:%S")
+	print(f"{timestamp}: {msg}", file=LOG, flush=True)
+
+def debug(level, message, *args):
+	if (level == 0) or (cli.debug >= level): return log(message, *args)
+	return None
+
+def error(message, *args):
+	print(message, *args, file=sys.stderr, flush=True)
+
+def fail(message, *args):
+	error(message, *args)
+	sys.exit(1)
+
+class StreamThread(threading.Thread):
+	def __init__(self, tracker, source, target):
+		super(StreamThread, self).__init__(daemon=True)
+		self.tracker = tracker
+		self.source = source
+		self.target = target
+		self.terminated = False
+
+	def terminate(self):
+		self.terminated = True
+
+	def is_terminated(self):
+		return self.terminated
+
+	def terminate_and_join(self):
+		self.terminate()
+		self.join()
+
+	def run(self):
+		self.terminated = False
+		try:
+			fd = self.source.fileno()
+			flags = fcntl.fcntl(fd, fcntl.F_GETFL)
+			fcntl.fcntl(fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
+			while (not self.terminated) and (not self.source.closed):
+				data = self.source.read(BUFFER_SIZE_BYTES)
+
+				if (data == None) or (len(data) == 0):
+					os.sched_yield()
+					continue
+
+				self.tracker.touch()
+
+				if self.target.closed: continue
+
+				try:
+					self.target.write(data)
+					self.target.flush()
+				except ValueError as e:
+					pass
+		finally:
+			debug(1, "Thread processing ended (terminated={0})", self.terminated)
+
+class Lock:
+	def __init__(self, rwl, myEnter, myExit):
+		self.rwl = rwl
+		self.enter = myEnter
+		self.exit = myExit
+
+	def __enter__(self):
+		return self.enter()
+
+	def __exit__(self, exc_type, exc_value, traceback):
+		return self.exit()
+
+	def lock(self):
+		return self.enter()
+
+	def unlock(self):
+		return self.__exit__(None, None, None)
+
+class ReadWriteLock:
+	def __init__(self):
+		self.__read_condition = threading.Condition()
+		self.__reader_count = 0
+		self.__read_lock = Lock(self, self.__acquire_read, self.__release_read)
+		self.__write_lock = Lock(self, self.__acquire_write, self.__release_write)
+
+	def readLock(self):
+		return self.__read_lock
+
+	def writeLock(self):
+		return self.__write_lock
+
+	def __acquire_read(self):
+		self.__read_condition.acquire()
+		try:
+			self.__reader_count += 1
+		finally:
+			self.__read_condition.release()
+
+	def __release_read(self):
+		self.__read_condition.acquire()
+		try:
+			self.__reader_count -= 1
+			if not self.__reader_count:
+				self.__read_condition.notify_all()
+		finally:
+			self.__read_condition.release()
+
+	def __acquire_write(self):
+		self.__read_condition.acquire()
+		while self.__reader_count > 0:
+			self.__read_condition.wait()
+
+	def __release_write(self):
+		self.__read_condition.release()
+
+class TimeoutTracker:
+	def __init__(self, timeout_seconds):
+		self.timeout_seconds = timeout_seconds
+		self.lock = ReadWriteLock()
+		self.marker = time.time_ns()
+
+	def touch(self):
+		# Update the marker ... is there a faster way
+		# to do this?
+		now = time.time_ns()
+		old = None
+		with self.lock.writeLock():
+			old = self.marker
+			self.marker = now
+		debug(2, "Marker touched (old = {0}, new = {1}", old, now)
+
+	def expired(self):
+		# If no timeout is set, or it's less than 1, then we never expire
+		if ((self.timeout_seconds is None) or (self.timeout_seconds <= 0)):
+			return False
+
+		# Get the marker to compare against
+		now = time.time_ns()
+
+		# Get the number of seconds since now, and then
+		elapsed = round((now - self.marker) / 1000000000)
+
+		# Return True if more than timeout_seconds have passed
+		return (elapsed >= self.timeout_seconds)
+
+def dump_stacks(sig, frame):
+	log("Dumping stack traces")
+	for th in threading.enumerate():
+		log(str(th))
+		traceback.print_stack(f=sys._current_frames()[th.ident], file=LOG)
+	log("Stack traces complete")
+
+	if old_usr2_handler:
+		log("Cascading to the old handler")
+		old_usr2_handler(sig, frame)
+
+if not cli.rest:
+	fail("No command given, cannot continue")
+
+# This object will track the last time I/O was detected
+LOG = init_log(sys.argv[0], cli.debug)
+
+rc = 255
+child = None
+stdinThread = None
+stdoutThread = None
+stderrThread = None
+
+old_usr2_handler = None
+
+debug(1, "Starting the timeout tracker")
+tracker = TimeoutTracker(TIMEOUT);
+try:
+	if LOG:
+		debug(2, "Registering the USR2 signal handler")
+		old_usr2_handler = signal.signal(signal.SIGUSR2, dump_stacks)
+
+	debug(1, "Launching the child subprocess with {0}", cli.rest)
+	child = subprocess.Popen(cli.rest, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+	debug(2, "Creating the stdin thread")
+	stdinThread = StreamThread(tracker, sys.stdin.buffer, child.stdin)
+	debug(2, "Creating the stdout thread")
+	stdoutThread = StreamThread(tracker, child.stdout, sys.stdout.buffer)
+	debug(2, "Creating the stderr thread")
+	stderrThread = StreamThread(tracker, child.stderr, sys.stderr.buffer)
+
+	debug(2, "Starting the stdin thread")
+	stdinThread.start()
+	debug(2, "Starting the stdout thread")
+	stdoutThread.start()
+	debug(2, "Starting the stderr thread")
+	stderrThread.start()
+
+	try:
+
+		while True:
+			# If the child process has terminated
+			if child.poll() is not None:
+				debug(1, "Child exited with code {0}", child.returncode)
+				rc = child.returncode
+				break
+
+			# Still running? Check if the timeout has expired
+			if tracker.expired():
+				debug(1, "Timeout has expired, exiting")
+				rc = 30
+				break
+
+			# No timeout yet? Sleep for exactly 1 second
+			debug(3, "Sleeping for 0.2 second during poll")
+			time.sleep(0.2)
+
+	finally:
+		debug(2, "Terminating the stdin thread")
+		stdinThread.terminate_and_join()
+		debug(2, "Terminating the stdout thread")
+		stdoutThread.terminate_and_join()
+		debug(2, "Terminating the stderr thread")
+		stderrThread.terminate_and_join()
+
+except KeyboardInterrupt as e:
+	debug(1, "Keyboard Interrupt caught, exiting")
+	child_timeout = 30
+	if child != None:
+		debug(1, "Terminating the child process (pid={0})".format(child.pid))
+		child.terminate()
+		try:
+			debug(1, "Waiting {0} seconds for the child to exit".format(child_timeout))
+			child.wait(child_timeout)
+		except subprocess.TimeoutExpired:
+			error("Child process did not exit after {0} seconds, killing it".format(child_timeout))
+			child.kill()
+debug(1, "Exiting with RC={0}".format(rc))
+sys.exit(rc)
