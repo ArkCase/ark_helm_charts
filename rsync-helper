@@ -1,0 +1,68 @@
+#!/bin/bash
+SCRIPT="$(readlink -f "${BASH_ARGV0:-${BASH_SOURCE:-${0}}}")"
+SCRIPTDIR="$(dirname "${SCRIPT}")"
+
+set -euo pipefail
+
+timestamp()
+{
+	/usr/bin/date -Ins -u
+}
+
+say()
+{
+	echo -e "$(timestamp): ${@}"
+}
+
+ok()
+{
+	say "✅ ${@}"
+}
+
+fail()
+{
+	say "❌ ${@}" 1>&2
+	exit ${EXIT_CODE:-1}
+}
+
+usage()
+{
+	local CMD="${BASH_ARGV0:-${BASH_SOURCE:-${0}}}"
+	echo -e "usage: ${CMD} pod args..." 1>&2
+	echo -e "       ${CMD} -l pod namespace args..." 1>&2
+	exit 1
+}
+
+NAMESPACE=""
+[ ${#} -ge 1 ] || usage
+
+if [ "${1}" == "-l" ] ; then
+	[ ${#} -ge 3 ] || usage
+	POD="${2}"
+	NAMESPACE="${3}"
+	[[ "${NAMESPACE}" =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?$ ]] || fail "Invalid namespace [${NAMESPACE}]"
+	shift 3
+else
+	POD="${1}"
+	shift
+fi
+
+[[ "${POD}" =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?$ ]] || fail "Invalid pod name [${POD}]"
+
+KUBECTL="$(type -P kubectl)" || fail "Could not find 'kubectl' in the path"
+
+NSFLAG=()
+[ -n "${NAMESPACE}" ] && NSFLAG=(-n "${NAMESPACE}")
+
+if [ ${#} -ge 1 ] ; then
+	set -- "--" "${@}"
+else
+	set -- -t -- /bin/bash
+fi
+
+[ -v IO_TIMEOUT ] || IO_TIMEOUT=""
+[[ "${IO_TIMEOUT}" =~ ^(0|[1-9][0-9]*)$ ]] || IO_TIMEOUT="30"
+
+# Use an I/O timeout wrapper that dies if no data flows to/from the
+# child process after 5 seconds
+exec "${SCRIPTDIR}/io-timeout-wrapper" -oe -t "${IO_TIMEOUT}" "${KUBECTL}" exec "${NSFLAG[@]}" -i "${POD}" "${@}"
