@@ -1,0 +1,134 @@
+#!/bin/bash
+SCRIPT="$(readlink -f "${BASH_ARGV0:-${BASH_SOURCE:-${0}}}")"
+SCRIPTDIR="$(dirname "${SCRIPT}")"
+
+set -euo pipefail
+
+timestamp()
+{
+	/usr/bin/date -Ins -u
+}
+
+say()
+{
+	echo -e "$(timestamp): ${@}"
+}
+
+ok()
+{
+	say "✅ ${@}"
+}
+
+warn()
+{
+	say "⚠️ ${@}"
+}
+
+fail()
+{
+	say "❌ ${@}" 1>&2
+	exit ${EXIT_CODE:-1}
+}
+
+usage()
+{
+	echo -e "usage: ${BASH_ARGV0:-${BASH_SOURCE:-${0}}} target-pod [base-dir]"
+	exit 1
+}
+
+path_to_pvc()
+{
+	local ROOT_DIR="${1}"
+	local RELEASE="$(basename "${BASE_DIR}")"
+	while read dir ; do
+			IFS="/" read pod vol id rest < <(echo "${dir}" | "${SED}" -e 's;-;/;g')
+
+			if [ -n "${rest}" ] ; then
+					pod="${pod}-${vol}"
+					vol="${id}"
+					id="${rest}"
+			fi
+
+			pvc="${vol}-${RELEASE}-${pod}-${id}"
+
+			echo "${pvc} ${ROOT_DIR}/${dir}"
+	done < <(cd "${ROOT_DIR}" && find * -mindepth 2 -maxdepth 2 | "${SORT}")
+}
+
+[ ${#} -ge 1 ] || usage
+[ ${#} -le 2 ] || usage
+
+TARGET_POD="${1}"
+[[ "${TARGET_POD}" =~ ^(([a-z0-9]([a-z0-9-]*[a-z0-9])?)::)?([a-z0-9]([a-z0-9-]*[a-z0-9])?)$ ]] || fail "Invalid pod specification: [${TARGET_POD}]"
+
+if [ ${#} -gt 1 ] ; then
+	BASE_DIR="${2}"
+else
+	BASE_DIR="${PWD}"
+fi
+
+[ -e "${BASE_DIR}" ] || fail "The directory [${BASE_DIR}] does not exist"
+[ -d "${BASE_DIR}" ] || fail "The path [${BASE_DIR}] is not a directory"
+[ -r "${BASE_DIR}" ] || fail "The directory [${BASE_DIR}] is not readable"
+[ -x "${BASE_DIR}" ] || fail "The directory [${BASE_DIR}] is not executable"
+
+KUBECTL="$(type -P kubectl)" || fail "Failed to find kubectl in the path"
+SED="$(type -P sed)" || fail "Failed to find sed in the path"
+TEE="$(type -P tee)" || fail "Failed to find tee in the path"
+TAR="$(type -P tar)" || fail "Failed to find tar in the path"
+SORT="$(type -P sort)" || fail "Failed to find sort in the path"
+RSYNC="$(type -P rsync)" || fail "Failed to find rsync in the path"
+
+RSYNC_HELPER="${SCRIPTDIR}/rsync-helper"
+[ -e "${RSYNC_HELPER}" ] || fail "The rsync-helper could not be found at [${RSYNC_HELPER}]"
+[ -f "${RSYNC_HELPER}" ] || fail "The path [${RSYNC_HELPER}] is not a regular file"
+[ -r "${RSYNC_HELPER}" ] || fail "The file [${RSYNC_HELPER}] is not readable"
+[ -x "${RSYNC_HELPER}" ] || fail "The file [${RSYNC_HELPER}] is not executable"
+
+LOG_BASE="$(basename "${0}")"
+STAMP="$(date -u "+%Y%m%d-%H%M%SZ")"
+MAIN_LOG="${LOG_BASE}.${STAMP}.log"
+
+NAMESPACE="${BASH_REMATCH[1]}"
+TARGET_POD="${BASH_REMATCH[4]}"
+
+NSMSG=""
+NSFLAG=()
+if [ -n "${NAMESPACE}" ] ; then
+	NSMSG="${NAMESPACE}::"
+	NSFLAG=(-n "${NAMESPACE}")
+fi
+
+[ -v MAX_ATTEMPTS ] || MAX_ATTEMPTS=""
+[ -n "${MAX_ATTEMPTS}" ] || MAX_ATTEMPTS=0
+[[ "${MAX_ATTEMPTS}" =~ ^(0|[1-9][0-9]*)$ ]] || fail "The MAX_ATTEMPTS value [${MAX_ATTEMPTS}] is not valid"
+
+"${KUBECTL}" get pod "${NSFLAG[@]}" "${TARGET_POD}" -o name &>/dev/null || fail "Could not find the pod ${NSMSG}${TARGET_POD}"
+
+exec > >("${TEE}" "${MAIN_LOG}")
+exec 2>&1
+say "👉 Copying from [${BASE_DIR}] into the pod ${NSMSG}${TARGET_POD}"
+while read pvc src ; do
+	STAMP="$(/usr/bin/date -u +%Y%m%d-%H%M%SZ)"
+	PVC_LOG="${LOG_BASE}.${pvc}.${STAMP}.log"
+	say "👉 Copying files from [${src}] into [${NSMSG}${pvc}]..." | "${TEE}" "${PVC_LOG}"
+	(
+		[ -n "${NAMESPACE}" ] && TARGET_POD+="@${NAMESPACE}"
+		say "👉 Copying files from [${src}] into [${NSMSG}${pvc}]..."
+		set -euo pipefail
+		cd "${src}"
+		ATTEMPT=0
+		while [ ${MAX_ATTEMPTS} -lt 1 ] || [ ${ATTEMPT} -lt ${MAX_ATTEMPTS} ] ; do
+			(( ATTEMPT++ ))
+			say "Starting rsync (attempt # ${ATTEMPT})..."
+			"${RSYNC}" --exclude="lost+found" --blocking-io --timeout=5 --rsh="${RSYNC_HELPER}" -RavzhH --delete-delay . "${TARGET_POD}:/pvc/${pvc}"
+			RC=${?}
+			case ${RC} in
+				0 ) exit 0 ;;
+				30 ) warn "Timeout detected, will try reconnecting..." ;;
+				* ) fail "Failed to copy the data (rc = ${?})" ;;
+			esac
+		done
+	) &>> "${PVC_LOG}" || fail "Failed to copy the data (rc = ${?})"
+	ok "File copy complete!" | "${TEE}" -a "${PVC_LOG}"
+done < <(path_to_pvc "${BASE_DIR}" | "${SORT}")

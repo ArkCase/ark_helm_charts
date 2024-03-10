@@ -39,12 +39,6 @@
                 
                 <!-- This pattern matches all requests for the Pentaho UI (needed for Adhoc Reports Module) -->
                 <prop key="setAdditionalHeaders">^.*:X-ARKCASE-EXTERNAL-USER=var(MDC_PENTAHO_USER_ID)</prop>
-
-                <!-- Enable header value encryption -->
-                <!--
-                <prop key="encryptAdditionalHeaders">X-ARKCASE-EXTERNAL-USER</prop>
-                <prop key="encryptionKey">${ARKCASE_PENTAHO_SHARED_KEY}</prop>
-                -->
             </props>
         </property>
     </bean>
