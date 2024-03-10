@@ -23,6 +23,9 @@ MAX_BUFFER_SIZE_KB=102400
 
 parser = argparse.ArgumentParser(description = "Exit with a status code if data doesn't flow through this process (via STDIN/STDOUT) for a given amount of time")
 parser.add_argument("-t", "--timeout", action="store", metavar="timeout", help=f"I/O Timeout (default {DEFAULT_TIMEOUT}s)", default=DEFAULT_TIMEOUT, type=int)
+parser.add_argument("-i", "--stdin", action="store_true", help=f"Monitor data read from the subprocess's STDOUT")
+parser.add_argument("-o", "--stdout", action="store_true", help=f"Monitor data written to the subprocess's STDIN")
+parser.add_argument("-e", "--stderr", action="store_true", help=f"Monitor data read from the subprocess's STDERR")
 parser.add_argument("-b", "--buffer", action="store", metavar="buffer", help=f"Size of the I/O buffer (default {DEFAULT_BUFFER_SIZE_KB}KB)", default=DEFAULT_BUFFER_SIZE_KB, type=int)
 parser.add_argument("-d", "--debug", action="count", default=0, help="Enable debugging")
 parser.add_argument("rest", nargs=argparse.REMAINDER)
@@ -49,23 +52,6 @@ elif cli.buffer > MAX_BUFFER_SIZE_KB:
 
 # Convert to bytes
 BUFFER_SIZE_BYTES *= 1024
-
-def init_log(exeName, debug):
-	if debug < 1: return None
-	timestamp = time.strftime("%Y%m%d-%H%M%S")
-	logName = f"{exeName}.{timestamp}.log"
-	return open(logName, "at")
-
-def log(message, *args):
-	if not LOG: return None
-	msg = message.format(*args)
-	timestamp = time.strftime("%Y/%m/%d %H:%M:%S")
-	thread = threading.current_thread().name
-	print(f"{timestamp} [{thread}]: {msg}", file=LOG, flush=True)
-
-def debug(level, message, *args):
-	if (level == 0) or (cli.debug >= level): return log(message, *args)
-	return None
 
 def error(message, *args):
 	print(message, *args, file=sys.stderr, flush=True)
@@ -103,22 +89,30 @@ class StreamThread(threading.Thread):
 				data = self.source.read(BUFFER_SIZE_BYTES)
 
 				if (data == None) or (len(data) == 0):
+					LOG.debug(6, "Data read: {0}", data)
 					os.sched_yield()
 					continue
 
-				self.tracker.touch()
-
 				if self.target.closed:
-					debug(1, "The target stream was closed ({0})", self.name)
+					LOG.debug(1, "The target stream was closed ({0})", self.name)
 					break
 
+				# We still have data, so touch the tracker if required
+				self.tracker.touch()
+
 				try:
+					LOG.debug(4, "Writing out {0} bytes", len(data))
+
+					if len(data) == 4:
+						LOG.debug(5, "Writing out these 4 bytes: {0}", data)
+
 					self.target.write(data)
 					self.target.flush()
 				except ValueError as e:
+					LOG.debug(3, "ValueError caught: {0}", e)
 					pass
 		finally:
-			debug(1, "Thread processing ended ({0} terminated={1})", self.name, self.terminated)
+			LOG.debug(1, "Thread processing ended ({0} terminated={1})", self.name, self.terminated)
 
 class Lock:
 	def __init__(self, rwl, myEnter, myExit):
@@ -189,7 +183,7 @@ class TimeoutTracker:
 		with self.lock.writeLock():
 			old = self.marker
 			self.marker = now
-		debug(2, "Marker touched (old = {0}, new = {1})", old, now)
+		LOG.debug(2, "Marker touched (old = {0}, new = {1})", old, now)
 
 	def expired(self):
 		# If no timeout is set, or it's less than 1, then we never expire
@@ -205,93 +199,137 @@ class TimeoutTracker:
 		# Return True if more than timeout_seconds have passed
 		return (elapsed >= self.timeout_seconds)
 
-def dump_stacks(sig, frame):
-	log("Dumping stack traces")
-	for th in threading.enumerate():
-		log(str(th))
-		traceback.print_stack(f=sys._current_frames()[th.ident], file=LOG)
-	log("Stack traces complete")
+class Log:
+	def __init__(self, exeName, level):
+		self.level = level
+		self.lock = ReadWriteLock()
+		timestamp = time.strftime("%Y%m%d-%H%M%S")
+		self.logName = f"{exeName}.{timestamp}.log"
+		self.log = None
+		self.init_log(level)
 
-	if old_usr2_handler:
-		log("Cascading to the old handler")
-		old_usr2_handler(sig, frame)
+	def init_log(self, level):
+		if self.log: return False
+		if level < 1: return False
+
+		self.log = open(self.logName, "at")
+
+	def get(self):
+		with self.lock.readLock():
+			return self.level
+
+	def grow(self):
+		level = self.level + 1
+		with self.lock.writeLock():
+			self.level = level
+			self.init_log(level)
+			self.__print("Log level set to {0}", level)
+
+	def __print(self, message, *args):
+		if not self.log: return
+		msg = message.format(*args)
+		timestamp = time.strftime("%Y/%m/%d %H:%M:%S")
+		thread = threading.current_thread().name
+		print(f"{timestamp} [{thread}]: {msg}", file=self.log, flush=True)
+
+	def debug(self, level, message, *args):
+		if level <= self.get(): self.__print(message, *args)
+
+	def dump_stacks(self):
+		self.__print("Dumping stack traces")
+		for th in threading.enumerate():
+			self.__print(str(th))
+			traceback.print_stack(f=sys._current_frames()[th.ident], file=self.log)
+		self.__print("Stack traces complete")
+
+def dump_stacks(sig, frame):
+	LOG.dump_stacks()
+
+def increase_log_level(sig, frame):
+	LOG.grow()
 
 if not cli.rest:
 	fail("No command given, cannot continue")
 
 # This object will track the last time I/O was detected
-LOG = init_log(sys.argv[0], cli.debug)
+LOG = Log(sys.argv[0], cli.debug)
 
 rc = 255
 child = None
-stdinThread = None
-stdoutThread = None
-stderrThread = None
+threads = []
 
-old_usr2_handler = None
-
-debug(1, "Starting the timeout tracker")
+LOG.debug(1, "Starting the timeout tracker")
 tracker = TimeoutTracker(TIMEOUT);
 try:
-	if LOG:
-		debug(2, "Registering the USR2 signal handler")
-		old_usr2_handler = signal.signal(signal.SIGUSR2, dump_stacks)
+	LOG.debug(1, "Registering the USR1 signal handler (increase the logging level)")
+	signal.signal(signal.SIGUSR1, increase_log_level)
+	LOG.debug(1, "Registering the USR2 signal handler (dump stack traces)")
+	signal.signal(signal.SIGUSR2, dump_stacks)
 
-	debug(1, "Launching the child subprocess with {0}", cli.rest)
-	child = subprocess.Popen(cli.rest, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+	_STDIN = None
+	if cli.stdin: _STDIN = subprocess.PIPE
+	_STDOUT = None
+	if cli.stdout: _STDOUT = subprocess.PIPE
+	_STDERR = None
+	if cli.stderr: _STDERR = subprocess.PIPE
 
-	debug(2, "Creating the stdin thread")
-	stdinThread = StreamThread(tracker, "stdin", sys.stdin.buffer, child.stdin)
-	debug(2, "Creating the stdout thread")
-	stdoutThread = StreamThread(tracker, "stdout", child.stdout, sys.stdout.buffer)
-	debug(2, "Creating the stderr thread")
-	stderrThread = StreamThread(tracker, "stderr", child.stderr, sys.stderr.buffer)
+	LOG.debug(1, "Launching the child subprocess with {0}", cli.rest)
+	child = subprocess.Popen(cli.rest, stdin=_STDIN, stdout=_STDOUT, stderr=_STDERR)
 
-	debug(2, "Starting the stdin thread")
-	stdinThread.start()
-	debug(2, "Starting the stdout thread")
-	stdoutThread.start()
-	debug(2, "Starting the stderr thread")
-	stderrThread.start()
+	if _STDIN:
+		LOG.debug(2, "Creating the stdin thread")
+		threads.append(StreamThread(tracker, "stdin", sys.stdin.buffer, child.stdin))
 
-	try:
+	if _STDOUT:
+		LOG.debug(2, "Creating the stdout thread")
+		threads.append(StreamThread(tracker, "stdout", child.stdout, sys.stdout.buffer))
 
-		while True:
-			# If the child process has terminated
-			if child.poll() is not None:
-				debug(1, "Child exited with code {0}", child.returncode)
-				rc = child.returncode
-				break
+	if _STDERR:
+		LOG.debug(2, "Creating the stderr thread")
+		threads.append(StreamThread(tracker, "stderr", child.stderr, sys.stderr.buffer))
 
-			# Still running? Check if the timeout has expired
-			if tracker.expired():
-				debug(1, "Timeout has expired, exiting")
-				rc = 30
-				break
+	for t in threads:
+		LOG.debug(2, "Starting the {0} thread", t.name)
+		t.start()
 
-			# No timeout yet? Sleep for exactly 1 second
-			debug(3, "Sleeping for 0.2 second during poll")
-			time.sleep(0.2)
+	if threads:
+		try:
+			while True:
+				# If the child process has terminated
+				if child.poll() is not None:
+					LOG.debug(1, "Child exited with code {0}", child.returncode)
+					rc = child.returncode
+					break
 
-	finally:
-		debug(2, "Terminating the stdin thread")
-		stdinThread.terminate_and_join()
-		debug(2, "Terminating the stdout thread")
-		stdoutThread.terminate_and_join()
-		debug(2, "Terminating the stderr thread")
-		stderrThread.terminate_and_join()
+				# Still running? Check if the timeout has expired
+				if tracker.expired():
+					LOG.debug(1, "Timeout has expired, exiting")
+					rc = 30
+					break
+
+				# No timeout yet? Sleep for exactly 1 second
+				LOG.debug(3, "Sleeping for 0.2 second during poll")
+				time.sleep(0.2)
+
+		finally:
+			for t in threads:
+				LOG.debug(2, "Terminating the {0} thread", t.name)
+				t.terminate_and_join()
+	else:
+		LOG.debug(1, "No monitoring configured, will just wait for the child process")
+		child.wait()
 
 except KeyboardInterrupt as e:
-	debug(1, "Keyboard Interrupt caught, exiting")
+	LOG.debug(1, "Keyboard Interrupt caught, exiting")
 	child_timeout = 30
 	if child != None:
-		debug(1, "Terminating the child process (pid={0})".format(child.pid))
+		LOG.debug(1, "Terminating the child process (pid={0})".format(child.pid))
 		child.terminate()
 		try:
-			debug(1, "Waiting {0} seconds for the child to exit".format(child_timeout))
+			LOG.debug(1, "Waiting {0} seconds for the child to exit".format(child_timeout))
 			child.wait(child_timeout)
 		except subprocess.TimeoutExpired:
 			error("Child process did not exit after {0} seconds, killing it".format(child_timeout))
 			child.kill()
-debug(1, "Exiting with RC={0}".format(rc))
+LOG.debug(1, "Exiting with RC={0}".format(rc))
 sys.exit(rc)
