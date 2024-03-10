@@ -62,4 +62,4 @@ fi
 
 # Use an I/O timeout wrapper that dies if no data flows to/from the
 # child process after 5 seconds
-exec "${SCRIPTDIR}/io-timeout-wrapper" -t 5 "${KUBECTL}" exec "${NSFLAG[@]}" -i "${POD}" "${@}"
+exec "${SCRIPTDIR}/io-timeout-wrapper" -oe -t 5 "${KUBECTL}" exec "${NSFLAG[@]}" -i "${POD}" "${@}"
