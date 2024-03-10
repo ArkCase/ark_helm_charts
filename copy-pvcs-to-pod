@@ -99,6 +99,10 @@ if [ -n "${NAMESPACE}" ] ; then
 	NSFLAG=(-n "${NAMESPACE}")
 fi
 
+[ -v MAX_ATTEMPTS ] || MAX_ATTEMPTS=""
+[ -n "${MAX_ATTEMPTS}" ] || MAX_ATTEMPTS=0
+[[ "${MAX_ATTEMPTS}" =~ ^(0|[1-9][0-9]*)$ ]] || fail "The MAX_ATTEMPTS value [${MAX_ATTEMPTS}] is not valid"
+
 "${KUBECTL}" get pod "${NSFLAG[@]}" "${TARGET_POD}" -o name &>/dev/null || fail "Could not find the pod ${NSMSG}${TARGET_POD}"
 
 exec > >("${TEE}" "${MAIN_LOG}")
@@ -113,9 +117,8 @@ while read pvc src ; do
 		say "👉 Copying files from [${src}] into [${NSMSG}${pvc}]..."
 		set -euo pipefail
 		cd "${src}"
-		MAX_ATTEMPTS=5
 		ATTEMPT=0
-		while [ ${ATTEMPT} -lt ${MAX_ATTEMPTS} ] ; do
+		while [ ${MAX_ATTEMPTS} -lt 1 ] || [ ${ATTEMPT} -lt ${MAX_ATTEMPTS} ] ; do
 			(( ATTEMPT++ ))
 			say "Starting rsync (attempt # ${ATTEMPT})..."
 			"${RSYNC}" --exclude="lost+found" --blocking-io --timeout=5 --rsh="${RSYNC_HELPER}" -RavzhH --delete-delay . "${TARGET_POD}:/pvc/${pvc}"
