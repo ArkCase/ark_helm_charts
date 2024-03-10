@@ -1,0 +1,104 @@
+#!/bin/bash
+
+set -euo pipefail
+
+timestamp()
+{
+	/usr/bin/date -Ins -u
+}
+
+say()
+{
+	echo -e "$(timestamp): ${@}"
+}
+
+ok()
+{
+	say "✅ ${@}"
+}
+
+fail()
+{
+	say "❌ ${@}" 1>&2
+	exit ${EXIT_CODE:-1}
+}
+
+[ -v POD_NAME ] || POD_NAME=""
+[ -n "${POD_NAME}" ] || POD_NAME="pvc-mounter"
+
+[ -v NAMESPACE ] || NAMESPACE=""
+
+[ -v IMAGE ] || IMAGE=""
+[ -n "${IMAGE}" ] || IMAGE="public.ecr.aws/arkcase/nettest:latest"
+
+KUBECTL="$(type -P kubectl)" || fail "Could not find 'kubectl' in the path"
+
+if [ ${#} -gt 0 ] ; then
+	readarray -t PVC < <(echo -n "${@}" | tr ' ' '\n' | sort -u)
+else
+	readarray -t PVC < <("${KUBECTL}" get pvc -o name | sed -e 's;^.*/;;g' | sort -u)
+fi
+
+[ ${#PVC[@]} -gt 0 ] || fail "No PVCs to mount, cannot continue"
+
+say "Will mount the following ${#PVC[@]} PVCS:"
+for n in "${PVC[@]}" ; do
+	echo "${n}"
+done | sort | sed -e 's;^;\t;g'
+
+render_volume_mounts()
+{
+	for PVC in "${@}" ; do
+		cat <<-EOF
+		      - mountPath: "/pvc/${PVC}"
+		        name: "${PVC}"
+		EOF
+	done
+}
+
+render_volumes()
+{
+	for PVC in "${@}" ; do
+		cat <<-EOF
+		    - name: &pvc "${PVC}"
+		      persistentVolumeClaim:
+		        claimName: *pvc
+		EOF
+	done
+}
+
+render_namespace()
+{
+	[ -n "${NAMESPACE}" ] && echo "  namespace: ${NAMESPACE}"
+}
+
+render_pod()
+{
+	cat <<-EOF
+	apiVersion: v1
+	kind: Pod
+	metadata:
+	  name: ${POD_NAME}
+	$(render_namespace)
+	spec:
+	  containers:
+	  - name: main
+	    image: "${IMAGE}"
+	    command: [ "sleep", "infinity" ]
+	    imagePullPolicy: Always
+	    resources:
+	      requests:
+	        cpu: 4000m
+	        memory: 12Gi
+	      limits:
+	        cpu: 8000m
+	        memory: 24Gi
+	    volumeMounts:
+	$(render_volume_mounts "${@}")
+	  volumes:
+	$(render_volumes "${@}")
+	  restartPolicy: Never
+	EOF
+}
+
+render_pod "${PVC[@]}" | "${KUBECTL}" apply -f -

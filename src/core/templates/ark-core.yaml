@@ -164,8 +164,10 @@ spec:
                   - ownership: {{ printf "%d:%d" $devUid $devGid | quote }}
                     permissions: "u=rwX,g=rwX,o="
                     flags: [ "recurse", "forced", "create", "changes" ]
-                    targets: [ "/app/home", "/app/conf", "/app/wars", "/app/logs", "/app/fsrv", "/app/foia" ]
+                    targets: [ "/app/home", "/app/conf", "/app/temp", "/app/wars", "/app/logs", "/app/fsrv", "/app/foia" ]
           volumeMounts:
+            - name: &tempVolume "temp"
+              mountPath: &tempDir "/app/temp"
             - name: &warsVolume "wars"
               mountPath: &warsDir "/app/wars"
             {{- include "arkcase.core.dev.permissionMounts" $ | nindent 12 }}
@@ -295,6 +297,8 @@ spec:
               mountPath: *homeDir
             - name: *confVolume
               mountPath: "/app/home/.arkcase"
+            - name: *tempVolume
+              mountPath: "/app/home/temp"
             - name: *warsVolume
               mountPath: "/app/tomcat/webapps"
             {{- include "arkcase.core.dev.runMounts" $ | nindent 12 }}
@@ -559,6 +563,9 @@ spec:
               - key: *bootstrapYaml
                 path: *bootstrapYaml
               {{- end }}
+        - name: *tempVolume
+          emptyDir:
+            sizeLimit: 8Gi
         - name: *warsVolume
           emptyDir:
             sizeLimit: 2Gi
