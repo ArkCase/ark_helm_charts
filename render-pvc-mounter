@@ -67,38 +67,98 @@ render_volumes()
 	done
 }
 
+render_rsync_folders()
+{
+	for PVC in "${@}" ; do
+		cat <<-EOF
+		    
+		    [${PVC}]
+		    path = /pvc/${PVC}
+		    comment = ${PVC}
+		    exclude = lost+found/
+		    transfer logging = yes
+		    timeout = 300
+		EOF
+	done
+}
+
 render_namespace()
 {
 	[ -n "${NAMESPACE}" ] && echo "  namespace: ${NAMESPACE}"
 }
 
-render_pod()
+render_resources()
 {
 	cat <<-EOF
 	apiVersion: v1
+	kind: ConfigMap
+	metadata:
+	  labels:
+	    armedia.com/pvc-mounter-name: "${POD_NAME}"
+	  name: ${POD_NAME}
+	$(render_namespace)
+	data:
+	  rsyncd.conf: |
+	    pid file = /tmp/rsyncd.pid
+	    lock file = /tmp/rsync.lock
+	$(render_rsync_folders "${@}")
+	---
+	apiVersion: v1
 	kind: Pod
 	metadata:
+	  labels:
+	    armedia.com/pvc-mounter-name: "${POD_NAME}"
 	  name: ${POD_NAME}
 	$(render_namespace)
 	spec:
 	  containers:
 	  - name: main
 	    image: "${IMAGE}"
-	    command: [ "sleep", "infinity" ]
+	    command: [ "rsync", "--daemon", "--no-detach", "--log-file=/dev/stdout", "--port=873" ]
 	    imagePullPolicy: Always
+	    ports:
+	      - name: rsync
+	        containerPort: 873
+	        protocol: TCP
 	    resources:
-	      requests:
-	        cpu: 4000m
-	        memory: 12Gi
 	      limits:
 	        cpu: 8000m
 	        memory: 24Gi
 	    volumeMounts:
+	      - mountPath: /etc/rsyncd.conf
+	        name: config-map
+	        readOnly: true
+	        subPath: &rsyncdConf rsyncd.conf
 	$(render_volume_mounts "${@}")
 	  volumes:
+	    - name: config-map
+	      configMap:
+	        name: ${POD_NAME}
+	        items:
+	          - key: *rsyncdConf
+	            path: *rsyncdConf
+	        defaultMode: 0640
+	        optional: false
 	$(render_volumes "${@}")
 	  restartPolicy: Never
+	---
+	apiVersion: v1
+	kind: Service
+	metadata:
+	  labels:
+	    armedia.com/pvc-mounter-name: "${POD_NAME}"
+	  name: ${POD_NAME}
+	$(render_namespace)
+	spec:
+	  type: LoadBalancer
+	  ports:
+	    - name: rsync
+	      port: 873
+	      protocol: TCP
+	      targetPort: 873
+	  selector:
+	    armedia.com/pvc-mounter-name: "${POD_NAME}"
 	EOF
 }
 
-render_pod "${PVC[@]}" | "${KUBECTL}" apply -f -
+render_resources "${PVC[@]}" | "${KUBECTL}" apply -f -
