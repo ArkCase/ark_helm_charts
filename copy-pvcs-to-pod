@@ -32,7 +32,7 @@ fail()
 
 usage()
 {
-	echo -e "usage: ${BASH_ARGV0:-${BASH_SOURCE:-${0}}} target-pod [base-dir]"
+	echo -e "usage: ${BASH_ARGV0:-${BASH_SOURCE:-${0}}} [base-dir] target-pod"
 	exit 1
 }
 
@@ -55,22 +55,22 @@ path_to_pvc()
 	done < <(cd "${ROOT_DIR}" && find * -mindepth 2 -maxdepth 2 | "${SORT}")
 }
 
-[ ${#} -ge 1 ] || usage
-[ ${#} -le 2 ] || usage
-
-TARGET_POD="${1}"
-[[ "${TARGET_POD}" =~ ^(([a-z0-9]([a-z0-9-]*[a-z0-9])?)::)?([a-z0-9]([a-z0-9-]*[a-z0-9])?)$ ]] || fail "Invalid pod specification: [${TARGET_POD}]"
-
-if [ ${#} -gt 1 ] ; then
-	BASE_DIR="${2}"
+if [ ${#} -eq 1 ] ; then
+	TARGET_POD="${1}"
+	BASE_DIR="."
+elif [ ${#} -eq 2 ] ; then
+	BASE_DIR="${1}"
+	[ -e "${BASE_DIR}" ] || fail "The directory [${BASE_DIR}] does not exist"
+	[ -d "${BASE_DIR}" ] || fail "The path [${BASE_DIR}] is not a directory"
+	[ -r "${BASE_DIR}" ] || fail "The directory [${BASE_DIR}] is not readable"
+	[ -x "${BASE_DIR}" ] || fail "The directory [${BASE_DIR}] is not executable"
+	TARGET_POD="${2}"
 else
-	BASE_DIR="${PWD}"
+	usage
 fi
 
-[ -e "${BASE_DIR}" ] || fail "The directory [${BASE_DIR}] does not exist"
-[ -d "${BASE_DIR}" ] || fail "The path [${BASE_DIR}] is not a directory"
-[ -r "${BASE_DIR}" ] || fail "The directory [${BASE_DIR}] is not readable"
-[ -x "${BASE_DIR}" ] || fail "The directory [${BASE_DIR}] is not executable"
+BASE_DIR="$(readlink -f "${BASE_DIR}")"
+[[ "${TARGET_POD}" =~ ^(([a-z0-9]([a-z0-9-]*[a-z0-9])?)::)?([a-z0-9]([a-z0-9-]*[a-z0-9])?)$ ]] || fail "Invalid pod specification: [${TARGET_POD}]"
 
 KUBECTL="$(type -P kubectl)" || fail "Failed to find kubectl in the path"
 SED="$(type -P sed)" || fail "Failed to find sed in the path"
@@ -86,7 +86,7 @@ RSYNC_HELPER="${SCRIPTDIR}/rsync-helper"
 [ -x "${RSYNC_HELPER}" ] || fail "The file [${RSYNC_HELPER}] is not executable"
 
 LOG_BASE="$(basename "${0}")"
-STAMP="$(date -u "+%Y%m%d-%H%M%SZ")"
+STAMP="$(/usr/bin/date -u "+%Y%m%d-%H%M%SZ")"
 MAIN_LOG="${LOG_BASE}.${STAMP}.log"
 
 NAMESPACE="${BASH_REMATCH[1]}"
@@ -105,26 +105,9 @@ exec > >("${TEE}" "${MAIN_LOG}")
 exec 2>&1
 say "👉 Copying from [${BASE_DIR}] into the pod ${NSMSG}${TARGET_POD}"
 while read pvc src ; do
-	STAMP="$(/usr/bin/date -u +%Y%m%d-%H%M%SZ)"
+	STAMP="$(/usr/bin/date -u "+%Y%m%d-%H%M%SZ")"
 	PVC_LOG="${LOG_BASE}.${pvc}.${STAMP}.log"
 	say "👉 Copying files from [${src}] into [${NSMSG}${pvc}]..." | "${TEE}" "${PVC_LOG}"
-	(
-		[ -n "${NAMESPACE}" ] && TARGET_POD+="@${NAMESPACE}"
-		say "👉 Copying files from [${src}] into [${NSMSG}${pvc}]..."
-		set -euo pipefail
-		cd "${src}"
-		ATTEMPT=0
-		while true ; do
-			(( ATTEMPT++ ))
-			say "Starting rsync (attempt # ${ATTEMPT})..."
-			"${RSYNC}" --progress --exclude="lost+found" --blocking-io --timeout=5 --rsh="${RSYNC_HELPER}" -RavzhH --delete-delay . "${TARGET_POD}:/pvc/${pvc}"
-			RC=${?}
-			case ${RC} in
-				0 ) exit 0 ;;
-				30 ) warn "Timeout detected, will try reconnecting..." ;;
-				* ) EXIT_CODE=${RC} fail "Failed to copy the data (rc = ${RC})" ;;
-			esac
-		done
-	) &>> "${PVC_LOG}" || fail "Failed to copy the data (rc = ${?})"
+	"${RSYNC_WITH_RETRY}" "${src}" "${TARGET_POD}:/pvc/${pvc}" &>> "${PVC_LOG}"
 	ok "File copy complete!" | "${TEE}" -a "${PVC_LOG}"
 done < <(path_to_pvc "${BASE_DIR}" | "${SORT}")
