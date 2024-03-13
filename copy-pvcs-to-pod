@@ -121,7 +121,7 @@ while read pvc src ; do
 		while [ ${MAX_ATTEMPTS} -lt 1 ] || [ ${ATTEMPT} -lt ${MAX_ATTEMPTS} ] ; do
 			(( ATTEMPT++ ))
 			say "Starting rsync (attempt # ${ATTEMPT})..."
-			"${RSYNC}" --exclude="lost+found" --blocking-io --timeout=5 --rsh="${RSYNC_HELPER}" -RavzhH --delete-delay . "${TARGET_POD}:/pvc/${pvc}"
+			"${RSYNC}" --progress --exclude="lost+found" --blocking-io --timeout=5 --rsh="${RSYNC_HELPER}" -RavzhH --delete-delay . "${TARGET_POD}:/pvc/${pvc}"
 			RC=${?}
 			case ${RC} in
 				0 ) exit 0 ;;
