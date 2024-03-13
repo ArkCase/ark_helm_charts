@@ -1,6 +1,6 @@
 #!/bin/bash
 SCRIPT="$(readlink -f "${BASH_ARGV0:-${BASH_SOURCE:-${0}}}")"
-SCRIPTDIR="$(dirname "${SCRIPT}")"
+BASEDIR="$(dirname "${SCRIPT}")"
 
 set -euo pipefail
 
@@ -32,16 +32,16 @@ fail()
 
 usage()
 {
-	echo -e "usage: ${BASH_ARGV0:-${BASH_SOURCE:-${0}}} [base-dir] target-pod"
+	echo -e "usage: ${BASH_ARGV0:-${BASH_SOURCE:-${0}}} [base-dir] pod[@namespace]"
 	exit 1
 }
 
-path_to_pvc()
+find_pvcs()
 {
 	local ROOT_DIR="${1}"
-	local RELEASE="$(basename "${BASE_DIR}")"
-	while read dir ; do
-			IFS="/" read pod vol id rest < <(echo "${dir}" | "${SED}" -e 's;-;/;g')
+	local RELEASE="$(basename "${ROOT_DIR}")"
+	while read DIR ; do
+			IFS="/" read pod vol id rest < <(echo "${DIR}" | "${SED}" -e 's;-;/;g')
 
 			if [ -n "${rest}" ] ; then
 					pod="${pod}-${vol}"
@@ -51,26 +51,28 @@ path_to_pvc()
 
 			pvc="${vol}-${RELEASE}-${pod}-${id}"
 
-			echo "${pvc} ${ROOT_DIR}/${dir}"
-	done < <(cd "${ROOT_DIR}" && find * -mindepth 2 -maxdepth 2 | "${SORT}")
+			echo "${pvc} ${ROOT_DIR}/${DIR}"
+	done < <(cd "${ROOT_DIR}" && find * -mindepth 2 -maxdepth 2 | "${SORT}") | "${SORT}"
 }
 
 if [ ${#} -eq 1 ] ; then
-	TARGET_POD="${1}"
-	BASE_DIR="."
+	ROOT_DIR="."
+	RSYNCD_SERVER="${1}"
 elif [ ${#} -eq 2 ] ; then
-	BASE_DIR="${1}"
-	[ -e "${BASE_DIR}" ] || fail "The directory [${BASE_DIR}] does not exist"
-	[ -d "${BASE_DIR}" ] || fail "The path [${BASE_DIR}] is not a directory"
-	[ -r "${BASE_DIR}" ] || fail "The directory [${BASE_DIR}] is not readable"
-	[ -x "${BASE_DIR}" ] || fail "The directory [${BASE_DIR}] is not executable"
-	TARGET_POD="${2}"
+	ROOT_DIR="${1}"
+	[ -e "${ROOT_DIR}" ] || fail "The directory [${ROOT_DIR}] does not exist"
+	[ -d "${ROOT_DIR}" ] || fail "The path [${ROOT_DIR}] is not a directory"
+	[ -r "${ROOT_DIR}" ] || fail "The directory [${ROOT_DIR}] is not readable"
+	[ -x "${ROOT_DIR}" ] || fail "The directory [${ROOT_DIR}] is not executable"
+	RSYNCD_SERVER="${2}"
 else
 	usage
 fi
 
-BASE_DIR="$(readlink -f "${BASE_DIR}")"
-[[ "${TARGET_POD}" =~ ^(([a-z0-9]([a-z0-9-]*[a-z0-9])?)::)?([a-z0-9]([a-z0-9-]*[a-z0-9])?)$ ]] || fail "Invalid pod specification: [${TARGET_POD}]"
+ROOT_DIR="$(readlink -f "${ROOT_DIR}")"
+[[ "${RSYNCD_SERVER,,}" =~ ^([a-z0-9]([a-z0-9-]*[a-z0-9])?)(@([a-z0-9]([a-z0-9-]*[a-z0-9])?))$ ]] || fail "The rsyncd-server value is invalid: [${RSYNCD_SERVER}]"
+TARGET_POD="${BASH_REMATCH[1]}"
+NAMESPACE="${BASH_REMATCH[4]}"
 
 KUBECTL="$(type -P kubectl)" || fail "Failed to find kubectl in the path"
 SED="$(type -P sed)" || fail "Failed to find sed in the path"
@@ -79,18 +81,22 @@ TAR="$(type -P tar)" || fail "Failed to find tar in the path"
 SORT="$(type -P sort)" || fail "Failed to find sort in the path"
 RSYNC="$(type -P rsync)" || fail "Failed to find rsync in the path"
 
-RSYNC_HELPER="${SCRIPTDIR}/rsync-helper"
-[ -e "${RSYNC_HELPER}" ] || fail "The rsync-helper could not be found at [${RSYNC_HELPER}]"
-[ -f "${RSYNC_HELPER}" ] || fail "The path [${RSYNC_HELPER}] is not a regular file"
-[ -r "${RSYNC_HELPER}" ] || fail "The file [${RSYNC_HELPER}] is not readable"
-[ -x "${RSYNC_HELPER}" ] || fail "The file [${RSYNC_HELPER}] is not executable"
+RSYNC_WITH_RETRY="${BASEDIR}/rsync-with-retry"
+[ -e "${RSYNC_WITH_RETRY}" ] || fail "The $(basename "${RSYNC_WITH_RETRY}") script could not be found at [${RSYNC_WITH_RETRY}]"
+[ -f "${RSYNC_WITH_RETRY}" ] || fail "The path [${RSYNC_WITH_RETRY}] is not a regular file"
+[ -r "${RSYNC_WITH_RETRY}" ] || fail "The file [${RSYNC_WITH_RETRY}] is not readable"
+[ -x "${RSYNC_WITH_RETRY}" ] || fail "The file [${RSYNC_WITH_RETRY}] is not executable"
+
+RSYNC_SHELL="${BASEDIR}/rsync-helper"
+[ -e "${RSYNC_SHELL}" ] || fail "The $(basename "${RSYNC_SHELL}") could not be found at [${RSYNC_SHELL}]"
+[ -f "${RSYNC_SHELL}" ] || fail "The path [${RSYNC_SHELL}] is not a regular file"
+[ -r "${RSYNC_SHELL}" ] || fail "The file [${RSYNC_SHELL}] is not readable"
+[ -x "${RSYNC_SHELL}" ] || fail "The file [${RSYNC_SHELL}] is not executable"
+export RSYNC_SHELL
 
 LOG_BASE="$(basename "${0}")"
 STAMP="$(/usr/bin/date -u "+%Y%m%d-%H%M%SZ")"
 MAIN_LOG="${LOG_BASE}.${STAMP}.log"
-
-NAMESPACE="${BASH_REMATCH[1]}"
-TARGET_POD="${BASH_REMATCH[4]}"
 
 NSMSG=""
 NSFLAG=()
@@ -103,11 +109,13 @@ fi
 
 exec > >("${TEE}" "${MAIN_LOG}")
 exec 2>&1
-say "👉 Copying from [${BASE_DIR}] into the pod ${NSMSG}${TARGET_POD}"
-while read pvc src ; do
+say "👉 Copying all the PVCs from [${ROOT_DIR}] into the pod ${NSMSG}${TARGET_POD} via kubectl"
+RSYNCD_SERVER="${TARGET_POD}@${NAMESPACE}"
+while read PVC_NAME PVC_DIR ; do
 	STAMP="$(/usr/bin/date -u "+%Y%m%d-%H%M%SZ")"
-	PVC_LOG="${LOG_BASE}.${pvc}.${STAMP}.log"
-	say "👉 Copying files from [${src}] into [${NSMSG}${pvc}]..." | "${TEE}" "${PVC_LOG}"
-	"${RSYNC_WITH_RETRY}" "${src}" "${TARGET_POD}:/pvc/${pvc}" &>> "${PVC_LOG}"
-	ok "File copy complete!" | "${TEE}" -a "${PVC_LOG}"
-done < <(path_to_pvc "${BASE_DIR}" | "${SORT}")
+	PVC_LOG="${LOG_BASE}.${PVC_NAME}.${STAMP}.log"
+
+	say "👉 Processing ${PVC_NAME} from [${PVC_DIR}]..."
+	"${RSYNC_WITH_RETRY}" "${PVC_DIR}" "${RSYNCD_SERVER}::${PVC_NAME}" &> "${PVC_LOG}" || fail "Processing failed (rc = ${?})"
+	ok "Directory processed!"
+done < <(find_pvcs "${ROOT_DIR}")

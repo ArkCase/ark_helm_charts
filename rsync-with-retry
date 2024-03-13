@@ -1,0 +1,77 @@
+#!/bin/bash
+
+set -euo pipefail
+
+timestamp()
+{
+	/usr/bin/date -Ins -u
+}
+
+say()
+{
+	echo -e "$(timestamp): ${@}"
+}
+
+ok()
+{
+	say "✅ ${@}"
+}
+
+warn()
+{
+	say "⚠️ ${@}"
+}
+
+fail()
+{
+	say "❌ ${@}" 1>&2
+	exit ${EXIT_CODE:-1}
+}
+
+usage()
+{
+	echo -e "usage: ${BASH_ARGV0:-${BASH_SOURCE:-${0}}} [source] target"
+	exit 1
+}
+
+if [ ${#} -eq 1 ] ; then
+	TARGET="${1}"
+	SOURCE="."
+elif [ ${#} -eq 2 ] ; then
+	SOURCE="${1}"
+	[ -e "${SOURCE}" ] || fail "The directory [${SOURCE}] does not exist"
+	[ -d "${SOURCE}" ] || fail "The path [${SOURCE}] is not a directory"
+	[ -r "${SOURCE}" ] || fail "The directory [${SOURCE}] is not readable"
+	[ -x "${SOURCE}" ] || fail "The directory [${SOURCE}] is not executable"
+	TARGET="${2}"
+else
+	usage
+fi
+
+SOURCE="$(readlink -f "${SOURCE}")"
+[ -n "${TARGET}" ] || fail "The target must be a non-empty string"
+
+RSYNC_SHELL_FLAGS=()
+[ -v RSYNC_SHELL ] || RSYNC_SHELL=""
+[ -n "${RSYNC_SHELL}" ] && RSYNC_SHELL_FLAGS=(--blocking-io --rsh="${RSYNC_SHELL}")
+
+RSYNC="$(type -P rsync)" || fail "Failed to find rsync in the path"
+say "👉 Copying from [${SOURCE}] into [${TARGET}]..."
+(
+	set -euo pipefail
+	cd "${SOURCE}" || fail "Failed to cd into [${SOURCE}] (rc=${?})"
+	ATTEMPT=0
+	while true ; do
+		(( ATTEMPT++ ))
+		say "Starting rsync (attempt # ${ATTEMPT})..."
+		"${RSYNC}" "${RSYNC_SHELL_FLAGS[@]}" --progress --exclude="lost+found" -RavzhH --delete-delay . "${TARGET}"
+		RC=${?}
+		case ${RC} in
+			0 ) exit 0 ;;
+			30 ) warn "Timeout detected, will try again..." ;;
+			* ) EXIT_CODE=${RC} fail "Failed to copy the data (rc = ${RC})" ;;
+		esac
+	done
+) || fail "Failed to copy the data (rc = ${?})"
+ok "File copy complete!"
+exit 0
