@@ -99,10 +99,6 @@ if [ -n "${NAMESPACE}" ] ; then
 	NSFLAG=(-n "${NAMESPACE}")
 fi
 
-[ -v MAX_ATTEMPTS ] || MAX_ATTEMPTS=""
-[ -n "${MAX_ATTEMPTS}" ] || MAX_ATTEMPTS=0
-[[ "${MAX_ATTEMPTS}" =~ ^(0|[1-9][0-9]*)$ ]] || fail "The MAX_ATTEMPTS value [${MAX_ATTEMPTS}] is not valid"
-
 "${KUBECTL}" get pod "${NSFLAG[@]}" "${TARGET_POD}" -o name &>/dev/null || fail "Could not find the pod ${NSMSG}${TARGET_POD}"
 
 exec > >("${TEE}" "${MAIN_LOG}")
@@ -118,7 +114,7 @@ while read pvc src ; do
 		set -euo pipefail
 		cd "${src}"
 		ATTEMPT=0
-		while [ ${MAX_ATTEMPTS} -lt 1 ] || [ ${ATTEMPT} -lt ${MAX_ATTEMPTS} ] ; do
+		while true ; do
 			(( ATTEMPT++ ))
 			say "Starting rsync (attempt # ${ATTEMPT})..."
 			"${RSYNC}" --progress --exclude="lost+found" --blocking-io --timeout=5 --rsh="${RSYNC_HELPER}" -RavzhH --delete-delay . "${TARGET_POD}:/pvc/${pvc}"
@@ -126,7 +122,7 @@ while read pvc src ; do
 			case ${RC} in
 				0 ) exit 0 ;;
 				30 ) warn "Timeout detected, will try reconnecting..." ;;
-				* ) fail "Failed to copy the data (rc = ${?})" ;;
+				* ) EXIT_CODE=${RC} fail "Failed to copy the data (rc = ${RC})" ;;
 			esac
 		done
 	) &>> "${PVC_LOG}" || fail "Failed to copy the data (rc = ${?})"
