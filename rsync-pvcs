@@ -1,0 +1,89 @@
+#!/bin/bash
+
+set -euo pipefail
+
+timestamp()
+{
+	/usr/bin/date -Ins -u
+}
+
+say()
+{
+	echo -e "$(timestamp): ${@}"
+}
+
+ok()
+{
+	say "✅ ${@}"
+}
+
+warn()
+{
+	say "⚠️ ${@}"
+}
+
+fail()
+{
+	say "❌ ${@}" 1>&2
+	exit ${EXIT_CODE:-1}
+}
+
+usage()
+{
+	echo -e "usage: ${BASH_ARGV0:-${BASH_SOURCE:-${0}}} rsyncd-server [base-dir]"
+	exit 1
+}
+
+[ ${#} -ge 1 ] && [ ${#} -le 2 ] || usage
+
+RSYNCD_SERVER="${1}"
+[[ "${RSYNCD_SERVER,,}" =~ ^([a-z0-9_-]+@)?[a-z0-9]([a-z0-9-]*[a-z0-9])?([.][a-z0-9]([a-z0-9-]*[a-z0-9])?)*$ ]] || fail "The rsyncd-server value is invalid: [${RSYNCD_SERVER}]"
+
+if [ ${#} -eq 2 ] ; then
+	BASE_DIR="${2}"
+	[ -e "${BASE_DIR}" ] || fail "The directory [${BASE_DIR}] does not exist"
+	[ -d "${BASE_DIR}" ] || fail "The path [${BASE_DIR}] is not a directory"
+	[ -r "${BASE_DIR}" ] || fail "The directory [${BASE_DIR}] is not readable"
+	[ -x "${BASE_DIR}" ] || fail "The directory [${BASE_DIR}] is not executable"
+else
+	BASE_DIR="."
+fi
+BASE_DIR="$(readlink -f "${BASE_DIR}")"
+
+TEE="$(type -P tee)" || fail "Failed to find tee in the path"
+SORT="$(type -P sort)" || fail "Failed to find sort in the path"
+RSYNC="$(type -P rsync)" || fail "Failed to find rsync in the path"
+FIND="$(type -P find)" || fail "Failed to find find in the path"
+BASENAME="$(type -P basename)" || fail "Failed to find basename in the path"
+
+LOG_BASE="$("${BASENAME}" "${0}")"
+STAMP="$(date -u "+%Y%m%d-%H%M%SZ")"
+MAIN_LOG="${LOG_BASE}.${STAMP}.log"
+
+exec > >("${TEE}" "${MAIN_LOG}")
+exec 2>&1
+say "👉 Copying from [${BASE_DIR}] into the rsyncd at ${RSYNCD_SERVER}"
+while read PVC_DIR ; do
+	STAMP="$(/usr/bin/date -u +%Y%m%d-%H%M%SZ)"
+	PVC_NAME="$("${BASENAME}" "${PVC_DIR}")"
+	PVC_LOG="${LOG_BASE}.${PVC_NAME}.${STAMP}.log"
+	say "👉 Copying files from [${PVC_NAME}] to ${RSYNCD_SERVER}..." |& "${TEE}" "${PVC_LOG}"
+	(
+		say "👉 Copying files from [${PVC_NAME}] to ${RSYNCD_SERVER}..."
+		set -euo pipefail
+		cd "${PVC_DIR}" || fail "Failed to cd into [${PVC_NAME}] (rc=${?})"
+		ATTEMPT=0
+		while true ; do
+			(( ATTEMPT++ ))
+			say "Starting rsync (attempt # ${ATTEMPT})..."
+			"${RSYNC}" --progress --exclude="lost+found" -RavzhH --delete-delay . "${RSYNCD_SERVER}::${PVC_NAME}"
+			RC=${?}
+			case ${RC} in
+				0 ) exit 0 ;;
+				30 ) warn "Timeout detected, will try again..." ;;
+				* ) EXIT_CODE=${RC} fail "Failed to copy the data (rc = ${RC})" ;;
+			esac
+		done
+	) &>> "${PVC_LOG}" || fail "Failed to copy the data (rc = ${?})"
+	ok "File copy complete!" |& "${TEE}" -a "${PVC_LOG}"
+done < <("${FIND}" "${BASE_DIR}" -mindepth 1 -maxdepth 1 -type d | "${SORT}")
