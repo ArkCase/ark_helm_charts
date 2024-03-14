@@ -1,0 +1,66 @@
+#!/bin/bash
+SCRIPT="$(readlink -f "${BASH_ARGV0:-${BASH_SOURCE:-${0}}}")"
+BASEDIR="$(dirname "${SCRIPT}")"
+
+set -euo pipefail
+
+timestamp()
+{
+	/usr/bin/date -Ins -u
+}
+
+say()
+{
+	echo -e "$(timestamp): ${@}"
+}
+
+ok()
+{
+	say "✅ ${@}"
+}
+
+warn()
+{
+	say "⚠️ ${@}"
+}
+
+err()
+{
+	say "❌ ${@}" 1>&2
+}
+
+fail()
+{
+	err "${@}"
+	exit ${EXIT_CODE:-1}
+}
+
+usage()
+{
+	echo -e "usage: ${BASH_ARGV0:-${BASH_SOURCE:-${0}}} rootDir"
+	echo -e ""
+	echo -e "	Lists the PVCs based on the subdirectories of \${rootDir}, where each subdirectory"
+	echo -e "	is named to match its target PVC."
+	echo -e ""
+	echo -e "	The program will output two columns: the full PVC name, and the directory its data"
+	echo -e "	is stored in."
+	exit 1
+}
+
+[ ${#} -eq 1 ] || usage
+
+ROOT_DIR="${1}"
+[ -e "${ROOT_DIR}" ] || fail "The directory [${ROOT_DIR}] does not exist"
+[ -d "${ROOT_DIR}" ] || fail "The path [${ROOT_DIR}] is not a directory"
+[ -r "${ROOT_DIR}" ] || fail "The directory [${ROOT_DIR}] is not readable"
+[ -x "${ROOT_DIR}" ] || fail "The directory [${ROOT_DIR}] is not executable"
+[[ "${ROOT_DIR}" =~ ^(.*[^/])/*$ ]] && ROOT_DIR="${BASH_REMATCH[1]}"
+
+while read DIR ; do
+	PVC="$(basename "${DIR}")"
+	if [[ "${PVC}" =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?$ ]] ; then
+		echo "${PVC} ${DIR}"
+		continue
+	fi
+	err "Invalid PVC name [${PVC}] (from [${DIR}]), it will be ignored"
+done < <(find "${ROOT_DIR}" -mindepth 1 -maxdepth 1 -type d) | sort
