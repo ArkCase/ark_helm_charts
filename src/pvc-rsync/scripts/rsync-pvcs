@@ -38,34 +38,66 @@ fail()
 usage()
 {
 	local S="$(basename "${BASH_ARGV0:-${BASH_SOURCE:-${0}}}")"
-	echo -e "usage: ${S} target-spec"
+	echo -e "usage: ${S} [pvc-list-file] target-spec"
 	echo -e ""
-	echo -e "	Copy the PVC data, as read from STDIN in a two-column format"
-	echo -e "	where the first column is the PVC name, and the rest of the line"
-	echo -e "	is the directory path where the data for that PVC is stored."
+	echo -e "	Copy the PVC data, as described by the \${pvc-list-file}, into the \${target-spec}."
+	echo -e ""
+	echo -e "	The list file must be formatted in two, space-separated colums, where the first"
+	echo -e "	column is the name of the PVC, and the rest of the line is the directory the data"
+	echo -e "	is to be read from. Comments (#) are acceptable as long as they're preceded by"
+	echo -e "	zero or more spaces, the whole line will be ignored. Empty lines or lines filled"
+	echo -e "	with only spaces will be also be ignored."
+	echo -e ""
+	echo -e "	If \${pvc-list-file} is not given, or is given as '-', then the data will"
+	echo -e "	be read from STDIN."
 	echo -e ""
 	echo -e "	The RSYNC session will be opened depending on the spec format:"
 	echo -e ""
 	echo -e "		rsync://[user@]hostname -> use rsync direct protocol (873/tcp)"
 	echo -e "		kubectl://podName[@namespace] -> use kubectl as the remote shell"
+	echo -e "		ssh://[user@]hostname -> use ssh as the remote shell"
 	exit 1
 }
 
-[ ${#} -eq 1 ] || usage
+[ ${#} -ge 1 ] && [ ${#} -le 2 ] || usage
 
-RSYNCD_SERVER="${1}"
+PVC_LIST_FILE="-"
+if [ ${#} -eq 2 ] ; then
+	PVC_LIST_FILE="${1}"
+	shift
+fi
 
-case "${RSYNCD_SERVER}" in
+[ -n "${PVC_LIST_FILE}" ] || fail "The input file [${PVC_LIST_FILE}] may not be the empty string"
+if [ "${PVC_LIST_FILE}" != "-" ] ; then
+	[ -e "${PVC_LIST_FILE}" ] || fail "The input file [${PVC_LIST_FILE}] does not exist"
+	[ -f "${PVC_LIST_FILE}" ] || fail "The path [${PVC_LIST_FILE}] is not a regular file"
+	[ -r "${PVC_LIST_FILE}" ] || fail "The input file [${PVC_LIST_FILE}] is not readable"
+fi
+
+TARGET_SPEC="${1}"
+case "${TARGET_SPEC}" in
 	rsync://* )
 		PROTOCOL="rsync"
-		[[ "${RSYNCD_SERVER,,}" =~ ^rsync://((.+@)?[a-z0-9]([a-z0-9-]*[a-z0-9])?([.][a-z0-9]([a-z0-9-]*[a-z0-9])?)*)$ ]] || fail "The rsyncd-server value is invalid: [${RSYNCD_SERVER}]"
-		RSYNCD_SERVER="${BASH_REMATCH[1]}"
+		[[ "${TARGET_SPEC,,}" =~ ^rsync://((.+@)?[a-z0-9]([a-z0-9-]*[a-z0-9])?([.][a-z0-9]([a-z0-9-]*[a-z0-9])?)*)$ ]] || fail "The rsyncd-server value is invalid: [${TARGET_SPEC}]"
+		TARGET_SPEC="${BASH_REMATCH[1]}"
+		;;
+
+	ssh://* )
+		PROTOCOL="ssh"
+		[[ "${TARGET_SPEC,,}" =~ ^ssh://((.+@)?[a-z0-9]([a-z0-9-]*[a-z0-9])?([.][a-z0-9]([a-z0-9-]*[a-z0-9])?)*)$ ]] || fail "The rsyncd-server value is invalid: [${TARGET_SPEC}]"
+		TARGET_SPEC="${BASH_REMATCH[1]}"
+		RSYNC_RSH="$(type -P ssh)" || fail "The SSH executable was not found in the path"
+		[ -e "${RSYNC_RSH}" ] || fail "The $(basename "${RSYNC_RSH}") could not be found at [${RSYNC_RSH}]"
+		[ -f "${RSYNC_RSH}" ] || fail "The path [${RSYNC_RSH}] is not a regular file"
+		[ -r "${RSYNC_RSH}" ] || fail "The file [${RSYNC_RSH}] is not readable"
+		[ -x "${RSYNC_RSH}" ] || fail "The file [${RSYNC_RSH}] is not executable"
+		export RSYNC_RSH
 		;;
 
 	kubectl://* )
 		PROTOCOL="kubectl"
-		[[ "${RSYNCD_SERVER,,}" =~ ^kubectl://([a-z0-9]([a-z0-9-]*[a-z0-9])?(@([a-z0-9]([a-z0-9-]*[a-z0-9])?)))$ ]] || fail "The rsyncd-server value is invalid: [${RSYNCD_SERVER}]"
-		RSYNCD_SERVER="${BASH_REMATCH[1]}"
+		[[ "${TARGET_SPEC,,}" =~ ^kubectl://([a-z0-9]([a-z0-9-]*[a-z0-9])?(@([a-z0-9]([a-z0-9-]*[a-z0-9])?)))$ ]] || fail "The rsyncd-server value is invalid: [${TARGET_SPEC}]"
+		TARGET_SPEC="${BASH_REMATCH[1]}"
 		RSYNC_RSH="${BASEDIR}/kubectl-helper"
 		[ -e "${RSYNC_RSH}" ] || fail "The $(basename "${RSYNC_RSH}") could not be found at [${RSYNC_RSH}]"
 		[ -f "${RSYNC_RSH}" ] || fail "The path [${RSYNC_RSH}] is not a regular file"
@@ -96,7 +128,7 @@ MAIN_LOG="${LOG_BASE}.${STAMP}.log"
 
 exec > >("${TEE}" "${MAIN_LOG}")
 exec 2>&1
-say "👉 Copying all the PVCs into the server ${RSYNCD_SERVER} via ${PROTOCOL}"
+say "👉 Copying all the PVCs into the server ${TARGET_SPEC} via ${PROTOCOL}"
 LINE_NO=0
 while read LINE ; do
 	(( ++LINE_NO ))
@@ -130,9 +162,9 @@ while read LINE ; do
 	PVC_LOG="${LOG_BASE}.${PVC_NAME}.${STAMP}.log"
 
 	say "👉 Processing ${PVC_NAME} from [${PVC_DIR}] (log = ${PVC_LOG})..."
-	if "${RSYNC_WITH_RETRY}" "${PVC_DIR}" "${RSYNCD_SERVER}::${PVC_NAME}" &> "${PVC_LOG}" ; then
+	if "${RSYNC_WITH_RETRY}" "${PVC_DIR}" "${TARGET_SPEC}::${PVC_NAME}" &> "${PVC_LOG}" ; then
 		ok "Directory processed!"
 	else
 		err "Processing failed (rc = ${?})"
 	fi
-done
+done < <(cat "${PVC_LIST_FILE}")
