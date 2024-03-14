@@ -329,6 +329,9 @@ service:
       - name: debug
         protocol: TCP
         port: &debugPort 8888
+      - name: jmx
+        protocol: TCP
+        port: &jmxPort 7091
 
     probes:
       enabled: true

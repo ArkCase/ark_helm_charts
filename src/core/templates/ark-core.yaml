@@ -282,7 +282,10 @@ spec:
                 -Duser.home=/app/home
                 {{- with $debug }}
                 -Xdebug
-                -Xrunjdwp:transport=dt_socket,server=y,suspend={{ .suspend }},address=0.0.0.0:8888
+                -agentlib:jdwp=transport=dt_socket,server=y,suspend={{ .suspend }},address=*:8888
+                -Dcom.sun.management.jmxremote.port=7091 -Dcom.sun.management.jmxremote.authenticate=false
+                -Dcom.sun.management.jmxremote.ssl=false
+                -XX:FlightRecorderOptions=stackdepth=512,samplethreads=true
                 {{- end }}
           {{- include "arkcase.subsystem.ports" ($.Values.service).arkcase | nindent 10 }}
           {{- with ($.Values.command).arkcase }}

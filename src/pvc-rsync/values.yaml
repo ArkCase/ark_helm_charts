@@ -1,0 +1,61 @@
+# Default values for hostpath-provisioner.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+strategyType: Recreate
+
+image:
+  registry: "public.ecr.aws"
+  repository: "arkcase/nettest"
+  # Note that by default we use appVersion to get image tag
+  # tag:
+  # pullPolicy: IfNotPresent
+
+## Set the reclaimPolicy
+reclaimPolicy: Delete
+
+## Node selector
+nodeSelector: {}
+
+## Affinity
+affinity: {}
+
+## Tolerations
+tolerations: []
+
+rbac:
+  create: true
+  ## Ignored if rbac.create is true
+  serviceAccountName: default
+
+service:
+  type: LoadBalancer
+  ports:
+    - name: rsync
+      protocol: TCP
+      port: &rsync 873
+
+##
+## Configure extra options for containers' liveness and readiness probes
+## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/#configure-probes
+## @param service.probes.enabled Enable liveness and readiness probes
+## @param service.probes.spec.initialDelaySeconds Initial delay seconds for liveness and readiness probes
+## @param service.probes.spec.periodSeconds Period seconds for liveness and readiness probes
+## @param service.probes.spec.timeoutSeconds Timeout seconds for liveness and readiness probes
+## @param service.probes.spec.failureThreshold Failure threshold for liveness and readiness probes
+## @param service.probes.spec.successThreshold Success threshold for liveness and readiness probes
+##
+  probes:
+    enabled: true
+    spec:
+      tcpSocket:
+        port: *rsync
+      initialDelaySeconds: 0
+      periodSeconds: 10
+      timeoutSeconds: 10
+      failureThreshold: 1
+      successThreshold: 1
+    startup:
+      failureThreshold: 90
+    liveness:
+      failureThreshold: 3
