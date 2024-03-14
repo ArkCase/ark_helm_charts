@@ -24,9 +24,14 @@ warn()
 	say "⚠️ ${@}"
 }
 
-fail()
+err()
 {
 	say "❌ ${@}" 1>&2
+}
+
+fail()
+{
+	err "${@}"
 	exit ${EXIT_CODE:-1}
 }
 
@@ -92,11 +97,42 @@ MAIN_LOG="${LOG_BASE}.${STAMP}.log"
 exec > >("${TEE}" "${MAIN_LOG}")
 exec 2>&1
 say "👉 Copying all the PVCs into the server ${RSYNCD_SERVER} via ${PROTOCOL}"
-while read PVC_NAME PVC_DIR ; do
+LINE_NO=0
+while read LINE ; do
+	(( ++LINE_NO ))
+
+	# Ignore comments and empty lines
+	[[ "${LINE}" =~ ^[[:space:]]*$ ]] && continue
+	[[ "${LINE}" =~ ^[[:space:]]*# ]] && continue
+
+	# Parse out the interesting bits of data
+	read PVC_NAME PVC_DIR <<< "${LINE}"
+
+	# Validate the PVC
+	if [[ ! "${PVC_NAME}" =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?$ ]] ; then
+		err "The PVC name [${PVC_NAME}] is not valid (line # ${LINE_NO} = [${LINE}])"
+		continue
+	fi
+
+	# Validate the PVC_DIR
+	if [ -z "${PVC_DIR}" ] ; then
+		err "No directory information given for PVC ${PVC_NAME} (line # ${LINE_NO} = [${LINE}])"
+		continue
+	elif [ ! -d "${PVC_DIR}" ] ; then
+		ERR="is not a directory"
+		[ -e "${PVC_DIR}" ] || ERR="does not exist"
+		err "The path [${PVC_DIR}] for PVC ${PVC_NAME} is  name [${PVC_NAME}] ${ERR} (line # ${LINE_NO} = [${LINE}])"
+		continue
+	fi
+
+	# Initialize the log
 	STAMP="$(/usr/bin/date -u "+%Y%m%d-%H%M%SZ")"
 	PVC_LOG="${LOG_BASE}.${PVC_NAME}.${STAMP}.log"
 
-	say "👉 Processing ${PVC_NAME} from [${PVC_DIR}]..."
-	"${RSYNC_WITH_RETRY}" "${PVC_DIR}" "${RSYNCD_SERVER}::${PVC_NAME}" &> "${PVC_LOG}" || fail "Processing failed (rc = ${?})"
-	ok "Directory processed!"
+	say "👉 Processing ${PVC_NAME} from [${PVC_DIR}] (log = ${PVC_LOG})..."
+	if "${RSYNC_WITH_RETRY}" "${PVC_DIR}" "${RSYNCD_SERVER}::${PVC_NAME}" &> "${PVC_LOG}" ; then
+		ok "Directory processed!"
+	else
+		err "Processing failed (rc = ${?})"
+	fi
 done
