@@ -1,0 +1,83 @@
+#!/bin/bash
+SCRIPT="$(readlink -f "${BASH_ARGV0:-${BASH_SOURCE:-${0}}}")"
+BASEDIR="$(dirname "${SCRIPT}")"
+
+set -euo pipefail
+
+timestamp()
+{
+	/usr/bin/date -Ins -u
+}
+
+say()
+{
+	echo -e "$(timestamp): ${@}"
+}
+
+ok()
+{
+	say "✅ ${@}"
+}
+
+warn()
+{
+	say "⚠️ ${@}"
+}
+
+fail()
+{
+	say "❌ ${@}" 1>&2
+	exit ${EXIT_CODE:-1}
+}
+
+usage()
+{
+	local S="$(basename "${BASH_ARGV0:-${BASH_SOURCE:-${0}}}")"
+	echo -e "usage: ${S} rootDir [release]"
+	echo -e ""
+	echo -e "	Lists the PVCs based on the directory structure the ArkCase hostpath provider uses,"
+	echo -e "	where each PVC is represented by a directory of the form:"
+	echo -e ""
+	echo -e "		\${rootDir}/\${namespace}/\${release}/\${pod}/\${volumeName}/\${podId}"
+	echo -e ""
+	echo -e "	For example:"
+	echo -e ""
+	echo -e "		/opt/app/default/arkcase/core/conf/0 -> default::conf-arkcase-core-0"
+	echo -e ""
+	echo -e "	The program will output two columns: the full PVC name, and the directory its data"
+	echo -e "	is stored in."
+	echo -e ""
+	echo -e "	If the \${release} parameter isn't given, the basename of \${rootDir} will be used,"
+	echo -e "	and must be a valid release name in the Helm sense (i.e. a valid K8s resource name)."
+	exit 1
+}
+
+[ ${#} -ge 1 ] && [ ${#} -le 2 ] || usage
+
+ROOT_DIR="${1}"
+[ -e "${ROOT_DIR}" ] || fail "The directory [${ROOT_DIR}] does not exist"
+[ -d "${ROOT_DIR}" ] || fail "The path [${ROOT_DIR}] is not a directory"
+[ -r "${ROOT_DIR}" ] || fail "The directory [${ROOT_DIR}] is not readable"
+[ -x "${ROOT_DIR}" ] || fail "The directory [${ROOT_DIR}] is not executable"
+ROOT_DIR="$(readlink -f "${ROOT_DIR}")"
+
+if [ ${#} -eq 2 ] ; then
+	RELEASE="${2}"
+else
+	RELEASE="$(basename "${ROOT_DIR}")"
+fi
+[[ "${RELEASE}" =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?$ ]] || fail "Can't use the string [${RELEASE}] as the release name"
+
+while read DIR ; do
+	IFS="/" read POD VOL ID REST < <(echo "${DIR}" | sed -e 's;-;/;g')
+
+	if [ -n "${REST}" ] ; then
+		POD="${POD}-${VOL}"
+		VOL="${ID}"
+		ID="${REST}"
+	fi
+
+	PVC="${VOL}-${RELEASE}-${POD}-${ID}"
+
+	echo "${PVC} ${ROOT_DIR}/${DIR}"
+done < <(cd "${ROOT_DIR}" && find * -mindepth 2 -maxdepth 2 -type d) | sort
