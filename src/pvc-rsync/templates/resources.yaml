@@ -1,6 +1,6 @@
 {{- $podName := include "arkcase.fullname" $ -}}
 {{- $namespace := .Release.Namespace -}}
-{{- $pvcs := lookup "v1" "PersistentVolumeClaim" "" $namespace -}}
+{{- $pvcs := lookup "v1" "PersistentVolumeClaim" $namespace "" -}}
 {{- $scripts := (.Files.Glob "scripts/*") -}}
 {{- $externalDnsName := (.Values.externalDns).name | default "" -}}
 {{- $externalDnsAnnotation := (.Values.externalDns).annotation | default "external-dns.alpha.kubernetes.io/hostname" -}}
