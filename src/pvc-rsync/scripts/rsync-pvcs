@@ -32,14 +32,16 @@ fail()
 
 usage()
 {
-	echo -e "usage: ${BASH_ARGV0:-${BASH_SOURCE:-${0}}} pod[@namespace]"
+	echo -e "usage: ${BASH_ARGV0:-${BASH_SOURCE:-${0}}} target-spec"
 	echo -e ""
 	echo -e "	Copy the PVC data, as read from STDIN in a two-column format"
 	echo -e "	where the first column is the PVC name, and the rest of the line"
 	echo -e "	is the directory path where the data for that PVC is stored."
 	echo -e ""
-	echo -e "	The RSYNC session will be opened using kubectl exec, so not the"
-	echo -e "	most efficient, but can help avoid some networking limitations."
+	echo -e "	The RSYNC session will be opened depending on the spec format:"
+	echo -e ""
+	echo -e "		rsync://[user@]hostname -> use rsync direct protocol (873/tcp)"
+	echo -e "		kubectl://podName[@namespace] -> use kubectl as the remote shell"
 	exit 1
 }
 
