@@ -32,7 +32,8 @@ fail()
 
 usage()
 {
-	echo -e "usage: ${BASH_ARGV0:-${BASH_SOURCE:-${0}}} target-spec"
+	local S="$(basename "${BASH_ARGV0:-${BASH_SOURCE:-${0}}}")"
+	echo -e "usage: ${S} target-spec"
 	echo -e ""
 	echo -e "	Copy the PVC data, as read from STDIN in a two-column format"
 	echo -e "	where the first column is the PVC name, and the rest of the line"
@@ -52,22 +53,20 @@ RSYNCD_SERVER="${1}"
 case "${RSYNCD_SERVER}" in
 	rsync://* )
 		PROTOCOL="rsync"
-		RSYNCD_SERVER="$(parse_rsync_url "${RSYNCD_SERVER}")"
 		[[ "${RSYNCD_SERVER,,}" =~ ^rsync://((.+@)?[a-z0-9]([a-z0-9-]*[a-z0-9])?([.][a-z0-9]([a-z0-9-]*[a-z0-9])?)*)$ ]] || fail "The rsyncd-server value is invalid: [${RSYNCD_SERVER}]"
-		RSYNCD_SERVER="${BASH_REMATCH[2]}"
+		RSYNCD_SERVER="${BASH_REMATCH[1]}"
 		;;
 
 	kubectl://* )
 		PROTOCOL="kubectl"
-		RSYNCD_SERVER="$(parse_kubectl_url "${RSYNCD_SERVER}")"
 		[[ "${RSYNCD_SERVER,,}" =~ ^kubectl://([a-z0-9]([a-z0-9-]*[a-z0-9])?(@([a-z0-9]([a-z0-9-]*[a-z0-9])?)))$ ]] || fail "The rsyncd-server value is invalid: [${RSYNCD_SERVER}]"
-		RSYNCD_SERVER="${BASH_REMATCH[2]}"
-		RSYNC_SHELL="${BASEDIR}/kubectl-helper"
-		[ -e "${RSYNC_SHELL}" ] || fail "The $(basename "${RSYNC_SHELL}") could not be found at [${RSYNC_SHELL}]"
-		[ -f "${RSYNC_SHELL}" ] || fail "The path [${RSYNC_SHELL}] is not a regular file"
-		[ -r "${RSYNC_SHELL}" ] || fail "The file [${RSYNC_SHELL}] is not readable"
-		[ -x "${RSYNC_SHELL}" ] || fail "The file [${RSYNC_SHELL}] is not executable"
-		export RSYNC_SHELL
+		RSYNCD_SERVER="${BASH_REMATCH[1]}"
+		RSYNC_RSH="${BASEDIR}/kubectl-helper"
+		[ -e "${RSYNC_RSH}" ] || fail "The $(basename "${RSYNC_RSH}") could not be found at [${RSYNC_RSH}]"
+		[ -f "${RSYNC_RSH}" ] || fail "The path [${RSYNC_RSH}] is not a regular file"
+		[ -r "${RSYNC_RSH}" ] || fail "The file [${RSYNC_RSH}] is not readable"
+		[ -x "${RSYNC_RSH}" ] || fail "The file [${RSYNC_RSH}] is not executable"
+		export RSYNC_RSH
 		;;
 
 	* ) fail "Unrecognized RSYNCD server, must be an rsync://... or kubectl://... URL" ;;

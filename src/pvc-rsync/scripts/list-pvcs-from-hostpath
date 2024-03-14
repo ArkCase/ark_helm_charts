@@ -32,7 +32,8 @@ fail()
 
 usage()
 {
-	echo -e "usage: ${BASH_ARGV0:-${BASH_SOURCE:-${0}}} rootDir [release]"
+	local S="$(basename "${BASH_ARGV0:-${BASH_SOURCE:-${0}}}")"
+	echo -e "usage: ${S} rootDir [release]"
 	echo -e ""
 	echo -e "	Lists the PVCs based on the directory structure the ArkCase hostpath provider uses,"
 	echo -e "	where each PVC is represented by a directory of the form:"
@@ -46,7 +47,8 @@ usage()
 	echo -e "	The program will output two columns: the full PVC name, and the directory its data"
 	echo -e "	is stored in."
 	echo -e ""
-	echo -e "	If the \${release} parameter isn't given, the basename of \${rootDir} will be used"
+	echo -e "	If the \${release} parameter isn't given, the basename of \${rootDir} will be used,"
+	echo -e "	and must be a valid release name in the Helm sense (i.e. a valid K8s resource name)."
 	exit 1
 }
 
@@ -57,7 +59,7 @@ ROOT_DIR="${1}"
 [ -d "${ROOT_DIR}" ] || fail "The path [${ROOT_DIR}] is not a directory"
 [ -r "${ROOT_DIR}" ] || fail "The directory [${ROOT_DIR}] is not readable"
 [ -x "${ROOT_DIR}" ] || fail "The directory [${ROOT_DIR}] is not executable"
-[[ "${ROOT_DIR}" =~ ^(.*[^/])/*$ ]] && ROOT_DIR="${BASH_REMATCH[1]}"
+ROOT_DIR="$(readlink -f "${ROOT_DIR}")"
 
 if [ ${#} -eq 2 ] ; then
 	RELEASE="${2}"
@@ -78,4 +80,4 @@ while read DIR ; do
 	PVC="${VOL}-${RELEASE}-${POD}-${ID}"
 
 	echo "${PVC} ${ROOT_DIR}/${DIR}"
-done < <(cd "${ROOT_DIR}" && find * -mindepth 2 -maxdepth 2) | sort
+done < <(cd "${ROOT_DIR}" && find * -mindepth 2 -maxdepth 2 -type d) | sort

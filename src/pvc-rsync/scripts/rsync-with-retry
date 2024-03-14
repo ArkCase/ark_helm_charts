@@ -30,7 +30,8 @@ fail()
 
 usage()
 {
-	echo -e "usage: ${BASH_ARGV0:-${BASH_SOURCE:-${0}}} [source] target"
+	local S="$(basename "${BASH_ARGV0:-${BASH_SOURCE:-${0}}}")"
+	echo -e "usage: ${S} [source] target"
 	exit 1
 }
 
@@ -51,9 +52,9 @@ fi
 SOURCE="$(readlink -f "${SOURCE}")"
 [ -n "${TARGET}" ] || fail "The target must be a non-empty string"
 
-RSYNC_SHELL_FLAGS=()
-[ -v RSYNC_SHELL ] || RSYNC_SHELL=""
-[ -n "${RSYNC_SHELL}" ] && RSYNC_SHELL_FLAGS=(--blocking-io --rsh="${RSYNC_SHELL}")
+RSYNC_RSH_FLAGS=()
+[ -v RSYNC_RSH ] || RSYNC_RSH=""
+[ -n "${RSYNC_RSH}" ] && RSYNC_RSH_FLAGS=(--blocking-io --rsh="${RSYNC_RSH}")
 
 RSYNC="$(type -P rsync)" || fail "Failed to find rsync in the path"
 say "👉 Copying from [${SOURCE}] into [${TARGET}]..."
@@ -64,7 +65,7 @@ say "👉 Copying from [${SOURCE}] into [${TARGET}]..."
 	while true ; do
 		(( ATTEMPT++ ))
 		say "Starting rsync (attempt # ${ATTEMPT})..."
-		"${RSYNC}" "${RSYNC_SHELL_FLAGS[@]}" --progress --exclude="lost+found" -RavzhH --delete-delay . "${TARGET}"
+		"${RSYNC}" "${RSYNC_RSH_FLAGS[@]}" --progress --exclude="lost+found" -RavzhH --delete-delay . "${TARGET}"
 		RC=${?}
 		case ${RC} in
 			0 ) exit 0 ;;
