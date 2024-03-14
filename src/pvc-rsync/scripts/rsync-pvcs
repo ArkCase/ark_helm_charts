@@ -1,13 +1,13 @@
 #!/bin/bash
-SCRIPT="$(readlink -f "${BASH_ARGV0:-${BASH_SOURCE:-${0}}}")"
-BASEDIR="$(dirname "${SCRIPT}")"
-SCRIPT="$(basename "${SCRIPT}")"
+SCRIPT="$(/usr/bin/readlink -f "${BASH_ARGV0:-${BASH_SOURCE:-${0}}}")"
+BASEDIR="$(/usr/bin/dirname "${SCRIPT}")"
+SCRIPT="$(/usr/bin/basename "${SCRIPT}")"
 
 set -euo pipefail
 
 timestamp()
 {
-	"${DATE}" -Ins -u
+	/usr/bin/date -Ins -u
 }
 
 say()
@@ -40,7 +40,7 @@ rsync_with_retry()
 {
 	local COMMAND="${1}"
 	local LOCAL="${2}"
-	local REMOTE="${2}"
+	local REMOTE="${3}"
 
 	local COPY_ARGS=()
 	case "${COMMAND}" in
@@ -56,6 +56,7 @@ rsync_with_retry()
 			"${MKDIR}" -p "${LOCAL}" || fail "Failed to create the non-existent directory [${LOCAL}]"
 		fi
 		cd "${LOCAL}" || fail "Failed to cd into [${LOCAL}] (rc=${?})"
+		ok "Current directory is now [${LOCAL}]"
 		ATTEMPT=0
 		while true ; do
 			(( ATTEMPT++ ))
@@ -75,7 +76,7 @@ rsync_with_retry()
 
 usage()
 {
-	local S="$(basename "${BASH_ARGV0:-${BASH_SOURCE:-${0}}}")"
+	local S="$(/usr/bin/basename "${BASH_ARGV0:-${BASH_SOURCE:-${0}}}")"
 	echo -e "usage: ${S} (push|pull) server-spec [pvc-list-file]"
 	echo -e ""
 	echo -e "	Copy the PVC data, to/from the \${server-spec}, as described by the \${pvc-list-file}."
@@ -131,7 +132,7 @@ case "${SERVER_SPEC}" in
 		[[ "${SERVER_SPEC,,}" =~ ^ssh://((.+@)?[a-z0-9]([a-z0-9-]*[a-z0-9])?([.][a-z0-9]([a-z0-9-]*[a-z0-9])?)*)$ ]] || fail "The server-spec value is invalid: [${SERVER_SPEC}]"
 		SERVER_SPEC="${BASH_REMATCH[1]}"
 		RSYNC_RSH="$(type -P ssh)" || fail "The SSH executable was not found in the path"
-		[ -e "${RSYNC_RSH}" ] || fail "The $(basename "${RSYNC_RSH}") could not be found at [${RSYNC_RSH}]"
+		[ -e "${RSYNC_RSH}" ] || fail "The $(/usr/bin/basename "${RSYNC_RSH}") could not be found at [${RSYNC_RSH}]"
 		[ -f "${RSYNC_RSH}" ] || fail "The path [${RSYNC_RSH}] is not a regular file"
 		[ -r "${RSYNC_RSH}" ] || fail "The file [${RSYNC_RSH}] is not readable"
 		[ -x "${RSYNC_RSH}" ] || fail "The file [${RSYNC_RSH}] is not executable"
@@ -143,7 +144,7 @@ case "${SERVER_SPEC}" in
 		[[ "${SERVER_SPEC,,}" =~ ^kubectl://([a-z0-9]([a-z0-9-]*[a-z0-9])?(@([a-z0-9]([a-z0-9-]*[a-z0-9])?)))$ ]] || fail "The server-spec value is invalid: [${SERVER_SPEC}]"
 		SERVER_SPEC="${BASH_REMATCH[1]}"
 		RSYNC_RSH="${BASEDIR}/kubectl-helper"
-		[ -e "${RSYNC_RSH}" ] || fail "The $(basename "${RSYNC_RSH}") could not be found at [${RSYNC_RSH}]"
+		[ -e "${RSYNC_RSH}" ] || fail "The $(/usr/bin/basename "${RSYNC_RSH}") could not be found at [${RSYNC_RSH}]"
 		[ -f "${RSYNC_RSH}" ] || fail "The path [${RSYNC_RSH}] is not a regular file"
 		[ -r "${RSYNC_RSH}" ] || fail "The file [${RSYNC_RSH}] is not readable"
 		[ -x "${RSYNC_RSH}" ] || fail "The file [${RSYNC_RSH}] is not executable"
@@ -164,7 +165,6 @@ if [ "${PVC_LIST_FILE}" != "-" ] ; then
 fi
 
 CAT="$(type -P cat)" || fail "Failed to find cat in the path"
-DATE="$(type -P date)" || fail "Failed to find date in the path"
 KUBECTL="$(type -P kubectl)" || fail "Failed to find kubectl in the path"
 MKDIR="$(type -P mkdir)" || fail "Failed to find mkdir in the path"
 RSYNC="$(type -P rsync)" || fail "Failed to find rsync in the path"
@@ -173,8 +173,8 @@ SORT="$(type -P sort)" || fail "Failed to find sort in the path"
 TAR="$(type -P tar)" || fail "Failed to find tar in the path"
 TEE="$(type -P tee)" || fail "Failed to find tee in the path"
 
-LOG_BASE="$(basename "${0}")"
-STAMP="$("${DATE}" -u "+%Y%m%d-%H%M%SZ")"
+LOG_BASE="$(/usr/bin/basename "${0}")"
+STAMP="$(/usr/bin/date -u "+%Y%m%d-%H%M%SZ")"
 MAIN_LOG="${LOG_BASE}.${STAMP}.log"
 
 RSYNC_RSH_FLAGS=()
@@ -211,10 +211,10 @@ while read LINE ; do
 		err "The path [${PVC_DIR}] for PVC ${PVC_NAME} is  name [${PVC_NAME}] ${ERR} (line # ${LINE_NO} = [${LINE}])"
 		continue
 	fi
-	PVC_DIR="$(readlink -f "${PVC_DIR}")"
+	PVC_DIR="$(/usr/bin/readlink -f "${PVC_DIR}")"
 
 	# Initialize the log
-	STAMP="$("${DATE}" -u "+%Y%m%d-%H%M%SZ")"
+	STAMP="$(/usr/bin/date -u "+%Y%m%d-%H%M%SZ")"
 	PVC_LOG="${LOG_BASE}.${PVC_NAME}.${STAMP}.log"
 
 	say "👉 Processing ${PVC_NAME} from [${PVC_DIR}] (log = ${PVC_LOG})..."

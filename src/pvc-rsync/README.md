@@ -6,6 +6,16 @@ This tool is similar to [pv-migrate](https://github.com/utkuozdemir/pv-migrate),
 
 It also exposes a ***scripts*** module that can be used to download all the utility scripts with which uploads into the PVC can be performed. Even though the pod allows both upload _and_ download, it's primarily used to migrate persistent data from one cluster or namespace into another.
 
+## External Access
+
+In the AI5 environment, external access can be enabled by way of setting the value `externalDns.name` to the hostname you want your pod's service to be exposed as. This will cause an annotation to be added with that value. The annotation's name by default is `external-dns.alpha.kubernetes.io/hostname`, but can be set with the value `externalDns.annotation`.
+
+For example:
+
+`helm install pvc-rsync arkcase/pvc-rsync --set externalDns.name=pvc-rsync.arkcase.net`
+
+This will export the service such that you may connect to it using `rsync-pvcs (pull|push) rsync://pvc-rsync.arkcase.net ...`.
+
 ## How to use it
 
 The execution is made up of two parts:
