@@ -62,6 +62,7 @@ while read DIR ; do
 	if [[ "${PVC}" =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?$ ]] ; then
 		echo "${PVC} ${DIR}"
 	else
-		err "Invalid PVC name [${PVC}] (from [${DIR}]), it will be ignored"
+		echo "# Invalid PVC name [${PVC}]"
+		echo "# ${PVC} ${DIR}"
 	fi
 done < <(find "${ROOT_DIR}" -mindepth 1 -maxdepth 1 -type d) | sort
