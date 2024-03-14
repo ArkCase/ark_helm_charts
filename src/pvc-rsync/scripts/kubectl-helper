@@ -27,9 +27,9 @@ fail()
 
 usage()
 {
-	local CMD="${BASH_ARGV0:-${BASH_SOURCE:-${0}}}"
-	echo -e "usage: ${CMD} pod args..." 1>&2
-	echo -e "       ${CMD} -l pod namespace args..." 1>&2
+	local S="${BASH_ARGV0:-${BASH_SOURCE:-${0}}}"
+	echo -e "usage: ${S} pod args..." 1>&2
+	echo -e "       ${S} -l pod namespace args..." 1>&2
 	exit 1
 }
 
