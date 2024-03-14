@@ -1,6 +1,7 @@
 #!/bin/bash
-SCRIPT="$(readlink -f "${BASH_ARGV0:-${BASH_SOURCE:-${0}}}")"
-BASEDIR="$(dirname "${SCRIPT}")"
+SCRIPT="$(/usr/bin/readlink -f "${BASH_ARGV0:-${BASH_SOURCE:-${0}}}")"
+BASEDIR="$(/usr/bin/dirname "${SCRIPT}")"
+SCRIPT="$(/usr/bin/basename "${SCRIPT}")"
 
 set -euo pipefail
 
@@ -24,67 +25,202 @@ warn()
 	say "⚠️ ${@}"
 }
 
-fail()
+err()
 {
 	say "❌ ${@}" 1>&2
+}
+
+fail()
+{
+	err "${@}"
 	exit ${EXIT_CODE:-1}
+}
+
+rsync_with_retry()
+{
+	local COMMAND="${1}"
+	local LOCAL="${2}"
+	local REMOTE="${3}"
+
+	local COPY_ARGS=()
+	case "${COMMAND}" in
+		push ) MAKE_DIRECTORY="false" ; SOURCE="${LOCAL}" ; TARGET="${REMOTE}" ; COPY_ARGS=(. "${REMOTE}") ;;
+		pull ) MAKE_DIRECTORY="true"  ; TARGET="${LOCAL}" ; SOURCE="${REMOTE}" ; COPY_ARGS=("${REMOTE}" .) ;;
+	esac
+
+	say "👉 Copying from [${SOURCE}] into [${TARGET}]..."
+	(
+		set -euo pipefail
+		if [ ! -d "${LOCAL}" ] ; then
+			"${MAKE_DIRECTORY}" || fail "The local directory [${LOCAL}] does not exist, no copy will be performed"
+			"${MKDIR}" -p "${LOCAL}" || fail "Failed to create the non-existent directory [${LOCAL}]"
+		fi
+		cd "${LOCAL}" || fail "Failed to cd into [${LOCAL}] (rc=${?})"
+		ok "Current directory is now [${LOCAL}]"
+		ATTEMPT=0
+		while true ; do
+			(( ATTEMPT++ ))
+			say "Starting rsync (attempt # ${ATTEMPT})..."
+			"${RSYNC}" "${RSYNC_RSH_FLAGS[@]}" --progress --exclude="lost+found" -RavzhH --delete-delay "${COPY_ARGS[@]}"
+			RC=${?}
+			case ${RC} in
+				0 ) exit 0 ;;
+				30 ) warn "Timeout detected, will try again..." ;;
+				* ) err "Failed to copy the data (rc = ${RC})" ; exit ${RC} ;;
+			esac
+		done
+	) || return ${?}
+	ok "File copy complete!"
+	return 0
 }
 
 usage()
 {
-	echo -e "usage: ${BASH_ARGV0:-${BASH_SOURCE:-${0}}} [base-dir] [user@]rsyncd-server"
+	local S="$(/usr/bin/basename "${BASH_ARGV0:-${BASH_SOURCE:-${0}}}")"
+	echo -e "usage: ${S} (push|pull) server-spec [pvc-list-file]"
+	echo -e ""
+	echo -e "	Copy the PVC data, to/from the \${server-spec}, as described by the \${pvc-list-file}."
+	echo -e ""
+	echo -e "	The list file must be formatted in two space-separated colums, where the first"
+	echo -e "	column is the name of the PVC, and the rest of the line is the directory the data"
+	echo -e "	is to be read from/written to. Comments (#) are acceptable as long as they're"
+	echo -e "	preceded by zero or more spaces; the whole line will be ignored. Empty lines or"
+	echo -e "	lines filled with only spaces will be also be ignored."
+	echo -e ""
+	echo -e "	If \${pvc-list-file} is not given, or is given as '-', then the data will"
+	echo -e "	be read from STDIN."
+	echo -e ""
+	echo -e "	The RSYNC session will be opened depending on the spec format:"
+	echo -e ""
+	echo -e "		rsync://[user@]hostname -> use rsync direct protocol (873/tcp)"
+	echo -e "		ssh://[user@]hostname -> use ssh as the remote shell"
+	echo -e "		rsh://[user@]hostname -> use the value of RSYNC_RSH as the remote shell"
+	echo -e "		kubectl://podName[@namespace] -> use kubectl as the remote shell"
 	exit 1
 }
 
-find_pvcs()
-{
-	local ROOT_DIR="${1}"
-	while read DIR ; do
-		echo "$(basename "${DIR}")" "${DIR}"
-	done < <("${FIND}" "${ROOT_DIR}" -mindepth 1 -maxdepth 1 -type d | "${SORT}")
-}
+[ ${#} -ge 2 ] && [ ${#} -le 3 ] || usage
 
-if [ ${#} -eq 1 ] ; then
-	ROOT_DIR="."
-	RSYNCD_SERVER="${1}"
-elif [ ${#} -eq 2 ] ; then
-	ROOT_DIR="${1}"
-	[ -e "${ROOT_DIR}" ] || fail "The directory [${ROOT_DIR}] does not exist"
-	[ -d "${ROOT_DIR}" ] || fail "The path [${ROOT_DIR}] is not a directory"
-	[ -r "${ROOT_DIR}" ] || fail "The directory [${ROOT_DIR}] is not readable"
-	[ -x "${ROOT_DIR}" ] || fail "The directory [${ROOT_DIR}] is not executable"
-	RSYNCD_SERVER="${2}"
-else
-	usage
+COMMAND="${1,,}"
+shift
+
+case "${COMMAND}" in
+	push | pull ) ;;
+	* ) err "Invalid command [${COMMAND}]\n" ; usage ;;
+esac
+
+SERVER_SPEC="${1}"
+shift
+case "${SERVER_SPEC}" in
+	rsync://* )
+		PROTOCOL="rsync"
+		[[ "${SERVER_SPEC,,}" =~ ^rsync://((.+@)?[a-z0-9]([a-z0-9-]*[a-z0-9])?([.][a-z0-9]([a-z0-9-]*[a-z0-9])?)*)$ ]] || fail "The server-spec value is invalid: [${SERVER_SPEC}]"
+		SERVER_SPEC="${BASH_REMATCH[1]}"
+		RSYNC_RSH=""
+		;;
+
+	rsh://* )
+		PROTOCOL="rsh"
+		[[ "${SERVER_SPEC,,}" =~ ^rsh://((.+@)?[a-z0-9]([a-z0-9-]*[a-z0-9])?([.][a-z0-9]([a-z0-9-]*[a-z0-9])?)*)$ ]] || fail "The server-spec value is invalid: [${SERVER_SPEC}]"
+		SERVER_SPEC="${BASH_REMATCH[1]}"
+		[ -v RSYNC_RSH ] || fail "The RSYNC_RSH variable is not set"
+		[[ "${RSYNC_RSH}" =~ [^[:space:]] ]] || fail "The RSYNC_RSH value is a blank string: [${RSYNC_RSH}]"
+		;;
+
+	ssh://* )
+		PROTOCOL="ssh"
+		[[ "${SERVER_SPEC,,}" =~ ^ssh://((.+@)?[a-z0-9]([a-z0-9-]*[a-z0-9])?([.][a-z0-9]([a-z0-9-]*[a-z0-9])?)*)$ ]] || fail "The server-spec value is invalid: [${SERVER_SPEC}]"
+		SERVER_SPEC="${BASH_REMATCH[1]}"
+		RSYNC_RSH="$(type -P ssh)" || fail "The SSH executable was not found in the path"
+		[ -e "${RSYNC_RSH}" ] || fail "The $(/usr/bin/basename "${RSYNC_RSH}") could not be found at [${RSYNC_RSH}]"
+		[ -f "${RSYNC_RSH}" ] || fail "The path [${RSYNC_RSH}] is not a regular file"
+		[ -r "${RSYNC_RSH}" ] || fail "The file [${RSYNC_RSH}] is not readable"
+		[ -x "${RSYNC_RSH}" ] || fail "The file [${RSYNC_RSH}] is not executable"
+		export RSYNC_RSH
+		;;
+
+	kubectl://* )
+		PROTOCOL="kubectl"
+		[[ "${SERVER_SPEC,,}" =~ ^kubectl://([a-z0-9]([a-z0-9-]*[a-z0-9])?(@([a-z0-9]([a-z0-9-]*[a-z0-9])?)))$ ]] || fail "The server-spec value is invalid: [${SERVER_SPEC}]"
+		SERVER_SPEC="${BASH_REMATCH[1]}"
+		RSYNC_RSH="${BASEDIR}/kubectl-helper"
+		[ -e "${RSYNC_RSH}" ] || fail "The $(/usr/bin/basename "${RSYNC_RSH}") could not be found at [${RSYNC_RSH}]"
+		[ -f "${RSYNC_RSH}" ] || fail "The path [${RSYNC_RSH}] is not a regular file"
+		[ -r "${RSYNC_RSH}" ] || fail "The file [${RSYNC_RSH}] is not readable"
+		[ -x "${RSYNC_RSH}" ] || fail "The file [${RSYNC_RSH}] is not executable"
+		export RSYNC_RSH
+		;;
+
+	* ) err "Unrecognized server-spec\n" ; usage ;;
+esac
+
+PVC_LIST_FILE="-"
+[ ${#} -eq 1 ] && PVC_LIST_FILE="${1}" && shift
+
+[ -n "${PVC_LIST_FILE}" ] || fail "The input file [${PVC_LIST_FILE}] may not be the empty string"
+if [ "${PVC_LIST_FILE}" != "-" ] ; then
+	[ -e "${PVC_LIST_FILE}" ] || fail "The input file [${PVC_LIST_FILE}] does not exist"
+	[ -f "${PVC_LIST_FILE}" ] || fail "The path [${PVC_LIST_FILE}] is not a regular file"
+	[ -r "${PVC_LIST_FILE}" ] || fail "The input file [${PVC_LIST_FILE}] is not readable"
 fi
 
-ROOT_DIR="$(readlink -f "${ROOT_DIR}")"
-[[ "${RSYNCD_SERVER,,}" =~ ^([a-z0-9_-]+@)?[a-z0-9]([a-z0-9-]*[a-z0-9])?([.][a-z0-9]([a-z0-9-]*[a-z0-9])?)*$ ]] || fail "The rsyncd-server value is invalid: [${RSYNCD_SERVER}]"
-
-TEE="$(type -P tee)" || fail "Failed to find tee in the path"
-SORT="$(type -P sort)" || fail "Failed to find sort in the path"
+CAT="$(type -P cat)" || fail "Failed to find cat in the path"
+KUBECTL="$(type -P kubectl)" || fail "Failed to find kubectl in the path"
+MKDIR="$(type -P mkdir)" || fail "Failed to find mkdir in the path"
 RSYNC="$(type -P rsync)" || fail "Failed to find rsync in the path"
-FIND="$(type -P find)" || fail "Failed to find find in the path"
-BASENAME="$(type -P basename)" || fail "Failed to find basename in the path"
+SED="$(type -P sed)" || fail "Failed to find sed in the path"
+SORT="$(type -P sort)" || fail "Failed to find sort in the path"
+TAR="$(type -P tar)" || fail "Failed to find tar in the path"
+TEE="$(type -P tee)" || fail "Failed to find tee in the path"
 
-RSYNC_WITH_RETRY="${BASEDIR}/rsync-with-retry"
-[ -e "${RSYNC_WITH_RETRY}" ] || fail "The $(basename "${RSYNC_WITH_RETRY}") script could not be found at [${RSYNC_WITH_RETRY}]"
-[ -f "${RSYNC_WITH_RETRY}" ] || fail "The path [${RSYNC_WITH_RETRY}] is not a regular file"
-[ -r "${RSYNC_WITH_RETRY}" ] || fail "The file [${RSYNC_WITH_RETRY}] is not readable"
-[ -x "${RSYNC_WITH_RETRY}" ] || fail "The file [${RSYNC_WITH_RETRY}] is not executable"
-
-LOG_BASE="$("${BASENAME}" "${0}")"
+LOG_BASE="$(/usr/bin/basename "${0}")"
 STAMP="$(/usr/bin/date -u "+%Y%m%d-%H%M%SZ")"
 MAIN_LOG="${LOG_BASE}.${STAMP}.log"
 
+RSYNC_RSH_FLAGS=()
+[ -v RSYNC_RSH ] || RSYNC_RSH=""
+[ -n "${RSYNC_RSH}" ] && RSYNC_RSH_FLAGS=(--blocking-io --rsh="${RSYNC_RSH}")
+
 exec > >("${TEE}" "${MAIN_LOG}")
 exec 2>&1
-say "👉 Copying all the PVCs from [${ROOT_DIR}] into the rsyncd at ${RSYNCD_SERVER}"
-while read PVC_NAME PVC_DIR ; do
+say "👉 Copying all the PVCs into the server ${SERVER_SPEC} via ${PROTOCOL}"
+LINE_NO=0
+while read LINE ; do
+	(( ++LINE_NO ))
+
+	# Ignore comments and empty lines
+	[[ "${LINE}" =~ ^[[:space:]]*$ ]] && continue
+	[[ "${LINE}" =~ ^[[:space:]]*# ]] && continue
+
+	# Parse out the interesting bits of data
+	read PVC_NAME PVC_DIR <<< "${LINE}"
+
+	# Validate the PVC
+	if [[ ! "${PVC_NAME}" =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?$ ]] ; then
+		err "The PVC name [${PVC_NAME}] is not valid (line # ${LINE_NO} = [${LINE}])"
+		continue
+	fi
+
+	# Validate the PVC_DIR
+	if [ -z "${PVC_DIR}" ] ; then
+		err "No directory information given for PVC ${PVC_NAME} (line # ${LINE_NO} = [${LINE}])"
+		continue
+	elif [ ! -d "${PVC_DIR}" ] ; then
+		ERR="is not a directory"
+		[ -e "${PVC_DIR}" ] || ERR="does not exist"
+		err "The path [${PVC_DIR}] for PVC ${PVC_NAME} is  name [${PVC_NAME}] ${ERR} (line # ${LINE_NO} = [${LINE}])"
+		continue
+	fi
+	PVC_DIR="$(/usr/bin/readlink -f "${PVC_DIR}")"
+
+	# Initialize the log
 	STAMP="$(/usr/bin/date -u "+%Y%m%d-%H%M%SZ")"
 	PVC_LOG="${LOG_BASE}.${PVC_NAME}.${STAMP}.log"
 
-	say "👉 Processing ${PVC_NAME} from [${PVC_DIR}]..."
-	"${RSYNC_WITH_RETRY}" "${PVC_DIR}" "${RSYNCD_SERVER}::${PVC_NAME}" &> "${PVC_LOG}" || fail "Processing failed (rc = ${?})"
-	ok "Directory processed!"
-done < <(find_pvcs "${ROOT_DIR}")
+	say "👉 Processing ${PVC_NAME} from [${PVC_DIR}] (log = ${PVC_LOG})..."
+	if rsync_with_retry "${COMMAND}" "${PVC_DIR}" "${SERVER_SPEC}::${PVC_NAME}" &> "${PVC_LOG}" ; then
+		ok "Directory processed!"
+	else
+		err "Processing failed (rc = ${?})"
+	fi
+done < <("${CAT}" "${PVC_LIST_FILE}")
