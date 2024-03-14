@@ -1,0 +1,121 @@
+#!/bin/bash
+SCRIPT="$(readlink -f "${BASH_ARGV0:-${BASH_SOURCE:-${0}}}")"
+BASEDIR="$(dirname "${SCRIPT}")"
+
+set -euo pipefail
+
+timestamp()
+{
+	/usr/bin/date -Ins -u
+}
+
+say()
+{
+	echo -e "$(timestamp): ${@}"
+}
+
+ok()
+{
+	say "✅ ${@}"
+}
+
+warn()
+{
+	say "⚠️ ${@}"
+}
+
+fail()
+{
+	say "❌ ${@}" 1>&2
+	exit ${EXIT_CODE:-1}
+}
+
+usage()
+{
+	echo -e "usage: ${BASH_ARGV0:-${BASH_SOURCE:-${0}}} [base-dir] pod[@namespace]"
+	exit 1
+}
+
+find_pvcs()
+{
+	local ROOT_DIR="${1}"
+	local RELEASE="$(basename "${ROOT_DIR}")"
+	while read DIR ; do
+			IFS="/" read pod vol id rest < <(echo "${DIR}" | "${SED}" -e 's;-;/;g')
+
+			if [ -n "${rest}" ] ; then
+					pod="${pod}-${vol}"
+					vol="${id}"
+					id="${rest}"
+			fi
+
+			pvc="${vol}-${RELEASE}-${pod}-${id}"
+
+			echo "${pvc} ${ROOT_DIR}/${DIR}"
+	done < <(cd "${ROOT_DIR}" && find * -mindepth 2 -maxdepth 2 | "${SORT}") | "${SORT}"
+}
+
+if [ ${#} -eq 1 ] ; then
+	ROOT_DIR="."
+	RSYNCD_SERVER="${1}"
+elif [ ${#} -eq 2 ] ; then
+	ROOT_DIR="${1}"
+	[ -e "${ROOT_DIR}" ] || fail "The directory [${ROOT_DIR}] does not exist"
+	[ -d "${ROOT_DIR}" ] || fail "The path [${ROOT_DIR}] is not a directory"
+	[ -r "${ROOT_DIR}" ] || fail "The directory [${ROOT_DIR}] is not readable"
+	[ -x "${ROOT_DIR}" ] || fail "The directory [${ROOT_DIR}] is not executable"
+	RSYNCD_SERVER="${2}"
+else
+	usage
+fi
+
+ROOT_DIR="$(readlink -f "${ROOT_DIR}")"
+[[ "${RSYNCD_SERVER,,}" =~ ^([a-z0-9]([a-z0-9-]*[a-z0-9])?)(@([a-z0-9]([a-z0-9-]*[a-z0-9])?))$ ]] || fail "The rsyncd-server value is invalid: [${RSYNCD_SERVER}]"
+TARGET_POD="${BASH_REMATCH[1]}"
+NAMESPACE="${BASH_REMATCH[4]}"
+
+KUBECTL="$(type -P kubectl)" || fail "Failed to find kubectl in the path"
+SED="$(type -P sed)" || fail "Failed to find sed in the path"
+TEE="$(type -P tee)" || fail "Failed to find tee in the path"
+TAR="$(type -P tar)" || fail "Failed to find tar in the path"
+SORT="$(type -P sort)" || fail "Failed to find sort in the path"
+RSYNC="$(type -P rsync)" || fail "Failed to find rsync in the path"
+
+RSYNC_WITH_RETRY="${BASEDIR}/rsync-with-retry"
+[ -e "${RSYNC_WITH_RETRY}" ] || fail "The $(basename "${RSYNC_WITH_RETRY}") script could not be found at [${RSYNC_WITH_RETRY}]"
+[ -f "${RSYNC_WITH_RETRY}" ] || fail "The path [${RSYNC_WITH_RETRY}] is not a regular file"
+[ -r "${RSYNC_WITH_RETRY}" ] || fail "The file [${RSYNC_WITH_RETRY}] is not readable"
+[ -x "${RSYNC_WITH_RETRY}" ] || fail "The file [${RSYNC_WITH_RETRY}] is not executable"
+
+RSYNC_SHELL="${BASEDIR}/rsync-helper"
+[ -e "${RSYNC_SHELL}" ] || fail "The $(basename "${RSYNC_SHELL}") could not be found at [${RSYNC_SHELL}]"
+[ -f "${RSYNC_SHELL}" ] || fail "The path [${RSYNC_SHELL}] is not a regular file"
+[ -r "${RSYNC_SHELL}" ] || fail "The file [${RSYNC_SHELL}] is not readable"
+[ -x "${RSYNC_SHELL}" ] || fail "The file [${RSYNC_SHELL}] is not executable"
+export RSYNC_SHELL
+
+LOG_BASE="$(basename "${0}")"
+STAMP="$(/usr/bin/date -u "+%Y%m%d-%H%M%SZ")"
+MAIN_LOG="${LOG_BASE}.${STAMP}.log"
+
+NSMSG=""
+NSFLAG=()
+if [ -n "${NAMESPACE}" ] ; then
+	NSMSG="${NAMESPACE}::"
+	NSFLAG=(-n "${NAMESPACE}")
+fi
+
+"${KUBECTL}" get pod "${NSFLAG[@]}" "${TARGET_POD}" -o name &>/dev/null || fail "Could not find the pod ${NSMSG}${TARGET_POD}"
+
+exec > >("${TEE}" "${MAIN_LOG}")
+exec 2>&1
+say "👉 Copying all the PVCs from [${ROOT_DIR}] into the pod ${NSMSG}${TARGET_POD} via kubectl"
+RSYNCD_SERVER="${TARGET_POD}@${NAMESPACE}"
+while read PVC_NAME PVC_DIR ; do
+	STAMP="$(/usr/bin/date -u "+%Y%m%d-%H%M%SZ")"
+	PVC_LOG="${LOG_BASE}.${PVC_NAME}.${STAMP}.log"
+
+	say "👉 Processing ${PVC_NAME} from [${PVC_DIR}]..."
+	"${RSYNC_WITH_RETRY}" "${PVC_DIR}" "${RSYNCD_SERVER}::${PVC_NAME}" &> "${PVC_LOG}" || fail "Processing failed (rc = ${?})"
+	ok "Directory processed!"
+done < <(find_pvcs "${ROOT_DIR}")
