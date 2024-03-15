@@ -37,13 +37,14 @@ JQ="$(type -P jq)" || fail "Could not find 'jq' in the path"
 AWK="$(type -P awk)" || fail "Could not find 'awk' in the path"
 SED="$(type -P sed)" || fail "Could not find 'sed' in the path"
 SORT="$(type -P sort)" || fail "Could not find 'sort' in the path"
+TIMEOUT="$(type -P timeout)" || fail "Could not find 'timeout' in the path"
 
 NSFLAG=()
 if [ ${#} -gt 1 ] ; then
 	say "👉 Will process ${#} PVCs given on the command line"
 	ALL_PVC=("${@}")
 else
-	[ -v NAMESPACE ] || NAMESPACE=""
+	[ -v NAMESPACE ] || NAMESPACE="$("${KUBECTL}" config view --minify -o jsonpath="{..namespace}")"
 	NSLABEL="current"
 	if [ -n "${NAMESPACE}" ] ; then
 		[[ "${NAMESPACE}" =~ ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$ ]] || fail "The NAMESPACE value [${NAMESPACE}] is not valid"
@@ -61,9 +62,14 @@ else
 	DEFAULT_NAMESPACE="${NAMESPACE}"
 fi
 
+[ -v ATTACHMENT_RESOURCE ] || ATTACHMENT_RESOURCE=""
+[ -n "${ATTACHMENT_RESOURCE}" ] || ATTACHMENT_RESOURCE="volumeattachments.storage.k8s.io"
+
 NODES="$("${KUBECTL}" get node -o name 2>/dev/null | "${SED}" -e 's;^[^/]\+/;;g' | "${SORT}" -u)"
 [ -n "${NODES}" ] || fail "No cluster nodes found, cannot continue"
 
+NSPREFIX=""
+[ -n "${NAMESPACE}" ] && NSPREFIX="${NAMESPACE}::"
 for PVC in "${ALL_PVC[@]}" ; do
 
 	if [[ "${PVC}" =~ ^(([a-z0-9]([-a-z0-9]*[a-z0-9]))::)?([a-z0-9]([-a-z0-9]*[a-z0-9])?)$ ]] ; then
@@ -88,17 +94,43 @@ for PVC in "${ALL_PVC[@]}" ; do
 
 	# For each PVC, identify the pod(s) it's attached to
 
-	readarray -t ATTACHMENTS < <("${KUBECTL}" get volumeattachments.storage.k8s.io 2>/dev/null | "${EGREP}" "\s${PV}\s" | "${AWK}" '{ print $1 }')
+	readarray -t ATTACHMENTS < <("${KUBECTL}" get "${ATTACHMENT_RESOURCE}" 2>/dev/null | "${EGREP}" "\s${PV}\s" | "${AWK}" '{ print $1 }')
 
-	if [ "${#ATTACHMENTS[@]}" -lt 1 ] ; then
-		warn "No attachments found for PVC ${NAMESPACE}::${PVC}"
-		continue
-	fi
+	say "${NSPREFIX}${PVC} - ${#ATTACHMENTS[@]} found"
+	[ "${#ATTACHMENTS[@]}" -ge 1 ] || continue
 
-	say "Attachments for ${NAMESPACE}::${PVC} -> [${ATTACHMENTS[@]}]"
+	for ATTACHMENT in "${ATTACHMENTS[@]}" ; do
+		if ! ATTACHMENT_INFO="$("${KUBECTL}" get "${ATTACHMENT_RESOURCE}" "${ATTACHMENT}" -o json)" ; then
+			say "\t❌ the attachment ${ATTACHMENT} disappeared (${?})"
+			continue
+		fi
 
-	# For each attachment, identify the node it's on
+		DELETE="false"
 
-	# Validate that all the attachments point to valid nodes with attached pods running on them ... any discrepancies
-	# must be listed for eradication ...?
+		read ATTACHED NODE < <("${JQ}" -r '(.status.attached | tostring) + " " + .spec.nodeName' <<< "${ATTACHMENT_INFO}")
+		if [ -z "${ATTACHED}" ] || [ -z "${NODE}" ] ; then
+			# No node info?!?
+			say "\t❌ the attachment [${ATTACHMENT}] has no node information... deleting"
+			DELETE="true"
+		else
+			# TODO: Validate that the node exists....
+			if "${KUBECTL}" get node "${NODE}" &>/dev/null ; then
+				say "\t${ATTACHMENT} -> ${NODE} (${ATTACHED})"
+			else
+				say "\t❌ ${ATTACHMENT} -> ${NODE} is missing"
+				DELETE="true"
+			fi
+		fi
+
+		"${DELETE}" || continue
+
+		RESULT="$("${TIMEOUT}" --k=15 10 "${KUBECTL}" delete "${ATTACHMENT_RESOURCE}" "${ATTACHMENT}" 2>&1)"
+		RC=${?}
+		if [ ${RC} -eq 0 ] ; then
+			say "\t✅ ${RESULT}"
+		else
+			say "\t❌ Deletion failed (${RC})"
+			say "\t❌ ${RESULT}"
+		fi
+	done
 done
