@@ -96,7 +96,7 @@ for PVC in "${ALL_PVC[@]}" ; do
 
 	readarray -t ATTACHMENTS < <("${KUBECTL}" get "${ATTACHMENT_RESOURCE}" 2>/dev/null | "${EGREP}" "\s${PV}\s" | "${AWK}" '{ print $1 }')
 
-	say "${NSPREFIX}${PVC} - ${#ATTACHMENTS[@]} found"
+	say "${NSPREFIX}${PVC} - ${#ATTACHMENTS[@]} attachments found"
 	[ "${#ATTACHMENTS[@]}" -ge 1 ] || continue
 
 	for ATTACHMENT in "${ATTACHMENTS[@]}" ; do
