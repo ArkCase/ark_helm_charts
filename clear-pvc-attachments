@@ -130,7 +130,7 @@ for PVC in "${ALL_PVC[@]}" ; do
 			say "\t✅ ${RESULT}"
 		else
 			case "${RC}" in
-				124 )	say "\t⏰ Deletion request timed out" ;;
+				124 )	say "\t⌛ Deletion request timed out" ;;
 				* )		say "\t❌ Deletion failed (${RC})" ;;
 			esac
 			say "\t❌ ${RESULT}"
