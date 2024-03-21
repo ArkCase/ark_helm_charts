@@ -81,7 +81,7 @@ spec:
           command: [ "rsync", "--daemon", "--no-detach", "--log-file=/dev/stdout", "--port=873" ]
           resources: {{- include "arkcase.resources" (dict "ctx" $) | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "arkcase") | nindent 12 }}
-          {{- include "arkcase.subsystem.ports" ($.Values.service).arkcase | nindent 10 }}
+          {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
           volumeMounts:
             - mountPath: /etc/rsyncd.conf
               name: &configMap config-map

@@ -1,0 +1,173 @@
+#!/bin/bash
+set -euo pipefail
+
+timestamp()
+{
+	/usr/bin/date -Ins -u
+}
+
+say()
+{
+	echo -e "$(timestamp): ${@}"
+}
+
+warn()
+{
+	say "⚠️ ${@}"
+}
+
+ok()
+{
+	say "✅ ${@}"
+}
+
+doing()
+{
+	say "👉 ${@}"
+}
+
+fail() {
+	say "❌ ${@}" 1>&2
+	exit ${EXIT_CODE:-1}
+}
+
+is_valid_k8s_name()
+{
+	local NAME="${1}"
+	[[ "${NAME}" =~ ^[a-z0-9]([a-z0-9\-]*[a-z0-9])?$ ]] || return ${?}
+	return 0
+}
+
+usage()
+{
+	echo -e "usage: ${BASH_ARGV0:-${BASH_SOURCE:-${0}}} release [param1 param2 param3 ... paramN]"
+	echo -e ""
+	echo -e "\t* release is the name of the Helm release to be deployed (using helm upgrade --install)"
+	echo -e ""
+	echo -e "\t* each paramX element will be processed as follows:"
+	echo -e ""
+	echo -e "\t\t* if it's the word '--debug', debug mode will be enalbed and the Helm command will not be executed"
+	echo -e "\t\t* if it's a file, it will be added as a values file using -f"
+	echo -e "\t\t* if it's a folder, its files will be found recursively (using find), as long as"
+	echo -e "\t\t  they match the pattern '*.yaml', and they will each be added as values files"
+	echo -e "\t\t  using -f, but in strict alphabetical order based on the find output"
+	echo -e "\t\t* if it's the string '--', then no further special processing will be applied to the remaining"
+	echo -e "\t\t  parameters, and they will be passed on to Helm verbatim (i.e. -- --dry-run)"
+	echo -e ""
+	echo -e "\tEnvironment varibles may also be used for further customization:"
+	echo -e "\t\tNAMESPACE	-> the namespace to deploy into (if not provided, the active namespace for the context will be used)"
+	echo -e "\t\tTIMEOUT		-> the timeout (in minutes) to wait for the deployment to complete"
+	echo -e "\t\tCHART_NAME	-> the name of the chart to use (the default 'arkcase/app' should suffice)"
+	echo -e "\t\tCHART_VERSION	-> the version of the chart to use (use the latest version by default)"
+
+	exit 1
+}
+
+
+[ ${#} -ge 1 ] || usage
+
+type -P helm &>/dev/null || fail "Could not find 'helm' in the path"
+type -P kubectl &>/dev/null || fail "Could not find 'kubectl' in the path"
+
+RELEASE="${1}"
+is_valid_k8s_name "${RELEASE}" || fail "The release name [${RELEASE}] is not valid"
+shift
+ok "Release name: ${RELEASE}"
+
+DEBUG="false"
+PROCESS="true"
+VALUES=()
+if [ ${#} -ge 1 ] ; then
+	doing "Processing the values: [${@}]"
+	for V in "${@}" ; do
+
+		# If processing is turned off, simply append it
+		if ! "${PROCESS}" ; then
+			VALUES+=("${V}")
+			continue
+		fi
+
+		# If it's a request to stop processing, flip the
+		# flag into the "off" state
+		if [ "${V}" == "--" ] ; then
+			PROCESS="false"
+			continue
+		fi
+
+		# Enable debugging?
+		if [[ "${V,,}" == "--debug" ]] ; then
+			DEBUG="true"
+			continue
+		fi
+
+		# Set a (single) value?
+		if [[ "${V}" =~ ^--set:(.+)$ ]] ; then
+			VALUES+=(--set "${BASH_REMATCH[1]}")
+			continue
+		fi
+
+		# Must be either a file or folder...
+		[ -e "${V}" ] || fail "The path [${V}] could not be found"
+
+		if [ -f "${V}" ] ; then
+			VALUES+=(-f "${V}")
+			continue
+		fi
+
+		if [ -d "${V}" ] ; then
+			while read V2 ; do
+				VALUES+=(-f "${V2}")
+			done < <(find "${V}" -type f -iname '*.yaml' | sort)
+			continue
+		fi
+
+		fail "The path [${V}] is neither a file nor a directory"
+	done
+	ok "Values processed!"
+fi
+
+"${DEBUG}" && warn "DEBUG MODE IS ENABLED"
+
+[ -v CHART_NAME ] || CHART_NAME=""
+[ -n "${CHART_NAME}" ] || CHART_NAME="arkcase/app"
+
+[ -v CHART_VERSION ] || CHART_VERSION=""
+if [ -n "${CHART_VERSION}" ] ; then
+	ok "Set chart version: [${CHART_VERSION}]"
+	CHART_VERSION=(--version "${CHART_VERSION}")
+else
+	CHART_VERSION=()
+fi
+
+[ -v NAMESPACE ] || NAMESPACE=""
+[ -n "${NAMESPACE}" ] || NAMESPACE="$(kubectl config view --minify -o jsonpath="{..namespace}")"
+if [ -n "${NAMESPACE}" ] ; then
+	is_valid_k8s_name "${NAMESPACE}" || fail "The namespace [${NAMESPACE}] is not valid"
+	NAMESPACE=(--namespace "${NAMESPACE}")
+	ok "Set namespace: ${NAMESPACE}"
+else
+	NAMESPACE=()
+fi
+
+[ -v TIMEOUT ] || TIMEOUT=""
+if [ -n "${TIMEOUT}" ] ; then
+	[[ "${TIMEOUT}" =~ ^[1-9][0-9]*$ ]] || fail "The timeout value [${TIMEOUT}] must be a positive integer"
+	ok "Set timeout: [${TIMEOUT} minutes]"
+	TIMEOUT=(--wait --timeout "${TIMEOUT}m")
+else
+	TIMEOUT=()
+fi
+
+CMD=(
+	helm upgrade --install \
+		"${RELEASE}" \
+		"${CHART_NAME}" \
+		"${CHART_VERSION[@]}" \
+		"${NAMESPACE[@]}" \
+		"${TIMEOUT[@]}" \
+		"${VALUES[@]}"
+)
+
+doing "EXECUTING: ${CMD[@]@Q}"
+"${DEBUG}" || "${CMD[@]}" || fail "Deployment failed"
+ok "Deployment complete!"
