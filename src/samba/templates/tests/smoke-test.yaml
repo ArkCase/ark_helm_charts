@@ -26,7 +26,7 @@ metadata:
 spec:
   containers:
     - name: test
-      image: public.ecr.aws/arkcase/nettest:latest
+      {{- include "arkcase.image" (dict "ctx" $ "name" "smoke-test" "repository" "arkcase/nettest") | nindent 6 }}
       {{- $domain := (include "arkcase.ldap" (dict "ctx" $ "value" "domain")) }}
       {{- $administrator := (include "arkcase.ldap" (dict "ctx" $ "value" "administator") | default "administrator") }}
       {{- $baseDn := (include "arkcase.ldap.baseDn" $) }}
