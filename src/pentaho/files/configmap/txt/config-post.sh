@@ -77,7 +77,10 @@ fi
 [ -v ADMIN_URL ] || ADMIN_URL="https://localhost:${ADMIN_PORT}/pentaho/"
 poll_url "${ADMIN_URL}" || fail "Cannot continue configuration if Pentaho is not online"
 
-[ -f "${RUN_MARKER}" ] || exit 0
+#
+# Acquire a mutex lock so this is done only by one of the instances booting up,
+# such that it's done on every bootup, but not necessarily having effects...
+#
 
 # First things first: go through every config directory in the DW reports areas,
 # and render all the templates. THEN, add all the connections and schemas, one by one
