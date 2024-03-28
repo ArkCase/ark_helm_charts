@@ -548,35 +548,14 @@ spec:
               - key: *bootstrapYaml
                 path: *bootstrapYaml
               {{- end }}
-        - name: *tempVolume
-          ephemeral:
-            volumeClaimTemplate:
-              spec:
-                accessModes: [ "ReadWriteOnce" ]
-                resources:
-                  requests:
-                    storage: 32Gi
-        - name: *warsVolume
-          ephemeral:
-            volumeClaimTemplate:
-              spec:
-                accessModes: [ "ReadWriteOnce" ]
-                resources:
-                  requests:
-                    storage: 2Gi
+        {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "temp") | nindent 8 }}
+        {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "wars") | nindent 8 }}
         {{- include "arkcase.core.dev.volumes" $ | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "home") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "logs") | nindent 8 }}
         {{- if $foia }}
-        - name: *foiaVolume
-          ephemeral:
-            volumeClaimTemplate:
-              spec:
-                accessModes: [ "ReadWriteOnce" ]
-                resources:
-                  requests:
-                    storage: 32Gi
-        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "fsrv") | nindent 8 }}
+          {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "foia") | nindent 8 }}
+          {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "fsrv") | nindent 8 }}
         {{- end }}
   volumeClaimTemplates:
     {{- if or (not $dev.conf) $dev.conf.file }}
@@ -584,17 +563,11 @@ spec:
     {{- end }}
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "home") | nindent 4 }}
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "logs") | nindent 4 }}
-    {{- if $foia }}
-    {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "fsrv") | nindent 4 }}
-    {{- end }}
 
   {{- if or (not $dev.conf) $dev.conf.file }}
   {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "conf") | nindent 0 }}
   {{- end }}
   {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "home") | nindent 0 }}
   {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "logs") | nindent 0 }}
-  {{- if $foia }}
-  {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "fsrv") | nindent 0 }}
-  {{- end }}
 
 {{- end -}}

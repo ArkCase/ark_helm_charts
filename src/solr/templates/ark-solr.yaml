@@ -174,8 +174,8 @@ spec:
               readOnly: true
       volumes:
         {{- include "arkcase.acme.volume" $ | nindent 8 }}
+        {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "init") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
-        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "init") | nindent 8 }}
         - name: *secrets
           secret:
             secretName: {{ include "arkcase.fullname" $ | quote }}
@@ -205,8 +205,6 @@ spec:
                 path: *createCoresSh
   volumeClaimTemplates:
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "data") | nindent 4 }}
-    {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "init") | nindent 4 }}
 
   {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "data") | nindent 0 }}
-  {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "init") | nindent 0 }}
 {{- end }}
