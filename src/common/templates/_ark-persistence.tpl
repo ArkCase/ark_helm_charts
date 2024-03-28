@@ -694,8 +694,7 @@ Render the entries for volumes:, per configurations
       {{- $decl | toYaml | nindent 2 }}
     {{- end -}}
   {{- else }}
-- name: {{ $volumeName | quote }}
-  emptyDir: {}
+    {{- include "arkcase.persistence.ephemeralVolume" $ }}
   {{- end -}}
 {{- end -}}
 
@@ -752,24 +751,19 @@ Render the entries for volumes:, per configurations
 
   {{- $settings := (include "arkcase.persistence.settings" $ctx | fromYaml) -}}
   {{- if $settings.enabled -}}
-    {{- $volume := (include "arkcase.persistence.buildVolume" (pick . "ctx" "name") | fromYaml) -}}
+    {{- $volume := (include "arkcase.persistence.buildVolume" (pick $ "ctx" "name") | fromYaml) -}}
     {{- $subsystem := (include "arkcase.subsystem.name" $ctx) -}}
     {{- $claimName := (printf "%s-%s-%s-%s" $ctx.Release.Namespace $ctx.Release.Name $subsystem $volumeFullName) -}}
     {{- $labels := dict "arkcase/pvcName" $claimName -}}
     {{- $annotations := (include "arkcase.persistence.volumeAnnotations" $ | fromYaml) -}}
     {{- $annotations = set $annotations "hostpath/pvcId-pattern" (printf "^%s(?:-(.*))?-%s$" (include "arkcase.fullname" $ctx) $volumeName) -}}
     {{- $metadata := dict "labels" $labels "annotations" $annotations -}}
-    {{-
-      $spec := dict
-        "accessModes" $settings.accessModes
-        "resources" (dict
-          "requests" (dict
-            "storage" $settings.capacity
-          )
-        )
-    -}}
-    {{- if $settings.storageClassName -}}
-      {{- $spec = set $spec "storageClassName" $settings.storageClassName -}}
+    {{- $storageClassName := ($volume.storageClassName | default $settings.storageClassName) -}}
+    {{- $accessModes := ($volume.accessModes | default $settings.accessModes) -}}
+    {{- $resources := ($volume.resources | default (dict "resources" (dict "requests" (dict "storage" $settings.capacity)))) -}}
+    {{- $spec := dict "resources" $resources "accessModes" $accessModes -}}
+    {{- if $storageClassName -}}
+      {{- $spec = set $spec "storageClassName" $storageClassName -}}
     {{- end -}}
 - name: {{ .name | quote }}
   ephemeral:
