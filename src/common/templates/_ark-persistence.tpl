@@ -760,7 +760,7 @@ Render the entries for volumes:, per configurations
     {{- $metadata := dict "labels" $labels "annotations" $annotations -}}
     {{- $storageClassName := ($volume.storageClassName | default $settings.storageClassName) -}}
     {{- $accessModes := ($volume.accessModes | default $settings.accessModes) -}}
-    {{- $resources := ($volume.resources | default (dict "resources" (dict "requests" (dict "storage" $settings.capacity)))) -}}
+    {{- $resources := ($volume.resources | default (dict "requests" (dict "storage" $settings.capacity))) -}}
     {{- $spec := dict "resources" $resources "accessModes" $accessModes -}}
     {{- if $storageClassName -}}
       {{- $spec = set $spec "storageClassName" $storageClassName -}}
@@ -853,7 +853,7 @@ Render the entries for volumeClaimTemplates:, per configurations
         {{- $renderVolume = true -}}
         {{- $storageClassName := ($volume.storageClassName | default $settings.storageClassName) -}}
         {{- $accessModes := ($volume.accessModes | default $settings.accessModes) -}}
-        {{- $resources := ($volume.resources | default (dict "resources" (dict "requests" (dict "storage" $settings.capacity)))) -}}
+        {{- $resources := ($volume.resources | default (dict "requests" (dict "storage" $settings.capacity))) -}}
         {{- $spec := dict "resources" $resources "accessModes" $accessModes -}}
         {{- if $storageClassName -}}
           {{- $spec = set $spec "storageClassName" $storageClassName -}}
