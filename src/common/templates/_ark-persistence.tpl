@@ -757,6 +757,7 @@ Render the entries for volumes:, per configurations
     {{- $claimName := (printf "%s-%s-%s-%s" $ctx.Release.Namespace $ctx.Release.Name $subsystem $volumeFullName) -}}
     {{- $labels := dict "arkcase/pvcName" $claimName -}}
     {{- $annotations := (include "arkcase.persistence.volumeAnnotations" $ | fromYaml) -}}
+    {{- $annotations = set $annotations "hostpath/pvcId-pattern" (printf "^%s(?:-(.*))?-%s$" (include "arkcase.fullname" $ctx) $volumeName) -}}
     {{- $metadata := dict "labels" $labels "annotations" $annotations -}}
     {{-
       $spec := dict
