@@ -197,7 +197,13 @@ spec:
               - key: *pluginPropertiesTpl
                 path: *pluginPropertiesTpl
         - name: *dataVol
-          emptyDir: {}
+          ephemeral:
+            volumeClaimTemplate:
+              spec:
+                accessModes: [ "ReadWriteOnce" ]
+                resources:
+                  requests:
+                    storage: 8Gi
 
       {{- with $.Values.nodeSelector }}
       nodeSelector: {{- toYaml . | nindent 8 }}

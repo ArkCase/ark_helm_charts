@@ -549,18 +549,33 @@ spec:
                 path: *bootstrapYaml
               {{- end }}
         - name: *tempVolume
-          emptyDir:
-            sizeLimit: 8Gi
+          ephemeral:
+            volumeClaimTemplate:
+              spec:
+                accessModes: [ "ReadWriteOnce" ]
+                resources:
+                  requests:
+                    storage: 32Gi
         - name: *warsVolume
-          emptyDir:
-            sizeLimit: 2Gi
+          ephemeral:
+            volumeClaimTemplate:
+              spec:
+                accessModes: [ "ReadWriteOnce" ]
+                resources:
+                  requests:
+                    storage: 2Gi
         {{- include "arkcase.core.dev.volumes" $ | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "home") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "logs") | nindent 8 }}
         {{- if $foia }}
         - name: *foiaVolume
-          emptyDir:
-            sizeLimit: 1Gi
+          ephemeral:
+            volumeClaimTemplate:
+              spec:
+                accessModes: [ "ReadWriteOnce" ]
+                resources:
+                  requests:
+                    storage: 32Gi
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "fsrv") | nindent 8 }}
         {{- end }}
   volumeClaimTemplates:
