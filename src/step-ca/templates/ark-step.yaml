@@ -62,7 +62,7 @@ spec:
                   # We know the Step image uses user 1000
                   - ownership: {{ coalesce ($.Values.persistence).ownership "1000:1000" | quote }}
                     permissions: "u=rwX,g=rX,o="
-                    flags: [ "recurse", "noforced", "create", "changes" ]
+                    flags: [ "recurse", "forced", "create", "changes" ]
                     targets: [ "/app/data" ]
           volumeMounts:
             - name: &dataVolume "data"
