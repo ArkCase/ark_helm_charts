@@ -698,7 +698,7 @@ Render the entries for volumes:, per configurations
   {{- end -}}
 {{- end -}}
 
-{{- define "arkcase.persistence.volumeAnnotations" -}}
+{{- define "arkcase.persistence.commonVolumeMetadata" -}}
   {{- $ctx := .ctx -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "The 'ctx' parameter must be the root context (. or $)" -}}
@@ -715,21 +715,22 @@ Render the entries for volumes:, per configurations
     {{- $volumeFullName = printf "%s-%s" $partname $volumeFullName -}}
   {{- end -}}
 
-  {{- $annotations := dict -}}
+  {{- $metadata := dict -}}
   {{- $settings := (include "arkcase.persistence.settings" $ctx | fromYaml) -}}
   {{- if $settings.enabled -}}
     {{- $volume := (include "arkcase.persistence.buildVolume" (pick . "ctx" "name") | fromYaml) -}}
     {{- $subsystem := (include "arkcase.subsystem.name" $ctx) -}}
     {{- $claimName := (printf "%s-%s-%s-%s" $ctx.Release.Namespace $ctx.Release.Name $subsystem $volumeFullName) -}}
     {{- $hostPath := (printf "%s/%s/%s/%s/${pvcId}" $ctx.Release.Namespace $ctx.Release.Name $subsystem $volumeFullName) -}}
-    {{- $labels := dict "arkcase/pvcName" $claimName -}}
-    {{- $annotations = dict
+    {{- $labels := dict "arkcase-persistence/volume-claim-name" $claimName "arkcase-persistence/version" "1.0" -}}
+    {{- $annotations := dict
           "hostpath/pvcId-pattern" (printf "^%s-%s(?:-(.*))?$" $volumeName (include "arkcase.fullname" $ctx))
           "hostpath/pvcId-replace" "${1}"
           "hostpath/location" $hostPath
     -}}
+    {{- $metadata = dict "labels" $labels "annotations" $annotations "name" $volumeName -}}
   {{- end -}}
-  {{- $annotations | toYaml -}}
+  {{- $metadata | toYaml -}}
 {{- end -}}
 
 {{- define "arkcase.persistence.ephemeralVolume" -}}
@@ -754,10 +755,10 @@ Render the entries for volumes:, per configurations
     {{- $volume := (include "arkcase.persistence.buildVolume" (pick $ "ctx" "name") | fromYaml) -}}
     {{- $subsystem := (include "arkcase.subsystem.name" $ctx) -}}
     {{- $claimName := (printf "%s-%s-%s-%s" $ctx.Release.Namespace $ctx.Release.Name $subsystem $volumeFullName) -}}
-    {{- $labels := dict "arkcase/pvcName" $claimName -}}
-    {{- $annotations := (include "arkcase.persistence.volumeAnnotations" $ | fromYaml) -}}
+    {{- $metadata := (include "arkcase.persistence.commonVolumeMetadata" $ | fromYaml) -}}
+    {{- $annotations := ($metadata.annotations | default dict) -}}
     {{- $annotations = set $annotations "hostpath/pvcId-pattern" (printf "^%s(?:-(.*))?-%s$" (include "arkcase.fullname" $ctx) $volumeName) -}}
-    {{- $metadata := dict "labels" $labels "annotations" $annotations -}}
+    {{- $metadata = set $metadata "annotations" $annotations -}}
     {{- $storageClassName := ($volume.storageClassName | default $settings.storageClassName) -}}
     {{- $accessModes := ($volume.accessModes | default $settings.accessModes) -}}
     {{- $resources := ($volume.resources | default (dict "requests" (dict "storage" $settings.capacity))) -}}
@@ -800,9 +801,7 @@ Render the entries for volumeClaimTemplates:, per configurations
     {{- $subsystem := (include "arkcase.subsystem.name" $ctx) -}}
     {{- $claimName := (printf "%s-%s-%s-%s" $ctx.Release.Namespace $ctx.Release.Name $subsystem $volumeFullName) -}}
     {{- $hostPath := (printf "%s/%s/%s/%s/${pvcId}" $ctx.Release.Namespace $ctx.Release.Name $subsystem $volumeFullName) -}}
-    {{- $labels := dict "arkcase/pvcName" $claimName -}}
-    {{- $annotations := (include "arkcase.persistence.volumeAnnotations" $ | fromYaml) -}}
-    {{- $metadata := dict "name" $volumeName "labels" $labels "annotations" $annotations -}}
+    {{- $metadata := (include "arkcase.persistence.commonVolumeMetadata" $ | fromYaml) -}}
     {{- $mode := $volume.render.mode -}}
     {{- $decl := dict -}}
     {{- if eq $mode "undescribed" -}}
@@ -842,7 +841,7 @@ Render the entries for volumeClaimTemplates:, per configurations
           {{- if not (kindIs "map" $specLabels) -}}
             {{- $specLabels = dict -}}
           {{- end -}}
-          {{- $metadata = set $metadata "labels" (mergeOverwrite $specLabels $labels) -}}
+          {{- $metadata = set $metadata "labels" (merge ($metadata.labels | default dict) $specLabels) -}}
         {{- end -}}
         {{- if or (not (hasKey $spec "spec")) (not (kindIs "map" $spec.spec)) -}}
           {{- fail (printf "The volume description must contain a spec: stanza (volume %s, chart %s)" $volumeFullName $ctx.Chart.Name) -}}
@@ -912,7 +911,7 @@ metadata:
       {{- with $volumeData.labels }}
         {{- toYaml . | nindent 4 }}
       {{- end }}
-    arkcase/pvName: {{ $pvName | quote }}
+    arkcase-persistence/volume-name: {{ $pvName | quote }}
   annotations:
       {{- with $ctx.Values.annotations  }}
         {{- toYaml . | nindent 4 }}
@@ -953,8 +952,8 @@ metadata:
       {{- with $volumeData.labels }}
         {{- toYaml . | nindent 4 }}
       {{- end }}
-    arkcase/pvName: {{ $pvName | quote }}
-    arkcase/pvcName: {{ $pvcName | quote }}
+    arkcase-persistence/volume-name: {{ $pvName | quote }}
+    arkcase-persistence/volume-claim-name: {{ $pvcName | quote }}
   annotations:
       {{- with $ctx.Values.annotations  }}
         {{- toYaml . | nindent 4 }}
@@ -967,7 +966,7 @@ spec:
   volumeName: {{ $pvName | quote }}
   selector:
     matchLabels:
-      arkcase/pvName: {{ $pvName | quote }}
+      arkcase-persistence/volume-name: {{ $pvName | quote }}
     {{- end -}}
   {{- end -}}
 {{- end -}}
