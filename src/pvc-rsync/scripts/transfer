@@ -1,0 +1,53 @@
+#!/bin/bash
+SCRIPT="$(/usr/bin/readlink -f "${BASH_ARGV0:-${BASH_SOURCE:-${0}}}")"
+BASEDIR="$(/usr/bin/dirname "${SCRIPT}")"
+SCRIPT="$(/usr/bin/basename "${SCRIPT}")"
+
+set -euo pipefail
+
+timestamp()
+{
+	/usr/bin/date -Ins -u
+}
+
+say()
+{
+	echo -e "$(timestamp): ${@}"
+}
+
+err()
+{
+	say "❌ ${@}" 1>&2
+}
+
+fail()
+{
+	err "${@}"
+	exit ${EXIT_CODE:-1}
+}
+
+usage()
+{
+	local S="$(/usr/bin/basename "${BASH_ARGV0:-${BASH_SOURCE:-${0}}}")"
+	echo -e "usage: ${S} (push|pull) server-spec"
+	echo -e ""
+	echo -e "	Copy the PVC data, to/from the \${server-spec}, as described by the PVC list"
+	echo -e "	produced by executing the command: list-pvcs /pvc, and feeding it via pipe"
+	echo -e "	to the command: rsync-pvcs (push|pull) server-spec -"
+	exit 1
+}
+
+[ ${#} -eq 2 ] || usage
+
+RSYNC_PVCS="$(type -P rsync-pvcs)" || fail "Could not find 'rsync-pvcs' in the path"
+LIST_PVCS="$(type -P list-pvcs)" || fail "Could not find 'list-pvcs' in the path"
+
+[ -v PVC_DIR ] || PVC_DIR=""
+[ -n "${PVC_DIR}" ] || PVC_DIR="/pvc"
+
+[ -v LOGS_DIR ] || LOGS_DIR=""
+[ -n "${LOGS_DIR}" ] || LOGS_DIR="/logs"
+
+cd "${LOGS_DIR}" || fail "Unable to CD into the logs directory mount at [${LOGS_DIR}]"
+
+exec "${RSYNC_PVCS}" "${@}" < <("${LIST_PVCS}" "${PVC_DIR}")
