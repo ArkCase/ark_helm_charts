@@ -79,14 +79,20 @@ spec:
         - name: rsync
           {{- include "arkcase.image" $ | nindent 10 }}
           command: [ "rsync", "--daemon", "--no-detach", "--log-file=/dev/stdout", "--port=873" ]
+          workingDir: &logsDir "/logs"
           resources: {{- include "arkcase.resources" (dict "ctx" $) | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "arkcase") | nindent 12 }}
+          env:
+            - name: "LOGS_DIR"
+              value: *logsDir
           {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
           volumeMounts:
             - mountPath: /etc/rsyncd.conf
               name: &configMap config-map
               readOnly: true
               subPath: &rsyncdConf rsyncd.conf
+            - mountPath: *logsDir
+              name: "logs"
           {{- range $path, $_ := $scripts }}
             {{- $name := ($path | base) }}
             - mountPath: {{ printf "/scripts/%s" $name | quote }}
@@ -118,6 +124,7 @@ spec:
               {{- end }}
             defaultMode: 0640
             optional: false
+        {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "logs") | nindent 8 }}
         {{- range $pvc := $pvcs }}
           {{- $pvcName := $pvc.metadata.name }}
         - name: &pvc {{ $pvcName | quote }}
