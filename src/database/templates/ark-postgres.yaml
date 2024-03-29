@@ -92,7 +92,7 @@ spec:
       volumes:
         {{- include "arkcase.acme.volume" $ | nindent 8 }}
         {{- include "arkcase.initDatabase.secretVolume" $ | nindent 8 }}
-        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "init") | nindent 8 }}
+        {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "init") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
       {{- with $.Values.nodeSelector }}
       nodeSelector: {{- toYaml . | nindent 8 }}
@@ -104,10 +104,8 @@ spec:
       tolerations: {{- toYaml . | nindent 8 }}
       {{- end }}
   volumeClaimTemplates:
-    {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "init") | nindent 4 }}
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "data") | nindent 4 }}
 
-  {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "init") | nindent 0 }}
   {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "data") | nindent 0 }}
 
 {{- end }}
