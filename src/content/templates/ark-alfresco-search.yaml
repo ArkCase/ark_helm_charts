@@ -117,6 +117,7 @@ spec:
       {{- end }}
       volumes:
         {{- include "arkcase.acme.volume" $ | nindent 8 }}
+        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
   volumeClaimTemplates:
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "data") | nindent 4 }}
 
