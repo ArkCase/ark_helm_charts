@@ -262,7 +262,7 @@ tolerations:
 affinity:
 
 persistence:
-  # If set to `false`, an `emptyDir` will be used instead and all other `persistence.*` parameters
+  # If set to `false`, an ephemeral volume will be used instead and all other `persistence.*` parameters
   # are ignored.
   enabled: true
 
@@ -270,11 +270,13 @@ persistence:
   # and the default value is insufficient
   volumeSize:
     conf: "4Gi"
-    fsrv: "8Gi"
     home: "8Gi"
     init: "4Gi"
     logs: "2Gi"
     wars: "4Gi"
+    temp: "32Gi"
+    foia: "2Gi"
+    fsrv: "32Gi"
 
 #  The volumes for persistent data
   volumes:
