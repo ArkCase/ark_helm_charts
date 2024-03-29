@@ -11,6 +11,16 @@ image:
   # tag:
   # pullPolicy: IfNotPresent
 
+persistence:
+  # If set to `false`, an ephemeral volume will be used instead and all other `persistence.*` parameters
+  # are ignored.
+  enabled: true
+
+  # Set the default capacity for volumes in case none is assigned explicitly
+  # and the default value is insufficient
+  volumeSize:
+    logs: "8Gi"
+
 ## Set the reclaimPolicy
 reclaimPolicy: Delete
 
