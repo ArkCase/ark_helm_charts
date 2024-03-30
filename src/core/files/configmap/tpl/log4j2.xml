@@ -25,10 +25,12 @@
                 <TimeBasedTriggeringPolicy interval="1" modulate="true"/>
             </Policies>
             <ThresholdFilter level="debug"/>
-            <Delete basePath="${env:LOGS_DIR}">
-                <IfFileName glob="arkcase-*.log.gz" />
-                <IfLastModified age="P60D" />
-            </Delete>
+            <DefaultRolloverStrategy>
+                <Delete basePath="${env:LOGS_DIR}">
+                    <IfFileName glob="arkcase-*.log.gz" />
+                    <IfLastModified age="P90D" />
+                </Delete>
+            </DefaultRolloverStrategy>
         </RollingFile>
         <RollingFile name="file-errors-log" fileName="${env:LOGS_DIR}/arkcase-errors.log"
             filePattern="${env:LOGS_DIR}/arkcase-errors-%d{yyyy-MM-dd}.log.gz">
@@ -42,10 +44,12 @@
                 <TimeBasedTriggeringPolicy interval="1" modulate="true"/>
             </Policies>
             <ThresholdFilter level="error"/>
-            <Delete basePath="${env:LOGS_DIR}">
-                <IfFileName glob="arkcase-errors-*.log.gz" />
-                <IfLastModified age="P60D" />
-            </Delete>
+            <DefaultRolloverStrategy>
+                <Delete basePath="${env:LOGS_DIR}">
+                    <IfFileName glob="arkcase-*.log.gz" />
+                    <IfLastModified age="P90D" />
+                </Delete>
+            </DefaultRolloverStrategy>
         </RollingFile>
     </Appenders>
     <Loggers>
