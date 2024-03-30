@@ -143,6 +143,10 @@ spec:
               mountPath: &initPath "/app/init"
             - name: &dataVol "data"
               mountPath: &dataPath "/app/data"
+            - name: &tempVol "temp"
+              mountPath: &tempPath "/app/data/temp"
+            - name: &logsVol "logs"
+              mountPath: &logsPath "/app/logs"
         - name: init-set-permissions
           {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
@@ -153,14 +157,16 @@ spec:
                   - ownership: "1998:1998"
                     permissions: "u=rwX,g=rX,o="
                     flags: [ "recurse", "noforced", "create", "changes" ]
-                    targets: [ "/app/data", "/app/logs", "/app/init" ]
+                    targets: [ "/app/data", "/app/data/temp", "/app/logs", "/app/init" ]
           volumeMounts:
             - name: *initVol
               mountPath: *initPath
             - name: *dataVol
               mountPath: *dataPath
-            - name: &logsVol "logs"
-              mountPath: &logsPath "/app/logs"
+            - name: *tempVol
+              mountPath: *tempPath
+            - name: *logsVol
+              mountPath: *logsPath
         {{- include "arkcase.initDependencies.container" $ | nindent 8 }}
       containers:
         - name: pentaho
@@ -222,6 +228,8 @@ spec:
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
             - name: *dataVol
               mountPath: *dataPath
+            - name: *tempVol
+              mountPath: *tempPath
             - name: *initVol
               mountPath: *initPath
             - name: *logsVol
@@ -364,6 +372,7 @@ spec:
         {{- include "arkcase.trusts.volume" $ | nindent 8 }}
         {{- include "arkcase.acme.volume" $ | nindent 8 }}
         {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "init") | nindent 8 }}
+        {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "temp") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "logs") | nindent 8 }}
         - name: *secrets
