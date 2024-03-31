@@ -68,37 +68,45 @@ spec:
               subPath: &deployCron "deploy-cron"
               readOnly: true
             - name: &initVol "init"
-              mountPath: &initPath "/app/init"
+              mountPath: &initDir "/app/init"
             - name: &dataVol "data"
-              mountPath: &dataPath "/app/data"
+              mountPath: &dataDir "/app/data"
         - name: init-set-permissions
           {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            - name: DATA_DIR
+              value: *dataDir
+            - name: INIT_DIR
+              value: *initDir
             - name: JOBS
-              value: |
+              value: |-
                 jobs:
                   # We know the UID for the Pentaho container is 998:996
                   - ownership: "1998:1998"
                     permissions: "u=rwX,g=rX,o="
                     flags: [ "recurse", "noforced", "create", "changes" ]
-                    targets: [ "/app/data", "/app/init" ]
+                    targets: [ "$(DATA_DIR)", "$(INIT_DIR)" ]
           volumeMounts:
             - name: *initVol
-              mountPath: *initPath
+              mountPath: *initDir
             - name: *dataVol
-              mountPath: *dataPath
+              mountPath: *dataDir
         {{- include "arkcase.initDependencies.container" $ | nindent 8 }}
       containers:
         - name: cron
           {{- include "arkcase.image" $ | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.deployment.env" $ | nindent 12 }}
+            - name: DATA_DIR
+              value: *dataDir
+            - name: PENTAHO_SERVICE
+              value: {{ $pentahoService | quote }}
             - name: PENTAHO_INSTALLED_LICENSE_PATH
-              value: "/app/data/.installedLicenses.xml"
+              value: "$(DATA_DIR)/.installedLicenses.xml"
             - name: ARKCASE_SERVER_URL
               value: "https://core:8443/arkcase"
             - name: PENTAHO_SERVER_URL
-              value: {{ printf "https://%s:8443/pentaho" $pentahoService }}
+              value: "https://$(PENTAHO_SERVICE):8443/pentaho"
             - name: ADMIN_USERNAME
               valueFrom:
                 secretKeyRef:
@@ -127,9 +135,9 @@ spec:
               subPath: &templateVars "template-vars.yaml"
               readOnly: true
             - name: *dataVol
-              mountPath: *dataPath
+              mountPath: *dataDir
             - name: *initVol
-              mountPath: *initPath
+              mountPath: *initDir
             - name: *configMap
               mountPath: "/usr/local/bin/render-template"
               subPath: &renderTemplate "render-template"

@@ -55,17 +55,19 @@ spec:
         - name: init-set-permissions
           {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            - name: DATA_DIR
+              value: &dataDir "/data"
             - name: JOBS
-              value: |
+              value: |-
                 jobs:
                   # We know the image uses user 26
                   - ownership: "26:26"
                     permissions: "u=rwX,g=rX,o="
                     flags: [ "recurse", "noforced", "create", "changes" ]
-                    targets: [ "/data" ]
+                    targets: [ "$(DATA_DIR)" ]
           volumeMounts:
-            - name: "data"
-              mountPath: "/data"
+            - name: &dataVol "data"
+              mountPath: *dataDir
         {{- include "arkcase.initDatabase.container" (dict "ctx" $ "db" "postgres" "volume" "init" "shell" true) | nindent 8 }}
         {{- include "arkcase.initDependencies.container" $ | nindent 8 }}
       containers:
@@ -84,7 +86,7 @@ spec:
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
             - name: "init"
               mountPath: "/opt/app-root/src/postgresql-init"
-            - name: "data"
+            - name: *dataVol
               mountPath: "/var/lib/pgsql/data"
             - name: {{ include "arkcase.initDatabase.secretVolume.name" $ | quote }}
               mountPath: "/app/secrets"

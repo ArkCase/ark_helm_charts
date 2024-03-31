@@ -53,19 +53,27 @@ spec:
         - name: init-set-permissions
           {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            - name: DATA_DIR
+              value: &dataDir "/app/data"
+            - name: LOGS_DIR
+              value: &logsDir "/app/logs"
+            - name: WORK_DIR
+              value: &workDir "/app/work"
             - name: JOBS
-              value: |
+              value: |-
                 jobs:
                   # We know the ActiveMQ image uses user 998 (centos), 1998 (rocky)
                   - ownership: {{ coalesce ($.Values.persistence).ownership "1998:1998" | quote }}
                     permissions: "u=rwX,g=rX,o="
                     flags: [ "recurse", "noforced", "create", "changes" ]
-                    targets: [ "/app/data", "/app/logs" ]
+                    targets: [ "$(DATA_DIR)", "$(LOGS_DIR)", "$(WORK_DIR)" ]
           volumeMounts:
-            - name: &dataVolume "data"
-              mountPath: &dataPath "/app/data"
-            - name: &logsVolume "logs"
-              mountPath: &logsPath "/app/logs"
+            - name: &dataVol "data"
+              mountPath: *dataDir
+            - name: &logsVol "logs"
+              mountPath: *logsDir
+            - name: &workVol "work"
+              mountPath: *workDir
         {{- include "arkcase.initDependencies.container" $ | nindent 8 }}
       containers:
         - name: neo4j
@@ -87,22 +95,21 @@ spec:
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "neo4j") | nindent 12 }}
           volumeMounts:
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
-            - name: *dataVolume
-              mountPath: *dataPath
-            - name: *logsVolume
-              mountPath: *logsPath
-            - name: &workVolume "work"
-              mountPath: "/app/work"
+            - name: *dataVol
+              mountPath: *dataDir
+            - name: *logsVol
+              mountPath: *logsDir
+            - name: *workVol
+              mountPath: *workDir
             - name: &configMap "config-map"
               mountPath: "/app/conf/neo4j.conf"
               subPath: &neo4jConf "neo4j.conf"
               readOnly: true
       volumes:
         {{- include "arkcase.acme.volume" $ | nindent 8 }}
+        {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "work") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "logs") | nindent 8 }}
-        - name: *workVolume
-          emptyDir: {}
         - name: *configMap
           configMap:
             name: {{ include "arkcase.fullname" $ | quote }}

@@ -57,17 +57,19 @@ spec:
         - name: init-set-permissions
           {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            - name: DATA_DIR
+              value: &dataDir "/opt/activemq/data"
             - name: JOBS
-              value: |
+              value: |-
                 jobs:
                   # We know the image uses user 33031:1000
                   - ownership: {{ coalesce ($.Values.persistence).ownership "33031:1000" | quote }}
                     permissions: "u=rwX,g=rX,o="
                     flags: [ "recurse", "noforced", "create", "changes" ]
-                    targets: [ "/app/data" ]
+                    targets: [ "$(DATA_DIR)" ]
           volumeMounts:
             - name: &dataVolume "data"
-              mountPath: &dataDir "/app/data"
+              mountPath: *dataDir
       containers:
         {{- $partName := (include "arkcase.part.name" $) }}
         - name: {{ $partName | quote }}
@@ -87,7 +89,7 @@ spec:
           volumeMounts:
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
             - name: *dataVolume
-              mountPath: "/opt/activemq/data"
+              mountPath: *dataDir
       volumes:
         {{- include "arkcase.acme.volume" $ | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}

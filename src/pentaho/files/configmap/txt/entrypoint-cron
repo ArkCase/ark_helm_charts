@@ -24,7 +24,7 @@ poll_url() {
 	local START="$(date +%s)"
 	say "👉 Starting the polling cycle for [${URL}]..."
 	while true ; do
-		/usr/bin/curl -Lk -m 5 "${URL}" &>/dev/null && break
+		/usr/bin/curl -fsSL -m 5 "${URL}" &>/dev/null && break
 		local NOW="$(date +%s)"
 		if [ $(( NOW - START )) -ge ${INIT_MAX_WAIT} ] ; then
 			err "Timed out waiting for the URL [${URL}] to come up"

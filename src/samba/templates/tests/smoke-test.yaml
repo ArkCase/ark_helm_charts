@@ -36,13 +36,13 @@ spec:
       env: {{- include "arkcase.tools.baseEnv" $ | nindent 8 }}
         - name: SERVICE_NAME
           value: {{ include "arkcase.service.name" $ | quote }}
-        - name: SCRIPT
-          value: |
-            set -xeuo pipefail
-            /usr/local/bin/acme-init
-            /usr/bin/ldapsearch -H "ldaps://${SERVICE_NAME}" -D "$(echo -n "${ADMIN_USER}")" -y "/app/secrets/DOMAIN_PASSWORD" -b {{ $baseDn | quote }} {{ $userBaseDn | quote }} dn
         - name: ADMIN_USER
           value: {{ printf "%s\\%s" (include "arkcase.ldap.realm" $) $administrator | quote }}
+        - name: SCRIPT
+          value: |-
+            set -xeuo pipefail
+            /usr/local/bin/acme-init
+            /usr/bin/timeout 3 /usr/bin/ldapsearch -H "ldaps://$(SERVICE_NAME)" -D "$(ADMIN_USER)" -y "/app/secrets/DOMAIN_PASSWORD" -b {{ $baseDn | quote }} {{ $userBaseDn | quote }} dn
       volumeMounts:
         - name: &secrets "secrets"
           mountPath: "/app/secrets"

@@ -4,7 +4,7 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ include "arkcase.fullname" $ | quote }}
+  name: &fullname {{ include "arkcase.fullname" $ | quote }}
   namespace: {{ $.Release.Namespace | quote }}
   labels: {{- include "arkcase.labels.service" $ | nindent 4 }}
     {{- with (include "arkcase.values" (dict "ctx" $ "base" "labels") | fromYaml) }}
@@ -31,7 +31,7 @@ spec:
     {{- end }}
   template:
     metadata:
-      name: {{ include "arkcase.fullname" $ | quote }}
+      name: *fullname
       namespace: {{ $.Release.Namespace | quote }}
       labels: {{- include "arkcase.labels.service" $ | nindent 8 }}
         {{- with (include "arkcase.values" (dict "ctx" $ "base" "labels") | fromYaml) }}
@@ -58,19 +58,23 @@ spec:
         - name: init-set-permissions
           {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            - name: DATA_DIR
+              value: &dataDir "/app/data"
+            - name: INIT_DIR
+              value: &initDir "/app/init"
             - name: JOBS
-              value: |
+              value: |-
                 jobs:
                   # We know the image uses user 33000:1000
                   - ownership: {{ coalesce ($.Values.persistence).ownership "33000:1000" | quote }}
                     permissions: "u=rwX,g=rX,o="
                     flags: [ "recurse", "noforced", "create", "changes" ]
-                    targets: [ "/app/data", "/app/init" ]
+                    targets: [ "$(DATA_DIR)", "$(INIT_DIR)" ]
           volumeMounts:
-            - name: &initVolume "init"
-              mountPath: &initDir "/app/init"
-            - name: &dataVolume "data"
-              mountPath: &dataDir "/app/data"
+            - name: &initVol "init"
+              mountPath: *initDir
+            - name: &dataVol "data"
+              mountPath: *initDir
         {{- include "arkcase.initDependencies.container" $ | nindent 8 }}
       containers:
         {{- $partName := (include "arkcase.part.name" $) }}
@@ -79,15 +83,25 @@ spec:
           {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
           env:
             {{- include "arkcase.acme.env" $ | nindent 12 }}
+            - name: &key METADATA_KEYSTORE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: *fullname
+                  key: *key
+            - name: &key METADATA_KEYSTORE_METADATA_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: *fullname
+                  key: *key
             - name: JAVA_TOOL_OPTIONS
               value: >-
                 -Dencryption.keystore.type=JCEKS
                 -Dencryption.cipherAlgorithm=DESede/CBC/PKCS5Padding
                 -Dencryption.keyAlgorithm=DESede
                 -Dencryption.keystore.location=/usr/local/tomcat/shared/classes/alfresco/extension/keystore/keystore
-                -Dmetadata-keystore.password=mp6yc0UD9e
+                -Dmetadata-keystore.password=$(METADATA_KEYSTORE_PASSWORD)
                 -Dmetadata-keystore.aliases=metadata
-                -Dmetadata-keystore.metadata.password=oKIWzVdEdA
+                -Dmetadata-keystore.metadata.password=$(METADATA_KEYSTORE_METADATA_PASSWORD)
                 -Dmetadata-keystore.metadata.algorithm=DESede
 
             {{- $content := (include "arkcase.cm.info" $ | fromYaml) }}
@@ -95,11 +109,13 @@ spec:
             # These parameters may eventually be used, once we determine how they work
             #    -Dalfresco_user_store.adminusername={{ $content.username | quote }}
             #    -Dalfresco_user_store.adminpassword={{ $content.password | quote }}
+            - name: DATA_DIR
+              value: *dataDir
             - name: CATALINA_OPTS
               value: >-
                 -XX:MinRAMPercentage=50
                 -XX:MaxRAMPercentage=80
-                -Ddir.root=/app/data
+                -Ddir.root=$(DATA_DIR)
                 -Ddb.driver={{ $schema.jdbc.driver | quote }}
                 -Ddb.username={{ $schema.username | quote }}
                 -Ddb.password={{ $schema.password | quote }}
@@ -144,9 +160,9 @@ spec:
             - name: &secrets "secrets"
               mountPath: "/app/secrets"
               readOnly: true
-            - name: *dataVolume
+            - name: *dataVol
               mountPath: *dataDir
-            - name: *initVolume
+            - name: *initVol
               mountPath: *initDir
             - name: *secrets
               mountPath: "/usr/local/tomcat/shared/classes/alfresco-global.properties"
@@ -172,7 +188,7 @@ spec:
         - name: *secrets
           secret:
             optional: false
-            secretName: {{ include "arkcase.fullname" $ | quote }}
+            secretName: *fullname
             defaultMode: 0444
             items:
               {{- include "arkcase.alfresco.license.volumes" $ | nindent 14 }}
@@ -183,7 +199,7 @@ spec:
         - name: *configMap
           configMap:
             optional: false
-            name: {{ include "arkcase.fullname" $ | quote }}
+            name: *fullname
             defaultMode: 0444
             items:
               - key: *tomcatLive

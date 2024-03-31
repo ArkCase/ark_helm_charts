@@ -85,21 +85,27 @@ spec:
         - name: init-set-permissions
           {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            - name: CONF_DIR
+              value: &confDir "/app/conf"
+            - name: DATA_DIR
+              value: &dataDir "/app/data"
+            - name: LOGS_DIR
+              value: &logsDir "/app/logs"
             - name: JOBS
-              value: |
+              value: |-
                 jobs:
                   # We know the ActiveMQ image uses user 998 (centos), 1998 (rocky)
                   - ownership: {{ coalesce ($.Values.persistence).ownership "2000:2000" | quote }}
                     permissions: "u=rwX,g=rX,o="
                     flags: [ "recurse", "noforced", "create", "changes" ]
-                    targets: [ "/app/conf", "/app/data", "/app/logs" ]
+                    targets: [ "$(CONF_DIR)", "$(DATA_DIR)", "$(LOGS_DIR)" ]
           volumeMounts:
-            - name: &confVolume "conf"
-              mountPath: &confPath "/app/conf"
-            - name: &dataVolume "data"
-              mountPath: &dataPath "/app/data"
-            - name: &logsVolume "logs"
-              mountPath: &logsPath "/app/logs"
+            - name: &confVol "conf"
+              mountPath: *confDir
+            - name: &dataVol "data"
+              mountPath: *dataDir
+            - name: &logsVol "logs"
+              mountPath: *logsDir
         {{- include "arkcase.initDependencies.container" $ | nindent 8 }}
       containers:
         - name: zookeeper
@@ -107,9 +113,9 @@ spec:
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
             - name: ZOOCFGDIR
-              value: *confPath
+              value: *confDir
             - name: ZOO_LOG_DIR
-              value: *logsPath
+              value: *logsDir
             {{- if $.Values.env }}
             {{- $.Values.env | toYaml | nindent 12 }}
             {{- end }}
@@ -123,8 +129,10 @@ spec:
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "zookeeper") | nindent 12 }}
           volumeMounts:
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
-            - name: *dataVolume
-              mountPath: *dataPath
+            - name: *confVol
+              mountPath: *confDir
+            - name: *dataVol
+              mountPath: *dataDir
             - name: &configMap "configmap"
               mountPath: "/app/conf/zoo.cfg"
               subPath: &zooCfg "zoo.cfg"
