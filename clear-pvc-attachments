@@ -40,7 +40,7 @@ SORT="$(type -P sort)" || fail "Could not find 'sort' in the path"
 TIMEOUT="$(type -P timeout)" || fail "Could not find 'timeout' in the path"
 
 NSFLAG=()
-if [ ${#} -gt 1 ] ; then
+if [ ${#} -ge 1 ] ; then
 	say "👉 Will process ${#} PVCs given on the command line"
 	ALL_PVC=("${@}")
 else
