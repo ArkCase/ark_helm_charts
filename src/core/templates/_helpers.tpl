@@ -73,7 +73,7 @@
   {{- if and $dev.conf (not ($dev.conf).file) -}}
     {{- $confVolumeName = "dev-conf" -}}
   {{- end -}}
-- name: &confVolume {{ $confVolumeName | quote }}
+- name: &confVol {{ $confVolumeName | quote }}
   mountPath: &confDir "/app/conf"
   {{- if $dev.wars }}
     {{- range $name := (keys $dev.wars | sortAlpha) }}

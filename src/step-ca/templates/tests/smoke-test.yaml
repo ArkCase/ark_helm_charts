@@ -36,6 +36,6 @@ spec:
           value: |-
             set -xeuo pipefail
             /usr/local/bin/acme-init
-            /usr/bin/curl -LfsS -o /dev/null "https://${SERVICE_NAME}:9000/health"
+            /usr/bin/curl -fsSL -m 3 -o /dev/null "https://$(SERVICE_NAME):9000/health"
   restartPolicy: Never
 {{- end }}
