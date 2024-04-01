@@ -33,10 +33,10 @@ spec:
         - name: SERVICE_NAME
           value: {{ include "arkcase.service.name" $ | quote }}
         - name: SCRIPT
-          value: |
+          value: |-
             set -xeuo pipefail
             /usr/local/bin/acme-init
-            /usr/bin/curl -LfsS -o /dev/null "https://${SERVICE_NAME}:8443/"
-            /usr/bin/timeout 3 /usr/bin/openssl s_client -connect "${SERVICE_NAME}:7687" -verify_quiet -verify_return_error -showcerts </dev/null
+            /usr/bin/curl -fsSL -m 3 -o /dev/null "https://$(SERVICE_NAME):8443/"
+            /usr/bin/timeout 3 /usr/bin/openssl s_client -connect "$(SERVICE_NAME):7687" -verify_quiet -verify_return_error -showcerts </dev/null
   restartPolicy: Never
 {{- end }}

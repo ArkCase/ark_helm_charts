@@ -89,19 +89,23 @@ spec:
         - name: init-set-permissions
           {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            - name: DATA_DIR
+              value: &dataDir "/app/data"
+            - name: INIT_DIR
+              value: &initDir "/app/init"
             - name: JOBS
-              value: |
+              value: |-
                 jobs:
                   # We know the image uses user 33000:1000
                   - ownership: {{ coalesce ($.Values.persistence).ownership "33000:1000" | quote }}
                     permissions: "u=rwX,g=rX,o="
                     flags: [ "recurse", "noforced", "create", "changes" ]
-                    targets: [ "/app/data", "/app/init" ]
+                    targets: [ "$(DATA_DIR)", "$(INIT_DIR)" ]
           volumeMounts:
             - name: &initVolume "init"
-              mountPath: &initDir "/app/init"
+              mountPath: *initDir
             - name: &dataVolume "data"
-              mountPath: &dataDir "/app/data"
+              mountPath: *dataDir
         {{- include "arkcase.initDependencies.container" $ | nindent 8 }}
       containers:
         {{- $partName := (include "arkcase.part.name" $) }}

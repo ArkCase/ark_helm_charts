@@ -57,17 +57,19 @@ spec:
         - name: init-set-permissions
           {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            - name: DATA_DIR
+              value: &dataDir "/app/data"
             - name: JOBS
-              value: |
+              value: |-
                 jobs:
-                  # We know the image uses user 33000:1000
+                  # We know the image uses user 33030:1000
                   - ownership: {{ coalesce ($.Values.persistence).ownership "33030:1000" | quote }}
                     permissions: "u=rwX,g=rX,o="
-                    flags: [ "recurse", "noforced", "create", "changes" ]
-                    targets: [ "/app/data" ]
+                    flags: [ "recurse", "forced", "create", "changes" ]
+                    targets: [ "$(DATA_DIR)" ]
           volumeMounts:
-            - name: &dataVolume "data"
-              mountPath: &dataDir "/app/data"
+            - name: &dataVol "data"
+              mountPath: *dataDir
       containers:
         {{- $partName := (include "arkcase.part.name" $) }}
         - name: {{ $partName | quote }}
@@ -79,10 +81,11 @@ spec:
               value: >-
                 -XX:MinRAMPercentage=50
                 -XX:MaxRAMPercentage=80
+            # Stuff expires after 6 hours, but gets cleaned up every hour
             - name: scheduler.content.age.millis
-              value: "86400000"
+              value: "21600000"
             - name: scheduler.cleanup.interval
-              value: "86400000"
+              value: "3600000"
             - name: fileStorePath
               value: *dataDir
           {{- with (include "arkcase.values" (dict "ctx" $ "base" "command") | fromYaml) }}
@@ -92,7 +95,7 @@ spec:
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" $partName) | nindent 12 }}
           volumeMounts:
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
-            - name: *dataVolume
+            - name: *dataVol
               mountPath: *dataDir
       volumes:
         {{- include "arkcase.acme.volume" $ | nindent 8 }}

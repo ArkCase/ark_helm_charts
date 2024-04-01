@@ -58,25 +58,27 @@ spec:
         - name: init-set-permissions
           {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            - name: DATA_DIR
+              value: &dataDir "/app/data"
             - name: JOBS
-              value: |
+              value: |-
                 jobs:
                   # We know the Cloudconfig image uses user 997i (centos) , 1997 (rocky)
                   # TODO: Make this autodetected via the securityContext
                   - ownership: "1997:1997"
                     permissions: "u=rwX,g=rX,o="
-                    flags: [ "recurse", "noforced", "create", "changes" ]
-                    targets: [ "/app/data" ]
+                    flags: [ "recurse", "forced", "create", "changes" ]
+                    targets: [ "$(DATA_DIR)" ]
           volumeMounts:
             - name: "data"
-              mountPath: &dataDir "/app/data"
+              mountPath: *dataDir
         {{- include "arkcase.initDependencies.container" (dict "ctx" $ "name" "init-dependencies") | nindent 8 }}
       containers:
         - name: cloudconfig
           {{- include "arkcase.image" $ | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             - name: DATA_DIR
-              value: "/app/data"
+              value: *dataDir
           {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
           {{- with (include "arkcase.values" (dict "ctx" $ "base" "command") | fromYaml) }}
           command: {{ toJson .value }}

@@ -38,9 +38,9 @@ spec:
         - name: SERVICE_NAME
           value: {{ include "arkcase.service.name" $ | quote }}
         - name: SCRIPT
-          value: |
+          value: |-
             set -xeuo pipefail
             /usr/local/bin/acme-init
-            /usr/bin/timeout 3 /usr/bin/openssl s_client -connect "${SERVICE_NAME}:{{ $db.port }}" -verify_quiet -verify_return_error -showcerts {{ $startTls }} < /dev/null
+            /usr/bin/timeout 3 /usr/bin/openssl s_client -connect "$(SERVICE_NAME):{{ $db.port }}" -verify_quiet -verify_return_error -showcerts {{ $startTls }} < /dev/null
   restartPolicy: Never
 {{- end }}
