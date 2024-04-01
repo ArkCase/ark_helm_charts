@@ -65,7 +65,7 @@ spec:
                   # We know the image uses user 33031:1000
                   - ownership: {{ coalesce ($.Values.persistence).ownership "33031:1000" | quote }}
                     permissions: "u=rwX,g=rX,o="
-                    flags: [ "recurse", "noforced", "create", "changes" ]
+                    flags: [ "recurse", "forced", "create", "changes" ]
                     targets: [ "$(DATA_DIR)" ]
           volumeMounts:
             - name: &dataVolume "data"

@@ -63,7 +63,7 @@ spec:
                   # We know the image uses user 26
                   - ownership: "26:26"
                     permissions: "u=rwX,g=rX,o="
-                    flags: [ "recurse", "noforced", "create", "changes" ]
+                    flags: [ "recurse", "forced", "create", "changes" ]
                     targets: [ "$(DATA_DIR)" ]
           volumeMounts:
             - name: &dataVol "data"

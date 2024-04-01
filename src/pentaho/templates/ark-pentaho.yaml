@@ -150,14 +150,22 @@ spec:
         - name: init-set-permissions
           {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            - name: DATA_DIR
+              value: *dataDir
+            - name: TEMP_DIR
+              value: *tempDir
+            - name: LOGS_DIR
+              value: *logsDir
+            - name: INIT_DIR
+              value: *initDir
             - name: JOBS
               value: |-
                 jobs:
                   # We know the UID for the Pentaho container is 998:996
                   - ownership: "1998:1998"
                     permissions: "u=rwX,g=rX,o="
-                    flags: [ "recurse", "noforced", "create", "changes" ]
-                    targets: [ "/app/data", "/app/data/temp", "/app/logs", "/app/init" ]
+                    flags: [ "recurse", "forced", "create", "changes" ]
+                    targets: [ "$(DATA_DIR)", "$(TEMP_DIR)", "$(LOGS_DIR)", "$(INIT_DIR)" ]
           volumeMounts:
             - name: *initVol
               mountPath: *initDir

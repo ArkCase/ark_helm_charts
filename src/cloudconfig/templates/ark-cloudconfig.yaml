@@ -67,7 +67,7 @@ spec:
                   # TODO: Make this autodetected via the securityContext
                   - ownership: "1997:1997"
                     permissions: "u=rwX,g=rX,o="
-                    flags: [ "recurse", "noforced", "create", "changes" ]
+                    flags: [ "recurse", "forced", "create", "changes" ]
                     targets: [ "$(DATA_DIR)" ]
           volumeMounts:
             - name: "data"

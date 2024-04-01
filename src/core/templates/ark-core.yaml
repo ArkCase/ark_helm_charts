@@ -177,7 +177,7 @@ spec:
                   # TODO: Make this autodetected via the securityContext
                   - ownership: {{ printf "%d:%d" $devUid $devGid | quote }}
                     permissions: "u=rwX,g=rwX,o="
-                    flags: [ "recurse", "noforced", "create", "changes" ]
+                    flags: [ "recurse", "forced", "create", "changes" ]
                     targets: [ "$(HOME_DIR)", "$(TEMP_DIR)", "$(CONF_DIR)", "$(WARS_DIR)", "$(LOGS_DIR)", "$(FSRV_DIR)", "$(FOIA_DIR)" ]
           volumeMounts:
             - name: &warsVol "wars"

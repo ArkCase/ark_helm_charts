@@ -95,7 +95,7 @@ spec:
                   # We know the ActiveMQ image uses user 998 (centos), 1998 (rocky)
                   - ownership: {{ coalesce ($.Values.persistence).ownership "2000:2000" | quote }}
                     permissions: "u=rwX,g=rX,o="
-                    flags: [ "recurse", "noforced", "create", "changes" ]
+                    flags: [ "recurse", "forced", "create", "changes" ]
                     targets: [ "$(DATA_DIR)", "$(INIT_DIR)" ]
           volumeMounts:
             - name: &dataVolume "data"

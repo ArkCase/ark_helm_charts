@@ -63,7 +63,7 @@ spec:
                   # We know the MariaDB image uses user 27
                   - ownership: "27:27"
                     permissions: "u=rwX,g=rX,o="
-                    flags: [ "recurse", "noforced", "create", "changes" ]
+                    flags: [ "recurse", "forced", "create", "changes" ]
                     targets: [ "$(DATA_DIR)" ]
           volumeMounts:
             - name: &dataVol "data"
