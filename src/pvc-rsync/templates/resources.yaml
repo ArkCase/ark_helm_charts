@@ -13,7 +13,7 @@ metadata:
   name: *podName
   namespace: {{ $namespace | quote }}
 data:
-  rsyncd.conf: |
+  rsyncd.conf: |-
     uid = 0
     gid = 0
     pid file = /tmp/rsyncd.pid

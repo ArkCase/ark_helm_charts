@@ -55,17 +55,19 @@ spec:
         - name: init-set-permissions
           {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            - name: DATA_DIR
+              value: &dataDir "/data"
             - name: JOBS
-              value: |
+              value: |-
                 jobs:
                   # We know the MariaDB image uses user 27
                   - ownership: "27:27"
                     permissions: "u=rwX,g=rX,o="
-                    flags: [ "recurse", "noforced", "create", "changes" ]
-                    targets: [ "/data" ]
+                    flags: [ "recurse", "forced", "create", "changes" ]
+                    targets: [ "$(DATA_DIR)" ]
           volumeMounts:
-            - name: "data"
-              mountPath: "/data"
+            - name: &dataVol "data"
+              mountPath: *dataDir
         {{- include "arkcase.initDatabase.container" (dict "ctx" $ "db" "mysql" "volume" "init" "shell" true) | nindent 8 }}
         {{- include "arkcase.initDependencies.container" $ | nindent 8 }}
       containers:
@@ -87,7 +89,7 @@ spec:
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
             - name: "init"
               mountPath: "/opt/app-root/src/mysql-init"
-            - name: "data"
+            - name: *dataVol
               mountPath: "/var/lib/mysql/data"
             - name: {{ include "arkcase.initDatabase.secretVolume.name" $ | quote }}
               mountPath: "/app/secrets"
