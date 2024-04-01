@@ -66,14 +66,16 @@ spec:
               value: {{ include "arkcase.alfresco.service" (dict "ctx" $ "name" "main") | quote }}
             - name: REPO_PORT
               value: "8443"
+            - name: REPO_CONTEXT
+              value: "alfresco"
             - name: CATALINA_OPTS
               value: >-
                 -XX:MinRAMPercentage=50
                 -XX:MaxRAMPercentage=80
-                -Dalfresco.protocol=https
-                -Dalfresco.host={{ include "arkcase.alfresco.service" (dict "ctx" $ "name" "main") | quote }}
-                -Dalfresco.port=8443
-                -Dalfresco.context=alfresco
+                -Dalfresco.protocol=$(REPO_SCHEME)
+                -Dalfresco.host=$(REPO_HOST)
+                -Dalfresco.port=$(REPO_PORT)
+                -Dalfresco.context=$(REPO_CONTEXT)
           {{- with (include "arkcase.values" (dict "ctx" $ "base" "command") | fromYaml) }}
           command: {{ toJson .value }}
           {{- end }}

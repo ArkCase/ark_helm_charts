@@ -156,30 +156,44 @@ spec:
         - name: init-permissions
           {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            - name: WARS_DIR
+              value: &warsDir "/app/wars"
+            - name: CONF_DIR
+              value: &confDir "/app/conf"
+            - name: HOME_DIR
+              value: &homeDir "/app/home"
+            - name: TEMP_DIR
+              value: &tempDir "/app/home/temp"
+            - name: LOGS_DIR
+              value: &logsDir "/app/logs"
+            - name: FOIA_DIR
+              value: &foiaDir "/app/foia"
+            - name: FSRV_DIR
+              value: &fsrvDir "/app/fsrv"
             - name: JOBS
-              value: |
+              value: |-
                 jobs:
                   # We know the Cloudconfig image uses user 997i (centos) , 1997 (rocky)
                   # TODO: Make this autodetected via the securityContext
                   - ownership: {{ printf "%d:%d" $devUid $devGid | quote }}
                     permissions: "u=rwX,g=rwX,o="
-                    flags: [ "recurse", "noforced", "create", "changes" ]
-                    targets: [ "/app/home", "/app/home/temp", "/app/conf", "/app/wars", "/app/logs", "/app/fsrv", "/app/foia" ]
+                    flags: [ "recurse", "forced", "create", "changes" ]
+                    targets: [ "$(HOME_DIR)", "$(TEMP_DIR)", "$(CONF_DIR)", "$(WARS_DIR)", "$(LOGS_DIR)", "$(FSRV_DIR)", "$(FOIA_DIR)" ]
           volumeMounts:
-            - name: &warsVolume "wars"
-              mountPath: &warsDir "/app/wars"
+            - name: &warsVol "wars"
+              mountPath: *warsDir
             {{- include "arkcase.core.dev.permissionMounts" $ | nindent 12 }}
-            - name: &homeVolume "home"
-              mountPath: &homeDir "/app/home"
-            - name: &tempVolume "temp"
-              mountPath: &tempDir "/app/home/temp"
-            - name: &logsVolume "logs"
-              mountPath: &logsDir "/app/logs"
+            - name: &homeVol "home"
+              mountPath: *homeDir
+            - name: &tempVol "temp"
+              mountPath: *tempDir
+            - name: &logsVol "logs"
+              mountPath: *logsDir
             {{- if $foia }}
-            - name: &foiaVolume "foia"
-              mountPath: &foiaDir "/app/foia"
-            - name: &fsrvVolume "fsrv"
-              mountPath: &fsrvDir "/app/fsrv"
+            - name: &foiaVol "foia"
+              mountPath: *foiaDir
+            - name: &fsrvVol "fsrv"
+              mountPath: *fsrvDir
             {{- end }}
         {{- include "arkcase.initDependencies.container" (dict "ctx" $ "name" "init-dependencies") | nindent 8 }}
         - name: init-seed-content
@@ -226,7 +240,7 @@ spec:
               value: "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem"
             {{- end }}
           volumeMounts:
-            - name: *homeVolume
+            - name: *homeVol
               mountPath: *homeDir
             - name: *configMap
               mountPath: {{ $contentScript | quote }}
@@ -264,7 +278,7 @@ spec:
               {{- toYaml . | nindent 12 }}
             {{- end }}
             - name: LD_LIBRARY_PATH
-              value: "/app/home/.arkcase/libraries"
+              value: "$(HOME_DIR)/.arkcase/libraries"
             - name: CATALINA_OPTS
               {{- $oidc := (include "arkcase.oidc" $ | fromYaml) -}}
               {{- $springProfiles := (not (empty $oidc)) | ternary "externalOidc" "ldap" }}
@@ -276,10 +290,10 @@ spec:
               value: >-
                 -XX:MinRAMPercentage=50.0
                 -XX:MaxRAMPercentage=80.0
-                -Dacm.configurationserver.propertyfile=/app/home/.arkcase/acm/conf.yml
+                -Dacm.configurationserver.propertyfile=$(HOME_DIR)/.arkcase/acm/conf.yml
                 -Dconfiguration.client.spring.path=spring
                 -Dspring.profiles.active={{ $springProfiles }}
-                -Duser.home=/app/home
+                -Duser.home=$(HOME_DIR)
                 {{- with $debug }}
                 -Xdebug
                 -agentlib:jdwp=transport=dt_socket,server=y,suspend={{ .suspend }},address=*:8888
@@ -296,13 +310,13 @@ spec:
           volumeMounts:
             {{- include "arkcase.trusts.mount" $ | nindent 12 }}
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
-            - name: *homeVolume
+            - name: *homeVol
               mountPath: *homeDir
-            - name: *confVolume
+            - name: *confVol
               mountPath: "/app/home/.arkcase"
-            - name: *tempVolume
+            - name: *tempVol
               mountPath: *tempDir
-            - name: *warsVolume
+            - name: *warsVol
               mountPath: "/app/tomcat/webapps"
             {{- include "arkcase.core.dev.runMounts" $ | nindent 12 }}
             - name: *configMap
@@ -375,12 +389,12 @@ spec:
               mountPath: "/app/home/.arkcase/acm/licenses/pdfnet_sdk_license.txt"
               subPath: &pdfnetSdkLicenseTxt "pdfnet_sdk_license.txt"
               readOnly: true
-            - name: *logsVolume
+            - name: *logsVol
               mountPath: *logsDir
             {{- if $foia }}
-            - name: *fsrvVolume
+            - name: *fsrvVol
               mountPath: *fsrvDir
-            - name: *foiaVolume
+            - name: *foiaVol
               mountPath: "/app/home/.external-portal-api"
             - name: *configMap
               mountPath: "/app/home/.arkcase/acm/acm-config-server-repo/lookups/lookups-server.yaml"
@@ -437,7 +451,7 @@ spec:
               mountPath: "/.env"
               subPath: &envfileCloudconfig "envfile.cloudconfig"
               readOnly: true
-            - name: *confVolume
+            - name: *confVol
               mountPath: *confDir
               subPath: "acm/acm-config-server-repo"
             - name: *configMap

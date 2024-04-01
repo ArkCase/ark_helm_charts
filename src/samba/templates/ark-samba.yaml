@@ -81,7 +81,7 @@ spec:
             - name: SERVICE_NAME
               value: {{ include "arkcase.name" $ | quote }}
             - name: SEED_DIR
-              value: "/app/secrets"
+              value: &seedDir "/app/secrets"
           {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
           {{- if $.Values.command }}
           command: {{- $.Values.command | toYaml | nindent 12 }}
@@ -101,7 +101,7 @@ spec:
             - name: "logs"
               mountPath: "/var/log/samba"
             - name: &secrets "secrets"
-              mountPath: "/app/secrets"
+              mountPath: *seedDir
               readOnly: true
             - name: &configMap "configmap"
               mountPath: "/app/init/init.d/000-init-seeds-wrapper"

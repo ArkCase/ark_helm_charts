@@ -88,19 +88,23 @@ spec:
         - name: init-set-permissions
           {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            - name: DATA_DIR
+              value: &dataDir "/app/data"
+            - name: LOGS_DIR
+              value: &logsDir "/app/logs"
             - name: JOBS
-              value: |
+              value: |-
                 jobs:
                   # We know the ActiveMQ image uses user 998 (centos), 1998 (rocky)
                   - ownership: {{ coalesce ($.Values.persistence).ownership "1998:1998" | quote }}
                     permissions: "u=rwX,g=rX,o="
-                    flags: [ "recurse", "noforced", "create", "changes" ]
-                    targets: [ "/app/data", "/app/logs" ]
+                    flags: [ "recurse", "forced", "create", "changes" ]
+                    targets: [ "$(DATA_DIR)", "$(LOGS_DIR)" ]
           volumeMounts:
             - name: &dataVol "data"
-              mountPath: &dataPath "/app/data"
+              mountPath: *dataDir
             - name: &logsVol "logs"
-              mountPath: &logsPath "/app/logs"
+              mountPath: *logsDir
         {{- include "arkcase.initDependencies.container" $ | nindent 8 }}
       containers:
         - name: artemis
@@ -122,8 +126,6 @@ spec:
                 secretKeyRef:
                   name: *secretName
                   key: ENCRYPTION_PASSWORD
-            - name: JAVA_MEM_ARGS
-              value: "-Xms2g -Xmx2g"
           {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
           {{- with (include "arkcase.values" (dict "ctx" $ "base" "command") | fromYaml) }}
           command: {{ toJson .value }}
@@ -135,9 +137,9 @@ spec:
             - name: &confVol "conf"
               mountPath: "/app/conf"
             - name: *dataVol
-              mountPath: *dataPath
+              mountPath: *dataDir
             - name: *logsVol
-              mountPath: *logsPath
+              mountPath: *logsDir
             - name: &secret "secret"
               mountPath: "/app/conf/artemis-users.properties"
               subPath: &artemisUsersProperties "artemis-users.properties"
