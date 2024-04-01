@@ -49,7 +49,7 @@ SOLR_URL+="/admin/info/health"
 START="$(date +%s)"
 say "Starting the polling cycle"
 while true ; do
-	/usr/bin/curl -kL --fail -m 5 "${SOLR_URL}" &>/dev/null && break
+	/usr/bin/curl -fsSL -m 5 "${SOLR_URL}" &>/dev/null && break
 	NOW="$(date +%s)"
 	[ $(( NOW - START )) -ge ${INIT_MAX_WAIT} ] && fail "Timed out waiting for the URL [${SOLR_URL}] to come up"
 	# If sleep didn't succeed, it means it got signaled, which

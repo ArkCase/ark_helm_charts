@@ -37,7 +37,7 @@ ACME_CLIENT_PASSWORD
   {{- if not (include "arkcase.isRootContext" $) -}}
     {{- fail "The parameter given should be the root context (. or $)" -}}
   {{- end -}}
-- name: &acmeVolume "acme"
+- name: &acmeVol "acme"
   mountPath: "/.acme.password"
   subPath: &acmePassword {{ include "arkcase.acme.passwordVariable" $ | quote }}
   readOnly: true
@@ -47,7 +47,7 @@ ACME_CLIENT_PASSWORD
   {{- if not (include "arkcase.isRootContext" $) -}}
     {{- fail "The parameter given should be the root context (. or $)" -}}
   {{- end -}}
-- name: *acmeVolume
+- name: *acmeVol
   secret:
     optional: false
     secretName: {{ include "arkcase.acme.sharedSecret" $ | quote }}

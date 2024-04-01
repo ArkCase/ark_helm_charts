@@ -106,9 +106,6 @@ spec:
               - key: *hookReadyMarkerSh
                 path: *hookReadyMarkerSh
                 mode: 0555
-        - name: "messaging"
-          secret:
-            secretName: "messaging"
       {{- with $.Values.nodeSelector }}
       nodeSelector: {{- toYaml . | nindent 8 }}
       {{- end }}

@@ -85,19 +85,23 @@ spec:
         - name: init-set-permissions
           {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            - name: DATA_DIR
+              value: &dataDir "/app/data"
+            - name: INIT_DIR
+              value: &initDir "/app/init"
             - name: JOBS
-              value: |
+              value: |-
                 jobs:
                   # We know the ActiveMQ image uses user 998 (centos), 1998 (rocky)
                   - ownership: {{ coalesce ($.Values.persistence).ownership "2000:2000" | quote }}
                     permissions: "u=rwX,g=rX,o="
-                    flags: [ "recurse", "noforced", "create", "changes" ]
-                    targets: [ "/app/data", "/app/init" ]
+                    flags: [ "recurse", "forced", "create", "changes" ]
+                    targets: [ "$(DATA_DIR)", "$(INIT_DIR)" ]
           volumeMounts:
             - name: &dataVolume "data"
-              mountPath: &dataPath "/app/data"
+              mountPath: *dataDir
             - name: &initVolume "init"
-              mountPath: &initPath "/app/init"
+              mountPath: *initDir
         {{- include "arkcase.initDependencies.container" $ | nindent 8 }}
       containers:
         - name: solr
@@ -117,10 +121,12 @@ spec:
             {{- else }}
               value: "-Dsolr.autoSoftCommit.maxTime=1000"
             {{- end }}
+            - name: DATA_DIR
+              value: *dataDir
             - name: SOLR_HOME
-              value: "/app/data/solr"
+              value: "$(DATA_DIR)/solr"
             - name: SOLR_SERVER
-              value: "/app/data/solr/server"
+              value: "$(SOLR_HOME)/server"
             - name: SOLR_CORES
               value: "acmAdvancedSearch=arkcase,acmQuickSearch=arkcase"
             {{- if $.Values.env }}
@@ -141,9 +147,9 @@ spec:
           volumeMounts:
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
             - name: *dataVolume
-              mountPath: *dataPath
+              mountPath: *dataDir
             - name: *initVolume
-              mountPath: *initPath
+              mountPath: *initDir
             - name: &secrets "secrets"
               mountPath: "/app/solr/bin/solr.in.sh"
               subPath: &solrInSh "solr.in.sh"

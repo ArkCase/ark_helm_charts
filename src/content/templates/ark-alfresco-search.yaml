@@ -57,17 +57,19 @@ spec:
         - name: init-set-permissions
           {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            - name: DATA_DIR
+              value: &dataDir "/opt/alfresco-search-services/data"
             - name: JOBS
-              value: |
+              value: |-
                 jobs:
                   # We know the image uses user 33000:1000
                   - ownership: {{ coalesce ($.Values.persistence).ownership "33007:33007" | quote }}
                     permissions: "u=rwX,g=rX,o="
-                    flags: [ "recurse", "noforced", "create", "changes" ]
-                    targets: [ "/app/data" ]
+                    flags: [ "recurse", "forced", "create", "changes" ]
+                    targets: [ "$(DATA_DIR)" ]
           volumeMounts:
-            - name: &dataVolume "data"
-              mountPath: "/app/data"
+            - name: &dataVol "data"
+              mountPath: *dataDir
 
       containers:
         {{- $partName := (include "arkcase.part.name" $) }}
@@ -87,14 +89,16 @@ spec:
             - name: SOLR_CREATE_ALFRESCO_DEFAULTS
               value: "alfresco,archive"
             - name: ALFRESCO_SECURE_COMMS
-              value: "https"
+              value: &https "https"
+            - name: SOLR_ALFRESCO_SECURE_COMMS
+              value: *https
             - name: JAVA_TOOL_OPTIONS
               value: >-
-                -Dalfresco.secureComms=https
+                -Dalfresco.secureComms=$(ALFRESCO_SECURE_COMMS)
                 -Dalfresco.host={{ include "arkcase.alfresco.service" (dict "ctx" $ "name" "main") }}
-                -Dalfresco.port.ssl=8999
+                -Dalfresco.port.ssl=$(SOLR_ALFRESCO_PORT)
                 -Dalfresco.baseurl=/alfresco
-                -Dsolr.alfresco.secureComms=https
+                -Dsolr.alfresco.secureComms=$(SOLR_ALFRESCO_SECURE_COMMS)
                 -XX:MinRAMPercentage=50
                 -XX:MaxRAMPercentage=80
           {{- with (include "arkcase.values" (dict "ctx" $ "base" "command") | fromYaml) }}
@@ -104,8 +108,8 @@ spec:
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" $partName) | nindent 12 }}
           volumeMounts:
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
-            - name: *dataVolume
-              mountPath: "/opt/alfresco-search-services/data"
+            - name: *dataVol
+              mountPath: *dataDir
       {{- with (include "arkcase.values" (dict "ctx" $ "base" "nodeSelector") | fromYaml) }}
       nodeSelector: {{- toYaml .value | nindent 8 }}
       {{- end }}
