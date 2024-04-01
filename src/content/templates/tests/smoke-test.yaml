@@ -34,22 +34,22 @@ spec:
         - name: SERVICE_NAME
           value: {{ include "arkcase.service.name" $ | quote }}
         - name: SCRIPT
-          value: |
+          value: |-
             set -xeuo pipefail
             /usr/local/bin/acme-init
             {{- if (eq "alfresco" (include "arkcase.content.info.dialect" $)) }}
-            /usr/bin/timeout 3 /usr/bin/openssl s_client -connect "${SERVICE_NAME}-activemq:61616" -verify_quiet -verify_return_error -showcerts </dev/null
-            /usr/bin/curl -LfsS -o /dev/null "https://${SERVICE_NAME}-main:8443/alfresco/"
-            /usr/bin/timeout 3 /usr/bin/openssl s_client -connect "${SERVICE_NAME}-search:8983" -verify_quiet -verify_return_error -showcerts </dev/null
-            /usr/bin/curl -LfsS -o /dev/null "https://${SERVICE_NAME}-share:8443/share/"
-            /usr/bin/curl -LfsS -o /dev/null "https://${SERVICE_NAME}-xform-core-aio:8090/actuator/health"
+            /usr/bin/timeout 3 /usr/bin/openssl s_client -connect "$(SERVICE_NAME)-activemq:61616" -verify_quiet -verify_return_error -showcerts </dev/null
+            /usr/bin/curl -fsSL -m 3 -o /dev/null "https://$(SERVICE_NAME)-main:8443/alfresco/"
+            /usr/bin/timeout 3 /usr/bin/openssl s_client -connect "$(SERVICE_NAME)-search:8983" -verify_quiet -verify_return_error -showcerts </dev/null
+            /usr/bin/curl -fsSL -m 3 -o /dev/null "https://$(SERVICE_NAME)-share:8443/share/"
+            /usr/bin/curl -fsSL -m 3 -o /dev/null "https://$(SERVICE_NAME)-xform-core-aio:8090/actuator/health"
               {{- if $enterprise }}
-            /usr/bin/timeout 3 /usr/bin/openssl s_client -connect "${SERVICE_NAME}-sfs:8099" -verify_quiet -verify_return_error -showcerts </dev/null
-            /usr/bin/curl -LfsS -o /dev/null "https://${SERVICE_NAME}-xform-router:8095/actuator/health"
+            /usr/bin/timeout 3 /usr/bin/openssl s_client -connect "$(SERVICE_NAME)-sfs:8099" -verify_quiet -verify_return_error -showcerts </dev/null
+            /usr/bin/curl -fsSL -m 3 -o /dev/null "https://$(SERVICE_NAME)-xform-router:8095/actuator/health"
               {{- end }}
             {{- end }}
             {{- if (eq "s3" (include "arkcase.content.info.dialect" $)) }}
-            /usr/bin/curl -LfsS -o /dev/null "https://${SERVICE_NAME}-main:9000/minio/health/live"
+            /usr/bin/curl -fsSL -m 3 -o /dev/null "https://$(SERVICE_NAME)-main:9000/minio/health/live"
             {{- end }}
   restartPolicy: Never
 {{- end -}}

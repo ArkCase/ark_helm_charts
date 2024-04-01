@@ -60,8 +60,7 @@ run_curl() {
 	esac
 
 	local RC=0
-	local HTTP_CODE="$(curl -kL \
-		-sS \
+	local HTTP_CODE="$(curl -sSL \
 		--disallow-username-in-url \
 		--config <(echo -n "--user \"${ADMIN_USERNAME}:${ADMIN_PASSWORD}\"") \
 		"${OUTPUT[@]}" \

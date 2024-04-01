@@ -47,7 +47,7 @@ NAME="$(xmlstarlet sel -t -v "/Schema/@name" "${SCHEMA_FILE}")" || fail "Failed 
 ENCODED="$(echo -n "${NAME}" | jq -sRr @uri)"
 
 say "Installing the Mondrian schema [${NAME}] from [${SCHEMA_FILE}]..."
-exec curl -kL -sS --fail \
+exec curl -fsSL \
 	-H "Content-Type: multipart/form-data" \
 	-X PUT \
 	-F uploadInput="@${SCHEMA_FILE}" \
