@@ -303,17 +303,47 @@
   {{- dict "email" $result | toYaml -}}
 {{- end }}
 
+{{- define "arkcase.core.integrations.computeKey" -}}
+  {{- $name := .name -}}
+  {{- $config := .config -}}
+  {{- $value := get $config $name -}}
+  {{- if $value -}}
+    {{- $value = ($value | toString) -}}
+    {{- if (eq "true" $value) -}}
+      {{- $name -}}
+    {{- else if (ne "false" $value) -}}
+      {{- $value -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+
 {{- define "arkcase.core.integrations" -}}
   {{- $ctx := $ -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "Must send the root context as the only parameter" -}}
   {{- end -}}
 
+  {{- $config := (.Files.Get "integration.yaml" | fromYaml | default dict) -}}
+
   {{- $ints := ($.Values.global).integration -}}
   {{- $result := dict -}}
   {{- $disabled := dict "enabled" false -}}
+  {{- $bad := list -}}
   {{- if and $ints (kindIs "map" $ints) -}}
     {{- range $name, $t := $ints -}}
+
+      {{- /* First ... is this a known integration? If not... complain! */ -}}
+      {{- if not (hasKey $config $name) -}}
+        {{- $bad = append $bad $name -}}
+        {{- continue -}}
+      {{- end -}}
+
+      {{- $key := (include "arkcase.core.integrations.computeKey" (dict "name" $name "config" $config)) -}}
+      {{- if not $key -}}
+        {{- /* If this integration is disabled, skip it! */ -}}
+        {{- continue -}}
+      {{- end -}}
+
       {{- if and $t (kindIs "map" $t) -}}
         {{- if or (not (hasKey $t "enabled")) (include "arkcase.toBoolean" $t.enabled) -}}
           {{- $t = set $t "enabled" true -}}
@@ -323,8 +353,11 @@
       {{- else -}}
         {{- $t = $disabled -}}
       {{- end -}}
-      {{- $result = set $result $name $t -}}
+      {{- $result = set $result $key $t -}}
     {{- end -}}
+  {{- end -}}
+  {{- if $bad -}}
+    {{- fail (printf "Unsupported integrations configured: %s" ($bad | sortAlpha)) -}}
   {{- end -}}
   {{- $result | toYaml -}}
 {{- end -}}
