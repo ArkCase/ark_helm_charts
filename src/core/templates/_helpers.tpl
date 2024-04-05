@@ -359,7 +359,7 @@
   {{- if $bad -}}
     {{- fail (printf "Unsupported integrations configured: %s" ($bad | sortAlpha)) -}}
   {{- end -}}
-  {{- $result | toYaml -}}
+  {{- (empty $result) | ternary "" ($result | toYaml) -}}
 {{- end -}}
 
 {{- define "arkcase.core.renderLoggers" -}}
