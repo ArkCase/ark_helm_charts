@@ -1,0 +1,62 @@
+#!/bin/bash
+set -euo pipefail
+
+timestamp()
+{
+	/usr/bin/date -Ins -u
+}
+
+say()
+{
+	echo -e "$(timestamp): ${@}"
+}
+
+ok()
+{
+	say "✅ ${@}"
+}
+
+warn()
+{
+	say "⚠️ ${@}"
+}
+
+err()
+{
+	say "❌ ${@}" 1>&2
+}
+
+fail()
+{
+	err "${@}"
+	exit ${EXIT_CODE:-1}
+}
+
+[ -d "/pvc" ] && [ -d "/clones" ] || fail "Clone mode does not appear to be active"
+
+RSYNC="$(type -P rsync)" || fail "Failed to find rsync in the path"
+TEE="$(type -P tee)" || fail "Failed to find tee in the path"
+
+LOG_BASE="$(/usr/bin/basename "${0}")"
+STAMP="$(/usr/bin/date -u "+%Y%m%d-%H%M%SZ")"
+MAIN_LOG="${LOG_BASE}.${STAMP}.log"
+
+say "👀 Logging to [${MAIN_LOG}]"
+exec > >("${TEE}" "${MAIN_LOG}")
+exec 2>&1
+
+say "👉 Copying from /pvc into /clones..."
+ATTEMPT=0
+while true ; do
+	(( ++ATTEMPT ))
+	say "Starting rsync (attempt # ${ATTEMPT})..."
+	RC=0
+	"${RSYNC}" --progress --exclude="lost+found" -RavzhH --delete-delay "/pvc" "/clones" || RC=${?}
+	[ ${RC} -eq 0 ] && break
+	case ${RC} in
+		30 ) warn "Timeout detected, will try again..." ; continue ;;
+		* ) EXIT_CODE=${RC} fail "Failed to copy the data (rc = ${RC})" ;;
+	esac
+done
+ok "File copy complete!"
+exit 0
