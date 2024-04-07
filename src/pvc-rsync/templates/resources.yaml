@@ -67,7 +67,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   labels:
-    armedia.com/pvc-mounter-name: &podName {{ .Chart.Name | quote }}
+    armedia.com/pvc-mounter-name: &podName {{ .Release.Name | quote }}
   name: *podName
   namespace: {{ $namespace | quote }}
 data:
