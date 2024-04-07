@@ -1,4 +1,4 @@
-{{- $podName := (.Release.Name | quote) -}}
+{{- $podName := .Release.Name -}}
 {{- $namespace := .Release.Namespace -}}
 {{- $pvcs := lookup "v1" "PersistentVolumeClaim" $namespace "" -}}
 {{- $scripts := (.Files.Glob "scripts/*") -}}
@@ -67,7 +67,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   labels:
-    armedia.com/pvc-mounter-name: &podName {{ $podName }}
+    armedia.com/pvc-mounter-name: &podName {{ $podName | quote }}
   name: *podName
   namespace: {{ $namespace | quote }}
 data:
