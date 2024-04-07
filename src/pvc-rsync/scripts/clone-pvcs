@@ -55,7 +55,6 @@ say "👉 Copying from /pvc into /clones..."
 CMD=("${RSYNC}" --progress --exclude="lost+found" -RavzhH --delete-delay "." "/clones")
 say "👀 Will use the command: ${CMD[@]@Q}"
 
-
 ATTEMPT=0
 while true ; do
 	(( ++ATTEMPT ))
@@ -69,4 +68,21 @@ while true ; do
 	esac
 done
 ok "File copy complete!"
+
+say "👀 Verifying the file copy correctness"
+OLD_COUNT="$(cd "/pvc" && /usr/bin/find . -type f | /usr/bin/wc -l)"
+NEW_COUNT="$(cd "/clones" && /usr/bin/find . -type f | /usr/bin/wc -l)"
+[ "${OLD_COUNT}" -eq "${NEW_COUNT}" ] || fail "File counts failed: expected [${OLD_COUNT}] but got [${NEW_COUNT}]"
+
+OLD_LIST="$(cd "/pvc" && /usr/bin/find . -type f | /usr/bin/sort)"
+NEW_LIST="$(cd "/clones" && /usr/bin/find . -type f | /usr/bin/sort)"
+OLD_SUM="$(echo -n "${OLD_LIST}" | /usr/bin/sha256sum)"
+NEW_SUM="$(echo -n "${NEW_LIST}" | /usr/bin/sha256sum)"
+if [ "${OLD_SUM}" != "${NEW_SUM}" ] ; then
+	err "File file listings were different (checked by sha256sum)"
+	diff -burN <(echo -n "${OLD_LIST}") <(echo -n "${NEW_LIST}")
+	exit 1
+fi
+
+ok "File copy verified!"
 exit 0
