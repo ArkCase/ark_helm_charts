@@ -1,6 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 
+[ -v LOGS_DIR ] || LOGS_DIR=""
+[ -n "${LOGS_DIR}" ] || LOGS_DIR="/logs"
+
 timestamp()
 {
 	/usr/bin/date -Ins -u
@@ -39,19 +42,26 @@ TEE="$(type -P tee)" || fail "Failed to find tee in the path"
 
 LOG_BASE="$(/usr/bin/basename "${0}")"
 STAMP="$(/usr/bin/date -u "+%Y%m%d-%H%M%SZ")"
-MAIN_LOG="${LOG_BASE}.${STAMP}.log"
+MAIN_LOG="${LOGS_DIR}/${LOG_BASE}.${STAMP}.log"
+
+cd /pvc || fail "Failed to CD into /pvc"
 
 say "👀 Logging to [${MAIN_LOG}]"
 exec > >("${TEE}" "${MAIN_LOG}")
 exec 2>&1
 
 say "👉 Copying from /pvc into /clones..."
+
+CMD=("${RSYNC}" --progress --exclude="lost+found" -RavzhH --delete-delay "." "/clones")
+say "👀 Will use the command: ${CMD[@]@Q}"
+
+
 ATTEMPT=0
 while true ; do
 	(( ++ATTEMPT ))
 	say "Starting rsync (attempt # ${ATTEMPT})..."
 	RC=0
-	"${RSYNC}" --progress --exclude="lost+found" -RavzhH --delete-delay "/pvc" "/clones" || RC=${?}
+	"${CMD[@]}" || RC=${?}
 	[ ${RC} -eq 0 ] && break
 	case ${RC} in
 		30 ) warn "Timeout detected, will try again..." ; continue ;;
