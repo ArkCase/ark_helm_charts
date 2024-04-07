@@ -71,6 +71,17 @@ metadata:
   name: *podName
   namespace: {{ $namespace | quote }}
 data:
+
+  #
+  # Common-use scripts
+  #
+  {{- range $path, $_ := $scripts }}
+  {{ $path | base }}: |{{- $.Files.Get $path | nindent 4 }}
+  {{- end }}
+
+  #
+  # The rsyncd configuration
+  #
   rsyncd.conf: |-
     uid = 0
     gid = 0
@@ -88,20 +99,18 @@ data:
     read only = true
     timeout = 300
 
-  {{- range $prefix, $items := $pvcs }}
-    {{- range $pvc := $items }}
-      {{- $pvcName := ($pvc.metadata.oldName | default $pvc.metadata.name) }}
+  {{- if not $clone }}
+    {{- range $prefix, $items := $pvcs }}
+      {{- range $pvc := $items }}
+        {{- $pvcName := ($pvc.metadata.oldName | default $pvc.metadata.name) }}
       [{{ $pvc.metadata.name }}]
       path = /{{ $prefix }}/{{ $pvcName }}
       comment = {{ $pvcName }}
       exclude = lost+found/
       transfer logging = yes
       timeout = 300
+      {{- end }}
     {{- end }}
-  {{- end }}
-
-  {{- range $path, $_ := $scripts }}
-  {{ $path | base }}: |{{- $.Files.Get $path | nindent 4 }}
   {{- end }}
 
 ---
@@ -193,15 +202,17 @@ spec:
           {{- end }}
         {{- end }}
       restartPolicy: Always
+{{- if not $clone }}
 ---
-{{- $service := (include "arkcase.subsystem.service" . | fromYaml) }}
-{{- if and $externalDnsName $externalDnsAnnotation }}
-  {{- $serviceMetadata := ($service.metadata | default dict) }}
-  {{- $serviceAnnotations := ($serviceMetadata.annotations | default dict) }}
+  {{- $service := (include "arkcase.subsystem.service" . | fromYaml) }}
+  {{- if and $externalDnsName $externalDnsAnnotation }}
+    {{- $serviceMetadata := ($service.metadata | default dict) }}
+    {{- $serviceAnnotations := ($serviceMetadata.annotations | default dict) }}
 
-  {{- $serviceAnnotations = set $serviceAnnotations ($externalDnsAnnotation | toString) ($externalDnsName | toString) }}
+    {{- $serviceAnnotations = set $serviceAnnotations ($externalDnsAnnotation | toString) ($externalDnsName | toString) }}
 
-  {{- $serviceMetadata = set $serviceMetadata "annotations" $serviceAnnotations }}
-  {{- $service = set $service "metadata" $serviceMetadata }}
+    {{- $serviceMetadata = set $serviceMetadata "annotations" $serviceAnnotations }}
+    {{- $service = set $service "metadata" $serviceMetadata }}
+  {{- end }}
+  {{- $service | toYaml | nindent 0 }}
 {{- end }}
-{{- $service | toYaml | nindent 0 }}
