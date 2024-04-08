@@ -12,9 +12,9 @@ In the AI5 environment, external access can be enabled by way of setting the val
 
 For example:
 
-`helm install pvc-rsync arkcase/pvc-rsync --set externalDns.name=pvc-rsync.arkcase.net`
+`helm install pvc-tool arkcase/pvc-tool --set externalDns.name=pvc-tool.arkcase.net`
 
-This will export the service such that you may connect to it using `rsync-pvcs (pull|push) rsync://pvc-rsync.arkcase.net ...`.
+This will export the service such that you may connect to it using `rsync-pvcs (pull|push) rsync://pvc-tool.arkcase.net ...`.
 
 ## How to use it
 
