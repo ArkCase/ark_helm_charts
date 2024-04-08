@@ -1,0 +1,25 @@
+#
+# Each key is the NAME of the integration
+#
+# An empty value, the boolean value false, or the string value
+# "false" will disable the integration.
+#
+# Any other value will enable it. If the value is anything other
+# than the boolean value true, or the string "true", then it will
+# be converted to a string, and used as the alternate key atop
+# the configuration block within the arckase-server.yaml file
+#
+# The alternate key may contain dots, and the consequences of
+# these dots are beyond the scope of this integration facility.
+#
+
+oidc: true
+
+touchnet: "payment"
+payment: true
+
+zylab: "zylabIntegration"
+# Temporary ... should use zylab moving forward
+zylabIntegration: true
+
+scanning: true

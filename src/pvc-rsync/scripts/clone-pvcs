@@ -1,0 +1,102 @@
+#!/bin/bash
+set -euo pipefail
+
+[ -v LOGS_DIR ] || LOGS_DIR=""
+[ -n "${LOGS_DIR}" ] || LOGS_DIR="/logs"
+
+
+DEFAULT_MAX_ATTEMPTS=5
+
+[ -v MAX_ATTEMPTS ] || MAX_ATTEMPTS=""
+[ -n "${MAX_ATTEMPTS}" ] || MAX_ATTEMPTS="${DEFAULT_MAX_ATTEMPTS}"
+[[ ${MAX_ATTEMPTS} =~ ^[1-9][0-9]*$ ]] || MAX_ATTEMPTS="${DEFAULT_MAX_ATTEMPTS}"
+
+timestamp()
+{
+	/usr/bin/date -Ins -u
+}
+
+say()
+{
+	echo -e "$(timestamp): ${@}"
+}
+
+ok()
+{
+	say "✅ ${@}"
+}
+
+warn()
+{
+	say "⚠️ ${@}"
+}
+
+err()
+{
+	say "❌ ${@}" 1>&2
+}
+
+fail()
+{
+	err "${@}"
+	exit ${EXIT_CODE:-1}
+}
+
+[ -d "/pvc" ] && [ -d "/clones" ] || fail "Clone mode does not appear to be active"
+
+RSYNC="$(type -P rsync)" || fail "Failed to find rsync in the path"
+TEE="$(type -P tee)" || fail "Failed to find tee in the path"
+
+LOG_BASE="$(/usr/bin/basename "${0}")"
+STAMP="$(/usr/bin/date -u "+%Y%m%d-%H%M%SZ")"
+MAIN_LOG="${LOGS_DIR}/${LOG_BASE}.${STAMP}.log"
+
+cd /pvc || fail "Failed to CD into /pvc"
+
+say "👀 Logging to [${MAIN_LOG}]"
+exec > >("${TEE}" "${MAIN_LOG}")
+exec 2>&1
+
+say "👉 Copying from /pvc into /clones..."
+
+CMD=("${RSYNC}" --progress --exclude="lost+found" -RavzhH --delete-delay "." "/clones")
+say "👀 Will use the command: ${CMD[@]@Q}"
+
+OK="false"
+for (( ATTEMPT=1 ; ATTEMPT < MAX_ATTEMPTS ; ATTEMPT++ )) ; do
+	say "Starting rsync (attempt # ${ATTEMPT})..."
+	RC=0
+	"${CMD[@]}" || RC=${?}
+	case ${RC} in
+		0 ) ;;
+		30 ) warn "Timeout detected, will try again..." ; continue ;;
+		* ) err "Failed to copy the data (rc = ${RC})" ; continue ;;
+	esac
+
+	say "👀 Verifying the file copy correctness"
+	OLD_COUNT="$(cd "/pvc" && /usr/bin/find . -type f | /usr/bin/wc -l)"
+	NEW_COUNT="$(cd "/clones" && /usr/bin/find . -type f | /usr/bin/wc -l)"
+	if [ "${OLD_COUNT}" -ne "${NEW_COUNT}" ] ; then
+		err "File counts failed: expected [${OLD_COUNT}] but got [${NEW_COUNT}]"
+		continue
+	fi
+
+	OLD_LIST="$(cd "/pvc" && /usr/bin/find . -type f | /usr/bin/sort)"
+	NEW_LIST="$(cd "/clones" && /usr/bin/find . -type f | /usr/bin/sort)"
+	OLD_SUM="$(echo -n "${OLD_LIST}" | /usr/bin/sha256sum)"
+	NEW_SUM="$(echo -n "${NEW_LIST}" | /usr/bin/sha256sum)"
+	if [ "${OLD_SUM}" != "${NEW_SUM}" ] ; then
+		err "File file listings were different (checked by sha256sum)"
+		diff -burN <(echo -n "${OLD_LIST}") <(echo -n "${NEW_LIST}")
+		continue
+	fi
+
+	OK="true"
+	ok "File copy verified!"
+	break
+done
+
+"${OK}" || fail "The file copy could not be verified as complete"
+
+ok "File copy complete!"
+exit 0
