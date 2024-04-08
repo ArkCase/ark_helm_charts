@@ -5,6 +5,7 @@
 {{- $externalDnsName := (.Values.externalDns).name | default "" -}}
 {{- $externalDnsAnnotation := (.Values.externalDns).annotation | default "external-dns.alpha.kubernetes.io/hostname" -}}
 {{- $pvcs = ((empty $pvcs) | ternary list ($pvcs.items | default list) ) -}}
+{{- $storageClassName := .Values.storageClassName -}}
 {{- $clone := (eq (.Values.mode | default "rsync") "clone") -}}
 {{- $clonePrefixRE := "^[a-z0-9]([a-z0-9-]*[a-z0-9])?" -}}
 {{- if $clone -}}
@@ -59,6 +60,10 @@
 
 {{- range $pvc := $pvcs.clones }}
   {{- $pvc = set $pvc "metadata" (set $pvc.metadata "annotations" (set $pvc.metadata.annotations "helm.sh/resource-policy" "keep")) }}
+  {{- $pvc = (dict "metadata" $pvc.metadata "spec" (omit $pvc.spec "storageClassName")) }}
+  {{- if $storageClassName }}
+    {{- $pvc = set $pvc "spec" (set $pvc.spec "storageClassName" $storageClassName) }}
+  {{- end }}
 ---
   {{- $pvc | toYaml | nindent 0 }}
 {{- end }}
