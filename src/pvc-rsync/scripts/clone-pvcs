@@ -4,7 +4,6 @@ set -euo pipefail
 [ -v LOGS_DIR ] || LOGS_DIR=""
 [ -n "${LOGS_DIR}" ] || LOGS_DIR="/logs"
 
-
 DEFAULT_MAX_ATTEMPTS=5
 
 [ -v MAX_ATTEMPTS ] || MAX_ATTEMPTS=""
@@ -33,7 +32,7 @@ warn()
 
 err()
 {
-	say "❌ ${@}" 1>&2
+	say "❌ ${@}"
 }
 
 fail()
@@ -91,12 +90,17 @@ for (( ATTEMPT=1 ; ATTEMPT < MAX_ATTEMPTS ; ATTEMPT++ )) ; do
 		continue
 	fi
 
-	OK="true"
 	ok "File copy verified!"
+	OK="true"
 	break
 done
 
-"${OK}" || fail "The file copy could not be verified as complete"
-
-ok "File copy complete!"
+RC=0
+if "${OK}" ; then
+	ok "File copy complete!"
+else
+	err "The file copy could not be verified as complete"
+	RC=1
+fi
+echo "${RC}" > "/.exit-code"
 exit 0
