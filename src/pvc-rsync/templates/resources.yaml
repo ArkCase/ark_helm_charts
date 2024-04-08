@@ -8,7 +8,9 @@
 {{- $storageClassName := .Values.storageClassName -}}
 {{- $clone := (eq (.Values.mode | default "rsync") "clone") -}}
 {{- $clonePrefixRE := "^[a-z0-9]([a-z0-9-]*[a-z0-9])?" -}}
+{{- $cloneSuccessMarker := "" -}}
 {{- if $clone -}}
+  {{- $cloneSuccessMarker := uuidv4 -}}
   {{- $clonePrefix := (.Values.clonePrefix | default "clone") -}}
   {{- /* Validate that the clone prefix is viable */ -}}
   {{- if not (regexMatch $clonePrefixRE $clonePrefix) -}}
@@ -84,6 +86,7 @@ data:
   {{ $path | base }}: |{{- $.Files.Get $path | nindent 4 }}
   {{- end }}
 
+  {{- if not $clone }}
   #
   # The rsyncd configuration
   #
@@ -104,7 +107,6 @@ data:
     read only = true
     timeout = 300
 
-  {{- if not $clone }}
     {{- range $prefix, $items := $pvcs }}
       {{- range $pvc := $items }}
         {{- $pvcName := ($pvc.metadata.oldName | default $pvc.metadata.name) }}
@@ -149,21 +151,20 @@ spec:
     spec:
       {{- include "arkcase.image.pullSecrets" $ | nindent 6 }}
       containers:
-        - name: rsync
+        - name: {{ $clone | ternary "clone" "rsyncd" | quote }}
           {{- include "arkcase.image" $ | nindent 10 }}
           command: [ "rsync", "--daemon", "--no-detach", "--log-file=/dev/stdout", "--port=873" ]
           workingDir: &logsDir "/logs"
           resources: {{- include "arkcase.resources" (dict "ctx" $) | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "arkcase") | nindent 12 }}
+          {{- if $clone }}
+          command: [ "/usr/local/bin/clone-pvcs" ]
+          {{- end }}
           env:
             - name: "LOGS_DIR"
               value: *logsDir
           {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
           volumeMounts:
-            - mountPath: /etc/rsyncd.conf
-              name: &configMap config-map
-              readOnly: true
-              subPath: &rsyncdConf rsyncd.conf
             - mountPath: *logsDir
               name: "logs"
           {{- range $path, $_ := $scripts }}
@@ -177,6 +178,12 @@ spec:
               subPath: *script
               readOnly: true
           {{- end }}
+          {{- if not $clone }}
+            - mountPath: /etc/rsyncd.conf
+              name: &configMap config-map
+              readOnly: true
+              subPath: &rsyncdConf rsyncd.conf
+          {{- end }}
           {{- range $prefix, $items := $pvcs }}
             {{- range $pvc := $items }}
             - mountPath: {{ printf "/%s/%s" $prefix ($pvc.metadata.oldName | default $pvc.metadata.name) | quote }}
@@ -188,8 +195,10 @@ spec:
           configMap:
             name: *podName
             items:
+              {{- if not $clone }}
               - key: *rsyncdConf
                 path: *rsyncdConf
+              {{- end }}
               {{- range $path, $_ := $scripts }}
                 {{- $name := ($path | base) }}
               - key: {{ $name | quote }}
@@ -206,7 +215,7 @@ spec:
             claimName: *pvc
           {{- end }}
         {{- end }}
-      restartPolicy: Always
+      restartPolicy: {{ $clone | ternary "OnFailure" "Always" }}
 {{- if not $clone }}
 ---
   {{- $service := (include "arkcase.subsystem.service" . | fromYaml) }}
