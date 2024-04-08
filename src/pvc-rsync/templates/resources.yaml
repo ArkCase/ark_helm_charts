@@ -60,12 +60,12 @@
 
 {{- range $pvc := $pvcs.clones }}
   {{- $pvc = set $pvc "metadata" (set $pvc.metadata "annotations" (set $pvc.metadata.annotations "helm.sh/resource-policy" "keep")) }}
-  {{- $pvc = (dict "metadata" $pvc.metadata "spec" (omit $pvc.spec "storageClassName")) }}
+  {{- $pvc = (dict "apiVersion" $pvc.apiVersion "kind" $pvc.kind "metadata" $pvc.metadata "spec" (omit $pvc.spec "storageClassName")) }}
   {{- if $storageClassName }}
     {{- $pvc = set $pvc "spec" (set $pvc.spec "storageClassName" $storageClassName) }}
   {{- end }}
 ---
-  {{- $pvc | toYaml | nindent 0 }}
+  {{- fail ($pvc | toYaml | nindent 0) }}
 {{- end }}
 ---
 apiVersion: v1
