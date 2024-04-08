@@ -170,7 +170,7 @@ spec:
           {{- range $path, $_ := $scripts }}
             {{- $name := ($path | base) }}
             - mountPath: {{ printf "/scripts/%s" $name | quote }}
-              name: *configMap
+              name: &configMap config-map
               subPath: &script {{ $name | quote }}
               readOnly: true
             - mountPath: {{ printf "/usr/local/bin/%s" $name | quote }}
@@ -180,7 +180,7 @@ spec:
           {{- end }}
           {{- if not $clone }}
             - mountPath: /etc/rsyncd.conf
-              name: &configMap config-map
+              name: *configMap
               readOnly: true
               subPath: &rsyncdConf rsyncd.conf
           {{- end }}
