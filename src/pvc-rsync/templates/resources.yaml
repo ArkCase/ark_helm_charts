@@ -65,7 +65,7 @@
     {{- $pvc = set $pvc "spec" (set $pvc.spec "storageClassName" $storageClassName) }}
   {{- end }}
 ---
-  {{- fail ($pvc | toYaml | nindent 0) }}
+  {{- $pvc | toYaml | nindent 0 }}
 {{- end }}
 ---
 apiVersion: v1
