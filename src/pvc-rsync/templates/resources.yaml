@@ -1,18 +1,92 @@
-{{- $podName := include "arkcase.fullname" $ -}}
+{{- $podName := .Release.Name -}}
 {{- $namespace := .Release.Namespace -}}
 {{- $pvcs := lookup "v1" "PersistentVolumeClaim" $namespace "" -}}
 {{- $scripts := (.Files.Glob "scripts/*") -}}
 {{- $externalDnsName := (.Values.externalDns).name | default "" -}}
 {{- $externalDnsAnnotation := (.Values.externalDns).annotation | default "external-dns.alpha.kubernetes.io/hostname" -}}
 {{- $pvcs = ((empty $pvcs) | ternary list ($pvcs.items | default list) ) -}}
+{{- $storageClassName := .Values.storageClassName -}}
+{{- $clone := (eq (.Values.mode | default "rsync") "clone") -}}
+{{- $clonePrefixRE := "^[a-z0-9]([a-z0-9-]*[a-z0-9])?" -}}
+{{- if $clone -}}
+  {{- $clonePrefix := (.Values.clonePrefix | default "clone") -}}
+  {{- /* Validate that the clone prefix is viable */ -}}
+  {{- if not (regexMatch $clonePrefixRE $clonePrefix) -}}
+    {{- fail (printf "The clone prefix [%s] is not valid - must match the regular expression /%s/ (default: 'clone')" $clonePrefix $clonePrefixRE) -}}
+  {{- end -}}
+
+  {{- $old := list -}}
+  {{- $new := list -}}
+
+  {{- range $pvc := $pvcs -}}
+    {{- $old = append $old $pvc -}}
+    {{- $pvc = omit (deepCopy $pvc) "status" -}}
+    {{- $spec := $pvc.spec -}}
+    {{- $metadata := $pvc.metadata -}}
+
+    {{- if ne $spec.volumeMode "Filesystem" -}}
+      {{- /* Ignore non-filesystem PVCs... can't work on them yet */ -}}
+      {{- continue -}}
+    {{- end -}}
+
+    {{- $metadata = (pick $metadata "labels" "annotations" "name" "namespace") -}}
+
+    {{-
+      $metadata = set $metadata "annotations" (
+        omit $metadata.annotations
+          "pv.kubernetes.io/bind-completed"
+          "pv.kubernetes.io/bound-by-controller"
+          "volume.beta.kubernetes.io/storage-provisioner"
+          "volume.kubernetes.io/storage-provisioner"
+      )
+    -}}
+
+    {{- /* Set the new, clone name */ -}}
+    {{- $oldName := $metadata.name -}}
+    {{- $metadata = set $metadata "oldName" $oldName -}}
+    {{- $metadata = set $metadata "name" (printf "%s-%s" $clonePrefix $oldName) -}}
+
+    {{- /* Remove the volume info from the spec */ -}}
+    {{- $spec = omit $spec "volumeName" -}}
+
+    {{- $pvc = set $pvc "metadata" $metadata -}}
+    {{- $pvc = set $pvc "spec" $spec -}}
+    {{- $new = append $new $pvc -}}
+  {{- end -}}
+  {{- $pvcs = dict "pvc" $old "clones" $new -}}
+{{- else -}}
+  {{- $pvcs = dict "pvc" $pvcs -}}
+{{- end -}}
+
+{{- range $pvc := $pvcs.clones }}
+  {{- $pvc = set $pvc "metadata" (set $pvc.metadata "annotations" (set $pvc.metadata.annotations "helm.sh/resource-policy" "keep")) }}
+  {{- $pvc = (dict "metadata" $pvc.metadata "spec" (omit $pvc.spec "storageClassName")) }}
+  {{- if $storageClassName }}
+    {{- $pvc = set $pvc "spec" (set $pvc.spec "storageClassName" $storageClassName) }}
+  {{- end }}
+---
+  {{- $pvc | toYaml | nindent 0 }}
+{{- end }}
+---
 apiVersion: v1
 kind: ConfigMap
 metadata:
   labels:
-    armedia.com/pvc-mounter-name: &podName {{ .Chart.Name | quote }}
+    armedia.com/pvc-mounter-name: &podName {{ $podName | quote }}
   name: *podName
   namespace: {{ $namespace | quote }}
 data:
+
+  #
+  # Common-use scripts
+  #
+  {{- range $path, $_ := $scripts }}
+  {{ $path | base }}: |{{- $.Files.Get $path | nindent 4 }}
+  {{- end }}
+
+  #
+  # The rsyncd configuration
+  #
   rsyncd.conf: |-
     uid = 0
     gid = 0
@@ -30,19 +104,18 @@ data:
     read only = true
     timeout = 300
 
-    # Found {{ len $pvcs }} PVCS
-  {{- range $pvc := $pvcs }}
-    {{- $pvcName := $pvc.metadata.name }}
-    [{{ $pvcName }}]
-    path = /pvc/{{ $pvcName }}
-    comment = {{ $pvcName }}
-    exclude = lost+found/
-    transfer logging = yes
-    timeout = 300
-  {{- end }}
-
-  {{- range $path, $_ := $scripts }}
-  {{ $path | base }}: |{{- $.Files.Get $path | nindent 4 }}
+  {{- if not $clone }}
+    {{- range $prefix, $items := $pvcs }}
+      {{- range $pvc := $items }}
+        {{- $pvcName := ($pvc.metadata.oldName | default $pvc.metadata.name) }}
+      [{{ $pvc.metadata.name }}]
+      path = /{{ $prefix }}/{{ $pvcName }}
+      comment = {{ $pvcName }}
+      exclude = lost+found/
+      transfer logging = yes
+      timeout = 300
+      {{- end }}
+    {{- end }}
   {{- end }}
 
 ---
@@ -104,10 +177,11 @@ spec:
               subPath: *script
               readOnly: true
           {{- end }}
-          {{- range $pvc := $pvcs }}
-            {{- $pvcName := $pvc.metadata.name }}
-            - mountPath: {{ printf "/pvc/%s" $pvcName | quote }}
-              name: {{ $pvcName | quote }}
+          {{- range $prefix, $items := $pvcs }}
+            {{- range $pvc := $items }}
+            - mountPath: {{ printf "/%s/%s" $prefix ($pvc.metadata.oldName | default $pvc.metadata.name) | quote }}
+              name: {{ $pvc.metadata.name | quote }}
+            {{- end }}
           {{- end }}
       volumes:
         - name: *configMap
@@ -125,22 +199,25 @@ spec:
             defaultMode: 0640
             optional: false
         {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "logs") | nindent 8 }}
-        {{- range $pvc := $pvcs }}
-          {{- $pvcName := $pvc.metadata.name }}
-        - name: &pvc {{ $pvcName | quote }}
+        {{- range $prefix, $items := $pvcs }}
+          {{- range $pvc := $items }}
+        - name: &pvc {{ $pvc.metadata.name | quote }}
           persistentVolumeClaim:
             claimName: *pvc
+          {{- end }}
         {{- end }}
       restartPolicy: Always
+{{- if not $clone }}
 ---
-{{- $service := (include "arkcase.subsystem.service" . | fromYaml) }}
-{{- if and $externalDnsName $externalDnsAnnotation }}
-  {{- $serviceMetadata := ($service.metadata | default dict) }}
-  {{- $serviceAnnotations := ($serviceMetadata.annotations | default dict) }}
+  {{- $service := (include "arkcase.subsystem.service" . | fromYaml) }}
+  {{- if and $externalDnsName $externalDnsAnnotation }}
+    {{- $serviceMetadata := ($service.metadata | default dict) }}
+    {{- $serviceAnnotations := ($serviceMetadata.annotations | default dict) }}
 
-  {{- $serviceAnnotations = set $serviceAnnotations ($externalDnsAnnotation | toString) ($externalDnsName | toString) }}
+    {{- $serviceAnnotations = set $serviceAnnotations ($externalDnsAnnotation | toString) ($externalDnsName | toString) }}
 
-  {{- $serviceMetadata = set $serviceMetadata "annotations" $serviceAnnotations }}
-  {{- $service = set $service "metadata" $serviceMetadata }}
+    {{- $serviceMetadata = set $serviceMetadata "annotations" $serviceAnnotations }}
+    {{- $service = set $service "metadata" $serviceMetadata }}
+  {{- end }}
+  {{- $service | toYaml | nindent 0 }}
 {{- end }}
-{{- $service | toYaml | nindent 0 }}
