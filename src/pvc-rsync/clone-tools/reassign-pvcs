@@ -49,6 +49,13 @@ is_valid_name()
 	return 0
 }
 
+is_namespace_exists()
+{
+	local NAMESPACE="${1}"
+	execute "${KUBECTL}" get namespace "${NAMESPACE}" &>/dev/null || return ${?}
+	return 0
+}
+
 execute()
 {
 	#
@@ -96,20 +103,24 @@ set_volume_retention()
 	execute "${KUBECTL}" patch pv --namespace "${NAMESPACE}" "${@}" -p "${PATCH}"
 }
 
+clean_pvc()
+{
+	/usr/bin/sed \
+		-e '/creationTimestamp:/d' \
+		-e '/finalizers:/,+1 d' \
+		-e '/kubectl.kubernetes.io\/last-applied-configuration:/,+1 d' \
+		-e '/pv.kubernetes.io\/b/d' \
+		-e '/volume.beta.kubernetes.io/d' \
+		-e '/volume.kubernetes.io/d' \
+		-e '/resourceVersion:/d' \
+		-e '/uid:/d' \
+		-e '/status:/,$d' \
+}
+
 remap_pvc()
 {
 	local PV="${1}"
-	/usr/bin/sed \
-	-e '/creationTimestamp:/d' \
-	-e '/finalizers:/,+1 d' \
-	-e '/kubectl.kubernetes.io\/last-applied-configuration:/,+1 d' \
-	-e '/pv.kubernetes.io\/b/d' \
-	-e '/volume.beta.kubernetes.io/d' \
-	-e '/volume.kubernetes.io/d' \
-	-e '/resourceVersion:/d' \
-	-e '/uid:/d' \
-	-e '/status:/,$d' \
-	-e "s;volumeName: .*$;volumeName: ${PV};g"
+	clean_pvc | /usr/bin/sed -e "s;volumeName: .*$;volumeName: ${PV};g"
 }
 
 prepare_new_pvcs()
@@ -119,7 +130,7 @@ prepare_new_pvcs()
 	while read PV PVC ; do
 		local OLD="${PVC/clone-/}"
 		local DATA="$("${KUBECTL}" get pvc --namespace "${NAMESPACE}" "${OLD}" -o yaml)"
-		echo -n "${DATA}" > "${BAK_DIR}/${OLD}.yaml"
+		echo -n "${DATA}" | clean_pvc > "${BAK_DIR}/${OLD}.yaml"
 		local OLD_PV="$(/usr/bin/grep "volumeName:" <<< "${DATA}" | /usr/bin/awk '{ print $2 }')"
 		say "👀 Remapping ${OLD}..."
 		say "\t\t${OLD_PV} -> ${PV}"
@@ -162,7 +173,7 @@ link_new_pvs()
 		local PATCH="$(cat <<-EOF
 		spec:
 		  claimRef:
-		    name: ${PVC}
+		    name: ${PVC/clone-/}
 		EOF
 		)"
 
@@ -253,7 +264,7 @@ ok "Replacement PVCs created!"
 
 say "👉 Link new PVs to replacement PVCs"
 link_new_pvs <<< "${NEW_PVC_MAP}"
-ok "Replacement PVCs created!"
+ok "PVs linked to replacement PVCs"
 
 say "👉 Resetting volume retention policy to Delete"
 set_volume_retention Delete "${NEW_PVS[@]}"
