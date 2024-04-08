@@ -4,6 +4,13 @@ set -euo pipefail
 [ -v LOGS_DIR ] || LOGS_DIR=""
 [ -n "${LOGS_DIR}" ] || LOGS_DIR="/logs"
 
+
+DEFAULT_MAX_ATTEMPTS=5
+
+[ -v MAX_ATTEMPTS ] || MAX_ATTEMPTS=""
+[ -n "${MAX_ATTEMPTS}" ] || MAX_ATTEMPTS="${DEFAULT_MAX_ATTEMPTS}"
+[[ ${MAX_ATTEMPTS} =~ ^[1-9][0-9]*$ ]] || MAX_ATTEMPTS="${DEFAULT_MAX_ATTEMPTS}"
+
 timestamp()
 {
 	/usr/bin/date -Ins -u
@@ -55,34 +62,41 @@ say "👉 Copying from /pvc into /clones..."
 CMD=("${RSYNC}" --progress --exclude="lost+found" -RavzhH --delete-delay "." "/clones")
 say "👀 Will use the command: ${CMD[@]@Q}"
 
-ATTEMPT=0
-while true ; do
-	(( ++ATTEMPT ))
+OK="false"
+for (( ATTEMPT=1 ; ATTEMPT < MAX_ATTEMPTS ; ATTEMPT++ )) ; do
 	say "Starting rsync (attempt # ${ATTEMPT})..."
 	RC=0
 	"${CMD[@]}" || RC=${?}
-	[ ${RC} -eq 0 ] && break
 	case ${RC} in
+		0 ) ;;
 		30 ) warn "Timeout detected, will try again..." ; continue ;;
-		* ) EXIT_CODE=${RC} fail "Failed to copy the data (rc = ${RC})" ;;
+		* ) err "Failed to copy the data (rc = ${RC})" ; continue ;;
 	esac
+
+	say "👀 Verifying the file copy correctness"
+	OLD_COUNT="$(cd "/pvc" && /usr/bin/find . -type f | /usr/bin/wc -l)"
+	NEW_COUNT="$(cd "/clones" && /usr/bin/find . -type f | /usr/bin/wc -l)"
+	if [ "${OLD_COUNT}" -ne "${NEW_COUNT}" ] ; then
+		err "File counts failed: expected [${OLD_COUNT}] but got [${NEW_COUNT}]"
+		continue
+	fi
+
+	OLD_LIST="$(cd "/pvc" && /usr/bin/find . -type f | /usr/bin/sort)"
+	NEW_LIST="$(cd "/clones" && /usr/bin/find . -type f | /usr/bin/sort)"
+	OLD_SUM="$(echo -n "${OLD_LIST}" | /usr/bin/sha256sum)"
+	NEW_SUM="$(echo -n "${NEW_LIST}" | /usr/bin/sha256sum)"
+	if [ "${OLD_SUM}" != "${NEW_SUM}" ] ; then
+		err "File file listings were different (checked by sha256sum)"
+		diff -burN <(echo -n "${OLD_LIST}") <(echo -n "${NEW_LIST}")
+		continue
+	fi
+
+	OK="true"
+	ok "File copy verified!"
+	break
 done
+
+"${OK}" || fail "The file copy could not be verified as complete"
+
 ok "File copy complete!"
-
-say "👀 Verifying the file copy correctness"
-OLD_COUNT="$(cd "/pvc" && /usr/bin/find . -type f | /usr/bin/wc -l)"
-NEW_COUNT="$(cd "/clones" && /usr/bin/find . -type f | /usr/bin/wc -l)"
-[ "${OLD_COUNT}" -eq "${NEW_COUNT}" ] || fail "File counts failed: expected [${OLD_COUNT}] but got [${NEW_COUNT}]"
-
-OLD_LIST="$(cd "/pvc" && /usr/bin/find . -type f | /usr/bin/sort)"
-NEW_LIST="$(cd "/clones" && /usr/bin/find . -type f | /usr/bin/sort)"
-OLD_SUM="$(echo -n "${OLD_LIST}" | /usr/bin/sha256sum)"
-NEW_SUM="$(echo -n "${NEW_LIST}" | /usr/bin/sha256sum)"
-if [ "${OLD_SUM}" != "${NEW_SUM}" ] ; then
-	err "File file listings were different (checked by sha256sum)"
-	diff -burN <(echo -n "${OLD_LIST}") <(echo -n "${NEW_LIST}")
-	exit 1
-fi
-
-ok "File copy verified!"
 exit 0
