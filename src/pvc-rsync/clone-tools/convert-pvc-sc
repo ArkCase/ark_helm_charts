@@ -1,0 +1,198 @@
+#!/bin/bash
+SCRIPT="$(/usr/bin/readlink -f "${BASH_ARGV0:-${BASH_SOURCE:-${0}}}")"
+BASEDIR="$(/usr/bin/dirname "${SCRIPT}")"
+
+set -euo pipefail
+
+[ -v DISABLE_CLONE ] || DISABLE_CLONE=""
+case "${DISABLE_CLONE,,}" in
+	true | t | yes | y ) DISABLE_CLONE="true" ;;
+	* ) DISABLE_CLONE="false" ;;
+esac
+export DISABLE_CLONE
+
+timestamp()
+{
+	/usr/bin/date -Ins
+}
+
+say()
+{
+	echo -e "$(timestamp): ${@}"
+}
+
+ok()
+{
+	say "✅ ${@}"
+}
+
+warn()
+{
+	say "⚠️ ${@}"
+}
+
+err()
+{
+	say "❌ ${@}" 1>&2
+}
+
+fail()
+{
+	err "${@}"
+	exit ${EXIT_CODE:-1}
+}
+
+is_valid_name()
+{
+	local NAME="${1}"
+	[[ "${NAME}" =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?$ ]] || return ${?}
+	return 0
+}
+
+execute()
+{
+	#
+	# Show the command about to be executed
+	#
+	say "${@@Q}"
+	if "${DISABLE_CLONE}" ; then
+		warn "Cloning disabled: skipping the command execution"
+		return 0
+	fi
+
+	#
+	# Proceed with the execution
+	#
+	( exec "${@}" )
+	return ${?}
+}
+
+get_deployment_status()
+{
+	local STATUS=""
+
+	# Have to split this or our logic won't work
+	STATUS="$("${HELM}" status "${RELEASE}" --namespace "${NAMESPACE}" -o json)" || return ${?}
+
+	# Can be one of: unknown, deployed, uninstalled,
+	# superseded, failed, uninstalling, pending-install,
+	# pending-upgrade or pending-rollback
+	local RESULT=""
+	RESULT="$("${JQ}" -r '.info.status' <<< "${STATUS}")" || return ${?}
+	echo -n "${RESULT}"
+	return 0
+}
+
+should_install()
+{
+	local STATUS=""
+	STATUS="$(get_deployment_status)"
+	case "${STATUS,,}" in
+		deployed ) return 1 ;;
+		* ) return 0 ;;
+	esac
+}
+
+should_uninstall()
+{
+	local STATUS=""
+	STATUS="$(get_deployment_status)"
+	case "${STATUS,,}" in
+		uninstalled ) return 1 ;;
+		* ) return 0 ;;
+	esac
+}
+
+is_namespace_exists()
+{
+	local NAMESPACE="${1}"
+	execute "${KUBECTL}" get namespace "${NAMESPACE}" &>/dev/null || return ${?}
+	return 0
+}
+
+deploy_chart()
+{
+	should_install || return 0
+	execute "${HELM}" install \
+		"${RELEASE}" arkcase/pvc-rsync \
+		--namespace "${NAMESPACE}" \
+		--wait \
+		--timeout=30m \
+		--set mode=clone || fail "Unable to deploy the chart"
+}
+
+run_file_copy()
+{
+	local SCREEN="clone-pvcs"
+	local POD="${RELEASE}-0"
+	local RC=0
+
+	# Is the pod available?
+	execute "${KUBECTL}" exec -it "${POD}" -- /usr/bin/true &>/dev/null || RC=${?}
+	[ ${RC} -eq 0 ] || return ${RC}
+
+	# Is the screen already running?
+	execute "${KUBECTL}" exec -it "${POD}" -- /usr/bin/screen -S "${SCREEN}" -Q "select" "." &>/dev/null || RC=${?}
+	if [ ${RC} -eq 0 ] ; then
+		# Try to attach to the screen ... if it's already attached, then that's a problem and we can't continue
+		execute "${KUBECTL}" exec -it "${POD}" -- /usr/bin/screen -r "${SCREEN}" || RC=${?}
+		[ ${RC} -eq 0 ] || return ${RC}
+	fi
+
+	# The screen is not running, run it!
+	execute "${KUBECTL}" exec -it "${POD}" -- /usr/bin/screen -m -S "${SCREEN}" /usr/local/bin/clone-pvcs
+}
+
+undeploy_chart()
+{
+	should_uninstall || return 0
+	execute "${HELM}" uninstall \
+		"${RELEASE}" \
+		--namespace "${NAMESPACE}" \
+		--wait \
+		--timeout=30m \
+		--cascade foreground || fail "Unable to undeploy the chart"
+
+}
+
+usage()
+{
+	echo -e "usage: ${BASH_SOURCE:-${0}} [namespace] release" 1>&2
+	exit 1
+}
+
+[ ${#} -ge 1 ] && [ ${#} -le 2 ] || usage
+
+HELM="$(type -P helm)" || fail "Could not find helm in the path"
+JQ="$(type -P jq)" || fail "Could not find jq in the path"
+KUBECTL="$(type -P kubectl)" || fail "Could not find kubectl in the path"
+
+if [ ${#} -eq 1 ] ; then
+    NAMESPACE="$("${KUBECTL}" config view --minify -o jsonpath="{..namespace}")"
+    [ -n "${NAMESPACE}" ] || NAMESPACE="default"
+else
+    NAMESPACE="${1}"
+    shift
+fi
+is_valid_name "${NAMESPACE}" || fail "Invalid namespace name [${NAMESPACE}]"
+
+RELEASE="${1}"
+is_valid_name "${RELEASE}" || fail "Invalid release name [${RELEASE}]"
+
+# If the target namespace doesn't exist, by extension the environment doesn't exist
+if ! is_namespace_exists "${NAMESPACE}" ; then
+    say "The namespace ${NAMESPACE} does not exist, so nothing to remove"
+    exit 0
+fi
+
+say "👉 Deploying the chart to do the volume cloning..."
+deploy_chart || fail "Couldn't deploy the chart to do the volume cloning"
+ok "Chart deployed!"
+
+say "👉 Run the file copy"
+run_file_copy || fail "Couldn't complete the file copy, or join the running copy"
+ok "Copy complete!"
+
+say "👉 Removing the chart to release the volumes..."
+undeploy_chart || fail "Couldn't un-deploy the chart"
+ok "Undeployment completed!"
