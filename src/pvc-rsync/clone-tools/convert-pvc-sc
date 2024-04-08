@@ -177,9 +177,6 @@ wait_until_pod_is_running()
 	local END="$(( START + POD_REBOOT_TIMEOUT ))"
 	while true; do
 		if ! "${FIRST}" ; then
-			# Edge case ... 
-			is_pod_terminated "${POD}" && return 0
-
 			# Apply the polling wait ...
 			say "💤 Sleeping for ${NEXT_WAIT} before checking for status again..."
 			/usr/bin/sleep ${NEXT_WAIT} || return ${?}
@@ -190,6 +187,9 @@ wait_until_pod_is_running()
 			--namespace "${NAMESPACE}" "${POD}" \
 			--for condition=Ready \
 			--timeout="${NEXT_WAIT}s" 2>&1)" && return 0
+
+		# Edge case ...
+		is_pod_terminated "${POD}" && return 0
 
 		"${FIRST}" && warn "The pod ${NAMESPACE}/${POD} isn't running yet..."
 		FIRST="false"
@@ -222,7 +222,6 @@ wait_until_pod_terminates()
 track_logs()
 {
 	local POD="${1}"
-	say "👀 Tracking the logs for ${NAMESPACE}/${POD}"
 	"${KUBECTL}" logs \
 		--namespace "${NAMESPACE}" \
 		--tail=1000 \
@@ -253,13 +252,13 @@ get_copy_result()
 		wait_until_pod_exists "${POD}" || fail "The pod did not come online"
 
 		if ! is_pod_terminated "${POD}" ; then
-
 			# Step 2: wait until the pod is running
 			ok "The pod ${NAMESPACE}/${POD} exists! Waiting for it to be Ready"
 			wait_until_pod_is_running "${POD}" || fail "The pod never reached the running state"
 
 			# Step 3: Track the logs, so the user can see what's going on
-			ok "The pod ${NAMESPACE}/${POD} is running! Waiting for it to complete its work"
+			ok "The pod ${NAMESPACE}/${POD} is running!"
+			say "👀 Tracking the logs for ${NAMESPACE}/${POD}"
 			track_logs "${POD}"
 			wait_until_pod_terminates "${POD}"
 			ok "The pod ${NAMESPACE}/${POD} appears to have completed its work"
