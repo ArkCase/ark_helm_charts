@@ -118,7 +118,7 @@ deploy_chart()
 {
 	should_install || return 0
 	execute "${HELM}" install \
-		"${RELEASE}" arkcase/pvc-rsync \
+		"${RELEASE}" arkcase/pvc-tool \
 		--namespace "${NAMESPACE}" \
 		--wait \
 		--timeout=30m \
