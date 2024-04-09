@@ -114,6 +114,24 @@ is_namespace_exists()
 	return 0
 }
 
+is_pod_waitable()
+{
+	local POD="${1}"
+
+	local JSON=""
+	JSON="$("${KUBECTL}" get pod --namespace "${NAMESPACE}" "${POD}" -o json)" || return 1
+
+	local TS=""
+	TS="$("${JQ}" -r ".metadata.deletionTimestamp" <<< "${JSON}")" || return 1
+
+	# If the deletion timestamp is set, the pod is going down
+	[ -n "${TS}" ] && return 1
+
+	# TODO: Anything else we need to look at in the JSON?
+
+	return 0
+}
+
 deploy_chart()
 {
 	should_install || return 0
@@ -155,17 +173,69 @@ wait_until_pod_exists()
 	return 1
 }
 
-is_pod_terminated()
+wait_until_pod_is_initialized()
 {
 	local POD="${1}"
 
-	local PHASE=""
-	PHASE="$(get_pod_phase "${POD}")" || return ${?}
+	local OUT=""
 
-	case "${PHASE,,}" in
-		succeeded | failed ) return 0 ;;
-		* ) return 1 ;;
-	esac
+	local RC=${?}
+	return ${RC}
+
+	local NEXT_WAIT=${POD_POLL_WAIT}
+	local FIRST="true"
+	local START="$(/usr/bin/date +%s)"
+	local END="$(( START + POD_REBOOT_TIMEOUT ))"
+	while true; do
+		"${FIRST}" || say "💤 Waiting for ${NEXT_WAIT} seconds before checking for its status again..."
+		OUT="$("${KUBECTL}" wait pod \
+			--namespace "${NAMESPACE}" "${POD}" \
+			--for condition=Initialized=true \
+			--timeout="${NEXT_WAIT}s" 2>&1)" && return 0
+
+		# Edge case: the pod is killed while we were waiting
+		is_pod_waitable "${POD}" || return ${?}
+
+		"${FIRST}" && warn "The pod ${NAMESPACE}/${POD} isn't initialized yet..."
+		FIRST="false"
+
+		local NOW="$(/usr/bin/date +%s)"
+		[ $(( NOW - START )) -ge ${POD_REBOOT_TIMEOUT} ] && break
+		[ $(( NOW + NEXT_WAIT )) -lt ${END} ] || NEXT_WAIT=$(( END - NOW ))
+	done
+
+	# Should never happen, but if it does...
+	err "Failed to wait for pod initialization (rc=${RC})\n${OUT}"
+	return 1
+}
+
+get_pod_status()
+{
+	local POD="${1}"
+	local CONTAINER="${2}"
+	local STATUS="${3}"
+
+	local OUT=""
+	local RC=0
+	OUT="$("${KUBECTL}" get pod --namespace "${NAMESPACE}" "${POD}" -o jsonpath="{.status.containerStatuses[?(@.name==\"${CONTAINER}\")].${STATUS}}" 2>&1)" || RC=${?}
+	if [ ${RC} -ne 0 ] ; then
+		err "Failed to query the pod's container ${STATUS} status (rc=${RC})\n${OUT}"
+		return ${RC}
+	fi
+
+	echo -n "${OUT}"
+	return 0
+}
+
+is_job_complete()
+{
+	local POD="${1}"
+
+	local STATUS=""
+	STATUS="$(get_pod_status "${POD}" "clone" "ready")" || return ${?}
+
+	"${STATUS}" && return 0
+	return 1
 }
 
 wait_until_pod_is_running()
@@ -182,14 +252,13 @@ wait_until_pod_is_running()
 			/usr/bin/sleep ${NEXT_WAIT} || return ${?}
 		fi
 
-		local OUT=""
-		OUT="$("${KUBECTL}" wait pod \
-			--namespace "${NAMESPACE}" "${POD}" \
-			--for condition=Ready \
-			--timeout="${NEXT_WAIT}s" 2>&1)" && return 0
+		wait_until_pod_is_initialized || return ${?}
 
-		# Edge case ...
-		is_pod_terminated "${POD}" && return 0
+		local STATUS=""
+		STATUS="$(get_pod_status "${POD}" "clone" "started")" || return ${?}
+
+		# Status is expected to be either "true" or "false"
+		"${STATUS}" && return 0
 
 		"${FIRST}" && warn "The pod ${NAMESPACE}/${POD} isn't running yet..."
 		FIRST="false"
@@ -204,19 +273,29 @@ wait_until_pod_is_running()
 	return 1
 }
 
-wait_until_pod_terminates()
+wait_until_job_completes()
 {
 	local POD="${1}"
 
-	local OUT=""
-	OUT="$("${KUBECTL}" wait pod \
-		--namespace "${NAMESPACE}" "${POD}" \
-		--for condition=Ready=false \
-		--timeout="2160h" 2>&1)" && return 0
+	local NEXT_WAIT=${POD_POLL_WAIT}
+	local FIRST="true"
+	while true; do
+		"${FIRST}" || say "💤 Waiting for ${NEXT_WAIT} seconds before checking for its status again..."
+		OUT="$("${KUBECTL}" wait pod \
+			--namespace "${NAMESPACE}" "${POD}" \
+			--for condition=Ready=true \
+			--timeout="${NEXT_WAIT}s" 2>&1)" && return 0
 
-	local RC=${?}
-	err "Failed to wait for pod termination (rc=${RC})\n${OUT}"
-	return ${RC}
+		# Edge case: the pod is killed while we were waiting
+		is_pod_waitable "${POD}" || return ${?}
+
+		"${FIRST}" && warn "The job at ${NAMESPACE}/${POD} isn't finished yet, maybe follow it with kubectl logs?"
+		FIRST="false"
+	done
+
+	# Should never happen, but if it does...
+	err "Failed to wait for the job to complete (rc=${RC})\n${OUT}"
+	return 1
 }
 
 track_logs()
@@ -251,37 +330,39 @@ get_copy_result()
 		# Step 1: wait until the pod exists
 		wait_until_pod_exists "${POD}" || fail "The pod did not come online"
 
-		if ! is_pod_terminated "${POD}" ; then
+		if ! is_job_complete "${POD}" ; then
 			# Step 2: wait until the pod is running
 			ok "The pod ${NAMESPACE}/${POD} exists! Waiting for it to be Ready"
 			wait_until_pod_is_running "${POD}" || fail "The pod never reached the running state"
 
 			# Step 3: Track the logs, so the user can see what's going on
 			ok "The pod ${NAMESPACE}/${POD} is running!"
-			say "👀 Tracking the logs for ${NAMESPACE}/${POD}"
-			track_logs "${POD}"
-			wait_until_pod_terminates "${POD}"
+
+			# Tracking the logs no longer works b/c the pod will never exit...b/c we're
+			# using a statefulset so it will restart our pod for us in the event that
+			# it crashes on us. This way, the copy will continue automagically until
+			# it's either completed, or found to be irrevocably failed...
+			# say "👀 Tracking the logs for ${NAMESPACE}/${POD}"
+			# track_logs "${POD}"
+
+			# We have to wait until the pod enters the Ready state. If it dies on us,
+			# then we have to start all over again
+			if ! wait_until_job_completes "${POD}" ; then
+				err "The pod may have crashed, restarting the monitoring loop"
+				continue
+			fi
+
 			ok "The pod ${NAMESPACE}/${POD} appears to have completed its work"
 		else
 			ok "The pod ${NAMESPACE}/${POD} already completed its work"
 		fi
 
 		# Step 4: Pod has exited (or somesuch)...get its termination status
-		while true ; do
-			if POD_STATUS="$(get_pod_phase "${POD}")" ; then
-				case "${POD_STATUS,,}" in
-					# If it's still running, it means the phase event hasn't
-					# propagated yet, so we have to wait a bit...
-					running ) sleep 3 ; continue ;;
-					succeeded ) return 0 ;;
-					failed ) "${KUBECTL}" logs --tail=1000 --namespace "${NAMESPACE}" "${POD}" ; return 1 ;;
-					* ) err "Unknown status [${POD_STATUS}], will try to wait for the pod result again" ; continue ;;
-				esac
-			fi
-		done
+		local RESULT=""
+		RESULT="$("${KUBECTL}" exec "${POD}" /usr/bin/cat /.pod.result 2>&1)" && return ${RESULT}
 
 		# Something's off ... pod exited, but we can't get the status ...
-		err "Failed to retrieve the pod status ... will try again"
+		err "Failed to retrieve the pod status ... will try again (rc=${RC}):\n${RESULT}"
 	done
 }
 

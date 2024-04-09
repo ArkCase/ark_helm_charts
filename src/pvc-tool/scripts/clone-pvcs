@@ -42,6 +42,7 @@ fail()
 }
 
 [ -d "/pvc" ] && [ -d "/clones" ] || fail "Clone mode does not appear to be active"
+cleanup || fail "Clean up failed ... the marker file [${MARKER_FILE}] could not be removed"
 
 RSYNC="$(type -P rsync)" || fail "Failed to find rsync in the path"
 TEE="$(type -P tee)" || fail "Failed to find tee in the path"
@@ -57,6 +58,7 @@ exec > >("${TEE}" "${MAIN_LOG}")
 exec 2>&1
 
 say "👉 Copying from /pvc into /clones..."
+
 
 CMD=("${RSYNC}" --progress --exclude="lost+found" -RavzhH --delete-delay "." "/clones")
 say "👀 Will use the command: ${CMD[@]@Q}"
@@ -102,5 +104,13 @@ else
 	err "The file copy could not be verified as complete"
 	RC=1
 fi
-echo "${RC}" > "/.exit-code"
-exit 0
+
+# The creation of this file will signal the pod as ready,
+# which in turn means that the work is complete - whatever
+# the outcome...
+echo -n "${RC}" > "/.pod.result"
+
+#
+# Since we're part of a stateful set, we have to wait forever...
+#
+exec /usr/bin/sleep infinity

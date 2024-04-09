@@ -153,13 +153,21 @@ spec:
       containers:
         - name: {{ $clone | ternary "clone" "rsyncd" | quote }}
           {{- include "arkcase.image" $ | nindent 10 }}
+          {{- if $clone }}
+          command: [ "/usr/local/bin/clone-pvcs" ]
+          {{- else }}
           command: [ "rsync", "--daemon", "--no-detach", "--log-file=/dev/stdout", "--port=873" ]
+          {{- end }}
           workingDir: &logsDir "/logs"
           resources: {{- include "arkcase.resources" (dict "ctx" $) | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "arkcase") | nindent 12 }}
-          {{- if $clone }}
-          command: [ "/usr/local/bin/clone-pvcs" ]
-          {{- end }}
+          readinessProbe:
+            exec:
+              command: [ "/usr/local/bin/clone-completed" ]
+            failureThreshold: 1
+            successThreshold: 1
+            periodSeconds: 5
+            timeoutSeconds: 5
           env:
             - name: "LOGS_DIR"
               value: *logsDir
@@ -215,7 +223,6 @@ spec:
             claimName: *pvc
           {{- end }}
         {{- end }}
-      restartPolicy: {{ $clone | ternary "OnFailure" "Always" }}
 {{- if not $clone }}
 ---
   {{- $service := (include "arkcase.subsystem.service" . | fromYaml) }}
