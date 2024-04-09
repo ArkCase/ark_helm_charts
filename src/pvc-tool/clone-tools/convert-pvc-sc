@@ -258,7 +258,7 @@ wait_until_pod_is_running()
 		wait_until_pod_is_initialized "${POD}" || return ${?}
 
 		local STATUS=""
-		STATUS="$(get_pod_status "${POD}" "clone" "started")" || return ${?}
+		STATUS="$(get_pod_status "${POD}" "clone" "started")" || STATUS="false"
 
 		# Status is expected to be either "true" or "false"
 		case "${STATUS}" in
