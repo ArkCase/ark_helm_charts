@@ -135,6 +135,7 @@ is_pod_waitable()
 deploy_chart()
 {
 	should_install || return 0
+	say "👉 Deploying the chart to do the volume cloning..."
 	execute "${HELM}" install \
 		"${RELEASE}" arkcase/pvc-tool \
 		--namespace "${NAMESPACE}" \
@@ -156,7 +157,9 @@ wait_until_pod_exists()
 		fi
 
 		"${KUBECTL}" get pod \
-			--namespace "${NAMESPACE}" "${POD}" &>/dev/null && return 0
+			--namespace "${NAMESPACE}" "${POD}" &>/dev/null && \
+			is_pod_waitable "${POD}" && \
+			return 0
 
 		"${FIRST}" && warn "The pod ${NAMESPACE}/${POD} doesn't exist yet..."
 		FIRST="false"
@@ -331,6 +334,7 @@ get_copy_result()
 {
 	local POD="${RELEASE}-0"
 
+	say "👉 Wait for the file copy to conclude..."
 	local POD_STATUS=""
 	while true; do
 		# Step 1: wait until the pod exists
@@ -375,6 +379,7 @@ get_copy_result()
 undeploy_chart()
 {
 	should_uninstall || return 0
+	say "👉 Removing the chart to release the volumes..."
 	execute "${HELM}" uninstall \
 		"${RELEASE}" \
 		--namespace "${NAMESPACE}" \
@@ -413,14 +418,11 @@ if ! is_namespace_exists "${NAMESPACE}" ; then
     exit 0
 fi
 
-say "👉 Deploying the chart to do the volume cloning..."
 deploy_chart || fail "Couldn't deploy the chart to do the volume cloning"
 ok "Chart deployed!"
 
-say "👉 Run the file copy"
 get_copy_result || fail "The file copy seems to have failed, please review the full logs for more information"
 ok "Copy complete!"
 
-say "👉 Removing the chart to release the volumes..."
 undeploy_chart || fail "Couldn't un-deploy the chart"
 ok "Undeployment completed!"
