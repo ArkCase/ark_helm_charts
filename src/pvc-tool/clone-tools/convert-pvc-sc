@@ -216,7 +216,7 @@ get_pod_status()
 	local OUT=""
 	local RC=0
 	OUT="$("${KUBECTL}" get pod --namespace "${NAMESPACE}" "${POD}" -o jsonpath="{.status.containerStatuses[?(@.name==\"${CONTAINER}\")].${STATUS}}" 2>&1)" || RC=${?}
-	if [ ${RC} -ne 0 ] ; then
+	if [ ${RC} -ne 0 ] || [ -z "${OUT}" ] ; then
 		err "Failed to query the pod's container ${STATUS} status (rc=${RC})\n${OUT}"
 		return ${RC}
 	fi
@@ -232,7 +232,12 @@ is_job_complete()
 	local STATUS=""
 	STATUS="$(get_pod_status "${POD}" "clone" "ready")" || return ${?}
 
-	"${STATUS}" && return 0
+	# Status is expected to be either "true" or "false"
+	case "${STATUS}" in
+		true | false ) "${STATUS}" && return 0 ;;
+		* ) return 1 ;;
+	esac
+
 	return 1
 }
 
@@ -256,7 +261,10 @@ wait_until_pod_is_running()
 		STATUS="$(get_pod_status "${POD}" "clone" "started")" || return ${?}
 
 		# Status is expected to be either "true" or "false"
-		"${STATUS}" && return 0
+		case "${STATUS}" in
+			true | false ) "${STATUS}" && return 0 ;;
+			* ) return 1 ;;
+		esac
 
 		"${FIRST}" && warn "The pod ${NAMESPACE}/${POD} isn't running yet..."
 		FIRST="false"

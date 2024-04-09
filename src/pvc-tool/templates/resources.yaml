@@ -26,6 +26,22 @@
     {{- $spec := $pvc.spec -}}
     {{- $metadata := $pvc.metadata -}}
 
+    {{- $oldName := $metadata.name -}}
+    {{- $newName := (printf "%s-%s" $clonePrefix $oldName) -}}
+
+    {{- /* If it already exists, then re-use it */ -}}
+    {{- $existing := lookup "v1" "PersistentVolumeClaim" $namespace $newName -}}
+    {{- if $existing -}}
+      {{- $existing = omit (deepCopy $existing) "status" -}}
+      {{- $metadata = $existing.metadata -}}
+      {{- $metadata = set $metadata "oldName" $oldName -}}
+      {{- $metadata = set $metadata "name" $newName -}}
+      {{- $existing = set $existing "metadata" $metadata -}}
+      {{- $new = append $new $existing -}}
+      {{- continue -}}
+    {{- end }}
+
+    {{- /* The clone doesn't exist, so create a new one */ -}}
     {{- if ne $spec.volumeMode "Filesystem" -}}
       {{- /* Ignore non-filesystem PVCs... can't work on them yet */ -}}
       {{- continue -}}
@@ -44,9 +60,8 @@
     -}}
 
     {{- /* Set the new, clone name */ -}}
-    {{- $oldName := $metadata.name -}}
     {{- $metadata = set $metadata "oldName" $oldName -}}
-    {{- $metadata = set $metadata "name" (printf "%s-%s" $clonePrefix $oldName) -}}
+    {{- $metadata = set $metadata "name" $newName -}}
 
     {{- /* Remove the volume info from the spec */ -}}
     {{- $spec = omit $spec "volumeName" -}}
@@ -161,6 +176,10 @@ spec:
           workingDir: &logsDir "/logs"
           resources: {{- include "arkcase.resources" (dict "ctx" $) | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "arkcase") | nindent 12 }}
+          env:
+            - name: "LOGS_DIR"
+              value: *logsDir
+          {{- if $clone }}
           startupProbe: &probe
             exec:
               command: [ "/usr/local/bin/clone-started" ]
@@ -176,10 +195,9 @@ spec:
             exec:
               command: [ "/usr/local/bin/clone-completed" ]
             failureThreshold: 1
-          env:
-            - name: "LOGS_DIR"
-              value: *logsDir
-          {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
+          {{- else }}
+            {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
+          {{- end }}
           volumeMounts:
             - mountPath: *logsDir
               name: "logs"
