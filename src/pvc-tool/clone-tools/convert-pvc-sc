@@ -125,7 +125,7 @@ is_pod_waitable()
 	TS="$("${JQ}" -r ".metadata.deletionTimestamp" <<< "${JSON}")" || return 1
 
 	# If the deletion timestamp is set, the pod is going down
-	[ -n "${TS}" ] && return 1
+	[ -n "${TS}" ] && [ "${TS}" != "null" ] && return 1
 
 	# TODO: Anything else we need to look at in the JSON?
 
@@ -369,7 +369,7 @@ get_copy_result()
 
 		# Step 4: Pod has exited (or somesuch)...get its termination status
 		local RESULT=""
-		RESULT="$("${KUBECTL}" exec "${POD}" /usr/bin/cat /.pod.result 2>&1)" && return ${RESULT}
+		RESULT="$("${KUBECTL}" exec --namespace "${NAMESPACE}" "${POD}" -- /usr/bin/cat /.pod.result 2>&1)" && return ${RESULT}
 
 		# Something's off ... pod exited, but we can't get the status ...
 		err "Failed to retrieve the pod status ... will try again (rc=${RC}):\n${RESULT}"
