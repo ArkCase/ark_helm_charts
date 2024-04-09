@@ -42,7 +42,6 @@ fail()
 }
 
 [ -d "/pvc" ] && [ -d "/clones" ] || fail "Clone mode does not appear to be active"
-cleanup || fail "Clean up failed ... the marker file [${MARKER_FILE}] could not be removed"
 
 RSYNC="$(type -P rsync)" || fail "Failed to find rsync in the path"
 TEE="$(type -P tee)" || fail "Failed to find tee in the path"

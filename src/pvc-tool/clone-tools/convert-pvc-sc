@@ -138,15 +138,13 @@ deploy_chart()
 	execute "${HELM}" install \
 		"${RELEASE}" arkcase/pvc-tool \
 		--namespace "${NAMESPACE}" \
-		--wait \
-		--timeout=30m \
 		--set mode=clone || fail "Unable to deploy the chart"
 }
 
 wait_until_pod_exists()
 {
 	local POD="${1}"
-	local NEXT_WAIT=${POD_POLL_WAIT}
+	local NEXT_WAIT=${POD_REBOOT_WAIT}
 	local FIRST="true"
 	local START="$(/usr/bin/date +%s)"
 	local END="$(( START + POD_REBOOT_TIMEOUT ))"
@@ -182,7 +180,7 @@ wait_until_pod_is_initialized()
 	local RC=${?}
 	return ${RC}
 
-	local NEXT_WAIT=${POD_POLL_WAIT}
+	local NEXT_WAIT=${POD_REBOOT_WAIT}
 	local FIRST="true"
 	local START="$(/usr/bin/date +%s)"
 	local END="$(( START + POD_REBOOT_TIMEOUT ))"
@@ -241,7 +239,7 @@ is_job_complete()
 wait_until_pod_is_running()
 {
 	local POD="${1}"
-	local NEXT_WAIT=${POD_POLL_WAIT}
+	local NEXT_WAIT=${POD_REBOOT_WAIT}
 	local FIRST="true"
 	local START="$(/usr/bin/date +%s)"
 	local END="$(( START + POD_REBOOT_TIMEOUT ))"
@@ -252,7 +250,7 @@ wait_until_pod_is_running()
 			/usr/bin/sleep ${NEXT_WAIT} || return ${?}
 		fi
 
-		wait_until_pod_is_initialized || return ${?}
+		wait_until_pod_is_initialized "${POD}" || return ${?}
 
 		local STATUS=""
 		STATUS="$(get_pod_status "${POD}" "clone" "started")" || return ${?}
