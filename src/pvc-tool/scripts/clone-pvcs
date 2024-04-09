@@ -52,6 +52,8 @@ MAIN_LOG="${LOGS_DIR}/${LOG_BASE}.${STAMP}.log"
 
 cd /pvc || fail "Failed to CD into /pvc"
 
+:> "/.pod.started"
+
 say "👀 Logging to [${MAIN_LOG}]"
 exec > >("${TEE}" "${MAIN_LOG}")
 exec 2>&1
