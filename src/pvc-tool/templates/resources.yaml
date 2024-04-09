@@ -30,14 +30,11 @@
     {{- $newName := (printf "%s-%s" $clonePrefix $oldName) -}}
 
     {{- /* If it already exists, then re-use it */ -}}
-    {{- $existing := lookup "v1" "PersistentVolumeClaim" $namespace $newName -}}
-    {{- if $existing -}}
-      {{- $existing = omit (deepCopy $existing) "status" -}}
-      {{- $metadata = $existing.metadata -}}
+    {{- if hasPrefix (printf "%s-" $clonePrefix) $oldName -}}
       {{- $metadata = set $metadata "oldName" $oldName -}}
       {{- $metadata = set $metadata "name" $newName -}}
-      {{- $existing = set $existing "metadata" $metadata -}}
-      {{- $new = append $new $existing -}}
+      {{- $existing = set $pvc "metadata" $metadata -}}
+      {{- $new = append $new $pvc -}}
       {{- continue -}}
     {{- end }}
 
