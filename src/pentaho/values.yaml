@@ -251,9 +251,9 @@ service:
       - name: https
         protocol: TCP
         port: &https 8443
-    probes:
+    probes: &pentahoProbes
       enabled: true
-      spec:
+      spec: &baseProbeThreshold
         initialDelaySeconds: 0
         periodSeconds: 10
         timeoutSeconds: 10
@@ -272,31 +272,40 @@ service:
           port: *https
           path: "/pentaho"
 
-  clustered:
+  clusteredPentaho:
     ports:
       - name: clustered-https
         protocol: TCP
         port: &clustered 4443
     probes:
-      enabled: true
-      spec:
-        initialDelaySeconds: 0
-        periodSeconds: 10
-        timeoutSeconds: 10
-        failureThreshold: 1
-        successThreshold: 1
-      startup:
-        exec:
-          <<: *tomcatStartup
-        failureThreshold: 90
-      liveness:
-        exec:
-          <<: *tomcatLiveness
+      <<: *pentahoProbes
       readiness:
         httpGet:
           scheme: HTTPS
           port: *clustered
           path: "/pentaho"
+
+  clusteredHaproxy:
+    ports:
+      - name: healthz
+        protocol: TCP
+        port: &healthz 18443
+    probes:
+      enabled: true
+      spec:
+        <<: *baseProbeThreshold
+      startup: &haproxyProbe
+        httpGet:
+          scheme: HTTPS
+          port: *healthz
+          path: "/healthz"
+        failureThreshold: 90
+      liveness:
+        <<: *haproxyProbe
+        failureThreshold: 3
+      readiness:
+        <<: *haproxyProbe
+        failureThreshold: 1
 
 ##
 ## Configure extra options for containers' liveness and readiness probes
