@@ -36,7 +36,7 @@ spec:
           value: |-
             set -xeuo pipefail
             /usr/local/bin/acme-init
-            OUT="$(/usr/bin/timeout 3 /usr/bin/nc "$(SERVICE_NAME)" 2181 <<< "ruok" 2>&1)"
+            OUT="$(/usr/bin/timeout 3 /usr/bin/nc "${SERVICE_NAME}" 2181 <<< "ruok" 2>&1)"
             [ "${OUT}" == "imok" ] && exit 0
             echo "Check failed:"
             echo "${OUT}"
