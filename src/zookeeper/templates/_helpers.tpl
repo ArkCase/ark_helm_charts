@@ -17,10 +17,10 @@
   {{- min 255 (add $nodes $pad) -}}
 {{- end -}}
 
-{{- define "arkcase.zookeeper.maxFailed" -}}
+{{- define "arkcase.zookeeper.minAvailable" -}}
   {{- $nodes := max 1 ($ | toString | atoi) -}}
   {{- /* We can lose at most half of our nodes */ -}}
-  {{- div $nodes 2 -}}
+  {{- div (add $nodes 1) 2 -}}
 {{- end -}}
 
 {{- /*
