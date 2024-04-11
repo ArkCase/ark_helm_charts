@@ -100,7 +100,7 @@ set_volume_retention()
 	EOF
 	)"
 
-	execute "${KUBECTL}" patch pv --namespace "${NAMESPACE}" "${@}" -p "${PATCH}"
+	execute "${KUBECTL}" patch pv "${@}" -p "${PATCH}"
 }
 
 clean_pvc()
@@ -114,7 +114,7 @@ clean_pvc()
 		-e '/volume.kubernetes.io/d' \
 		-e '/resourceVersion:/d' \
 		-e '/uid:/d' \
-		-e '/status:/,$d' \
+		-e '/status:/,$d'
 }
 
 remap_pvc()
@@ -125,12 +125,12 @@ remap_pvc()
 
 prepare_new_pvcs()
 {
-	local BAK_DIR="${1}"
+	local ROLLBACK_DIR="${1}"
 	local TGT_DIR="${2}"
 	while read PV PVC ; do
 		local OLD="${PVC/clone-/}"
 		local DATA="$("${KUBECTL}" get pvc --namespace "${NAMESPACE}" "${OLD}" -o yaml)"
-		echo -n "${DATA}" | clean_pvc > "${BAK_DIR}/${OLD}.yaml"
+		echo -n "${DATA}" | clean_pvc > "${ROLLBACK_DIR}/${OLD}.yaml"
 		local OLD_PV="$(/usr/bin/grep "volumeName:" <<< "${DATA}" | /usr/bin/awk '{ print $2 }')"
 		say "👀 Remapping ${OLD}..."
 		say "\t\t${OLD_PV} -> ${PV}"
@@ -239,15 +239,16 @@ ok "Mappings ready!"
 [ ${#NEW_PVS[@]} -gt 0 ] || fail "No ne PVs found - can't continue!"
 [ ${#NEW_PVCS[@]} -gt 0 ] || fail "No ne PVCs found - can't continue!"
 
+ROLLBACK_DIR="${PWD}/pvc-rollback"
+mkdir -p "${ROLLBACK_DIR}" || fail "Failed to create the rollback directory, can't continue!"
+PVC_DIR="$(/usr/bin/mktemp -p "${PWD}" -d pvc-new.XXXXXX)" || fail "Failed to create the directory for the new PVC resources, can't continue!"
+
 say "👉 Setting PV retention policies to Retain..."
 set_volume_retention Retain "${ALL_PVS[@]}"
-ok "Policy set!"
-
-BAK_DIR="$(/usr/bin/mktemp -d pvc-bak.XXXXXX)"
-PVC_DIR="$(/usr/bin/mktemp -d pvc-new.XXXXXX)"
+ok "Retention policies set!"
 
 say "👉 Rendering the replacement PVCs"
-prepare_new_pvcs "${BAK_DIR}" "${PVC_DIR}" <<< "${NEW_PVC_MAP}"
+prepare_new_pvcs "${ROLLBACK_DIR}" "${PVC_DIR}" <<< "${NEW_PVC_MAP}"
 ok "Replacements ready!"
 
 warn "Removing all existing PVCs"
@@ -264,12 +265,22 @@ ok "Replacement PVCs created!"
 
 say "👉 Link new PVs to replacement PVCs"
 link_new_pvs <<< "${NEW_PVC_MAP}"
-ok "PVs linked to replacement PVCs"
+ok "New PVs linked to replacement PVCs"
 
 say "👉 Resetting volume retention policy to Delete"
 set_volume_retention Delete "${NEW_PVS[@]}"
-ok "Policies reset!"
- 
-# say "👉 Deleting all OLD volumes"
-# delete_volumes "${OLD_PVS[@]}"
-# ok "Old volumes deleted!"
+ok "Retention policies reset!"
+
+warn "Please verify the reassignment results. If you're unhappy in any way, you can delete all existing PVCs in the ${NAMESPACE} namespace, and re-create them from the resources in [${ROLLBACK_DIR}], like so:"
+say ""
+say "\t# Delete all existing PVCs"
+say "\t$ kubectl delete \$(kubectl get pvc -o name)"
+say ""
+say "\t# Create the old PVCs pointing to the old volumes"
+say "\t$ kubectl apply -f ${ROLLBACK_DIR@Q}"
+say ""
+ok "If you're happy with the results, you can delete all old PVs now using this command:"
+say ""
+say "\t$ kubectl delete pv ${OLD_PVS[@]}"
+say ""
+ok "Reassignment complete"
