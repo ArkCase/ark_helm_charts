@@ -1,8 +1,10 @@
 {{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.subsystem.external" $)) }}
 {{- $fullname := (include "arkcase.fullname" $) -}}
 {{- $cluster := (include "arkcase.cluster" $ | fromYaml) -}}
-{{- $nodes := ($cluster.nodes | int) -}}
+{{- /* For this component, we'll either have one node, or two */ -}}
+{{- $nodes := ((max 1 (min 2 ($cluster.nodes | default 2))) | int) -}}
 {{- if and $cluster (gt $nodes 1) }}
+  {{- /* We only enable the PDB if we will have more than one node */ -}}
 ---
 apiVersion: policy/v1
 kind: PodDisruptionBudget
@@ -28,19 +30,11 @@ metadata:
   annotations: {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  # For this particular component we only support 2 nodes in a cluster - primary + backup
-  replicas: {{ $cluster.enabled | ternary 2 1 }}
+  replicas: {{ $cluster.enabled | ternary $nodes 1 }}
   selector: &labelSelector
     matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
   serviceName: {{ include "arkcase.service.headless" $ | quote }}
-  updateStrategy:
-    type: {{ $.Values.updateStrategy }}
-    {{- if (eq "Recreate" $.Values.updateStrategy) }}
-    rollingUpdate: null
-    {{- else if $.Values.rollingUpdatePartition }}
-    rollingUpdate:
-      partition: {{ $.Values.rollingUpdatePartition }}
-    {{- end }}
+  updateStrategy: {{- include "arkcase.cluster.statefulUpdateStrategy" $ | nindent 4 }}
   podManagementPolicy: Parallel
   template:
     metadata:
