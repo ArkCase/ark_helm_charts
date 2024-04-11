@@ -22,14 +22,7 @@ spec:
   selector: &labelSelector
     matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
   serviceName: {{ include "arkcase.service.headless" $ | quote }}
-  updateStrategy:
-    type: {{ $.Values.updateStrategy }}
-    {{- if (eq "Recreate" $.Values.updateStrategy) }}
-    rollingUpdate: null
-    {{- else if $.Values.rollingUpdatePartition }}
-    rollingUpdate:
-      partition: {{ $.Values.rollingUpdatePartition }}
-    {{- end }}
+  updateStrategy: {{- include "arkcase.cluster.statefulUpdateStrategy" $ | nindent 4 }}
   template:
     metadata:
       name: *fullName
