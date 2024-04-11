@@ -18,8 +18,8 @@ set -euo pipefail
 [ -v SSL_DIR ] || SSL_DIR="/.ssl"
 CERT="${SSL_DIR}/haproxy-cert.pem"
 
-[ -v MAX_WAIT ] || MAX_WAIT="30"
-[[ "${MAX_WAIT}" =~ ^[1-9][0-9]*$ ]] || MAX_WAIT="30"
+[ -v MAX_WAIT ] || MAX_WAIT="300"
+[[ "${MAX_WAIT}" =~ ^[1-9][0-9]*$ ]] || MAX_WAIT="300"
 
 say "Waiting up to ${MAX_WAIT} seconds for the SSL certificates to become available"
 START="$(date +%s)"
@@ -30,5 +30,6 @@ while true ; do
 	sleep 1 || fail "Sleep interrupted, can't continue waiting for the certificate at [${CERT}]"
 done
 
-say "Launching HAProxy"
-exec "/usr/local/bin/docker-entrypoint.sh" "/usr/local/sbin/haproxy" "-f" "/usr/local/etc/haproxy/haproxy.cfg"
+CMD=("/usr/local/bin/docker-entrypoint.sh" "/usr/local/sbin/haproxy" "-f" "/usr/local/etc/haproxy/haproxy.cfg")
+say "Launching HAProxy as: ${CMD[@]@Q}"
+exec "${CMD[@]}"

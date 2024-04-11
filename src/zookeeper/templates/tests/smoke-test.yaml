@@ -36,6 +36,11 @@ spec:
           value: |-
             set -xeuo pipefail
             /usr/local/bin/acme-init
-            /usr/bin/timeout 3 /usr/bin/openssl s_client -connect "${SERVICE_NAME}:2181" -verify_quiet -verify_return_error -showcerts </dev/null
+            OUT="$(/usr/bin/timeout 3 /usr/bin/nc "${SERVICE_NAME}" 2181 <<< "ruok" 2>&1)"
+            [ "${OUT}" == "imok" ] && exit 0
+            echo "Check failed:"
+            echo "${OUT}"
+            exit 1
+
   restartPolicy: Never
 {{- end }}
