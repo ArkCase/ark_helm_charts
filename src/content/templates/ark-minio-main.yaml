@@ -1,8 +1,8 @@
 {{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.content.external" $)) (eq "s3" (include "arkcase.content.info.dialect" $)) -}}
-{{- $maxFailed := (include "arkcase.content.minio.maxFailed" $ | int) }}
+{{- $minAvailable := (include "arkcase.content.minio.minAvailable" $ | int) }}
 {{- $nodes := (include "arkcase.content.minio.nodeCount" $ | int) }}
 {{- $onePerHost := (include "arkcase.content.minio.onePerHost" $) }}
-{{- if (gt $maxFailed 0) }}
+{{- if (gt $nodes 1) }}
 ---
 apiVersion: policy/v1
 kind: PodDisruptionBudget
@@ -10,9 +10,9 @@ metadata:
   name: {{ include "arkcase.fullname" $ | quote }}
   namespace: {{ $.Release.Namespace | quote }}
 spec:
+  minAvailable: {{ $minAvailable }}
   selector:
     matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
-  maxUnavailable: {{ $maxFailed }}
 ---
 {{- end }}
 ---
@@ -115,7 +115,7 @@ spec:
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
             - name: NODES
-              value: {{ $nodes | quote }}
+              value: {{ $nodes | toString | quote }}
             - name: DATA_DIR
               value: *dataDir
             - name: MINIO_ADDRESS

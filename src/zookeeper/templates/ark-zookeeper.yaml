@@ -1,7 +1,7 @@
 {{- if and (include "arkcase.subsystem.enabled" $) (include "arkcase.zookeeper.required" $) }}
 {{- $cluster := (include "arkcase.cluster" $ | fromYaml) }}
-{{- $maxFailed := (include "arkcase.zookeeper.maxFailed" $cluster.nodes | atoi) }}
-{{- if (gt $maxFailed 0) }}
+{{- $nodes := ($cluster.nodes | int) -}}
+{{- if (gt $nodes 1) }}
 ---
 apiVersion: policy/v1
 kind: PodDisruptionBudget
@@ -9,9 +9,9 @@ metadata:
   name: {{ include "arkcase.fullname" $ | quote }}
   namespace: {{ $.Release.Namespace | quote }}
 spec:
+  minAvailable: {{ include "arkcase.zookeeper.minAvailable" $nodes | atoi }}
   selector:
     matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
-  maxUnavailable: {{ $maxFailed }}
 ---
 {{- end }}
 apiVersion: apps/v1
@@ -27,7 +27,7 @@ metadata:
   annotations: {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  replicas: {{ include "arkcase.zookeeper.nodes" $cluster.nodes }}
+  replicas: {{ include "arkcase.zookeeper.nodes" $nodes }}
   selector: &labelSelector
     matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
   serviceName: {{ include "arkcase.service.headless" $ | quote }}
