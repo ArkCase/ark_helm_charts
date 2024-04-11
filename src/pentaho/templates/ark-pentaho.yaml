@@ -6,9 +6,8 @@
 {{- $fullName := (include "arkcase.fullname" $) -}}
 {{- $serviceName := (include "arkcase.service.name" $) -}}
 {{- $cluster := (include "arkcase.cluster" $ | fromYaml) -}}
-{{- $nodes := (min 4 $cluster.nodes) -}}
-{{- $maxFailed := (sub $nodes 1) -}}
-{{- if (gt $maxFailed 0) }}
+{{- $nodes := (min 4 ($cluster.nodes | int)) -}}
+{{- if (gt $nodes 1) }}
 ---
 apiVersion: policy/v1
 kind: PodDisruptionBudget
@@ -16,7 +15,7 @@ metadata:
   name: {{ $fullName | quote }}
   namespace: {{ $.Release.Namespace | quote }}
 spec:
-  maxUnavailable: {{ $maxFailed }}
+  minAvailable: 1
   selector:
     matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
 {{- end }}
@@ -226,7 +225,7 @@ spec:
               value: {{ $cluster.enabled | ternary 4443 8443 | toString | quote }}
             - name: PENTAHO_INSTALLED_LICENSE_PATH
               value: "$(DATA_DIR)/.installedLicenses.xml"
-          {{- include "arkcase.subsystem.ports" ($cluster.enabled | ternary ($.Values.service).clustered ($.Values.service).pentaho) | nindent 10 }}
+          {{- include "arkcase.subsystem.ports" ($cluster.enabled | ternary ($.Values.service).clusteredPentaho ($.Values.service).pentaho) | nindent 10 }}
           {{- with ($.Values.command).pentaho }}
           command: {{ . | toYaml }}
           {{- end }}
@@ -236,6 +235,8 @@ spec:
             {{- include "arkcase.pentaho.license.volumeMounts" (dict "ctx" $ "volume" "secrets" "path" "/app/init/licenses") | nindent 12 }}
             {{- include "arkcase.trusts.mount" $ | nindent 12 }}
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
+            - name: &sslVol "ssl-vol"
+              mountPath: &sslDir "/.ssl"
             - name: *dataVol
               mountPath: *dataDir
             - name: *tempVol
@@ -365,13 +366,21 @@ spec:
         - name: haproxy
           {{- include "arkcase.image" (dict "ctx" $ "name" "haproxy" "repository" "haproxy") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            - name: SSL_DIR
+              value: *sslDir
           command: [ "/entrypoint" ]
-          {{- include "arkcase.subsystem.ports" ($.Values.service).pentaho | nindent 10 }}
+          {{- include "arkcase.subsystem.ports" ($.Values.service).clusteredHaproxy | nindent 10 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "haproxy") | nindent 12 }}
           volumeMounts:
+            - name: *sslVol
+              mountPath: *sslDir
             - name: *configMap
               mountPath: "/usr/local/etc/haproxy/haproxy.cfg"
               subPath: &haproxyCfg "haproxy.cfg"
+              readOnly: true
+            - name: *configMap
+              mountPath: "/usr/local/etc/haproxy/lua/responses.lua"
+              subPath: &responsesLua "responses.lua"
               readOnly: true
             - name: *configMap
               mountPath: "/entrypoint"
@@ -385,6 +394,11 @@ spec:
         {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "temp") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "logs") | nindent 8 }}
+        # The shared certificates volume is laughably tiny
+        - name: *sslVol
+          emptyDir:
+            medium: "Memory"
+            sizeLimit: 1Mi
         - name: *secrets
           secret:
             optional: false
@@ -473,6 +487,8 @@ spec:
               {{- if $cluster.enabled }}
               - key: *haproxyCfg
                 path: *haproxyCfg
+              - key: *responsesLua
+                path: *responsesLua
               - key: *entrypointHaproxy
                 path: *entrypointHaproxy
                 mode: 0555
