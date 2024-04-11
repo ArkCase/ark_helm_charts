@@ -8,9 +8,8 @@
   {{- /* Disable clustering for now ... not supported for ArkCase */ -}}
   {{- /* $cluster := (include "arkcase.cluster" $ | fromYaml) */ -}}
   {{- $cluster := dict "enabled" false "nodes" 1 -}}
-  {{- $nodes := (min 4 $cluster.nodes) -}}
-  {{- $maxFailed := (sub $nodes 1) -}}
-  {{- if (gt $maxFailed 0) -}}
+  {{- $nodes := (min 4 ($cluster.nodes | int)) -}}
+  {{- if (gt $nodes 1) -}}
 ---
 apiVersion: policy/v1
 kind: PodDisruptionBudget
@@ -18,7 +17,7 @@ metadata:
   name: {{ include "arkcase.fullname" $ | quote }}
   namespace: {{ $.Release.Namespace | quote }}
 spec:
-  maxUnavailable: {{ $maxFailed }}
+  minAvailable: 1
   selector:
     matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
   {{- end }}
