@@ -1,3 +1,48 @@
+{{- define "arkcase.cluster.info.rules" -}}
+  {{- /* Find the chart's own clustering rules */ -}}
+
+  {{- $rules := (.Files.Get "cluster.yaml" | fromYaml) -}}
+  {{- if (not (kindIs "map" $rules)) -}}
+    {{- $rules = dict -}}
+  {{- end -}}
+
+  {{- $result := dict -}}
+  {{- $result = set $result "supported" ((hasKey $rules "supported") | ternary (not (empty (include "arkcase.toBoolean" $rules.supported))) true) -}}
+
+  {{- $nodes := dict "min" 1 "def" 1 "max" 1 -}}
+  {{- if $result.supported -}}
+    {{- $nodes = dict "min" 1 "def" 2 "max" 0 -}}
+    {{- if (hasKey $rules "nodes") -}}
+      {{- $nodes = ($rules.nodes | default dict) -}}
+
+      {{- $min := 1 -}}
+      {{- if (hasKey $nodes "min") -}}
+        {{- $min = ($nodes.min | default 1 | toString) -}}
+        {{- $min = (regexMatch "^[1-9][0-9]*$" $min | ternary ($min | atoi | int) 1 | int) -}}
+      {{- end -}}
+
+      {{- $def := 0 -}}
+      {{- if (hasKey $nodes "def") -}}
+        {{- $def = ($nodes.def | default 2 | toString) -}}
+        {{- $def = (regexMatch "^[1-9][0-9]*$" $def | ternary ($def | atoi | int) 2 | int) -}}
+        {{- $def = (eq $def 0 | ternary $def (max $def $min)) -}}
+      {{- end -}}
+
+      {{- $max := 0 -}}
+      {{- if (hasKey $nodes "max") -}}
+        {{- $max = ($nodes.max | default 0 | toString) -}}
+        {{- $max = (regexMatch "^[1-9][0-9]*$" $max | ternary ($max | atoi | int) 0 | int) -}}
+        {{- $max = (eq $max 0 | ternary $max (max $max $min)) -}}
+      {{- end -}}
+
+      {{- $nodes = dict "min" $min "def" $def "max" $max -}}
+    {{- end -}}
+  {{- end -}}
+  {{- $result = set $result "nodes" $nodes -}}
+
+  {{- $result | toYaml -}}
+{{- end -}}
+
 {{- define "arkcase.cluster.info.render" -}}
   {{- $global := dict -}}
 
@@ -22,19 +67,11 @@
   {{- end -}}
 
   {{- /* Set/sanitize the general "enabled" value */ -}}
-  {{- if not (hasKey $cluster "enabled") -}}
-    {{- $cluster = set $cluster "enabled" false -}}
-  {{- else -}}
-    {{- $cluster = set $cluster "enabled" (not (empty (include "arkcase.toBoolean" $cluster.enabled))) -}}
-  {{- end -}}
+  {{- $cluster = set $cluster "enabled" ((hasKey $cluster "enabled") | ternary (not (empty (include "arkcase.toBoolean" $cluster.enabled))) false) -}}
 
   {{- if $cluster.enabled -}}
     {{- /* Set/sanitize the general "onePerHost" value */ -}}
-    {{- if (hasKey $cluster "onePerHost") -}}
-      {{- $cluster = set $cluster "onePerHost" (not (empty (include "arkcase.toBoolean" $cluster.onePerHost))) -}}
-    {{- else -}}
-      {{- $cluster = set $cluster "onePerHost" false -}}
-    {{- end -}}
+    {{- $cluster = set $cluster "onePerHost" ((hasKey $cluster "onePerHost") | ternary (not (empty (include "arkcase.toBoolean" $cluster.onePerHost))) false) -}}
 
     {{- $subsystems := omit $cluster "enabled" "onePerHost" -}}
     {{- $cluster = pick $cluster "enabled" "onePerHost" -}}
@@ -54,14 +91,10 @@
         {{- $m = pick $v "enabled" "onePerHost" "nodes" -}}
 
         {{- /* Sanitize the "enabled" flag */ -}}
-        {{- if hasKey $m "enabled" -}}
-          {{- $m = set $m "enabled" (not (empty (include "arkcase.toBoolean" $m.enabled))) -}}
-        {{- else -}}
-          {{- $m = set $m "enabled" true -}}
-        {{- end -}}
+        {{- $m = set $m "enabled" (hasKey $m "enabled" | ternary (not (empty (include "arkcase.toBoolean" $m.enabled))) true) -}}
       {{- else -}}
         {{- $v = $v | toString -}}
-        {{- if (regexMatch "^[0-9]+$" $v) -}}
+        {{- if (regexMatch "^[1-9][0-9]*$" $v) -}}
           {{- /* If it's a number, it's the node count we want (min == 1) */ -}}
           {{- $v = (atoi $v | int) -}}
           {{- $m = set $m "nodes" (max $v 1) -}}
@@ -73,32 +106,27 @@
       {{- end -}}
 
       {{- /* Sanitize the "onePerHost" flag */ -}}
-      {{- if hasKey $m "onePerHost" -}}
-        {{- $m = set $m "onePerHost" (not (empty (include "arkcase.toBoolean" $m.onePerHost))) -}}
-      {{- else -}}
-        {{- $m = set $m "onePerHost" $cluster.onePerHost -}}
-      {{- end -}}
+      {{- $m = set $m "onePerHost" ((hasKey $m "onePerHost") | ternary (not (empty (include "arkcase.toBoolean" $m.onePerHost))) $cluster.onePerHost) -}}
 
       {{- /* Sanitize the "nodes" count */ -}}
+      {{- $nodes := 1 -}}
       {{- if $m.enabled -}}
-        {{- $nodes := 2 -}}
+        {{- $nodes = 2 -}}
         {{- if hasKey $m "nodes" -}}
           {{- $nodes = ($m.nodes | toString) -}}
           {{- if not (regexMatch "^[1-9][0-9]*$" $nodes) -}}
             {{- fail (printf "The node count for global.cluster.%s is not valid: [%s] is not a valid number" $k $nodes) -}}
           {{- end -}}
-          {{- $nodes = max 1 (atoi $nodes | int) -}}
+          {{- $nodes = (atoi $nodes | int) -}}
         {{- end -}}
-        {{- $m = set $m "nodes" $nodes -}}
-      {{- else -}}
-        {{- $m = set $m "nodes" 1 -}}
       {{- end -}}
+      {{- $m = set $m "nodes" $nodes -}}
 
       {{- $cluster = set $cluster $k $m -}}
     {{- end -}}
   {{- else -}}
     {{- /* Make life simpler */ -}}
-    {{- $cluster = dict "enabled" false "onePerHost" false -}}
+    {{- $cluster = dict "enabled" false "onePerHost" false "nodes" 1 -}}
   {{- end -}}
 
   {{- $cluster | toYaml -}}
@@ -137,27 +165,26 @@
   {{- end -}}
 
   {{- $subsys := (include "arkcase.name" $) -}}
-  {{- $info := (include "arkcase.cluster.info" $ | fromYaml) -}}
-  {{- if hasKey $info $subsys -}}
-    {{- $info = get $info $subsys -}}
-  {{- else -}}
-    {{- $info = pick $info "enabled" "onePerHost" -}}
-    {{- $info = set $info "nodes" ($info.enabled | ternary 2 1) -}}
-  {{- end -}}
+  {{- $rules := (include "arkcase.cluster.info.rules" $ | fromYaml) -}}
+  {{- $cluster := dict "enabled" false -}}
+  {{- if $rules.supported -}}
+    {{- $info := (include "arkcase.cluster.info" $ | fromYaml) -}}
 
-  {{- $clusterConfig := (.Files.Get "cluster.yaml" | fromYaml) -}}
-  {{- if not (kindIs "map" $clusterConfig) -}}
-    {{- $clusterConfig = dict -}}
-  {{- end -}}
+    {{- if and $info (hasKey $info $subsys) -}}
+      {{- $info = get $info $subsys -}}
+    {{- else -}}
+      {{- $nodes := ($rules.nodes.def | int) -}}
+      {{- $info = dict "enabled" (gt $nodes 1) "onePerHost" false "nodes" $nodes -}}
+    {{- end -}}
 
-  {{- /* Add any default flags that should be here */ -}}
-  {{- if (not (hasKey $clusterConfig "onePerHost")) -}}
-    {{- $clusterConfig = set $clusterConfig "onePerHost" false -}}
-  {{- else -}}
-    {{- $clusterConfig = set $clusterConfig "onePerHost" (not (empty (include "arkcase.toBoolean" $clusterConfig.onePerHost))) -}}
+    {{- /* apply the rules */ -}}
+    {{- if $info.enabled -}}
+      {{- $nodes := (max ($info.nodes | int) ($rules.nodes.min | int)) -}}
+      {{- $nodes = (le ($rules.nodes.max | int) 0 | ternary $nodes (min ($rules.nodes.max | int) $nodes)) -}}
+      {{- $cluster = set $info "nodes" $nodes -}}
+    {{- end -}}
   {{- end -}}
-
-  {{- merge $info $clusterConfig | toYaml -}}
+  {{- $cluster | toYaml -}}
 {{- end -}}
 
 {{- define "arkcase.cluster.zookeeper" -}}
@@ -275,5 +302,20 @@
   value: {{ $.Release.Namespace | quote }}
 - name: KUBERNETES_LABELS
   value: {{ join "," $result | quote }}
+  {{- end }}
+{{- end -}}
+
+{{- define "arkcase.cluster.statefulUpdateStrategy" -}}
+  {{- if not (include "arkcase.isRootContext" $) -}}
+    {{- fail "The parameter value must be the root context" -}}
+  {{- end -}}
+  {{- $type := ($.Values.updateStrategy | toString | default "RollingUpdate") -}}
+  {{- $cluster := (include "arkcase.cluster" $ | fromYaml) -}}
+  {{- $nodes := ($cluster.nodes | default 1 | int) -}}
+type: {{ $type | quote }}
+  {{- if and ($cluster.enabled) (eq $type "RollingUpdate") (gt $nodes 1) }}
+# We're allowed to lose up to half our nodes ({{ $nodes }}) in a rolling update
+rollingUpdate:
+  partition: {{ div $nodes 2 }}
   {{- end }}
 {{- end -}}
