@@ -263,4 +263,4 @@ if [ -n "${LAUNCH}" ] ; then
 	done < <(find "${PENTAHO_SERVER}/pentaho-solutions/system/default-content" -type f -name '*.zip')
 fi
 say "Launching Pentaho as: ${CMD[@]@Q}"
-exec "${CMD[@]}"
+"${CMD[@]}"
