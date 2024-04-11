@@ -5,6 +5,9 @@ SCRIPT="$(/usr/bin/basename "${SCRIPT}")"
 
 set -euo pipefail
 
+[ -v LOGS_DIR ] || LOGS_DIR=""
+[ -n "${LOGS_DIR}" ] || LOGS_DIR="/logs"
+
 timestamp()
 {
 	/usr/bin/date -Ins -u
@@ -48,6 +51,9 @@ rsync_with_retry()
 		pull ) MAKE_DIRECTORY="true"  ; TARGET="${LOCAL}" ; SOURCE="${REMOTE}" ; COPY_ARGS=("${REMOTE}" .) ;;
 	esac
 
+	local CMD=("${RSYNC}" "${RSYNC_RSH_FLAGS[@]}" --progress --exclude="lost+found" -RavzhH --delete-delay "${COPY_ARGS[@]}")
+	say "👀 Will use the command: ${CMD[@]@Q}"
+
 	say "👉 Copying from [${SOURCE}] into [${TARGET}]..."
 	(
 		set -euo pipefail
@@ -61,10 +67,10 @@ rsync_with_retry()
 		while true ; do
 			(( ATTEMPT++ ))
 			say "Starting rsync (attempt # ${ATTEMPT})..."
-			"${RSYNC}" "${RSYNC_RSH_FLAGS[@]}" --progress --exclude="lost+found" -RavzhH --delete-delay "${COPY_ARGS[@]}"
-			RC=${?}
+			local RC=0
+			"${CMD[@]}" || RC=${?}
+			[ ${RC} -eq 0 ] && break
 			case ${RC} in
-				0 ) exit 0 ;;
 				30 ) warn "Timeout detected, will try again..." ;;
 				* ) err "Failed to copy the data (rc = ${RC})" ; exit ${RC} ;;
 			esac
@@ -175,12 +181,13 @@ TEE="$(type -P tee)" || fail "Failed to find tee in the path"
 
 LOG_BASE="$(/usr/bin/basename "${0}")"
 STAMP="$(/usr/bin/date -u "+%Y%m%d-%H%M%SZ")"
-MAIN_LOG="${LOG_BASE}.${STAMP}.log"
+MAIN_LOG="${LOGS_DIR}/${LOG_BASE}.${STAMP}.log"
 
 RSYNC_RSH_FLAGS=()
 [ -v RSYNC_RSH ] || RSYNC_RSH=""
 [ -n "${RSYNC_RSH}" ] && RSYNC_RSH_FLAGS=(--blocking-io --rsh="${RSYNC_RSH}")
 
+say "👀 Logging to [${MAIN_LOG}]"
 exec > >("${TEE}" "${MAIN_LOG}")
 exec 2>&1
 say "👉 Copying all the PVCs into the server ${SERVER_SPEC} via ${PROTOCOL}"

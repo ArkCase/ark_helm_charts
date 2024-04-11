@@ -1,7 +1,8 @@
 {{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.subsystem.external" $)) }}
 {{- $cluster := (include "arkcase.cluster" $ | fromYaml) }}
-{{- $maxFailed := (include "arkcase.solr.maxFailed" $cluster.nodes | atoi) }}
-{{- if and $cluster.enabled (gt $maxFailed 0) }}
+{{- $nodes := ($cluster.nodes | int) -}}
+{{- $minAvailable := (include "arkcase.solr.minAvailable" ($nodes | int) | atoi) }}
+{{- if and $cluster.enabled (gt $nodes 1) }}
 ---
 apiVersion: policy/v1
 kind: PodDisruptionBudget
@@ -9,9 +10,9 @@ metadata:
   name: {{ include "arkcase.fullname" $ | quote }}
   namespace: {{ $.Release.Namespace | quote }}
 spec:
+  minAvailable: {{ $minAvailable }}
   selector:
     matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
-  maxUnavailable: {{ $maxFailed }}
 ---
 {{- end }}
 apiVersion: apps/v1
@@ -27,7 +28,7 @@ metadata:
   annotations: {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  replicas: {{ $cluster.nodes }}
+  replicas: {{ $nodes }}
   selector: &labelSelector
     matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
   serviceName: {{ include "arkcase.service.headless" $ | quote }}
@@ -114,7 +115,7 @@ spec:
               value: {{ $zk | quote }}
             {{- end }}
             - name: NODES
-              value: {{ $cluster.nodes | toString | quote }}
+              value: {{ $nodes | toString | quote }}
             - name: SOLR_OPTS
             {{- if $cluster.enabled }}
               value: "-Dsolr.autoSoftCommit.maxTime=1000 -Dzookeeper.client.secure=true"

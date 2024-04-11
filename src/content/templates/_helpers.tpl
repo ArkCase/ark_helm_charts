@@ -97,10 +97,10 @@
   {{- end -}}
 {{- end -}}
 
-{{- define "arkcase.content.minio.maxFailed" -}}
+{{- define "arkcase.content.minio.minAvailable" -}}
   {{- $nodes := (include "arkcase.content.minio.nodes" $ | atoi) -}}
   {{- /* We can lose at most half of our nodes */ -}}
-  {{- div $nodes 2 -}}
+  {{- div (add $nodes 1) 2 -}}
 {{- end -}}
 
 {{- define "arkcase.content.indexing" -}}
