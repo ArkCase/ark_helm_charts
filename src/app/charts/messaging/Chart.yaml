@@ -1,0 +1,14 @@
+apiVersion: v2
+name: messaging
+version: 0.7.0
+appVersion: "2.31.2"
+description: Helm chart for Apache Artemis as used by ArkCase
+keywords:
+  - artemis
+  - message broker
+sources:
+  - https://github.com/ArkCase/ark_helm_charts
+dependencies:
+  - name: common
+    version: ~0.7.0
+    repository: "https://arkcase.github.io/ark_helm_charts"
