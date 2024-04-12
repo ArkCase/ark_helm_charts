@@ -43,10 +43,13 @@
 
   {{- /* Next, identify which server we're supposed to narrow the search down to */ -}}
   {{- $serverNames := (include "arkcase.ldap.serverNames" $.ctx | fromYaml) -}}
-  {{- $server := "" -}}
-  {{- if and (hasKey $ "server") (kindIs "string" $.server) $.server -}}
-    {{- $server = $.server -}}
-  {{- else -}}
+  {{- $server := (hasKey $ "server" | ternary $.server "") -}}
+  {{- $server = (kindIs "string" $server | ternary $server "") -}}
+
+  {{- /* Special case: if the server name "default" is used, treat as if no server name given */ -}}
+  {{- $server = (ne "default" $server) | ternary $server "" -}}
+
+  {{- if not $server -}}
     {{- /* No server specified, pick the default */ -}}
     {{- $default := (include "arkcase.tools.conf" (dict "ctx" $.ctx "debug" $.debug "detailed" true "value" "ldap.default") | fromYaml) -}}
     {{- if and $default (kindIs "string" $default.value) $default.value -}}
@@ -62,6 +65,7 @@
     {{- end -}}
   {{- end -}}
 
+  {{- /* If we declared a server with the name "default", this is a no-no! */ -}}
   {{- if eq "default" $server -}}
     {{- fail "The LDAP server name 'default' is reserved and may not be used" -}}
   {{- end -}}
