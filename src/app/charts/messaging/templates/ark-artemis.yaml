@@ -3,7 +3,7 @@
 {{- $cluster := (include "arkcase.cluster" $ | fromYaml) -}}
 {{- /* For this component, we'll either have one node, or two */ -}}
 {{- $nodes := ((max 1 (min 2 ($cluster.nodes | default 2))) | int) -}}
-{{- if and $cluster (gt $nodes 1) }}
+{{- if (gt $nodes 1) }}
   {{- /* We only enable the PDB if we will have more than one node */ -}}
 ---
 apiVersion: policy/v1

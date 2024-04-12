@@ -166,7 +166,7 @@
 
   {{- $subsys := (include "arkcase.name" $) -}}
   {{- $rules := (include "arkcase.cluster.info.rules" $ | fromYaml) -}}
-  {{- $cluster := dict "enabled" false -}}
+  {{- $cluster := dict "enabled" false "onePerHost" false "nodes" 1 -}}
   {{- if $rules.supported -}}
     {{- $info := (include "arkcase.cluster.info" $ | fromYaml) -}}
 
