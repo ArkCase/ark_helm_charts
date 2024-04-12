@@ -166,22 +166,27 @@
 
   {{- $subsys := (include "arkcase.name" $) -}}
   {{- $rules := (include "arkcase.cluster.info.rules" $ | fromYaml) -}}
-  {{- $cluster := dict "enabled" false -}}
+  {{- $cluster := dict "enabled" false "onePerHost" false "nodes" 1 -}}
   {{- if $rules.supported -}}
     {{- $info := (include "arkcase.cluster.info" $ | fromYaml) -}}
 
-    {{- if and $info (hasKey $info $subsys) -}}
-      {{- $info = get $info $subsys -}}
-    {{- else -}}
-      {{- $nodes := ($rules.nodes.def | int) -}}
-      {{- $info = dict "enabled" (gt $nodes 1) "onePerHost" false "nodes" $nodes -}}
-    {{- end -}}
+    {{- /* Clustering has to be enabled globally first! */ -}}
+    {{- $enabled := and (hasKey $info "enabled") (not (empty (include "arkcase.toBoolean" $info.enabled))) -}}
 
-    {{- /* apply the rules */ -}}
-    {{- if $info.enabled -}}
-      {{- $nodes := (max ($info.nodes | int) ($rules.nodes.min | int)) -}}
-      {{- $nodes = (le ($rules.nodes.max | int) 0 | ternary $nodes (min ($rules.nodes.max | int) $nodes)) -}}
-      {{- $cluster = set $info "nodes" $nodes -}}
+    {{- if $enabled -}}
+      {{- if and $info (hasKey $info $subsys) -}}
+        {{- $info = get $info $subsys -}}
+      {{- else -}}
+        {{- $nodes := ($rules.nodes.def | int) -}}
+        {{- $info = dict "enabled" (gt $nodes 1) "onePerHost" false "nodes" $nodes -}}
+      {{- end -}}
+
+      {{- /* apply the rules */ -}}
+      {{- if $info.enabled -}}
+        {{- $nodes := (max ($info.nodes | int) ($rules.nodes.min | int)) -}}
+        {{- $nodes = (le ($rules.nodes.max | int) 0 | ternary $nodes (min ($rules.nodes.max | int) $nodes)) -}}
+        {{- $cluster = set $info "nodes" $nodes -}}
+      {{- end -}}
     {{- end -}}
   {{- end -}}
   {{- $cluster | toYaml -}}

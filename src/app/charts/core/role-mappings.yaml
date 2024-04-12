@@ -1,0 +1,184 @@
+#
+# This mapping file supports a special syntax that allows for
+# partial, targeted customization of overlaid maps. Under this
+# framework, maps can be "overlaid" in such a way as to avoid
+# brute force merging, for a more nuanced configuration model.
+#
+# For example, this file is meant to serve as the basis for the
+# roles-to-groups configuration map. This map will in turn be
+# constructed by using the "default" map as the most fundamental,
+# basic map's contents.
+#
+# Then, if FOIA is enabled, the "foia" map will be overlaid on
+# top of that base map to produce a new, combined base map.
+#
+# Finally, the contents of the global.arkcase.rolesToGroups map
+# will be overlayed on top of this resulting base map to produce
+# the actual role mappings that will be rendered for consumption
+# by the runtime application.
+#
+# The "nuanced" configuration is achieved by way of this special
+# syntax. This syntax is valid both within this file, as well as
+# in the global.arkcase.roles-to-groups mappings.
+#
+#   # The map element
+#   map-root:
+#
+#     # Replace this key completely on the target map
+#     # with the given value.
+#     map-key:
+#       # ...
+#
+#     # Merge this key with its counterpart on the
+#     # target map (the key's value MUST be a list
+#     # or another map. Otherwise, it will simply be
+#     # replaced)
+#     ~map-key:
+#       # ...
+#
+#     # Remove this key from the target map
+#     # map upon which this map may be overlaid
+#     # (the key's value will be ignored)
+#     ^map-key: {}
+#       # ...
+#
+# One additional benefit of this specific map is that mapping
+# entries (i.e. group lists) can be provided either as lists,
+# or as comma-separated strings. Clearly, if a group name
+# contains a comma, this comma will need to be properly escaped
+# using a backslash (\). Any other value type will result in
+# the mapping value being summarily ignored.
+#
+# Each group name, whether from a string or an actual list,
+# can be prefixed with a "-" to indicate that the group should
+# be removed from the mapping if it's already present. Otherwise,
+# the group will simply be added to the mapping's list.
+#
+# The list will later on be folded to uppercase, with duplicates
+# removed and the contents sorted alphabetically, to facilitate
+# analysis and troubleshooting.
+#
+# Remember: with great power, comes great risk of messing
+# everything up, so be CAREFUL! :)
+#
+
+#
+# A lack of a domain declaration here, or the use
+# the special domain "@DEFAULT", will result in
+# appending the domain for the default LDAP
+# configuration. If an actual domain (i.e. with
+# at least one dot) is provided, then it will
+# be kept intact. Finally, if an invalid domain
+# is provided, it will result in a deployment
+# error.
+#
+default:
+  ROLE_ADMINISTRATOR:
+    - ARKCASE_ADMINISTRATOR
+    - ARKCASE_ENTITY_ADMINISTRATOR
+    - ARKCASE_PORTAL_ADMINISTRATOR
+    - ARKCASE_PORTAL_ENTITY_ADMINISTRATOR
+  ROLE_BILLING_QUEUE:
+    - ARKCASE_ADMINISTRATOR
+    - ARKCASE_PORTAL_ADMINISTRATOR
+    - ARKCASE_SUPERVISOR
+    - ARKCASE_CONTRIBUTOR
+    - ARKCASE_CONSUMER
+    - ARKCASE_EXTERNAL
+  ROLE_CONSUMER:
+    - ARKCASE_CONSUMER
+  ROLE_CONTRIBUTOR:
+    - ARKCASE_CONTRIBUTOR
+  ROLE_ENTITY_ADMINISTRATOR:
+    - ARKCASE_ENTITY_ADMINISTRATOR
+  ROLE_EXTERNAL:
+    - ARKCASE_EXTERNAL
+  ROLE_SUPERVISOR:
+    - ARKCASE_SUPERVISOR
+    - ARKCASE_ADMINISTRATOR
+    - ARKCASE_PORTAL_ADMINISTRATOR
+
+#
+# The @FOIA domain should be replaced with the LDAP
+# domain for the "foiaportal" LDAP configuration.
+#
+# The same rules for the "default" map still apply
+#
+foia:
+  ~ROLE_ADMINISTRATOR:
+    - ARKCASE_PORTAL_ADMINISTRATOR@FOIA
+    - ARKCASE_PORTAL_ENTITY_ADMINISTRATOR@FOIA
+  ~ROLE_BILLING_QUEUE:
+    - ARKCASE_PORTAL_ADMINISTRATOR@FOIA
+  ~ROLE_ENTITY_ADMINISTRATOR:
+    - ARKCASE_PORTAL_ENTITY_ADMINISTRATOR@FOIA
+  ~ROLE_SUPERVISOR:
+    - ARKCASE_PORTAL_ADMINISTRATOR@FOIA
+  ROLE_GENERALCOUNSEL_QUEUE:
+    - ARKCASE_ADMINISTRATOR@FOIA
+    - ARKCASE_PORTAL_ADMINISTRATOR@FOIA
+    - ARKCASE_SUPERVISOR@FOIA
+    - ARKCASE_CONTRIBUTOR@FOIA
+    - ARKCASE_CONSUMER@FOIA
+    - ARKCASE_EXTERNAL@FOIA
+  ROLE_RELEASE_QUEUE:
+    - ARKCASE_ADMINISTRATOR@FOIA
+    - ARKCASE_PORTAL_ADMINISTRATOR@FOIA
+    - ARKCASE_SUPERVISOR@FOIA
+    - ARKCASE_CONTRIBUTOR@FOIA
+    - ARKCASE_CONSUMER@FOIA
+    - ARKCASE_EXTERNAL@FOIA
+  ROLE_APPROVE_QUEUE:
+    - ARKCASE_ADMINISTRATOR@FOIA
+    - ARKCASE_PORTAL_ADMINISTRATOR@FOIA
+    - ARKCASE_SUPERVISOR@FOIA
+    - ARKCASE_CONTRIBUTOR@FOIA
+    - ARKCASE_CONSUMER@FOIA
+    - ARKCASE_EXTERNAL@FOIA
+  ROLE_APPROVER:
+    - APPROVERS@FOIA
+  ROLE_INTAKE_QUEUE:
+    - ARKCASE_ADMINISTRATOR@FOIA
+    - ARKCASE_PORTAL_ADMINISTRATOR@FOIA
+    - ARKCASE_SUPERVISOR@FOIA
+    - ARKCASE_CONTRIBUTOR@FOIA
+    - ARKCASE_CONSUMER@FOIA
+    - ARKCASE_EXTERNAL@FOIA
+    - OFFICERS@FOIA
+  ROLE_HOLD_QUEUE:
+    - ARKCASE_ADMINISTRATOR@FOIA
+    - ARKCASE_PORTAL_ADMINISTRATOR@FOIA
+    - ARKCASE_SUPERVISOR@FOIA
+    - ARKCASE_CONTRIBUTOR@FOIA
+    - ARKCASE_CONSUMER@FOIA
+    - ARKCASE_EXTERNAL@FOIA
+  ROLE_APPEAL_QUEUE:
+    - ARKCASE_ADMINISTRATOR@FOIA
+    - ARKCASE_PORTAL_ADMINISTRATOR@FOIA
+    - ARKCASE_SUPERVISOR@FOIA
+    - ARKCASE_CONTRIBUTOR@FOIA
+    - ARKCASE_CONSUMER@FOIA
+    - ARKCASE_EXTERNAL@FOIA
+    - OFFICERS@FOIA
+  ROLE_FULFILL_QUEUE:
+    - ARKCASE_ADMINISTRATOR@FOIA
+    - ARKCASE_PORTAL_ADMINISTRATOR@FOIA
+    - ARKCASE_SUPERVISOR@FOIA
+    - ARKCASE_CONTRIBUTOR@FOIA
+    - ARKCASE_CONSUMER@FOIA
+    - ARKCASE_EXTERNAL@FOIA
+  ROLE_OFFICER:
+    - OFFICERS@FOIA
+    - ARKCASE_PORTAL_ADMINISTRATOR@FOIA
+  ROLE_PORTAL_ADMINISTRATOR:
+    - ARKCASE_ADMINISTRATOR@FOIA
+    - ARKCASE_PORTAL_ADMINISTRATOR@FOIA
+  ROLE_PORTAL_USER:
+    - ARKCASE_PORTAL_USER@FOIA
+  ROLE_QUEUE_MASS_ASSIGNMENT:
+    - ARKCASE_ADMINISTRATOR@FOIA
+    - ARKCASE_PORTAL_ADMINISTRATOR@FOIA
+    - ARKCASE_SUPERVISOR@FOIA
+    - ARKCASE_CONTRIBUTOR@FOIA
+    - ARKCASE_CONSUMER@FOIA
+    - ARKCASE_EXTERNAL@FOIA
