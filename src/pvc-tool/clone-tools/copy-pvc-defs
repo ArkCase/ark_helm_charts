@@ -1,0 +1,286 @@
+#!/bin/bash
+SCRIPT="$(/usr/bin/readlink -f "${BASH_ARGV0:-${BASH_SOURCE:-${0}}}")"
+BASEDIR="$(/usr/bin/dirname "${SCRIPT}")"
+
+set -euo pipefail
+
+[ -v DISABLE_CLONE ] || DISABLE_CLONE=""
+case "${DISABLE_CLONE,,}" in
+	true | t | yes | y ) DISABLE_CLONE="true" ;;
+	* ) DISABLE_CLONE="false" ;;
+esac
+export DISABLE_CLONE
+
+timestamp()
+{
+	/usr/bin/date -Ins
+}
+
+say()
+{
+	echo -e "$(timestamp): ${@}"
+}
+
+ok()
+{
+	say "✅ ${@}"
+}
+
+warn()
+{
+	say "⚠️ ${@}"
+}
+
+err()
+{
+	say "❌ ${@}" 1>&2
+}
+
+fail()
+{
+	err "${@}"
+	exit ${EXIT_CODE:-1}
+}
+
+is_valid_name()
+{
+	local NAME="${1}"
+	[[ "${NAME}" =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?$ ]] || return ${?}
+	return 0
+}
+
+is_namespace_exists()
+{
+	local NAMESPACE="${1}"
+	execute "${KUBECTL}" get namespace "${NAMESPACE}" &>/dev/null || return ${?}
+	return 0
+}
+
+execute()
+{
+	#
+	# Show the command about to be executed
+	#
+	say "${@@Q}"
+	if "${DISABLE_CLONE}" ; then
+		warn "Cloning disabled: skipping the command execution"
+		return 0
+	fi
+
+	#
+	# Proceed with the execution
+	#
+	( exec "${@}" )
+	return ${?}
+}
+
+get_pvc_map()
+{
+	"${KUBECTL}" get \
+		--namespace "${NAMESPACE}" \
+		--no-headers=true pvc | \
+		/usr/bin/awk '{ printf("%s %s\n", $3, $1) }' | \
+		/usr/bin/sort -k 2
+}
+
+set_volume_retention()
+{
+	local POLICY="${1}"
+	shift
+	[ ${#} -gt 0 ] || return 0
+
+	case "${POLICY}" in
+		Delete | Retain ) ;;
+		* ) return 1 ;;
+	esac
+
+	local PATCH="$(cat <<-EOF
+	spec:
+	  persistentVolumeReclaimPolicy: "${POLICY}"
+	EOF
+	)"
+
+	execute "${KUBECTL}" patch pv "${@}" -p "${PATCH}"
+}
+
+clean_pvc()
+{
+	/usr/bin/sed \
+		-e '/creationTimestamp:/d' \
+		-e '/finalizers:/,+1 d' \
+		-e '/kubectl.kubernetes.io\/last-applied-configuration:/,+1 d' \
+		-e '/pv.kubernetes.io\/b/d' \
+		-e '/volume.beta.kubernetes.io/d' \
+		-e '/volume.kubernetes.io/d' \
+		-e '/resourceVersion:/d' \
+		-e '/uid:/d' \
+		-e '/status:/,$d'
+}
+
+remap_pvc()
+{
+	local PV="${1}"
+	clean_pvc | /usr/bin/sed -e "s;volumeName: .*$;volumeName: ${PV};g"
+}
+
+prepare_new_pvcs()
+{
+	local ROLLBACK_DIR="${1}"
+	local TGT_DIR="${2}"
+	while read PV PVC ; do
+		local OLD="${PVC/clone-/}"
+		local DATA="$("${KUBECTL}" get pvc --namespace "${NAMESPACE}" "${OLD}" -o yaml)"
+		echo -n "${DATA}" | clean_pvc > "${ROLLBACK_DIR}/${OLD}.yaml"
+		local OLD_PV="$(/usr/bin/grep "volumeName:" <<< "${DATA}" | /usr/bin/awk '{ print $2 }')"
+		say "👀 Remapping ${OLD}..."
+		say "\t\t${OLD_PV} -> ${PV}"
+		remap_pvc "${PV}" <<< "${DATA}" > "${TGT_DIR}/${OLD}.yaml"
+	done
+}
+
+delete_pvcs()
+{
+	[ ${#} -gt 1 ] || return 0
+	execute "${KUBECTL}" delete pvc --namespace "${NAMESPACE}" "${@}"
+}
+
+clear_pv_claimref()
+{
+	[ ${#} -gt 1 ] || return 0
+
+	local PATCH="$(cat <<-EOF
+	spec:
+	  claimRef:
+	    \$retainKeys:
+	      - apiVersion
+	      - kind
+	      - name
+	      - namespace
+	EOF
+	)"
+
+	execute "${KUBECTL}" patch pv "${@}" --type strategic -p "${PATCH}"
+}
+
+create_new_pvcs()
+{
+	execute "${KUBECTL}" apply --namespace "${NAMESPACE}" -f "${PVC_DIR}"
+}
+
+link_new_pvs()
+{
+	while read PV PVC ; do
+		local PATCH="$(cat <<-EOF
+		spec:
+		  claimRef:
+		    name: ${PVC/clone-/}
+		EOF
+		)"
+
+		execute "${KUBECTL}" patch pv "${PV}" -p "${PATCH}"
+	done
+}
+
+delete_volumes()
+{
+	[ ${#} -gt 1 ] || return 0
+	execute "${KUBECTL}" delete pv "${@}"
+}
+
+cleanup()
+{
+	if [ -v PVC_DIR ] ; then
+		[ -n "${PVC_DIR}" ] && execute /usr/bin/rm -rf "${PVC_DIR}"
+	fi
+}
+
+usage()
+{
+	echo -e "usage: ${BASH_SOURCE:-${0}} [namespace]" 1>&2
+	exit 1
+}
+
+[ ${#} -ge 0 ] && [ ${#} -le 1 ] || usage
+
+KUBECTL="$(type -P kubectl)" || fail "Could not find kubectl in the path"
+
+if [ ${#} -eq 0 ] ; then
+    NAMESPACE="$("${KUBECTL}" config view --minify -o jsonpath="{..namespace}")"
+    [ -n "${NAMESPACE}" ] || NAMESPACE="default"
+else
+    NAMESPACE="${1}"
+    shift
+fi
+is_valid_name "${NAMESPACE}" || fail "Invalid namespace name [${NAMESPACE}]"
+
+# If the target namespace doesn't exist, by extension the environment doesn't exist
+if ! is_namespace_exists "${NAMESPACE}" ; then
+    say "The namespace ${NAMESPACE} does not exist, so nothing to remove"
+    exit 0
+fi
+
+trap cleanup EXIT
+
+KUBECTL="$(type -P kubectl)" || fail "Could not find kubectl in the path"
+
+say "👉 Gathering the PVC->PV mappings..."
+ALL_PVC_MAP="$(get_pvc_map)"
+OLD_PVC_MAP="$(/usr/bin/grep -v " clone-" <<< "${ALL_PVC_MAP}")"
+NEW_PVC_MAP="$(/usr/bin/grep " clone-" <<< "${ALL_PVC_MAP}")"
+
+readarray -t ALL_PVS < <(echo -n "${ALL_PVC_MAP}" | /usr/bin/awk '{ print $1 }')
+readarray -t ALL_PVCS < <(echo -n "${ALL_PVC_MAP}" | /usr/bin/awk '{ print $2 }')
+readarray -t OLD_PVS < <(echo -n "${OLD_PVC_MAP}" | /usr/bin/awk '{ print $1 }')
+readarray -t OLD_PVCS < <(echo -n "${OLD_PVC_MAP}" | /usr/bin/awk '{ print $2 }')
+readarray -t NEW_PVS < <(echo -n "${NEW_PVC_MAP}" | /usr/bin/awk '{ print $1 }')
+readarray -t NEW_PVCS < <(echo -n "${NEW_PVC_MAP}" | /usr/bin/awk '{ print $2 }')
+ok "Mappings ready!"
+
+[ ${#NEW_PVS[@]} -gt 0 ] || fail "No ne PVs found - can't continue!"
+[ ${#NEW_PVCS[@]} -gt 0 ] || fail "No ne PVCs found - can't continue!"
+
+ROLLBACK_DIR="${PWD}/pvc-rollback"
+mkdir -p "${ROLLBACK_DIR}" || fail "Failed to create the rollback directory, can't continue!"
+PVC_DIR="$(/usr/bin/mktemp -p "${PWD}" -d pvc-new.XXXXXX)" || fail "Failed to create the directory for the new PVC resources, can't continue!"
+
+say "👉 Setting PV retention policies to Retain..."
+set_volume_retention Retain "${ALL_PVS[@]}"
+ok "Retention policies set!"
+
+say "👉 Rendering the replacement PVCs"
+prepare_new_pvcs "${ROLLBACK_DIR}" "${PVC_DIR}" <<< "${NEW_PVC_MAP}"
+ok "Replacements ready!"
+
+warn "Removing all existing PVCs"
+delete_pvcs "${ALL_PVCS[@]}"
+ok "PVCs cleared!"
+
+warn "Releasing all existing PVs"
+clear_pv_claimref "${NEW_PVS[@]}"
+ok "PVs released"
+
+say "👉 Creating the replacement PVCs"
+create_new_pvcs "${PVC_DIR}"
+ok "Replacement PVCs created!"
+
+say "👉 Link new PVs to replacement PVCs"
+link_new_pvs <<< "${NEW_PVC_MAP}"
+ok "New PVs linked to replacement PVCs"
+
+say "👉 Resetting volume retention policy to Delete"
+set_volume_retention Delete "${NEW_PVS[@]}"
+ok "Retention policies reset!"
+
+warn "Please verify the reassignment results. If you're unhappy in any way, you can delete all existing PVCs in the ${NAMESPACE} namespace, and re-create them from the resources in [${ROLLBACK_DIR}], like so:"
+say ""
+say "\t# Delete all existing PVCs"
+say "\t$ kubectl delete \$(kubectl get pvc -o name)"
+say ""
+say "\t# Create the old PVCs pointing to the old volumes"
+say "\t$ kubectl apply -f ${ROLLBACK_DIR@Q}"
+say ""
+ok "If you're happy with the results, you can delete all old PVs now using this command:"
+say ""
+say "\t$ kubectl delete pv ${OLD_PVS[@]}"
+say ""
+ok "Reassignment complete"
