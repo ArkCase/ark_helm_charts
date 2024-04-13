@@ -43,10 +43,13 @@
 
   {{- /* Next, identify which server we're supposed to narrow the search down to */ -}}
   {{- $serverNames := (include "arkcase.ldap.serverNames" $.ctx | fromYaml) -}}
-  {{- $server := "" -}}
-  {{- if and (hasKey $ "server") (kindIs "string" $.server) $.server -}}
-    {{- $server = $.server -}}
-  {{- else -}}
+  {{- $server := (hasKey $ "server" | ternary $.server "") -}}
+  {{- $server = (kindIs "string" $server | ternary $server "") -}}
+
+  {{- /* Special case: if the server name "default" is used, treat as if no server name given */ -}}
+  {{- $server = (ne "default" $server) | ternary $server "" -}}
+
+  {{- if not $server -}}
     {{- /* No server specified, pick the default */ -}}
     {{- $default := (include "arkcase.tools.conf" (dict "ctx" $.ctx "debug" $.debug "detailed" true "value" "ldap.default") | fromYaml) -}}
     {{- if and $default (kindIs "string" $default.value) $default.value -}}
@@ -62,6 +65,7 @@
     {{- end -}}
   {{- end -}}
 
+  {{- /* If we declared a server with the name "default", this is a no-no! */ -}}
   {{- if eq "default" $server -}}
     {{- fail "The LDAP server name 'default' is reserved and may not be used" -}}
   {{- end -}}
@@ -140,4 +144,30 @@ result: "DC=some,DC=domain,DC=com"
   {{- end -}}
   {{- $parts := splitList "." (include "arkcase.tools.mustHostname" $realm | upper) -}}
   {{- (index $parts 0) -}}
+{{- end -}}
+
+{{- define "arkcase.ldap.domains" -}}
+  {{- $ctx := $ -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "Must send the root context as the only parameter" -}}
+  {{- end -}}
+
+  {{- $domains := dict -}}
+
+  {{- /* Common parameters for the detailed LDAP templates */ -}}
+  {{- $param := (dict "ctx" $ctx "value" "domain") -}}
+
+  {{- /* First go through the allowed aliases */ -}}
+  {{- $ldapServers := (include "arkcase.ldap.serverNames" $ctx | fromYaml) -}}
+  {{- range $server := $ldapServers.result -}}
+    {{- $p := merge (dict "server" $server) $param -}}
+    {{- $domains = set $domains ($server | lower) (include "arkcase.ldap" $p | lower) -}}
+  {{- end -}}
+
+  {{- /* Finally, get and map the default LDAP server */ -}}
+  {{- if $domains -}}
+    {{- $domains = set $domains "default" (include "arkcase.ldap" $param | lower) -}}
+  {{- end -}}
+
+  {{- $domains | toYaml -}}
 {{- end -}}
