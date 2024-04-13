@@ -145,3 +145,29 @@ result: "DC=some,DC=domain,DC=com"
   {{- $parts := splitList "." (include "arkcase.tools.mustHostname" $realm | upper) -}}
   {{- (index $parts 0) -}}
 {{- end -}}
+
+{{- define "arkcase.ldap.domains" -}}
+  {{- $ctx := $ -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "Must send the root context as the only parameter" -}}
+  {{- end -}}
+
+  {{- $domains := dict -}}
+
+  {{- /* Common parameters for the detailed LDAP templates */ -}}
+  {{- $param := (dict "ctx" $ctx "value" "domain") -}}
+
+  {{- /* First go through the allowed aliases */ -}}
+  {{- $ldapServers := (include "arkcase.ldap.serverNames" $ctx | fromYaml) -}}
+  {{- range $server := $ldapServers.result -}}
+    {{- $p := merge (dict "server" $server) $param -}}
+    {{- $domains = set $domains ($server | lower) (include "arkcase.ldap" $p | lower) -}}
+  {{- end -}}
+
+  {{- /* Finally, get and map the default LDAP server */ -}}
+  {{- if $domains -}}
+    {{- $domains = set $domains "default" (include "arkcase.ldap" $param | lower) -}}
+  {{- end -}}
+
+  {{- $domains | toYaml -}}
+{{- end -}}
