@@ -1,12 +1,12 @@
 #!/bin/bash
-SCRIPT="$(/usr/bin/readlink -f "${BASH_ARGV0:-${BASH_SOURCE:-${0}}}")"
-BASEDIR="$(/usr/bin/dirname "${SCRIPT}")"
+SCRIPT="$(readlink -f "${BASH_ARGV0:-${BASH_SOURCE:-${0}}}")"
+BASEDIR="$(dirname "${SCRIPT}")"
 
 set -euo pipefail
 
 timestamp()
 {
-	/usr/bin/date -Ins
+	date -Ins
 }
 
 say()
@@ -35,6 +35,18 @@ fail()
 	exit ${EXIT_CODE:-1}
 }
 
+ensure_exe()
+{
+	local BAD=()
+	for EXE in "${@}" ; do
+		type -P "${EXE}" &>/dev/null || BAD+=("${EXE}")
+	done
+
+	[ ${#BAD[@]} -eq 0 ] && return 0
+
+	fail "Could not find the following executables in the path: [${BAD[@]@Q}]"
+}
+
 is_valid_name()
 {
 	local NAME="${1}"
@@ -51,7 +63,7 @@ is_namespace_exists()
 
 clean_pvc()
 {
-	/usr/bin/sed \
+	sed \
 		-e '/creationTimestamp:/d' \
 		-e '/finalizers:/,+1 d' \
 		-e '/namespace:/,+1 d' \
@@ -72,7 +84,7 @@ usage()
 
 [ ${#} -ge 1 ] && [ ${#} -le 2 ] || usage
 
-KUBECTL="$(type -P kubectl)" || fail "Could not find kubectl in the path"
+ensure_exe kubectl
 
 if [ ${#} -eq 1 ] ; then
     NAMESPACE="$(kubectl config view --minify -o jsonpath="{..namespace}")"
