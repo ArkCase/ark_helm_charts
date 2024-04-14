@@ -113,6 +113,7 @@ clean_pvc()
 		-e '/volume.beta.kubernetes.io/d' \
 		-e '/volume.kubernetes.io/d' \
 		-e '/resourceVersion:/d' \
+		-e '/storageClassName:/d' \
 		-e '/uid:/d' \
 		-e '/status:/,$d'
 }
