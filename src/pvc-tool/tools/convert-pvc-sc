@@ -1,6 +1,6 @@
 #!/bin/bash
-SCRIPT="$(/usr/bin/readlink -f "${BASH_ARGV0:-${BASH_SOURCE:-${0}}}")"
-BASEDIR="$(/usr/bin/dirname "${SCRIPT}")"
+SCRIPT="$(readlink -f "${BASH_ARGV0:-${BASH_SOURCE:-${0}}}")"
+BASEDIR="$(dirname "${SCRIPT}")"
 
 set -euo pipefail
 
@@ -20,7 +20,7 @@ POD_REBOOT_TIMEOUT="$(( POD_REBOOT_WAIT * 15 ))"
 
 timestamp()
 {
-	/usr/bin/date -Ins
+	date -Ins
 }
 
 say()
@@ -40,7 +40,7 @@ warn()
 
 err()
 {
-	say "❌ ${@}" 1>&2
+	say "❌ ${@}"
 }
 
 fail()
@@ -54,6 +54,18 @@ is_valid_name()
 	local NAME="${1}"
 	[[ "${NAME}" =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?$ ]] || return ${?}
 	return 0
+}
+
+ensure_exe()
+{
+	local BAD=()
+	for EXE in "${@}" ; do
+		type -P "${EXE}" &>/dev/null || BAD+=("${EXE}")
+	done
+
+	[ ${#BAD[@]} -eq 0 ] && return 0
+
+	fail "Could not find the following executables in the path: [${BAD[@]@Q}]"
 }
 
 execute()
@@ -81,22 +93,22 @@ compute_pod_state()
 
 	# If the JSON is non-empty and valid then we can compute the real state
 	STATE="missing"
-	[ -n "${JSON}" ] && "${JQ}" -r <<< "${JSON}" &>/dev/null && STATE=""
+	[ -n "${JSON}" ] && jq -r <<< "${JSON}" &>/dev/null && STATE=""
 	[ -n "${STATE}" ] && echo -n "${STATE}" && return 0
 
 	# The pod exists ... is it terminating?
-	local DELETION_TS="$("${JQ}" -r ".metadata.deletionTimestamp // \"\"" <<< "${JSON}")"
+	local DELETION_TS="$(jq -r ".metadata.deletionTimestamp // \"\"" <<< "${JSON}")"
 	[ -n "${DELETION_TS}" ] && STATE="terminating"
 	[ -n "${STATE}" ] && echo -n "${STATE}" && return 0
 
 	# It's not terminating ... maybe it's ready?
 	local COND=""
 
-	COND="$("${JQ}" -r '.status.conditions[] | select(.type == "Ready") | .status' <<< "${JSON}")"
+	COND="$(jq -r '.status.conditions[] | select(.type == "Ready") | .status' <<< "${JSON}")"
 	[ "${COND,,}" == "true" ] && STATE="ready"
 	[ -n "${STATE}" ] && echo -n "${STATE}" && return 0
 
-	COND="$("${JQ}" -r '.status.conditions[] | select(.type == "Initialized") | .status' <<< "${JSON}")"
+	COND="$(jq -r '.status.conditions[] | select(.type == "Initialized") | .status' <<< "${JSON}")"
 	[ "${COND,,}" == "true" ] && STATE="started"
 	[ -n "${STATE}" ] && echo -n "${STATE}" && return 0
 
@@ -112,7 +124,7 @@ get_pod_state()
 	local JSON=""
 
 	# If this call fails, it's because the pod doesn't exist
-	JSON="$("${KUBECTL}" get pod --namespace "${NAMESPACE}" "${POD}" -o json 2>&1)" || JSON=""
+	JSON="$(kubectl get pod --namespace "${NAMESPACE}" "${POD}" -o json 2>&1)" || JSON=""
 	compute_pod_state "${JSON}"
 	return 0
 }
@@ -122,13 +134,13 @@ get_deployment_status()
 	local STATUS=""
 
 	# Have to split this or our logic won't work
-	STATUS="$("${HELM}" status "${RELEASE}" --namespace "${NAMESPACE}" -o json)" || return ${?}
+	STATUS="$(helm status "${RELEASE}" --namespace "${NAMESPACE}" -o json)" || return ${?}
 
 	# Can be one of: unknown, deployed, uninstalled,
 	# superseded, failed, uninstalling, pending-install,
 	# pending-upgrade or pending-rollback
 	local RESULT=""
-	RESULT="$("${JQ}" -r ".info.status" <<< "${STATUS}")" || return ${?}
+	RESULT="$(jq -r ".info.status" <<< "${STATUS}")" || return ${?}
 	echo -n "${RESULT}"
 	return 0
 }
@@ -156,7 +168,7 @@ should_uninstall()
 is_namespace_exists()
 {
 	local NAMESPACE="${1}"
-	execute "${KUBECTL}" get namespace "${NAMESPACE}" &>/dev/null || return ${?}
+	kubectl get namespace "${NAMESPACE}" &>/dev/null || return ${?}
 	return 0
 }
 
@@ -165,10 +177,10 @@ is_pod_waitable()
 	local POD="${1}"
 
 	local JSON=""
-	JSON="$("${KUBECTL}" get pod --namespace "${NAMESPACE}" "${POD}" -o json)" || return 1
+	JSON="$(kubectl get pod --namespace "${NAMESPACE}" "${POD}" -o json)" || return 1
 
 	local TS=""
-	TS="$("${JQ}" -r ".metadata.deletionTimestamp" <<< "${JSON}")" || return 1
+	TS="$(jq -r ".metadata.deletionTimestamp" <<< "${JSON}")" || return 1
 
 	# If the deletion timestamp is set, the pod is going down
 	[ -n "${TS}" ] && [ "${TS}" != "null" ] && return 1
@@ -182,7 +194,7 @@ deploy_chart()
 {
 	should_install || return 0
 	say "👉 Deploying the chart to do the volume cloning..."
-	execute "${HELM}" install \
+	execute helm install \
 		"${RELEASE}" arkcase/pvc-tool \
 		--namespace "${NAMESPACE}" \
 		--set mode=clone || fail "Unable to deploy the chart"
@@ -191,7 +203,7 @@ deploy_chart()
 track_logs()
 {
 	local POD="${1}"
-	"${KUBECTL}" logs \
+	kubectl logs \
 		--namespace "${NAMESPACE}" \
 		--tail=1000 \
 		--ignore-errors \
@@ -205,7 +217,7 @@ wait_for_condition()
 	local CONDITION="${2}"
 	local WAIT_TIMEOUT="${3:-30s}"
 	# We will wait for the pod to be initialized
-	"${KUBECTL}" wait pod \
+	kubectl wait pod \
 		--namespace "${NAMESPACE}" "${POD}" \
 		--for "${CONDITION}" \
 		--timeout="${WAIT_TIMEOUT}" \
@@ -230,7 +242,7 @@ get_copy_result()
 			[[ "${POLL_WAIT}" =~ ^(0|[1-9][0-9]*)$ ]] || POLL_WAIT="${POD_POLL_WAIT}"
 			if ! "${FIRST}" && [ ${POLL_WAIT} -gt 0 ] ; then
 				say "💤 Sleeping for ${POLL_WAIT}..."
-				/usr/bin/sleep ${POLL_WAIT} || fail "Interrupted while sleeping"
+				sleep ${POLL_WAIT} || fail "Interrupted while sleeping"
 			fi
 
 			OLD_STATE="${NEW_STATE}"
@@ -250,25 +262,23 @@ get_copy_result()
 		CONDITION=""
 		case "${NEW_STATE}" in
 			terminating )
-				"${STATE_CHANGED}" && say "👉 The pod is terminating, waiting for it to disappear completely"
+				"${STATE_CHANGED}" && warn "The pod is terminating, waiting for it to disappear completely"
 				CONDITION="delete"
 				;;
 
 			missing )
-				# TODO: Enable the maximum wait timer so we don't wait forever for it to be created
-				"${STATE_CHANGED}" && say "👉 The pod is missing, waiting for it to ${MISSING_PREFIX}appear..."
-				"${KUBECTL}" get pod --namespace "${NAMESPACE}" "${POD}" &>/dev/null || continue
+				"${STATE_CHANGED}" && warn "The pod is missing, waiting for it to ${MISSING_PREFIX}appear..."
+				kubectl get pod --namespace "${NAMESPACE}" "${POD}" &>/dev/null || continue
 				CONDITION="condition=PodScheduled"
 				;;
 
 			created )
-				# TODO: Enable the maximum wait timer so we don't wait forever for it to start running
-				"${STATE_CHANGED}" && say "👉 The pod seems to be scheduled, will wait for initialization to complete..."
+				"${STATE_CHANGED}" && ok "The pod seems to be scheduled, will wait for initialization to complete..."
 				CONDITION="condition=Initialized"
 				;;
 
 			started )
-				"${STATE_CHANGED}" && say "👉 The copy seems to be running, waiting for it to conclude..."
+				"${STATE_CHANGED}" && ok "The copy seems to be running, waiting for it to conclude..."
 				CONDITION="condition=Ready"
 				;;
 
@@ -286,7 +296,7 @@ get_copy_result()
 				ok "The pod appears to have completed its work"
 				local RESULT=""
 				RC=0
-				RESULT="$("${KUBECTL}" exec --namespace "${NAMESPACE}" "${POD}" -- /usr/bin/cat "${RESULT_MARKER}" 2>/dev/null)" || RC=${?}
+				RESULT="$(kubectl exec --namespace "${NAMESPACE}" "${POD}" -- cat "${RESULT_MARKER}" 2>/dev/null)" || RC=${?}
 				[ ${RC} -eq 0 ] && return ${RESULT}
 
 				# If the RC isn't 0 it means there's something off and we weren't able
@@ -315,7 +325,7 @@ undeploy_chart()
 {
 	should_uninstall || return 0
 	say "👉 Removing the chart to release the volumes..."
-	execute "${HELM}" uninstall \
+	execute helm uninstall \
 		"${RELEASE}" \
 		--namespace "${NAMESPACE}" \
 		--wait \
@@ -331,12 +341,11 @@ usage()
 
 [ ${#} -ge 1 ] && [ ${#} -le 2 ] || usage
 
-HELM="$(type -P helm)" || fail "Could not find helm in the path"
-JQ="$(type -P jq)" || fail "Could not find jq in the path"
-KUBECTL="$(type -P kubectl)" || fail "Could not find kubectl in the path"
+# Make sure we have all the requisite tools
+ensure_exe helm jq kubectl
 
 if [ ${#} -eq 1 ] ; then
-    NAMESPACE="$("${KUBECTL}" config view --minify -o jsonpath="{..namespace}")"
+    NAMESPACE="$(kubectl config view --minify -o jsonpath="{..namespace}")"
     [ -n "${NAMESPACE}" ] || NAMESPACE="${POD_NAMESPACE:-default}"
 else
     NAMESPACE="${1}"
