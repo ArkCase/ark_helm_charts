@@ -353,11 +353,11 @@ if ! is_namespace_exists "${NAMESPACE}" ; then
     exit 0
 fi
 
-# deploy_chart || fail "Couldn't deploy the chart to do the volume cloning"
+deploy_chart || fail "Couldn't deploy the chart to do the volume cloning"
 ok "Chart deployed!"
 
 get_copy_result || fail "The file copy seems to have failed, please review the full logs for more information"
 ok "Copy complete!"
 
-# undeploy_chart || fail "Couldn't un-deploy the chart"
+undeploy_chart || fail "Couldn't un-deploy the chart"
 ok "Undeployment completed!"
