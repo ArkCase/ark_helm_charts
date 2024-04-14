@@ -1,0 +1,22 @@
+#!/bin/bash
+set -euo pipefail
+
+DEFAULT_POLL_SLEEP="30"
+
+[ -v POLL_SLEEP ] || POLL_SLEEP=""
+
+[ ${#} -eq 0 ] || POLL_SLEEP="${1}"
+
+[[ "${POLL_SLEEP}" =~ ^[1-9][0-9]*$ ]] || POLL_SLEEP="${DEFAULT_POLL_SLEEP}"
+
+ARGS=()
+for D in /pvc /clones ; do
+	[ -d "${D}" ] || continue
+
+	readarray -t L < <(ls -d "${D}"/* | sort)
+	ARGS+=("${L[@]}")
+done
+
+[ ${#ARGS[@]} -gt 0 ] || exit 1
+
+exec watch -n "${POLL_SLEEP}" df -kh "${ARGS[@]}"
