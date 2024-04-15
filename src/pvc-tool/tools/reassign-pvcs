@@ -1,6 +1,6 @@
 #!/bin/bash
-SCRIPT="$(/usr/bin/readlink -f "${BASH_ARGV0:-${BASH_SOURCE:-${0}}}")"
-BASEDIR="$(/usr/bin/dirname "${SCRIPT}")"
+SCRIPT="$(readlink -f "${BASH_ARGV0:-${BASH_SOURCE:-${0}}}")"
+BASEDIR="$(dirname "${SCRIPT}")"
 
 set -euo pipefail
 
@@ -13,7 +13,7 @@ export DISABLE_CLONE
 
 timestamp()
 {
-	/usr/bin/date -Ins
+	date -Ins
 }
 
 say()
@@ -33,7 +33,7 @@ warn()
 
 err()
 {
-	say "❌ ${@}" 1>&2
+	say "❌ ${@}"
 }
 
 fail()
@@ -49,10 +49,22 @@ is_valid_name()
 	return 0
 }
 
+ensure_exe()
+{
+	local BAD=()
+	for EXE in "${@}" ; do
+		type -P "${EXE}" &>/dev/null || BAD+=("${EXE}")
+	done
+
+	[ ${#BAD[@]} -eq 0 ] && return 0
+
+	fail "Could not find the following executables in the path: [${BAD[@]@Q}]"
+}
+
 is_namespace_exists()
 {
 	local NAMESPACE="${1}"
-	execute "${KUBECTL}" get namespace "${NAMESPACE}" &>/dev/null || return ${?}
+	execute kubectl get namespace "${NAMESPACE}" &>/dev/null || return ${?}
 	return 0
 }
 
@@ -76,11 +88,11 @@ execute()
 
 get_pvc_map()
 {
-	"${KUBECTL}" get \
+	kubectl get \
 		--namespace "${NAMESPACE}" \
 		--no-headers=true pvc | \
-		/usr/bin/awk '{ printf("%s %s\n", $3, $1) }' | \
-		/usr/bin/sort -k 2
+		awk '{ printf("%s %s\n", $3, $1) }' | \
+		sort -k 2
 }
 
 set_volume_retention()
@@ -100,12 +112,12 @@ set_volume_retention()
 	EOF
 	)"
 
-	execute "${KUBECTL}" patch pv "${@}" -p "${PATCH}"
+	execute kubectl patch pv "${@}" -p "${PATCH}"
 }
 
 clean_pvc()
 {
-	/usr/bin/sed \
+	sed \
 		-e '/creationTimestamp:/d' \
 		-e '/finalizers:/,+1 d' \
 		-e '/kubectl.kubernetes.io\/last-applied-configuration:/,+1 d' \
@@ -113,6 +125,7 @@ clean_pvc()
 		-e '/volume.beta.kubernetes.io/d' \
 		-e '/volume.kubernetes.io/d' \
 		-e '/resourceVersion:/d' \
+		-e '/storageClassName:/d' \
 		-e '/uid:/d' \
 		-e '/status:/,$d'
 }
@@ -120,7 +133,7 @@ clean_pvc()
 remap_pvc()
 {
 	local PV="${1}"
-	clean_pvc | /usr/bin/sed -e "s;volumeName: .*$;volumeName: ${PV};g"
+	clean_pvc | sed -e "s;volumeName: .*$;volumeName: ${PV};g"
 }
 
 prepare_new_pvcs()
@@ -129,9 +142,9 @@ prepare_new_pvcs()
 	local TGT_DIR="${2}"
 	while read PV PVC ; do
 		local OLD="${PVC/clone-/}"
-		local DATA="$("${KUBECTL}" get pvc --namespace "${NAMESPACE}" "${OLD}" -o yaml)"
+		local DATA="$(kubectl get pvc --namespace "${NAMESPACE}" "${OLD}" -o yaml)"
 		echo -n "${DATA}" | clean_pvc > "${ROLLBACK_DIR}/${OLD}.yaml"
-		local OLD_PV="$(/usr/bin/grep "volumeName:" <<< "${DATA}" | /usr/bin/awk '{ print $2 }')"
+		local OLD_PV="$(grep "volumeName:" <<< "${DATA}" | awk '{ print $2 }')"
 		say "👀 Remapping ${OLD}..."
 		say "\t\t${OLD_PV} -> ${PV}"
 		remap_pvc "${PV}" <<< "${DATA}" > "${TGT_DIR}/${OLD}.yaml"
@@ -141,7 +154,7 @@ prepare_new_pvcs()
 delete_pvcs()
 {
 	[ ${#} -gt 1 ] || return 0
-	execute "${KUBECTL}" delete pvc --namespace "${NAMESPACE}" "${@}"
+	execute kubectl delete pvc --namespace "${NAMESPACE}" "${@}"
 }
 
 clear_pv_claimref()
@@ -159,12 +172,12 @@ clear_pv_claimref()
 	EOF
 	)"
 
-	execute "${KUBECTL}" patch pv "${@}" --type strategic -p "${PATCH}"
+	execute kubectl patch pv "${@}" --type strategic -p "${PATCH}"
 }
 
 create_new_pvcs()
 {
-	execute "${KUBECTL}" apply --namespace "${NAMESPACE}" -f "${PVC_DIR}"
+	execute kubectl apply --namespace "${NAMESPACE}" -f "${PVC_DIR}"
 }
 
 link_new_pvs()
@@ -177,20 +190,20 @@ link_new_pvs()
 		EOF
 		)"
 
-		execute "${KUBECTL}" patch pv "${PV}" -p "${PATCH}"
+		execute kubectl patch pv "${PV}" -p "${PATCH}"
 	done
 }
 
 delete_volumes()
 {
 	[ ${#} -gt 1 ] || return 0
-	execute "${KUBECTL}" delete pv "${@}"
+	execute kubectl delete pv "${@}"
 }
 
 cleanup()
 {
 	if [ -v PVC_DIR ] ; then
-		[ -n "${PVC_DIR}" ] && execute /usr/bin/rm -rf "${PVC_DIR}"
+		[ -n "${PVC_DIR}" ] && execute rm -rf "${PVC_DIR}"
 	fi
 }
 
@@ -202,10 +215,10 @@ usage()
 
 [ ${#} -ge 0 ] && [ ${#} -le 1 ] || usage
 
-KUBECTL="$(type -P kubectl)" || fail "Could not find kubectl in the path"
+ensure_exe kubectl
 
 if [ ${#} -eq 0 ] ; then
-    NAMESPACE="$("${KUBECTL}" config view --minify -o jsonpath="{..namespace}")"
+    NAMESPACE="$(kubectl config view --minify -o jsonpath="{..namespace}")"
     [ -n "${NAMESPACE}" ] || NAMESPACE="default"
 else
     NAMESPACE="${1}"
@@ -225,15 +238,15 @@ KUBECTL="$(type -P kubectl)" || fail "Could not find kubectl in the path"
 
 say "👉 Gathering the PVC->PV mappings..."
 ALL_PVC_MAP="$(get_pvc_map)"
-OLD_PVC_MAP="$(/usr/bin/grep -v " clone-" <<< "${ALL_PVC_MAP}")"
-NEW_PVC_MAP="$(/usr/bin/grep " clone-" <<< "${ALL_PVC_MAP}")"
+OLD_PVC_MAP="$(grep -v " clone-" <<< "${ALL_PVC_MAP}")"
+NEW_PVC_MAP="$(grep " clone-" <<< "${ALL_PVC_MAP}")"
 
-readarray -t ALL_PVS < <(echo -n "${ALL_PVC_MAP}" | /usr/bin/awk '{ print $1 }')
-readarray -t ALL_PVCS < <(echo -n "${ALL_PVC_MAP}" | /usr/bin/awk '{ print $2 }')
-readarray -t OLD_PVS < <(echo -n "${OLD_PVC_MAP}" | /usr/bin/awk '{ print $1 }')
-readarray -t OLD_PVCS < <(echo -n "${OLD_PVC_MAP}" | /usr/bin/awk '{ print $2 }')
-readarray -t NEW_PVS < <(echo -n "${NEW_PVC_MAP}" | /usr/bin/awk '{ print $1 }')
-readarray -t NEW_PVCS < <(echo -n "${NEW_PVC_MAP}" | /usr/bin/awk '{ print $2 }')
+readarray -t ALL_PVS < <(echo -n "${ALL_PVC_MAP}" | awk '{ print $1 }')
+readarray -t ALL_PVCS < <(echo -n "${ALL_PVC_MAP}" | awk '{ print $2 }')
+readarray -t OLD_PVS < <(echo -n "${OLD_PVC_MAP}" | awk '{ print $1 }')
+readarray -t OLD_PVCS < <(echo -n "${OLD_PVC_MAP}" | awk '{ print $2 }')
+readarray -t NEW_PVS < <(echo -n "${NEW_PVC_MAP}" | awk '{ print $1 }')
+readarray -t NEW_PVCS < <(echo -n "${NEW_PVC_MAP}" | awk '{ print $2 }')
 ok "Mappings ready!"
 
 [ ${#NEW_PVS[@]} -gt 0 ] || fail "No ne PVs found - can't continue!"
@@ -241,7 +254,7 @@ ok "Mappings ready!"
 
 ROLLBACK_DIR="${PWD}/pvc-rollback"
 mkdir -p "${ROLLBACK_DIR}" || fail "Failed to create the rollback directory, can't continue!"
-PVC_DIR="$(/usr/bin/mktemp -p "${PWD}" -d pvc-new.XXXXXX)" || fail "Failed to create the directory for the new PVC resources, can't continue!"
+PVC_DIR="$(mktemp -p "${PWD}" -d pvc-new.XXXXXX)" || fail "Failed to create the directory for the new PVC resources, can't continue!"
 
 say "👉 Setting PV retention policies to Retain..."
 set_volume_retention Retain "${ALL_PVS[@]}"

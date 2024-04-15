@@ -8,7 +8,7 @@ Return a map which contains the subsystem data map as required by other API call
 
 */ -}}
 {{- define "arkcase.subsystem" -}}
-  {{- $ctx := . -}}
+  {{- $ctx := $ -}}
   {{- $subsysName := "" -}}
   {{- $value := "" -}}
   {{- if hasKey $ctx "Values" -}}
@@ -129,9 +129,9 @@ Parameter: either the root context (i.e. "." or "$"), or
 {{- end -}}
 
 {{- define "arkcase.subsystem.service.render" -}}
-  {{- $ctx := .ctx -}}
-  {{- $data := .data -}}
-  {{- $global := .global -}}
+  {{- $ctx := $.ctx -}}
+  {{- $data := $.data -}}
+  {{- $global := $.global -}}
   {{- if (include "arkcase.subsystem.enabledOrExternal" $ctx) -}}
     {{- $external := (coalesce $data.external $ctx.Values.service.external "") -}}
     {{- $ports := (coalesce $data.ports list) -}}
@@ -489,11 +489,11 @@ Render subsystem service declarations based on whether an external host declarat
 Parameter: the root context (i.e. "." or "$")
 */ -}}
 {{- define "arkcase.subsystem.service" }}
-  {{- $partname := (include "arkcase.part.name" .) -}}
-  {{- $ctx := . }}
-  {{- if hasKey . "ctx" -}}
-    {{- $ctx = .ctx -}}
-    {{- if hasKey . "subname" -}}
+  {{- $partname := (include "arkcase.part.name" $) -}}
+  {{- $ctx := $ }}
+  {{- if hasKey $ "ctx" -}}
+    {{- $ctx = $.ctx -}}
+    {{- if hasKey $ "subname" -}}
       {{- $partname = (.subname | toString | lower) -}}
     {{- end -}}
   {{- end -}}
@@ -534,8 +534,8 @@ Parameter: the root context (i.e. "." or "$")
       {{- /* Add the work item */ -}}
       {{- $work = append $work (dict "ctx" $ctx "data" $data "subname" $partname) }}
     {{- end }}
-    {{- range $work }}
-      {{- include "arkcase.subsystem.service.render" . }}
+    {{- range $w := $work }}
+      {{- include "arkcase.subsystem.service.render" $w }}
     {{- end }}
   {{- end }}
 {{- end }}
