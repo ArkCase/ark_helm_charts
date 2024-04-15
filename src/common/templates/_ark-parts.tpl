@@ -1,5 +1,5 @@
 {{- define "arkcase.part.name" -}}
-  {{- $ctx := . -}}
+  {{- $ctx := $ -}}
   {{- $explicit := false -}}
   {{- $partname := "" -}}
 
