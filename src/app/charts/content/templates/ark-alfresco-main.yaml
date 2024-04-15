@@ -98,6 +98,7 @@ spec:
                 -Dmetadata-keystore.metadata.algorithm=DESede
 
             {{- $content := (include "arkcase.cm.info" $ | fromYaml) }}
+            {{- $baseDn := (include "arkcase.ldap.baseDn" $) }}
             {{- $indexing := (not (empty (include "arkcase.content.indexing" $))) }}
             # The password must be encoded using the NTLM MD4 hash ... b/c of course it does
             #    -Dalfresco_user_store.adminpassword={{ $content.password | quote }}
@@ -108,10 +109,16 @@ spec:
                 -XX:MinRAMPercentage=50
                 -XX:MaxRAMPercentage=80
                 -Ddir.root=$(DATA_DIR)
-                -Ddb.driver={{ $schema.jdbc.driver | quote }}
-                -Ddb.username={{ $schema.username | quote }}
-                -Ddb.password={{ $schema.password | quote }}
-                -Ddb.url={{ $schema.jdbc.url | quote }}
+                -Ddb.driver={{ $schema.jdbc.driver | squote }}
+                -Ddb.username={{ $schema.username | squote }}
+                -Ddb.password={{ $schema.password | squote }}
+                -Ddb.url={{ $schema.jdbc.url | squote }}
+                -Dldap.authentication.java.naming.provider.url={{ include "arkcase.ldap" (dict "ctx" $ "value" "url") | squote }}
+                -Dldap.authentication.userNameFormat={{ printf "%%s@%s" (include "arkcase.ldap" (dict "ctx" $ "value" "domain")) | squote }}
+                -Dldap.synchronization.java.naming.security.principal={{ include "arkcase.ldap.bindDn" $ | squote }}
+                -Dldap.synchronization.java.naming.security.credentials={{ include "arkcase.ldap" (dict "ctx" $ "value" "bind.password") | squote }}
+                -Dldap.synchronization.userSearchBase={{ printf "%s,%s" (include "arkcase.ldap" (dict "ctx" $ "value" "search.users.base")) $baseDn | squote }}
+                -Dldap.synchronization.groupSearchBase={{ printf "%s,%s" (include "arkcase.ldap" (dict "ctx" $ "value" "search.groups.base")) $baseDn | squote }}
                 -Dsolr.secureComms=https
                 -Dsolr.host={{ include "arkcase.alfresco.service" (dict "ctx" $ "name" "search") | quote }}
                 -Dsolr.port.ssl=8983
@@ -156,13 +163,9 @@ spec:
               mountPath: *dataDir
             - name: *initVol
               mountPath: *initDir
-            - name: *secrets
+            - name: *configMap
               mountPath: "/usr/local/tomcat/shared/classes/alfresco-global.properties"
               subPath: &alfrescoGlobalProperties "alfresco-global.properties"
-              readOnly: true
-            - name: *secrets
-              mountPath: "/usr/local/tomcat/shared/classes/alfresco/extension/subsystems/Authentication/ldap-ad/ldap1/ldap-ad.properties"
-              subPath: &ldapAdProperties "ldap-ad.properties"
               readOnly: true
             - name: *configMap
               mountPath: "/usr/local/bin/tomcat-live"
@@ -184,16 +187,14 @@ spec:
             defaultMode: 0444
             items:
               {{- include "arkcase.alfresco.license.volumes" $ | nindent 14 }}
-              - key: *alfrescoGlobalProperties
-                path: *alfrescoGlobalProperties
-              - key: *ldapAdProperties
-                path: *ldapAdProperties
         - name: *configMap
           configMap:
             optional: false
             name: *fullname
             defaultMode: 0444
             items:
+              - key: *alfrescoGlobalProperties
+                path: *alfrescoGlobalProperties
               - key: *tomcatLive
                 path: *tomcatLive
                 mode: 0555
