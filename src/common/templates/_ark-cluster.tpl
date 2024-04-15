@@ -314,7 +314,7 @@
   {{- if not (include "arkcase.isRootContext" $) -}}
     {{- fail "The parameter value must be the root context" -}}
   {{- end -}}
-  {{- $type := ($.Values.updateStrategy | toString | default "RollingUpdate") -}}
+  {{- $type := ($.Values.updateStrategy | default "" | toString | default "RollingUpdate") -}}
   {{- $cluster := (include "arkcase.cluster" $ | fromYaml) -}}
   {{- $nodes := ($cluster.nodes | default 1 | int) -}}
 type: {{ $type | quote }}
