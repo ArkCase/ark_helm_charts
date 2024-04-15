@@ -1,0 +1,131 @@
+#!/bin/bash
+SCRIPT="$(readlink -f "${BASH_ARGV0:-${BASH_SOURCE:-${0}}}")"
+BASEDIR="$(dirname "${SCRIPT}")"
+
+set -euo pipefail
+
+timestamp()
+{
+	date -Ins
+}
+
+say()
+{
+	echo -e "$(timestamp): ${@}"
+}
+
+ok()
+{
+	say "✅ ${@}"
+}
+
+warn()
+{
+	say "⚠️ ${@}"
+}
+
+err()
+{
+	say "❌ ${@}"
+}
+
+fail()
+{
+	err "${@}"
+	exit ${EXIT_CODE:-1}
+}
+
+ensure_exe()
+{
+	local BAD=()
+	for EXE in "${@}" ; do
+		type -P "${EXE}" &>/dev/null || BAD+=("${EXE}")
+	done
+
+	[ ${#BAD[@]} -eq 0 ] && return 0
+
+	fail "Could not find the following executables in the path: [${BAD[@]@Q}]"
+}
+
+is_valid_name()
+{
+	local NAME="${1}"
+	[[ "${NAME}" =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?$ ]] || return ${?}
+	return 0
+}
+
+is_namespace_exists()
+{
+	local NAMESPACE="${1}"
+	kubectl get namespace "${NAMESPACE}" &>/dev/null || return ${?}
+	return 0
+}
+
+clean_pvc()
+{
+	sed \
+		-e '/creationTimestamp:/d' \
+		-e '/finalizers:/,+1 d' \
+		-e '/namespace:/,+1 d' \
+		-e '/kubectl.kubernetes.io\/last-applied-configuration:/,+1 d' \
+		-e '/pv.kubernetes.io\/b/d' \
+		-e '/volume.beta.kubernetes.io/d' \
+		-e '/volume.kubernetes.io/d' \
+		-e '/resourceVersion:/d' \
+		-e '/uid:/d' \
+		-e '/status:/,$d'
+}
+
+usage()
+{
+	echo -e "usage: ${BASH_SOURCE:-${0}} [source-namespace] target-dir" 1>&2
+	exit 1
+}
+
+[ ${#} -ge 1 ] && [ ${#} -le 2 ] || usage
+
+ensure_exe kubectl
+
+if [ ${#} -eq 1 ] ; then
+    NAMESPACE="$(kubectl config view --minify -o jsonpath="{..namespace}")"
+    [ -n "${NAMESPACE}" ] || NAMESPACE="default"
+else
+    NAMESPACE="${1}"
+    shift
+fi
+is_valid_name "${NAMESPACE}" || fail "Invalid source namespace name [${NAMESPACE}]"
+
+# If the target namespace doesn't exist, by extension the environment doesn't exist
+if ! is_namespace_exists "${NAMESPACE}" ; then
+    say "The namespace ${NAMESPACE} does not exist, so nothing to copy"
+    exit 0
+fi
+
+PVC_DIR="${1}"
+[ -n "${PVC_DIR}" ] || fail "The target directory may not be the empty string"
+
+KUBECTL="$(type -P kubectl)" || fail "Could not find kubectl in the path"
+
+say "👉 Gathering the PVCs definitions..."
+PVCS="$(kubectl get pvc --namespace "${NAMESPACE}" --no-headers | awk '{ print $1 }')" || fail "Failed to get the PVC names"
+readarray -t PVCS < <(echo -n "${PVCS}" | sed -e '/^\s*$/d')
+ok "Found ${#PVCS[@]} PVCs"
+
+[ -e "${PVC_DIR}" ] || mkdir -p "${PVC_DIR}" || fail "Unable to create the missing target directory [${PVC_DIR}]"
+[ -d "${PVC_DIR}" ] || fail "The path [${PVC_DIR}] is not a directory"
+[ -w "${PVC_DIR}" ] || fail "The directory [${PVC_DIR}] is not writable"
+[ -x "${PVC_DIR}" ] || fail "The directory [${PVC_DIR}] is not executable"
+
+for PVC in "${PVCS[@]}" ; do
+	say "👉 Extracting PVC ${PVC}..."
+	RC=0
+	DATA="$(kubectl get pvc "${PVC}" -o yaml 2>&1)" || RC=${?}
+	if [ ${RC} -eq 0 ] ; then
+		TGT="${PVC_DIR}/${PVC}.yaml"
+		echo -n "${DATA}" | clean_pvc > "${TGT}"
+		ok "Extracted PVC ${PVC} into [${TGT}]"
+		continue
+	fi
+
+	err "Failed to read the definition for PVC ${PVC} (rc=${RC}):\n${DATA}"
+done
