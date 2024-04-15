@@ -149,8 +149,6 @@ gateway:
               extended: true
 
 messaging:
-  service:
-    # external: "www.activemq.com"
   configuration:
     users:
       arkcase:
@@ -169,10 +167,6 @@ messaging:
       admins:
         - *arkcaseMessagingUser
         - *cloudConfigMessagingUser
-
-search:
-  service:
-    # external: ["192.168.3.33", "12.13.14.15"]
 
 rdbms:
   configuration:
