@@ -307,6 +307,10 @@ spec:
               subPath: &applicationContextSpringSecurityXml "applicationContext-spring-security.xml"
               readOnly: true
             - name: *configMap
+              mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/applicationContext-spring-security-ldap.xml"
+              subPath: &applicationContextSpringSecurityLdapXml "applicationContext-spring-security-ldap.xml"
+              readOnly: true
+            - name: *configMap
               mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/quartz/quartz.properties"
               subPath: &quartzProperties "quartz.properties"
               readOnly: true
@@ -422,6 +426,8 @@ spec:
                 path: *repositorySpringProperties
               - key: *applicationContextSpringSecurityXml
                 path: *applicationContextSpringSecurityXml
+              - key: *applicationContextSpringSecurityLdapXml
+                path: *applicationContextSpringSecurityLdapXml
               - key: *securityProperties
                 path: *securityProperties
               - key: *serverPropertiesTpl
