@@ -596,3 +596,9 @@
   {{- end -}}
   {{- get $masterCache $chartName | toYaml -}}
 {{- end -}}
+
+{{- define "arkcase.conf.extraSpringProfiles" -}}
+  {{- if .Values.global.conf.core.extraSpringProfiles -}}
+    {{- .Values.global.conf.core.extraSpringProfiles -}}
+  {{- end -}}
+{{- end -}}
