@@ -58,7 +58,7 @@ shopt -s extglob
 ADMIN_URL="${ADMIN_URL%%+(/)}"
 shopt -u extglob
 
-DIVIDER=':///:'
+DIVIDER=":///:"
 
 extract_archive() {
 	local TYPE="${1}"
@@ -205,7 +205,7 @@ install_report() {
 list_reports() {
 	local REPORTS_DIR="${1}"
 	[ -d "${REPORTS_DIR}" ] | return 0
-	find "${REPORTS_DIR}" -type f -not -name '.*' | \
+	find "${REPORTS_DIR}" -type f -not -name ".*" | \
 		sed -e "s;^${REPORTS_DIR}/;;g" | \
 		sort
 }
