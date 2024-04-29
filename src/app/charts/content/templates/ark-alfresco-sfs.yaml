@@ -70,7 +70,7 @@ spec:
           {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
           env:
             {{- include "arkcase.acme.env" $ | nindent 12 }}
-            - name: JAVA_OPTS
+            - name: JAVA_TOOL_OPTIONS
               value: >-
                 -XX:MinRAMPercentage=50
                 -XX:MaxRAMPercentage=80
