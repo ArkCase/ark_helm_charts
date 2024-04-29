@@ -1,9 +1,9 @@
 {{- define "arkcase.pentaho.jcr.fileSystem" -}}
-  {{- $ctx := required "Must provide the 'ctx' parameter" .ctx -}}
-  {{- if not (kindIs "map" $ctx) -}}
-    {{- fail "The 'ctx' parameter must be the root map (i.e. $ or .)" -}}
+  {{- $ctx := $.ctx -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "The 'ctx' parameter given must be the root context (. or $)" -}}
   {{- end -}}
-  {{- $prefix := required "Must provide the 'prefix' parameter" .prefix -}}
+  {{- $prefix := required "Must provide the 'prefix' parameter" $.prefix -}}
   {{- if not (kindIs "string" $prefix) -}}
     {{- fail "The 'prefix' parameter must be a string" -}}
   {{- end -}}
@@ -103,4 +103,29 @@
   <param name="janitorFirstRunHourOfDay" value="3"/>
 </Journal>
   {{- end -}}
+{{- end -}}
+
+{{- define "arkcase.pentaho.serverUrl" -}}
+  {{- $ctx := $ -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "The 'ctx' parameter given must be the root context (. or $)" -}}
+  {{- end -}}
+
+  {{- $serverUrl := "https://reports:8443/pentaho" -}}
+  {{- $baseUrl := (include "arkcase.tools.conf" (dict "ctx" $ctx "value" "baseUrl") | toString) -}}
+  {{- if $baseUrl -}}
+    {{- $baseUrl = ((include "arkcase.tools.parseUrl" $baseUrl) | fromYaml) -}}
+    {{- if (ne "https" ($baseUrl.scheme | lower)) -}}
+      {{- fail (printf "The baseUrl must be an https:// URL - [%s]" $baseUrl) -}}
+    {{- end -}}
+
+    {{- $ingress := ($ctx.Values.global.ingress | default dict) -}}
+    {{- $ingress = (kindIs "map" $ingress) | ternary $ingress dict -}}
+    {{- $enabled := or (not (hasKey $ingress "enabled")) (not (empty (include "arkcase.toBoolean" $ingress.enabled))) -}}
+    {{- $dev := (include "arkcase.dev" $ | fromYaml) -}}
+    {{- if and $enabled $dev $ingress.reports -}}
+      {{- $serverUrl = (printf "%s://%s/pentaho" $baseUrl.scheme $baseUrl.host) -}}
+    {{- end -}}
+  {{- end -}}
+  {{- $serverUrl -}}
 {{- end -}}

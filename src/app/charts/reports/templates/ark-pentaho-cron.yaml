@@ -148,16 +148,16 @@ spec:
               subPath: &deployJobSchedules "deploy-job-schedules"
               readOnly: true
             - name: *configMap
-              mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/server.properties.tpl"
-              subPath: &serverPropertiesTpl "server.properties.tpl"
+              mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/server.properties"
+              subPath: &serverProperties "server.properties"
               readOnly: true
             - name: *configMap
-              mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/pdi-pur-plugin/plugin.properties.tpl"
-              subPath: &pluginPropertiesTpl "plugin.properties.tpl"
+              mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/pdi-pur-plugin/plugin.properties"
+              subPath: &pluginProperties "plugin.properties"
               readOnly: true
             - name: *configMap
-              mountPath: "/app/pentaho-pdi/data-integration/plugins/pdi-pur-plugin/plugin.properties.tpl"
-              subPath: *pluginPropertiesTpl
+              mountPath: "/app/pentaho-pdi/data-integration/plugins/pdi-pur-plugin/plugin.properties"
+              subPath: *pluginProperties
               readOnly: true
       volumes:
         {{- include "arkcase.trusts.volume" $ | nindent 8 }}
@@ -193,10 +193,10 @@ spec:
               - key: *deployCron
                 path: *deployCron
                 mode: 0555
-              - key: *serverPropertiesTpl
-                path: *serverPropertiesTpl
-              - key: *pluginPropertiesTpl
-                path: *pluginPropertiesTpl
+              - key: *serverProperties
+                path: *serverProperties
+              - key: *pluginProperties
+                path: *pluginProperties
       {{- with $.Values.nodeSelector }}
       nodeSelector: {{- toYaml . | nindent 8 }}
       {{- end }}
