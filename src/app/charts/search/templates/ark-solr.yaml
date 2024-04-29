@@ -144,11 +144,11 @@ spec:
               mountPath: *dataDir
             - name: *initVolume
               mountPath: *initDir
-            - name: &secrets "secrets"
+            - name: &configMap "configmap"
               mountPath: "/app/solr/bin/solr.in.sh"
               subPath: &solrInSh "solr.in.sh"
               readOnly: true
-            - name: &configMap "configmap"
+            - name: *configMap
               mountPath: "/entrypoint"
               subPath: &entrypoint "entrypoint"
               readOnly: true
@@ -176,14 +176,6 @@ spec:
         {{- include "arkcase.acme.volume" $ | nindent 8 }}
         {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "init") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
-        - name: *secrets
-          secret:
-            secretName: {{ include "arkcase.fullname" $ | quote }}
-            optional: false
-            defaultMode: 0444
-            items:
-              - key: *solrInSh
-                path: *solrInSh
         - name: *configMap
           configMap:
             name: {{ include "arkcase.fullname" $ | quote }}
@@ -192,6 +184,8 @@ spec:
             items:
               - key: *entrypoint
                 path: *entrypoint
+              - key: *solrInSh
+                path: *solrInSh
               - key: *configPreSh
                 path: *configPreSh
               - key: *configPostSh

@@ -29,7 +29,8 @@ for F in "${FILES[@]}" ; do
 done
 
 # Ensure we have a valid value for the missing key spec
-[ -v MISSING_KEY ] || MISSING_KEY="zero"
+[ -v MISSING_KEY ] || MISSING_KEY=""
+[ -n "${MISSING_KEY}" ] || MISSING_KEY="zero"
 
 # Fold to lowercase
 MISSING_KEY="${MISSING_KEY,,}"
