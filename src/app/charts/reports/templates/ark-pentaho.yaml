@@ -247,8 +247,8 @@ spec:
               subPath: &contextXml "context.xml"
               readOnly: true
             - name: *secrets
-              mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/jackrabbit/repository.xml.tpl"
-              subPath: &repositoryXmlTpl "repository.xml.tpl"
+              mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/jackrabbit/repository.xml"
+              subPath: &repositoryXml "repository.xml"
               readOnly: true
             - name: *secrets
               mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/applicationContext-security-ldap.properties"
@@ -287,16 +287,16 @@ spec:
               subPath: &securityProperties "security.properties"
               readOnly: true
             - name: *configMap
-              mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/server.properties.tpl"
-              subPath: &serverPropertiesTpl "server.properties.tpl"
+              mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/server.properties"
+              subPath: &serverProperties "server.properties"
               readOnly: true
             - name: *configMap
-              mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/pdi-pur-plugin/plugin.properties.tpl"
-              subPath: &pluginPropertiesTpl "plugin.properties.tpl"
+              mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/pdi-pur-plugin/plugin.properties"
+              subPath: &pluginProperties "plugin.properties"
               readOnly: true
             - name: *configMap
-              mountPath: "/app/pentaho-pdi/data-integration/plugins/pdi-pur-plugin/plugin.properties.tpl"
-              subPath: *pluginPropertiesTpl
+              mountPath: "/app/pentaho-pdi/data-integration/plugins/pdi-pur-plugin/plugin.properties"
+              subPath: *pluginProperties
               readOnly: true
             - name: *configMap
               mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/repository.spring.properties"
@@ -307,6 +307,10 @@ spec:
               subPath: &applicationContextSpringSecurityXml "applicationContext-spring-security.xml"
               readOnly: true
             - name: *configMap
+              mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/applicationContext-spring-security-ldap.xml"
+              subPath: &applicationContextSpringSecurityLdapXml "applicationContext-spring-security-ldap.xml"
+              readOnly: true
+            - name: *configMap
               mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/quartz/quartz.properties"
               subPath: &quartzProperties "quartz.properties"
               readOnly: true
@@ -315,8 +319,8 @@ spec:
               subPath: &hibernateSettingsXml "hibernate-settings.xml"
               readOnly: true
             - name: *configMap
-              mountPath: "/app/pentaho/pentaho-server/tomcat/conf/server.xml.tpl"
-              subPath: &serverXmlTpl "server.xml.tpl"
+              mountPath: "/app/pentaho/pentaho-server/tomcat/conf/server.xml"
+              subPath: &serverXml "server.xml"
               readOnly: true
             - name: *configMap
               mountPath: "/app/pentaho/pentaho-server/tomcat/webapps/pentaho/WEB-INF/classes/log4j2.xml"
@@ -403,8 +407,8 @@ spec:
                 path: *contextXml
               - key: *templateVars
                 path: *templateVars
-              - key: *repositoryXmlTpl
-                path: *repositoryXmlTpl
+              - key: *repositoryXml
+                path: *repositoryXml
               - key: *applicationContextSecurityLdapProperties
                 path: *applicationContextSecurityLdapProperties
               - key: *runLiquibaseUpdates
@@ -422,14 +426,16 @@ spec:
                 path: *repositorySpringProperties
               - key: *applicationContextSpringSecurityXml
                 path: *applicationContextSpringSecurityXml
+              - key: *applicationContextSpringSecurityLdapXml
+                path: *applicationContextSpringSecurityLdapXml
               - key: *securityProperties
                 path: *securityProperties
-              - key: *serverPropertiesTpl
-                path: *serverPropertiesTpl
-              - key: *pluginPropertiesTpl
-                path: *pluginPropertiesTpl
-              - key: *serverXmlTpl
-                path: *serverXmlTpl
+              - key: *serverProperties
+                path: *serverProperties
+              - key: *pluginProperties
+                path: *pluginProperties
+              - key: *serverXml
+                path: *serverXml
               - key: *log4j2Xml
                 path: *log4j2Xml
               - key: *quartzProperties

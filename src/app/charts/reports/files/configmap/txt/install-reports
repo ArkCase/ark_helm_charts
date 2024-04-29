@@ -58,6 +58,8 @@ shopt -s extglob
 ADMIN_URL="${ADMIN_URL%%+(/)}"
 shopt -u extglob
 
+DIVIDER=":///:"
+
 extract_archive() {
 	local TYPE="${1}"
 	local SRC="${2}"
@@ -84,7 +86,7 @@ extract_archive() {
 	find "${WORK}" -type f | sort | while read f ; do
 		local D="${f:${L}}"
 		D="${D%/*}"
-		echo "${D}:///:${f}"
+		echo "${D}${DIVIDER}${f}"
 	done
 	return 0
 }
@@ -125,7 +127,7 @@ install_report() {
 	# (we support zip, tar, and tar.gz archives)
 
 	case "${SRC_FILE,,}" in
-		*.jar ) ARCHIVE_TYPE="zip" ;;
+		*.jar | *.zip ) ARCHIVE_TYPE="zip" ;;
 		*.tar ) ARCHIVE_TYPE="tar" ;;
 		*.tar.gz | *.tgz ) ARCHIVE_TYPE="tgz" ;;
 		*.tar.bz2 | *.tbz2 ) ARCHIVE_TYPE="tbz" ;;
@@ -140,7 +142,7 @@ install_report() {
 		say "Extracting the reports from [${SRC_FILE}]..."
 		readarray -t REPORTS < <(extract_archive "${ARCHIVE_TYPE}" "${SRC_FILE}")
 	else
-		REPORTS=("$(dirname "${SRC_FILE}"):///:${REPORTS_DIR}/${SRC_FILE}")
+		REPORTS=("$(dirname "${SRC_FILE}")${DIVIDER}${REPORTS_DIR}/${SRC_FILE}")
 	fi
 
 	local RC=0
@@ -149,7 +151,7 @@ install_report() {
 	local CMD=()
 	local HASH=""
 	for F in "${REPORTS[@]}" ; do
-		[[ "${F}" =~ ^(.*):///:(.*)$ ]]
+		[[ "${F}" =~ ^(.*)${DIVIDER}(.*)$ ]]
 		local P="${BASH_REMATCH[1]}"
 		local F="${BASH_REMATCH[2]}"
 
@@ -203,7 +205,7 @@ install_report() {
 list_reports() {
 	local REPORTS_DIR="${1}"
 	[ -d "${REPORTS_DIR}" ] | return 0
-	find "${REPORTS_DIR}" -type f -not -name '.*' | \
+	find "${REPORTS_DIR}" -type f -not -name ".*" | \
 		sed -e "s;^${REPORTS_DIR}/;;g" | \
 		sort
 }

@@ -1,10 +1,43 @@
 apiVersion: v2
 name: app
-version: 0.7.3
-appVersion: "2023.01.06"
+version: 0.7.6
+appVersion: "2023.02.02"
 description: ArkCase Application Chart
 type: application
 dependencies:
+  #
+  # The common function library
+  #
   - name: common
     version: ~0.7.0
     repository: "https://arkcase.github.io/ark_helm_charts"
+
+  #
+  # Actual subcharts
+  #
+  - name: acme
+    version: ~0.7.0
+
+  - name: analytics
+    version: ~0.7.0
+
+  - name: content
+    version: ~0.7.0
+
+  - name: core
+    version: ~0.7.0
+
+  - name: ldap
+    version: ~0.7.0
+
+  - name: messaging
+    version: ~0.7.0
+
+  - name: rdbms
+    version: ~0.7.0
+
+  - name: search
+    version: ~0.7.0
+
+  - name: zookeeper
+    version: ~0.7.0
