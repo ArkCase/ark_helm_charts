@@ -54,13 +54,15 @@ fi
 START="$(date +%s)"
 say "Starting the polling cycle"
 while true ; do
-	/usr/bin/curl -L -m 5 "${ADMIN_URL}" &>/dev/null && break
+	/usr/bin/curl -fsSL -m 5 "${ADMIN_URL}" &>/dev/null && break
 	NOW="$(date +%s)"
 	[ $(( NOW - START )) -ge ${INIT_MAX_WAIT} ] && fail "Timed out waiting for the URL [${ADMIN_URL}] to come up"
 	# If sleep didn't succeed, it means it got signaled, which
 	# Means we need to stop what we're doing and puke out
 	sleep ${INIT_POLL_SLEEP} || fail "Sleep interrupted, can't continue polling"
 done
+OUT="$(/usr/bin/curl -fL -m 5 "${ADMIN_URL}" 2>&1)" || fail "Unable to access the URL [${ADMIN_URL}] (rc=${?}): ${OUT}"
+
 say "The URL [${ADMIN_URL}] responded, continuing"
 
 [ -f "${RUN_MARKER}" ] || exit 0
