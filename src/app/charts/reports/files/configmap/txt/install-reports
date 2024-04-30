@@ -166,6 +166,15 @@ install_report() {
 			continue
 		fi
 
+
+		#
+		# Alternative CURL:
+		#
+		# curl -fsSL -X PUT -u "${authInfo}" -H "Accept: application/json" --upload-file "${reportFile}" "${ADMIN_URL}/api/repo/files/${reportPathWithColons}:${reportFileWithoutExtension}"
+		#
+		# TODO: check out what the other flags do (i.e. permission, overwrite, retainOwnership, etc.)
+		#
+
 		say "Installing the report from [${F}]${ARCHIVE_INFO}..."
 		local UPLOAD_LOG_FILE="${LOGS_DIR}/uploads-$(date -u +%Y%m%d-%H%M%S)Z.log"
 		CMD=(
