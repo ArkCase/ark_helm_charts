@@ -28,6 +28,7 @@ spec:
   containers:
     - name: test
       {{- include "arkcase.image" (dict "ctx" $ "name" "smoke-test" "repository" "arkcase/nettest") | nindent 6 }}
+      {{- include "arkcase.image.pullSecrets" $ | nindent 6 }}
       command: [ "/usr/local/bin/run-from-env" ]
       args: [ "SCRIPT" ]
       env:
