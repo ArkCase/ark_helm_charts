@@ -601,6 +601,8 @@ Create the environment variables to facilitate detecting the Pod's IP, name, nam
   valueFrom:
     fieldRef:
       fieldPath: status.hostIP
+- name: SUBSYS_CURRENT
+  value: {{ include "arkcase.subsystem.name" $ | quote }}
 {{- end -}}
 
 {{- /*
