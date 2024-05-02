@@ -49,7 +49,8 @@ fi
 [ -v INIT_MAX_WAIT ] || INIT_MAX_WAIT=300
 [[ "${INIT_MAX_WAIT}" =~ ^[1-9][0-9]*$ ]] || INIT_MAX_WAIT=300
 
-[ -v ADMIN_URL ] || ADMIN_URL="https://localhost:9000"
+[ -v ADMIN_URL ] || ADMIN_URL=""
+[ -n "${ADMIN_URL}" ] || ADMIN_URL="https://localhost:9000/minio/health/ready"
 
 START="$(date +%s)"
 say "Starting the polling cycle"

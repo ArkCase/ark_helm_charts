@@ -585,14 +585,14 @@ Render container port declarations based on what's declared in the values file. 
 Parameter: the root context (i.e. "." or "$"), or a map which descibes the ports and probes
 */ -}}
 {{- define "arkcase.subsystem.ports" }}
-  {{- $service := . -}}
-  {{- if (include "arkcase.isRootContext" .) -}}
-    {{- /* No parameters given, so deduce everything */ -}}
-    {{- $partname := (include "arkcase.part.name" .) -}}
-    {{- $ctx := . }}
+  {{- $service := $ -}}
+  {{- $ctx := $ -}}
+  {{- if and (not (include "arkcase.isRootContext" $ctx)) (hasKey $ "ctx") -}}
+    {{- $ctx = $.ctx -}}
     {{- if not (include "arkcase.isRootContext" $ctx) -}}
       {{- fail "Incorrect context given - either submit the root context as the only parameter, or a 'ctx' parameter pointing to it" -}}
     {{- end -}}
+    {{- $partname := ((not (empty ($.name))) | ternary $.name (include "arkcase.part.name" $ctx)) -}}
     {{- $service = pick $ctx.Values.service "ports" "type" "probes" "external" -}}
     {{- $parts := omit $ctx.Values.service "ports" "type" "probes" "external" }}
     {{- if $partname -}}
