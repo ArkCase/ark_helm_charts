@@ -729,7 +729,7 @@ Parameter: a dict with two keys:
   {{- $subsys = ((hasKey $ "subsys") | ternary ($.subsys | default "" | toString) $subsys) | default $subsys -}}
   {{- $type := ($.type | default "" | toString | lower) -}}
   {{- if or (not $type) (not (regexMatch "^[a-z0-9]+(-[a-z0-9]+)*$" $type)) -}}
-    {{- fail (printf "Invalid subsystem secret type [%s]" $type) -}}
+    {{- fail (printf "Invalid subsystem secret type [%s] for [%s]" $type $subsys) -}}
   {{- end -}}
   {{- printf "%s-%s-%s" $ctx.Release.Name $subsys $type -}}
 {{- end -}}
