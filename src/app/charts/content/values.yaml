@@ -273,6 +273,8 @@ service:
       - name: "https-solr"
         protocol: TCP
         port: 8999
+      # These two have to be here because... reasons XD
+      # I'll get around to fixing this at some point
       - name: "s3"
         protocol: TCP
         port: 9000
@@ -296,6 +298,35 @@ service:
           scheme: HTTPS
           path: "/alfresco"
           port: 8443
+
+  minio:
+    <<: *serviceTemplate
+    ports:
+      - name: "s3"
+        protocol: TCP
+        port: &s3 9000
+      - name: "s3console"
+        protocol: TCP
+        port: 9001
+
+    probes:
+      <<: *probesTemplate
+      spec:
+        <<: *probesSpecTemplate
+        httpGet:
+          path: /minio/health/live
+          port: *s3
+          scheme: HTTPS
+      startup:
+        failureThreshold: 90
+      liveness:
+        failureThreshold: 3
+      readiness:
+        httpGet:
+          path: /minio/health/ready
+          port: *s3
+          scheme: HTTPS
+        failureThreshold: 1
 
   share:
     <<: *serviceTemplate
