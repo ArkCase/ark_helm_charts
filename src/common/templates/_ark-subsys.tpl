@@ -681,38 +681,57 @@ Parameter: a dict with two keys:
 
 {{- /* Render the volume mount specification for the target subsystem's $type secrets */ -}}
 {{- define "arkcase.subsystem.secret.volumeMount" -}}
-  {{- $ctx := $.ctx -}}
+  {{- $ctx := $ -}}
+  {{- $type := "service" -}}
+  {{- $optional := false -}}
+  {{- $checkParams := false -}]
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
-      {{- fail "Must provide the root context ($ or .) as the 'ctx' parameter" -}}
+    {{- $ctx = $.ctx -}}
+    {{- if not (include "arkcase.isRootContext" $ctx) -}}
+      {{- fail "Must provide the root context ($ or .) as either the only parameter, or the 'ctx' parameter" -}}
+    {{- end -}}
+    {{- $checkParams = true -}]
   {{- end -}}
   {{- $subsys := (include "arkcase.subsystem.name" $ctx) -}}
-  {{- $subsys = ((hasKey $ "subsys") | ternary ($.subsys | default "" | toString) $subsys) | default $subsys -}}
-  {{- $mountPath := "/srv/arkcase" -}}
-  {{- $mountPath = ((hasKey $ "mountPath") | ternary ($.mountPath | default "" | toString) $mountPath) | default $mountPath -}}
-  {{- $type := ($.type | default "" | toString | lower) -}}
-  {{- if or (not $type) (not (regexMatch "^[a-z0-9]+(-[a-z0-9]+)*$" $type)) -}}
-    {{- fail (printf "Invalid subsystem secret type [%s]" $type) -}}
+  {{- if $checkParams -}}
+    {{- $subsys = ((hasKey $ "subsys") | ternary ($.subsys | default "" | toString) $subsys) | default $subsys -}}
+    {{- $type = ($.type | default $type | toString | lower) -}}
+    {{- $optional = ((hasKey $ "optional") | ternary (not (empty (include "tools.toBoolean" $.optional))) $optional) -}}
   {{- end -}}
-  {{- $name := (include "arkcase.subsyste.secret.name" $) -}}
-- mountPath: {{ printf "/svr/arkcase/%s/%s" $subsys $type | quote }}
+  {{- $regex := "^[a-z0-9]+(-[a-z0-9]+)*$" -}}
+  {{- if (not (regexMatch $regex $type)) -}}
+    {{- fail (printf "Invalid secret type [%s] for subsystem [%s] - must match /%s/" $type $subsys $regex) -}}
+  {{- end -}}
+  {{- $name := (include "arkcase.subsystem.secret.name" $) -}}
+- mountPath: {{ printf "/srv/arkcase/%s/%s" $subsys $type | quote }}
   name: {{ $name | quote }}
   readOnly: true
 {{- end -}}
 
 {{- /* Render the volume mount specification for the target subsystem's $type secrets */ -}}
 {{- define "arkcase.subsystem.secret.volume" -}}
-  {{- $ctx := $.ctx -}}
+  {{- $ctx := $ -}}
+  {{- $type := "service" -}}
+  {{- $optional := false -}}
+  {{- $checkParams := false -}]
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
-      {{- fail "Must provide the root context ($ or .) as the 'ctx' parameter" -}}
+    {{- $ctx = $.ctx -}}
+    {{- if not (include "arkcase.isRootContext" $ctx) -}}
+      {{- fail "Must provide the root context ($ or .) as either the only parameter, or the 'ctx' parameter" -}}
+    {{- end -}}
+    {{- $checkParams = true -}]
   {{- end -}}
   {{- $subsys := (include "arkcase.subsystem.name" $ctx) -}}
-  {{- $subsys = ((hasKey $ "subsys") | ternary ($.subsys | default "" | toString) $subsys) | default $subsys -}}
-  {{- $type := ($.type | default "" | toString | lower) -}}
-  {{- if or (not $type) (not (regexMatch "^[a-z0-9]+(-[a-z0-9]+)*$" $type)) -}}
-    {{- fail (printf "Invalid subsystem secret type [%s]" $type) -}}
+  {{- if $checkParams -}}
+    {{- $subsys = ((hasKey $ "subsys") | ternary ($.subsys | default "" | toString) $subsys) | default $subsys -}}
+    {{- $type = ($.type | default $type | toString | lower) -}}
+    {{- $optional = ((hasKey $ "optional") | ternary (not (empty (include "tools.toBoolean" $.optional))) $optional) -}}
   {{- end -}}
-  {{- $optional := ((hasKey $ "optional") | ternary (not (empty (include "tools.toBoolean" $.optional))) false) -}}
-  {{- $name := (include "arkcase.subsyste.secret.name" $) -}}
+  {{- $regex := "^[a-z0-9]+(-[a-z0-9]+)*$" -}}
+  {{- if (not (regexMatch $regex $type)) -}}
+    {{- fail (printf "Invalid secret type [%s] for subsystem [%s] - must match /%s/" $type $subsys $regex) -}}
+  {{- end -}}
+  {{- $name := (include "arkcase.subsystem.secret.name" $) -}}
 - name: {{ $name | quote }}
   secret:
     secretName: {{ $name | quote }}
@@ -721,15 +740,25 @@ Parameter: a dict with two keys:
 {{- end -}}
 
 {{- define "arkcase.subsystem.secret.name" -}}
-  {{- $ctx := $.ctx -}}
+  {{- $ctx := $ -}}
+  {{- $type := "service" -}}
+  {{- $checkParams := false -}]
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
-      {{- fail "Must provide the root context ($ or .) as the 'ctx' parameter" -}}
+    {{- $ctx = $.ctx -}}
+    {{- if not (include "arkcase.isRootContext" $ctx) -}}
+      {{- fail "Must provide the root context ($ or .) as either the only parameter, or the 'ctx' parameter" -}}
+    {{- end -}}
+    {{- $checkParams = true -}]
   {{- end -}}
   {{- $subsys := (include "arkcase.subsystem.name" $ctx) -}}
-  {{- $subsys = ((hasKey $ "subsys") | ternary ($.subsys | default "" | toString) $subsys) | default $subsys -}}
-  {{- $type := ($.type | default "" | toString | lower) -}}
-  {{- if or (not $type) (not (regexMatch "^[a-z0-9]+(-[a-z0-9]+)*$" $type)) -}}
-    {{- fail (printf "Invalid subsystem secret type [%s] for [%s]" $type $subsys) -}}
+  {{- /* Only consider the parameters if we weren't sent only the root context */ -}}
+  {{- if $checkParams -}}
+    {{- $subsys = ((hasKey $ "subsys") | ternary ($.subsys | default "" | toString) $subsys) | default $subsys -}}
+    {{- $type = ($.type | default $type | toString | lower) -}}
   {{- end -}}
-  {{- printf "%s-%s-%s" $ctx.Release.Name $subsys $type -}}
+  {{- $regex := "^[a-z0-9]+(-[a-z0-9]+)*$" -}}
+  {{- if (not (regexMatch $regex $type)) -}}
+    {{- fail (printf "Invalid secret type [%s] for subsystem [%s] - must match /%s/" $type $subsys $regex) -}}
+  {{- end -}}
+  {{- printf "%s-%s-%s" $ctx.Release.Name $subsys $type | lower -}}
 {{- end -}}
