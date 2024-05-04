@@ -24,7 +24,7 @@
   {{- $data := .data -}}
 
   {{- $imageAttributes := list "repository" "tag" -}}
-  {{- $commonAttributes := list "registry" "pullPolicy" -}}
+  {{- $commonAttributes := list "registry" "cachePrefix" "pullPolicy" -}}
 
   {{- $search := list -}}
 
@@ -67,45 +67,57 @@
   {{- $found := false -}}
   {{- range $s := $search -}}
     {{- /* Small optimization - don't search if there's nothing missing */ -}}
-    {{- if $pending -}}
-      {{- /* First things first: make sure the search scope is a non-empty map */ -}}
-      {{- $r := (include "arkcase.tools.get" (dict "ctx" $data "name" $s) | fromYaml) -}}
-      {{- if and $r.value (kindIs "map" $r.value) -}}
-        {{- /* If we've been given an image name, we can only consider the image */ -}}
-        {{- /* attributes from maps that match that given name (i.e. ends with */ -}}
-        {{- /* $imageSuffix). If we don't have an image name, then named scopes will */ -}}
-        {{- /* not be included in the search path possibilities. */ -}}
-        {{- if or (not $image) (hasSuffix $imageSuffix $s) -}}
-          {{- range $att := $imageAttributes -}}
-            {{- /* Never override values we've already found */ -}}
-            {{- if not (hasKey $result $att) -}}
-              {{- $found = (or $found (hasKey $r.value $att)) -}}
-              {{- if $found -}}
-                {{- $v := get $r.value $att -}}
-                {{- /* Only accept non-empty strings */ -}}
-                {{- if and $v (kindIs "string" $v) -}}
-                  {{- $result = set $result $att $v -}}
-                  {{- /* Mark the found attribute as ... well ... found! */ -}}
-                  {{- $pending = omit $pending $att -}}
-                {{- end -}}
-              {{- end -}}
-            {{- end -}}
-          {{- end -}}
+    {{- if not $pending -}}
+      {{- break -}}
+    {{- end -}}
+
+    {{- /* First things first: make sure the search scope is a non-empty map */ -}}
+    {{- $r := (include "arkcase.tools.get" (dict "ctx" $data "name" $s) | fromYaml) -}}
+    {{- if or (not $r.value) (not (kindIs "map" $r.value)) -}}
+      {{- continue -}}
+    {{- end -}}
+
+    {{- /* If we've been given an image name, we can only consider the image */ -}}
+    {{- /* attributes from maps that match that given name (i.e. ends with */ -}}
+    {{- /* $imageSuffix). If we don't have an image name, then named scopes will */ -}}
+    {{- /* not be included in the search path possibilities. */ -}}
+    {{- if or (not $image) (hasSuffix $imageSuffix $s) -}}
+      {{- range $att := $imageAttributes -}}
+        {{- /* Never override values we've already found */ -}}
+        {{- if (hasKey $result $att) -}}
+          {{- continue -}}
         {{- end -}}
 
-        {{- /* Only proceed if we've found the image "declaration" */ -}}
-        {{- if $found -}}
-          {{- range $att := $commonAttributes -}}
-            {{- /* Never override values we've already found */ -}}
-            {{- if and (not (hasKey $result $att)) (hasKey $r.value $att) -}}
-              {{- $v := get $r.value $att -}}
-              {{- $result = set $result $att (empty $v | ternary "" $v) -}}
-              {{- /* Mark the found attribute as ... well ... found! */ -}}
-              {{- $pending = omit $pending $att -}}
-            {{- end -}}
-          {{- end -}}
+        {{- $found = (or $found (hasKey $r.value $att)) -}}
+        {{- if not $found -}}
+          {{- continue -}}
+        {{- end -}}
+
+        {{- /* Only accept non-empty strings */ -}}
+        {{- $v := get $r.value $att -}}
+        {{- if and $v (kindIs "string" $v) -}}
+          {{- $result = set $result $att $v -}}
+          {{- /* Mark the found attribute as ... well ... found! */ -}}
+          {{- $pending = omit $pending $att -}}
         {{- end -}}
       {{- end -}}
+    {{- end -}}
+
+    {{- /* Only proceed if we've found the image "declaration" */ -}}
+    {{- if not $found -}}
+      {{- continue -}}
+    {{- end -}}
+
+    {{- range $att := $commonAttributes -}}
+      {{- /* Never override values we've already found */ -}}
+      {{- if or (hasKey $result $att) (not (hasKey $r.value $att)) -}}
+        {{- continue -}}
+      {{- end -}}
+
+      {{- $v := get $r.value $att -}}
+      {{- $result = set $result $att (empty $v | ternary "" $v) -}}
+      {{- /* Mark the found attribute as ... well ... found! */ -}}
+      {{- $pending = omit $pending $att -}}
     {{- end -}}
   {{- end -}}
 
@@ -121,13 +133,18 @@
         {{- /* Try to get the image attributes from the specifically-named branch */ -}}
         {{- range $att := $allAttributes -}}
           {{- /* Never override values we've already found */ -}}
-          {{- if not (hasKey $result $att) -}}
-            {{- $v := get $scope $att -}}
-            {{- /* Only accept non-empty strings */ -}}
-            {{- if and $v (kindIs "string" $v) -}}
-              {{- $result = set $result $att $v -}}
-              {{- /* Mark the found attribute as ... well ... found! */ -}}
-              {{- $pending = omit $pending $att -}}
+          {{- if (hasKey $result $att) -}}
+            {{- continue -}}
+          {{- end -}}
+
+          {{- $v := get $scope $att -}}
+          {{- /* Only accept non-empty strings */ -}}
+          {{- if and $v (kindIs "string" $v) -}}
+            {{- $result = set $result $att $v -}}
+            {{- /* Mark the found attribute as ... well ... found! */ -}}
+            {{- $pending = omit $pending $att -}}
+            {{- if not $pending -}}
+              {{- break -}}
             {{- end -}}
           {{- end -}}
         {{- end -}}
@@ -141,12 +158,18 @@
       {{- $scope := $data.local -}}
       {{- range $att := $commonAttributes -}}
         {{- /* Never override values we've already found */ -}}
-        {{- if not (hasKey $result $att) -}}
-          {{- $v := get $scope $att -}}
-          {{- /* Only accept non-empty strings */ -}}
-          {{- $result = set $result $att (empty $v | ternary "" $v) -}}
-          {{- /* Mark the found attribute as ... well ... found! */ -}}
-          {{- $pending = omit $pending $att -}}
+        {{- if (hasKey $result $att) -}}
+          {{- continue -}}
+        {{- end -}}
+
+        {{- /* Only accept non-empty strings */ -}}
+        {{- $v := get $scope $att -}}
+        {{- $result = set $result $att (empty $v | ternary "" $v) -}}
+
+        {{- /* Mark the found attribute as ... well ... found! */ -}}
+        {{- $pending = omit $pending $att -}}
+        {{- if not $pending -}}
+          {{- break -}}
         {{- end -}}
       {{- end -}}
     {{- end -}}
@@ -180,21 +203,23 @@
   {{- $override := dict -}}
   {{- range $s := $search -}}
     {{- /* Small optimization - don't search if there's nothing missing */ -}}
-    {{- if $pending -}}
-      {{- $r := (include "arkcase.tools.get" (dict "ctx" $data "name" $s) | fromYaml) -}}
-      {{- if and $r.value (kindIs "map" $r.value) -}}
-        {{- /* Find the remaining attributes */ -}}
-        {{- range $att := $allAttributes -}}
-          {{- if and (not (hasKey $override $att)) (hasKey $r.value $att) -}}
-            {{- $v := get $r.value $att -}}
+    {{- if not $pending -}}
+      {{- break -}}
+    {{- end -}}
 
-            {{- /* Only accept non-empty strings */ -}}
-            {{- if and $v (kindIs "string" $v) -}}
-              {{- $override = set $override $att $v -}}
-              {{- /* Mark the found attribute as ... well ... found! */ -}}
-              {{- $pending = omit $pending $att -}}
-            {{- end -}}
-          {{- end -}}
+    {{- $r := (include "arkcase.tools.get" (dict "ctx" $data "name" $s) | fromYaml) -}}
+    {{- if or (not $r.value) (not (kindIs "map" $r.value)) -}}
+      {{- continue -}}
+    {{- end -}}
+    {{- /* Find the remaining attributes */ -}}
+    {{- range $att := $allAttributes -}}
+      {{- if and (not (hasKey $override $att)) (hasKey $r.value $att) -}}
+        {{- /* Only accept non-empty strings */ -}}
+        {{- $v := get $r.value $att -}}
+        {{- if and $v (kindIs "string" $v) -}}
+          {{- $override = set $override $att $v -}}
+          {{- /* Mark the found attribute as ... well ... found! */ -}}
+          {{- $pending = omit $pending $att -}}
         {{- end -}}
       {{- end -}}
     {{- end -}}
@@ -336,6 +361,10 @@ imagePullSecrets: {{- toYaml $r.value | nindent 2 }}
   {{- end -}}
 {{- end -}}
 
+{{- define "arkcase.image.is-valid-repository" -}}
+  {{- regexMatch "^[a-z0-9]+(([.]|[_]{1,2}|[-]+)[a-z0-9]+)*(/[a-z0-9]+(([.]|[_]{1,2}|[-]+)[a-z0-9]+)*)*$" $ -}}
+{{- end -}}
+
 {{- /*
 Compute the image information for the named image, including registry, repository, tag,
 and image pull policy, while taking into account the edition in play (enterprise vs.
@@ -382,8 +411,19 @@ community) in order to choose the correct image.
   {{- if not $finalRepository -}}
     {{- $finalRepository = $repository -}}
   {{- end -}}
-  {{- if not (regexMatch "^[a-z0-9]+(([.]|[_]{1,2}|[-]+)[a-z0-9]+)*(/[a-z0-9]+(([.]|[_]{1,2}|[-]+)[a-z0-9]+)*)*$" $finalRepository) -}}
+  {{- if not (include "arkcase.image.is-valid-repository" $finalRepository) -}}
     {{- fail (printf "The repository value [%s] for image [%s], chart [%s] (%s) is invalid" $finalRepository $name $chart $edition) -}}
+  {{- end -}}
+  {{- if $image.cachePrefix -}}
+    {{- $cachePrefix := $image.cachePrefix -}}
+    {{- $cachePrefix = regexReplaceAll "/+" $cachePrefix "/" -}}
+    {{- $cachePrefix = regexReplaceAll "^/?(.*?)/?$" $cachePrefix "${1}" -}}
+    {{- if $cachePrefix -}}
+      {{- if not (include "arkcase.image.is-valid-repository" $cachePrefix) -}}
+        {{- fail (printf "The cachePrefix value [%s] for image [%s], chart [%s] (%s) is invalid" $image.cachePrefix $name $chart $edition) -}}
+      {{- end -}}
+      {{- $finalRepository = (printf "%s/%s" $cachePrefix $finalRepository) -}}
+    {{- end -}}
   {{- end -}}
   {{- $image = set $image "image" $finalRepository -}}
 
