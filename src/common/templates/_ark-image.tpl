@@ -24,7 +24,7 @@
   {{- $data := .data -}}
 
   {{- $imageAttributes := list "repository" "tag" -}}
-  {{- $commonAttributes := list "registry" "cachePrefix" "pullPolicy" -}}
+  {{- $commonAttributes := list "registry" "cachePrefix" "pullPolicy" "tagPrefix" -}}
 
   {{- $search := list -}}
 
@@ -365,6 +365,10 @@ imagePullSecrets: {{- toYaml $r.value | nindent 2 }}
   {{- regexMatch "^[a-z0-9]+(([.]|[_]{1,2}|[-]+)[a-z0-9]+)*(/[a-z0-9]+(([.]|[_]{1,2}|[-]+)[a-z0-9]+)*)*$" $ -}}
 {{- end -}}
 
+{{- define "arkcase.image.is-valid-tag" -}}
+  {{- regexMatch "^[a-zA-Z0-9_][a-zA-Z0-9_.-]{0,127}$" $ -}}
+{{- end -}}
+
 {{- /*
 Compute the image information for the named image, including registry, repository, tag,
 and image pull policy, while taking into account the edition in play (enterprise vs.
@@ -443,22 +447,34 @@ community) in order to choose the correct image.
     {{- $finalTag = $ctx.Chart.AppVersion -}}
   {{- end -}}
 
-  {{- /* Append the tag, if applicable */ -}}
-  {{- if $finalTag -}}
-    {{- /* If the tag is a digest, it needs a "@" as a separator. Otherwise, a ":" is required */ -}}
-    {{- if (regexMatch "^sha256:[0-9a-fA-F]{64}$" $finalTag) -}}
-      {{- /* Make sure the digest is always in lowercase, just in case, and tack on the "@" up front */ -}}
-      {{- $finalTag = (printf "@%s" ($finalTag | lower)) -}}
-    {{- else if (regexMatch "^[a-zA-Z0-9_][a-zA-Z0-9_.-]{0,127}$" $finalTag) -}}
-      {{- /* This is a regular tag, prefix it with a ":" */ -}}
-      {{- $finalTag = (printf ":%s" $finalTag) -}}
-    {{- else -}}
-      {{- fail (printf "The container image tag [%s] for image [%s], chart [%s] (%s) is invalid" $finalTag $name $chart $edition) -}}
-    {{- end -}}
-
-    {{- /* Tack on the tag at the end of the image's path */ -}}
-    {{- $image = set $image "image" (printf "%s%s" $image.image $finalTag) -}}
+  {{- if not $finalTag -}}
+    {{- $finalTag = "latest" -}}
   {{- end -}}
+
+  {{- /* Append the tag, if applicable */ -}}
+  {{- /* If the tag is a digest, it needs a "@" as a separator. Otherwise, a ":" is required */ -}}
+  {{- if (regexMatch "^sha256:[0-9a-fA-F]{64}$" $finalTag) -}}
+    {{- /* Make sure the digest is always in lowercase, just in case, and tack on the "@" up front */ -}}
+    {{- $finalTag = (printf "@%s" ($finalTag | lower)) -}}
+  {{- else if (include "arkcase.image.is-valid-tag" $finalTag) -}}
+    {{- if $image.tagPrefix -}}
+      {{- $tagPrefix := $image.tagPrefix -}}
+      {{- if not (include "arkcase.image.is-valid-tag" $tagPrefix) -}}
+        {{- fail (printf "The container image tag prefix [%s] for image [%s], chart [%s] (%s) is invalid" $image.tagPrefix $name $chart $edition) -}}
+      {{- end -}}
+      {{- $finalTag = (printf "%s%s" $tagPrefix $finalTag) -}}
+      {{- if not (include "arkcase.image.is-valid-tag" $finalTag) -}}
+        {{- fail (printf "The computed container image tag [%s] for image [%s], chart [%s] (%s) is invalid" $finalTag $name $chart $edition) -}}
+      {{- end -}}
+    {{- end -}}
+    {{- /* This is a regular tag, prefix it with a ":" */ -}}
+    {{- $finalTag = (printf ":%s" $finalTag) -}}
+  {{- else -}}
+    {{- fail (printf "The container image tag [%s] for image [%s], chart [%s] (%s) is invalid" $finalTag $name $chart $edition) -}}
+  {{- end -}}
+
+  {{- /* Tack on the tag at the end of the image's path */ -}}
+  {{- $image = set $image "image" (printf "%s%s" $image.image $finalTag) -}}
 
   {{- /* Append the registry, if necessary */ -}}
   {{- if $image.registry -}}
