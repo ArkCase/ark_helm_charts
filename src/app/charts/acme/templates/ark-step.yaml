@@ -1,5 +1,4 @@
 {{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.acme.external" $)) -}}
-{{- $secretsPath := "/.secrets" -}}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -72,7 +71,10 @@ spec:
             # - name: DOCKER_STEPCA_INIT_ACME
             #   value: "true"
             - name: DOCKER_STEPCA_INIT_PASSWORD_FILE
-              value: {{ printf "%s/%s" $secretsPath (include "arkcase.acme.passwordVariable" $) | quote }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "arkcase.subsystem.secret.name" $ | quote }}
+                  key: {{ include "arkcase.subsystem.secret.key" (dict "ctx" $ "key" "password") | quote }}
             - name: STEPPATH
               value: *dataDir
           ports:
@@ -84,15 +86,8 @@ spec:
           volumeMounts:
             - name: *dataVolume
               mountPath: *dataDir
-            - name: &secretsVol "secrets"
-              mountPath: {{ $secretsPath | quote }}
       volumes:
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
-        - name: *secretsVol
-          secret:
-            optional: false
-            secretName: {{ include "arkcase.acme.sharedSecret" $ | quote }}
-            defaultMode: 0444
       {{- with $.Values.nodeSelector }}
       nodeSelector: {{- toYaml . | nindent 8 }}
       {{- end }}
