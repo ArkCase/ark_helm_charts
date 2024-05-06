@@ -331,6 +331,8 @@
     {{- $sourceName = (include $sourceNameTemplate $) -}}
   {{- end -}}
 
+  {{- $optional := (not (empty (include "arkcase.toBoolean" ($.optional | default false)))) -}}
+
   {{- /* Now we try to find any mappings for this key */ -}}
   {{- $mappings := (get $conf "mapped-keys" | default dict) -}}
   {{- $sourceKey := (hasKey $mappings $key | ternary (get $mappings $key) $key) -}}
@@ -339,6 +341,7 @@
     {{ $sourceRef }}:
       name: {{ $sourceName | quote }}
       key: {{ $sourceKey | quote }}
+      optional: {{ $optional }}
 {{- end -}}
 
 {{- define "arkcase.subsystem-access.env.conn" -}}
@@ -347,7 +350,7 @@
     {{- fail "Must provide a 'key' parameter" -}}
   {{- end -}}
   {{- $ctx := $.ctx -}}
-  {{- $args := merge (dict "ctx" $ctx "type" "conn" "subsys" $params.subsys) (pick $ "key" "name") -}}
+  {{- $args := merge (dict "ctx" $ctx "type" "conn" "subsys" $params.subsys) (pick $ "key" "name" "optional") -}}
   {{- include "__arkcase.subsystem-access.env" $args -}}
 {{- end -}}
 
@@ -357,7 +360,7 @@
     {{- fail "Must provide a 'key' parameter" -}}
   {{- end -}}
   {{- $ctx := $.ctx -}}
-  {{- $args := merge (dict "ctx" $ctx "type" "cred-admin" "subsys" $params.subsys) (pick $ "key" "name") -}}
+  {{- $args := merge (dict "ctx" $ctx "type" "cred-admin" "subsys" $params.subsys) (pick $ "key" "name" "optional") -}}
   {{- include "__arkcase.subsystem-access.env" $args -}}
 {{- end -}}
 
@@ -378,6 +381,6 @@
     {{- $type = (printf "%s%s" "cred-" $type) -}}
   {{- end -}}
   {{- $ctx := $.ctx -}}
-  {{- $args := merge (dict "ctx" $ctx "type" $type "subsys" $params.subsys) (pick $ "key" "name") -}}
+  {{- $args := merge (dict "ctx" $ctx "type" $type "subsys" $params.subsys) (pick $ "key" "name" "optional") -}}
   {{- include "__arkcase.subsystem-access.env" $args -}}
 {{- end -}}
