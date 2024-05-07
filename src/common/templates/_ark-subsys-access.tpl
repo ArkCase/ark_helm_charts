@@ -23,28 +23,32 @@
 {{- define "__arkcase.subsystem-access.sanitize-mapped-keys" -}}
   {{- $base := $ -}}
   {{- $key := "mapped-keys" -}}
+
   {{- $mappedKeys := get $base $key -}}
   {{- if or (not $mappedKeys) (not (kindIs "map" $mappedKeys)) -}}
     {{- $mappedKeys = dict -}}
   {{- end -}}
-  {{- $result := dict -}}
-  {{- $regex := "^[a-zA-Z0-9_.-]+$" -}}
-  {{- range $k, $v := $mappedKeys -}}
-    {{- if or (not $k) (not $v) -}}
-      {{- continue -}}
-    {{- end -}}
-    {{- $v = ($v | toString) -}}
-    {{- if not (regexMatch $regex $k) -}}
-      {{- fail (printf "Invalid source key [%s] (mapped into [%s]) in mapped-keys section - must match /%s/" $k $v $regex) -}}
-    {{- end -}}
-    {{- if not (regexMatch $regex $v) -}}
-      {{- fail (printf "Invalid target key [%s] (mapped from [%s]) in mapped-keys section - must match /%s/" $v $k $regex) -}}
-    {{- end -}}
-    {{- $result = set $result $k $v -}}
-  {{- end -}}
 
-  {{- if $result -}}
-    {{- $result = dict $key $result -}}
+  {{- $result := dict -}}
+  {{- if $mappedKeys -}}
+    {{- $regex := "^[a-zA-Z0-9_.-]+$" -}}
+    {{- range $k, $v := $mappedKeys -}}
+      {{- if or (not $k) (not $v) -}}
+        {{- continue -}}
+      {{- end -}}
+      {{- $v = ($v | toString) -}}
+      {{- if not (regexMatch $regex $k) -}}
+        {{- fail (printf "Invalid source key [%s] (mapped into [%s]) in mapped-keys section - must match /%s/" $k $v $regex) -}}
+      {{- end -}}
+      {{- if not (regexMatch $regex $v) -}}
+        {{- fail (printf "Invalid target key [%s] (mapped from [%s]) in mapped-keys section - must match /%s/" $v $k $regex) -}}
+      {{- end -}}
+      {{- $result = set $result $k $v -}}
+    {{- end -}}
+
+    {{- if $result -}}
+      {{- $result = dict $key $result -}}
+    {{- end -}}
   {{- end -}}
   {{- $result | toYaml -}}
 {{- end -}}
@@ -56,27 +60,26 @@
   {{- end -}}
 
   {{- $result := dict -}}
-
-  {{- $reference := "" -}}
-  {{- $type := "" -}}
-  {{- range (list "secret" "configMap") -}}
-    {{- $type = . -}}
-    {{- if (hasKey $connection $type) -}}
-      {{- $v := get $connection $type -}}
-      {{- if not (include "arkcase.tools.hostnamePart" $v) -}}
-        {{- fail (printf "Invalid %s connection reference [%s]" $type $v) -}}
+  {{- if $connection -}}
+    {{- $reference := "" -}}
+    {{- $type := "" -}}
+    {{- range (list "secret" "configMap") -}}
+      {{- $type = . -}}
+      {{- if (hasKey $connection $type) -}}
+        {{- $v := get $connection $type -}}
+        {{- if not (include "arkcase.tools.hostnamePart" $v) -}}
+          {{- fail (printf "Invalid %s connection reference [%s]" $type $v) -}}
+        {{- end -}}
+        {{- $reference = $v -}}
+        {{- break -}}
       {{- end -}}
-      {{- $reference = $v -}}
-      {{- break -}}
     {{- end -}}
-  {{- end -}}
 
-  {{- if $reference -}}
-    {{- $result = set $result "ref" (eq "secret" $type | ternary "secretKeyRef" "configMapRef") -}}
-    {{- $result = set $result "source" $reference -}}
-    {{- $mappedKeys := (include "__arkcase.subsystem-access.sanitize-mapped-keys" $connection | fromYaml) -}}
-    {{- if $mappedKeys -}}
-      {{- $result = merge $result $mappedKeys -}}
+    {{- if $reference -}}
+      {{- /* We only tack the connection info if there actually is a target */ -}}
+      {{- $result = set $result "ref" (eq "secret" $type | ternary "secretKeyRef" "configMapRef") -}}
+      {{- $result = set $result "source" $reference -}}
+      {{- $result = merge $result (include "__arkcase.subsystem-access.sanitize-mapped-keys" $connection | fromYaml) -}}
     {{- end -}}
   {{- end -}}
 
@@ -90,45 +93,42 @@
   {{- end -}}
 
   {{- $result := dict -}}
-  {{- /* Scan over each credential defined in the map, and sanitize it */ -}}
-  {{- range $key, $creds := $credentials -}}
+  {{- if $credentials -}}
+    {{- /* Scan over each credential defined in the map, and sanitize it */ -}}
+    {{- range $key, $creds := $credentials -}}
 
-    {{- if not (include "arkcase.tools.hostnamePart" $key) -}}
-      {{- fail (printf "Illegal credentials name [%s] must be an RFC-1123 hostname part (no dots!)" $key) -}}
-    {{- end -}}
-
-    {{- /* If it's empty, in any way, shape, or form, skip it */ -}}
-    {{- if not $creds -}}
-      {{- continue -}}
-    {{- end -}}
-
-    {{- /* If it's a string, convert it into a map */ -}}
-    {{- if (kindIs "string" $creds) -}}
-      {{- $creds = (dict "secret" $creds) -}}
-    {{- end -}}
-
-    {{- $reference := "" -}}
-    {{- if (hasKey $creds "secret") -}}
-      {{- $v := get $creds "secret" -}}
-      {{- if (include "arkcase.tools.hostnamePart" $v) -}}
-        {{- $reference = $v -}}
+      {{- if not (include "arkcase.tools.hostnamePart" $key) -}}
+        {{- fail (printf "Illegal credentials name [%s] must be an RFC-1123 hostname part (no dots!)" $key) -}}
       {{- end -}}
-    {{- end -}}
 
-    {{- $thisCreds := dict -}}
-    {{- if $reference -}}
+      {{- /* If it's empty, in any way, shape, or form, skip it */ -}}
+      {{- if not $creds -}}
+        {{- continue -}}
+      {{- end -}}
+
+      {{- if not (kindIs "map" $creds) -}}
+        {{- $creds = (dict "secret" ($creds | toString)) -}}
+      {{- end -}}
+
+      {{- $reference := ((hasKey $creds "secret") | ternary $creds.secret "") -}}
+      {{- if not $reference -}}
+        {{- /* If the target secret is null or the empty string, ignore it */ -}}
+        {{- continue -}}
+      {{- end -}}
+
       {{- if not (include "arkcase.tools.hostnamePart" $reference) -}}
         {{- fail (printf "Invalid secret credentials reference [%s]" $reference) -}}
       {{- end -}}
-      {{- $thisCreds = (dict "source" $reference) -}}
-    {{- end -}}
 
-    {{- $mappedKeys := (include "__arkcase.subsystem-access.sanitize-mapped-keys" $creds | fromYaml) -}}
-    {{- if $mappedKeys -}}
-      {{- $thisCreds = merge $thisCreds $mappedKeys -}}
-    {{- end -}}
+      {{- /* These are the new credentials we will return */ -}}
+      {{- $newCreds := (dict "source" $reference) -}}
 
-    {{- $result = set $result $key $thisCreds -}}
+      {{- /* The mapped keys are only of use if we have an alternative source */ -}}
+      {{- $newCreds = merge $newCreds (include "__arkcase.subsystem-access.sanitize-mapped-keys" $creds | fromYaml) -}}
+
+      {{- /* Stow the computed credentials */ -}}
+      {{- $result = set $result $key $newCreds -}}
+    {{- end -}}
   {{- end -}}
   {{- $result | toYaml -}}
 {{- end -}}
@@ -182,6 +182,10 @@
   {{- end -}}
 
   {{- $result | toYaml -}}
+{{- end -}}
+
+{{- define "arkcase.subsystem.conf" -}}
+  {{- include "arkcase.subsystem-access.conf" $ -}}
 {{- end -}}
 
 {{- define "arkcase.subsystem-access.conf" -}}
