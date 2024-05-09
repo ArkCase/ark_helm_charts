@@ -70,11 +70,7 @@ spec:
             # Not yet ... but soon!
             # - name: DOCKER_STEPCA_INIT_ACME
             #   value: "true"
-            - name: DOCKER_STEPCA_INIT_PASSWORD_FILE
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "arkcase.subsystem.secret.name" $ | quote }}
-                  key: {{ include "arkcase.subsystem.secret.key" (dict "ctx" $ "key" "password") | quote }}
+            {{- include "arkcase.subsystem-access.env.cred" (dict "ctx" $ "name" "DOCKER_STEPCA_INIT_PASSWORD_FILE" "key" "password") | nindent 12 }}
             - name: STEPPATH
               value: *dataDir
           ports:
