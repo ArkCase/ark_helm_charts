@@ -1,3 +1,49 @@
+{{- define "__arkcase.subsystem-access.expand-vars.default-case-upper" -}}
+  {{- $ | toString | upper -}}
+{{- end -}}
+
+{{- define "__arkcase.subsystem-access.expand-vars.default-case-lower" -}}
+  {{- $ | toString | lower -}}
+{{- end -}}
+
+{{- define "__arkcase.subsystem-access.expand-vars.default-case" -}}
+  {{- $ | toString -}}
+{{- end -}}
+
+{{- define "__arkcase.subsystem-access.expand-vars" -}}
+  {{- $str := $.str -}}
+  {{- $params := $.params -}}
+  {{- $regex := ($.regex | default "") -}}
+  {{- $replace := ($.replace | default "") -}}
+  {{- $hasRegex := (not (empty $regex)) -}}
+
+  {{- $caseTemplate := "__arkcase.subsystem-access.expand-vars.default-case" -}}
+  {{- $defaultCase := ($.defaultCase | toString | lower) -}}
+  {{- if (regexMatch "^[ul]$" $defaultCase) -}}
+    {{- $caseTemplate = (printf "%s-%s" $caseTemplate (eq "u" $defaultCase | ternary "upper" "lower"))  -}}
+  {{- end -}}
+
+  {{- range $v := (list "subsys" "type" "key") -}}
+
+    {{- if not (hasKey $params $v) -}}
+      {{- continue -}}
+    {{- end -}}
+
+    {{- $value := (get $params $v) -}}
+    {{- if not $value -}}
+      {{- continue -}}
+    {{- end -}}
+
+    {{- $safe := ($hasRegex | ternary (mustRegexReplaceAll $regex $value $replace) $value) -}}
+    {{- $str = $str | replace (printf "${%s:l}" $v) ($safe | lower) -}}
+    {{- $str = $str | replace (printf "${%s}"   $v) (include $caseTemplate $safe) -}}
+    {{- $str = $str | replace (printf "${%s:u}" $v) ($safe | upper) -}}
+
+  {{- end -}}
+
+  {{- $str -}}
+{{- end -}}
+
 {{- define "__arkcase.subsystem-access.extract-params" -}}
   {{- $ctx := $ -}}
   {{- $checkParams := false -}}
@@ -77,7 +123,7 @@
 
     {{- if $reference -}}
       {{- /* We only tack the connection info if there actually is a target */ -}}
-      {{- $result = set $result "ref" (eq "secret" $type | ternary "secretKeyRef" "configMapRef") -}}
+      {{- $result = set $result "configMap" (eq "configMap" $type) -}}
       {{- $result = set $result "source" $reference -}}
       {{- $result = merge $result (include "__arkcase.subsystem-access.sanitize-mapped-keys" $connection | fromYaml) -}}
     {{- end -}}
@@ -121,7 +167,7 @@
       {{- end -}}
 
       {{- /* These are the new credentials we will return */ -}}
-      {{- $newCreds := (dict "source" $reference) -}}
+      {{- $newCreds := (dict "source" $reference "configMap" false) -}}
 
       {{- /* The mapped keys are only of use if we have an alternative source */ -}}
       {{- $newCreds = merge $newCreds (include "__arkcase.subsystem-access.sanitize-mapped-keys" $creds | fromYaml) -}}
@@ -281,24 +327,9 @@
 
   {{- $envVarName := "" -}}
   {{- if (hasKey $ "name") -}}
-    {{- $envVarName = $.name -}}
-
-    {{- $safe := regexReplaceAll "[-.]" $params.subsys "_" -}}
-    {{- $envVarName = $envVarName | replace "${subsys:l}" ($safe | lower) -}}
-    {{- $envVarName = $envVarName | replace "${subsys}" ($safe | upper) -}}
-    {{- $envVarName = $envVarName | replace "${subsys:u}" ($safe | upper) -}}
-
-    {{- $safe = regexReplaceAll "[-.]" $type "_" -}}
-    {{- $envVarName = $envVarName | replace "${type:l}" ($safe | lower) -}}
-    {{- $envVarName = $envVarName | replace "${type}" ($safe | upper) -}}
-    {{- $envVarName = $envVarName | replace "${type:u}" ($safe | upper) -}}
-
-    {{- $safe = regexReplaceAll "[-.]" $key "_" -}}
-    {{- $envVarName = $envVarName | replace "${key:l}" ($safe | lower) -}}
-    {{- $envVarName = $envVarName | replace "${key}" ($safe | upper) -}}
-    {{- $envVarName = $envVarName | replace "${key:u}" ($safe | upper) -}}
-
-    {{- $regex = "^[a-zA-Z0-9_]+$" -}}
+    {{- $vars := (dict "subsys" $params.subsys "type" $type "key" $key "defaultCase" "u") -}}
+    {{- $envVarName = (include "__arkcase.subsystem-access.expand-vars" (dict "str" $.name "params" $vars "regex" "[-.]" "replace" "_" "defaultCase" "u")) -}}
+    {{- $regex := "^[a-zA-Z0-9_]+$" -}}
     {{- if not (regexMatch $regex $envVarName) -}}
       {{- fail (printf "Invalid envvar name [%s] (final result = [%s]) for the key %s from the configuration resource of type %s for subsystem %s - must match /%s/" $.name $envVarName $key $params.type $params.subsys $regex) -}}
     {{- end -}}
@@ -311,7 +342,6 @@
     {{- $envVarName = regexReplaceAll "[-.]" $envVarName "_" -}}
   {{- end -}}
 
-  {{- $sourceRef := "secretKeyRef" -}}
   {{- $sourceName := "" -}}
   {{- $sourceNameTemplate := "" -}}
   {{- $conf := (include "arkcase.subsystem-access.conf" $ | fromYaml) -}}
@@ -324,7 +354,6 @@
     {{- end -}}
   {{- else -}}
     {{- $conf = ($conf.connection | default dict) -}}
-    {{- $sourceRef = ($conf.ref | default $sourceRef) -}}
     {{- $sourceName = $conf.source -}}
     {{- if not $sourceName -}}
       {{- $sourceNameTemplate = "arkcase.subsystem-access.name.conn" -}}
@@ -335,6 +364,8 @@
     {{- $sourceName = (include $sourceNameTemplate $) -}}
   {{- end -}}
 
+  {{- $configMap := (eq $conf.configMap true) -}}
+
   {{- $optional := (not (empty (include "arkcase.toBoolean" ($.optional | default false)))) -}}
 
   {{- /* Now we try to find any mappings for this key */ -}}
@@ -342,7 +373,7 @@
   {{- $sourceKey := (hasKey $mappings $key | ternary (get $mappings $key) $key) -}}
 - name: {{ $envVarName | quote }}
   valueFrom:
-    {{ $sourceRef }}:
+    {{ $configMap | ternary "configMap" "secret" }}KeyRef:
       name: {{ $sourceName | quote }}
       key: {{ $sourceKey | quote }}
       optional: {{ $optional }}
@@ -387,4 +418,158 @@
   {{- $ctx := $.ctx -}}
   {{- $args := merge (dict "ctx" $ctx "type" $type "subsys" $params.subsys) (pick $ "key" "name" "optional") -}}
   {{- include "__arkcase.subsystem-access.env" $args -}}
+{{- end -}}
+
+{{- define "__arkcase.subsystem-access.volumeMount" -}}
+  {{- $params := (include "__arkcase.subsystem-access.extract-params" $ | fromYaml) -}}
+  {{- if or $params.ctxIsRoot (not (hasKey $ "key")) -}}
+    {{- fail "Must provide a 'key' parameter" -}}
+  {{- end -}}
+  {{- $ctx := $.ctx -}}
+
+  {{- $type := "access" -}}
+  {{- if not $params.ctxIsRoot -}}
+    {{- $type = ($.type | default $type | toString) -}}
+  {{- end -}}
+
+  {{- $key := $.key -}}
+  {{- $regex := "^[a-zA-Z0-9_.-]+$" -}}
+  {{- if not (regexMatch $regex $key) -}}
+    {{- fail (printf "Invalid key [%s] from the configuration resource of type %s for subsystem %s - must match /%s/" $key $params.type $params.subsys $regex) -}}
+  {{- end -}}
+
+  {{- $conf := (include "arkcase.subsystem-access.conf" $ | fromYaml) -}}
+  {{- $volumeNameTemplate := "" -}}
+  {{- if (hasPrefix "cred-" $type) -}}
+    {{- $conf = (get ($conf.credentials | default dict) (trimPrefix "cred-" $type) | default dict) -}}
+    {{- $volumeNameTemplate = "arkcase.subsystem-access.name.cred" -}}
+  {{- else -}}
+    {{- $conf = ($conf.connection | default dict) -}}
+    {{- $volumeNameTemplate = "arkcase.subsystem-access.name.conn" -}}
+  {{- end -}}
+
+  {{- $volumeName := (printf "vol-%s" (include $volumeNameTemplate $)) -}}
+
+  {{- /* Now we try to find any mappings for this key */ -}}
+  {{- $mappings := (get $conf "mapped-keys" | default dict) -}}
+  {{- $sourceKey := (hasKey $mappings $key | ternary (get $mappings $key) $key) -}}
+
+  {{- $mountPath := $.mountPath -}}
+  {{- if not (hasKey $ "mountPath") -}}
+    {{- $mountPath = (printf "/srv/arkcase/%s/%s/%s" ($params.local | ternary "local" $params.subsys) $type $key) -}}
+  {{- end -}}
+
+  {{- if not (regexMatch "/[^/].*" $mountPath) -}}
+    {{- fail (printf "Invalid mount path [%s] - must be an absolute file path" $mountPath) -}}
+  {{- end -}}
+- name: {{ $volumeName | quote }}
+  mountPath: {{ $mountPath | quote }}
+  subPath: {{ $sourceKey | quote }}
+  readOnly: true
+{{- end -}}
+
+{{- define "arkcase.subsystem-access.volumeMount.conn" -}}
+  {{- $params := (include "__arkcase.subsystem-access.extract-params" $ | fromYaml) -}}
+  {{- if or $params.ctxIsRoot (not (hasKey $ "key")) -}}
+    {{- fail "Must provide a 'key' parameter" -}}
+  {{- end -}}
+  {{- $ctx := $.ctx -}}
+  {{- $args := merge (dict "ctx" $ctx "type" "conn" "subsys" $params.subsys) (pick $ "key" "mountPath") -}}
+  {{- include "__arkcase.subsystem-access.volumeMount" $args -}}
+{{- end -}}
+
+{{- define "arkcase.subsystem-access.volumeMount.admin" -}}
+  {{- $params := (include "__arkcase.subsystem-access.extract-params" $ | fromYaml) -}}
+  {{- if or $params.ctxIsRoot (not (hasKey $ "key")) -}}
+    {{- fail "Must provide a 'key' parameter" -}}
+  {{- end -}}
+  {{- $ctx := $.ctx -}}
+  {{- $args := merge (dict "ctx" $ctx "type" "cred-admin" "subsys" $params.subsys) (pick $ "key" "mountPath") -}}
+  {{- include "__arkcase.subsystem-access.volumeMount" $args -}}
+{{- end -}}
+
+{{- define "arkcase.subsystem-access.volumeMount.cred" -}}
+  {{- $params := (include "__arkcase.subsystem-access.extract-params" $ | fromYaml) -}}
+  {{- if or $params.ctxIsRoot (not (hasKey $ "key")) -}}
+    {{- fail "Must provide a 'key' parameter" -}}
+  {{- end -}}
+  {{- $type := "access" -}}
+  {{- if not $params.ctxIsRoot -}}
+    {{- $type = ($.type | default $type | toString) -}}
+  {{- end -}}
+  {{- $regex := "^[a-z0-9]+(-[a-z0-9]+)*$" -}}
+  {{- if (not (regexMatch $regex $type)) -}}
+    {{- fail (printf "Invalid resource type [%s] for subsystem [%s] - must match /%s/" $type $params.subsys $regex) -}}
+  {{- end -}}
+  {{- if not (hasPrefix "cred-" $type) -}}
+    {{- $type = (printf "%s%s" "cred-" $type) -}}
+  {{- end -}}
+  {{- $ctx := $.ctx -}}
+  {{- $args := merge (dict "ctx" $ctx "type" $type "subsys" $params.subsys) (pick $ "key" "mountPath") -}}
+  {{- include "__arkcase.subsystem-access.volumeMount" $args -}}
+{{- end -}}
+
+{{- define "__arkcase.subsystem-access.volume" -}}
+  {{- $params := (include "__arkcase.subsystem-access.extract-params" $ | fromYaml) -}}
+  {{- $ctx := $.ctx -}}
+
+  {{- $type := "access" -}}
+  {{- if not $params.ctxIsRoot -}}
+    {{- $type = ($.type | default $type | toString) -}}
+  {{- end -}}
+
+  {{- $conf := (include "arkcase.subsystem-access.conf" $ | fromYaml) -}}
+  {{- $volumeNameTemplate := "" -}}
+  {{- if (hasPrefix "cred-" $type) -}}
+    {{- $conf = (get ($conf.credentials | default dict) (trimPrefix "cred-" $type) | default dict) -}}
+    {{- $volumeNameTemplate = "arkcase.subsystem-access.name.cred" -}}
+  {{- else -}}
+    {{- $conf = ($conf.connection | default dict) -}}
+    {{- $volumeNameTemplate = "arkcase.subsystem-access.name.conn" -}}
+  {{- end -}}
+
+  {{- $volumeName := (include $volumeNameTemplate $) -}}
+  {{- $sourceName := $conf.source | default $volumeName -}}
+  {{- $volumeName = (printf "vol-%s" $volumeName) -}}
+
+  {{- $configMap := (eq $conf.configMap true) -}}
+  {{- $optional := (not (empty (include "arkcase.toBoolean" ($.optional | default false)))) -}}
+
+- name: {{ $volumeName | quote }}
+  {{ $configMap | ternary "configMap" "secret" }}:
+    {{ $configMap | ternary "name" "secretName" }}: {{ $sourceName | quote }}
+    defaultMode: 0444
+    optional: {{ $optional }}
+{{- end -}}
+
+{{- define "arkcase.subsystem-access.volume.conn" -}}
+  {{- $params := (include "__arkcase.subsystem-access.extract-params" $ | fromYaml) -}}
+  {{- $ctx := $.ctx -}}
+  {{- $args := merge (dict "ctx" $ctx "type" "conn" "subsys" $params.subsys) (pick $ "optional") -}}
+  {{- include "__arkcase.subsystem-access.volume" $args -}}
+{{- end -}}
+
+{{- define "arkcase.subsystem-access.volume.admin" -}}
+  {{- $params := (include "__arkcase.subsystem-access.extract-params" $ | fromYaml) -}}
+  {{- $ctx := $.ctx -}}
+  {{- $args := merge (dict "ctx" $ctx "type" "cred-admin" "subsys" $params.subsys) (pick $ "optional") -}}
+  {{- include "__arkcase.subsystem-access.volume" $args -}}
+{{- end -}}
+
+{{- define "arkcase.subsystem-access.volume.cred" -}}
+  {{- $params := (include "__arkcase.subsystem-access.extract-params" $ | fromYaml) -}}
+  {{- $type := "access" -}}
+  {{- if not $params.ctxIsRoot -}}
+    {{- $type = ($.type | default $type | toString) -}}
+  {{- end -}}
+  {{- $regex := "^[a-z0-9]+(-[a-z0-9]+)*$" -}}
+  {{- if (not (regexMatch $regex $type)) -}}
+    {{- fail (printf "Invalid resource type [%s] for subsystem [%s] - must match /%s/" $type $params.subsys $regex) -}}
+  {{- end -}}
+  {{- if not (hasPrefix "cred-" $type) -}}
+    {{- $type = (printf "%s%s" "cred-" $type) -}}
+  {{- end -}}
+  {{- $ctx := $.ctx -}}
+  {{- $args := merge (dict "ctx" $ctx "type" $type "subsys" $params.subsys) (pick $ "optional") -}}
+  {{- include "__arkcase.subsystem-access.volume" $args -}}
 {{- end -}}
