@@ -156,7 +156,7 @@ spec:
                   # We know the UID for the Pentaho container is 998:996
                   - ownership: "1998:1998"
                     permissions: "u=rwX,g=rX,o="
-                    flags: [ "recurse", "noforced", "create", "changes" ]
+                    flags: [ "recurse", "forced", "create", "changes" ]
                     targets: [ "$(DATA_DIR)", "$(TEMP_DIR)", "$(LOGS_DIR)", "$(INIT_DIR)" ]
           volumeMounts:
             - name: *initVol
