@@ -187,7 +187,7 @@
   {{- $settings | toYaml -}}
 {{- end -}}
 
-{{- define "arkcase.subsystem-access.conf.render" -}}
+{{- define "__arkcase.subsystem-access.conf.render" -}}
   {{- $params := (include "__arkcase.subsystem-access.extract-params" $ | fromYaml) -}}
   {{- $ctx := ($params.ctxIsRoot | ternary $ $.ctx) -}}
 
@@ -251,12 +251,47 @@
   {{- $masterKey := (printf "%s-%s" $params.release $params.subsys) -}}
   {{- $yamlResult := dict -}}
   {{- if not (hasKey $masterCache $masterKey) -}}
-    {{- $yamlResult = (include "arkcase.subsystem-access.conf.render" $) -}}
+    {{- $yamlResult = (include "__arkcase.subsystem-access.conf.render" $) -}}
     {{- $masterCache = set $masterCache $masterKey ($yamlResult | fromYaml) -}}
   {{- else -}}
     {{- $yamlResult = get $masterCache $masterKey | toYaml -}}
   {{- end -}}
   {{- $yamlResult -}}
+{{- end -}}
+
+{{- define "arkcase.subsystem-access.external.conn" -}}
+  {{- $params := (include "__arkcase.subsystem-access.extract-params" $ | fromYaml) -}}
+  {{- $ctx := ($params.ctxIsRoot | ternary $ $.ctx) -}}
+  {{- $args := (dict "ctx" $ctx "type" "conn" "subsys" $params.subsys) -}}
+  {{- $conf := (include "arkcase.subsystem-access.conf" $args | fromYaml) -}}
+  {{- (empty $conf.connection) | ternary "" "true" -}}
+{{- end -}}
+
+{{- define "arkcase.subsystem-access.external.admin" -}}
+  {{- $params := (include "__arkcase.subsystem-access.extract-params" $ | fromYaml) -}}
+  {{- $ctx := ($params.ctxIsRoot | ternary $ $.ctx) -}}
+  {{- $args := (dict "ctx" $ctx "type" "cred-admin" "subsys" $params.subsys) -}}
+  {{- $conf := (include "arkcase.subsystem-access.conf" $args | fromYaml) -}}
+  {{- (empty ($conf.credentials).admin) | ternary "" "true" -}}
+{{- end -}}
+
+{{- define "arkcase.subsystem-access.external.cred" -}}
+  {{- $params := (include "__arkcase.subsystem-access.extract-params" $ | fromYaml) -}}
+  {{- $ctx := ($params.ctxIsRoot | ternary $ $.ctx) -}}
+  {{- $type := "access" -}}
+  {{- if not $params.ctxIsRoot -}}
+    {{- $type = ($.type | default $type | toString) -}}
+  {{- end -}}
+  {{- $regex := "^[a-z0-9]+(-[a-z0-9]+)*$" -}}
+  {{- if (not (regexMatch $regex $type)) -}}
+    {{- fail (printf "Invalid resource type [%s] for subsystem [%s] - must match /%s/" $type $params.subsys $regex) -}}
+  {{- end -}}
+  {{- if not (hasPrefix "cred-" $type) -}}
+    {{- $type = (printf "%s%s" "cred-" $type) -}}
+  {{- end -}}
+  {{- $args := (dict "ctx" $ctx "type" $type "subsys" $params.subsys) -}}
+  {{- $conf := (include "arkcase.subsystem-access.conf" $args | fromYaml) -}}
+  {{- (empty (get $conf.credentials (trimPrefix "cred-" $type))) | ternary "" "true" -}}
 {{- end -}}
 
 {{- define "__arkcase.subsystem-access.name" -}}
@@ -381,26 +416,27 @@
 
 {{- define "arkcase.subsystem-access.env.conn" -}}
   {{- $params := (include "__arkcase.subsystem-access.extract-params" $ | fromYaml) -}}
+  {{- $ctx := ($params.ctxIsRoot | ternary $ $.ctx) -}}
   {{- if or $params.ctxIsRoot (not (hasKey $ "key")) -}}
     {{- fail "Must provide a 'key' parameter" -}}
   {{- end -}}
-  {{- $ctx := $.ctx -}}
   {{- $args := merge (dict "ctx" $ctx "type" "conn" "subsys" $params.subsys) (pick $ "key" "name" "optional") -}}
   {{- include "__arkcase.subsystem-access.env" $args -}}
 {{- end -}}
 
 {{- define "arkcase.subsystem-access.env.admin" -}}
   {{- $params := (include "__arkcase.subsystem-access.extract-params" $ | fromYaml) -}}
+  {{- $ctx := ($params.ctxIsRoot | ternary $ $.ctx) -}}
   {{- if or $params.ctxIsRoot (not (hasKey $ "key")) -}}
     {{- fail "Must provide a 'key' parameter" -}}
   {{- end -}}
-  {{- $ctx := $.ctx -}}
   {{- $args := merge (dict "ctx" $ctx "type" "cred-admin" "subsys" $params.subsys) (pick $ "key" "name" "optional") -}}
   {{- include "__arkcase.subsystem-access.env" $args -}}
 {{- end -}}
 
 {{- define "arkcase.subsystem-access.env.cred" -}}
   {{- $params := (include "__arkcase.subsystem-access.extract-params" $ | fromYaml) -}}
+  {{- $ctx := ($params.ctxIsRoot | ternary $ $.ctx) -}}
   {{- if or $params.ctxIsRoot (not (hasKey $ "key")) -}}
     {{- fail "Must provide a 'key' parameter" -}}
   {{- end -}}
@@ -415,17 +451,16 @@
   {{- if not (hasPrefix "cred-" $type) -}}
     {{- $type = (printf "%s%s" "cred-" $type) -}}
   {{- end -}}
-  {{- $ctx := $.ctx -}}
   {{- $args := merge (dict "ctx" $ctx "type" $type "subsys" $params.subsys) (pick $ "key" "name" "optional") -}}
   {{- include "__arkcase.subsystem-access.env" $args -}}
 {{- end -}}
 
 {{- define "__arkcase.subsystem-access.volumeMount" -}}
   {{- $params := (include "__arkcase.subsystem-access.extract-params" $ | fromYaml) -}}
+  {{- $ctx := ($params.ctxIsRoot | ternary $ $.ctx) -}}
   {{- if or $params.ctxIsRoot (not (hasKey $ "key")) -}}
     {{- fail "Must provide a 'key' parameter" -}}
   {{- end -}}
-  {{- $ctx := $.ctx -}}
 
   {{- $type := "access" -}}
   {{- if not $params.ctxIsRoot -}}
@@ -470,26 +505,27 @@
 
 {{- define "arkcase.subsystem-access.volumeMount.conn" -}}
   {{- $params := (include "__arkcase.subsystem-access.extract-params" $ | fromYaml) -}}
+  {{- $ctx := ($params.ctxIsRoot | ternary $ $.ctx) -}}
   {{- if or $params.ctxIsRoot (not (hasKey $ "key")) -}}
     {{- fail "Must provide a 'key' parameter" -}}
   {{- end -}}
-  {{- $ctx := $.ctx -}}
   {{- $args := merge (dict "ctx" $ctx "type" "conn" "subsys" $params.subsys) (pick $ "key" "mountPath") -}}
   {{- include "__arkcase.subsystem-access.volumeMount" $args -}}
 {{- end -}}
 
 {{- define "arkcase.subsystem-access.volumeMount.admin" -}}
   {{- $params := (include "__arkcase.subsystem-access.extract-params" $ | fromYaml) -}}
+  {{- $ctx := ($params.ctxIsRoot | ternary $ $.ctx) -}}
   {{- if or $params.ctxIsRoot (not (hasKey $ "key")) -}}
     {{- fail "Must provide a 'key' parameter" -}}
   {{- end -}}
-  {{- $ctx := $.ctx -}}
   {{- $args := merge (dict "ctx" $ctx "type" "cred-admin" "subsys" $params.subsys) (pick $ "key" "mountPath") -}}
   {{- include "__arkcase.subsystem-access.volumeMount" $args -}}
 {{- end -}}
 
 {{- define "arkcase.subsystem-access.volumeMount.cred" -}}
   {{- $params := (include "__arkcase.subsystem-access.extract-params" $ | fromYaml) -}}
+  {{- $ctx := ($params.ctxIsRoot | ternary $ $.ctx) -}}
   {{- if or $params.ctxIsRoot (not (hasKey $ "key")) -}}
     {{- fail "Must provide a 'key' parameter" -}}
   {{- end -}}
@@ -504,14 +540,13 @@
   {{- if not (hasPrefix "cred-" $type) -}}
     {{- $type = (printf "%s%s" "cred-" $type) -}}
   {{- end -}}
-  {{- $ctx := $.ctx -}}
   {{- $args := merge (dict "ctx" $ctx "type" $type "subsys" $params.subsys) (pick $ "key" "mountPath") -}}
   {{- include "__arkcase.subsystem-access.volumeMount" $args -}}
 {{- end -}}
 
 {{- define "__arkcase.subsystem-access.volume" -}}
   {{- $params := (include "__arkcase.subsystem-access.extract-params" $ | fromYaml) -}}
-  {{- $ctx := $.ctx -}}
+  {{- $ctx := ($params.ctxIsRoot | ternary $ $.ctx) -}}
 
   {{- $type := "access" -}}
   {{- if not $params.ctxIsRoot -}}
@@ -544,20 +579,22 @@
 
 {{- define "arkcase.subsystem-access.volume.conn" -}}
   {{- $params := (include "__arkcase.subsystem-access.extract-params" $ | fromYaml) -}}
-  {{- $ctx := $.ctx -}}
+  {{- $ctx := ($params.ctxIsRoot | ternary $ $.ctx) -}}
   {{- $args := merge (dict "ctx" $ctx "type" "conn" "subsys" $params.subsys) (pick $ "optional") -}}
   {{- include "__arkcase.subsystem-access.volume" $args -}}
 {{- end -}}
 
 {{- define "arkcase.subsystem-access.volume.admin" -}}
   {{- $params := (include "__arkcase.subsystem-access.extract-params" $ | fromYaml) -}}
-  {{- $ctx := $.ctx -}}
+  {{- $ctx := ($params.ctxIsRoot | ternary $ $.ctx) -}}
   {{- $args := merge (dict "ctx" $ctx "type" "cred-admin" "subsys" $params.subsys) (pick $ "optional") -}}
   {{- include "__arkcase.subsystem-access.volume" $args -}}
 {{- end -}}
 
 {{- define "arkcase.subsystem-access.volume.cred" -}}
   {{- $params := (include "__arkcase.subsystem-access.extract-params" $ | fromYaml) -}}
+  {{- $ctx := ($params.ctxIsRoot | ternary $ $.ctx) -}}
+  {{- $args := merge (dict "ctx" $ctx "type" "cred-admin" "subsys" $params.subsys) (pick $ "optional") -}}
   {{- $type := "access" -}}
   {{- if not $params.ctxIsRoot -}}
     {{- $type = ($.type | default $type | toString) -}}
@@ -569,7 +606,6 @@
   {{- if not (hasPrefix "cred-" $type) -}}
     {{- $type = (printf "%s%s" "cred-" $type) -}}
   {{- end -}}
-  {{- $ctx := $.ctx -}}
   {{- $args := merge (dict "ctx" $ctx "type" $type "subsys" $params.subsys) (pick $ "optional") -}}
   {{- include "__arkcase.subsystem-access.volume" $args -}}
 {{- end -}}
