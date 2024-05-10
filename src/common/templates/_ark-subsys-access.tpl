@@ -99,39 +99,6 @@
   {{- $result | toYaml -}}
 {{- end -}}
 
-{{- define "__arkcase.subsystem-access.sanitize-connection" -}}
-  {{- $connection := $ -}}
-  {{- if or (not $connection) (not (kindIs "map" $connection)) -}}
-    {{- $connection = dict -}}
-  {{- end -}}
-
-  {{- $result := dict -}}
-  {{- if $connection -}}
-    {{- $reference := "" -}}
-    {{- $type := "" -}}
-    {{- range (list "secret" "configMap") -}}
-      {{- $type = . -}}
-      {{- if (hasKey $connection $type) -}}
-        {{- $v := get $connection $type -}}
-        {{- if not (include "arkcase.tools.hostnamePart" $v) -}}
-          {{- fail (printf "Invalid %s connection reference [%s]" $type $v) -}}
-        {{- end -}}
-        {{- $reference = $v -}}
-        {{- break -}}
-      {{- end -}}
-    {{- end -}}
-
-    {{- if $reference -}}
-      {{- /* We only tack the connection info if there actually is a target */ -}}
-      {{- $result = set $result "configMap" (eq "configMap" $type) -}}
-      {{- $result = set $result "source" $reference -}}
-      {{- $result = merge $result (include "__arkcase.subsystem-access.sanitize-mapped-keys" $connection | fromYaml) -}}
-    {{- end -}}
-  {{- end -}}
-
-  {{- $result | toYaml -}}
-{{- end -}}
-
 {{- define "__arkcase.subsystem-access.sanitize-credentials" -}}
   {{- $credentials := $ -}}
   {{- if or (not $credentials) (not (kindIs "map" $credentials)) -}}
@@ -140,42 +107,92 @@
 
   {{- $result := dict -}}
   {{- if $credentials -}}
-    {{- /* Scan over each credential defined in the map, and sanitize it */ -}}
-    {{- range $key, $creds := $credentials -}}
+    {{- $enabled := or (not (hasKey $credentials "enabled")) (include "arkcase.toBoolean" $credentials.enabled) -}}
+    {{- if $enabled -}}
+      {{- /* Scan over each credential defined in the map, and sanitize it */ -}}
+      {{- range $key, $creds := (omit $credentials "enabled") -}}
 
-      {{- if not (include "arkcase.tools.hostnamePart" $key) -}}
-        {{- fail (printf "Illegal credentials name [%s] must be an RFC-1123 hostname part (no dots!)" $key) -}}
+        {{- if not (include "arkcase.tools.hostnamePart" $key) -}}
+          {{- fail (printf "Illegal credentials name [%s] must be an RFC-1123 hostname part (no dots!)" $key) -}}
+        {{- end -}}
+
+        {{- /* If it's empty, in any way, shape, or form, skip it */ -}}
+        {{- if not $creds -}}
+          {{- continue -}}
+        {{- end -}}
+
+        {{- if not (kindIs "map" $creds) -}}
+          {{- $creds = (dict "secret" ($creds | toString)) -}}
+        {{- end -}}
+
+        {{- /* Skip disabled credentials */ -}}
+        {{- $enabled := or (not (hasKey $creds "enabled")) (include "arkcase.toBoolean" $creds.enabled) -}}
+        {{- if not $enabled -}}
+          {{- continue -}}
+        {{- end -}}
+
+        {{- $reference := ((hasKey $creds "secret") | ternary $creds.secret "") -}}
+        {{- if not $reference -}}
+          {{- /* If the target secret is null or the empty string, ignore it */ -}}
+          {{- continue -}}
+        {{- end -}}
+
+        {{- if not (include "arkcase.tools.hostnamePart" $reference) -}}
+          {{- fail (printf "Invalid secret credentials reference [%s]" $reference) -}}
+        {{- end -}}
+
+        {{- /* These are the new credentials we will return */ -}}
+        {{- $newCreds := (dict "source" $reference "configMap" false) -}}
+
+        {{- /* The mapped keys are only of use if we have an alternative source */ -}}
+        {{- $newCreds = merge $newCreds (include "__arkcase.subsystem-access.sanitize-mapped-keys" $creds | fromYaml) -}}
+
+        {{- /* Stow the computed credentials */ -}}
+        {{- $result = set $result $key $newCreds -}}
       {{- end -}}
-
-      {{- /* If it's empty, in any way, shape, or form, skip it */ -}}
-      {{- if not $creds -}}
-        {{- continue -}}
-      {{- end -}}
-
-      {{- if not (kindIs "map" $creds) -}}
-        {{- $creds = (dict "secret" ($creds | toString)) -}}
-      {{- end -}}
-
-      {{- $reference := ((hasKey $creds "secret") | ternary $creds.secret "") -}}
-      {{- if not $reference -}}
-        {{- /* If the target secret is null or the empty string, ignore it */ -}}
-        {{- continue -}}
-      {{- end -}}
-
-      {{- if not (include "arkcase.tools.hostnamePart" $reference) -}}
-        {{- fail (printf "Invalid secret credentials reference [%s]" $reference) -}}
-      {{- end -}}
-
-      {{- /* These are the new credentials we will return */ -}}
-      {{- $newCreds := (dict "source" $reference "configMap" false) -}}
-
-      {{- /* The mapped keys are only of use if we have an alternative source */ -}}
-      {{- $newCreds = merge $newCreds (include "__arkcase.subsystem-access.sanitize-mapped-keys" $creds | fromYaml) -}}
-
-      {{- /* Stow the computed credentials */ -}}
-      {{- $result = set $result $key $newCreds -}}
     {{- end -}}
   {{- end -}}
+  {{- $result | toYaml -}}
+{{- end -}}
+
+{{- define "__arkcase.subsystem-access.sanitize-connection" -}}
+  {{- $connection := $ -}}
+  {{- if or (not $connection) (not (kindIs "map" $connection)) -}}
+    {{- $connection = dict -}}
+  {{- end -}}
+
+  {{- $result := dict -}}
+  {{- if $connection -}}
+    {{- $enabled := or (not (hasKey $connection "enabled")) (include "arkcase.toBoolean" $connection.enabled) -}}
+    {{- $reference := "" -}}
+    {{- $type := "" -}}
+    {{- if $enabled -}}
+      {{- range (list "secret" "configMap") -}}
+        {{- $type = . -}}
+        {{- if (hasKey $connection $type) -}}
+          {{- $v := get $connection $type -}}
+          {{- if not (include "arkcase.tools.hostnamePart" $v) -}}
+            {{- fail (printf "Invalid %s connection reference [%s]" $type $v) -}}
+          {{- end -}}
+          {{- $reference = $v -}}
+          {{- break -}}
+        {{- end -}}
+      {{- end -}}
+    {{- end -}}
+
+    {{- if $reference -}}
+      {{- /* We only tack the connection info if there actually is a target */ -}}
+      {{- $result = set $result "configMap" (eq "configMap" $type) -}}
+      {{- $result = set $result "source" $reference -}}
+      {{- $result = merge $result (include "__arkcase.subsystem-access.sanitize-mapped-keys" $connection | fromYaml) -}}
+
+      {{- $credentials := (include "__arkcase.subsystem-access.sanitize-credentials" $connection.credentials | fromYaml) -}}
+      {{- if $credentials -}}
+        {{- $result = set $result "credentials" $credentials -}}
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
+
   {{- $result | toYaml -}}
 {{- end -}}
 
@@ -215,11 +232,6 @@
   {{- $connection := (include "__arkcase.subsystem-access.sanitize-connection" $conf.connection | fromYaml) -}}
   {{- if $connection -}}
     {{- $result = set $result "connection" $connection -}}
-  {{- end -}}
-
-  {{- $credentials := (include "__arkcase.subsystem-access.sanitize-credentials" $conf.credentials | fromYaml) -}}
-  {{- if $credentials -}}
-    {{- $result = set $result "credentials" $credentials -}}
   {{- end -}}
 
   {{- $settings := (include "__arkcase.subsystem-access.sanitize-settings" $conf.settings | fromYaml) -}}
@@ -272,7 +284,8 @@
   {{- $ctx := ($params.ctxIsRoot | ternary $ $.ctx) -}}
   {{- $args := (dict "ctx" $ctx "type" "cred-admin" "subsys" $params.subsys) -}}
   {{- $conf := (include "arkcase.subsystem-access.conf" $args | fromYaml) -}}
-  {{- (empty ($conf.credentials).admin) | ternary "" "true" -}}
+  {{- $creds := ((get (($conf.connection).credentials | default dict) "admin") | default dict) -}}
+  {{- (empty $creds) | ternary "" "true" -}}
 {{- end -}}
 
 {{- define "arkcase.subsystem-access.external.cred" -}}
@@ -291,7 +304,8 @@
   {{- end -}}
   {{- $args := (dict "ctx" $ctx "type" $type "subsys" $params.subsys) -}}
   {{- $conf := (include "arkcase.subsystem-access.conf" $args | fromYaml) -}}
-  {{- (empty (get $conf.credentials (trimPrefix "cred-" $type))) | ternary "" "true" -}}
+  {{- $creds := ((get (($conf.connection).credentials | default dict) (trimPrefix "cred-" $type)) | default dict) -}}
+  {{- (empty $creds) | ternary "" "true" -}}
 {{- end -}}
 
 {{- define "__arkcase.subsystem-access.name" -}}
@@ -380,6 +394,7 @@
   {{- $sourceName := "" -}}
   {{- $sourceNameTemplate := "" -}}
   {{- $conf := (include "arkcase.subsystem-access.conf" $ | fromYaml) -}}
+  {{- $conf = ($conf.connection | default dict) -}}
 
   {{- if (hasPrefix "cred-" $type) -}}
     {{- $conf = (get ($conf.credentials | default dict) (trimPrefix "cred-" $type) | default dict) -}}
@@ -388,7 +403,6 @@
       {{- $sourceNameTemplate = "arkcase.subsystem-access.name.cred" -}}
     {{- end -}}
   {{- else -}}
-    {{- $conf = ($conf.connection | default dict) -}}
     {{- $sourceName = $conf.source -}}
     {{- if not $sourceName -}}
       {{- $sourceNameTemplate = "arkcase.subsystem-access.name.conn" -}}
@@ -474,12 +488,12 @@
   {{- end -}}
 
   {{- $conf := (include "arkcase.subsystem-access.conf" $ | fromYaml) -}}
+  {{- $conf = ($conf.connection | default dict) -}}
   {{- $volumeNameTemplate := "" -}}
   {{- if (hasPrefix "cred-" $type) -}}
     {{- $conf = (get ($conf.credentials | default dict) (trimPrefix "cred-" $type) | default dict) -}}
     {{- $volumeNameTemplate = "arkcase.subsystem-access.name.cred" -}}
   {{- else -}}
-    {{- $conf = ($conf.connection | default dict) -}}
     {{- $volumeNameTemplate = "arkcase.subsystem-access.name.conn" -}}
   {{- end -}}
 
@@ -554,12 +568,12 @@
   {{- end -}}
 
   {{- $conf := (include "arkcase.subsystem-access.conf" $ | fromYaml) -}}
+  {{- $conf = ($conf.connection | default dict) -}}
   {{- $volumeNameTemplate := "" -}}
   {{- if (hasPrefix "cred-" $type) -}}
     {{- $conf = (get ($conf.credentials | default dict) (trimPrefix "cred-" $type) | default dict) -}}
     {{- $volumeNameTemplate = "arkcase.subsystem-access.name.cred" -}}
   {{- else -}}
-    {{- $conf = ($conf.connection | default dict) -}}
     {{- $volumeNameTemplate = "arkcase.subsystem-access.name.conn" -}}
   {{- end -}}
 
