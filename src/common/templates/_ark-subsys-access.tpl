@@ -23,13 +23,23 @@
     {{- $caseTemplate = (printf "%s-%s" $caseTemplate (eq "u" $defaultCase | ternary "upper" "lower"))  -}}
   {{- end -}}
 
-  {{- range $v := (list "subsys" "type" "key") -}}
+  {{- range $v := (list "subsys" "type" "key" "rand-ascii" "rand-alpha-num") -}}
 
-    {{- if not (hasKey $params $v) -}}
-      {{- continue -}}
+    {{- $value := "" -}}
+    {{- if hasPrefix "rand-" $v -}}
+      {{- if eq $v "rand-ascii" -}}
+        {{- $value = (randAscii 64) -}}
+      {{- end -}}
+      {{- if eq $v "rand-alpha-num" -}}
+        {{- $value = (randAlphaNum 64) -}}
+      {{- end -}}
+    {{- else -}}
+      {{- if not (hasKey $params $v) -}}
+        {{- continue -}}
+      {{- end -}}
+      {{- $value = (get $params $v) -}}
     {{- end -}}
 
-    {{- $value := (get $params $v) -}}
     {{- if not $value -}}
       {{- continue -}}
     {{- end -}}
