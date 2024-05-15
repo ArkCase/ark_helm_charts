@@ -1,4 +1,5 @@
-{{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.acme.external" $)) -}}
+{{- if (include "arkcase.subsystem.enabled" $) -}}
+{{- $passwordFilePath := "/.secrets/password" -}}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -67,10 +68,11 @@ spec:
               value: "ArkCase on Kubernetes"
             - name: DOCKER_STEPCA_INIT_SERVICE_NAME
               value: {{ include "arkcase.service.name" $ | quote }}
+            - name: DOCKER_STEPCA_INIT_PASSWORD_FILE
+              value: {{ $passwordFilePath | quote }}
             # Not yet ... but soon!
             # - name: DOCKER_STEPCA_INIT_ACME
             #   value: "true"
-            {{- include "arkcase.subsystem-access.env.cred" (dict "ctx" $ "name" "DOCKER_STEPCA_INIT_PASSWORD_FILE" "key" "password") | nindent 12 }}
             - name: STEPPATH
               value: *dataDir
           ports:
@@ -80,9 +82,11 @@ spec:
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "step") | nindent 12 }}
           volumeMounts:
+            {{- include "arkcase.subsystem-access.volumeMount.admin" (dict "ctx" $ "mountPath" $passwordFilePath "key" "password") | nindent 12 }}
             - name: *dataVolume
               mountPath: *dataDir
       volumes:
+        {{- include "arkcase.subsystem-access.volume.admin" $ | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
       {{- with $.Values.nodeSelector }}
       nodeSelector: {{- toYaml . | nindent 8 }}
