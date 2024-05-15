@@ -112,7 +112,9 @@ Parameter: either the root context (i.e. "." or "$"), or
 
 {{- define "arkcase.subsystem.external" -}}
   {{- $conf := (include "arkcase.subsystem.conf" $ | fromYaml) -}}
-  {{- not (empty $conf.connection) -}}
+  {{- if (empty $conf.connection) -}}
+    {{- true -}}
+  {{- end -}}
 {{- end -}}
 
 {{- define "arkcase.service.name" }}
