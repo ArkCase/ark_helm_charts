@@ -63,18 +63,20 @@ is_namespace_exists()
 
 clean_pvc()
 {
-	sed \
-		-e '/creationTimestamp:/d' \
-		-e '/finalizers:/,+1 d' \
-		-e '/namespace:/,+1 d' \
-		-e '/kubectl.kubernetes.io\/last-applied-configuration:/,+1 d' \
-		-e '/pv.kubernetes.io\/b/d' \
-		-e '/volume.beta.kubernetes.io/d' \
-		-e '/volume.kubernetes.io/d' \
-		-e '/resourceVersion:/d' \
-		-e '/volumeName:/d' \
-		-e '/uid:/d' \
-		-e '/status:/,$d'
+	local T="$(mktemp "XXXXXXXX.yaml")"
+	cat > "${T}"
+	gucci -f "${T}" <<-EOF
+	{{- pick . "apiVersion" "kind" | toYaml }}
+	{{- with .metadata }}
+	metadata: {{- dict "name" .name "labels" .labels | toYaml | nindent 2 }}
+	{{- end }}
+	{{- with .spec }}
+	spec: {{- dict "accessModes" .accessModes "resources" .resources "volumeMode" .volumeMode | toYaml | nindent 2 -}}
+	{{- end }}
+	EOF
+	local RC=${?}
+	rm -f "${T}" &>/dev/null
+	return ${RC}
 }
 
 usage()
@@ -88,24 +90,25 @@ usage()
 ensure_exe kubectl
 
 if [ ${#} -eq 1 ] ; then
-    NAMESPACE="$(kubectl config view --minify -o jsonpath="{..namespace}")"
-    [ -n "${NAMESPACE}" ] || NAMESPACE="default"
+	NAMESPACE="$(kubectl config view --minify -o jsonpath="{..namespace}")"
+	[ -n "${NAMESPACE}" ] || NAMESPACE="default"
 else
-    NAMESPACE="${1}"
-    shift
+	NAMESPACE="${1}"
+	shift
 fi
 is_valid_name "${NAMESPACE}" || fail "Invalid source namespace name [${NAMESPACE}]"
 
 # If the target namespace doesn't exist, by extension the environment doesn't exist
 if ! is_namespace_exists "${NAMESPACE}" ; then
-    say "The namespace ${NAMESPACE} does not exist, so nothing to copy"
-    exit 0
+	say "The namespace ${NAMESPACE} does not exist, so nothing to copy"
+	exit 0
 fi
 
 PVC_DIR="${1}"
 [ -n "${PVC_DIR}" ] || fail "The target directory may not be the empty string"
 
-KUBECTL="$(type -P kubectl)" || fail "Could not find kubectl in the path"
+type -P kubectl &>/dev/null || fail "Could not find kubectl in the path"
+type -P gucci &>/dev/null || fail "Could not find gucci in the path"
 
 say "👉 Gathering the PVCs definitions..."
 PVCS="$(kubectl get pvc --namespace "${NAMESPACE}" --no-headers | awk '{ print $1 }')" || fail "Failed to get the PVC names"
