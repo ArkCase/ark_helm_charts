@@ -1,48 +1,3 @@
-{{- define "arkcase.artemis.adminUser" -}}
-  {{- include "arkcase.tools.conf" (dict "ctx" $ "value" "adminUsername") -}}
-{{- end -}}
-
-{{- define "arkcase.artemis.adminPassword.render" -}}
-  {{- if not (include "arkcase.isRootContext" $) -}}
-    {{- fail "The parameter must be the root context" -}}
-  {{- end -}}
-
-  {{- $secretObj := (lookup "v1" "Secret" $.Release.Namespace (include "arkcase.fullname" $) | default dict) -}}
-  {{- $secretData := (get $secretObj "data") | default dict -}}
-
-  {{- $adminPassword := "" -}}
-  {{- if and (not $adminPassword) (hasKey $secretData "ADMIN_PASSWORD") -}}
-    {{- $adminPassword = (get $secretData "ADMIN_PASSWORD" | b64dec) -}}
-  {{- end -}}
-  {{- if (not $adminPassword) -}}
-    {{- $adminPassword = (randAlphaNum 12) -}}
-  {{- end -}}
-  {{- $adminPassword -}}
-{{- end -}}
-
-{{- define "arkcase.artemis.adminPassword" -}}
-  {{- if not (include "arkcase.isRootContext" $) -}}
-    {{- fail "The parameter must be the root context" -}}
-  {{- end -}}
-
-  {{- $adminPassword := (include "arkcase.tools.conf" (dict "ctx" $ "value" "adminPassword" "detailed" true) | fromYaml) -}}
-  {{- if and $adminPassword $adminPassword.found -}}
-    {{- $adminPassword = $adminPassword.value -}}
-  {{- else -}}
-    {{- $fullname := (include "common.fullname" $) -}}
-    {{- $secretKey := (printf "%s-adminPassword" $fullname) -}}
-    {{- if not (hasKey $ $secretKey) -}}
-      {{- $newSecret := (include "arkcase.artemis.adminPassword.render" $) -}}
-      {{- $crap := set $ $secretKey $newSecret -}}
-      {{- $secretKey = $newSecret -}}
-    {{- else -}}
-      {{- $secretKey = get $ $secretKey -}}
-    {{- end -}}
-    {{- $adminPassword = $secretKey -}}
-  {{- end -}}
-  {{- $adminPassword -}}
-{{- end -}}
-
 {{- define "arkcase.artemis.adminRole" -}}
   {{- include "arkcase.tools.conf" (dict "ctx" $ "value" "adminRole") -}}
 {{- end -}}
@@ -111,4 +66,7 @@
 {{ $role }}={{ join "," (get $roles $role) }}
     {{- end }}
   {{- end -}}
+{{- end -}}
+
+{{- define "arkcase.artemis.mountUserAccounts" -}}
 {{- end -}}

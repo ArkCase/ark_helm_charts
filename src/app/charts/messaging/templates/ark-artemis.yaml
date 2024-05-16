@@ -105,21 +105,9 @@ spec:
           {{- include "arkcase.image" $ | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
-            - name: ARTEMIS_ADMIN_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: &secretName {{ $fullname | quote }}
-                  key: ADMIN_PASSWORD
-            - name: ARTEMIS_CLUSTER_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: *secretName
-                  key: CLUSTER_PASSWORD
-            - name: ARTEMIS_ENCRYPTION_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: *secretName
-                  key: ENCRYPTION_PASSWORD
+            {{- include "arkcase.subsystem-access.env.admin" (dict "ctx" $ "name" "ARTEMIS_ADMIN_PASSWORD") | nindent 12 }}
+            {{- include "arkcase.subsystem-access.env.cred" (dict "ctx" $ "type" "cluster" "key" "password" "name" "ARTEMIS_CLUSTER_PASSWORD") | nindent 12 }}
+            {{- include "arkcase.subsystem-access.env.cred" (dict "ctx" $ "type" "cluster" "key" "encryption" "name" "ARTEMIS_ENCRYPTION_PASSWORD") | nindent 12 }}
           {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
           {{- with (include "arkcase.values" (dict "ctx" $ "base" "command") | fromYaml) }}
           command: {{ toJson .value }}
@@ -128,83 +116,67 @@ spec:
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "artemis") | nindent 12 }}
           volumeMounts:
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
+            {{- include "arkcase.artemis.mountUserAccounts" $ | nindent 12 }}
             - name: &confVol "conf"
               mountPath: "/app/conf"
             - name: *dataVol
               mountPath: *dataDir
             - name: *logsVol
               mountPath: *logsDir
-            - name: &secret "secret"
+            - name: &secretFiles "secret"
               mountPath: "/app/conf/artemis-users.properties"
-              subPath: &artemisUsersProperties "artemis-users.properties"
+              subPath: "artemis-users.properties"
               readOnly: true
-            - name: *secret
+            - name: *secretFiles
               mountPath: "/app/conf/artemis-roles.properties"
-              subPath: &artemisRolesProperties "artemis-roles.properties"
+              subPath: "artemis-roles.properties"
               readOnly: true
-            - name: *secret
+            - name: *secretFiles
               mountPath: "/app/conf/broker.xml.template"
-              subPath: &brokerXmlTemplate "broker.xml.template"
+              subPath: "broker.xml.template"
               readOnly: true
-            - name: &configMap "config-map"
+            - name: &configFiles "config-map"
               mountPath: "/app/conf/bootstrap.xml.template"
-              subPath: &bootstrapXmlTemplate "bootstrap.xml.template"
+              subPath: "bootstrap.xml.template"
               readOnly: true
-            - name: *configMap
+            - name: *configFiles
               mountPath: "/check-health"
               subPath: &checkHealth "check-health"
               readOnly: true
-            - name: *configMap
+            - name: *configFiles
               mountPath: "/app/conf/jolokia-access.xml"
-              subPath: &jolokiaAccessXml "jolokia-access.xml"
+              subPath: "jolokia-access.xml"
               readOnly: true
-            - name: *configMap
+            - name: *configFiles
               mountPath: "/app/conf/log4j2.properties"
-              subPath: &log4j2Properties "log4j2.properties"
+              subPath: "log4j2.properties"
               readOnly: true
-            - name: *configMap
+            - name: *configFiles
               mountPath: "/app/conf/login.config"
-              subPath: &loginConfig "login.config"
+              subPath: "login.config"
               readOnly: true
-            - name: *configMap
+            - name: *configFiles
               mountPath: "/app/conf/management.xml"
-              subPath: &managementXml "management.xml"
+              subPath: "management.xml"
               readOnly: true
       volumes:
         {{- include "arkcase.acme.volume" $ | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "logs") | nindent 8 }}
-        - name: *secret
+        - name: *secretFiles
           secret:
             optional: false
             secretName: {{ printf "%s-files" $fullname | quote }}
             defaultMode: 0644
-            items:
-              - key: *artemisUsersProperties
-                path: *artemisUsersProperties
-              - key: *artemisRolesProperties
-                path: *artemisRolesProperties
-              - key: *brokerXmlTemplate
-                path: *brokerXmlTemplate
-        - name: *configMap
+        - name: *configFiles
           configMap:
             optional: false
             name: {{ $fullname | quote }}
             defaultMode: 0644
             items:
-              - key: *bootstrapXmlTemplate
-                path: *bootstrapXmlTemplate
               - key: *checkHealth
                 path: *checkHealth
                 mode: 0755
-              - key: *jolokiaAccessXml
-                path: *jolokiaAccessXml
-              - key: *log4j2Properties
-                path: *log4j2Properties
-              - key: *loginConfig
-                path: *loginConfig
-              - key: *managementXml
-                path: *managementXml
         # Configuration is ephemeral, b/c it's re-rendered every time
         - name: *confVol
           emptyDir:
