@@ -218,7 +218,7 @@ spec:
               value: {{ $cluster.enabled | ternary 4443 8443 | toString | quote }}
             - name: PENTAHO_INSTALLED_LICENSE_PATH
               value: "$(DATA_DIR)/.installedLicenses.xml"
-          {{- include "arkcase.subsystem.ports" ($cluster.enabled | ternary ($.Values.service).clusteredPentaho ($.Values.service).pentaho) | nindent 10 }}
+          {{- include "arkcase.subsystem.ports" (dict "ctx" $ "name" ($cluster.enabled | ternary "clusteredPentaho" "pentaho")) | nindent 10 }}
           {{- with ($.Values.command).pentaho }}
           command: {{ . | toYaml }}
           {{- end }}
@@ -366,7 +366,7 @@ spec:
             - name: SSL_DIR
               value: *sslDir
           command: [ "/entrypoint" ]
-          {{- include "arkcase.subsystem.ports" ($.Values.service).clusteredHaproxy | nindent 10 }}
+          {{- include "arkcase.subsystem.ports" (dict "ctx" $ "name" "clusteredHaproxy") | nindent 10 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "haproxy") | nindent 12 }}
           volumeMounts:
             - name: *sslVol

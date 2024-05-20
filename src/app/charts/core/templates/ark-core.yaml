@@ -289,7 +289,7 @@ spec:
                 -Dcom.sun.management.jmxremote.ssl=false
                 -XX:FlightRecorderOptions=stackdepth=512,samplethreads=true
                 {{- end }}
-          {{- include "arkcase.subsystem.ports" ($.Values.service).arkcase | nindent 10 }}
+          {{- include "arkcase.subsystem.ports" (dict "ctx" $ "name" "arkcase") | nindent 10 }}
           {{- with ($.Values.command).arkcase }}
           command: {{ toJson . }}
           {{- end }}
@@ -418,7 +418,7 @@ spec:
             - name: DEV_GID
               value: {{ $devGid | toString | quote }}
             {{- end }}
-          {{- include "arkcase.subsystem.ports" ($.Values.service).cloudconfig | nindent 10 }}
+          {{- include "arkcase.subsystem.ports" (dict "ctx" $ "name" "cloudconfig") | nindent 10 }}
           {{- with ($.Values.command).cloudconfig }}
           command: {{ toJson . }}
           {{- end }}
