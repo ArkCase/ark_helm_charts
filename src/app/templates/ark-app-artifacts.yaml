@@ -65,7 +65,7 @@ spec:
             - name: &warFileVolume "war-file"
               mountPath: "/app/file/arkcase/wars/arkcase.war"
           {{- end }}
-          {{- include "arkcase.subsystem.ports" ($.Values.service).artifacts | nindent 10 }}
+          {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
       volumes:
         {{- include "arkcase.acme.volume" $ | nindent 8 }}

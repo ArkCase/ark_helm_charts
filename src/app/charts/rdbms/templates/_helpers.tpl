@@ -26,10 +26,14 @@
 {{- end -}}
 
 {{- define "arkcase.rdbms.ports" -}}
-  {{- $name := (include "arkcase.rdbms.type" $) -}}
-  {{- $services := ($.Values.service | default dict) -}}
+  {{- $ctx := $ -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "Incorrect context given - submit the root context as the only parameter" -}}
+  {{- end -}}
+  {{- $name := (include "arkcase.rdbms.type" $ctx) -}}
+  {{- $services := ($ctx.Values.service | default dict) -}}
   {{- if hasKey $services $name -}}
-    {{- include "arkcase.subsystem.ports" (get $services $name) -}}
+    {{- include "arkcase.subsystem.ports" (dict "ctx" $ctx "name" $name) -}}
   {{- end -}}
 {{- end -}}
 

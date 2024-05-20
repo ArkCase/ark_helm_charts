@@ -538,28 +538,26 @@ Render container port declarations based on what's declared in the values file. 
 Parameter: the root context (i.e. "." or "$"), or a map which descibes the ports and probes
 */ -}}
 {{- define "arkcase.subsystem.ports" }}
-  {{- $service := $ -}}
   {{- $ctx := $ -}}
-  {{- if and (not (include "arkcase.isRootContext" $ctx)) (hasKey $ "ctx") -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- $ctx = $.ctx -}}
     {{- if not (include "arkcase.isRootContext" $ctx) -}}
       {{- fail "Incorrect context given - either submit the root context as the only parameter, or a 'ctx' parameter pointing to it" -}}
     {{- end -}}
-    {{- $partname := ((not (empty ($.name))) | ternary $.name (include "arkcase.part.name" $ctx)) -}}
-    {{- $service = pick $ctx.Values.service "ports" "type" "probes" -}}
-    {{- $parts := omit $ctx.Values.service "ports" "type" "probes" -}}
-    {{- if $partname -}}
-      {{- if not (hasKey $parts $partname) -}}
-        {{- fail (printf "No part named [%s] found in the Values.service declaration" $partname) -}}
-      {{- end -}}
-      {{- $service = get $parts $partname -}}
-    {{- else -}}
-      {{- $ports := $service.ports | default list -}}
-      {{- range $partname, $p := $parts -}}
-        {{- $ports = concat $ports $p.ports -}}
-      {{- end -}}
-      {{- $service = set $service "ports" $ports -}}
+  {{- end -}}
+
+  {{- $service := pick $ctx.Values.service "ports" "type" "probes" "external" -}}
+  {{- $parts := omit $ctx.Values.service "ports" "type" "probes" "external" }}
+
+  {{- $partname := ((not (empty ($.name))) | ternary ($.name | toString) (include "arkcase.part.name" $ctx)) -}}
+  {{- if $partname -}}
+    {{- $service = (hasKey $parts $partname) | ternary (get $parts $partname) dict -}}
+  {{- else -}}
+    {{- $ports := $service.ports | default list -}}
+    {{- range $partname, $p := $parts -}}
+      {{- $ports = concat $ports $p.ports -}}
     {{- end -}}
+    {{- $service = set $service "ports" $ports -}}
   {{- end -}}
 
   {{- with $service }}
@@ -583,7 +581,7 @@ ports:
         {{- $task := pick $startup "httpGet" "grpc" "tcpSocket" "exec" -}}
         {{- with (merge $base $commonBase ((empty $task) | ternary $commonTask $task)) -}}
           {{- if (include "arkcase.subsystem.probeIsValid" .) }}
-startupProbe: {{- toYaml (unset . "enabled") | nindent 2 }}
+startupProbe: {{- (omit . "enabled") | toYaml | nindent 2 }}
           {{- end -}}
         {{- end }}
       {{- end }}
@@ -592,7 +590,7 @@ startupProbe: {{- toYaml (unset . "enabled") | nindent 2 }}
         {{- $task := pick $readiness "httpGet" "grpc" "tcpSocket" "exec" -}}
         {{- with (merge $base $commonBase ((empty $task) | ternary $commonTask $task)) -}}
           {{- if (include "arkcase.subsystem.probeIsValid" .) }}
-readinessProbe: {{- toYaml (unset . "enabled") | nindent 2 }}
+readinessProbe: {{- (omit . "enabled") | toYaml | nindent 2 }}
           {{- end }}
         {{- end }}
       {{- end }}
@@ -601,7 +599,7 @@ readinessProbe: {{- toYaml (unset . "enabled") | nindent 2 }}
         {{- $task := pick $liveness "httpGet" "grpc" "tcpSocket" "exec" -}}
         {{- with (merge $base $commonBase ((empty $task) | ternary $commonTask $task)) -}}
           {{- if (include "arkcase.subsystem.probeIsValid" .) }}
-livenessProbe: {{- toYaml (unset . "enabled") | nindent 2 }}
+livenessProbe: {{- (omit . "enabled") | toYaml | nindent 2 }}
           {{- end }}
         {{- end }}
       {{- end }}
