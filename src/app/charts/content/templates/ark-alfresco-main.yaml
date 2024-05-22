@@ -111,8 +111,8 @@ spec:
             {{- include "arkcase.subsystem-access.env.cred" (dict "ctx" $ "subsys" "rdbms" "type" "schema-content" "key" "username" "name" "ARKCASE_JDBC_USERNAME") | nindent 12 }}
             {{- include "arkcase.subsystem-access.env.cred" (dict "ctx" $ "subsys" "rdbms" "type" "schema-content" "key" "password" "name" "ARKCASE_JDBC_PASSWORD") | nindent 12 }}
             {{- include "arkcase.subsystem-access.env.conn" (dict "ctx" $ "subsys" "ldap" "key" "url" "name" "ARKCASE_LDAP_URL") | nindent 12 }}
-            {{- include "arkcase.subsystem-access.env.cred" (dict "ctx" $ "subsys" "ldap" "type" "access" "key" "username" "name" "ARKCASE_LDAP_USERNAME") | nindent 12 }}
-            {{- include "arkcase.subsystem-access.env.cred" (dict "ctx" $ "subsys" "ldap" "type" "access" "key" "password" "name" "ARKCASE_LDAP_PASSWORD") | nindent 12 }}
+            {{- include "arkcase.subsystem-access.env.cred" (dict "ctx" $ "subsys" "ldap" "key" "username" "name" "ARKCASE_LDAP_USERNAME") | nindent 12 }}
+            {{- include "arkcase.subsystem-access.env.cred" (dict "ctx" $ "subsys" "ldap" "key" "password" "name" "ARKCASE_LDAP_PASSWORD") | nindent 12 }}
             - name: CATALINA_OPTS
               value: >-
                 -XX:MinRAMPercentage=50
