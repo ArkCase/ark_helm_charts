@@ -6,24 +6,29 @@ case "${DEBUG,,}" in
 	* ) DEBUG="false" ;;
 esac
 
-timestamp() {
-	/usr/bin/date -Isec -u
+timestamp()
+{
+	/usr/bin/date -Ins -u
 }
 
-say() {
+say()
+{
 	echo -e "$(timestamp): ${@}"
 }
 
-err() {
-	say "ERROR: ${@}" 1>&2
+err()
+{
+	say "❌ ${@}" 1>&2
 }
 
-fail() {
-	say "${@}"
+fail()
+{
+	err "${@}"
 	exit ${EXIT_CODE:-1}
 }
 
-cleanup() {
+cleanup()
+{
 	[ -v RUN_MARKER ] || RUN_MARKER=""
 	[ -z "${RUN_MARKER}" ] || rm -rf "${RUN_MARKER}" &>/dev/null
 }
@@ -50,7 +55,8 @@ fi
 [[ "${INIT_MAX_WAIT}" =~ ^[1-9][0-9]*$ ]] || INIT_MAX_WAIT=300
 
 [ -v ADMIN_URL ] || ADMIN_URL=""
-[ -n "${ADMIN_URL}" ] || ADMIN_URL="https://localhost:9000/minio/health/ready"
+[ -n "${ADMIN_URL}" ] || ADMIN_URL="https://localhost:9000"
+[[ "${ADMIN_URL}" =~ ^(.*)/*$ ]] && ADMIN_URL="${BASH_REMATCH[1]}"
 PROBE_URL="${ADMIN_URL}/minio/health/ready"
 
 START="$(date +%s)"
@@ -67,16 +73,19 @@ OUT="$(/usr/bin/curl -fL -m 5 "${PROBE_URL}" 2>&1)" || fail "Unable to access th
 
 say "The URL [${PROBE_URL}] responded, continuing"
 
-[ -f "${RUN_MARKER}" ] || exit 0
-
 INSTANCE="local"
 
 # Add the configuration for MC control
 mcli config host add "${INSTANCE}" "${ADMIN_URL}" "${MINIO_ROOT_USER}" "${MINIO_ROOT_PASSWORD}"
 
-# Grant admin access and read-write access to the ArkCase admins
-mcli idp ldap policy attach "${INSTANCE}" "consoleAdmin" --group="${LDAP_ADMIN_GROUP}"
-mcli idp ldap policy attach "${INSTANCE}" "readwrite" --group="${LDAP_ADMIN_GROUP}"
+POLICIES=("consoleAdmin" "readwrite")
+for POLICY in "${POLICIES[@]}" ; do
+	# If the policy is already set, keep going
+	mcli idp ldap policy entities --policy "${POLICY}" "${INSTANCE}" |& grep -qi "${LDAP_ADMIN_GROUP}" && continue
+
+	# Apply the policy
+	mcli idp ldap policy attach "${INSTANCE}" "${POLICY}" --group="${LDAP_ADMIN_GROUP}" || fail "Unable to set the [${POLICY}] policy for [${LDAP_ADMIN_GROUP}]"
+done
 
 # Create the "arkcase" user if they don't exist
 # Grant the necessary (admin, for now) access to the "arkcase" user
