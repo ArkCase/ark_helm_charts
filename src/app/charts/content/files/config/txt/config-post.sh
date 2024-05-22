@@ -51,20 +51,21 @@ fi
 
 [ -v ADMIN_URL ] || ADMIN_URL=""
 [ -n "${ADMIN_URL}" ] || ADMIN_URL="https://localhost:9000/minio/health/ready"
+PROBE_URL="${ADMIN_URL}/minio/health/ready"
 
 START="$(date +%s)"
 say "Starting the polling cycle"
 while true ; do
-	/usr/bin/curl -fsSL -m 5 "${ADMIN_URL}" &>/dev/null && break
+	/usr/bin/curl -fsSL -m 5 "${PROBE_URL}" &>/dev/null && break
 	NOW="$(date +%s)"
-	[ $(( NOW - START )) -ge ${INIT_MAX_WAIT} ] && fail "Timed out waiting for the URL [${ADMIN_URL}] to come up"
+	[ $(( NOW - START )) -ge ${INIT_MAX_WAIT} ] && fail "Timed out waiting for the URL [${PROBE_URL}] to come up"
 	# If sleep didn't succeed, it means it got signaled, which
 	# Means we need to stop what we're doing and puke out
 	sleep ${INIT_POLL_SLEEP} || fail "Sleep interrupted, can't continue polling"
 done
-OUT="$(/usr/bin/curl -fL -m 5 "${ADMIN_URL}" 2>&1)" || fail "Unable to access the URL [${ADMIN_URL}] (rc=${?}): ${OUT}"
+OUT="$(/usr/bin/curl -fL -m 5 "${PROBE_URL}" 2>&1)" || fail "Unable to access the URL [${PROBE_URL}] (rc=${?}): ${OUT}"
 
-say "The URL [${ADMIN_URL}] responded, continuing"
+say "The URL [${PROBE_URL}] responded, continuing"
 
 [ -f "${RUN_MARKER}" ] || exit 0
 
@@ -76,5 +77,8 @@ mcli config host add "${INSTANCE}" "${ADMIN_URL}" "${MINIO_ROOT_USER}" "${MINIO_
 # Grant admin access and read-write access to the ArkCase admins
 mcli idp ldap policy attach "${INSTANCE}" "consoleAdmin" --group="${LDAP_ADMIN_GROUP}"
 mcli idp ldap policy attach "${INSTANCE}" "readwrite" --group="${LDAP_ADMIN_GROUP}"
+
+# Create the "arkcase" user if they don't exist
+# Grant the necessary (admin, for now) access to the "arkcase" user
 
 exit 0
