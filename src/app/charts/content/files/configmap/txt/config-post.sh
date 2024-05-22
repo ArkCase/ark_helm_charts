@@ -6,24 +6,29 @@ case "${DEBUG,,}" in
 	* ) DEBUG="false" ;;
 esac
 
-timestamp() {
-	/usr/bin/date -Isec -u
+timestamp()
+{
+	/usr/bin/date -Ins -u
 }
 
-say() {
+say()
+{
 	echo -e "$(timestamp): ${@}"
 }
 
-err() {
-	say "ERROR: ${@}" 1>&2
+err()
+{
+	say "❌ ${@}" 1>&2
 }
 
-fail() {
-	say "${@}"
+fail()
+{
+	err "${@}"
 	exit ${EXIT_CODE:-1}
 }
 
-cleanup() {
+cleanup()
+{
 	[ -v RUN_MARKER ] || RUN_MARKER=""
 	[ -z "${RUN_MARKER}" ] || rm -rf "${RUN_MARKER}" &>/dev/null
 }
@@ -50,31 +55,36 @@ fi
 [[ "${INIT_MAX_WAIT}" =~ ^[1-9][0-9]*$ ]] || INIT_MAX_WAIT=300
 
 [ -v ADMIN_URL ] || ADMIN_URL=""
-[ -n "${ADMIN_URL}" ] || ADMIN_URL="https://localhost:9000/minio/health/ready"
+[ -n "${ADMIN_URL}" ] || ADMIN_URL="https://localhost:9000"
+[[ "${ADMIN_URL}" =~ ^(.*)/*$ ]] && ADMIN_URL="${BASH_REMATCH[1]}"
+PROBE_URL="${ADMIN_URL}/minio/health/ready"
 
 START="$(date +%s)"
 say "Starting the polling cycle"
 while true ; do
-	/usr/bin/curl -fsSL -m 5 "${ADMIN_URL}" &>/dev/null && break
+	/usr/bin/curl -fsSL -m 5 "${PROBE_URL}" &>/dev/null && break
 	NOW="$(date +%s)"
-	[ $(( NOW - START )) -ge ${INIT_MAX_WAIT} ] && fail "Timed out waiting for the URL [${ADMIN_URL}] to come up"
+	[ $(( NOW - START )) -ge ${INIT_MAX_WAIT} ] && fail "Timed out waiting for the URL [${PROBE_URL}] to come up"
 	# If sleep didn't succeed, it means it got signaled, which
 	# Means we need to stop what we're doing and puke out
 	sleep ${INIT_POLL_SLEEP} || fail "Sleep interrupted, can't continue polling"
 done
-OUT="$(/usr/bin/curl -fL -m 5 "${ADMIN_URL}" 2>&1)" || fail "Unable to access the URL [${ADMIN_URL}] (rc=${?}): ${OUT}"
+OUT="$(/usr/bin/curl -fL -m 5 "${PROBE_URL}" 2>&1)" || fail "Unable to access the URL [${PROBE_URL}] (rc=${?}): ${OUT}"
 
-say "The URL [${ADMIN_URL}] responded, continuing"
-
-[ -f "${RUN_MARKER}" ] || exit 0
+say "The URL [${PROBE_URL}] responded, continuing"
 
 INSTANCE="local"
 
 # Add the configuration for MC control
 mcli config host add "${INSTANCE}" "${ADMIN_URL}" "${MINIO_ROOT_USER}" "${MINIO_ROOT_PASSWORD}"
 
-# Grant admin access and read-write access to the ArkCase admins
-mcli idp ldap policy attach "${INSTANCE}" "consoleAdmin" --group="${LDAP_ADMIN_GROUP}"
-mcli idp ldap policy attach "${INSTANCE}" "readwrite" --group="${LDAP_ADMIN_GROUP}"
+POLICIES=("consoleAdmin" "readwrite")
+for POLICY in "${POLICIES[@]}" ; do
+	# If the policy is already set, keep going
+	mcli idp ldap policy entities --policy "${POLICY}" "${INSTANCE}" |& grep -qi "${LDAP_ADMIN_GROUP}" && continue
+
+	# Apply the policy
+	mcli idp ldap policy attach "${INSTANCE}" "${POLICY}" --group="${LDAP_ADMIN_GROUP}" || fail "Unable to set the [${POLICY}] policy for [${LDAP_ADMIN_GROUP}]"
+done
 
 exit 0
