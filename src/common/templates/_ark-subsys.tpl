@@ -11,17 +11,20 @@ Return a map which contains the subsystem data map as required by other API call
   {{- $ctx := $ -}}
   {{- $subsysName := "" -}}
   {{- $value := "" -}}
-  {{- if hasKey $ctx "Values" -}}
+  {{- if (include "arkcase.isRootContext" $ctx) -}}
     {{- /* we're fine, we're auto-detecting */ -}}
-  {{- else if and (hasKey $ctx "subsystem") (hasKey $ctx "ctx") -}}
-    {{- $subsysName = (toString $ctx.subsystem) -}}
-    {{- /* Does it also have a value specification? */ -}}
-    {{- if (hasKey $ctx "value") -}}
-      {{- $value = (toString $ctx.value | required "The 'value' parameter may not be the empty string") -}}
+  {{- else if and (hasKey $ "subsys") (hasKey $ "ctx") -}}
+    {{- $ctx = $.ctx -}}
+    {{- if not (include "arkcase.isRootContext" $ctx) -}}
+      {{- fail "Must provide the root context as the 'ctx' parameter" -}}
     {{- end -}}
-    {{- $ctx = $ctx.ctx -}}
+    {{- $subsysName = (get $ "subsys" | toString) -}}
+    {{- /* Does it also have a value specification? */ -}}
+    {{- if (hasKey $ "value") -}}
+      {{- $value = (get $ "value" | toString | required "The 'value' parameter may not be the empty string") -}}
+    {{- end -}}
   {{- else -}}
-    {{- fail "The provided dictionary must either have 'Values', or both 'subsys' and 'ctx' parameters" -}}
+    {{- fail "The provided dictionary must either be the root context, or contain both 'subsys' and 'ctx' parameters" -}}
   {{- end -}}
 
   {{- /* If we've not been given a subsystem name, we detect it */ -}}
@@ -75,7 +78,7 @@ Identify the subsystem being used
 Parameter: "optional" (not used)
 */ -}}
 {{- define "arkcase.subsystem.name" -}}
-  {{- get (include "arkcase.subsystem" . | fromYaml) "name" -}}
+  {{- get (include "arkcase.subsystem" $ | fromYaml) "name" -}}
 {{- end -}}
 
 {{- /*
@@ -87,7 +90,7 @@ Parameter: either the root context (i.e. "." or "$"), or
              - subsystem = a string with the name of the subsystem to query
 */ -}}
 {{- define "arkcase.subsystem.enabled" -}}
-  {{- $map := (include "arkcase.subsystem" . | fromYaml) -}}
+  {{- $map := (include "arkcase.subsystem" $ | fromYaml) -}}
   {{- $conf := (include "arkcase.subsystem.conf" $ | fromYaml) -}}
   {{- if and ($map.data.enabled) (not ($conf.connection)) -}}
     {{- true -}}
@@ -271,7 +274,7 @@ spec:
 {{- end -}}
 
 {{- define "arkcase.subsystem.service.parseType" -}}
-  {{- $type := (kindIs "string" .) | ternary . (. | toString) | default "ClusterIP" | lower -}}
+  {{- $type := (kindIs "string" $) | ternary $ ($ | toString) | default "ClusterIP" | lower -}}
   {{- if or (eq "np" $type) (eq "nodeport" $type) -}}
     {{- $type = "NodePort" -}}
   {{- else if or (eq "lb" $type) (eq "loadbalancer" $type) -}}
@@ -279,15 +282,15 @@ spec:
   {{- else if or (eq "def" $type) (eq "default" $type) (eq "clusterip" $type) -}}
     {{- $type = "ClusterIP" -}}
   {{- else -}}
-    {{- fail (printf "Unrecognized service type: [%s]" .) -}}
+    {{- fail (printf "Unrecognized service type: [%s]" $) -}}
   {{- end -}}
   {{- $type -}}
 {{- end -}}
 
 {{- define "arkcase.subsystem.service.global.compute" -}}
-  {{- $ctx := . }}
-  {{- if hasKey . "ctx" -}}
-    {{- $ctx = .ctx -}}
+  {{- $ctx := $ }}
+  {{- if hasKey $ "ctx" -}}
+    {{- $ctx = $.ctx -}}
   {{- end -}}
 
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
@@ -411,7 +414,7 @@ spec:
 {{- end -}}
 
 {{- define "arkcase.subsystem.service.global" -}}
-  {{- $ctx := . -}}
+  {{- $ctx := $ -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "The parameter given must be the root context (. or $)" -}}
   {{- end -}}
@@ -616,15 +619,15 @@ Parameter: a dict with two keys:
              - port = the port number that the ingress will be pointed to
 */ -}}
 {{- define "arkcase.subsystem.ingressPath" -}}
-  {{- $ctx := (required "Must provide a 'ctx' parameter with the root context" .ctx) -}}
-  {{- $subsystem := (required "Must provide a 'subsystem' parameter with the name of the subsystem to render" .subsystem) -}}
-  {{- $port := (required "Must provide a 'port' parameter with the port number for the service" (int .port)) -}}
-  {{- if (include "arkcase.subsystem.enabledOrExternal" (dict "ctx" $ctx "subsystem" $subsystem)) -}}
+  {{- $ctx := ($.ctx | required "Must provide a 'ctx' parameter with the root context") -}}
+  {{- $subsys := ($.subsys | required "Must provide a 'subsystem' parameter with the name of the subsystem to render") -}}
+  {{- $port := ((int $.port) | required "Must provide a 'port' parameter with the port number for the service") -}}
+  {{- if (include "arkcase.subsystem.enabledOrExternal" (dict "ctx" $ctx "subsys" $subsys)) -}}
 - pathType: Prefix
-  path: {{ printf "/%s" $subsystem | quote }}
+  path: {{ printf "/%s" $subsys | quote }}
   backend:
     service:
-      name: {{ $subsystem | quote }}
+      name: {{ $subsys | quote }}
       port:
         number: {{ $port }}
   {{- end }}
