@@ -100,10 +100,12 @@ spec:
             {{- $content := (include "arkcase.cm.info" $ | fromYaml) }}
             {{- $baseDn := (include "arkcase.ldap.baseDn" $) }}
             {{- $indexing := (not (empty (include "arkcase.content.indexing" $))) }}
-            # The password must be encoded using the NTLM MD4 hash ... b/c of course it does
-            #    -Dalfresco_user_store.adminpassword={{ $content.password | quote }}
             - name: DATA_DIR
               value: *dataDir
+            - name: ALFRESCO_ADMIN_PASSWORD_VAR
+              value: "ARKCASE_CONTENT_ADMIN_PASSWORD"
+            {{- include "arkcase.subsystem-access.env.admin" (dict "ctx" $ "key" "username" "name" "ARKCASE_CONTENT_ADMIN_USERNAME") | nindent 12 }}
+            {{- include "arkcase.subsystem-access.env.admin" (dict "ctx" $ "key" "password" "name" "ARKCASE_CONTENT_ADMIN_PASSWORD") | nindent 12 }}
             {{- include "arkcase.subsystem-access.env.conn" (dict "ctx" $ "subsys" "rdbms" "key" "host" "name" "ARKCASE_JDBC_HOST") | nindent 12 }}
             {{- include "arkcase.subsystem-access.env.conn" (dict "ctx" $ "subsys" "rdbms" "key" "port" "name" "ARKCASE_JDBC_PORT") | nindent 12 }}
             {{- include "arkcase.subsystem-access.env.cred" (dict "ctx" $ "subsys" "rdbms" "type" "schema-content" "key" "username" "name" "ARKCASE_JDBC_USERNAME") | nindent 12 }}
@@ -161,6 +163,7 @@ spec:
               mountPath: *initDir
             {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/tomcat/shared/classes/alfresco-global.properties") | nindent 12 }}
             {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/tomcat-live") | nindent 12 }}
+            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/md4sum") | nindent 12 }}
             {{- if and (eq "alfresco" $content.dialect) (include "arkcase.toBoolean" $content.settings.sync) }}
               {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/tomcat/shared/classes/alfresco/extension/audit/alfresco-audit-arkcase-extractors.xml") | nindent 12 }}
             {{- end }}
