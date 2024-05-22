@@ -2,22 +2,22 @@ mariadb:
   port: 3306
   jdbc:
     driver: org.mariadb.jdbc.Driver
-    format: "jdbc:mariadb://${HOSTNAME}:${PORT}/${DATABASE}?useSSL=true&requireSsl=true&enabledSslProtocolSuites=TLSv1.2"
+    format: "jdbc:mariadb://$(ARKCASE_JDBC_HOST):$(ARKCASE_JDBC_PORT)/$(ARKCASE_JDBC_SCHEMA)?useSSL=true&requireSsl=true&enabledSslProtocolSuites=TLSv1.2"
 
 mysql:
   port: 3306
   jdbc:
     driver: com.mysql.cj.jdbc.Driver
-    format: "jdbc:mysql://${HOSTNAME}:${PORT}/${DATABASE}?useSSL=true&autoReconnect=true&useUnicode=true&characterEncoding=UTF-8&enabledTLSProtocols=TLSv1.2"
+    format: "jdbc:mysql://$(ARKCASE_JDBC_HOST):$(ARKCASE_JDBC_PORT)/$(ARKCASE_JDBC_SCHEMA)?useSSL=true&autoReconnect=true&useUnicode=true&characterEncoding=UTF-8&enabledTLSProtocols=TLSv1.2"
 
 oracle:
   port: 1521
   jdbc:
     # Oracle seems to be the only one that doesn't support enabling SSL/TLS with parameters
     driver: oracle.jdbc.driver.OracleDriver
-    format: "jdbc:oracle:thin:@${HOSTNAME}:${PORT}${INSTANCE}"
+    format: "jdbc:oracle:thin:@$(ARKCASE_JDBC_HOST):$(ARKCASE_JDBC_PORT)${INSTANCE}"
     instance:
-      format: "/${INSTANCE}"
+      format: "/$(ARKCASE_JDBC_INSTANCE)"
   aliases:
     - orcl
 
@@ -25,7 +25,7 @@ postgresql:
   port: 5432
   jdbc:
     driver: org.postgresql.Driver
-    format: "jdbc:postgresql://${HOSTNAME}:${PORT}/${DATABASE}?ssl=true&sslrootcert=/.ssl/ca-int.pem"
+    format: "jdbc:postgresql://$(ARKCASE_JDBC_HOST):$(ARKCASE_JDBC_PORT)/$(ARKCASE_JDBC_SCHEMA)?ssl=true&sslrootcert=/.ssl/ca-int.pem"
   aliases:
     - psql
     - postgres
@@ -34,8 +34,8 @@ sqlserver:
   port: 1433
   jdbc:
     driver: com.microsoft.sqlserver.jdbc.SQLServerDriver
-    format: "jdbc:sqlserver://${HOSTNAME}${INSTANCE}:${PORT};DatabaseName=${DATABASE};encrypt=true;trustServerCertificate=false;"
+    format: "jdbc:sqlserver://$(ARKCASE_JDBC_HOST)${INSTANCE}:$(ARKCASE_JDBC_PORT);DatabaseName=$(ARKCASE_JDBC_SCHEMA);encrypt=true;trustServerCertificate=false;"
     instance:
-      format: "\\${INSTANCE}"
+      format: "\\$(ARKCASE_JDBC_INSTANCE)"
   aliases:
     - mssql

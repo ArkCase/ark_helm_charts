@@ -81,9 +81,6 @@ spec:
               value: "3600000"
             - name: fileStorePath
               value: *dataDir
-          {{- with (include "arkcase.values" (dict "ctx" $ "base" "command") | fromYaml) }}
-          command: {{ toJson .value }}
-          {{- end }}
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" $partName) | nindent 12 }}
           volumeMounts:

@@ -7,40 +7,43 @@
   {{- end -}}
 {{- end -}}
 
+{{- /* Output the base name, without the subcomponent name for charts with mutliple components */ -}}
+{{- define "arkcase.basename" -}}
+  {{- $ctx := $ -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "Incorrect context given - submit the root context as the only parameter" -}}
+  {{- end -}}
+
+  {{- include "common.fullname" $ctx | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
 {{- /* Output the full name, optionally supporting a subcomponent name for charts with mutliple components */ -}}
 {{- define "arkcase.fullname" -}}
-  {{- $partname := (include "arkcase.part.name" .) -}}
-  {{- $ctx := . -}}
-
-  {{- if (hasKey $ctx "ctx") -}}
-    {{- $ctx = .ctx -}}
-  {{- end -}}
-
+  {{- $ctx := (hasKey $ "ctx" | ternary $.ctx $) -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
-    {{- fail "Incorrect context given - either submit the root context as the only parameter, or a 'ctx' parameter pointing to it" -}}
+    {{- fail "Incorrect context given - submit the root context as either the only parameter, or the 'ctx' parameter" -}}
   {{- end -}}
 
-  {{- $fullname := (include "common.fullname" $ctx) -}}
+  {{- $fullname := (include "arkcase.basename" $ctx) -}}
+
+  {{- $partname := (include "arkcase.part.name" $ctx) -}}
   {{- if $partname -}}
     {{- $fullname = (printf "%s-%s" $fullname $partname) -}}
   {{- end -}}
+
   {{- $fullname | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 
 {{- /* Output the short name, optionally supporting a subcomponent name for charts with mutliple components */ -}}
 {{- define "arkcase.name" -}}
-  {{- $partname := (include "arkcase.part.name" .) -}}
-  {{- $ctx := . -}}
-
-  {{- if (hasKey $ctx "ctx") -}}
-    {{- $ctx = .ctx -}}
-  {{- end -}}
-
+  {{- $ctx := $ -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
-    {{- fail "Incorrect context given - either submit the root context as the only parameter, or a 'ctx' parameter pointing to it" -}}
+    {{- fail "Incorrect context given - submit the root context as the only parameter" -}}
   {{- end -}}
 
   {{- $name := (include "common.name" $ctx) -}}
+
+  {{- $partname := (include "arkcase.part.name" $ctx) -}}
   {{- if $partname -}}
     {{- $name = (printf "%s-%s" $name $partname) -}}
   {{- end -}}
@@ -55,7 +58,7 @@
 {{- end -}}
 
 {{- define "arkcase.labels.service" -}}
-  {{- include "arkcase.labels.standard" . }}
+  {{- include "arkcase.labels.standard" $ }}
 app.kubernetes.io/service-support: "true"
 {{- end -}}
 

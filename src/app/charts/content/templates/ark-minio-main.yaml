@@ -115,35 +115,15 @@ spec:
               value: ":9000"
             - name: MINIO_CONSOLE_ADDRESS
               value: ":9001"
-            - name: MINIO_ROOT_USER
-              valueFrom:
-                secretKeyRef:
-                  name: &secrets {{ include "arkcase.fullname" $ | quote }}
-                  key: MINIO_ROOT_USER
-            - name: MINIO_ROOT_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: *secrets
-                  key: MINIO_ROOT_PASSWORD
-            - name: MINIO_IDENTITY_LDAP_SERVER_ADDR
-              valueFrom:
-                secretKeyRef:
-                  name: *secrets
-                  key: MINIO_IDENTITY_LDAP_SERVER_ADDR
-            - name: MINIO_IDENTITY_LDAP_LOOKUP_BIND_DN
-              valueFrom:
-                secretKeyRef:
-                  name: *secrets
-                  key: MINIO_IDENTITY_LDAP_LOOKUP_BIND_DN
-            - name: MINIO_IDENTITY_LDAP_LOOKUP_BIND_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: *secrets
-                  key: MINIO_IDENTITY_LDAP_LOOKUP_BIND_PASSWORD
+            {{- include "arkcase.subsystem-access.env.admin" (dict "ctx" $ "name" "MINIO_ROOT_USER" "key" "username") | nindent 12 }}
+            {{- include "arkcase.subsystem-access.env.admin" (dict "ctx" $ "name" "MINIO_ROOT_PASSWORD" "key" "password") | nindent 12 }}
+            {{- include "arkcase.subsystem-access.env.conn" (dict "ctx" $ "subsys" "ldap" "name" "MINIO_IDENTITY_LDAP_SERVER_ADDR" "key" "hostPort") | nindent 12 }}
+            {{- include "arkcase.subsystem-access.env.cred" (dict "ctx" $ "subsys" "ldap" "name" "MINIO_IDENTITY_LDAP_LOOKUP_BIND_DN" "key" "username") | nindent 12 }}
+            {{- include "arkcase.subsystem-access.env.cred" (dict "ctx" $ "subsys" "ldap" "name" "MINIO_IDENTITY_LDAP_LOOKUP_BIND_PASSWORD" "key" "password") | nindent 12 }}
             - name: MINIO_IDENTITY_LDAP_USER_DN_SEARCH_BASE_DN
               valueFrom:
                 secretKeyRef:
-                  name: *secrets
+                  name: &secrets {{ include "arkcase.fullname" $ | quote }}
                   key: MINIO_IDENTITY_LDAP_USER_DN_SEARCH_BASE_DN
             - name: MINIO_IDENTITY_LDAP_USER_DN_SEARCH_FILTER
               valueFrom:
@@ -160,23 +140,15 @@ spec:
                 secretKeyRef:
                   name: *secrets
                   key: MINIO_IDENTITY_LDAP_GROUP_SEARCH_FILTER
-            {{- $baseDn := (include "arkcase.ldap.baseDn" $) }}
-            {{- $ldapGroupsBase := (printf "%s,%s" (include "arkcase.ldap" (dict "ctx" $ "value" "search.groups.base")) $baseDn) }}
             - name: LDAP_ADMIN_GROUP
-              value: {{ printf "%s,%s" (include "arkcase.ldap" (dict "ctx" $ "value" "admin.role")) $ldapGroupsBase | quote }}
-          {{- $command := (include "arkcase.values" (dict "ctx" $ "base" "command") | fromYaml) }}
-          {{- $lifecycle := (include "arkcase.values" (dict "ctx" $ "base" "lifecycle") | fromYaml) }}
-          {{- if $command.value }}
-          command: {{ toJson $command.value }}
-          {{- end }}
-          {{- if and (not $command.value) (not $lifecycle.value) }}
+              valueFrom:
+                secretKeyRef:
+                  name: *secrets
+                  key: LDAP_ADMIN_GROUP
           lifecycle:
             postStart:
               exec:
                 command: [ "/config-post.sh" ]
-          {{- else if $lifecycle.value }}
-          lifecycle: {{- $lifecycle.value | toYaml | nindent 12 }}
-          {{- end }}
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" $partName) | nindent 12 }}
           volumeMounts:

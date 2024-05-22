@@ -3,7 +3,7 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ include "arkcase.fullname" $ | quote }}
+  name: &fullname {{ include "arkcase.fullname" $ | quote }}
   namespace: {{ $.Release.Namespace | quote }}
   labels: {{- include "arkcase.labels.service" $ | nindent 4 }}
     {{- with (include "arkcase.values" (dict "ctx" $ "base" "labels") | fromYaml) }}
@@ -23,7 +23,7 @@ spec:
   updateStrategy: {{- include "arkcase.cluster.statefulUpdateStrategy" $ | nindent 4 }}
   template:
     metadata:
-      name: {{ include "arkcase.fullname" $ | quote }}
+      name: *fullname
       namespace: {{ $.Release.Namespace | quote }}
       labels: {{- include "arkcase.labels.service" $ | nindent 8 }}
         {{- with (include "arkcase.values" (dict "ctx" $ "base" "labels") | fromYaml) }}
@@ -69,23 +69,20 @@ spec:
                 -Dalfresco.host=$(REPO_HOST)
                 -Dalfresco.port=$(REPO_PORT)
                 -Dalfresco.context=$(REPO_CONTEXT)
-          {{- with (include "arkcase.values" (dict "ctx" $ "base" "command") | fromYaml) }}
-          command: {{ toJson .value }}
-          {{- end }}
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" $partName) | nindent 12 }}
           volumeMounts:
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
-            - name: &configMap "config-map"
+            - name: &configMapFiles "config-map-files"
               mountPath: "/usr/local/bin/tomcat-live"
               subPath: &tomcatLive "tomcat-live"
               readOnly: true
       volumes:
         {{- include "arkcase.acme.volume" $ | nindent 8 }}
-        - name: *configMap
+        - name: *configMapFiles
           configMap:
             optional: false
-            name: {{ include "arkcase.fullname" $ | quote }}
+            name: {{ printf "%s-files" (include "arkcase.basename" $) | quote }}
             defaultMode: 0444
             items:
               - key: *tomcatLive

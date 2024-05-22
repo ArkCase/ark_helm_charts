@@ -1,9 +1,13 @@
+{{- define "arkcase.alfresco.license.secret" -}}
+  {{- printf "%s-licenses" (include "arkcase.basename" $) -}}
+{{- end -}}
+
 {{- define "arkcase.alfresco.licenses" -}}
   {{- if not (include "arkcase.isRootContext" $) -}}
     {{- fail "The parameter must be the root context ($ or .)" -}}
   {{- end -}}
 
-  {{- $key := "PentahoLicenses" -}}
+  {{- $key := "AlfrescoLicense" -}}
   {{- $masterCache := dict -}}
   {{- if (hasKey $ $key) -}}
     {{- $masterCache = get $ $key -}}
@@ -36,33 +40,12 @@
   {{- get $masterCache $chartName | toYaml -}}
 {{- end -}}
 
-{{- define "arkcase.alfresco.license.secrets" -}}
-  {{- $licenses := (include "arkcase.alfresco.licenses" . | fromYaml) -}}
-  {{- if $licenses }}
-#
-# Apply licenses
-#
-    {{- range $key, $value := $licenses }}
-{{ $key }}: |- {{- $value | nindent 2 }}
-    {{- end }}
-  {{- end }}
-{{- end -}}
-
 {{- define "arkcase.alfresco.license.volumeMounts" -}}
-  {{ $ctx := . -}}
-  {{- if .ctx -}}
-    {{- $ctx = .ctx -}}
-  {{- end -}}
+  {{ $ctx := (hasKey $ "ctx" | ternary $.ctx $) -}}
   {{- $licenses := (include "arkcase.alfresco.licenses" $ctx | fromYaml) -}}
   {{- if $licenses -}}
-    {{- $volume := "secrets" -}}
-    {{- if and (hasKey . "volume") .volume -}}
-      {{- $volume = .volume -}}
-    {{- end -}}
-    {{- $path := "/usr/local/tomcat/shared/classes/alfresco/extension/license" -}}
-    {{- if and (hasKey . "path") .path -}}
-      {{- $path = .path -}}
-    {{- end -}}
+    {{- $volume := (get $ "volume") | default "alfresco-licenses" -}}
+    {{- $path := (get $ "path") | default "/usr/local/tomcat/shared/classes/alfresco/extension/license" -}}
 # License mounts begin
     {{- range $key, $value := $licenses }}
 - name: {{ $volume | quote }}
@@ -74,14 +57,17 @@
   {{- end -}}
 {{- end -}}
 
-{{- define "arkcase.alfresco.license.volumes" -}}
-  {{- $licenses := (include "arkcase.alfresco.licenses" $ | fromYaml) -}}
+{{- define "arkcase.alfresco.license.volume" -}}
+  {{ $ctx := (hasKey $ "ctx" | ternary $.ctx $) -}}
+  {{- $licenses := (include "arkcase.alfresco.licenses" $ctx | fromYaml) -}}
   {{- if $licenses -}}
-# License entries begin
-{{- range $key, $value := $licenses }}
-- key:  &license {{ $key | quote }}
-  path: *license
-{{- end }}
-# License entries end
+    {{- $volume := (get $ "volume") | default "alfresco-licenses" -}}
+# License volume begins
+- name: {{ $volume | quote }}
+  secret:
+    optional: false
+    secretName: {{ include "arkcase.alfresco.license.secret" $ctx | quote }}
+    defaultMode: 0444
+# License volume ends
   {{- end -}}
 {{- end -}}

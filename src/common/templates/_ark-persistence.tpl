@@ -617,7 +617,7 @@ Parse a volume declaration and return a map that contains the following (possibl
   {{- end -}}
   {{- $ctx = set $ctx $cacheKey $masterCache -}}
 
-  {{- $volumeName := (printf "%s-%s" (include "arkcase.fullname" .) $name) -}}
+  {{- $volumeName := (printf "%s-%s" (include "arkcase.fullname" $ctx) $name) -}}
   {{- if not (hasKey $masterCache $volumeName) -}}
     {{- $obj := (include "arkcase.persistence.buildVolume.cached" (set . "name" $name) | fromYaml) -}}
     {{- $masterCache = set $masterCache $volumeName $obj -}}

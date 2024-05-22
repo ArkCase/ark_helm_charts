@@ -104,19 +104,21 @@ spec:
             #    -Dalfresco_user_store.adminpassword={{ $content.password | quote }}
             - name: DATA_DIR
               value: *dataDir
+            {{- include "arkcase.subsystem-access.env.conn" (dict "ctx" $ "subsys" "rdbms" "key" "host" "name" "ARKCASE_JDBC_HOST") | nindent 12 }}
+            {{- include "arkcase.subsystem-access.env.conn" (dict "ctx" $ "subsys" "rdbms" "key" "port" "name" "ARKCASE_JDBC_PORT") | nindent 12 }}
+            {{- include "arkcase.subsystem-access.env.cred" (dict "ctx" $ "subsys" "rdbms" "type" "schema-content" "key" "username" "name" "ARKCASE_JDBC_USERNAME") | nindent 12 }}
+            {{- include "arkcase.subsystem-access.env.cred" (dict "ctx" $ "subsys" "rdbms" "type" "schema-content" "key" "password" "name" "ARKCASE_JDBC_PASSWORD") | nindent 12 }}
+            {{- include "arkcase.subsystem-access.env.conn" (dict "ctx" $ "subsys" "ldap" "key" "url" "name" "ARKCASE_LDAP_URL") | nindent 12 }}
+            {{- include "arkcase.subsystem-access.env.cred" (dict "ctx" $ "subsys" "ldap" "type" "access" "key" "username" "name" "ARKCASE_LDAP_USERNAME") | nindent 12 }}
+            {{- include "arkcase.subsystem-access.env.cred" (dict "ctx" $ "subsys" "ldap" "type" "access" "key" "password" "name" "ARKCASE_LDAP_PASSWORD") | nindent 12 }}
             - name: CATALINA_OPTS
               value: >-
                 -XX:MinRAMPercentage=50
                 -XX:MaxRAMPercentage=80
                 -Ddir.root=$(DATA_DIR)
                 -Ddb.driver={{ $schema.jdbc.driver | squote }}
-                -Ddb.username={{ $schema.username | squote }}
-                -Ddb.password={{ $schema.password | squote }}
                 -Ddb.url={{ $schema.jdbc.url | squote }}
-                -Dldap.authentication.java.naming.provider.url={{ include "arkcase.ldap" (dict "ctx" $ "value" "url") | squote }}
                 -Dldap.authentication.userNameFormat={{ printf "%%s@%s" (include "arkcase.ldap" (dict "ctx" $ "value" "domain")) | squote }}
-                -Dldap.synchronization.java.naming.security.principal={{ include "arkcase.ldap.bindDn" $ | squote }}
-                -Dldap.synchronization.java.naming.security.credentials={{ include "arkcase.ldap" (dict "ctx" $ "value" "bind.password") | squote }}
                 -Dldap.synchronization.userSearchBase={{ printf "%s,%s" (include "arkcase.ldap" (dict "ctx" $ "value" "search.users.base")) $baseDn | squote }}
                 -Dldap.synchronization.groupSearchBase={{ printf "%s,%s" (include "arkcase.ldap" (dict "ctx" $ "value" "search.groups.base")) $baseDn | squote }}
                 -Dsolr.secureComms=https
@@ -135,7 +137,7 @@ spec:
                 -Dopencmis.server.override=true
                 -Dopencmis.server.value={{ printf "%s/api" $content.url.baseUrl | quote }}
                 -Dmessaging.broker.url="failover:(nio+ssl://{{- include "arkcase.alfresco.service" (dict "ctx" $ "name" "activemq") -}}:61616)?timeout=3000&jms.useCompression=true"
-                -Ddeployment.method=DOCKER_COMPOSE
+                -Ddeployment.method=HELM_CHART
                 -Dcsrf.filter.enabled=false
                 -DlocalTransform.core-aio.url=https://{{- include "arkcase.alfresco.service" (dict "ctx" $ "name" "xform-core-aio") -}}:8090/
               {{- if (include "arkcase.enterprise" $) }}
@@ -150,58 +152,26 @@ spec:
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" $partName) | nindent 12 }}
           volumeMounts:
-            {{- include "arkcase.alfresco.license.volumeMounts" (dict "ctx" $ "volume" "secrets" "path" "/usr/local/tomcat/shared/classes/alfresco/extension/license") | nindent 12 }}
+            {{- include "arkcase.alfresco.license.volumeMounts" (dict "ctx" $ "volume" "alfresco-license" "path" "/usr/local/tomcat/shared/classes/alfresco/extension/license") | nindent 12 }}
             {{- include "arkcase.trusts.mount" $ | nindent 12 }}
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
-            - name: &configMap "config-map"
-              mountPath: "/app/config"
-              readOnly: true
-            - name: &secrets "secrets"
-              mountPath: "/app/secrets"
-              readOnly: true
             - name: *dataVol
               mountPath: *dataDir
             - name: *initVol
               mountPath: *initDir
-            - name: *configMap
-              mountPath: "/usr/local/tomcat/shared/classes/alfresco-global.properties"
-              subPath: &alfrescoGlobalProperties "alfresco-global.properties"
-              readOnly: true
-            - name: *configMap
-              mountPath: "/usr/local/bin/tomcat-live"
-              subPath: &tomcatLive "tomcat-live"
-              readOnly: true
+            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/tomcat/shared/classes/alfresco-global.properties") | nindent 12 }}
+            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/tomcat-live") | nindent 12 }}
             {{- if and (eq "alfresco" $content.dialect) (include "arkcase.toBoolean" $content.settings.sync) }}
-            - name: *configMap
-              mountPath: "/usr/local/tomcat/shared/classes/alfresco/extension/audit/alfresco-audit-arkcase-extractors.xml"
-              subPath: &alfrescoAuditArkcaseExtractorsXml "alfresco-audit-arkcase-extractors.xml"
-              readOnly: true
+              {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/tomcat/shared/classes/alfresco/extension/audit/alfresco-audit-arkcase-extractors.xml") | nindent 12 }}
             {{- end }}
       volumes:
         {{- include "arkcase.trusts.volume" $ | nindent 8 }}
         {{- include "arkcase.acme.volume" $ | nindent 8 }}
-        - name: *secrets
-          secret:
-            optional: false
-            secretName: *fullname
-            defaultMode: 0444
+        {{- include "arkcase.alfresco.license.volume" (dict "ctx" $ "volume" "alfresco-license") | nindent 8 }}
+        {{- include "arkcase.file-resource.config.volume" $ | nindent 8 }}
             items:
-              {{- include "arkcase.alfresco.license.volumes" $ | nindent 14 }}
-        - name: *configMap
-          configMap:
-            optional: false
-            name: *fullname
-            defaultMode: 0444
-            items:
-              - key: *alfrescoGlobalProperties
-                path: *alfrescoGlobalProperties
-              - key: *tomcatLive
-                path: *tomcatLive
+              - key: "tomcat-live"
                 mode: 0555
-            {{- if and (eq "alfresco" $content.dialect) (include "arkcase.toBoolean" $content.settings.sync) }}
-              - key: *alfrescoAuditArkcaseExtractorsXml
-                path: *alfrescoAuditArkcaseExtractorsXml
-            {{- end }}
         {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "init") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
       {{- with (include "arkcase.values" (dict "ctx" $ "base" "nodeSelector") | fromYaml) }}
