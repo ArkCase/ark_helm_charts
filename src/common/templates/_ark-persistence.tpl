@@ -60,7 +60,7 @@
 
 {{- /* Check if persistence is enabled, assuming a missing setting defaults to true */ -}}
 {{- define "arkcase.persistence.enabled" -}}
-  {{- if not (include "arkcase.isRootContext" .) -}}
+  {{- if not (include "arkcase.isRootContext" $) -}}
     {{- fail "The parameter must be the root context (. or $)" -}}
   {{- end -}}
 
@@ -88,10 +88,10 @@
 
 {{- /* Get the storageClassName value that should be used for everything */ -}}
 {{- define "arkcase.persistence.storageClassName" -}}
-  {{- if not (include "arkcase.isRootContext" .) -}}
+  {{- if not (include "arkcase.isRootContext" $) -}}
     {{- fail "The parameter must be the root context (. or $)" -}}
   {{- end -}}
-  {{- $values := (include "arkcase.persistence.getDefaultSetting" (dict "ctx" . "name" "storageClassName") | fromYaml) -}}
+  {{- $values := (include "arkcase.persistence.getDefaultSetting" (dict "ctx" $ "name" "storageClassName") | fromYaml) -}}
   {{- $storageClassName := "" -}}
   {{- $storageClassSet := false -}}
   {{- if and (not $storageClassSet) (hasKey $values "global") -}}
@@ -115,10 +115,10 @@
 {{- end -}}
 
 {{- define "arkcase.persistence.persistentVolumeReclaimPolicy" -}}
-  {{- if not (include "arkcase.isRootContext" .) -}}
+  {{- if not (include "arkcase.isRootContext" $) -}}
     {{- fail "The parameter must be the root context (. or $)" -}}
   {{- end -}}
-  {{- $values := (include "arkcase.persistence.getDefaultSetting" (dict "ctx" . "name" "persistentVolumeReclaimPolicy") | fromYaml) -}}
+  {{- $values := (include "arkcase.persistence.getDefaultSetting" (dict "ctx" $ "name" "persistentVolumeReclaimPolicy") | fromYaml) -}}
   {{- $policy := "" -}}
   {{- if and (not $policy) (hasKey $values "global") -}}
     {{- $policy = $values.global -}}
@@ -138,10 +138,10 @@
 {{- end -}}
 
 {{- define "arkcase.persistence.accessModes" -}}
-  {{- if not (include "arkcase.isRootContext" .) -}}
+  {{- if not (include "arkcase.isRootContext" $) -}}
     {{- fail "The parameter must be the root context (. or $)" -}}
   {{- end -}}
-  {{- $values := (include "arkcase.persistence.getDefaultSetting" (dict "ctx" . "name" "accessModes") | fromYaml) -}}
+  {{- $values := (include "arkcase.persistence.getDefaultSetting" (dict "ctx" $ "name" "accessModes") | fromYaml) -}}
   {{- $modes := dict -}}
   {{- if and (not $modes) (hasKey $values "global") -}}
     {{- $accessModes := $values.global -}}
@@ -175,10 +175,10 @@
 {{- end -}}
 
 {{- define "arkcase.persistence.capacity" -}}
-  {{- if not (include "arkcase.isRootContext" .) -}}
+  {{- if not (include "arkcase.isRootContext" $) -}}
     {{- fail "The parameter must be the root context (. or $)" -}}
   {{- end -}}
-  {{- $values := (include "arkcase.persistence.getDefaultSetting" (dict "ctx" . "name" "capacity") | fromYaml) -}}
+  {{- $values := (include "arkcase.persistence.getDefaultSetting" (dict "ctx" $ "name" "capacity") | fromYaml) -}}
   {{- $capacity := "" -}}
   {{- if and (not $capacity) (hasKey $values "global") -}}
     {{- $capacity = (include "arkcase.persistence.buildVolume.parseStorageSize" $values.global | fromYaml) -}}
@@ -200,10 +200,10 @@
 {{- end -}}
 
 {{- define "arkcase.persistence.volumeMode" -}}
-  {{- if not (include "arkcase.isRootContext" .) -}}
+  {{- if not (include "arkcase.isRootContext" $) -}}
     {{- fail "The parameter must be the root context (. or $)" -}}
   {{- end -}}
-  {{- $values := (include "arkcase.persistence.getDefaultSetting" (dict "ctx" . "name" "volumeMode") | fromYaml) -}}
+  {{- $values := (include "arkcase.persistence.getDefaultSetting" (dict "ctx" $ "name" "volumeMode") | fromYaml) -}}
   {{- $volumeMode := "" -}}
   {{- if and (not $volumeMode) (hasKey $values "global") -}}
     {{- $volumeMode = (include "arkcase.persistence.buildVolume.parseVolumeMode" $values.global) -}}
@@ -224,7 +224,7 @@
 
 {{- /* Get or define the shared persistence settings for this chart */ -}}
 {{- define "arkcase.persistence.settings" -}}
-  {{- if not (include "arkcase.isRootContext" .) -}}
+  {{- if not (include "arkcase.isRootContext" $) -}}
     {{- fail "The parameter must be the root context (. or $)" -}}
   {{- end -}}
 
