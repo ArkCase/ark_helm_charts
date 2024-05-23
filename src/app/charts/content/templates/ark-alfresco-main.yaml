@@ -1,6 +1,5 @@
 {{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.content.external" $)) (eq "alfresco" (include "arkcase.content.info.dialect" $)) -}}
 {{- $schema := (include "arkcase.db.schema" (dict "ctx" $ "schema" "content") | fromYaml) -}}
-{{- fail ($schema | toYaml | nindent 0) -}}
 ---
 apiVersion: apps/v1
 kind: StatefulSet
