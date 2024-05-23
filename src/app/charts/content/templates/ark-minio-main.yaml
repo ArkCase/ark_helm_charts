@@ -117,34 +117,10 @@ spec:
               value: ":9001"
             {{- include "arkcase.subsystem-access.env.admin" (dict "ctx" $ "name" "MINIO_ROOT_USER" "key" "username") | nindent 12 }}
             {{- include "arkcase.subsystem-access.env.admin" (dict "ctx" $ "name" "MINIO_ROOT_PASSWORD" "key" "password") | nindent 12 }}
-            {{- include "arkcase.subsystem-access.env.conn" (dict "ctx" $ "subsys" "ldap" "name" "MINIO_IDENTITY_LDAP_SERVER_ADDR" "key" "hostPort") | nindent 12 }}
-            {{- include "arkcase.subsystem-access.env.cred" (dict "ctx" $ "subsys" "ldap" "name" "MINIO_IDENTITY_LDAP_LOOKUP_BIND_DN" "key" "username") | nindent 12 }}
-            {{- include "arkcase.subsystem-access.env.cred" (dict "ctx" $ "subsys" "ldap" "name" "MINIO_IDENTITY_LDAP_LOOKUP_BIND_PASSWORD" "key" "password") | nindent 12 }}
-            - name: MINIO_IDENTITY_LDAP_USER_DN_SEARCH_BASE_DN
-              valueFrom:
-                secretKeyRef:
-                  name: &secrets {{ include "arkcase.fullname" $ | quote }}
-                  key: MINIO_IDENTITY_LDAP_USER_DN_SEARCH_BASE_DN
-            - name: MINIO_IDENTITY_LDAP_USER_DN_SEARCH_FILTER
-              valueFrom:
-                secretKeyRef:
-                  name: *secrets
-                  key: MINIO_IDENTITY_LDAP_USER_DN_SEARCH_FILTER
-            - name: MINIO_IDENTITY_LDAP_GROUP_SEARCH_BASE_DN
-              valueFrom:
-                secretKeyRef:
-                  name: *secrets
-                  key: MINIO_IDENTITY_LDAP_GROUP_SEARCH_BASE_DN
-            - name: MINIO_IDENTITY_LDAP_GROUP_SEARCH_FILTER
-              valueFrom:
-                secretKeyRef:
-                  name: *secrets
-                  key: MINIO_IDENTITY_LDAP_GROUP_SEARCH_FILTER
-            - name: LDAP_ADMIN_GROUP
-              valueFrom:
-                secretKeyRef:
-                  name: *secrets
-                  key: LDAP_ADMIN_GROUP
+            {{- include "arkcase.subsystem-access.env.cred" (dict "ctx" $ "name" "MINIO_SERVICE_RW_USER" "type" "rw" "key" "username") | nindent 12 }}
+            {{- include "arkcase.subsystem-access.env.cred" (dict "ctx" $ "name" "MINIO_SERVICE_RW_PASSWORD" "type" "rw" "key" "password") | nindent 12 }}
+            {{- include "arkcase.subsystem-access.env.cred" (dict "ctx" $ "name" "MINIO_SERVICE_RO_USER" "type" "ro" "key" "username") | nindent 12 }}
+            {{- include "arkcase.subsystem-access.env.cred" (dict "ctx" $ "name" "MINIO_SERVICE_RO_PASSWORD" "type" "ro" "key" "password") | nindent 12 }}
           lifecycle:
             postStart:
               exec:
@@ -158,7 +134,7 @@ spec:
               mountPath: *dataDir
             - name: *initVolume
               mountPath: *initDir
-            - name: &configMap "config-map"
+            - name: &files-resources "files-resources"
               mountPath: "/config-post.sh"
               subPath: &configPostSh "config-post.sh"
               readOnly: true
@@ -167,10 +143,10 @@ spec:
         {{- include "arkcase.acme.volume" $ | nindent 8 }}
         {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "init") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
-        - name: *configMap
+        - name: *files-resources
           configMap:
             optional: false
-            name: {{ include "arkcase.fullname" $ | quote }}
+            name: {{ include "arkcase.file-resource.name" $ | quote }}
             defaultMode: 0444
             items:
               - key: *configPostSh
