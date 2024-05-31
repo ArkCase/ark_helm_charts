@@ -22,11 +22,11 @@ spec:
     skipFinalSnapshotBeforeDeletion: true
     licenseModel: general-public-license
     masterUsername: arkcase
-    # dbName: arkcase
-    # masterPasswordSecretRef:
-    #   key: arkcase
-    #   name: arkcase-rdbms-database-init
-    #   namespace: cust-dc-owc
+    dbName: arkcase
+    masterPasswordSecretRef:
+      key: arkcase
+      name: arkcase-rdbms-database-init
+      namespace: cust-dc-owc
     multiAZ: false
     port: 3306
     publiclyAccessible: false
@@ -35,6 +35,7 @@ spec:
     storageType: standard
   providerConfigRef:
     name: aws-crossplane-config # assume from platform, always this name
-  writeConnectionSecretToRef:
-    name: fedramp-stage-client2-dbinfo
-    namespace: cust-dc-owc
+# New secret with endpoint, username, password
+  # writeConnectionSecretToRef:
+  #   name: fedramp-stage-client2-dbinfo
+  #   namespace: cust-dc-owc
