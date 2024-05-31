@@ -1,0 +1,40 @@
+apiVersion: database.aws.crossplane.io/v1beta1
+kind: RDSInstance
+metadata:
+  name: fedramp-stage-client2
+  annotations:
+    "helm.sh/hook": pre-install
+spec:
+  forProvider:
+    dbSubnetGroupName: "fedramp-stage-rds-subnets" #assume from platform ${application}-${lifecyle}-rds-subnets
+    allocatedStorage: 20
+    applyModificationsImmediately: true
+    autoMinorVersionUpgrade: true
+    backupRetentionPeriod: 0
+    caCertificateIdentifier: rds-ca-2019
+    copyTagsToSnapshot: false
+    dbInstanceClass: db.t3.medium
+    deletionProtection: false
+    enableIAMDatabaseAuthentication: false
+    enablePerformanceInsights: false
+    engine: mariadb
+    engineVersion: "10.6"
+    skipFinalSnapshotBeforeDeletion: true
+    licenseModel: general-public-license
+    masterUsername: arkcase
+    # dbName: arkcase
+    # masterPasswordSecretRef:
+    #   key: arkcase
+    #   name: arkcase-rdbms-database-init
+    #   namespace: cust-dc-owc
+    multiAZ: false
+    port: 3306
+    publiclyAccessible: false
+    region: us-east-1
+    storageEncrypted: false
+    storageType: standard
+  providerConfigRef:
+    name: aws-crossplane-config # assume from platform, always this name
+  writeConnectionSecretToRef:
+    name: fedramp-stage-client2-dbinfo
+    namespace: cust-dc-owc
