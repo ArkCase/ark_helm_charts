@@ -19,6 +19,8 @@
           "userInfoUri"
           "usernameAttribute"
           "usersDirectory"
+          "responseType"
+          "responseMode"
     -}}
     {{- range $id, $client := $clients -}}
 
@@ -79,6 +81,9 @@
   
         {{- if $enabled -}}
           {{- $oidc = dict "clients" $clients -}}
+          {{- if (hasKey $conf "legacyMode") -}}
+            {{- $oidc = set $oidc "legacyMode" $conf.legacyMode -}}
+          {{- end -}}
         {{- end -}}
       {{- end -}}
     {{- end -}}
