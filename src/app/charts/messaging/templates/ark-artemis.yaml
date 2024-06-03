@@ -110,9 +110,11 @@ spec:
             #
             # Add the administrator information
             #
+            {{- $admin := (include "arkcase.artemis.admin" $ | fromYaml) }}
             {{- include "arkcase.subsystem-access.env.admin" (dict "ctx" $ "name" "key" "username" "ARTEMIS_ADMIN_USERNAME") | nindent 12 }}
             {{- include "arkcase.subsystem-access.env.admin" (dict "ctx" $ "name" "key" "password" "ARTEMIS_ADMIN_PASSWORD") | nindent 12 }}
-            {{- include "arkcase.subsystem-access.env.admin" (dict "ctx" $ "name" "key" "roles"    "ARTEMIS_ADMIN_ROLES") | nindent 12 }}
+            - name: ARTEMIS_ADMIN_ROLES
+              value: {{ $admin.roles | quote }}
             #
             # Add the configured users
             #
