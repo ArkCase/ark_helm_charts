@@ -148,26 +148,6 @@ gateway:
               enabled: true
               extended: true
 
-messaging:
-  configuration:
-    users:
-      arkcase:
-        name: &arkcaseMessagingUser "arkcase"
-        password: &arkcaseMessagingPassword "Thoan-aeL[u>u7eC"
-        roles: "admin"
-      cloudconfig:
-        name: &cloudConfigMessagingUser "cloudconfig"
-        password: &cloudConfigMessagingPassword "mie|Qu}ai8ahniu|"
-        roles: "admin"
-      guest:
-        name: &guestUser "guest"
-        password: *guestUser
-
-    groups:
-      admins:
-        - *arkcaseMessagingUser
-        - *cloudConfigMessagingUser
-
 rdbms:
   configuration:
     db:
@@ -233,12 +213,6 @@ core:
     arkcase:
       adminUsername: *arkcaseAdminUsername
       adminPassword: *arkcaseAdminPassword
-    messaging:
-      username: *arkcaseMessagingUser
-      password: *arkcaseMessagingPassword
-    stomp:
-      username: *arkcaseMessagingUser
-      password: *arkcaseMessagingPassword
 
 analytics:
   configuration:

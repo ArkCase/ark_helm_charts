@@ -108,14 +108,14 @@ Parameter: either the root context (i.e. "." or "$"), or
 {{- define "arkcase.subsystem.enabledOrExternal" }}
   {{- $map := (include "arkcase.subsystem" $ | fromYaml) -}}
   {{- $conf := (include "arkcase.subsystem.conf" $ | fromYaml) -}}
-  {{- if or ($map.data.enabled) $conf.connection -}}
+  {{- if or ($map.data.enabled) (not (empty ($conf.connection))) -}}
     {{- true -}}
   {{- end -}}
 {{- end }}
 
 {{- define "arkcase.subsystem.external" -}}
   {{- $conf := (include "arkcase.subsystem.conf" $ | fromYaml) -}}
-  {{- if (empty $conf.connection) -}}
+  {{- if not (empty $conf.connection) -}}
     {{- true -}}
   {{- end -}}
 {{- end -}}

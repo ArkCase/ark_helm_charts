@@ -1,4 +1,4 @@
-{{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.subsystem.external" $)) }}
+{{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.subsystem.external" $)) -}}
 {{- $fullname := (include "arkcase.fullname" $) -}}
 {{- $cluster := (include "arkcase.cluster" $ | fromYaml) -}}
 {{- /* For this component, we'll either have one node, or two */ -}}
@@ -111,8 +111,8 @@ spec:
             # Add the administrator information
             #
             {{- $admin := (include "arkcase.artemis.admin" $ | fromYaml) }}
-            {{- include "arkcase.subsystem-access.env.admin" (dict "ctx" $ "name" "key" "username" "ARTEMIS_ADMIN_USERNAME") | nindent 12 }}
-            {{- include "arkcase.subsystem-access.env.admin" (dict "ctx" $ "name" "key" "password" "ARTEMIS_ADMIN_PASSWORD") | nindent 12 }}
+            {{- include "arkcase.subsystem-access.env.admin" (dict "ctx" $ "key" "username" "name" "ARTEMIS_ADMIN_USERNAME") | nindent 12 }}
+            {{- include "arkcase.subsystem-access.env.admin" (dict "ctx" $ "key" "password" "name" "ARTEMIS_ADMIN_PASSWORD") | nindent 12 }}
             - name: ARTEMIS_ADMIN_ROLES
               value: {{ $admin.roles | quote }}
             #
@@ -137,7 +137,6 @@ spec:
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "artemis") | nindent 12 }}
           volumeMounts:
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
-            {{- include "arkcase.artemis.mountUserAccounts" $ | nindent 12 }}
             - name: &confVol "conf"
               mountPath: "/app/conf"
             - name: *dataVol
