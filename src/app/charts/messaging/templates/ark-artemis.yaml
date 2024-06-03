@@ -105,7 +105,26 @@ spec:
           {{- include "arkcase.image" $ | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
-            {{- include "arkcase.subsystem-access.env.admin" (dict "ctx" $ "name" "ARTEMIS_ADMIN_PASSWORD") | nindent 12 }}
+            - name: ARTEMIS_NEW_USER_MODEL
+              value: "true"
+            #
+            # Add the administrator information
+            #
+            {{- include "arkcase.subsystem-access.env.admin" (dict "ctx" $ "name" "key" "username" "ARTEMIS_ADMIN_USERNAME") | nindent 12 }}
+            {{- include "arkcase.subsystem-access.env.admin" (dict "ctx" $ "name" "key" "password" "ARTEMIS_ADMIN_PASSWORD") | nindent 12 }}
+            {{- include "arkcase.subsystem-access.env.admin" (dict "ctx" $ "name" "key" "roles"    "ARTEMIS_ADMIN_ROLES") | nindent 12 }}
+            #
+            # Add the configured users
+            #
+            {{- $users := (include "arkcase.artemis.users" $ | fromYaml) }}
+            {{- range $index, $user := (keys $users | sortAlpha) }}
+              {{- include "arkcase.subsystem-access.env.cred" (dict "ctx" $ "type" $user "key" "username" "name" (printf "ARTEMIS_CRED_USERNAME_%d" $index)) | nindent 12 }}
+              {{- include "arkcase.subsystem-access.env.cred" (dict "ctx" $ "type" $user "key" "password" "name" (printf "ARTEMIS_CRED_PASSWORD_%d" $index)) | nindent 12 }}
+              {{- include "arkcase.subsystem-access.env.cred" (dict "ctx" $ "type" $user "key" "roles"    "name" (printf "ARTEMIS_CRED_ROLES_%d"    $index)) | nindent 12 }}
+            {{- end }}
+            #
+            # Some other stuff
+            #
             {{- include "arkcase.subsystem-access.env.cred" (dict "ctx" $ "type" "cluster" "key" "password" "name" "ARTEMIS_CLUSTER_PASSWORD") | nindent 12 }}
             {{- include "arkcase.subsystem-access.env.cred" (dict "ctx" $ "type" "cluster" "key" "encryption" "name" "ARTEMIS_ENCRYPTION_PASSWORD") | nindent 12 }}
           {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
@@ -123,15 +142,7 @@ spec:
               mountPath: *dataDir
             - name: *logsVol
               mountPath: *logsDir
-            - name: &secretFiles "secret"
-              mountPath: "/app/conf/artemis-users.properties"
-              subPath: "artemis-users.properties"
-              readOnly: true
-            - name: *secretFiles
-              mountPath: "/app/conf/artemis-roles.properties"
-              subPath: "artemis-roles.properties"
-              readOnly: true
-            - name: *secretFiles
+            - name: &secretFiles
               mountPath: "/app/conf/broker.xml.template"
               subPath: "broker.xml.template"
               readOnly: true

@@ -12,34 +12,17 @@ configuration:
 
   backupNode: false
 
-  # Console username and password: Please set a secure password
-  adminUsername: &admin "admin"
-  # If we don't supply an admin password, one will be rendered each bootup
-  # adminPassword: *admin
-  adminRole: "administrator"
+  # Console username
+  admin:
+    username: "admin"
+    roles: &adminRole "administrator"
 
-  encryptPassword: "artemis"
-
+  # This maps usernames to a (comma-separated) list of roles to be assigned to them,
+  # but no passwords - those are generated, ALWAYS...
   users:
-    arkcase:
-      name: &arkcaseMessagingUser "arkcase"
-      password: *arkcaseMessagingUser
-    cloudconfig:
-      name: &cloudConfigMessagingUser "cloudconfig"
-      password: *cloudConfigMessagingUser
-    experimental:
-      name: &experimentalMessagingUser "experimental"
-      password: "wnqpxHKhl3h1zByU8+6u2ujdQ/zykHNB7nU/PvKctXtSDjgOM4LS4ylvkP63bWaQ"
-    # For now, disable the guest user until we're positive we need it
-    # guest:
-    #   name: &guestUser "guest"
-    #   password: *guestUser
-
-  roles:
-    administrator:
-      - *arkcaseMessagingUser
-      - *cloudConfigMessagingUser
-      - *experimentalMessagingUser
+    arkcase: *adminRole
+    cloudconfig: *adminRole
+    experimental: *adminRole
 
   # Limit, in GiB, of how big the KahaDB store can grow
   maxStoreUsageGb: 50
