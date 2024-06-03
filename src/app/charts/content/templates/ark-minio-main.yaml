@@ -134,22 +134,15 @@ spec:
               mountPath: *dataDir
             - name: *initVolume
               mountPath: *initDir
-            - name: &files-resources "files-resources"
-              mountPath: "/config-post.sh"
-              subPath: &configPostSh "config-post.sh"
-              readOnly: true
+            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/config-post.sh") | nindent 12 }}
       volumes:
         {{- include "arkcase.trusts.volume" $ | nindent 8 }}
         {{- include "arkcase.acme.volume" $ | nindent 8 }}
         {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "init") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
-        - name: *files-resources
-          configMap:
-            optional: false
-            name: {{ include "arkcase.file-resource.name" $ | quote }}
-            defaultMode: 0444
+        {{- include "arkcase.file-resource.config.volume" $ | nindent 8 }}
             items:
-              - key: *configPostSh
+              - key: &configPostSh "config-post.sh"
                 path: *configPostSh
                 mode: 0555
       {{- with (include "arkcase.values" (dict "ctx" $ "base" "nodeSelector") | fromYaml) }}
