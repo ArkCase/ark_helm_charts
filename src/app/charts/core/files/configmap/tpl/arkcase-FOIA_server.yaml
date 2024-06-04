@@ -1,0 +1,28 @@
+{{- $foia := (include "arkcase.foia" $ | fromYaml) -}}
+{{- if $foia -}}
+external.integration:
+  enable: true
+  userId: "portal-admin@${ARKCASE_LDAP_FOIAPORTAL_USER_DOMAIN}"
+
+gov.foia.broker:
+  file_upload_url: "file:///app/fsrv/"
+  url: "${ARKCASE_MESSAGING_URL}"
+  userName: "${ARKCASE_MESSAGING_USERNAME}"
+  password: "${ARKCASE_MESSAGING_PASSWORD}"
+  keystore: "${k8s.keystore.file}"
+  keystore.password: "${k8s.keystore.pass}"
+  truststore: "/etc/pki/java/cacerts"
+  truststore.password: "changeit"
+
+application:
+  properties:
+    basePortalUrl: "${ARKCASE_FOIAPORTAL_UI_URL}"
+
+  #
+  # This no longer needs to be defined here, since we now use
+  # a special Helm template to generate the comprehensive list
+  # that's valid for both FOIA and base profiles.
+  #
+  # rolesToGroups: {}
+
+{{- end -}}

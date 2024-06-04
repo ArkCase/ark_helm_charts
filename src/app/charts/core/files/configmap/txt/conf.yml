@@ -1,0 +1,50 @@
+application:
+  name:
+    #
+    # This could be:
+    #   - Normal: arkcase,arkcase-activemq,arkcase-oidc,ldap,lookups
+    #   - FOIA: arkcase,arkcase-activemq,arkcase-oidc,ldap,lookups,arkcase-portal
+    #
+    active: "${ARKCASE_SPRING_APP_NAMES}"
+
+    #
+    # This should be "arkcase"
+    #
+    default: "${ARKCASE_SPRING_APP_DEFAULT}"
+
+  #
+  # This could be:
+  #   - Normal: custom_base,custom,server,runtime
+  #   - FOIA: custom_base,foia,custom,server,FOIA_server,runtime
+  profile: "${ARKCASE_SPRING_APP_PROFILES}"
+
+spring:
+  cloud:
+    config:
+      tls:
+        enabled: true
+        keyStore: "file:${k8s.keystore.file}"
+        keyStoreType: "${k8s.keystore.type}"
+        keyStorePassword: "${k8s.keystore.pass}"
+        keyPassword: "${k8s.keystore.pass}"
+        trustStore: "file:/etc/pki/java/cacerts"
+        trustStoreType: "JKS"
+        trustStorePassword: "changeit"
+
+configuration:
+  client:
+    branding.path: "branding"
+    labels.path: "labels"
+    ldap.path: "ldap"
+    lookups.path: "lookups"
+    stylesheets.path: "pdf-stylesheets"
+    rules.path: "rules"
+    extraFields.path: "schemas/json"
+    spring.path: "spring"
+  server:
+    url: "${ARKCASE_CLOUDCONFIG_URL}"
+    update.path: "/config/{applicationName}"
+    remove.path: "/config/remove/{applicationName}"
+    reset.path: "/reset"
+    update.file.path: "/file"
+    modules.path: "/config/modules"

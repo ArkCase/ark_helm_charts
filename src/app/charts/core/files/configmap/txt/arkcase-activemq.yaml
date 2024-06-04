@@ -8,10 +8,10 @@ ark.activemq:
   trustedPackages: "com.armedia"
   defaultTrustedPackages: "java.lang,javax.security,java.util,org.apache.activemq,org.fusesource.hawtbuf,com.thoughtworks.xstream.mapper"
   #URL of the ActiveMQ broker.
-  transportConnectorURI: {{ include "arkcase.core.messaging.openwire" $ | quote }}
+  transportConnectorURI: "${ARKCASE_MESSAGING_URL}"
   #Maximum number of connections to ActiveMQ.
   maxConnections: 10
   #username to connect to the ActiveMQ instance
-  username: {{  include "arkcase.tools.conf" (dict "ctx" $ "value" "messaging.username")| quote }}
+  username: "${ARKCASE_MESSAGING_USERNAME}"
   #encrypted password for the ActiveMQ user identified by ark.activemq.username
-  password: {{  include "arkcase.tools.conf" (dict "ctx" $ "value" "messaging.password")| quote }}
+  password: "${ARKCASE_MESSAGING_PASSWORD}"

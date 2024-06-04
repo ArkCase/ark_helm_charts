@@ -1,12 +1,11 @@
-{{- $db := (include "arkcase.db.schema" (dict "ctx" $ "schema" "cloudconfig") | fromYaml) -}}
 server:
   port: 9999
 spring:
 #   datasource:
-#     driver-class-name: {{ $db.jdbc.driver | quote }}
-#     url: {{ $db.jdbc.url | quote }}
-#     username: {{ $db.username | quote }}
-#     password: {{ $db.password | quote }}
+#     driver-class-name: "${ARKCASE_JDBC_DRIVER}"
+#     url: "${ARKCASE_JDBC_URL}"
+#     username: "${ARKCASE_JDBC_USERNAME}"
+#     password: "${ARKCASE_JDBC_PASSWORD}"
 #     hikari:
 #       connection-timeout: 5000
 #       maximum-pool-size: 10
@@ -28,9 +27,9 @@ spring:
   jms:
     pub-sub-domain: true
   activemq: &activemqDetails
-    broker-url: {{ include "arkcase.core.messaging.openwire" $ | quote }}
-    user: {{ include "arkcase.tools.conf" (dict "ctx" $ "value" "messaging.username") | quote }}
-    password: {{ include "arkcase.tools.conf" (dict "ctx" $ "value" "messaging.password") | quote }}
+    broker-url: "${ARKCASE_MESSAGING_URL}"
+    user: "${ARKCASE_MESSAGING_USERNAME}"
+    password: "${ARKCASE_MESSAGING_PASSWORD}"
 properties.folder.path: "/app/conf"
 branding.files.folder.path: "/app/conf/branding"
 logging:

@@ -1,0 +1,37 @@
+{{- $foia := (include "arkcase.foia" $ | fromYaml) -}}
+{{- if $foia -}}
+logging:
+  level:
+    com.arkcase.portal: debug
+    org:
+      springframework: warn
+      apache: warn
+    springfox: warn
+
+portal:
+  uiApplicationUrl: &url "${ARKCASE_FOIAPORTAL_UI_URL}"
+  uiApplicationHost: "${ARKCASE_FOIAPORTAL_URL}"
+  id: "${ARKCASE_FOIAPORTAL_ID}"
+  url: *url
+  arkcaseUrl: "https://localhost:8443/arkcase"
+  groupName: "ARKCASE_PORTAL_USER@${ARKCASE_LDAP_FOIAPORTAL_USER_DOMAIN}"
+  # authentication type, possible values (basic, external)
+  authenticationType: "basic"
+  userId: "${ARKCASE_LDAP_FOIAPORTAL_ADMIN_USERNAME}@${ARKCASE_LDAP_FOIAPORTAL_USER_DOMAIN}"
+  password: "${ARKCASE_LDAP_FOIAPORTAL_ADMIN_PASSWORD}"
+  # portal configuration type
+  externalConfiguration: false
+  authenticatedMode: "${ARKASE_FOIA_AUTHENTICATED_MODE}"
+  activemqUrl: "${ARKCASE_MESSAGING_URL}"
+  activemqUsername: "${ARKCASE_MESSAGING_USERNAME}"
+  activemqPassword: "${ARKCASE_MESSAGING_PASSWORD}"
+  serviceProvider:
+    directory.name: "foiaportal"
+  keystoreFilename: "${k8s.keystore.file}"
+  keystorePassword: "${k8s.keystore.pass}"
+  truststoreFilename: "/etc/pki/java/cacerts"
+  truststorePassword: "changeit"
+  security.authentication:
+    header.parameter.name: foia-api-secret
+    token:  "${ARKCASE_FOIA_API_SECRET}"
+{{- end -}}
