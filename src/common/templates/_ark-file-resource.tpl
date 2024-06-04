@@ -21,6 +21,12 @@
     -}}
     {{- range $kind, $cfg := $resources }}
       {{- $basePath := (printf "files/%s" $cfg.path) }}
+      {{- $allFiles := ($ctx.Files.Glob (printf "%s/**" $basePath)) }}
+      {{- if not $allFiles }}
+        {{- continue }}
+      {{- end }}
+      {{- $rendered := dict }}
+      {{- $files := dict }}
 ---
 apiVersion: v1
 kind: {{ $kind }}
@@ -35,28 +41,40 @@ metadata:
       {{- with ($ctx.Values.annotations).common }}
         {{- toYaml . | nindent 4 }}
       {{- end }}
-{{ $cfg.txt }}:
-      {{- $files := $ctx.Files.Glob (printf "%s/txt/*" $basePath) }}
+
+{{ $cfg.bin }}:
+      {{- $files = ($ctx.Files.Glob (printf "%s/bin/*" $basePath)) }}
       {{- if $files }}
   #
-  # Include {{ $files | len }} static files
+  # Include {{ $files | len }} binary files
   #
+        {{- $files.AsSecrets | nindent 2 }}
         {{- range $path, $_ := $files }}
-  {{ $path | base }}: | {{- $ctx.Files.Get $path | nindent 4 }}
+          {{- $key := ($path | base) }}
+          {{- if hasKey $rendered $key }}
+            {{- continue }}
+          {{- end }}
+          {{- $rendered = set $rendered $key $path }}
         {{- end }}
       {{- else }}
   #
-  # No static files to include
+  # No binary files to include
   #
       {{- end }}
 
+{{ $cfg.txt }}:
       {{- $files = $ctx.Files.Glob (printf "%s/tpl/*" $basePath) }}
       {{- if $files }}
   #
   # Render {{ $files | len }} templated files
   #
         {{- range $path, $_ := $files }}
-  {{ $path | base }}: | {{- tpl ($ctx.Files.Get $path) $ | nindent 4 }}
+          {{- $key := ($path | base) }}
+          {{- if hasKey $rendered $key }}
+            {{- continue }}
+          {{- end }}
+          {{- $rendered = set $rendered $key $path }}
+  {{ $key }}: | {{- tpl ($ctx.Files.Get $path) $ | nindent 4 }}
         {{- end }}
       {{- else }}
   #
@@ -64,16 +82,22 @@ metadata:
   #
       {{- end }}
 
-{{ $cfg.bin }}:
-    {{- $files = ($ctx.Files.Glob (printf "%s/bin/*" $basePath)) }}
+      {{- $files = $ctx.Files.Glob (printf "%s/txt/*" $basePath) }}
       {{- if $files }}
   #
-  # Include {{ $files | len }} binary files
+  # Include {{ $files | len }} static files
   #
-        {{- $files.AsSecrets | nindent 2 }}
+        {{- range $path, $_ := $files }}
+          {{- $key := ($path | base) }}
+          {{- if hasKey $rendered $key }}
+            {{- continue }}
+          {{- end }}
+          {{- $rendered = set $rendered $key $path }}
+  {{ $key }}: | {{- $ctx.Files.Get $path | nindent 4 }}
+        {{- end }}
       {{- else }}
   #
-  # No binary files to include
+  # No static files to include
   #
       {{- end }}
     {{- end }}
