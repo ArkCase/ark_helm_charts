@@ -143,48 +143,18 @@ spec:
               mountPath: *dataDir
             - name: *logsVol
               mountPath: *logsDir
-            - name: &secretFiles
-              mountPath: "/app/conf/broker.xml.template"
-              subPath: "broker.xml.template"
-              readOnly: true
-            - name: &configFiles "config-map"
-              mountPath: "/app/conf/bootstrap.xml.template"
-              subPath: "bootstrap.xml.template"
-              readOnly: true
-            - name: *configFiles
-              mountPath: "/check-health"
-              subPath: &checkHealth "check-health"
-              readOnly: true
-            - name: *configFiles
-              mountPath: "/app/conf/jolokia-access.xml"
-              subPath: "jolokia-access.xml"
-              readOnly: true
-            - name: *configFiles
-              mountPath: "/app/conf/log4j2.properties"
-              subPath: "log4j2.properties"
-              readOnly: true
-            - name: *configFiles
-              mountPath: "/app/conf/login.config"
-              subPath: "login.config"
-              readOnly: true
-            - name: *configFiles
-              mountPath: "/app/conf/management.xml"
-              subPath: "management.xml"
-              readOnly: true
+            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/check-health") | nindent 12 }}
+            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/bootstrap.xml.template") | nindent 12 }}
+            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/broker.xml.template") | nindent 12 }}
+            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/jolokia-access.xml") | nindent 12 }}
+            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/log4j2.properties") | nindent 12 }}
+            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/login.config") | nindent 12 }}
+            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/management.xml") | nindent 12 }}
       volumes:
         {{- include "arkcase.acme.volume" $ | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "logs") | nindent 8 }}
-        - name: *secretFiles
-          secret:
-            optional: false
-            secretName: {{ printf "%s-files" $fullname | quote }}
-            defaultMode: 0644
-        - name: *configFiles
-          configMap:
-            optional: false
-            name: {{ $fullname | quote }}
-            defaultMode: 0644
+        {{- include "arkcase.file-resource.config.volume" $ | nindent 8 }}
             items:
               - key: *checkHealth
                 path: *checkHealth
