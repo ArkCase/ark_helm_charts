@@ -156,7 +156,7 @@ spec:
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "logs") | nindent 8 }}
         {{- include "arkcase.file-resource.config.volume" $ | nindent 8 }}
             items:
-              - key: *checkHealth
+              - key: &checkHealth "check-health"
                 path: *checkHealth
                 mode: 0755
         # Configuration is ephemeral, b/c it's re-rendered every time
