@@ -3,7 +3,7 @@
 {{- end -}}
 
 {{- define "arkcase.file-resources" -}}
-  {{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.content.external" $)) -}}
+  {{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.subsystem.external" $)) -}}
     {{- $ctx := $ -}}
     {{- $filesResourceName := (include "arkcase.file-resource.name" $) -}}
     {{- $resources :=
