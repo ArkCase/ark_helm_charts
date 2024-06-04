@@ -142,8 +142,8 @@ spec:
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
         {{- include "arkcase.file-resource.config.volume" $ | nindent 8 }}
             items:
-              - key: &configPostSh "config-post.sh"
-                path: *configPostSh
+              - key: &key "config-post.sh"
+                path: *key
                 mode: 0555
       {{- with (include "arkcase.values" (dict "ctx" $ "base" "nodeSelector") | fromYaml) }}
       nodeSelector: {{- toYaml .value | nindent 8 }}

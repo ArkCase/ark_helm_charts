@@ -155,9 +155,8 @@ spec:
               mountPath: *dataDir
             - name: *initVol
               mountPath: *initDir
-            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/tomcat/shared/classes/alfresco-global.properties") | nindent 12 }}
             {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/tomcat-live") | nindent 12 }}
-            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/md4sum") | nindent 12 }}
+            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/tomcat/shared/classes/alfresco-global.properties") | nindent 12 }}
             {{- if and (eq "alfresco" $content.dialect) (include "arkcase.toBoolean" $content.settings.sync) }}
               {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/tomcat/shared/classes/alfresco/extension/audit/alfresco-audit-arkcase-extractors.xml") | nindent 12 }}
             {{- end }}
@@ -167,8 +166,12 @@ spec:
         {{- include "arkcase.alfresco.license.volume" (dict "ctx" $ "volume" "alfresco-license") | nindent 8 }}
         {{- include "arkcase.file-resource.config.volume" $ | nindent 8 }}
             items:
-              - key: &tomcatLive "tomcat-live"
-                path: *tomcatLive
+              - key: &key "alfresco-global.properties"
+                path: *key
+              - key: &key "alfresco-audit-arkcase-extractors.xml"
+                path: *key
+              - key: &key "tomcat-live"
+                path: *key
                 mode: 0555
         {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "init") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}

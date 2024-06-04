@@ -78,8 +78,8 @@ spec:
         {{- include "arkcase.acme.volume" $ | nindent 8 }}
         {{- include "arkcase.file-resource.config.volume" $ | nindent 8 }}
             items:
-              - key: &tomcatLive "tomcat-live"
-                path: *tomcatLive
+              - key: &key "tomcat-live"
+                path: *key
                 mode: 0555
       {{- with (include "arkcase.values" (dict "ctx" $ "base" "nodeSelector") | fromYaml) }}
       nodeSelector: {{- toYaml .value | nindent 8 }}

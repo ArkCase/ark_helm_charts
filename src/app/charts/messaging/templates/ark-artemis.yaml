@@ -156,8 +156,20 @@ spec:
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "logs") | nindent 8 }}
         {{- include "arkcase.file-resource.config.volume" $ | nindent 8 }}
             items:
-              - key: &checkHealth "check-health"
-                path: *checkHealth
+              - key: &key "bootstrap.xml.template"
+                path: *key
+              - key: &key "broker.xml.template"
+                path: *key
+              - key: &key "jolokia-access.xml"
+                path: *key
+              - key: &key "log4j2.properties"
+                path: *key
+              - key: &key "login.config"
+                path: *key
+              - key: &key "management.xml"
+                path: *key
+              - key: &key "check-health"
+                path: *key
                 mode: 0755
         # Configuration is ephemeral, b/c it's re-rendered every time
         - name: *confVol
