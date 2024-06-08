@@ -10,16 +10,16 @@ produces:
   acme:
     conn-main: &acme-conn-main
       url: "https://acme:9000"
-      cred-admin:
+      cred-admin: &acme-main-cred-admin
         password: "some-generated-password"
 
   analytics: # Should we keep this?
     conn-main: &analytics-conn-main
       url:
-      cred-admin:
+      cred-admin: &analytics-main-cred-admin
         username:
         password:
-      cred-access:
+      cred-access: &analytics-main-cred-access
         username:
         password:
 
@@ -27,20 +27,20 @@ produces:
     conn-main: &content-conn-main
       url:
       ui:
-      cred-admin:
+      cred-admin: &content-main-cred-admin
         username:
         password:
-      cred-access:
+      cred-access: &content-main-cred-access
         username:
         password:
 
   core:
     conn-main: &core-conn-main
       hosts:
-      cred-admin: # Delegated to LDAP
+      cred-admin:  &core-main-cred-admin # Delegated to LDAP
         username:
         password:
-      cred-access: # Delegated to LDAP
+      cred-access: &core-main-cred-access # Delegated to LDAP
         username:
         password:
 
@@ -60,7 +60,11 @@ produces:
       usersClass: ...
       usersNameAtt: ...
       usersMemberAtt: ...
-      creds-admin:
+      cred-admin: &ldap-main-cred-admin
+        username: ...
+        samAccount: ...
+        password: ...
+      cred-access: &ldap-main-cred-access
         username: ...
         samAccount: ...
         password: ...
@@ -79,7 +83,11 @@ produces:
       usersClass: ...
       usersNameAtt: ...
       usersMemberAtt: ...
-      creds-admin:
+      cred-admin: &ldap-portal-cred-admin
+        username: ...
+        samAccount: ...
+        password: ...
+      cred-access: &ldap-portal-cred-access
         username: ...
         samAccount: ...
         password: ...
@@ -90,7 +98,11 @@ produces:
       proto:
       host:
       port:
-      creds-admin:
+      cred-admin: &messaging-main-cred-admin
+        username: ...
+        samAccount: ...
+        password: ...
+      cred-access: &messaging-main-cred-access
         username: ...
         samAccount: ...
         password: ...
@@ -99,7 +111,11 @@ produces:
       proto:
       host:
       port:
-      creds-admin:
+      cred-admin: &messaging-stomp-cred-admin
+        username: ...
+        samAccount: ...
+        password: ...
+      cred-access: &messaging-stomp-cred-access
         username: ...
         samAccount: ...
         password: ...
@@ -108,7 +124,7 @@ produces:
     conn-main: &rdbms-conn-main
       host:
       port:
-      schema-arkcase:
+      schema-arkcase: &rdbms-main-cred-schema-arkcase
         username:
         password:
         database:
@@ -117,7 +133,7 @@ produces:
     conn-content: &rdbms-conn-content
       host:
       port:
-      schema-content:
+      schema-content: &rdbms-content-cred-schema-content
         username:
         password:
         database:
@@ -126,19 +142,19 @@ produces:
     conn-reports: &rdbms-conn-reports
       host:
       port:
-      schema-hibernate:
+      schema-hibernate: &rdbms-reports-cred-schema-hibernate
         username:
         password:
         database:
         schema:
         instance:
-      schema-jcr:
+      schema-jcr: &rdbms-reports-cred-schema-jcr
         username:
         password:
         database:
         schema:
         instance:
-      schema-quartz:
+      schema-quartz: &rdbms-reports-cred-schema-quartz
         username:
         password:
         database:
@@ -148,32 +164,33 @@ produces:
   reports:
     conn-main: &reports-conn-main
       url:
-      cred-admin: # Delegated to LDAP ...
+      cred-admin: &reports-main-cred-admin # Delegated to LDAP ...
         username:
         password:
-      cred-access: # Delegated to LDAP ...
+      cred-access: &reports-main-cred-access # Delegated to LDAP ...
         username:
         password:
 
   search:
     conn-main: &search-conn-main
       url:
-      cred-admin: # Not fully supported yet ...
+      cred-admin: &search-main-cred-admin # Not fully supported yet ...
         username:
         password:
-      cred-access: # Not fully supported yet ...
+      cred-access: &search-main-cred-access # Not fully supported yet ...
         username:
         password:
 
   zookeeper:
     conn-main: &zookeeper-conn-main
       hosts:
-      cred-admin: # Not fully supported yet ...
+      cred-admin: &zookeeper-main-cred-admin # Not fully supported yet ...
         username:
         password:
 
-
-separator: "ignore me"
+################################################################################
+separator: "ignore me" # Yes, really, ignore this line...
+################################################################################
 
 ################################################################################
 # Here we list what secrets/configs from other charts each chart consumes. We
@@ -187,81 +204,152 @@ consumed:
     acme:
       conn-main:
         <<: *acme-conn-main
+        cred-admin:
+          <<: *acme-main-cred-admin
 
   content:
     acme:
       conn-main:
         <<: *acme-conn-main
+        cred-admin:
+          <<: *acme-main-cred-admin
     ldap:
       conn-main:
         <<: *content-ldap-main
+        cred-admin:
+          <<: *ldap-main-cred-admin
+        cred-access:
+          <<: *ldap-main-cred-access
     rdbms:
       conn-content:
         <<: *rdbms-conn-content
+        cred-access:
+          <<: *rdbms-content-cred-schema-content
 
   core:
     acme:
       conn-main:
         <<: *acme-conn-main
+        cred-admin:
+          <<: *acme-main-cred-admin
     ldap:
       conn-main:
-        <<: *ldap-conn-main
+        <<: *content-ldap-main
+        cred-admin:
+          <<: *ldap-main-cred-admin
+        cred-access:
+          <<: *ldap-main-cred-access
       conn-portal:
-        <<: *ldap-conn-portal
+        <<: *content-ldap-portal
+        cred-admin:
+          <<: *ldap-portal-cred-admin
+        cred-access:
+          <<: *ldap-portal-cred-access
     rdbms:
       conn-main:
         <<: *rdbms-conn-main
+        cred-access:
+          <<: *rdbms-main-cred-schema-arkcase
     reports:
+      conn-reports:
         <<: *reports-conn-main
+        cred-admin:
+          <<: *reports-main-cred-admin
+        cred-access:
+          <<: *reports-main-cred-access
     messaging:
       conn-main:
         <<: *messaging-conn-main
+        cred-access:
+          <<: *messaging-main-cred-access
       conn-stomp:
         <<: *messaging-conn-stomp
+        cred-access:
+          <<: *messaging-stomp-cred-access
     search:
       conn-main:
         <<: *search-conn-main
+        cred-admin:
+          <<: *search-main-cred-admin
+        cred-access:
+          <<: *search-main-cred-access
+    zookeeper:
+      conn-main:
+        <<: *zookeeper-conn-main
+        cred-admin:
+          <<: *zookeeper-main-cred-admin
 
   ldap:
     acme:
       conn-main:
         <<: *acme-conn-main
+        cred-admin:
+          <<: *acme-main-cred-admin
 
   messaging:
     acme:
       conn-main:
         <<: *acme-conn-main
+        cred-admin:
+          <<: *acme-main-cred-admin
 
   rdbms:
     acme:
       conn-main:
         <<: *acme-conn-main
+        cred-admin:
+          <<: *acme-main-cred-admin
 
   reports:
     acme:
       conn-main:
         <<: *acme-conn-main
+        cred-admin:
+          <<: *acme-main-cred-admin
     core:
       conn-main:
         <<: *core-conn-main
+        cred-access:
+          <<: *core-main-cred-access
     ldap:
       conn-main:
-        <<: *ldap-conn-main
+        <<: *content-ldap-main
+        cred-access:
+          <<: *ldap-main-cred-access
     rdbms:
       conn-main:
         <<: *rdbms-conn-main
+        schema-arkcase:
+          <<: *rdbms-main-cred-schema-arkcase
       conn-reports:
         <<: *rdbms-conn-reports
+        schema-hibernate:
+          <<: *rdbms-reports-cred-schema-hibernate
+        schema-jcr:
+          <<: *rdbms-reports-cred-schema-jcr
+        schema-quarts:
+          <<: *rdbms-reports-cred-schema-quartz
+    zookeeper:
+      conn-main:
+        <<: *zookeeper-conn-main
+        cred-admin:
+          <<: *zookeeper-main-cred-admin
 
   search:
     acme:
       conn-main:
         <<: *acme-conn-main
+        cred-admin:
+          <<: *acme-main-cred-admin
     zookeeper:
       conn-main:
         <<: *zookeeper-conn-main
+        cred-admin:
+          <<: *zookeeper-main-cred-admin
 
   zookeeper:
     acme:
       conn-main:
         <<: *acme-conn-main
+        cred-admin:
+          <<: *acme-main-cred-admin
