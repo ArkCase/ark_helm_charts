@@ -215,7 +215,7 @@ consumed:
           <<: *acme-main-cred-admin
     ldap:
       conn-main:
-        <<: *content-ldap-main
+        <<: *ldap-conn-main
         cred-admin:
           <<: *ldap-main-cred-admin
         cred-access:
@@ -232,15 +232,22 @@ consumed:
         <<: *acme-conn-main
         cred-admin:
           <<: *acme-main-cred-admin
+    content:
+      conn-main:
+        <<: *content-conn-main
+        cred-admin:
+          <<: *content-main-cred-admin
+        cred-access:
+          <<: *content-main-cred-access
     ldap:
       conn-main:
-        <<: *content-ldap-main
+        <<: *ldap-conn-main
         cred-admin:
           <<: *ldap-main-cred-admin
         cred-access:
           <<: *ldap-main-cred-access
       conn-portal:
-        <<: *content-ldap-portal
+        <<: *ldap-conn-portal
         cred-admin:
           <<: *ldap-portal-cred-admin
         cred-access:
