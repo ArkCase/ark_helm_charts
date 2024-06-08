@@ -1,0 +1,267 @@
+################################################################################
+# Here we list what secrets/configs each chart produces for consumption by other
+# charts in the ecosystem. We add anchor names here so they can be referenced
+# below without issue, and it's easier to navigate.
+#
+# With this guide it should be possible to create the configurations for all
+# charts and subcharts, to be resolved at runtime.
+################################################################################
+produces:
+  acme:
+    conn-main: &acme-conn-main
+      url: "https://acme:9000"
+      cred-admin:
+        password: "some-generated-password"
+
+  analytics: # Should we keep this?
+    conn-main: &analytics-conn-main
+      url:
+      cred-admin:
+        username:
+        password:
+      cred-access:
+        username:
+        password:
+
+  content:
+    conn-main: &content-conn-main
+      url:
+      ui:
+      cred-admin:
+        username:
+        password:
+      cred-access:
+        username:
+        password:
+
+  core:
+    conn-main: &core-conn-main
+      hosts:
+      cred-admin: # Delegated to LDAP
+        username:
+        password:
+      cred-access: # Delegated to LDAP
+        username:
+        password:
+
+  ldap:
+    conn-main: &ldap-conn-main
+      url: ...
+      baseDn: ...
+      domain: ...
+      realm: ...
+      groupsBaseDn: ...
+      groupsFilter: ...
+      groupsClass: ...
+      groupsMemberAtt: ...
+      groupsNameAtt: ...
+      usersBaseDn: ...
+      usersFilter: ...
+      usersClass: ...
+      usersNameAtt: ...
+      usersMemberAtt: ...
+      creds-admin:
+        username: ...
+        samAccount: ...
+        password: ...
+    conn-portal: &ldap-conn-portal
+      url: ...
+      baseDn: ...
+      domain: ...
+      realm: ...
+      groupsBaseDn: ...
+      groupsFilter: ...
+      groupsClass: ...
+      groupsMemberAtt: ...
+      groupsNameAtt: ...
+      usersBaseDn: ...
+      usersFilter: ...
+      usersClass: ...
+      usersNameAtt: ...
+      usersMemberAtt: ...
+      creds-admin:
+        username: ...
+        samAccount: ...
+        password: ...
+
+  messaging:
+    conn-main: &messaging-conn-main
+      url: ...
+      proto:
+      host:
+      port:
+      creds-admin:
+        username: ...
+        samAccount: ...
+        password: ...
+    conn-stomp: &messaging-conn-stomp
+      url: ...
+      proto:
+      host:
+      port:
+      creds-admin:
+        username: ...
+        samAccount: ...
+        password: ...
+
+  rdbms:
+    conn-main: &rdbms-conn-main
+      host:
+      port:
+      schema-arkcase:
+        username:
+        password:
+        database:
+        schema:
+        instance:
+    conn-content: &rdbms-conn-content
+      host:
+      port:
+      schema-content:
+        username:
+        password:
+        database:
+        schema:
+        instance:
+    conn-reports: &rdbms-conn-reports
+      host:
+      port:
+      schema-hibernate:
+        username:
+        password:
+        database:
+        schema:
+        instance:
+      schema-jcr:
+        username:
+        password:
+        database:
+        schema:
+        instance:
+      schema-quartz:
+        username:
+        password:
+        database:
+        schema:
+        instance:
+
+  reports:
+    conn-main: &reports-conn-main
+      url:
+      cred-admin: # Delegated to LDAP ...
+        username:
+        password:
+      cred-access: # Delegated to LDAP ...
+        username:
+        password:
+
+  search:
+    conn-main: &search-conn-main
+      url:
+      cred-admin: # Not fully supported yet ...
+        username:
+        password:
+      cred-access: # Not fully supported yet ...
+        username:
+        password:
+
+  zookeeper:
+    conn-main: &zookeeper-conn-main
+      hosts:
+      cred-admin: # Not fully supported yet ...
+        username:
+        password:
+
+
+separator: "ignore me"
+
+################################################################################
+# Here we list what secrets/configs from other charts each chart consumes. We
+# add anchor links for ease of navigation (i.e. in VSCode), and for brevity.
+#
+# With this guide it should be possible to create the configurations for all
+# charts and subcharts, to be resolved at runtime.
+################################################################################
+consumed:
+  analytics: # Should we keep this?
+    acme:
+      conn-main:
+        <<: *acme-conn-main
+
+  content:
+    acme:
+      conn-main:
+        <<: *acme-conn-main
+    ldap:
+      conn-main:
+        <<: *content-ldap-main
+    rdbms:
+      conn-content:
+        <<: *rdbms-conn-content
+
+  core:
+    acme:
+      conn-main:
+        <<: *acme-conn-main
+    ldap:
+      conn-main:
+        <<: *ldap-conn-main
+      conn-portal:
+        <<: *ldap-conn-portal
+    rdbms:
+      conn-main:
+        <<: *rdbms-conn-main
+    reports:
+        <<: *reports-conn-main
+    messaging:
+      conn-main:
+        <<: *messaging-conn-main
+      conn-stomp:
+        <<: *messaging-conn-stomp
+    search:
+      conn-main:
+        <<: *search-conn-main
+
+  ldap:
+    acme:
+      conn-main:
+        <<: *acme-conn-main
+
+  messaging:
+    acme:
+      conn-main:
+        <<: *acme-conn-main
+
+  rdbms:
+    acme:
+      conn-main:
+        <<: *acme-conn-main
+
+  reports:
+    acme:
+      conn-main:
+        <<: *acme-conn-main
+    core:
+      conn-main:
+        <<: *core-conn-main
+    ldap:
+      conn-main:
+        <<: *ldap-conn-main
+    rdbms:
+      conn-main:
+        <<: *rdbms-conn-main
+      conn-reports:
+        <<: *rdbms-conn-reports
+
+  search:
+    acme:
+      conn-main:
+        <<: *acme-conn-main
+    zookeeper:
+      conn-main:
+        <<: *zookeeper-conn-main
+
+  zookeeper:
+    acme:
+      conn-main:
+        <<: *acme-conn-main
