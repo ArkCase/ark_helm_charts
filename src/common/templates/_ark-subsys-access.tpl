@@ -338,11 +338,7 @@
 
   {{- $conf := (include "arkcase.subsystem-access.conf" $args | fromYaml) -}}
   {{- $conf = ($conf.connection | default dict) -}}
-  {{- if $params.conn -}}
-    {{- if not (hasKey $conf $params.conn) -}}
-      {{- fail (printf "No connection named [%s] from the configuration resource of type %s for subsystem %s - must be one of %s" $params.conn $params.type $params.subsys (keys $conf | sortAlpha)) -}}
-    {{- end -}}
-  {{- else -}}
+  {{- if not $params.conn -}}
     {{- $defaultConn := $conf.default | default "main" -}}
     {{- $params = merge (dict "conn" $defaultConn "radix" (printf "%s%s" $params.radix $defaultConn)) $params -}}
   {{- end -}}
@@ -358,11 +354,7 @@
 
   {{- $conf := (include "arkcase.subsystem-access.conf" $args | fromYaml) -}}
   {{- $conf = ($conf.connection | default dict) -}}
-  {{- if $params.conn -}}
-    {{- if not (hasKey $conf $params.conn) -}}
-      {{- fail (printf "No connection named [%s] from the configuration resource of type %s for subsystem %s - must be one of %s" $params.conn $params.type $params.subsys (keys $conf | sortAlpha)) -}}
-    {{- end -}}
-  {{- else -}}
+  {{- if not $params.conn -}}
     {{- $defaultConn := $conf.default | default "main" -}}
     {{- $params = merge (dict "conn" $defaultConn "radix" (printf "%s%s" $params.radix $defaultConn)) $params -}}
   {{- end -}}
@@ -390,11 +382,7 @@
 
   {{- $conf := (include "arkcase.subsystem-access.conf" $args | fromYaml) -}}
   {{- $conf = ($conf.connection | default dict) -}}
-  {{- if $params.conn -}}
-    {{- if not (hasKey $conf $params.conn) -}}
-      {{- fail (printf "No connection named [%s] from the configuration resource of type %s for subsystem %s - must be one of %s" $params.conn $params.type $params.subsys (keys $conf | sortAlpha)) -}}
-    {{- end -}}
-  {{- else -}}
+  {{- if not $params.conn -}}
     {{- $defaultConn := $conf.default | default "main" -}}
     {{- $params = merge (dict "conn" $defaultConn "radix" (printf "%s%s" $params.radix $defaultConn)) $params -}}
   {{- end -}}
@@ -420,11 +408,7 @@
 
   {{- $conf := (include "arkcase.subsystem-access.conf" $ | fromYaml) -}}
   {{- $conf = ($conf.connection | default dict) -}}
-  {{- if $params.conn -}}
-    {{- if not (hasKey $conf $params.conn) -}}
-      {{- fail (printf "No connection named [%s] from the configuration resource of type %s for subsystem %s - must be one of %s" $params.conn $params.type $params.subsys (keys $conf | sortAlpha)) -}}
-    {{- end -}}
-  {{- else -}}
+  {{- if not $params.conn -}}
     {{- $defaultConn := $conf.default | default "main" -}}
     {{- $params = merge (dict "conn" $defaultConn "radix" (printf "%s%s" $params.radix $defaultConn)) $params -}}
   {{- end -}}
@@ -472,11 +456,7 @@
 
   {{- $conf := (include "arkcase.subsystem-access.conf" $ | fromYaml) -}}
   {{- $conf = ($conf.connection | default dict) -}}
-  {{- if $params.conn -}}
-    {{- if not (hasKey $conf $params.conn) -}}
-      {{- fail (printf "No connection named [%s] from the configuration resource of type %s for subsystem %s - must be one of %s" $params.conn $params.type $params.subsys (keys $conf | sortAlpha)) -}}
-    {{- end -}}
-  {{- else -}}
+  {{- if not $params.conn -}}
     {{- $defaultConn := $conf.default | default "main" -}}
     {{- $params = merge (dict "conn" $defaultConn "radix" (printf "%s%s" $params.radix $defaultConn)) $params -}}
   {{- end -}}
@@ -599,11 +579,7 @@
 
   {{- $conf := (include "arkcase.subsystem-access.conf" $ | fromYaml) -}}
   {{- $conf = ($conf.connection | default dict) -}}
-  {{- if $params.conn -}}
-    {{- if not (hasKey $conf $params.conn) -}}
-      {{- fail (printf "No connection named [%s] from the configuration resource of type %s for subsystem %s - must be one of %s" $params.conn $params.type $params.subsys (keys $conf | sortAlpha)) -}}
-    {{- end -}}
-  {{- else -}}
+  {{- if not $params.conn -}}
     {{- $defaultConn := $conf.default | default "main" -}}
     {{- $params = merge (dict "conn" $defaultConn "radix" (printf "%s%s" $params.radix $defaultConn)) $params -}}
   {{- end -}}
@@ -695,11 +671,7 @@
 
   {{- $conf := (include "arkcase.subsystem-access.conf" $ | fromYaml) -}}
   {{- $conf = ($conf.connection | default dict) -}}
-  {{- if $params.conn -}}
-    {{- if not (hasKey $conf $params.conn) -}}
-      {{- fail (printf "No connection named [%s] from the configuration resource of type %s for subsystem %s - must be one of %s" $params.conn $params.type $params.subsys (keys $conf | sortAlpha)) -}}
-    {{- end -}}
-  {{- else -}}
+  {{- if not $params.conn -}}
     {{- $defaultConn := $conf.default | default "main" -}}
     {{- $params = merge (dict "conn" $defaultConn "radix" (printf "%s%s" $params.radix $defaultConn)) $params -}}
   {{- end -}}
