@@ -198,7 +198,7 @@
       {{- $default := ((hasKey $multiple "default") | ternary (get $multiple "default" | toString) "" | default "main") -}}
       {{- $multiple = omit $multiple "default" -}}
       {{- if not (hasKey $multiple $default) -}}
-        {{- fail (printf "Invalid multi-connection configuration: the default is set to '%s', but only these connections are defined: %s" $default (keys $multiple | sortAlpha)) -}}
+        {{- fail (printf "Invalid multi-connection configuration: the default is set to '%s', but only these connections are configured: %s" $default (keys $multiple | sortAlpha)) -}}
       {{- end -}}
       {{- range $k, $c := $multiple -}}
         {{- if not $k -}}
