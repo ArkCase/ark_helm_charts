@@ -91,8 +91,8 @@ Parameter: either the root context (i.e. "." or "$"), or
 */ -}}
 {{- define "arkcase.subsystem.enabled" -}}
   {{- $map := (include "arkcase.subsystem" $ | fromYaml) -}}
-  {{- $conf := (include "arkcase.subsystem.conf" $ | fromYaml) -}}
-  {{- if and ($map.data.enabled) (not ($conf.connection)) -}}
+  {{- $external := (not (empty (include "arkcase.subsystem.external" $))) -}}
+  {{- if and $map.data.enabled (not $external) -}}
     {{- true -}}
   {{- end -}}
 {{- end -}}
@@ -114,10 +114,41 @@ Parameter: either the root context (i.e. "." or "$"), or
 {{- end }}
 
 {{- define "arkcase.subsystem.external" -}}
-  {{- $conf := (include "arkcase.subsystem.conf" $ | fromYaml) -}}
-  {{- if not (empty $conf.connection) -}}
-    {{- true -}}
+  {{- $ctx := $ -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- $ctx = $.ctx -}}
+    {{- if not (include "arkcase.isRootContext" $ctx) -}}
+      {{- fail "Must provide the root context ($ or .) as the 'ctx' parameter, or the only parameter" -}}
+    {{- end -}}
   {{- end -}}
+
+  {{- $external := false -}}
+  {{- $conf := (include "arkcase.subsystem.conf" $ | fromYaml) -}}
+  {{- if $conf.connection -}}
+    {{- $connections := (get $ctx.Values "provided-connections") | default list | compact | sortAlpha -}}
+    {{- if $connections -}}
+      {{- /* TODO: Must also support asking if a specific connection is external? */ -}}
+
+      {{- /* Check to see which of the expected connections are overridden in the configuration */ -}}
+      {{- $present := list -}}
+      {{- range $c := $connections -}}
+        {{- if hasKey $conf.connection $c -}}
+          {{- $present = append $present $c -}}
+        {{- end -}}
+      {{- end -}}
+
+      {{- /* If there are multiple provided connections, then we only consider the service */ -}}
+      {{- /* external if ALL of those connections are provided for in the configuration.   */ -}}
+      {{- $external = (eq (len $connections) (len $present)) -}}
+    {{- else -}}
+      {{- /* If there are no "provided-connections" defined, it means there's only 1 */ -}}
+      {{- if not (empty $conf.connection) -}}
+        {{- $external = true -}}
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
+
+  {{- $external | ternary "true" "" -}}
 {{- end -}}
 
 {{- define "arkcase.service.name" }}

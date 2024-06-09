@@ -117,51 +117,52 @@
     {{- $credentials = dict -}}
   {{- end -}}
 
+  {{- if and (hasKey $credentials "enabled") (not (include "arkcase.toBoolean" $credentials.enabled)) -}}
+    {{- $credentials = dict -}}
+  {{- end -}}
+
   {{- $result := dict -}}
   {{- if $credentials -}}
-    {{- $enabled := or (not (hasKey $credentials "enabled")) (include "arkcase.toBoolean" $credentials.enabled) -}}
-    {{- if $enabled -}}
-      {{- /* Scan over each credential defined in the map, and sanitize it */ -}}
-      {{- range $key, $creds := (omit $credentials "enabled") -}}
+    {{- /* Scan over each credential defined in the map, and sanitize it */ -}}
+    {{- range $key, $creds := (omit $credentials "enabled") -}}
 
-        {{- if not (include "arkcase.tools.hostnamePart" $key) -}}
-          {{- fail (printf "Illegal credentials name [%s] must be an RFC-1123 hostname part (no dots!)" $key) -}}
-        {{- end -}}
-
-        {{- /* If it's empty, in any way, shape, or form, skip it */ -}}
-        {{- if not $creds -}}
-          {{- continue -}}
-        {{- end -}}
-
-        {{- if not (kindIs "map" $creds) -}}
-          {{- $creds = (dict "secret" ($creds | toString)) -}}
-        {{- end -}}
-
-        {{- /* Skip disabled credentials */ -}}
-        {{- $enabled := or (not (hasKey $creds "enabled")) (include "arkcase.toBoolean" $creds.enabled) -}}
-        {{- if not $enabled -}}
-          {{- continue -}}
-        {{- end -}}
-
-        {{- $reference := ((hasKey $creds "secret") | ternary $creds.secret "") -}}
-        {{- if not $reference -}}
-          {{- /* If the target secret is null or the empty string, ignore it */ -}}
-          {{- continue -}}
-        {{- end -}}
-
-        {{- if not (include "arkcase.tools.hostnamePart" $reference) -}}
-          {{- fail (printf "Invalid secret credentials reference [%s]" $reference) -}}
-        {{- end -}}
-
-        {{- /* These are the new credentials we will return */ -}}
-        {{- $newCreds := (dict "source" $reference "configMap" false) -}}
-
-        {{- /* The mapped keys are only of use if we have an alternative source */ -}}
-        {{- $newCreds = merge $newCreds (include "__arkcase.subsystem-access.sanitize-mapped-keys" $creds | fromYaml) -}}
-
-        {{- /* Stow the computed credentials */ -}}
-        {{- $result = set $result $key $newCreds -}}
+      {{- if not (include "arkcase.tools.hostnamePart" $key) -}}
+        {{- fail (printf "Illegal credentials name [%s] must be an RFC-1123 hostname part (no dots!)" $key) -}}
       {{- end -}}
+
+      {{- /* If it's empty, in any way, shape, or form, skip it */ -}}
+      {{- if not $creds -}}
+        {{- continue -}}
+      {{- end -}}
+
+      {{- if not (kindIs "map" $creds) -}}
+        {{- $creds = (dict "secret" ($creds | toString)) -}}
+      {{- end -}}
+
+      {{- /* Skip disabled credentials */ -}}
+      {{- $enabled := or (not (hasKey $creds "enabled")) (include "arkcase.toBoolean" $creds.enabled) -}}
+      {{- if not $enabled -}}
+        {{- continue -}}
+      {{- end -}}
+
+      {{- $reference := ((hasKey $creds "secret") | ternary $creds.secret "") -}}
+      {{- if not $reference -}}
+        {{- /* If the target secret is null or the empty string, ignore it */ -}}
+        {{- continue -}}
+      {{- end -}}
+
+      {{- if not (include "arkcase.tools.hostnamePart" $reference) -}}
+        {{- fail (printf "Invalid secret credentials reference [%s]" $reference) -}}
+      {{- end -}}
+
+      {{- /* These are the new credentials we will return */ -}}
+      {{- $newCreds := (dict "source" $reference "configMap" false) -}}
+
+      {{- /* The mapped keys are only of use if we have an alternative source */ -}}
+      {{- $newCreds = merge $newCreds (include "__arkcase.subsystem-access.sanitize-mapped-keys" $creds | fromYaml) -}}
+
+      {{- /* Stow the computed credentials */ -}}
+      {{- $result = set $result $key $newCreds -}}
     {{- end -}}
   {{- end -}}
   {{- $result | toYaml -}}
@@ -173,45 +174,42 @@
     {{- $connection = dict -}}
   {{- end -}}
 
+  {{- /* If the credential configuration is disabled, treat it as such */ -}}
+  {{- if and (hasKey $connection "enabled") (not (include "arkcase.toBoolean" $connection.enabled)) -}}
+    {{- $connection = dict -}}
+  {{- end -}}
+
   {{- $result := dict -}}
   {{- if $connection -}}
-    {{- $enabled := or (not (hasKey $connection "enabled")) (include "arkcase.toBoolean" $connection.enabled) -}}
-    {{- if $enabled -}}
-      {{- $connection = omit $connection "enabled" -}}
+    {{- $connection = omit $connection "enabled" -}}
 
-      {{- $single := pick $connection "credentials" "mapped-keys" "secret" "configMap" -}}
-      {{- $multiple := omit $connection "credentials" "mapped-keys" "secret" "configMap" -}}
-      {{- if and $single $multiple -}}
-        {{- fail (printf "Configuration fault: must either be a multi-connection configuration, or a single-connection configuration: %s" ($ | toYaml | nindent 0)) -}}
-      {{- end -}}
+    {{- $single := pick $connection "credentials" "mapped-keys" "secret" "configMap" -}}
+    {{- $multiple := omit $connection "credentials" "mapped-keys" "secret" "configMap" -}}
+    {{- if and $single $multiple -}}
+      {{- fail (printf "Configuration fault: must either be a multi-connection configuration, or a single-connection configuration: %s" ($ | toYaml | nindent 0)) -}}
+    {{- end -}}
 
+    {{- if $single -}}
+      {{- $single = (include "__arkcase.subsystem-access.sanitize-connection" $single | fromYaml) -}}
       {{- if $single -}}
-        {{- $single = (include "__arkcase.subsystem-access.sanitize-connection" $single | fromYaml) -}}
-        {{- if $single -}}
-          {{- $result = merge $result (dict "main" $single "default" "main") -}}
-        {{- end -}}
-      {{- else if $multiple -}}
-        {{- $default := ((hasKey $multiple "default") | ternary (get $multiple "default" | toString) "" | default "main") -}}
-        {{- $multiple = omit $multiple "default" -}}
-        {{- if not (hasKey $multiple $default) -}}
-          {{- fail (printf "Invalid multi-connection configuration: the default is set to '%s', but only these connections are defined: %s" $default (keys $multiple | sortAlpha)) -}}
-        {{- end -}}
-        {{- range $k, $c := $multiple -}}
-          {{- if not $k -}}
-            {{- fail (printf "Invalid empty-string connection name: %s" ($ | toYaml | nindent 0)) -}}
-          {{- end -}}
-          {{- $c = (include "__arkcase.subsystem-access.sanitize-connection" $c | fromYaml) -}}
-          {{- if $c -}}
-            {{- $result = set $result $k $c -}}
-          {{- end -}}
-        {{- end -}}
-        {{- $result = set $result "default" $default -}}
+        {{- $result = merge $result (dict "main" $single "default" "main") -}}
       {{- end -}}
-
-      {{- /* We add this last b/c if the map is empty, then there's no point in it being enabled */ -}}
-      {{- if $result -}}
-        {{- $result = set $result "enabled" true -}}
+    {{- else if $multiple -}}
+      {{- $default := ((hasKey $multiple "default") | ternary (get $multiple "default" | toString) "" | default "main") -}}
+      {{- $multiple = omit $multiple "default" -}}
+      {{- if not (hasKey $multiple $default) -}}
+        {{- fail (printf "Invalid multi-connection configuration: the default is set to '%s', but only these connections are defined: %s" $default (keys $multiple | sortAlpha)) -}}
       {{- end -}}
+      {{- range $k, $c := $multiple -}}
+        {{- if not $k -}}
+          {{- fail (printf "Invalid empty-string connection name: %s" ($ | toYaml | nindent 0)) -}}
+        {{- end -}}
+        {{- $c = (include "__arkcase.subsystem-access.sanitize-connection" $c | fromYaml) -}}
+        {{- if $c -}}
+          {{- $result = set $result $k $c -}}
+        {{- end -}}
+      {{- end -}}
+      {{- $result = set $result "default" $default -}}
     {{- end -}}
   {{- end -}}
 
@@ -224,8 +222,14 @@
     {{- $connection = dict -}}
   {{- end -}}
 
+  {{- if and (hasKey $connection "enabled") (not (include "arkcase.toBoolean" $connection.enabled)) -}}
+    {{- /* If the connection configuration is disabled, treat it as such */ -}}
+    {{- $connection = dict -}}
+  {{- end -}}
+
   {{- $result := dict -}}
   {{- if $connection -}}
+    {{- $connection = omit $connection "enabled" -}}
     {{- $reference := "" -}}
     {{- $type := "" -}}
     {{- range (list "secret" "configMap") -}}
@@ -242,8 +246,7 @@
 
     {{- if $reference -}}
       {{- /* We only tack the connection info if there actually is a target */ -}}
-      {{- $result = set $result "configMap" (eq "configMap" $type) -}}
-      {{- $result = set $result "source" $reference -}}
+      {{- $result = merge $result (dict "configMap" (eq "configMap" $type) "source" $reference) -}}
       {{- $result = merge $result (include "__arkcase.subsystem-access.sanitize-mapped-keys" $connection | fromYaml) -}}
 
       {{- $credentials := (include "__arkcase.subsystem-access.sanitize-credentials" $connection.credentials | fromYaml) -}}
