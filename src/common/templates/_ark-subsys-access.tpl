@@ -784,9 +784,9 @@
   {{- end -}}
 
   {{- $renderValues := (list "env" "mnt" "vol") -}}
-  {{- $render := ($.render | default "" | toString) -}}
+  {{- $render := ($.render | default "" | toString | lower) -}}
   {{- if not (has $render $renderValues) -}}
-    {{- fail (printf "Render mode [%s] is not supported - must be one of %s" $render $renderValues) -}}
+    {{- fail (printf "Render mode [%s] is not supported - must be one of %s (case-insensitive)" $.render $renderValues) -}}
   {{- end -}}
 
   {{- $accessConfig := ($ctx.Files.Get "subsys-deps.yaml" | fromYaml | default dict) -}}
