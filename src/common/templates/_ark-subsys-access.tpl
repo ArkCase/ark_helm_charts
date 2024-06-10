@@ -791,6 +791,10 @@
   {{- $accessConfig := ($ctx.Files.Get "subsys-deps.yaml" | fromYaml | default dict) -}}
   {{- range $subsys, $subsysData := ($accessConfig.consumes | default dict) }}
 
+    {{- if and $wantedSubsys (ne $wantedSubsys $subsys) -}}
+      {{- continue -}}
+    {{- end -}}
+
     {{- $params := (dict "ctx" $ctx "subsys" $subsys) }}
 
     {{- range $conn, $connData := ($subsysData | default dict) }}
