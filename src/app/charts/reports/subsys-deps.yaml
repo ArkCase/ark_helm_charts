@@ -2,6 +2,10 @@ consumes:
   # We specifically don't consume from ACME b/c those are handled directly
   # by the ACME templates, and there's no need to address them beyond that
   # acme: {}
+  #
+  # We specifically don't consume from ZooKeeper b/c those are handled directly
+  # by the Clustering templates, and there's no need to address them beyond that
+  # zookeeper: {}
   app-artifacts:
     main:
       properties:
@@ -38,11 +42,11 @@ consumes:
           password: env
   rdbms:
     main:
-      properties:
+      properties: &db-conn
         host: env
         port: env
       credentials:
-        schema-arkcase:
+        schema-arkcase: &db-schema
           username: env
           password: env
           database: env
@@ -50,33 +54,11 @@ consumes:
           instance: env
     reports:
       properties:
-        host: env
-        port: env
+        <<: *db-conn
       credentials:
         schema-hibernate:
-          username: env
-          password: env
-          database: env
-          schema: env
-          instance: env
+          <<: *db-schema
         schema-jcr:
-          username: env
-          password: env
-          database: env
-          schema: env
-          instance: env
+          <<: *db-schema
         schema-quartz:
-          username: env
-          password: env
-          database: env
-          schema: env
-          instance: env
-  zookeeper:
-    main:
-      properties:
-        hosts: env
-      # ZooKeeper doesn't yet authenticate, but be ready
-      # credentials:
-      #   admin:
-      #     username: env
-      #     password: env
+          <<: *db-schema

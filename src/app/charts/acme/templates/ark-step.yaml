@@ -64,6 +64,7 @@ spec:
         - name: step
           {{- include "arkcase.image" $ | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            {{- include "arkcase.subsystem-access.all.env" $ | nindent 12 }}
             - name: DOCKER_STEPCA_INIT_NAME
               value: "ArkCase on Kubernetes"
             - name: DOCKER_STEPCA_INIT_SERVICE_NAME
@@ -82,10 +83,12 @@ spec:
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "step") | nindent 12 }}
           volumeMounts:
+            {{- include "arkcase.subsystem-access.all.volumeMount" $ | nindent 12 }}
             {{- include "arkcase.subsystem-access.volumeMount.admin" (dict "ctx" $ "mountPath" $passwordFilePath "key" "password") | nindent 12 }}
             - name: *dataVolume
               mountPath: *dataDir
       volumes:
+        {{- include "arkcase.subsystem-access.all.volume" $ | nindent 8 }}
         {{- include "arkcase.subsystem-access.volume.admin" $ | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
       {{- with $.Values.nodeSelector }}

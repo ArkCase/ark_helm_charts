@@ -2,12 +2,7 @@ consumes:
   # We specifically don't consume from ACME b/c those are handled directly
   # by the ACME templates, and there's no need to address them beyond that
   # acme: {}
-  zookeeper:
-    main:
-      properties:
-        hosts: env
-      # ZooKeeper doesn't yet authenticate, but be ready
-      # credentials:
-      #   admin:
-      #     username: env
-      #     password: env
+  #
+  # We specifically don't consume from ZooKeeper b/c those are handled directly
+  # by the Clustering templates, and there's no need to address them beyond that
+  # zookeeper: {}

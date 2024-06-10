@@ -106,6 +106,7 @@ spec:
           {{- include "arkcase.image" (dict "ctx" $ "name" "minio" "repository" "arkcase/minio") | nindent 10 }}
           {{- include "arkcase.subsystem.ports" (dict "ctx" $ "name" "minio") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            {{- include "arkcase.subsystem-access.all.env" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
             - name: NODES
               value: {{ $nodes | toString | quote }}
@@ -128,6 +129,7 @@ spec:
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" $partName) | nindent 12 }}
           volumeMounts:
+            {{- include "arkcase.subsystem-access.all.volumeMount" $ | nindent 12 }}
             {{- include "arkcase.trusts.mount" $ | nindent 12 }}
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
             - name: *dataVolume
@@ -136,6 +138,7 @@ spec:
               mountPath: *initDir
             {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/config-post.sh") | nindent 12 }}
       volumes:
+        {{- include "arkcase.subsystem-access.all.volume" $ | nindent 8 }}
         {{- include "arkcase.trusts.volume" $ | nindent 8 }}
         {{- include "arkcase.acme.volume" $ | nindent 8 }}
         {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "init") | nindent 8 }}

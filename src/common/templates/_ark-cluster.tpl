@@ -192,28 +192,10 @@
   {{- $cluster | toYaml -}}
 {{- end -}}
 
-{{- define "arkcase.cluster.zookeeper" -}}
+{{- define "arkcase.cluster.env" -}}
   {{- $config := (include "arkcase.cluster" $ | fromYaml) -}}
   {{- if $config.enabled -}}
-    {{- $url := (include "arkcase.tools.conf" (dict "ctx" $ "value" "zookeeper.url") | default "zookeeper:2181") -}}
-    {{- $zk := list -}}
-    {{- range $u := (splitList "," $url | compact) -}}
-      {{- /* $u must be of the form hostname[:port] */ -}}
-      {{- if (not (regexMatch "^([^:]+)(:([1-9][0-9]*))?$" $u)) -}}
-        {{- fail (printf "Bad ZooKeeper coordinate [%s] from URL spec: %s" $u $url) -}}
-      {{- end -}}
-      {{- $p := (splitList ":" $u) -}}
-      {{- $port := 2181 -}}
-      {{- $host := (include "arkcase.tools.mustSingleHostname" (first $p)) -}}
-      {{- if gt (len $p) 1 -}}
-        {{- $port = (last $p | toString | atoi) -}}
-        {{- if or (lt $port 1) (gt $port 65535) -}}
-          {{- fail (printf "Configuration error - the zookeeper port number [%d] must be in the range [1..65535] (from %s)" $port $u) -}}
-        {{- end -}}
-      {{- end -}}
-      {{- $zk = append $zk (printf "%s:%d" $host $port) -}}
-    {{- end -}}
-    {{- join "," $zk -}}
+    {{- include "arkcase.subsystem-access.env.conn" (dict "ctx" $ "subsys" "zookeeper" "key" "url") }}
   {{- end -}}
 {{- end -}}
 

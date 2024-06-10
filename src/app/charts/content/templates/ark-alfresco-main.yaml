@@ -74,7 +74,8 @@ spec:
         - name: {{ $partName | quote }}
           {{- include "arkcase.image" $ | nindent 10 }}
           {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
-          env:
+          env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            {{- include "arkcase.subsystem-access.all.env" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
             - name: &key METADATA_KEYSTORE_PASSWORD
               valueFrom:
@@ -149,6 +150,7 @@ spec:
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" $partName) | nindent 12 }}
           volumeMounts:
             {{- include "arkcase.alfresco.license.volumeMounts" (dict "ctx" $ "volume" "alfresco-license" "path" "/usr/local/tomcat/shared/classes/alfresco/extension/license") | nindent 12 }}
+            {{- include "arkcase.subsystem-access.all.volumeMount" $ | nindent 12 }}
             {{- include "arkcase.trusts.mount" $ | nindent 12 }}
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
             - name: *dataVol
@@ -161,6 +163,7 @@ spec:
               {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/tomcat/shared/classes/alfresco/extension/audit/alfresco-audit-arkcase-extractors.xml") | nindent 12 }}
             {{- end }}
       volumes:
+        {{- include "arkcase.subsystem-access.all.volume" $ | nindent 8 }}
         {{- include "arkcase.trusts.volume" $ | nindent 8 }}
         {{- include "arkcase.acme.volume" $ | nindent 8 }}
         {{- include "arkcase.alfresco.license.volume" (dict "ctx" $ "volume" "alfresco-license") | nindent 8 }}

@@ -104,6 +104,8 @@ spec:
         - name: artemis
           {{- include "arkcase.image" $ | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            {{- include "arkcase.cluster.env" $ | nindent 12 }}
+            {{- include "arkcase.subsystem-access.all.env" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
             - name: ARTEMIS_NEW_USER_MODEL
               value: "true"
@@ -136,6 +138,7 @@ spec:
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "artemis") | nindent 12 }}
           volumeMounts:
+            {{- include "arkcase.subsystem-access.all.volumeMount" $ | nindent 12 }}
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
             - name: &confVol "conf"
               mountPath: "/app/conf"
@@ -151,6 +154,7 @@ spec:
             {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/login.config") | nindent 12 }}
             {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/management.xml") | nindent 12 }}
       volumes:
+        {{- include "arkcase.subsystem-access.all.volume" $ | nindent 8 }}
         {{- include "arkcase.acme.volume" $ | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "logs") | nindent 8 }}

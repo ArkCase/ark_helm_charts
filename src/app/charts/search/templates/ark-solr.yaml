@@ -101,9 +101,9 @@ spec:
         - name: solr
           {{- include "arkcase.image" $ | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
-            {{- include "arkcase.acme.env" $ | nindent 12 }}
             {{- include "arkcase.cluster.env" $ | nindent 12 }}
             {{- include "arkcase.subsystem-access.all.env" $ | nindent 12 }}
+            {{- include "arkcase.acme.env" $ | nindent 12 }}
             - name: NODES
               value: {{ $nodes | toString | quote }}
             - name: SOLR_OPTS
@@ -124,11 +124,7 @@ spec:
               {{- $.Values.env | toYaml | nindent 12 }}
             {{- end }}
           {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
-          {{- if $.Values.command }}
-          command: {{ toJson $.Values.command }}
-          {{- else }}
           command: [ "/entrypoint" ]
-          {{- end }}
           lifecycle:
             postStart:
               exec:
@@ -136,6 +132,7 @@ spec:
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "solr") | nindent 12 }}
           volumeMounts:
+            {{- include "arkcase.subsystem-access.all.volumeMount" $ | nindent 12 }}
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
             - name: *dataVolume
               mountPath: *dataDir
@@ -170,6 +167,7 @@ spec:
               subPath: &createCoresSh "create-cores.sh"
               readOnly: true
       volumes:
+        {{- include "arkcase.subsystem-access.all.volume" $ | nindent 8 }}
         {{- include "arkcase.acme.volume" $ | nindent 8 }}
         {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "init") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}

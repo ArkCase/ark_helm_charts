@@ -50,6 +50,7 @@ spec:
         - name: samba
           {{- include "arkcase.image" $ | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            {{- include "arkcase.subsystem-access.all.env" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
             - name: DOMAIN
               valueFrom:
@@ -76,15 +77,11 @@ spec:
             - name: SEED_DIR
               value: &seedDir "/app/secrets"
           {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
-          {{- if $.Values.command }}
-          command: {{- $.Values.command | toYaml | nindent 12 }}
-          {{- end }}
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "samba") | nindent 12 }}
           volumeMounts:
+            {{- include "arkcase.subsystem-access.all.volumeMount" $ | nindent 12 }}
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
-            {{- include "arkcase.accounts.volumeMount" (dict "ctx" $ "type" "admin") | nindent 12 }}
-            {{- include "arkcase.accounts.volumeMount" (dict "ctx" $ "type" "shared") | nindent 12 }}
             - name: "init"
               mountPath: "/app/init"
             - name: "conf"
@@ -105,9 +102,8 @@ spec:
               subPath: &initSeeds "init-seeds"
               readOnly: true
       volumes:
+        {{- include "arkcase.subsystem-access.all.volume" $ | nindent 8 }}
         {{- include "arkcase.acme.volume" $ | nindent 8 }}
-        {{- include "arkcase.accounts.volume" (dict "ctx" $ "type" "admin") | nindent 8 }}
-        {{- include "arkcase.accounts.volume" (dict "ctx" $ "type" "shared") | nindent 8 }}
         {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "init") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "conf") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
