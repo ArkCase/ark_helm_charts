@@ -23,6 +23,10 @@ produces:
         username:
         password:
 
+  app-artifacts:
+    conn-main: &app-artifacts-conn-main
+      url:
+
   content:
     conn-main: &content-conn-main
       url:
@@ -207,6 +211,13 @@ consumed:
         cred-admin:
           <<: *acme-main-cred-admin
 
+  app-artifacts:
+    acme:
+      conn-main:
+        <<: *acme-conn-main
+        cred-admin:
+          <<: *acme-main-cred-admin
+
   content:
     acme:
       conn-main:
@@ -232,6 +243,9 @@ consumed:
         <<: *acme-conn-main
         cred-admin:
           <<: *acme-main-cred-admin
+    app-artifacts:
+      conn-main:
+        <<: *app-artifacts-conn-main
     content:
       conn-main:
         <<: *content-conn-main
@@ -313,6 +327,9 @@ consumed:
         <<: *acme-conn-main
         cred-admin:
           <<: *acme-main-cred-admin
+    app-artifacts:
+      conn-main:
+        <<: *app-artifacts-conn-main
     core:
       conn-main:
         <<: *core-conn-main
