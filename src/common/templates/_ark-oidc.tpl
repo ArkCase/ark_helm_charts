@@ -61,12 +61,13 @@
 
   {{- /* TODO: When we add KeyCloak et al, we need to support both local and global configurations */ -}}
   {{- /* This value must be a map with configs, or a true-false string */ -}}
-  {{- $conf := (include "arkcase.tools.conf" (dict "ctx" $ctx "value" "oidc" "detailed" true) | fromYaml) -}}
+  {{- $conf := (include "arkcase.tools.conf" (dict "ctx" $ctx "value" "sso" "detailed" true) | fromYaml) -}}
 
   {{- $oidc := dict -}}
   {{- if $conf.found -}}
     {{- $conf := $conf.value -}}
-    {{- if $conf -}}
+    {{- if and $conf $conf.enabled $conf.protocol $conf.oidc (include "arkcase.toBoolean" $conf.enabled) (eq "oidc" $conf.protocol) -}}
+      {{- $conf := $conf.oidc -}}
       {{- $enabled := true -}}
       {{- if (hasKey $conf "enabled") -}}
         {{- $enabled = (not (empty (include "arkcase.toBoolean" $conf.enabled))) -}}
