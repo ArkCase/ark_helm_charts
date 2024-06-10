@@ -530,7 +530,7 @@
       name: {{ $sourceName | quote }}
       key: {{ $sourceKey | quote }}
       optional: {{ $optional }}
-{{- end -}}
+{{- end }}
 
 {{- define "arkcase.subsystem-access.env.conn" -}}
   {{- $params := (include "__arkcase.subsystem-access.extract-params" $ | fromYaml) -}}
@@ -539,7 +539,7 @@
     {{- fail "Must provide a 'key' parameter" -}}
   {{- end -}}
   {{- $args := merge (dict "ctx" $ctx "type" "conn" "subsys" $params.subsys "conn" $params.conn) (pick $ "key" "name" "optional") -}}
-  {{- include "__arkcase.subsystem-access.env" $args -}}
+  {{- include "__arkcase.subsystem-access.env" $args }}
 {{- end -}}
 
 {{- define "arkcase.subsystem-access.env.admin" -}}
@@ -549,7 +549,7 @@
     {{- fail "Must provide a 'key' parameter" -}}
   {{- end -}}
   {{- $args := merge (dict "ctx" $ctx "type" "cred-admin" "subsys" $params.subsys "conn" $params.conn) (pick $ "key" "name" "optional") -}}
-  {{- include "__arkcase.subsystem-access.env" $args -}}
+  {{- include "__arkcase.subsystem-access.env" $args }}
 {{- end -}}
 
 {{- define "arkcase.subsystem-access.env.cred" -}}
@@ -570,7 +570,7 @@
     {{- $type = (printf "%s%s" "cred-" $type) -}}
   {{- end -}}
   {{- $args := merge (dict "ctx" $ctx "type" $type "subsys" $params.subsys "conn" $params.conn) (pick $ "key" "name" "optional") -}}
-  {{- include "__arkcase.subsystem-access.env" $args -}}
+  {{- include "__arkcase.subsystem-access.env" $args }}
 {{- end -}}
 
 {{- define "__arkcase.subsystem-access.volumeMount" -}}
@@ -625,7 +625,7 @@
   mountPath: {{ $mountPath | quote }}
   subPath: {{ $sourceKey | quote }}
   readOnly: true
-{{- end -}}
+{{- end }}
 
 {{- define "arkcase.subsystem-access.volumeMount.conn" -}}
   {{- $params := (include "__arkcase.subsystem-access.extract-params" $ | fromYaml) -}}
@@ -634,7 +634,7 @@
     {{- fail "Must provide a 'key' parameter" -}}
   {{- end -}}
   {{- $args := merge (dict "ctx" $ctx "type" "conn" "subsys" $params.subsys "conn" $params.conn) (pick $ "key" "mountPath") -}}
-  {{- include "__arkcase.subsystem-access.volumeMount" $args -}}
+  {{- include "__arkcase.subsystem-access.volumeMount" $args }}
 {{- end -}}
 
 {{- define "arkcase.subsystem-access.volumeMount.admin" -}}
@@ -644,7 +644,7 @@
     {{- fail "Must provide a 'key' parameter" -}}
   {{- end -}}
   {{- $args := merge (dict "ctx" $ctx "type" "cred-admin" "subsys" $params.subsys "conn" $params.conn) (pick $ "key" "mountPath") -}}
-  {{- include "__arkcase.subsystem-access.volumeMount" $args -}}
+  {{- include "__arkcase.subsystem-access.volumeMount" $args }}
 {{- end -}}
 
 {{- define "arkcase.subsystem-access.volumeMount.cred" -}}
@@ -665,7 +665,7 @@
     {{- $type = (printf "%s%s" "cred-" $type) -}}
   {{- end -}}
   {{- $args := merge (dict "ctx" $ctx "type" $type "subsys" $params.subsys "conn" $params.conn) (pick $ "key" "mountPath") -}}
-  {{- include "__arkcase.subsystem-access.volumeMount" $args -}}
+  {{- include "__arkcase.subsystem-access.volumeMount" $args }}
 {{- end -}}
 
 {{- define "__arkcase.subsystem-access.volume" -}}
@@ -699,26 +699,25 @@
 
   {{- $configMap := (eq $conf.configMap true) -}}
   {{- $optional := (not (empty (include "arkcase.toBoolean" ($.optional | default false)))) -}}
-
 - name: {{ $volumeName | quote }}
   {{ $configMap | ternary "configMap" "secret" }}:
     {{ $configMap | ternary "name" "secretName" }}: {{ $sourceName | quote }}
     defaultMode: 0444
     optional: {{ $optional }}
-{{- end -}}
+{{- end }}
 
 {{- define "arkcase.subsystem-access.volume.conn" -}}
   {{- $params := (include "__arkcase.subsystem-access.extract-params" $ | fromYaml) -}}
   {{- $ctx := ($params.ctxIsRoot | ternary $ $.ctx) -}}
   {{- $args := merge (dict "ctx" $ctx "type" "conn" "subsys" $params.subsys "conn" $params.conn) (pick $ "optional") -}}
-  {{- include "__arkcase.subsystem-access.volume" $args -}}
+  {{- include "__arkcase.subsystem-access.volume" $args }}
 {{- end -}}
 
 {{- define "arkcase.subsystem-access.volume.admin" -}}
   {{- $params := (include "__arkcase.subsystem-access.extract-params" $ | fromYaml) -}}
   {{- $ctx := ($params.ctxIsRoot | ternary $ $.ctx) -}}
   {{- $args := merge (dict "ctx" $ctx "type" "cred-admin" "subsys" $params.subsys "conn" $params.conn) (pick $ "optional") -}}
-  {{- include "__arkcase.subsystem-access.volume" $args -}}
+  {{- include "__arkcase.subsystem-access.volume" $args }}
 {{- end -}}
 
 {{- define "arkcase.subsystem-access.volume.cred" -}}
@@ -737,7 +736,7 @@
     {{- $type = (printf "%s%s" "cred-" $type) -}}
   {{- end -}}
   {{- $args := merge (dict "ctx" $ctx "type" $type "subsys" $params.subsys "conn" $params.conn) (pick $ "optional") -}}
-  {{- include "__arkcase.subsystem-access.volume" $args -}}
+  {{- include "__arkcase.subsystem-access.volume" $args }}
 {{- end -}}
 
 {{- define "__arkcase.subsystem-access.all-render.sanitize-propValue" -}}
