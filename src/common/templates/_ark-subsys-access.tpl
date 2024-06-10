@@ -804,16 +804,21 @@
   {{- end -}}
 
   {{- $accessConfig := ($ctx.Files.Get "subsys-deps.yaml" | fromYaml | default dict) -}}
-  {{- range $subsys, $subsysData := ($accessConfig.consumes | default dict) }}
+  {{- $consumes := ($accessConfig.consumes | default dict) -}}
+  {{- range $subsys := (keys $consumes | sortAlpha) }}
+    {{- $subsysData := (get $consumes $subsys | default dict) }}
+    {{- if not $subsysData }}
+      {{- continue }}
+    {{- end }}
 
-    {{- if and $wantedSubsys (ne $wantedSubsys $subsys) -}}
-      {{- continue -}}
-    {{- end -}}
+    {{- if and $wantedSubsys (ne $wantedSubsys $subsys) }}
+      {{- continue }}
+    {{- end }}
 
     {{- $params := (dict "ctx" $ctx "subsys" $subsys) }}
 
-    {{- range $conn, $connData := ($subsysData | default dict) }}
-
+    {{- range $conn := (keys $subsysData | sortAlpha) }}
+      {{{- $connData := (get $subsysData $conn | default dict) }}
       {{- if not $connData }}
         {{- continue }}
       {{- end }}
@@ -821,8 +826,9 @@
       {{- $params = (set $params "conn" $conn) }}
       {{- $connVolume := false }}
 
-      {{- range $connProp, $connPropValue := ($connData.properties | default dict) }}
-
+      {{- $properties := ($connData.properties | default dict) }}
+      {{- range $connProp := (keys $properties | sortAlpha) }}
+        {{- $connPropValue := (get $properties $connProp) }}
         {{- if not $connPropValue }}
           {{- continue }}
         {{- end }}
@@ -868,8 +874,9 @@
         {{- include "arkcase.subsystem-access.volume.conn" $params | nindent 0 }}
       {{- end }}
 
-      {{- range $cred, $credData := ($connData.credentials | default dict) }}
-
+      {{- $credentials := ($connData.credentials | default dict) }}
+      {{- range $cred := (keys $credentials | sortAlpha) }}
+        {{- $credData := (get $credentials $cred | default dict) }}
         {{- if not $credData }}
           {{- continue }}
         {{- end }}
@@ -877,7 +884,8 @@
         {{- $params := (set $params "type" $cred) }}
         {{- $credVolume := false }}
 
-        {{- range $credProp, $credPropValue := $credData }}
+        {{- range $credProp := (keys $credData | sortAlpha) }}
+          {{- $credPropValue := (get $credData $credProp) }}
           {{- if not $credPropValue }}
             {{- continue }}
           {{- end }}
