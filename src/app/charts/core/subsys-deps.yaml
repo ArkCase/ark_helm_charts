@@ -1,0 +1,101 @@
+consumes:
+  # We specifically don't consume from ACME b/c those are handled directly
+  # by the ACME templates, and there's no need to address them beyond that
+  # acme: {}
+  app-artifacts:
+    main:
+      properties:
+        url: env
+  content:
+    main:
+      properties:
+        url: env
+        ui: env
+      credentials:
+        admin:
+          username: env
+          password: env
+        access:
+          username: env
+          password: env
+  ldap:
+    main: &ldap-conn
+      properties:
+        url: env
+        baseDn: env
+        domain: env
+        realm: env
+        groupsBaseDn: env
+        groupsFilter: env
+        groupsClass: env
+        groupsMemberAtt: env
+        groupsNameAtt: env
+        usersBaseDn: env
+        usersFilter: env
+        usersClass: env
+        usersNameAtt: env
+        usersMemberAtt: env
+      credentials:
+        access:
+          username: env
+          password: env
+    portal:
+      # This is a copy of main, but points to a different set of configs
+      <<: *ldap-conn
+  rdbms:
+    main:
+      properties:
+        host: env
+        port: env
+      credentials:
+        schema-arkcase:
+          username: env
+          password: env
+          database: env
+          schema: env
+          instance: env
+  reports:
+    main:
+      properties:
+        url:
+      credentials:
+        admin:
+          username: env
+          password: env
+        access:
+          username: env
+          password: env
+
+  messaging:
+    main: &messaging-conn
+      properties:
+        url: env
+        proto: env
+        host: env
+        port: env
+      credentials:
+        admin:
+          username: env
+          password: env
+    stomp:
+      <<: *messaging-conn
+  search:
+    main:
+      properties:
+        url: env
+      # We don't do Solr authentication just yet, but be ready
+      # credentials:
+      #   admin:
+      #     username: env
+      #     password: env
+      #   access:
+      #     username: env
+      #     password: env
+  zookeeper:
+    main:
+      properties:
+        hosts: env
+      credentials:
+        admin:
+          username: env
+          password: env

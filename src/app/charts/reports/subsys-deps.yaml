@@ -1,0 +1,82 @@
+consumes:
+  # We specifically don't consume from ACME b/c those are handled directly
+  # by the ACME templates, and there's no need to address them beyond that
+  # acme: {}
+  app-artifacts:
+    main:
+      properties:
+        url: env
+  core:
+    main:
+      properties:
+        url: env
+      credentials:
+        access:
+          username: env
+          password: env
+  ldap:
+    main:
+      properties:
+        url: env
+        baseDn: env
+        domain: env
+        realm: env
+        groupsBaseDn: env
+        groupsFilter: env
+        groupsClass: env
+        groupsMemberAtt: env
+        groupsNameAtt: env
+        usersBaseDn: env
+        usersFilter: env
+        usersClass: env
+        usersNameAtt: env
+        usersMemberAtt: env
+      credentials:
+        access:
+          username: env
+          samAccount: env
+          password: env
+  rdbms:
+    main:
+      properties:
+        host: env
+        port: env
+      credentials:
+        schema-arkcase:
+          username: env
+          password: env
+          database: env
+          schema: env
+          instance: env
+    reports:
+      properties:
+        host: env
+        port: env
+      credentials:
+        schema-hibernate:
+          username: env
+          password: env
+          database: env
+          schema: env
+          instance: env
+        schema-jcr:
+          username: env
+          password: env
+          database: env
+          schema: env
+          instance: env
+        schema-quartz:
+          username: env
+          password: env
+          database: env
+          schema: env
+          instance: env
+  zookeeper:
+    main:
+      properties:
+        hosts: env
+      # ZooKeeper doesn't yet authenticate, but be ready
+      # credentials:
+      #   admin:
+      #     username: env
+      #     password: env

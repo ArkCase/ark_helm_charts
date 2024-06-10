@@ -102,11 +102,8 @@ spec:
           {{- include "arkcase.image" $ | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
-            {{- $zk := (include "arkcase.cluster.zookeeper" $) -}}
-            {{- if $zk }}
-            - name: ZK_HOST
-              value: {{ $zk | quote }}
-            {{- end }}
+            {{- include "arkcase.cluster.env" $ | nindent 12 }}
+            {{- include "arkcase.subsystem-access.all.env" $ | nindent 12 }}
             - name: NODES
               value: {{ $nodes | toString | quote }}
             - name: SOLR_OPTS

@@ -1,0 +1,40 @@
+consumes:
+  # We specifically don't consume from ACME b/c those are handled directly
+  # by the ACME templates, and there's no need to address them beyond that
+  # acme: {}
+  ldap:
+    main:
+      properties:
+        url: env
+        baseDn: env
+        domain: env
+        realm: env
+        groupsBaseDn: env
+        groupsFilter: env
+        groupsClass: env
+        groupsMemberAtt: env
+        groupsNameAtt: env
+        usersBaseDn: env
+        usersFilter: env
+        usersClass: env
+        usersNameAtt: env
+        usersMemberAtt: env
+      credentials:
+        admin:
+          username: env
+          password: env
+        access:
+          username: env
+          password: env
+  rdbms:
+    content:
+      properties:
+        host: env
+        port: env
+      credentials:
+        schema-content:
+          username: env
+          password: env
+          database: env
+          schema: env
+          instance: env
