@@ -739,7 +739,7 @@
   {{- include "__arkcase.subsystem-access.volume" $args }}
 {{- end -}}
 
-{{- define "__arkcase.subsystem-access.all-render.sanitize-propValue" -}}
+{{- define "__arkcase.subsystem-access.all.render.sanitize-propValue" -}}
   {{- $propValue := $ -}}
   {{- $result := dict -}}
   {{- if (kindIs "bool" $propValue) -}}
@@ -779,170 +779,230 @@
   {{- end -}}
 {{- end -}}
 
-{{- define "__arkcase.subsystem-access.all-render" -}}
-  {{- $ctx := $.ctx -}}
+{{- define "__arkcase.subsystem-access.all.render" -}}
+  {{- $ctx := $ -}}
 
   {{- /* In case we've only been asked to produce the stuff for a given subsystem */ -}}
-  {{- $wantedSubsys := "" -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- $ctx = $.ctx -}}
+    {{- if not (include "arkcase.isRootContext" $ctx) -}}
+      {{- fail "Must provide the root context ($ or .) as the 'ctx' parameter" -}}
+    {{- end -}}
+  {{- end -}}
+
+  {{- $resultEnv := dict -}}
+  {{- $resultMnt := dict -}}
+  {{- $resultVol := dict -}}
+
+  {{- $accessConfig := ($ctx.Files.Get "subsys-deps.yaml" | fromYaml | default dict) -}}
+  {{- $consumes := ($accessConfig.consumes | default dict) -}}
+  {{- range $subsys := (keys $consumes | sortAlpha) -}}
+    {{- $subsysData := (get $consumes $subsys | default dict) -}}
+    {{- if not $subsysData -}}
+      {{- continue -}}
+    {{- end -}}
+
+
+    {{- $currentEnv := list -}}
+    {{- $currentMnt := list -}}
+    {{- $currentVol := list -}}
+
+    {{- $params := (dict "ctx" $ctx "subsys" $subsys) -}}
+
+    {{- range $conn := (keys $subsysData | sortAlpha) -}}
+      {{- $connData := (get $subsysData $conn | default dict) -}}
+      {{- if not $connData -}}
+        {{- continue -}}
+      {{- end -}}
+
+      {{- $params = (set $params "conn" $conn) -}}
+      {{- $connVolume := false -}}
+
+      {{- $properties := ($connData.properties | default dict) -}}
+      {{- range $connProp := (keys $properties | sortAlpha) -}}
+        {{- $connPropValue := (get $properties $connProp) -}}
+        {{- if not $connPropValue -}}
+          {{- continue -}}
+        {{- end -}}
+
+        {{- $params = (set $params "key" $connProp) -}}
+
+        {{- $newPropValue := (include "__arkcase.subsystem-access.all.render.sanitize-propValue" $connPropValue) -}}
+        {{- if not $connPropValue -}}
+              {{- fail (printf "Invalid property value specification for subsystem %s, connection %s, property %s: %s" $subsys $conn $connProp ($connPropValue | toYaml | nindent 0)) -}}
+        {{- end -}}
+        {{- $connPropValue = ($newPropValue | fromYaml) -}}
+
+        {{- if $connPropValue.env -}}
+          {{- $p2 := dict -}}
+          {{- $env := $connPropValue.env -}}
+          {{- if (kindIs "string" $env) -}}
+            {{- if not (regexMatch "^[a-zA-Z_][a-zA-Z0-9_]*$" $env) -}}
+              {{- fail (printf "Invalid environment variable name: [%s] for subsystem %s, connection %s, property %s" $env $subsys $conn $connProp) -}}
+            {{- end -}}
+            {{- $p2 = set $p2 "name" $env -}}
+          {{- end -}}
+          {{- $currentEnv = concat $currentEnv (include "arkcase.subsystem-access.env.conn" (merge $p2 $params) | fromYamlArray) -}}
+        {{- end -}}
+
+        {{- if $connPropValue.path -}}
+          {{- $p2 := dict -}}
+          {{- $path := $connPropValue.path -}}
+          {{- if (kindIs "string" $path) -}}
+            {{- if not (regexMatch "^/[^/]+(/[^/]+)*$" $path) -}}
+              {{- fail (printf "Invalid path specification: [%s] for subsystem %s, connection %s, property %s" $path $subsys $conn $connProp) -}}
+            {{- end -}}
+            {{- $p2 = set $p2 "mountPath" $path -}}
+          {{- end -}}
+          {{- $currentMnt = concat $currentMnt (include "arkcase.subsystem-access.volumeMount.conn" (merge $p2 $params) | fromYamlArray) -}}
+          {{- $connVolume = true -}}
+        {{- end -}}
+      {{- end -}}
+
+      {{- $params = omit $params "key" -}}
+      {{- if $connVolume -}}
+        {{- $currentVol = concat $currentVol (include "arkcase.subsystem-access.volume.conn" $params | fromYamlArray) -}}
+      {{- end -}}
+
+      {{- $credentials := ($connData.credentials | default dict) -}}
+      {{- range $cred := (keys $credentials | sortAlpha) -}}
+        {{- $credData := (get $credentials $cred | default dict) -}}
+        {{- if not $credData -}}
+          {{- continue -}}
+        {{- end -}}
+
+        {{- $params := (set $params "type" $cred) -}}
+        {{- $credVolume := false -}}
+
+        {{- range $credProp := (keys $credData | sortAlpha) -}}
+          {{- $credPropValue := (get $credData $credProp) -}}
+          {{- if not $credPropValue -}}
+            {{- continue -}}
+          {{- end -}}
+
+          {{- $params = (set $params "key" $credProp) -}}
+
+          {{- $newPropValue := (include "__arkcase.subsystem-access.all.render.sanitize-propValue" $credPropValue) -}}
+          {{- if not $credPropValue -}}
+            {{- fail (printf "Invalid property value specification for subsystem %s, connection %s, credential %s, property %s: %s" $subsys $conn $cred $credProp ($credPropValue | toYaml | nindent 0)) -}}
+          {{- end -}}
+          {{- $credPropValue = ($newPropValue | fromYaml) -}}
+
+          {{- if $credPropValue.env -}}
+            {{- $p2 := dict -}}
+            {{- $env := $credPropValue.env -}}
+            {{- if (kindIs "string" $env) -}}
+              {{- if not (regexMatch "^[a-zA-Z_][a-zA-Z0-9_]*$" $env) -}}
+                {{- fail (printf "Invalid environment variable name: [%s] for subsystem %s, connection %s, credential %s, property %s" $env $subsys $conn $cred $credProp) -}}
+              {{- end -}}
+              {{- $p2 = set $p2 "name" $env -}}
+            {{- end -}}
+            {{- $currentEnv = concat $currentEnv (include "arkcase.subsystem-access.env.cred" (merge $p2 $params) | fromYamlArray) -}}
+          {{- end -}}
+
+          {{- if $credPropValue.path -}}
+            {{- $p2 := dict -}}
+            {{- $path := $credPropValue.path -}}
+            {{- if (kindIs "string" $path) -}}
+              {{- if not (regexMatch "^/[^/]+(/[^/]+)*$" $path) -}}
+                {{- fail (printf "Invalid path specification: [%s] for subsystem %s, connection %s, credential %s, property %s" $path $subsys $conn $cred $credProp) -}}
+              {{- end -}}
+              {{- $p2 = set $p2 "mountPath" $path -}}
+            {{- end -}}
+            {{- $currentMnt = concat $currentMnt (include "arkcase.subsystem-access.volumeMount.cred" (merge $p2 $params) | fromYamlArray) -}}
+            {{- $credVolume = true -}}
+          {{- end -}}
+          {{- $params = omit $params "key" -}}
+
+          {{- if $credVolume -}}
+            {{- $currentVol = concat $currentVol (include "arkcase.subsystem-access.volume.cred" $params | fromYamlArray) -}}
+          {{- end -}}
+        {{- end -}}
+      {{- end -}}
+    {{- end -}}
+
+    {{- if $currentEnv -}}
+      {{- $resultEnv = set $resultEnv $subsys $currentEnv -}}
+    {{- end -}}
+    {{- if $currentMnt -}}
+      {{- $resultMnt = set $resultMnt $subsys $currentMnt -}}
+    {{- end -}}
+    {{- if $currentVol -}}
+      {{- $resultVol = set $resultVol $subsys $currentVol -}}
+    {{- end -}}
+  {{- end -}}
+  {{- dict "env" $resultEnv "mnt" $resultMnt "vol" $resultVol | toYaml -}}
+{{- end -}}
+
+{{- define "__arkcase.subsystem-access.all.cached" -}}
+  {{- $ctx := $ -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "The parameter given must be the root context (. or $)" -}}
+  {{- end -}}
+
+  {{- $cacheKey := "ArkCase-Subsystem-Access-References" -}}
+  {{- $masterCache := dict -}}
+  {{- if (hasKey $ctx $cacheKey) -}}
+    {{- $masterCache = get $ctx $cacheKey -}}
+    {{- if and $masterCache (not (kindIs "map" $masterCache)) -}}
+      {{- $masterCache = dict -}}
+    {{- end -}}
+  {{- end -}}
+  {{- $ctx = set $ctx $cacheKey $masterCache -}}
+
+  {{- $masterKey := $ctx.Release.Name -}}
+  {{- $yamlResult := dict -}}
+  {{- if not (hasKey $masterCache $masterKey) -}}
+    {{- $yamlResult = (include "__arkcase.subsystem-access.all.render" $ctx) -}}
+    {{- $masterCache = set $masterCache $masterKey ($yamlResult | fromYaml) -}}
+  {{- else -}}
+    {{- $yamlResult = get $masterCache $masterKey | toYaml -}}
+  {{- end -}}
+  {{- $yamlResult -}}
+{{- end -}}
+
+{{- define "__arkcase.subsystem-access.all" -}}
+  {{- $ctx := $.ctx -}}
+  {{- $subsys := $.subsys -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- $subsys = $ctx.subsys -}}
     {{- $ctx = $ctx.ctx -}}
     {{- if not (include "arkcase.isRootContext" $ctx) -}}
       {{- fail "Must provide the root context ($ or .) as the 'ctx' parameter" -}}
     {{- end -}}
-    {{- if and (hasKey $ "subsys") -}}
-      {{- $subsys := $.subsys -}}
-      {{- if and (kindIs "string" $subsys) (not (empty $subsys)) -}}
-        {{- $wantedSubsys = $subsys -}}
-      {{- end -}}
-    {{- end -}}
+  {{- end -}}
+  {{- $subsys = ($subsys | default "" | toString) -}}
+
+  {{- if not (hasKey $ "render") -}}
+    {{- fail "Must provide the type of entries to render" -}}
   {{- end -}}
 
-  {{- $renderValues := (list "env" "mnt" "vol") -}}
-  {{- $render := ($.render | default "" | toString | lower) -}}
-  {{- if not (has $render $renderValues) -}}
-    {{- fail (printf "Render mode [%s] is not supported - must be one of %s (case-insensitive)" $.render $renderValues) -}}
+  {{- $render := ($.render | toString | default "") -}}
+
+  {{- $all := (include "__arkcase.subsystem-access.all.cached" $ctx | fromYaml) -}}
+  {{- if not (hasKey $all $render) -}}
+    {{- fail (printf "Invalid rendering type [%s] - must be one of %s" $render (keys $all | sortAlpha)) -}}
   {{- end -}}
 
-  {{- $accessConfig := ($ctx.Files.Get "subsys-deps.yaml" | fromYaml | default dict) -}}
-  {{- $consumes := ($accessConfig.consumes | default dict) -}}
-  {{- range $subsys := (keys $consumes | sortAlpha) }}
-    {{- $subsysData := (get $consumes $subsys | default dict) }}
-    {{- if not $subsysData }}
-      {{- continue }}
+  {{- $all = get $all $render -}}
+  {{- if $all }}
+    {{- if and $subsys (hasKey $all $subsys) }}
+      {{- $all = pick $all $subsys }}
     {{- end }}
-
-    {{- if and $wantedSubsys (ne $wantedSubsys $subsys) }}
-      {{- continue }}
-    {{- end }}
-
-    {{- $params := (dict "ctx" $ctx "subsys" $subsys) }}
-
-    {{- range $conn := (keys $subsysData | sortAlpha) }}
-      {{{- $connData := (get $subsysData $conn | default dict) }}
-      {{- if not $connData }}
-        {{- continue }}
-      {{- end }}
-
-      {{- $params = (set $params "conn" $conn) }}
-      {{- $connVolume := false }}
-
-      {{- $properties := ($connData.properties | default dict) }}
-      {{- range $connProp := (keys $properties | sortAlpha) }}
-        {{- $connPropValue := (get $properties $connProp) }}
-        {{- if not $connPropValue }}
-          {{- continue }}
-        {{- end }}
-
-        {{- $params = (set $params "key" $connProp) }}
-
-        {{- $newPropValue := (include "__arkcase.subsystem-access.all-render.sanitize-propValue" $connPropValue) }}
-        {{- if not $connPropValue }}
-              {{- fail (printf "Invalid property value specification for subsystem %s, connection %s, property %s: %s" $subsys $conn $connProp ($connPropValue | toYaml | nindent 0)) }}
-        {{- end }}
-        {{- $connPropValue = ($newPropValue | fromYaml) }}
-
-        {{- if and $connPropValue.env (eq "env" $render) }}
-          {{- $p2 := dict }}
-          {{- $env := $connPropValue.env }}
-          {{- if (kindIs "string" $env) }}
-            {{- if not (regexMatch "^[a-zA-Z_][a-zA-Z0-9_]*$" $env) }}
-              {{- fail (printf "Invalid environment variable name: [%s] for subsystem %s, connection %s, property %s" $env $subsys $conn $connProp) }}
-            {{- end }}
-            {{- $p2 = set $p2 "name" $env }}
-          {{- end }}
-          {{- include "arkcase.subsystem-access.env.conn" (merge $p2 $params) | nindent 0 }}
-        {{- end }}
-
-        {{- if $connPropValue.path }}
-          {{- if (eq "mnt" $render) }}
-            {{- $p2 := dict }}
-            {{- $path := $connPropValue.path }}
-            {{- if (kindIs "string" $path) }}
-              {{- if not (regexMatch "^/[^/]+(/[^/]+)*$" $path) }}
-                {{- fail (printf "Invalid path specification: [%s] for subsystem %s, connection %s, property %s" $path $subsys $conn $connProp) }}
-              {{- end }}
-              {{- $p2 = set $p2 "mountPath" $path }}
-            {{- end }}
-            {{- include "arkcase.subsystem-access.volumeMount.conn" (merge $p2 $params) | nindent 0 }}
-          {{- end }}
-          {{- $connVolume = true }}
-        {{- end }}
-      {{- end }}
-
-      {{- $params = omit $params "key" }}
-      {{- if and $connVolume (eq "vol" $render) }}
-        {{- include "arkcase.subsystem-access.volume.conn" $params | nindent 0 }}
-      {{- end }}
-
-      {{- $credentials := ($connData.credentials | default dict) }}
-      {{- range $cred := (keys $credentials | sortAlpha) }}
-        {{- $credData := (get $credentials $cred | default dict) }}
-        {{- if not $credData }}
-          {{- continue }}
-        {{- end }}
-
-        {{- $params := (set $params "type" $cred) }}
-        {{- $credVolume := false }}
-
-        {{- range $credProp := (keys $credData | sortAlpha) }}
-          {{- $credPropValue := (get $credData $credProp) }}
-          {{- if not $credPropValue }}
-            {{- continue }}
-          {{- end }}
-
-          {{- $params = (set $params "key" $credProp) }}
-
-          {{- $newPropValue := (include "__arkcase.subsystem-access.all-render.sanitize-propValue" $credPropValue) }}
-          {{- if not $credPropValue }}
-            {{- fail (printf "Invalid property value specification for subsystem %s, connection %s, credential %s, property %s: %s" $subsys $conn $cred $credProp ($credPropValue | toYaml | nindent 0)) }}
-          {{- end }}
-          {{- $credPropValue = ($newPropValue | fromYaml) }}
-
-          {{- if and $credPropValue.env (eq "env" $render) }}
-            {{- $p2 := dict }}
-            {{- $env := $credPropValue.env }}
-            {{- if (kindIs "string" $env) }}
-              {{- if not (regexMatch "^[a-zA-Z_][a-zA-Z0-9_]*$" $env) }}
-                {{- fail (printf "Invalid environment variable name: [%s] for subsystem %s, connection %s, credential %s, property %s" $env $subsys $conn $cred $credProp) }}
-              {{- end }}
-              {{- $p2 = set $p2 "name" $env }}
-            {{- end }}
-            {{- include "arkcase.subsystem-access.env.cred" (merge $p2 $params) | nindent 0 }}
-          {{- end }}
-
-          {{- if $credPropValue.path }}
-            {{- if (eq "mnt" $render) }}
-              {{- $p2 := dict }}
-              {{- $path := $credPropValue.path }}
-              {{- if (kindIs "string" $path) }}
-                {{- if not (regexMatch "^/[^/]+(/[^/]+)*$" $path) }}
-                  {{- fail (printf "Invalid path specification: [%s] for subsystem %s, connection %s, credential %s, property %s" $path $subsys $conn $cred $credProp) }}
-                {{- end }}
-                {{- $p2 = set $p2 "mountPath" $path }}
-              {{- end }}
-              {{- include "arkcase.subsystem-access.volumeMount.cred" (merge $p2 $params) | nindent 0 }}
-            {{- end }}
-            {{- $credVolume = true }}
-          {{- end }}
-          {{- $params = omit $params "key" }}
-
-          {{- if and $credVolume (eq "vol" $render) }}
-            {{- include "arkcase.subsystem-access.volume.cred" $params | nindent 0 }}
-          {{- end }}
-        {{- end }}
-      {{- end }}
+    {{- range $s := (keys $all | sortAlpha) }}
+      {{- get $all $s | toYaml }}
     {{- end }}
   {{- end }}
-{{- end }}
+{{- end -}}
 
 {{- define "arkcase.subsystem-access.all.env" -}}
-  {{- include "__arkcase.subsystem-access.all-render" (dict "ctx" $ "render" "env") -}}
+  {{- include "__arkcase.subsystem-access.all" (dict "ctx" $ "render" "env") -}}
 {{- end -}}
 
 {{- define "arkcase.subsystem-access.all.volumeMount" -}}
-  {{- include "__arkcase.subsystem-access.all-render" (dict "ctx" $ "render" "mnt") -}}
+  {{- include "__arkcase.subsystem-access.all" (dict "ctx" $ "render" "mnt") -}}
 {{- end -}}
 
 {{- define "arkcase.subsystem-access.all.volume" -}}
-  {{- include "__arkcase.subsystem-access.all-render" (dict "ctx" $ "render" "vol") -}}
+  {{- include "__arkcase.subsystem-access.all" (dict "ctx" $ "render" "vol") -}}
 {{- end -}}
