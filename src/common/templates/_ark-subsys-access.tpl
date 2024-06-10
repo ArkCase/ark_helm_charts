@@ -740,29 +740,43 @@
 {{- end -}}
 
 {{- define "__arkcase.subsystem-access.all-render.sanitize-propValue" -}}
-  {{- $val := $ -}}
+  {{- $propValue := $ -}}
   {{- $result := dict -}}
-  {{- if (kindIs "map" $val) -}}
-    {{- /* This map must only containe "env" and "path" keys */ -}}
-    {{- $val = pick $val "env" "path" -}}
-  {{- else if (kindIs "string" $val) -}}
-    {{- if (regexMatch "^(env|path)$" ($val | lower)) -}}
-      {{- $val = dict ($val | lower) true -}}
+  {{- if (kindIs "bool" $propValue) -}}
+    {{- /* Make a map consistent with the boolean value */ -}}
+    {{- $result = (dict "env" $propValue "path" $propValue) -}}
+  {{- else if (kindIs "map" $propValue) -}}
+    {{- /* This map must only contain "env" and "path" keys - the caller will make sense of them */ -}}
+    {{- $result = pick $propValue "env" "path" -}}
+  {{- else if (kindIs "string" $propValue) -}}
+    {{- /* It's a string ... convert it to a map */ -}}
+    {{- if (regexMatch "^(env|path|all|true|false)$" ($propValue | lower)) -}}
+      {{- /* Abbreviation to generate a map with default names */ -}}
+      {{- $result = ($propValue | lower) -}}
+      {{- if (eq "all" $propValue) -}}
+        {{- $result = (dict "env" true "path" true) -}}
+      {{- else if (has $propValue (list "env" "path")) -}}
+        {{- $result = dict $propValue true -}}
+      {{- else -}}
+        {{- /* Like above, make a map consistent with the boolean value */ -}}
+        {{- $bool := (not (empty (include "arkcase.toBoolean" ($propValue | lower)))) -}}
+        {{- $result = (dict "env" $bool "path" $bool) -}}
+      {{- end -}}
     {{- else -}}
-      {{- /* It's a string ... convert it to a map */ -}}
-      {{- $path := false -}}
-      {{- if (regexMatch "^[a-zA-Z_][a-zA-Z0-9_]*$" $val) -}}
-        {{- $val = (dict "env" $val) -}}
-      {{- else if (regexMatch "^/[^/]+(/[^/]+)*$" $val) -}}
-        {{- $val = (dict "path" $val) -}}
-      {{- else if (regexMatch "^(true|false)$" ($val | lower)) -}}
-        {{- /* If it's a boolean, then we support both */ -}}
-        {{- $bool := (not (empty (include "arkcase.toBoolean" ($val | lower)))) -}}
-        {{- $val = (dict "env" $bool "path" $bool) -}}
+      {{- /* The string is either an envvar name or a path */ -}}
+      {{- if (regexMatch "^[a-zA-Z_][a-zA-Z0-9_]*$" $propValue) -}}
+        {{- $result = (dict "env" $propValue) -}}
+      {{- else if (regexMatch "^/[^/]+(/[^/]+)*$" $propValue) -}}
+        {{- $result = (dict "path" $propValue) -}}
       {{- end -}}
     {{- end -}}
+  {{- else -}}
+    {{- /* For any unsupported type, output nothing and the caller will do the complaining */ -}}
   {{- end -}}
-  {{- $val | toYaml -}}
+
+  {{- if $result -}}
+    {{- $result | toYaml -}}
+  {{- end -}}
 {{- end -}}
 
 {{- define "__arkcase.subsystem-access.all-render" -}}
