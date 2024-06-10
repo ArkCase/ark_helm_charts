@@ -749,9 +749,9 @@
   {{- else if (kindIs "string" $val) -}}
     {{- /* It's a string ... convert it to a map */ -}}
     {{- $path := false -}}
-    {{- else if (regexMatch "^[a-zA-Z_][a-zA-Z0-9_]*$" $val) -}}
+    {{- if (regexMatch "^[a-zA-Z_][a-zA-Z0-9_]*$" $val) -}}
       {{- $val = (dict "env" $val) -}}
-    {{- if (regexMatch "^/[^/]+(/[^/]+)*$" $val) -}}
+    {{- else if (regexMatch "^/[^/]+(/[^/]+)*$" $val) -}}
       {{- $val = (dict "path" $val) -}}
     {{- else if (regexMatch "^(true|false)$" ($val | lower)) -}}
       {{- /* If it's a boolean, then we support both */ -}}
@@ -785,7 +785,7 @@
 
   {{- $renderValues := (list "env" "mnt" "vol") -}}
   {{- $render := ($.render | default "" | toString) -}}
-  {{- if not (has $renderValues $render) -}}
+  {{- if not (has $render $renderValues) -}}
     {{- fail (printf "Render mode [%s] is not supported - must be one of %s" $render $renderValues) -}}
   {{- end -}}
 
@@ -812,21 +812,21 @@
         {{- $params = (set $params "key" $connProp) }}
 
         {{- $newPropValue := (include "__arkcase.subsystem-access.all-render.sanitize-propValue" $connPropValue) }}
-        {{- if not $connPropValue -}}
-              {{- fail (printf "Invalid property value specification for subsystem %s, connection %s, property %s: %s" $subsys $conn $connProp ($connPropValue | toYaml | nindent 0)) -}}
-        {{- end -}}
-        {{- $connPropValue = ($newPropValue | fromYaml) -}}
+        {{- if not $connPropValue }}
+              {{- fail (printf "Invalid property value specification for subsystem %s, connection %s, property %s: %s" $subsys $conn $connProp ($connPropValue | toYaml | nindent 0)) }}
+        {{- end }}
+        {{- $connPropValue = ($newPropValue | fromYaml) }}
 
         {{- if and $connPropValue.env (eq "env" $render) }}
           {{- $p2 := dict }}
           {{- $env := $connPropValue.env }}
           {{- if (kindIs "string" $env) }}
             {{- if not (regexMatch "^[a-zA-Z_][a-zA-Z0-9_]*$" $env) }}
-              {{- fail (printf "Invalid environment variable name: [%s] for subsystem %s, connection %s, property %s" $env $subsys $conn $connProp) -}}
+              {{- fail (printf "Invalid environment variable name: [%s] for subsystem %s, connection %s, property %s" $env $subsys $conn $connProp) }}
             {{- end }}
             {{- $p2 = set $p2 "name" $env }}
           {{- end }}
-          {{- include "arkcase.subsystem-access.env.conn" (merge $p2 $params) }}
+          {{- include "arkcase.subsystem-access.env.conn" (merge $p2 $params) | nindent 0 }}
         {{- end }}
 
         {{- if $connPropValue.path }}
@@ -835,11 +835,11 @@
             {{- $path := $connPropValue.path }}
             {{- if (kindIs "string" $path) }}
               {{- if not (regexMatch "^/[^/]+(/[^/]+)*$" $path) }}
-                {{- fail (printf "Invalid path specification: [%s] for subsystem %s, connection %s, property %s" $path $subsys $conn $connProp) -}}
+                {{- fail (printf "Invalid path specification: [%s] for subsystem %s, connection %s, property %s" $path $subsys $conn $connProp) }}
               {{- end }}
               {{- $p2 = set $p2 "mountPath" $path }}
             {{- end }}
-            {{- include "arkcase.subsystem-access.volumeMount.conn" (merge $p2 $params) }}
+            {{- include "arkcase.subsystem-access.volumeMount.conn" (merge $p2 $params) | nindent 0 }}
           {{- end }}
           {{- $connVolume = true }}
         {{- end }}
@@ -847,7 +847,7 @@
 
       {{- $params = omit $params "key" }}
       {{- if and $connVolume (eq "vol" $render) }}
-        {{- include "arkcase.subsystem-access.volume.conn" $params }}
+        {{- include "arkcase.subsystem-access.volume.conn" $params | nindent 0 }}
       {{- end }}
 
       {{- range $cred, $credData := ($connData.credentials | default dict) }}
@@ -867,21 +867,21 @@
           {{- $params = (set $params "key" $credProp) }}
 
           {{- $newPropValue := (include "__arkcase.subsystem-access.all-render.sanitize-propValue" $credPropValue) }}
-          {{- if not $credPropValue -}}
-            {{- fail (printf "Invalid property value specification for subsystem %s, connection %s, credential %s, property %s: %s" $subsys $conn $cred $credProp ($credPropValue | toYaml | nindent 0)) -}}
-          {{- end -}}
-          {{- $credPropValue = ($newPropValue | fromYaml) -}}
+          {{- if not $credPropValue }}
+            {{- fail (printf "Invalid property value specification for subsystem %s, connection %s, credential %s, property %s: %s" $subsys $conn $cred $credProp ($credPropValue | toYaml | nindent 0)) }}
+          {{- end }}
+          {{- $credPropValue = ($newPropValue | fromYaml) }}
 
           {{- if and $credPropValue.env (eq "env" $render) }}
             {{- $p2 := dict }}
             {{- $env := $credPropValue.env }}
             {{- if (kindIs "string" $env) }}
               {{- if not (regexMatch "^[a-zA-Z_][a-zA-Z0-9_]*$" $env) }}
-                {{- fail (printf "Invalid environment variable name: [%s] for subsystem %s, connection %s, credential %s, property %s" $env $subsys $conn $cred $credProp) -}}
+                {{- fail (printf "Invalid environment variable name: [%s] for subsystem %s, connection %s, credential %s, property %s" $env $subsys $conn $cred $credProp) }}
               {{- end }}
               {{- $p2 = set $p2 "name" $env }}
             {{- end }}
-            {{- include "arkcase.subsystem-access.env.cred" (merge $p2 $params) }}
+            {{- include "arkcase.subsystem-access.env.cred" (merge $p2 $params) | nindent 0 }}
           {{- end }}
 
           {{- if $credPropValue.path }}
@@ -890,24 +890,24 @@
               {{- $path := $credPropValue.path }}
               {{- if (kindIs "string" $path) }}
                 {{- if not (regexMatch "^/[^/]+(/[^/]+)*$" $path) }}
-                  {{- fail (printf "Invalid path specification: [%s] for subsystem %s, connection %s, credential %s, property %s" $path $subsys $conn $cred $credProp) -}}
+                  {{- fail (printf "Invalid path specification: [%s] for subsystem %s, connection %s, credential %s, property %s" $path $subsys $conn $cred $credProp) }}
                 {{- end }}
                 {{- $p2 = set $p2 "mountPath" $path }}
               {{- end }}
-              {{- include "arkcase.subsystem-access.volumeMount.cred" (merge $p2 $params) }}
+              {{- include "arkcase.subsystem-access.volumeMount.cred" (merge $p2 $params) | nindent 0 }}
             {{- end }}
             {{- $credVolume = true }}
           {{- end }}
           {{- $params = omit $params "key" }}
 
           {{- if and $credVolume (eq "vol" $render) }}
-            {{- include "arkcase.subsystem-access.volume.cred" $params }}
+            {{- include "arkcase.subsystem-access.volume.cred" $params | nindent 0 }}
           {{- end }}
         {{- end }}
       {{- end }}
     {{- end }}
   {{- end }}
-{{- end -}}
+{{- end }}
 
 {{- define "arkcase.subsystem-access.all.env" -}}
   {{- include "__arkcase.subsystem-access.all-render" (dict "ctx" $ "render" "env") -}}
