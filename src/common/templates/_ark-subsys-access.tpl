@@ -746,21 +746,22 @@
     {{- /* This map must only containe "env" and "path" keys */ -}}
     {{- $val = pick $val "env" "path" -}}
   {{- else if (kindIs "string" $val) -}}
-    {{- /* It's a string ... convert it to a map */ -}}
-    {{- $path := false -}}
-    {{- if (regexMatch "^[a-zA-Z_][a-zA-Z0-9_]*$" $val) -}}
-      {{- $val = (dict "env" $val) -}}
-    {{- else if (regexMatch "^/[^/]+(/[^/]+)*$" $val) -}}
-      {{- $val = (dict "path" $val) -}}
-    {{- else if (regexMatch "^(true|false)$" ($val | lower)) -}}
-      {{- /* If it's a boolean, then we support both */ -}}
-      {{- $bool := (not (empty (include "arkcase.toBoolean" ($val | lower)))) -}}
-      {{- $val = (dict "env" $bool "path" $bool) -}}
+    {{- if (regexMatch "^(env|path)$" ($val | lower)) -}}
+      {{- $val = dict ($val | lower) true -}}
+    {{- else -}}
+      {{- /* It's a string ... convert it to a map */ -}}
+      {{- $path := false -}}
+      {{- if (regexMatch "^[a-zA-Z_][a-zA-Z0-9_]*$" $val) -}}
+        {{- $val = (dict "env" $val) -}}
+      {{- else if (regexMatch "^/[^/]+(/[^/]+)*$" $val) -}}
+        {{- $val = (dict "path" $val) -}}
+      {{- else if (regexMatch "^(true|false)$" ($val | lower)) -}}
+        {{- /* If it's a boolean, then we support both */ -}}
+        {{- $bool := (not (empty (include "arkcase.toBoolean" ($val | lower)))) -}}
+        {{- $val = (dict "env" $bool "path" $bool) -}}
+      {{- end -}}
     {{- end -}}
   {{- end -}}
-
-  {{- /* TODO: Make sure the values for env and path are valid! */ -}}
-
   {{- $val | toYaml -}}
 {{- end -}}
 
