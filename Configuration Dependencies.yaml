@@ -316,13 +316,18 @@ consumed:
         <<: *acme-conn-main
         cred-admin:
           <<: *acme-main-cred-admin
+    zookeeper:
+      conn-main:
+        <<: *zookeeper-conn-main
+        cred-admin:
+          <<: *zookeeper-main-cred-admin
 
   rdbms:
     acme:
       conn-main:
-        <<: *acme-conn-main
+        <<: *rdbms-conn-main
         cred-admin:
-          <<: *acme-main-cred-admin
+          <<: *rdbms-main-cred-schema-arkcase
 
   reports:
     acme:
@@ -340,7 +345,7 @@ consumed:
           <<: *core-main-cred-access
     ldap:
       conn-main:
-        <<: *content-ldap-main
+        <<: *ldap-conn-main
         cred-access:
           <<: *ldap-main-cred-access
     rdbms:
@@ -380,3 +385,4 @@ consumed:
         <<: *acme-conn-main
         cred-admin:
           <<: *acme-main-cred-admin
+q
