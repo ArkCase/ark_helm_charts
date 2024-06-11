@@ -1,0 +1,58 @@
+#!/bin/bash
+
+set -euo pipefail
+
+timestamp() {
+	/usr/bin/date -Isec -u
+}
+
+say() {
+	echo -e "$(timestamp): ${@}"
+}
+
+err() {
+	say "ERROR: ${@}" 1>&2
+}
+
+fail() {
+	say "${@}"
+	exit ${EXIT_CODE:-1}
+}
+
+[ -v BASE_DIR ] || BASE_DIR="/app"
+
+[ -v LB_DIR ] || LB_DIR="${BASE_DIR}/lb"
+cd "${LB_DIR}"
+
+[ -v LOGS_DIR ] || LOGS_DIR="${BASE_DIR}/logs"
+if [ -d "${LOGS_DIR}" ] ; then
+	LOG_FILE="${LOGS_DIR}/liquibase.stdout.log"
+	exec > >(/usr/bin/tee -a "${LOG_FILE}")
+	exec 2>&1
+	say "Logs redirected to [${LOG_FILE}]"
+fi
+
+[ -v ARKCASE_ENTERPRISE ] || ARKCASE_ENTERPRISE=""
+case "${ARKCASE_ENTERPRISE}" in
+	true | t | yes | y | on | en | enable | enabled | active ) ARKCASE_ENTERPRISE="true" ;;
+	* ) ARKCASE_ENTERPRISE="false" ;;
+esac
+
+CHANGELOGS=("create_quartz:quartz")
+"${ARKCASE_ENTERPRISE}" && CHANGELOGS+=("pentaho_mart:hibernate")
+
+# We do it like this so we don't enter it multiple times
+export LIQUIBASE_COMMAND_DRIVER="${REPORTS_JDBC_DRIVER}"
+[ -n "${LIQUIBASE_COMMAND_DRIVER}" ] || fail "No JDBC driver given, cannot continue"
+
+for CHANGELOG in "${CHANGELOGS[@]}" ; do
+	IFS=":" read CHANGELOG DB <<< "${CHANGELOG}"
+	say "Running changelog ${CHANGELOG} ..."
+	URLVAR="REPORTS_JDBC_${DB^^}_URL"
+	./liquibase update \
+		--changelog-file="changelog.${CHANGELOG}.xml" \
+		--url="${!URLVAR}" \
+		--username="${REPORTS_JDBC_USERNAME}" \
+		--password="${REPORTS_JDBC_PASSWORD}"
+done
+say "Changelogs complete."

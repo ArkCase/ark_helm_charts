@@ -221,18 +221,14 @@ spec:
             #   value: "...."
             - name: INIT_SEED_CONF
               value: {{ $contentData | quote }}
+            {{- include "arkcase.subsystem-access.env.conn" (dict "ctx" $ "subsys" "content" "key" "url" "name" "INIT_SEED_CONTENT") | nindent 12 }}
+            {{- if (eq $content.dialect "alfresco") }}
+            {{- include "arkcase.subsystem-access.env.conn" (dict "ctx" $ "subsys" "content" "key" "ui" "name" "INIT_SEED_UI") | nindent 12 }}
+            {{- end }}
             {{- include "arkcase.subsystem-access.env.admin" (dict "ctx" $ "subsys" "content" "key" "username" "name" "INIT_SEED_USERNAME") | nindent 12 }}
             {{- include "arkcase.subsystem-access.env.admin" (dict "ctx" $ "subsys" "content" "key" "password" "name" "INIT_SEED_PASSWORD") | nindent 12 }}
             - name: INIT_SEED_IGNORE_DUPES
               value: "true"
-            - name: INIT_SEED_CONTENT
-              valueFrom:
-                secretKeyRef:
-                  name: *secretName
-                  key: "contentApi"
-            {{- if (eq $content.dialect "alfresco") }}
-            {{- include "arkcase.subsystem-access.env.conn" (dict "ctx" $ "subsys" "content" "key" "ui" "name" "INIT_SEED_UI") | nindent 12 }}
-            {{- end }}
             {{- if (eq $content.dialect "s3") }}
             # This is required so the AWS CLI stuff uses our local SSL trusts
             - name: AWS_CA_BUNDLE

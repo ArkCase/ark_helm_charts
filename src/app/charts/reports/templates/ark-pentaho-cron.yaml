@@ -100,15 +100,13 @@ spec:
             {{- include "arkcase.subsystem-access.env.admin" (dict "ctx" $ "key" "username" "name" "ADMIN_USERNAME") | nindent 12 }}
             {{- include "arkcase.subsystem-access.env.admin" (dict "ctx" $ "key" "password" "name" "ADMIN_PASSWORD") | nindent 12 }}
             - name: LDAP_DOMAIN
-              valueFrom:
-                secretKeyRef:
-                  name: *mainName
-                  key: "ldapDomain"
+              value: {{ include "arkcase.ldap" (dict "ctx" $ "value" "domain") | quote }}
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "cron") | nindent 12 }}
           volumeMounts:
             {{- include "arkcase.pentaho.license.volumeMounts" (dict "ctx" $ "volume" "secrets" "path" "/app/init/licenses") | nindent 12 }}
             {{- include "arkcase.trusts.mount" $ | nindent 12 }}
+            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "") | nindent 12 }}
             - name: &secrets "secrets"
               mountPath: "/.template-vars.yaml"
               subPath: &templateVars "template-vars.yaml"

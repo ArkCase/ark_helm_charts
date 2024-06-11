@@ -990,7 +990,7 @@
       {{- $all = pick $all $subsys }}
     {{- end }}
     {{- range $s := (keys $all | sortAlpha) }}
-      {{- get $all $s | toYaml }}
+      {{- get $all $s | toYaml | nindent 0 }}
     {{- end }}
   {{- end }}
 {{- end -}}
