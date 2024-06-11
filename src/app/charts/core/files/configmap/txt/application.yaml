@@ -12,7 +12,7 @@ spring:
 #   jpa:
 #     show-sql: true
   profiles:
-    active: "native"
+    active: "native-cloud,native"
 #     active: "jdbc,native"
   cloud:
     config:
@@ -37,6 +37,7 @@ logging:
   level:
     com.armedia.acm.configserver: "debug"
     org.springframework.cloud.config: "debug"
+    com.armedia.acm.configserver.environment.mapper: "debug"
   pattern:
     file: "%d{yyyy-MM-dd HH:mm:ss,SSS} [%thread] %-5level %logger.%M - %msg%n"
 jms.message.buffer.window: 1
@@ -52,3 +53,10 @@ acm:
     timeout: 10
 arkcase.languages: "-de,-en,-en-in,-es,-fr,-hi,-ja,-pt,-ru,-zh-cn,-zh-tw"
 java.io.tmpdir: "/app/temp"
+
+cloud-mapper:
+  enabled: true
+  namespace: "${POD_NAMESPACE}"
+  # failIfMissing: true
+  # disableInterpolator: true
+  # threads: true

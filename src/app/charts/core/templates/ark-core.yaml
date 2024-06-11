@@ -9,7 +9,43 @@
   {{- /* Disable clustering multinodes for now ... not supported for ArkCase just yet */ -}}
   {{- $cluster = set $cluster "nodes" 1 -}}
   {{- $nodes := (min 4 ($cluster.nodes | int)) -}}
-  {{- if (gt $nodes 1) -}}
+  {{- $serviceAccountName := (include "arkcase.serviceAccountName" $) }}
+---
+  {{- $serviceAccountName = (or (empty $serviceAccountName) (eq "default" $serviceAccountName)) | ternary (include "arkcase.fullname" $) $serviceAccountName }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ $serviceAccountName | quote }}
+  namespace: {{ $.Release.Namespace | quote }}
+  labels: {{- include "arkcase.labels" $ | nindent 4 }}
+---
+  {{- $roleName := (printf "%s-config-access" $serviceAccountName) }}
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: {{ $roleName | quote }}
+  namespace: {{ $.Release.Namespace | quote }}
+  labels: {{- include "arkcase.labels" $ | nindent 4 }}
+rules:
+  # "" indicates the core API group
+  - apiGroups: [ "" ]
+    resources: [ "configmaps", "secrets" ]
+    verbs: [ "get", "watch", "list" ]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ printf "%s:%s" $serviceAccountName $roleName | quote }}
+  namespace: {{ $.Release.Namespace | quote }}
+  labels: {{- include "arkcase.labels" $ | nindent 4 }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ $serviceAccountName | quote }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ $roleName | quote }}
+  {{- if (gt $nodes 1) }}
 ---
 apiVersion: policy/v1
 kind: PodDisruptionBudget
@@ -21,17 +57,8 @@ spec:
   selector:
     matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
   {{- end }}
-  {{- $serviceAccountName := (include "arkcase.serviceAccountName" $) }}
   {{- if $cluster.enabled }}
-    {{- $serviceAccountName = (or (empty $serviceAccountName) (eq "default" $serviceAccountName)) | ternary (include "arkcase.fullname" $) $serviceAccountName }}
     {{- $roleName := (printf "%s-cluster-membership" $serviceAccountName) }}
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: {{ $serviceAccountName | quote }}
-  namespace: {{ $.Release.Namespace | quote }}
-  labels: {{- include "arkcase.labels" $ | nindent 4 }}
 ---
 kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
