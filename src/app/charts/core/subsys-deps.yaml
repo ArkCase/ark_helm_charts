@@ -9,89 +9,82 @@ consumes:
   app-artifacts:
     main:
       properties:
-        url: env
+        url: DEPL_URL
   content:
     main:
       properties:
-        url: env
-        ui: env
+        url: ARKCASE_CONTENT_URL
+        ui: ARKCASE_CONTENT_UI
       credentials:
         admin:
-          username: env
-          password: env
-        access:
-          username: env
-          password: env
+          username: ARKCASE_CONTENT_USERNAME
+          password: ARKCASE_CONTENT_PASSWORD
   ldap:
-    main: &ldap-conn
+    main:
       properties:
-        url: env
-        baseDn: env
-        domain: env
-        realm: env
-        groups-base-dn: env
-        groups-filter: env
-        groups-class: env
-        groups-member-att: env
-        groups-name-att: env
-        users-base-dn: env
-        users-filter: env
-        users-class: env
-        users-name-att: env
-        users-member-att: env
+        url: ARKCASE_LDAP_MAIN_URL
       credentials:
         access:
-          username: env
-          password: env
+          username: ARKCASE_LDAP_MAIN_USERNAME
+          password: ARKCASE_LDAP_MAIN_PASSWORD
     portal:
-      # This is a copy of main, but points to a different set of configs
-      <<: *ldap-conn
+      properties:
+        url: ARKCASE_LDAP_PORTAL_URL
+      credentials:
+        access:
+          username: ARKCASE_LDAP_PORTAL_USERNAME
+          password: ARKCASE_LDAP_PORTAL_PASSWORD
   rdbms:
     main:
       properties:
-        host: env
-        port: env
+        host: ARKCASE_JDBC_HOST
+        port: ARKCASE_JDBC_PORT
       credentials:
         schema-arkcase:
-          username: env
-          password: env
-          database: env
-          schema: env
-          instance: env
+          username: ARKCASE_JDBC_USERNAME
+          password: ARKCASE_JDBC_PASSWORD
+          database: ARKCASE_JDBC_DATABASE
+          schema: ARKCASE_JDBC_SCHEMA
+          # instance: ARKCASE_JDBC_INSTANCE
   reports:
     main:
       properties:
-        url:
+        url: ARKCASE_REPORTS_URL
       credentials:
         admin:
-          username: env
-          password: env
-        access:
-          username: env
-          password: env
+          username: ARKCASE_REPORTS_USERNAME
+          password: ARKCASE_REPORTS_PASSWORD
 
   messaging:
-    main: &messaging-conn
+    main:
       properties:
-        url: env
-        proto: env
-        host: env
-        port: env
+        url: ARKCASE_OPENWIRE_URL
+        proto: ARKCASE_OPENWIRE_PROTO
+        host: ARKCASE_OPENWIRE_HOST
+        port: ARKCASE_OPENWIRE_PORT
       credentials:
         admin:
-          username: env
-          password: env
+          username: ARKCASE_OPENWIRE_USERNAME
+          password: ARKCASE_OPENWIRE_PASSWORD
     stomp:
-      <<: *messaging-conn
+      properties:
+        url: ARKCASE_STOMP_URL
+        proto: ARKCASE_STOMP_PROTO
+        host: ARKCASE_STOMP_HOST
+        port: ARKCASE_STOMP_PORT
+      credentials:
+        admin:
+          username: ARKCASE_STOMP_USERNAME
+          password: ARKCASE_STOMP_PASSWORD
   search:
     main:
       properties:
-        url: env
+        url: ARKCASE_SOLR_URL
       # We don't do Solr authentication just yet, but be ready
       # credentials:
       #   admin:
-      #     username: env
-      #     password: env
+      #     username: ARKCASE_SOLR_ADMIN_USERNAME
+      #     password: ARKCASE_SOLR_ADMIN_PASSWORD
       #   access:
-      #     username: env
-      #     password: env
+      #     username: ARKCASE_SOLR_USERNAME
+      #     password: ARKCASE_SOLR_PASSWORD

@@ -1,3 +1,8 @@
+{{- $foia := (include "arkcase.foia" $ | fromYaml) -}}
+{{- $custom := (include "arkcase.customization" $) -}}
+{{- $customBase := (printf "%s_base" $custom) -}}
+{{- $profiles := (empty $foia) | ternary (list $customBase $custom "server" "runtime") (list $customBase "foia" $custom "server" "FOIA_server" "runtime") -}}
+{{- $appNames := list "arkcase" "arkcase-activemq" "arkcase-oidc" "ldap" "lookups" ((empty $foia) | ternary "" "arkcase-portal") -}}
 application:
   name:
     #
@@ -5,18 +10,18 @@ application:
     #   - Normal: arkcase,arkcase-activemq,arkcase-oidc,ldap,lookups
     #   - FOIA: arkcase,arkcase-activemq,arkcase-oidc,ldap,lookups,arkcase-portal
     #
-    active: "${ARKCASE_SPRING_APP_NAMES}"
+    active: {{ $appNames | compact | join "," | quote }}
 
     #
     # This should be "arkcase"
     #
-    default: "${ARKCASE_SPRING_APP_DEFAULT}"
+    default: "arkcase"
 
   #
   # This could be:
   #   - Normal: custom_base,custom,server,runtime
   #   - FOIA: custom_base,foia,custom,server,FOIA_server,runtime
-  profile: "${ARKCASE_SPRING_APP_PROFILES}"
+  profile: {{ $profiles | compact | join "," | quote }}
 
 spring:
   cloud:
@@ -42,7 +47,9 @@ configuration:
     extraFields.path: "schemas/json"
     spring.path: "spring"
   server:
-    url: "${ARKCASE_CLOUDCONFIG_URL}"
+    # It's not pretty, but it's OK to hardcode this for now b/c we're going to get rid of
+    # a separate cloudconfig instance in the (hopefully) near future
+    url: "https://localhost:9999"
     update.path: "/config/{applicationName}"
     remove.path: "/config/remove/{applicationName}"
     reset.path: "/reset"

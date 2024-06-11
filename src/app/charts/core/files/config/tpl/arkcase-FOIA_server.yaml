@@ -1,14 +1,17 @@
 {{- $foia := (include "arkcase.foia" $ | fromYaml) -}}
 {{- if $foia -}}
+{{- $baseUrl := (include "arkcase.tools.parseUrl" (include "arkcase.tools.conf" (dict "ctx" $ "value" "baseUrl")) | fromYaml) -}}
+{{- $domain := ((include "arkcase.ldap" (dict "ctx" $ "value" "domain")) | upper) -}}
+{{- $foiaDomain := ($foia.ldap.domain | upper) -}}
 external.integration:
   enable: true
-  userId: "portal-admin@${ARKCASE_LDAP_FOIAPORTAL_USER_DOMAIN}"
+  userId: "${ARKCASE_LDAP_PORTAL_USERNAME}@{{ $foia.ldap.domain }}"
 
 gov.foia.broker:
   file_upload_url: "file:///app/fsrv/"
-  url: "${ARKCASE_MESSAGING_URL}"
-  userName: "${ARKCASE_MESSAGING_USERNAME}"
-  password: "${ARKCASE_MESSAGING_PASSWORD}"
+  url: "${ARKCASE_OPENWIRE_URL}"
+  userName: "${ARKCASE_OPENWIRE_USERNAME}"
+  password: "${ARKCASE_OPENWIRE_PASSWORD}"
   keystore: "${k8s.keystore.file}"
   keystore.password: "${k8s.keystore.pass}"
   truststore: "/etc/pki/java/cacerts"
@@ -16,7 +19,7 @@ gov.foia.broker:
 
 application:
   properties:
-    basePortalUrl: "${ARKCASE_FOIAPORTAL_UI_URL}"
+    basePortalUrl: "{{ $baseUrl.scheme }}://{{ $baseUrl.hostPort }}/foia"
 
   #
   # This no longer needs to be defined here, since we now use

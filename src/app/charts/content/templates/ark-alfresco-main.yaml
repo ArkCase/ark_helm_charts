@@ -77,6 +77,8 @@ spec:
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.subsystem-access.all.env" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
+            {{- include "arkcase.subsystem-access.env.admin" (dict "ctx" $ "key" "username" "name" "ALFRESCO_ADMIN_USERNAME") | nindent 12 }}
+            {{- include "arkcase.subsystem-access.env.admin" (dict "ctx" $ "key" "password" "name" "ALFRESCO_ADMIN_PASSWORD") | nindent 12 }}
             - name: &key METADATA_KEYSTORE_PASSWORD
               valueFrom:
                 secretKeyRef:
@@ -102,15 +104,6 @@ spec:
             {{- $indexing := (not (empty (include "arkcase.content.indexing" $))) }}
             - name: DATA_DIR
               value: *dataDir
-            {{- include "arkcase.subsystem-access.env.admin" (dict "ctx" $ "key" "username" "name" "ALFRESCO_ADMIN_USERNAME") | nindent 12 }}
-            {{- include "arkcase.subsystem-access.env.admin" (dict "ctx" $ "key" "password" "name" "ALFRESCO_ADMIN_PASSWORD") | nindent 12 }}
-            {{- include "arkcase.subsystem-access.env.conn" (dict "ctx" $ "subsys" "rdbms" "key" "host" "name" "ALFRESCO_JDBC_HOST") | nindent 12 }}
-            {{- include "arkcase.subsystem-access.env.conn" (dict "ctx" $ "subsys" "rdbms" "key" "port" "name" "ALFRESCO_JDBC_PORT") | nindent 12 }}
-            {{- if $schema.jdbc.instance }}
-              {{- include "arkcase.subsystem-access.env.conn" (dict "ctx" $ "subsys" "rdbms" "key" "instance" "name" "ALFRESCO_JDBC_INSTANCE") | nindent 12 }}
-            {{- end }}
-            {{- include "arkcase.subsystem-access.env.cred" (dict "ctx" $ "subsys" "rdbms" "type" "schema-content" "key" "username" "name" "ALFRESCO_JDBC_USERNAME") | nindent 12 }}
-            {{- include "arkcase.subsystem-access.env.cred" (dict "ctx" $ "subsys" "rdbms" "type" "schema-content" "key" "password" "name" "ALFRESCO_JDBC_PASSWORD") | nindent 12 }}
             - name: CATALINA_OPTS
               value: >-
                 -XX:MinRAMPercentage=50

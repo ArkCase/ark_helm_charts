@@ -15,7 +15,7 @@ spring:
         trustStoreType: "JKS"
         trustStorePassword: "changeit"
       name: arkcase-portal,external-portal-en,lookups,core-en
-      uri: {{ include "arkcase.tools.conf" (dict "ctx" $ "value" "configServer.url") | quote }}
+      uri: "https://localhost:9999"
       fail-fast: true
       retry:
         max-attempts: 20

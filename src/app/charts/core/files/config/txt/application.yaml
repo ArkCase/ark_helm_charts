@@ -1,8 +1,9 @@
+{{- $db := (include "arkcase.db.schema" (dict "ctx" $ "schema" "cloudconfig") | fromYaml) -}}
 server:
   port: 9999
 spring:
 #   datasource:
-#     driver-class-name: "${ARKCASE_JDBC_DRIVER}"
+#     driver-class-name: {{ $db.jdbc.driver | quote }}
 #     url: "${ARKCASE_JDBC_URL}"
 #     username: "${ARKCASE_JDBC_USERNAME}"
 #     password: "${ARKCASE_JDBC_PASSWORD}"
@@ -12,8 +13,7 @@ spring:
 #   jpa:
 #     show-sql: true
   profiles:
-    active: "native-cloud,native"
-#     active: "jdbc,native"
+    active: "jdbc,native"
   cloud:
     config:
       server:
@@ -26,10 +26,10 @@ spring:
           order: 1
   jms:
     pub-sub-domain: true
-  activemq: &activemqDetails
-    broker-url: "${ARKCASE_MESSAGING_URL}"
-    user: "${ARKCASE_MESSAGING_USERNAME}"
-    password: "${ARKCASE_MESSAGING_PASSWORD}"
+  activemq: &openwire-connection
+    broker-url: "${ARKCASE_OPENWIRE_URL}"
+    user: "${ARKCASE_OPENWIRE_USERNAME}"
+    password: "${ARKCASE_OPENWIRE_PASSWORD}"
 properties.folder.path: "/app/conf"
 branding.files.folder.path: "/app/conf/branding"
 logging:
@@ -37,13 +37,12 @@ logging:
   level:
     com.armedia.acm.configserver: "debug"
     org.springframework.cloud.config: "debug"
-    com.armedia.acm.configserver.environment.mapper: "debug"
   pattern:
     file: "%d{yyyy-MM-dd HH:mm:ss,SSS} [%thread] %-5level %logger.%M - %msg%n"
 jms.message.buffer.window: 1
 acm:
   activemq:
-    <<: *activemqDetails
+    <<: *openwire-connection
     default-destination: "configuration.changed"
     labels-destination: "labels.changed"
     ldap-destination: "ldap.changed"
@@ -53,10 +52,3 @@ acm:
     timeout: 10
 arkcase.languages: "-de,-en,-en-in,-es,-fr,-hi,-ja,-pt,-ru,-zh-cn,-zh-tw"
 java.io.tmpdir: "/app/temp"
-
-cloud-mapper:
-  enabled: true
-  namespace: "${POD_NAMESPACE}"
-  # failIfMissing: true
-  # disableInterpolator: true
-  # threads: true

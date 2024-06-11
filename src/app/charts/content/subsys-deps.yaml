@@ -5,36 +5,20 @@ consumes:
   ldap:
     main:
       properties:
-        url: env
-        baseDn: env
-        domain: env
-        realm: env
-        groups-base-dn: env
-        groups-filter: env
-        groups-class: env
-        groups-member-att: env
-        groups-name-att: env
-        users-base-dn: env
-        users-filter: env
-        users-class: env
-        users-name-att: env
-        users-member-att: env
+        url: CONTENT_LDAP_URL
       credentials:
-        admin:
-          username: env
-          password: env
         access:
-          username: env
-          password: env
+          username: CONTENT_LDAP_USERNAME
+          password: CONTENT_LDAP_PASSWORD
   rdbms:
     content:
       properties:
-        host: env
-        port: env
+        host: ALFRESCO_JDBC_HOST
+        port: ALFRESCO_JDBC_PORT
       credentials:
         schema-content:
-          username: env
-          password: env
-          database: env
-          schema: env
-          instance: env
+          username: ALFRESCO_JDBC_USERNAME
+          password: ALFRESCO_JDBC_PASSWORD
+          database: ALFRESCO_JDBC_DATABASE
+          schema: ALFRESCO_JDBC_SCHEMA
+          # instance: ALFRESCO_JDBC_INSTANCE
