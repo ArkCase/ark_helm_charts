@@ -1,0 +1,22 @@
+consumes:
+  acme:
+    main:
+      properties:
+        url: env
+          # env: true # ARKCASE_${SUBSYS}_${CONN}_${PROPERTY}
+      credentials:
+        admin:
+          password: path
+            # env: true # ARKCASE_${SUBSYS}_${CONN}_${TYPE}_${PROPERTY}
+  content:
+    main:
+      properties:
+        url: URL_FOR_FILEZ
+        ui: DA_PURTY_UI
+      credentials:
+        admin:
+          username: /some/path/I/want/this/mounted/on
+          password: GIB_ADMIN_PASSWERD_PLOX
+        access:
+          username: MAH_ACCEZ_PAZZ
+          password: /some/other/path/for/mounting
