@@ -2,7 +2,7 @@
 {{- $db := (include "arkcase.db.info" $ | fromYaml) -}}
 {{- $fullName := (include "arkcase.fullname" $) -}}
 {{- $mainName := (include "common.fullname" $) -}}
-{{- $pentahoService := (include "arkcase.service.name" (dict "ctx" $ "subname" "")) -}}
+{{- $pentahoService := (include "arkcase.service.name" $) -}}
 {{- $serviceAccountName := (include "arkcase.serviceAccountName" $) -}}
 ---
 apiVersion: apps/v1
