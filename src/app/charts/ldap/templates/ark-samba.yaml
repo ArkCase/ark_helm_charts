@@ -82,6 +82,8 @@ spec:
           volumeMounts:
             {{- include "arkcase.subsystem-access.all.volumeMount" $ | nindent 12 }}
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/init/init.d/000-init-seeds-wrapper" "subPath" "init-seeds-wrapper") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/init-seeds") | nindent 12 }}
             - name: "init"
               mountPath: "/app/init"
             - name: "conf"
@@ -93,14 +95,6 @@ spec:
             - name: &secrets "secrets"
               mountPath: *seedDir
               readOnly: true
-            - name: &configMap "configmap"
-              mountPath: "/app/init/init.d/000-init-seeds-wrapper"
-              subPath: &initSeedsWrapper "init-seeds-wrapper"
-              readOnly: true
-            - name: *configMap
-              mountPath: "/usr/local/bin/init-seeds"
-              subPath: &initSeeds "init-seeds"
-              readOnly: true
       volumes:
         {{- include "arkcase.subsystem-access.all.volume" $ | nindent 8 }}
         {{- include "arkcase.acme.volume" $ | nindent 8 }}
@@ -108,23 +102,12 @@ spec:
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "conf") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "logs") | nindent 8 }}
+        {{- include "arkcase.file-resource.volumes" $ | nindent 8 }}
         - name: *secrets
           secret:
             optional: false
             secretName: *secretName
             defaultMode: 0444
-        - name: *configMap
-          configMap:
-            optional: false
-            name: {{ include "arkcase.fullname" $ | quote }}
-            defaultMode: 0444
-            items:
-              - key: *initSeedsWrapper
-                path: *initSeedsWrapper
-                mode: 0555
-              - key: *initSeeds
-                path: *initSeeds
-                mode: 0555
       {{- with $.Values.nodeSelector }}
       nodeSelector: {{- toYaml . | nindent 8 }}
       {{- end }}
