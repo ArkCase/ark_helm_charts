@@ -117,14 +117,14 @@ spec:
             {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/pentaho-solutions/system/server.properties") | nindent 12 }}
             {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/pentaho-solutions/system/pdi-pur-plugin/plugin.properties") | nindent 12 }}
             {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho-pdi/data-integration/plugins/pdi-pur-plugin/plugin.properties") | nindent 12 }}
-            {{- include "arkcase.file-resource.secrets.volumeMount" (dict "ctx" $ "mountPath" "/.template-vars.yaml") | nindent 12 }}
+            {{- include "arkcase.file-resource.secret.volumeMount" (dict "ctx" $ "mountPath" "/.template-vars.yaml") | nindent 12 }}
       volumes:
         {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "init") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
         {{- include "arkcase.trusts.volume" $ | nindent 8 }}
         {{- include "arkcase.pentaho.license.volume" $ | nindent 8 }}
         {{- include "arkcase.file-resource.config.volume" $ | nindent 8 }}
-        {{- include "arkcase.file-resource.secrets.volume" $ | nindent 8 }}
+        {{- include "arkcase.file-resource.secret.volume" $ | nindent 8 }}
       {{- with $.Values.nodeSelector }}
       nodeSelector: {{- toYaml . | nindent 8 }}
       {{- end }}
