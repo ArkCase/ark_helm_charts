@@ -138,13 +138,13 @@ spec:
               mountPath: *initDir
             {{- include "arkcase.subsystem-access.all.volumeMount" $ | nindent 12 }}
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "volumeMount" "/app/solr/bin/solr.in.sh") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "volumeMount" "/entrypoint") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "volumeMount" "/config-pre.sh") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "volumeMount" "/config-post.sh") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "volumeMount" "/app/init/pre/00-deploy-config.sh" "subPath" "deploy-configs.sh") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "volumeMount" "/app/init/pre/arkcase-conf.tar.gz") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "volumeMount" "/app/init/post/00-create-cores.sh" "subPath" "create-cores.sh") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/solr/bin/solr.in.sh") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/entrypoint") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/config-pre.sh") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/config-post.sh") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/init/pre/00-deploy-config.sh" "subPath" "deploy-configs.sh") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/init/pre/arkcase-conf.tar.gz") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/init/post/00-create-cores.sh" "subPath" "create-cores.sh") | nindent 12 }}
       volumes:
         {{- include "arkcase.subsystem-access.all.volume" $ | nindent 8 }}
         {{- include "arkcase.acme.volume" $ | nindent 8 }}
