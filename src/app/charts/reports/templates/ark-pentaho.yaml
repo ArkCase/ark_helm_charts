@@ -176,6 +176,9 @@ spec:
             {{- include "arkcase.cluster.env" $ | nindent 12 }}
             {{- include "arkcase.cluster.tomcat.env" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
+            {{- include "arkcase.subsystem-access.all.env" $ | nindent 12 }}
+            {{- include "arkcase.subsystem-access.env.admin" (dict "ctx" $ "key" "username" "name" "ADMIN_USERNAME") | nindent 12 }}
+            {{- include "arkcase.subsystem-access.env.admin" (dict "ctx" $ "key" "password" "name" "ADMIN_PASSWORD") | nindent 12 }}
             - name: DATA_DIR
               value: *dataDir
             - name: INIT_DIR
@@ -188,41 +191,22 @@ spec:
               value: {{ $db.scripts | quote }}
             - name: PENTAHO_SERVICE
               value: {{ $serviceName | quote }}
-            - name: ARKCASE_SERVER_URL
-              value: "https://core:8443/arkcase"
             - name: PENTAHO_SERVER_URL
               value: "https://$(PENTAHO_SERVICE):8443/pentaho"
-            - name: ADMIN_USERNAME
-              valueFrom:
-                secretKeyRef:
-                  name: *fullName
-                  key: "adminUsername"
             - name: LDAP_DOMAIN
-              valueFrom:
-                secretKeyRef:
-                  name: *fullName
-                  key: "ldapDomain"
-            - name: ADMIN_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: *fullName
-                  key: "adminPassword"
+              value: {{ include "arkcase.ldap" (dict "ctx" $ "value" "domain") | quote }}
             - name: CLUSTER_ENABLED
               value: {{ $cluster.enabled | toString | quote }}
             - name: ADMIN_PORT
               value: {{ $cluster.enabled | ternary 4443 8443 | toString | quote }}
             - name: PENTAHO_INSTALLED_LICENSE_PATH
               value: "$(DATA_DIR)/.installedLicenses.xml"
+            - name: ARKCASE_ENTERPRISE
+              value: {{ not (empty (include "arkcase.enterprise" $)) | toString | quote }}
           {{- include "arkcase.subsystem.ports" (dict "ctx" $ "name" ($cluster.enabled | ternary "clusteredPentaho" "pentaho")) | nindent 10 }}
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "pentaho") | nindent 12 }}
           volumeMounts:
-            {{- include "arkcase.subsystem-access.all.volumeMount" $ | nindent 12 }}
-            {{- include "arkcase.trusts.mount" $ | nindent 12 }}
-            {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
-            {{- include "arkcase.pentaho.license.volumeMounts" (dict "ctx" $ "volume" "secrets" "path" "/app/init/licenses") | nindent 12 }}
-            - name: &sslVol "ssl-vol"
-              mountPath: &sslDir "/.ssl"
             - name: *dataVol
               mountPath: *dataDir
             - name: *tempVol
@@ -231,127 +215,44 @@ spec:
               mountPath: *initDir
             - name: *logsVol
               mountPath: *logsDir
-            - name: &secrets "secrets"
-              mountPath: "/.template-vars.yaml"
-              subPath: &templateVars "template-vars.yaml"
-              readOnly: true
-            - name: *secrets
-              mountPath: "/app/pentaho/pentaho-server/tomcat/webapps/pentaho/META-INF/context.xml"
-              subPath: &contextXml "context.xml"
-              readOnly: true
-            - name: *secrets
-              mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/jackrabbit/repository.xml"
-              subPath: &repositoryXml "repository.xml"
-              readOnly: true
-            - name: *secrets
-              mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/applicationContext-security-ldap.properties"
-              subPath: &applicationContextSecurityLdapProperties "applicationContext-security-ldap.properties"
-              readOnly: true
-            - name: *secrets
-              mountPath: "/app/lb/run-liquibase-updates"
-              subPath: &runLiquibaseUpdates "run-liquibase-updates"
-              readOnly: true
-            - name: *configMap
-              mountPath: "/entrypoint"
-              subPath: &entrypoint "entrypoint"
-              readOnly: true
-            - name: *configMap
-              mountPath: "/config-pre.sh"
-              subPath: &configPreSh "config-pre.sh"
-              readOnly: true
-            - name: *configMap
-              mountPath: "/config-post.sh"
-              subPath: &configPostSh "config-post.sh"
-              readOnly: true
-            - name: *configMap
-              mountPath: "/usr/local/bin/install-reports"
-              subPath: &installReports "install-reports"
-              readOnly: true
-            - name: *configMap
-              mountPath: "/usr/local/bin/tomcat-live"
-              subPath: &tomcatLive "tomcat-live"
-              readOnly: true
-            - name: *configMap
-              mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/arkcase-preauth.xml"
-              subPath: &arkcasePreauthXml "arkcase-preauth.xml"
-              readOnly: true
-            - name: *configMap
-              mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/security.properties"
-              subPath: &securityProperties "security.properties"
-              readOnly: true
-            - name: *configMap
-              mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/server.properties"
-              subPath: &serverProperties "server.properties"
-              readOnly: true
-            - name: *configMap
-              mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/pdi-pur-plugin/plugin.properties"
-              subPath: &pluginProperties "plugin.properties"
-              readOnly: true
-            - name: *configMap
-              mountPath: "/app/pentaho-pdi/data-integration/plugins/pdi-pur-plugin/plugin.properties"
-              subPath: *pluginProperties
-              readOnly: true
-            - name: *configMap
-              mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/repository.spring.properties"
-              subPath: &repositorySpringProperties "repository.spring.properties"
-              readOnly: true
-            - name: *configMap
-              mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/applicationContext-spring-security.xml"
-              subPath: &applicationContextSpringSecurityXml "applicationContext-spring-security.xml"
-              readOnly: true
-            - name: *configMap
-              mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/applicationContext-spring-security-ldap.xml"
-              subPath: &applicationContextSpringSecurityLdapXml "applicationContext-spring-security-ldap.xml"
-              readOnly: true
-            - name: *configMap
-              mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/quartz/quartz.properties"
-              subPath: &quartzProperties "quartz.properties"
-              readOnly: true
-            - name: *configMap
-              mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/hibernate/hibernate-settings.xml"
-              subPath: &hibernateSettingsXml "hibernate-settings.xml"
-              readOnly: true
-            - name: *configMap
-              mountPath: "/app/pentaho/pentaho-server/tomcat/conf/server.xml"
-              subPath: &serverXml "server.xml"
-              readOnly: true
-            - name: *configMap
-              mountPath: "/app/pentaho/pentaho-server/tomcat/webapps/pentaho/WEB-INF/classes/log4j2.xml"
-              subPath: &log4j2Xml "log4j2.xml"
-              readOnly: true
-            - name: *configMap
-              mountPath: "/app/init/reports/000-base-reports.zip"
-              subPath: &baseReportsZip {{ printf "base-reports.%s.zip" $db.reports | quote }}
-              readOnly: true
-            - name: *configMap
-              mountPath: "/usr/local/bin/render-template"
-              subPath: &renderTemplate "render-template"
-              readOnly: true
-            - name: *configMap
-              mountPath: "/usr/local/bin/run-kjb"
-              subPath: &runKjb "run-kjb"
-              readOnly: true
-            - name: *configMap
-              mountPath: "/usr/local/bin/add-pdi-connection"
-              subPath: &addPdiConnection "add-pdi-connection"
-              readOnly: true
-            - name: *configMap
-              mountPath: "/usr/local/bin/install-mondrian-schema"
-              subPath: &installMondrianSchema "install-mondrian-schema"
-              readOnly: true
+            - name: &sslVol "ssl-vol"
+              mountPath: &sslDir "/.ssl"
+            {{- include "arkcase.trusts.mount" $ | nindent 12 }}
+            {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
+            {{- include "arkcase.pentaho.license.volumeMounts" $ | nindent 12 }}
+            {{- include "arkcase.subsystem-access.all.volumeMount" $ | nindent 12 }}
+            {{- include "arkcase.file-resource.secret.volumeMount" (dict "ctx" $ "mountPath" "/.template-vars.yaml") | nindent 12 }}
+            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/tomcat/webapps/pentaho/META-INF/context.xml") | nindent 12 }}
+            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/pentaho-solutions/system/jackrabbit/repository.xml") | nindent 12 }}
+            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/pentaho-solutions/system/applicationContext-security-ldap.properties") | nindent 12 }}
+            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/app/lb/run-liquibase-updates") | nindent 12 }}
+            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/entrypoint") | nindent 12 }}
+            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/config-pre.sh") | nindent 12 }}
+            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/config-post.sh") | nindent 12 }}
+            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/install-reports") | nindent 12 }}
+            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/tomcat-live") | nindent 12 }}
+            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/pentaho-solutions/system/arkcase-preauth.xml") | nindent 12 }}
+            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/pentaho-solutions/system/security.properties") | nindent 12 }}
+            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/pentaho-solutions/system/server.properties") | nindent 12 }}
+            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/pentaho-solutions/system/pdi-pur-plugin/plugin.properties") | nindent 12 }}
+            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho-pdi/data-integration/plugins/pdi-pur-plugin/plugin.properties") | nindent 12 }}
+            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/pentaho-solutions/system/repository.spring.properties") | nindent 12 }}
+            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/pentaho-solutions/system/applicationContext-spring-security.xml") | nindent 12 }}
+            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/pentaho-solutions/system/applicationContext-spring-security-ldap.xml") | nindent 12 }}
+            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/pentaho-solutions/system/quartz/quartz.properties") | nindent 12 }}
+            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/pentaho-solutions/system/hibernate/hibernate-settings.xml") | nindent 12 }}
+            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/tomcat/conf/server.xml") | nindent 12 }}
+            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/tomcat/webapps/pentaho/WEB-INF/classes/log4j2.xml") | nindent 12 }}
+            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/app/init/reports/000-base-reports.zip" "subPath" (printf "base-reports.%s.zip" $db.reports)) | nindent 12 }}
             {{- if $foia }}
-            - name: *configMap
-              mountPath: "/app/init/reports/001-foia-base-reports.zip"
-              subPath: &foiaBaseReportsZip {{ printf "foia-base-reports.%s.zip" $db.reports | quote }}
-              readOnly: true
+            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/app/init/reports/001-foia-base-reports.zip" "subPath" (printf "foia-base-reports.%s.zip" $db.reports)) | nindent 12 }}
             {{- end }}
-            - name: *configMap
-              mountPath: "/lock-initializer"
-              subPath: &lockInitializer "lock-initializer"
-            - name: *configMap
-              mountPath: "/usr/local/etc/curator-wrapper.yaml"
-              subPath: &curatorWrapperYaml "curator-wrapper.yaml"
-              readOnly: true
+            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/render-template") | nindent 12 }}
+            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/run-kjb") | nindent 12 }}
+            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/add-pdi-connection") | nindent 12 }}
+            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/install-mondrian-schema") | nindent 12 }}
+            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/lock-initializer") | nindent 12 }}
+            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/etc/curator-wrapper.yaml") | nindent 12 }}
         {{- if $cluster.enabled }}
         - name: haproxy
           {{- include "arkcase.image" (dict "ctx" $ "name" "haproxy" "repository" "haproxy") | nindent 10 }}
@@ -364,128 +265,24 @@ spec:
           volumeMounts:
             - name: *sslVol
               mountPath: *sslDir
-            - name: *configMap
-              mountPath: "/usr/local/etc/haproxy/haproxy.cfg"
-              subPath: &haproxyCfg "haproxy.cfg"
-              readOnly: true
-            - name: *configMap
-              mountPath: "/usr/local/etc/haproxy/lua/responses.lua"
-              subPath: &responsesLua "responses.lua"
-              readOnly: true
-            - name: *configMap
-              mountPath: "/entrypoint"
-              subPath: &entrypointHaproxy "entrypoint-haproxy"
-              readOnly: true
+            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/etc/haproxy/haproxy.cfg") | nindent 12 }}
+            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/etc/haproxy/lua/responses.lua") | nindent 12 }}
+            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/entrypoint" "subPath" "entrypoint-haproxy") | nindent 12 }}
         {{- end }}
       volumes:
-        {{- include "arkcase.subsystem-access.all.volume" $ | nindent 8 }}
-        {{- include "arkcase.trusts.volume" $ | nindent 8 }}
-        {{- include "arkcase.acme.volume" $ | nindent 8 }}
-        {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "init") | nindent 8 }}
-        {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "temp") | nindent 8 }}
-        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
-        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "logs") | nindent 8 }}
         # The shared certificates volume is laughably tiny
         - name: *sslVol
           emptyDir:
             medium: "Memory"
             sizeLimit: 1Mi
-        - name: *secrets
-          secret:
-            optional: false
-            secretName: *fullName
-            defaultMode: 0444
-            items:
-              {{- include "arkcase.pentaho.license.volumes" $ | nindent 14 }}
-              - key: *contextXml
-                path: *contextXml
-              - key: *templateVars
-                path: *templateVars
-              - key: *repositoryXml
-                path: *repositoryXml
-              - key: *applicationContextSecurityLdapProperties
-                path: *applicationContextSecurityLdapProperties
-              - key: *runLiquibaseUpdates
-                path: *runLiquibaseUpdates
-                mode: 0555
-        - name: *configMap
-          configMap:
-            optional: false
-            name: *fullName
-            defaultMode: 0444
-            items:
-              - key: *hibernateSettingsXml
-                path: *hibernateSettingsXml
-              - key: *repositorySpringProperties
-                path: *repositorySpringProperties
-              - key: *applicationContextSpringSecurityXml
-                path: *applicationContextSpringSecurityXml
-              - key: *applicationContextSpringSecurityLdapXml
-                path: *applicationContextSpringSecurityLdapXml
-              - key: *securityProperties
-                path: *securityProperties
-              - key: *serverProperties
-                path: *serverProperties
-              - key: *pluginProperties
-                path: *pluginProperties
-              - key: *serverXml
-                path: *serverXml
-              - key: *log4j2Xml
-                path: *log4j2Xml
-              - key: *quartzProperties
-                path: *quartzProperties
-              - key: *arkcasePreauthXml
-                path: *arkcasePreauthXml
-              - key: *deploy
-                path: *deploy
-                mode: 0555
-              - key: *entrypoint
-                path: *entrypoint
-                mode: 0555
-              - key: *configPreSh
-                path: *configPreSh
-                mode: 0555
-              - key: *configPostSh
-                path: *configPostSh
-                mode: 0555
-              - key: *installReports
-                path: *installReports
-                mode: 0555
-              - key: *tomcatLive
-                path: *tomcatLive
-                mode: 0555
-              - key: *baseReportsZip
-                path: *baseReportsZip
-              - key: *renderTemplate
-                path: *renderTemplate
-                mode: 0555
-              - key: *runKjb
-                path: *runKjb
-                mode: 0555
-              - key: *addPdiConnection
-                path: *addPdiConnection
-                mode: 0555
-              - key: *installMondrianSchema
-                path: *installMondrianSchema
-                mode: 0555
-              {{- if $foia }}
-              - key: *foiaBaseReportsZip
-                path: *foiaBaseReportsZip
-              {{- end }}
-              - key: *lockInitializer
-                path: *lockInitializer
-                mode: 0555
-              - key: *curatorWrapperYaml
-                path: *curatorWrapperYaml
-              {{- if $cluster.enabled }}
-              - key: *haproxyCfg
-                path: *haproxyCfg
-              - key: *responsesLua
-                path: *responsesLua
-              - key: *entrypointHaproxy
-                path: *entrypointHaproxy
-                mode: 0555
-              {{- end }}
+        {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "init") | nindent 8 }}
+        {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "temp") | nindent 8 }}
+        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
+        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "logs") | nindent 8 }}
+        {{- include "arkcase.trusts.volume" $ | nindent 8 }}
+        {{- include "arkcase.pentaho.license.volume" $ | nindent 8 }}
+        {{- include "arkcase.acme.volume" $ | nindent 8 }}
+        {{- include "arkcase.subsystem-access.all.volume" $ | nindent 8 }}
       {{- with $.Values.nodeSelector }}
       nodeSelector: {{- toYaml . | nindent 8 }}
       {{- end }}

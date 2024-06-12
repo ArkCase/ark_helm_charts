@@ -104,83 +104,27 @@ spec:
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "cron") | nindent 12 }}
           volumeMounts:
-            {{- include "arkcase.pentaho.license.volumeMounts" (dict "ctx" $ "volume" "secrets" "path" "/app/init/licenses") | nindent 12 }}
-            {{- include "arkcase.trusts.mount" $ | nindent 12 }}
-            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "") | nindent 12 }}
-            - name: &secrets "secrets"
-              mountPath: "/.template-vars.yaml"
-              subPath: &templateVars "template-vars.yaml"
-              readOnly: true
             - name: *dataVol
               mountPath: *dataDir
             - name: *initVol
               mountPath: *initDir
-            - name: *configMap
-              mountPath: "/usr/local/bin/render-template"
-              subPath: &renderTemplate "render-template"
-              readOnly: true
-            - name: *configMap
-              mountPath: "/usr/local/bin/run-kjb"
-              subPath: &runKjb "run-kjb"
-              readOnly: true
-            - name: *configMap
-              mountPath: "/entrypoint"
-              subPath: &entrypointCron "entrypoint-cron"
-              readOnly: true
-            - name: *configMap
-              mountPath: "/usr/local/bin/deploy-job-schedules"
-              subPath: &deployJobSchedules "deploy-job-schedules"
-              readOnly: true
-            - name: *configMap
-              mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/server.properties"
-              subPath: &serverProperties "server.properties"
-              readOnly: true
-            - name: *configMap
-              mountPath: "/app/pentaho/pentaho-server/pentaho-solutions/system/pdi-pur-plugin/plugin.properties"
-              subPath: &pluginProperties "plugin.properties"
-              readOnly: true
-            - name: *configMap
-              mountPath: "/app/pentaho-pdi/data-integration/plugins/pdi-pur-plugin/plugin.properties"
-              subPath: *pluginProperties
-              readOnly: true
+            {{- include "arkcase.trusts.mount" $ | nindent 12 }}
+            {{- include "arkcase.pentaho.license.volumeMounts" $ | nindent 12 }}
+            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/render-template") | nindent 12 }}
+            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/run-kjb") | nindent 12 }}
+            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/entrypoint" "subPath" "entrypoint-cron") | nindent 12 }}
+            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/deploy-job-schedules") | nindent 12 }}
+            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/pentaho-solutions/system/server.properties") | nindent 12 }}
+            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/pentaho-solutions/system/pdi-pur-plugin/plugin.properties") | nindent 12 }}
+            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho-pdi/data-integration/plugins/pdi-pur-plugin/plugin.properties") | nindent 12 }}
+            {{- include "arkcase.file-resource.secrets.volumeMount" (dict "ctx" $ "mountPath" "/.template-vars.yaml") | nindent 12 }}
       volumes:
-        {{- include "arkcase.trusts.volume" $ | nindent 8 }}
         {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "init") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
-        - name: *secrets
-          secret:
-            optional: false
-            secretName: *mainName
-            defaultMode: 0444
-            items:
-              {{- include "arkcase.pentaho.license.volumes" $ | nindent 14 }}
-              - key: *templateVars
-                path: *templateVars
-        - name: *configMap
-          configMap:
-            optional: false
-            name: *mainName
-            defaultMode: 0444
-            items:
-              - key: *renderTemplate
-                path: *renderTemplate
-                mode: 0555
-              - key: *runKjb
-                path: *runKjb
-                mode: 0555
-              - key: *entrypointCron
-                path: *entrypointCron
-                mode: 0555
-              - key: *deployJobSchedules
-                path: *deployJobSchedules
-                mode: 0555
-              - key: *deployCron
-                path: *deployCron
-                mode: 0555
-              - key: *serverProperties
-                path: *serverProperties
-              - key: *pluginProperties
-                path: *pluginProperties
+        {{- include "arkcase.trusts.volume" $ | nindent 8 }}
+        {{- include "arkcase.pentaho.license.volume" $ | nindent 8 }}
+        {{- include "arkcase.file-resource.config.volume" $ | nindent 8 }}
+        {{- include "arkcase.file-resource.secrets.volume" $ | nindent 8 }}
       {{- with $.Values.nodeSelector }}
       nodeSelector: {{- toYaml . | nindent 8 }}
       {{- end }}

@@ -47,25 +47,31 @@
   {{- end }}
 {{- end -}}
 
-{{- define "arkcase.pentaho.license.volumeMounts" -}}
-  {{ $ctx := . -}}
-  {{- if .ctx -}}
-    {{- $ctx = .ctx -}}
+{{- define "arkcase.pentaho.license.volume.name" -}}
+  {{ $ctx := $ -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "Must include the root context as the only parameter" -}}
   {{- end -}}
+  {{- printf "%s-licenses" (include "common.name" $) -}}
+{{- end -}}
+
+{{- define "arkcase.pentaho.license.volumeMounts" -}}
+  {{- $ctx := $ -}}
+  {{- $path := "/app/init/licenses" -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{ $ctx = $.ctx -}}
+    {{- if not (include "arkcase.isRootContext" $ctx) -}}
+      {{- fail "Must include the root context as the 'ctx' parameter, or the only parameter" -}}
+    {{- end -}}
+    {{- $path = (hasKey $ "path" | ternary ($.path | default "" | toString) "" | default $path) -}}
+  {{- end }}
   {{- $licenses := (include "arkcase.pentaho.licenses" $ctx | fromYaml) -}}
   {{- if $licenses -}}
-    {{- $volume := "secrets" -}}
-    {{- if and (hasKey . "volume") .volume -}}
-      {{- $volume = .volume -}}
-    {{- end -}}
-    {{- $path := "/app/init/licenses" -}}
-    {{- if and (hasKey . "path") .path -}}
-      {{- $path = .path -}}
-    {{- end -}}
+    {{- $volume := (include "arkcase.pentaho.license.volume.name" $ctx) -}}
 # License mounts begin
     {{- range $key, $value := $licenses }}
-- name: {{ $volume | quote }}
-  mountPath: "{{ $path }}/{{ $key }}"
+- name: "pentaho-licenses"
+  mountPath: {{ printf "%s/%s" $path $key | quote }}
   subPath: {{ $key | quote }}
   readOnly: true
     {{- end }}
@@ -73,14 +79,20 @@
   {{- end -}}
 {{- end -}}
 
-{{- define "arkcase.pentaho.license.volumes" -}}
-  {{- $licenses := (include "arkcase.pentaho.licenses" $ | fromYaml) -}}
+{{- define "arkcase.pentaho.license.volume" -}}
+  {{ $ctx := $ -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "Must include the root context as the only parameter" -}}
+  {{- end -}}
+  {{- $licenses := (include "arkcase.pentaho.licenses" $ctx | fromYaml) -}}
   {{- if $licenses -}}
-# License entries begin
-{{- range $key, $value := $licenses }}
-- key:  &license {{ $key | quote }}
-  path: *license
-{{- end }}
-# License entries end
+    {{- $volume := (include "arkcase.pentaho.license.volume.name" $ctx) -}}
+# License volume begins
+- name: "pentaho-licenses"
+  secret:
+    optional: false
+    secretName: {{ $volume | quote }}
+    defaultMode: 0444
+# License volume ends
   {{- end -}}
 {{- end -}}
