@@ -150,27 +150,19 @@ spec:
               mountPath: *dataDir
             - name: *initVol
               mountPath: *initDir
-            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/tomcat-live") | nindent 12 }}
-            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/tomcat/shared/classes/alfresco-global.properties") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/tomcat-live") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/tomcat/shared/classes/alfresco-global.properties") | nindent 12 }}
             {{- if and (eq "alfresco" $content.dialect) (include "arkcase.toBoolean" $content.settings.sync) }}
-              {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/tomcat/shared/classes/alfresco/extension/audit/alfresco-audit-arkcase-extractors.xml") | nindent 12 }}
+              {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/tomcat/shared/classes/alfresco/extension/audit/alfresco-audit-arkcase-extractors.xml") | nindent 12 }}
             {{- end }}
       volumes:
+        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
+        {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "init") | nindent 8 }}
         {{- include "arkcase.subsystem-access.all.volume" $ | nindent 8 }}
         {{- include "arkcase.trusts.volume" $ | nindent 8 }}
         {{- include "arkcase.acme.volume" $ | nindent 8 }}
         {{- include "arkcase.alfresco.license.volume" (dict "ctx" $ "volume" "alfresco-license") | nindent 8 }}
-        {{- include "arkcase.file-resource.config.volume" $ | nindent 8 }}
-            items:
-              - key: &key "alfresco-global.properties"
-                path: *key
-              - key: &key "alfresco-audit-arkcase-extractors.xml"
-                path: *key
-              - key: &key "tomcat-live"
-                path: *key
-                mode: 0555
-        {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "init") | nindent 8 }}
-        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
+        {{- include "arkcase.file-resource.volumes" $ | nindent 8 }}
       {{- with (include "arkcase.values" (dict "ctx" $ "base" "nodeSelector") | fromYaml) }}
       nodeSelector: {{- toYaml .value | nindent 8 }}
       {{- end }}

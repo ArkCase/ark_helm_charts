@@ -129,21 +129,21 @@ spec:
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" $partName) | nindent 12 }}
           volumeMounts:
-            {{- include "arkcase.subsystem-access.all.volumeMount" $ | nindent 12 }}
-            {{- include "arkcase.trusts.mount" $ | nindent 12 }}
-            {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
             - name: *dataVolume
               mountPath: *dataDir
             - name: *initVolume
               mountPath: *initDir
-            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/config-post.sh") | nindent 12 }}
+            {{- include "arkcase.subsystem-access.all.volumeMount" $ | nindent 12 }}
+            {{- include "arkcase.trusts.mount" $ | nindent 12 }}
+            {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/config-post.sh") | nindent 12 }}
       volumes:
+        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
+        {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "init") | nindent 8 }}
         {{- include "arkcase.subsystem-access.all.volume" $ | nindent 8 }}
         {{- include "arkcase.trusts.volume" $ | nindent 8 }}
         {{- include "arkcase.acme.volume" $ | nindent 8 }}
-        {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "init") | nindent 8 }}
-        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
-        {{- include "arkcase.file-resource.config.volume" $ | nindent 8 }}
+        {{- include "arkcase.file-resource.volumes" $ | nindent 8 }}
       {{- with (include "arkcase.values" (dict "ctx" $ "base" "nodeSelector") | fromYaml) }}
       nodeSelector: {{- toYaml .value | nindent 8 }}
       {{- end }}

@@ -73,14 +73,10 @@ spec:
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" $partName) | nindent 12 }}
           volumeMounts:
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
-            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/tomcat-live") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/tomcat-live") | nindent 12 }}
       volumes:
         {{- include "arkcase.acme.volume" $ | nindent 8 }}
-        {{- include "arkcase.file-resource.config.volume" $ | nindent 8 }}
-            items:
-              - key: &key "tomcat-live"
-                path: *key
-                mode: 0555
+        {{- include "arkcase.file-resource.volumes" $ | nindent 8 }}
       {{- with (include "arkcase.values" (dict "ctx" $ "base" "nodeSelector") | fromYaml) }}
       nodeSelector: {{- toYaml .value | nindent 8 }}
       {{- end }}

@@ -110,21 +110,20 @@ spec:
               mountPath: *initDir
             {{- include "arkcase.trusts.mount" $ | nindent 12 }}
             {{- include "arkcase.pentaho.license.volumeMounts" $ | nindent 12 }}
-            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/render-template") | nindent 12 }}
-            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/run-kjb") | nindent 12 }}
-            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/entrypoint" "subPath" "entrypoint-cron") | nindent 12 }}
-            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/deploy-job-schedules") | nindent 12 }}
-            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/pentaho-solutions/system/server.properties") | nindent 12 }}
-            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/pentaho-solutions/system/pdi-pur-plugin/plugin.properties") | nindent 12 }}
-            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho-pdi/data-integration/plugins/pdi-pur-plugin/plugin.properties") | nindent 12 }}
-            {{- include "arkcase.file-resource.secret.volumeMount" (dict "ctx" $ "mountPath" "/.template-vars.yaml") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/render-template") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/run-kjb") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/entrypoint" "subPath" "entrypoint-cron") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/deploy-job-schedules") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/pentaho-solutions/system/server.properties") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/pentaho-solutions/system/pdi-pur-plugin/plugin.properties") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho-pdi/data-integration/plugins/pdi-pur-plugin/plugin.properties") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/.template-vars.yaml") | nindent 12 }}
       volumes:
         {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "init") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
         {{- include "arkcase.trusts.volume" $ | nindent 8 }}
         {{- include "arkcase.pentaho.license.volume" $ | nindent 8 }}
-        {{- include "arkcase.file-resource.config.volume" $ | nindent 8 }}
-        {{- include "arkcase.file-resource.secret.volume" $ | nindent 8 }}
+        {{- include "arkcase.file-resource.volumes" $ | nindent 8 }}
       {{- with $.Values.nodeSelector }}
       nodeSelector: {{- toYaml . | nindent 8 }}
       {{- end }}

@@ -146,39 +146,23 @@ spec:
               mountPath: *dataDir
             - name: *logsVol
               mountPath: *logsDir
-            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/check-health") | nindent 12 }}
-            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/bootstrap.xml.template") | nindent 12 }}
-            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/broker.xml.template") | nindent 12 }}
-            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/jolokia-access.xml") | nindent 12 }}
-            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/log4j2.properties") | nindent 12 }}
-            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/login.config") | nindent 12 }}
-            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/management.xml") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/check-health") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/bootstrap.xml.template") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/broker.xml.template") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/jolokia-access.xml") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/log4j2.properties") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/login.config") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/management.xml") | nindent 12 }}
       volumes:
-        {{- include "arkcase.subsystem-access.all.volume" $ | nindent 8 }}
-        {{- include "arkcase.acme.volume" $ | nindent 8 }}
-        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
-        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "logs") | nindent 8 }}
-        {{- include "arkcase.file-resource.config.volume" $ | nindent 8 }}
-            items:
-              - key: &key "bootstrap.xml.template"
-                path: *key
-              - key: &key "broker.xml.template"
-                path: *key
-              - key: &key "jolokia-access.xml"
-                path: *key
-              - key: &key "log4j2.properties"
-                path: *key
-              - key: &key "login.config"
-                path: *key
-              - key: &key "management.xml"
-                path: *key
-              - key: &key "check-health"
-                path: *key
-                mode: 0755
         # Configuration is ephemeral, b/c it's re-rendered every time
         - name: *confVol
           emptyDir:
             sizeLimit: 128Mi
+        {{- include "arkcase.acme.volume" $ | nindent 8 }}
+        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
+        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "logs") | nindent 8 }}
+        {{- include "arkcase.file-resource.volumes" $ | nindent 8 }}
+        {{- include "arkcase.subsystem-access.all.volume" $ | nindent 8 }}
       {{- with $.Values.nodeSelector }}
       nodeSelector: {{- toYaml . | nindent 8 }}
       {{- end }}

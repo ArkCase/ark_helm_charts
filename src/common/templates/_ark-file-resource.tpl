@@ -28,10 +28,9 @@
   {{- $result | toYaml -}}
 {{- end -}}
 
-{{- define "__arkcase.file-resources.list-files" -}}
+{{- define "__arkcase.file-resources.list-files.render" -}}
   {{- $result := dict }}
-  {{- /* if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.subsystem.external" $)) */ -}}
-  {{- if true -}}
+  {{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.subsystem.external" $)) -}}
     {{- $ctx := $ -}}
     {{- $resources :=
       dict
@@ -46,33 +45,69 @@
             "bin" "data"
         )
     -}}
-    {{- range $kind, $cfg := $resources }}
+    {{- $index := dict }}
+    {{- /* We do this manually b/c we want files from a Secret to override files from ConfigMaps */ -}}
+    {{- range $kind := (list "Secret" "ConfigMap") -}}
+      {{- $cfg := get $resources $kind -}}
       {{- $basePath := (printf "files/%s" $cfg.path) -}}
       {{- $allFiles := ($ctx.Files.Glob (printf "%s/**" $basePath)) -}}
       {{- if not $allFiles -}}
         {{- continue -}}
       {{- end -}}
 
-      {{- $files := dict }}
-
+      {{- $files := dict -}}
+      {{- $entries := dict -}}
       {{- range $type := (list "bin" "tpl" "txt") -}}
-        {{- $files := ($ctx.Files.Glob (printf "%s/%s/*" $basePath $type)) }}
-        {{- if not $files }}
+        {{- $files := ($ctx.Files.Glob (printf "%s/%s/*" $basePath $type)) -}}
+        {{- if not $files -}}
           {{- continue -}}
         {{- end -}}
 
-        {{- range $path, $_ := $files }}
+        {{- range $path, $_ := $files -}}
           {{- $details := (include "__arkcase.file-resource.details" $path | fromYaml) -}}
           {{- $key := $details.name -}}
-          {{- if hasKey $result $key -}}
+          {{- if hasKey $index $key -}}
+            {{- /* It's a duplicate of some kind, and since we're processing in order of priority, we skip it */ -}}
+            {{- /* $index is different from $entries b/c it includes stuff from both Secret and ConfigMap */ -}}
             {{- continue -}}
           {{- end -}}
-          {{- $result = set $result $key $details -}}
+          {{- $entries = set $entries $key $details -}}
+          {{- $index = set $index $key true -}}
         {{- end -}}
+      {{- end -}}
+      {{- if $entries -}}
+        {{- $result = set $result $kind $entries -}}
       {{- end -}}
     {{- end -}}
   {{- end -}}
   {{- $result | toYaml -}}
+{{- end -}}
+
+{{- define "__arkcase.file-resources.list-files" -}}
+  {{- $ctx := $ -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "The parameter value must be the root context" -}}
+  {{- end -}}
+
+  {{- $cacheKey := "ArkCase-File-Resources-List" -}}
+  {{- $masterCache := dict -}}
+  {{- if (hasKey $ $cacheKey) -}}
+    {{- $masterCache = get $ $cacheKey -}}
+    {{- if and $masterCache (not (kindIs "map" $masterCache)) -}}
+      {{- $masterCache = dict -}}
+    {{- end -}}
+  {{- end -}}
+  {{- $crap := set $ $cacheKey $masterCache -}}
+
+  {{- $chartName := (include "arkcase.fullname" $) -}}
+  {{- if not (hasKey $masterCache $chartName) -}}
+    {{- $obj := (include "__arkcase.file-resources.list-files.render" $ | fromYaml) -}}
+    {{- if not $obj -}}
+      {{- $obj = dict -}}
+    {{- end -}}
+    {{- $masterCache = set $masterCache $chartName $obj -}}
+  {{- end -}}
+  {{- get $masterCache $chartName | toYaml -}}
 {{- end -}}
 
 {{- define "arkcase.file-resources" -}}
@@ -92,13 +127,15 @@
             "bin" "data"
         )
     -}}
-    {{- $rendered := dict }}
-    {{- range $kind, $cfg := $resources }}
-      {{- $basePath := (printf "files/%s" $cfg.path) }}
-      {{- $allFiles := ($ctx.Files.Glob (printf "%s/**" $basePath)) }}
-      {{- if not $allFiles }}
+    {{- $rendered := dict -}}
+    {{- $fileList := (include "__arkcase.file-resources.list-files" $ctx | fromYaml) -}}
+    {{- range $kind := (list "Secret" "ConfigMap") }}
+      {{- if not (hasKey $fileList $kind) }}
         {{- continue }}
       {{- end }}
+
+      {{- $cfg := get $resources $kind }}
+      {{- $basePath := (printf "files/%s" $cfg.path) }}
       {{- $files := dict }}
 ---
 apiVersion: v1
@@ -184,59 +221,82 @@ metadata:
   {{- printf "arkcase-%s-file-resource" $ -}}
 {{- end -}}
 
-{{- define "__arkcase.file-resource.volumeMount" -}}
-  {{- if not (include "arkcase.isRootContext" $.ctx) -}}
-    {{- fail "Must provide the root context (. or $) as the 'ctx' parameter" -}}
-  {{- end -}}
-  {{- $type := ($.secret | ternary "secret" "config") -}}
-  {{- $mountPath := ($.mountPath | required "Must provide the mountPath value for the resource file you wish to mount") -}}
-  {{- $subPath := (hasKey $ "subPath" | ternary $.subPath ($mountPath | base) | required "The subPath to be mounted must not be an empty string") -}}
-- name: {{ include "__arkcase.file-resource.volumeName" $type | quote }}
-  mountPath: {{ $mountPath | quote }}
-  subPath: {{ $subPath | quote }}
-  readOnly: true
-{{- end -}}
-
-{{- define "arkcase.file-resource.config.volumeMount" -}}
-  {{- $params := (dict "ctx" $.ctx "secret" false) -}}
-  {{- include "__arkcase.file-resource.volumeMount" (merge $params (pick $ "mountPath" "subPath")) -}}
-{{- end -}}
-
-{{- define "arkcase.file-resource.secret.volumeMount" -}}
-  {{- $params := (dict "ctx" $.ctx "secret" true) -}}
-  {{- include "__arkcase.file-resource.volumeMount" (merge $params (pick $ "mountPath" "subPath")) -}}
-{{- end -}}
-
-{{- define "__arkcase.file-resource.volume" -}}
+{{- define "arkcase.file-resource.volumeMount" -}}
   {{- $ctx := $.ctx -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- /* cheat a little since we know this should only be called from specific points */ -}}
     {{- fail "Must provide the root context (. or $) as the only parameter" -}}
   {{- end -}}
-  {{- $resourceName := (include "arkcase.file-resource.name" $ctx) -}}
-  {{- $type := ($.secret | ternary "secret" "config") -}}
-  {{- $typeAnchor := ($.secret | ternary "secret" "configMap") -}}
-  {{- $nameAnchor := ($.secret | ternary "secretName" "name") -}}
+  {{- $mountPath := ($.mountPath | required "Must provide the mountPath value for the resource file you wish to mount") -}}
+  {{- $subPath := (hasKey $ "subPath" | ternary $.subPath ($mountPath | base) | required "The subPath to be mounted must not be an empty string") -}}
+
+  {{- /* Find the resource in the file list, and render the correct volumeMount entry */ -}}
   {{- $fileList := (include "__arkcase.file-resources.list-files" $ctx | fromYaml) -}}
+  {{- if $fileList }}
+
+    {{- /* Regardless of whether it's a configmap or a secret, this is the name to use */ -}}
+    {{- $resourceName := (include "arkcase.file-resource.name" $ctx) -}}
+    {{-
+      $ref :=
+        dict
+          "Secret"    "secret"
+          "ConfigMap" "config"
+    -}}
+
+    {{- range $resource, $entries := $fileList }}
+      {{- if not (hasKey $entries $subPath) }}
+        {{- continue }}
+      {{- end }}
+
+      {{- $type := get $ref $resource }}
+      {{- $details := get $entries $subPath }}
 - name: {{ include "__arkcase.file-resource.volumeName" $type | quote }}
-  {{ $typeAnchor }}:
+  mountPath: {{ $mountPath | quote }}
+  subPath: {{ $subPath | quote }}
+  readOnly: true
+      {{- break }}
+    {{- end }}
+  {{- end }}
+{{- end -}}
+
+{{- define "arkcase.file-resource.volumes" -}}
+  {{- $ctx := $ -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- /* cheat a little since we know this should only be called from specific points */ -}}
+    {{- fail "Must provide the root context (. or $) as the only parameter" -}}
+  {{- end -}}
+
+  {{- $fileList := (include "__arkcase.file-resources.list-files" $ctx | fromYaml) -}}
+  {{- if $fileList }}
+    {{- /* Regardless of whether it's a configmap or a secret, this is the name to use */ -}}
+    {{- $resourceName := (include "arkcase.file-resource.name" $ctx) -}}
+
+    {{-
+      $allRef :=
+        dict
+          "Secret"    (dict "type" "secret" "typeAnchor" "secret"    "nameAnchor" "secretName")
+          "ConfigMap" (dict "type" "config" "typeAnchor" "configMap" "nameAnchor" "name")
+    -}}
+    {{- range $resource := (list "Secret" "ConfigMap") }}
+      {{- if not (hasKey $fileList $resource) }}
+        {{- continue }}
+      {{- end }}
+      {{- $entries := get $fileList $resource }}
+      {{- $ref := get $allRef $resource }}
+- name: {{ include "__arkcase.file-resource.volumeName" $ref.type | quote }}
+  {{ $ref.typeAnchor }}:
     optional: false
-    {{ $nameAnchor }}: {{ $resourceName | quote }}
+    {{ $ref.nameAnchor }}: {{ $resourceName | quote }}
     defaultMode: 0444
     items:
-    {{- range $key, $details := $fileList }}
+      {{- range $key := (keys $entries | sortAlpha) }}
+        {{- $details := get $entries $key }}
       - key: {{ $key | quote }}
         path: {{ $key | quote }}
-      {{- if $details.mode }}
+        {{- if $details.mode }}
         mode: {{ $details.mode }}
+        {{- end }}
       {{- end }}
     {{- end }}
-{{- end -}}
-
-{{- define "arkcase.file-resource.config.volume" -}}
-  {{- include "__arkcase.file-resource.volume" (dict "ctx" $ "secret" false) -}}
-{{- end -}}
-
-{{- define "arkcase.file-resource.secret.volume" -}}
-  {{- include "__arkcase.file-resource.volume" (dict "ctx" $ "secret" true) -}}
+  {{- end }}
 {{- end -}}

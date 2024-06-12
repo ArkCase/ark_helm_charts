@@ -220,38 +220,38 @@ spec:
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
             {{- include "arkcase.pentaho.license.volumeMounts" $ | nindent 12 }}
             {{- include "arkcase.subsystem-access.all.volumeMount" $ | nindent 12 }}
-            {{- include "arkcase.file-resource.secret.volumeMount" (dict "ctx" $ "mountPath" "/.template-vars.yaml") | nindent 12 }}
-            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/tomcat/webapps/pentaho/META-INF/context.xml") | nindent 12 }}
-            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/pentaho-solutions/system/jackrabbit/repository.xml") | nindent 12 }}
-            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/pentaho-solutions/system/applicationContext-security-ldap.properties") | nindent 12 }}
-            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/app/lb/run-liquibase-updates") | nindent 12 }}
-            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/entrypoint") | nindent 12 }}
-            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/config-pre.sh") | nindent 12 }}
-            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/config-post.sh") | nindent 12 }}
-            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/install-reports") | nindent 12 }}
-            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/tomcat-live") | nindent 12 }}
-            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/pentaho-solutions/system/arkcase-preauth.xml") | nindent 12 }}
-            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/pentaho-solutions/system/security.properties") | nindent 12 }}
-            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/pentaho-solutions/system/server.properties") | nindent 12 }}
-            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/pentaho-solutions/system/pdi-pur-plugin/plugin.properties") | nindent 12 }}
-            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho-pdi/data-integration/plugins/pdi-pur-plugin/plugin.properties") | nindent 12 }}
-            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/pentaho-solutions/system/repository.spring.properties") | nindent 12 }}
-            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/pentaho-solutions/system/applicationContext-spring-security.xml") | nindent 12 }}
-            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/pentaho-solutions/system/applicationContext-spring-security-ldap.xml") | nindent 12 }}
-            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/pentaho-solutions/system/quartz/quartz.properties") | nindent 12 }}
-            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/pentaho-solutions/system/hibernate/hibernate-settings.xml") | nindent 12 }}
-            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/tomcat/conf/server.xml") | nindent 12 }}
-            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/tomcat/webapps/pentaho/WEB-INF/classes/log4j2.xml") | nindent 12 }}
-            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/app/init/reports/000-base-reports.zip" "subPath" (printf "base-reports.%s.zip" $db.reports)) | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/.template-vars.yaml") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/tomcat/webapps/pentaho/META-INF/context.xml") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/pentaho-solutions/system/jackrabbit/repository.xml") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/pentaho-solutions/system/applicationContext-security-ldap.properties") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/lb/run-liquibase-updates") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/entrypoint") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/config-pre.sh") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/config-post.sh") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/install-reports") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/tomcat-live") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/pentaho-solutions/system/arkcase-preauth.xml") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/pentaho-solutions/system/security.properties") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/pentaho-solutions/system/server.properties") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/pentaho-solutions/system/pdi-pur-plugin/plugin.properties") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho-pdi/data-integration/plugins/pdi-pur-plugin/plugin.properties") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/pentaho-solutions/system/repository.spring.properties") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/pentaho-solutions/system/applicationContext-spring-security.xml") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/pentaho-solutions/system/applicationContext-spring-security-ldap.xml") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/pentaho-solutions/system/quartz/quartz.properties") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/pentaho-solutions/system/hibernate/hibernate-settings.xml") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/tomcat/conf/server.xml") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/tomcat/webapps/pentaho/WEB-INF/classes/log4j2.xml") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/init/reports/000-base-reports.zip" "subPath" (printf "base-reports.%s.zip" $db.reports)) | nindent 12 }}
             {{- if $foia }}
-            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/app/init/reports/001-foia-base-reports.zip" "subPath" (printf "foia-base-reports.%s.zip" $db.reports)) | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/init/reports/001-foia-base-reports.zip" "subPath" (printf "foia-base-reports.%s.zip" $db.reports)) | nindent 12 }}
             {{- end }}
-            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/render-template") | nindent 12 }}
-            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/run-kjb") | nindent 12 }}
-            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/add-pdi-connection") | nindent 12 }}
-            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/install-mondrian-schema") | nindent 12 }}
-            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/lock-initializer") | nindent 12 }}
-            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/etc/curator-wrapper.yaml") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/render-template") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/run-kjb") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/add-pdi-connection") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/install-mondrian-schema") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/lock-initializer") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/etc/curator-wrapper.yaml") | nindent 12 }}
         {{- if $cluster.enabled }}
         - name: haproxy
           {{- include "arkcase.image" (dict "ctx" $ "name" "haproxy" "repository" "haproxy") | nindent 10 }}
@@ -264,9 +264,9 @@ spec:
           volumeMounts:
             - name: *sslVol
               mountPath: *sslDir
-            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/etc/haproxy/haproxy.cfg") | nindent 12 }}
-            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/etc/haproxy/lua/responses.lua") | nindent 12 }}
-            {{- include "arkcase.file-resource.config.volumeMount" (dict "ctx" $ "mountPath" "/entrypoint" "subPath" "entrypoint-haproxy") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/etc/haproxy/haproxy.cfg") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/etc/haproxy/lua/responses.lua") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/entrypoint" "subPath" "entrypoint-haproxy") | nindent 12 }}
         {{- end }}
       volumes:
         # The shared certificates volume is laughably tiny
@@ -282,8 +282,7 @@ spec:
         {{- include "arkcase.pentaho.license.volume" $ | nindent 8 }}
         {{- include "arkcase.acme.volume" $ | nindent 8 }}
         {{- include "arkcase.subsystem-access.all.volume" $ | nindent 8 }}
-        {{- include "arkcase.file-resource.config.volume" $ | nindent 8 }}
-        {{- include "arkcase.file-resource.secret.volume" $ | nindent 8 }}
+        {{- include "arkcase.file-resource.volumes" $ | nindent 8 }}
       {{- with $.Values.nodeSelector }}
       nodeSelector: {{- toYaml . | nindent 8 }}
       {{- end }}
