@@ -1,5 +1,6 @@
 {{- define "arkcase.saml.config" -}}
   {{- $config := $ -}}
+  {{- $results := dict -}}
   {{-
     $required :=
       list
@@ -21,7 +22,8 @@
   {{- end -}}
 
   {{- /* The config is valid! */ -}}
-  {{- $config -}}
+  {{- $results = set $results "saml" $config -}}
+  {{- $results | toYaml -}}
 {{- end -}}
 
 {{- define "arkcase.saml.compute" -}}
@@ -35,7 +37,6 @@
   {{- /* TODO: When we add KeyCloak et al, we need to support both local and global configurations */ -}}
   {{- /* This value must be a map with configs, or a true-false string */ -}}
   {{- $conf := (include "arkcase.tools.conf" (dict "ctx" $ctx "value" "sso" "detailed" true) | fromYaml) -}}
-
   {{- $saml := dict -}}
   {{- if $conf.found -}}
     {{- $conf := $conf.value -}}
@@ -87,7 +88,5 @@
   {{- else -}}
     {{- $yamlResult = get $masterCache $chartName | toYaml -}}
   {{- end -}}
-{{/*  {{- fail (printf "saml kind: %s" (kindOf $yamlResult) ) }}*/}}
-{{/*  {{- fail (printf "entity id: %s" (get (get (fromYaml $yamlResult) "saml" ) "entityId")) }}*/}}
   {{- $yamlResult -}}
 {{- end -}}

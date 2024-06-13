@@ -295,8 +295,16 @@ spec:
             - name: LD_LIBRARY_PATH
               value: "$(HOME_DIR)/.arkcase/libraries"
             - name: CATALINA_OPTS
+              {{- $springProfiles := "" }}
               {{- $oidc := (include "arkcase.oidc" $ | fromYaml) -}}
-              {{- $springProfiles := (not (empty $oidc)) | ternary "externalOidc" "ldap" }}
+              {{- $saml := (include "arkcase.saml" $ | fromYaml) -}}
+              {{- if (not (empty $oidc)) -}}
+                {{- $springProfiles = "externalOidc" -}}
+              {{- else if and $saml (hasKey $saml "saml") -}}
+                {{- $springProfiles = "externalSaml" -}}
+              {{- else -}}
+                {{- $springProfiles = "ldap" -}}
+              {{- end -}}
               {{- if $foia }}
                 {{- $springProfiles = (printf "extension-foia,%s" $springProfiles) }}
               {{- end }}
@@ -374,6 +382,9 @@ spec:
               mountPath: "/app/home/.arkcase/acm/acm-config-server-repo/arkcase-oidc.yaml"
               subPath: &arkcaseOidcYaml "arkcase-oidc.yaml"
               readOnly: true
+            - name: *secrets
+              mountPath: "/app/home/.arkcase/acm/spring/spring-config-saml.properties"
+              subPath: &arkcaseSamlProperties "spring-config-saml.properties"
             - name: *secrets
               mountPath: "/app/home/.arkcase/acm/acm-config-server-repo/ldap/ldap.yaml"
               subPath: &ldapYaml "ldap.yaml"
@@ -528,6 +539,8 @@ spec:
                 path: *arkcaseActivemqYaml
               - key: *arkcaseOidcYaml
                 path: *arkcaseOidcYaml
+              - key: *arkcaseSamlProperties
+                path: *arkcaseSamlProperties
               - key: *confYaml
                 path: *confYaml
               - key: *pdfnetSdkLicenseTxt
