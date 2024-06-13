@@ -36,8 +36,7 @@ consumes:
           username: REPORTS_JDBC_ARKCASE_USERNAME
           password: REPORTS_JDBC_ARKCASE_PASSWORD
           database: REPORTS_JDBC_ARKCASE_DATABASE
-          schema: REPORTS_JDBC_ARKCASE_SCHEMA
-          # instance: REPORTS_JDBC_ARKCASE_USERNAME
+          schema:   REPORTS_JDBC_ARKCASE_SCHEMA
     reports:
       properties:
         host: REPORTS_JDBC_HOST
@@ -47,14 +46,10 @@ consumes:
           username: REPORTS_JDBC_USERNAME
           password: REPORTS_JDBC_PASSWORD
           database: REPORTS_JDBC_HIBERNATE_DATABASE
-          schema: REPORTS_JDBC_HIBERNATE_SCHEMA
+          schema:   REPORTS_JDBC_HIBERNATE_SCHEMA
         schema-jcr:
-          username: REPORTS_JDBC_USERNAME
-          password: REPORTS_JDBC_PASSWORD
-          database: REPORTS_JDBC_JCR_DATABASE
-          schema: REPORTS_JDBC_JCR_SCHEMA
+          database: REPORTS_JDBC_JACKRABBIT_DATABASE
+          schema:   REPORTS_JDBC_JACKRABBIT_SCHEMA
         schema-quartz:
-          username: REPORTS_JDBC_USERNAME
-          password: REPORTS_JDBC_PASSWORD
           database: REPORTS_JDBC_QUARTZ_DATABASE
-          schema: REPORTS_JDBC_QUARTZ_SCHEMA
+          schema:   REPORTS_JDBC_QUARTZ_SCHEMA

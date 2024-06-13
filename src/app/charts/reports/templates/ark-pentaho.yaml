@@ -178,6 +178,7 @@ spec:
             {{- include "arkcase.cluster.env" $ | nindent 12 }}
             {{- include "arkcase.cluster.tomcat.env" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
+            {{- include "arkcase.pentaho.jdbc-urls" $ | nindent 12 }}
             - name: DATA_DIR
               value: *dataDir
             - name: INIT_DIR

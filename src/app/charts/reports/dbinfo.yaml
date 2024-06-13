@@ -9,7 +9,7 @@ mysql: &mysql
   jdbc:
     driver: com.mysql.cj.jdbc.Driver
     type: mysql
-    format: "jdbc:mysql://$(ARKCASE_JDBC_HOSTNAME):$(ARKCASE_JDBC_PORT)/$(ARKCASE_JDBC_DATABASE)?sslMode=VERIFY_IDENTITY"
+    format: "jdbc:mysql://$(PREFIX_HOST):$(PREFIX_PORT)/$(PREFIX_DATABASE)?sslMode=VERIFY_IDENTITY"
   validationQuery: "SELECT 1"
   aliases:
     - mariadb
@@ -26,10 +26,10 @@ oracle10g: &oracle10g
   jdbc:
     driver: oracle.jdbc.driver.OracleDriver
     type: oracle
-    format: "jdbc:oracle:thin:@$(ARKCASE_JDBC_HOSTNAME):$(ARKCASE_JDBC_PORT)"
-    # format: "jdbc:oracle:thin:@$(ARKCASE_JDBC_HOSTNAME):$(ARKCASE_JDBC_PORT)${INSTANCE}"
+    format: "jdbc:oracle:thin:@$(PREFIX_HOST):$(PREFIX_PORT)"
+    # format: "jdbc:oracle:thin:@$(PREFIX_HOST):$(PREFIX_PORT)${INSTANCE}"
     # instance:
-    #   format: "/$(ARKCASE_JDBC_INSTANCE)"
+    #   format: "/$(PREFIX_INSTANCE)"
   validationQuery: "SELECT 1 FROM DUAL"
   aliases:
     - orcl
@@ -56,7 +56,7 @@ postgresql:
   jdbc:
     driver: org.postgresql.Driver
     type: postgresql
-    format: "jdbc:postgresql://$(ARKCASE_JDBC_HOSTNAME):$(ARKCASE_JDBC_PORT)/$(ARKCASE_JDBC_DATABASE)?ssl=true&sslrootcert=/.ssl/ca-int.pem"
+    format: "jdbc:postgresql://$(PREFIX_HOST):$(PREFIX_PORT)/$(PREFIX_DATABASE)?ssl=true&sslrootcert=/.ssl/ca-int.pem"
   validationQuery: "SELECT 1"
   aliases:
     - psql
@@ -73,10 +73,10 @@ sqlserver:
   jdbc:
     driver: com.microsoft.sqlserver.jdbc.SQLServerDriver
     type: sqlserver
-    format: "jdbc:sqlserver://$(ARKCASE_JDBC_HOSTNAME)$(ARKCASE_JDBC_INSTANCE):$(ARKCASE_JDBC_PORT);DatabaseName=$(ARKCASE_JDBC_DATABASE);encrypt=true;trustServerCertificate=false;"
-    # format: "jdbc:sqlserver://$(ARKCASE_JDBC_HOSTNAME)${INSTANCE}:$(ARKCASE_JDBC_PORT);DatabaseName=$(ARKCASE_JDBC_DATABASE);encrypt=true;trustServerCertificate=false;"
+    format: "jdbc:sqlserver://$(PREFIX_HOST)$(PREFIX_INSTANCE):$(PREFIX_PORT);DatabaseName=$(PREFIX_DATABASE);encrypt=true;trustServerCertificate=false;"
+    # format: "jdbc:sqlserver://$(PREFIX_HOST)${INSTANCE}:$(PREFIX_PORT);DatabaseName=$(PREFIX_DATABASE);encrypt=true;trustServerCertificate=false;"
     # instance:
-    #   format: "\\$(ARKCASE_JDBC_INSTANCE)"
+    #   format: "\\$(PREFIX_INSTANCE)"
   validationQuery: "SELECT 1"
   aliases:
     - *mssql
