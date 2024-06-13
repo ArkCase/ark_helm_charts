@@ -12,10 +12,10 @@ gov.foia.broker:
   url: "${ARKCASE_OPENWIRE_URL}"
   userName: "${ARKCASE_OPENWIRE_USERNAME}"
   password: "${ARKCASE_OPENWIRE_PASSWORD}"
-  keystore: "${k8s.keystore.file}"
-  keystore.password: "${k8s.keystore.pass}"
-  truststore: "/etc/pki/java/cacerts"
-  truststore.password: "changeit"
+  keystore: "${JAVA_KEYSTORE}"
+  keystore.password: "${JAVA_KEYSTORE_PASS}"
+  truststore: "${JAVA_TRUSTSTORE}"
+  truststore.password: "${JAVA_TRUSTSTORE_PASS}"
 
 application:
   properties:

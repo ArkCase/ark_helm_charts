@@ -28,13 +28,13 @@ spring:
     config:
       tls:
         enabled: true
-        keyStore: "file:${k8s.keystore.file}"
-        keyStoreType: "${k8s.keystore.type}"
-        keyStorePassword: "${k8s.keystore.pass}"
-        keyPassword: "${k8s.keystore.pass}"
-        trustStore: "file:/etc/pki/java/cacerts"
-        trustStoreType: "JKS"
-        trustStorePassword: "changeit"
+        keyStore: "file:${JAVA_KEYSTORE}"
+        keyStoreType: "${JAVA_KEYSTORE_TYPE}"
+        keyStorePassword: "${JAVA_KEYSTORE_PASS}"
+        keyPassword: "${JAVA_KEYSTORE_KEY_PASS}"
+        trustStore: "file:${JAVA_TRUSTSTORE}"
+        trustStoreType: "${JAVA_TRUSTSTORE_TYPE}"
+        trustStorePassword: "${JAVA_TRUSTSTORE_PASS}"
 
 configuration:
   client:
