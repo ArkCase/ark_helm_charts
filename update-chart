@@ -62,4 +62,5 @@ while true ; do
 	set -- "${NI[@]}"
     [ "${#}" -lt 1 ] && break
 done
+git clean -fq repo
 git restore repo
