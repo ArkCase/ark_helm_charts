@@ -6,6 +6,7 @@
       list
         "entityId"
         "arkcaseHost"
+        "arkcasePort"
         "arkcaseContextPath"
         "identityProviderHost"
         "identityProviderUrl"
