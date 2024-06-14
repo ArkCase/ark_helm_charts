@@ -281,6 +281,18 @@ spec:
               value: *confDir
             - name: LOGS_DIR
               value: *logsDir
+            - name: ACME_KEYSTORE_WITH_TRUSTS
+              value: "true"
+            - name: ACME_KEY_ALIAS
+              value: "arkcase-private-key-$(POD_NAME)"
+            - name: JAVA_KEYSTORE
+              value: "$(SSL_DIR)/keystore.pkcs12"
+            - name: JAVA_KEYSTORE_TYPE
+              value: "PKCS12"
+            - name: JAVA_TRUSTSTORE
+              value: "$(JAVA_KEYSTORE)"
+            - name: JAVA_TRUSTSTORE_TYPE
+              value: "$(JAVA_KEYSTORE_TYPE)"
             {{- if $dev }}
             - name: DEVELOPMENT
               value: "true"
@@ -313,6 +325,8 @@ spec:
               value: >-
                 -XX:MinRAMPercentage=50.0
                 -XX:MaxRAMPercentage=80.0
+                -Djava.keystore.key.alias=$(ACME_KEY_ALIAS)
+                -Dsaml.keystore.defaultKeyName=$(ACME_KEY_ALIAS)
                 -Dacm.configurationserver.propertyfile=$(HOME_DIR)/.arkcase/acm/conf.yml
                 -Dconfiguration.client.spring.path=spring
                 -Dspring.profiles.active={{ $springProfiles }}
@@ -439,15 +453,23 @@ spec:
           {{- include "arkcase.image" (dict "ctx" $ "name" "cloudconfig" "repository" "arkcase/cloudconfig") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
-            {{- with (($.Values.configuration).cloudconfig).env }}
-              {{- toYaml . | nindent 12 }}
-            {{- end }}
+            - name: ACME_KEY_ALIAS
+              value: "arkcase-private-key-$(POD_NAME)"
+            - name: JAVA_KEYSTORE
+              value: "$(SSL_DIR)/keystore.pkcs12"
+            - name: JAVA_KEYSTORE_TYPE
+              value: "PKCS12"
+            - name: JAVA_TRUSTSTORE
+              value: "$(JAVA_KEYSTORE)"
+            - name: JAVA_TRUSTSTORE_TYPE
+              value: "$(JAVA_KEYSTORE_TYPE)"
             - name: DATA_DIR
               value: *confDir
             - name: JAVA_TOOL_OPTIONS
               value: >-
                 -XX:MinRAMPercentage=50
                 -XX:MaxRAMPercentage=80
+                -Djava.keystore.key.alias=$(ACME_KEY_ALIAS)
             {{- if $dev }}
             - name: DEVELOPMENT
               value: "true"
