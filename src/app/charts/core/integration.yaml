@@ -1,25 +1,55 @@
+################################################################################
+# #
+# # The integration's key within "global.integration"
+# #
+# integration-name:
+#   #
+#   # Enable or disable support for the integration
+#   #
+#   enabled: (true|false)
 #
-# Each key is the NAME of the integration
+#   #
+#   # The final configuration key to use when rendering the
+#   # integration configuration within the YAML. If not
+#   # provided, the default value will match the integration's
+#   # main key, above.
+#   #
+#   config-key: "some-config-key"
 #
-# An empty value, the boolean value false, or the string value
-# "false" will disable the integration.
+#   #
+#   # Alternative names within "global.integration" that will
+#   # point to this very same integration
+#   #
+#   aliases:
+#     - some-other-key
+#     - yet-another-alias
 #
-# Any other value will enable it. If the value is anything other
-# than the boolean value true, or the string "true", then it will
-# be converted to a string, and used as the alternate key atop
-# the configuration block within the arckase-server.yaml file
-#
-# The alternate key may contain dots, and the consequences of
-# these dots are beyond the scope of this integration facility.
-#
+#   #
+#   # A list of Spring profiles that would need to be added
+#   # to the deployment when this integration is activated
+#   #
+#   spring-profiles:
+#     - xxx
+#     - yyy
+#     - zzz
+################################################################################
 
-oidc: true
+oidc:
+  enabled: true
 
-touchnet: "payment"
-payment: true
+payment:
+  enabled: true
+  aliases:
+    - touchnet
 
-zylab: "zylabIntegration"
-# Temporary ... should use zylab moving forward
-zylabIntegration: true
+zylabIntegration:
+  enabled: true
+  aliases:
+    - zylab
 
-scanning: true
+scanning:
+  enabled: true
+  aliases:
+    - textract
+  spring-profiles:
+    - textract
