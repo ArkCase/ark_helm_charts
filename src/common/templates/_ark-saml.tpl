@@ -5,10 +5,6 @@
     $required :=
       list
         "entityId"
-        "arkcaseHost"
-        "arkcasePort"
-        "arkcaseContextPath"
-        "identityProviderHost"
         "identityProviderUrl"
   -}}
 
@@ -84,10 +80,12 @@
   {{- $chartName := (include "common.fullname" $ctx) -}}
   {{- $yamlResult := dict -}}
   {{- if not (hasKey $masterCache $chartName) -}}
-    {{- $yamlResult = (include "arkcase.saml.compute" $ctx) -}}
-    {{- $masterCache = set $masterCache $chartName ($yamlResult | fromYaml) -}}
+    {{- $yamlResult = (include "arkcase.saml.compute" $ctx) | fromYaml -}}
+    {{- $arkcaseUrl := (include "arkcase.tools.conf" (dict "ctx" $ "value" "baseUrl")) -}}
+    {{- $yamlResult = set $yamlResult "arkcaseUrl" $arkcaseUrl -}}
+    {{- $masterCache = set $masterCache $chartName $yamlResult -}}
   {{- else -}}
-    {{- $yamlResult = get $masterCache $chartName | toYaml -}}
+    {{- $yamlResult = get $masterCache $chartName -}}
   {{- end -}}
-  {{- $yamlResult -}}
+  {{- $yamlResult | toYaml -}}
 {{- end -}}
