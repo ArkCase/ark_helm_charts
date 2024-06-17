@@ -309,6 +309,10 @@ spec:
             - name: CATALINA_OPTS
               {{- $oidc := (include "arkcase.oidc" $ | fromYaml) -}}
               {{- $springProfiles := (not (empty $oidc)) | ternary "externalOidc" "ldap" }}
+              {{- $extraProfiles := (include "arkcase.tools.conf" (dict "ctx" $ "value" "extraSpringProfiles")) }}
+              {{- if $extraProfiles }}
+                {{- $springProfiles = print $springProfiles "," $extraProfiles }}
+              {{- end }}
               {{- if $foia }}
                 {{- $springProfiles = (printf "extension-foia,%s" $springProfiles) }}
               {{- end }}
