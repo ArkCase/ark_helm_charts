@@ -303,63 +303,143 @@
   {{- dict "email" $result | toYaml -}}
 {{- end }}
 
-{{- define "arkcase.core.integrations.computeKey" -}}
-  {{- $name := .name -}}
-  {{- $config := .config -}}
-  {{- $value := get $config $name -}}
-  {{- if $value -}}
-    {{- $value = ($value | toString) -}}
-    {{- if (eq "true" $value) -}}
-      {{- $name -}}
-    {{- else if (ne "false" $value) -}}
-      {{- $value -}}
+{{- define "__arkcase.core.integrations.config" -}}
+  {{- $ctx := $ -}}
+  {{- $config := ($.Files.Get "integration.yaml" | fromYaml | default dict) -}}
+  {{- $result := dict -}}
+  {{- if $config -}}
+    {{- range $key, $data := $config -}}
+      {{- $clash := (get $result $key) -}}
+      {{- if $clash -}}
+        {{- fail (printf "Conflicting integration keys: key [%s] conflicts with an alias from [%s]" $key $clash.key) -}}
+      {{- end -}}
+
+      {{- $enabled := (not (empty (include "arkcase.toBoolean" $data.enabled))) -}}
+
+      {{- $configKey := ((hasKey $data "config-key") | ternary (get $data "config-key") "" | default $key | toString) -}}
+
+      {{- $aliases := $data.aliases | default list -}}
+      {{- if $aliases -}}
+        {{- if (not (kindIs "slice" $aliases)) -}}
+          {{- fail (printf "BAD integrations configuration: the aliases for [%s] must be a list: (%s) [%s]" $key (kindOf $aliases) $aliases) -}}
+        {{- end -}}
+        {{- $aliases = (without ($aliases | toStrings | sortAlpha | uniq | compact) $key) -}}
+        {{- range $alias := $aliases -}}
+          {{- $clash := (get $result $alias) -}}
+          {{- if $clash -}}
+            {{- fail (printf "Conflicting integration alias: [%s] from [%s] conflicts with [%s]" $alias $key $clash.key) -}}
+          {{- end -}}
+
+          {{- $clash = (get $config $alias) -}}
+          {{- if $clash -}}
+            {{- fail (printf "Conflicting integration alias: [%s] from [%s] conflicts with another key" $alias $key) -}}
+          {{- end -}}
+        {{- end -}}
+      {{- end -}}
+
+      {{- $springProfiles := (get $data "spring-profiles") | default list -}}
+      {{- if $springProfiles -}}
+        {{- if (not (kindIs "slice" $springProfiles)) -}}
+          {{- fail (printf "BAD integrations configuration: the spring profiles for [%s] must be a list: (%s) [%s]" $key (kindOf $springProfiles) $springProfiles) -}}
+        {{- end -}}
+        {{- $springProfiles = ($springProfiles | toStrings | sortAlpha | uniq | compact) -}}
+      {{- end -}}
+
+      {{- $integration := dict "enabled" $enabled "key" $key "configKey" $configKey "springProfiles" $springProfiles -}}
+      {{- $result = set $result $key $integration -}}
+      {{- range $alias := $aliases -}}
+        {{- $result = set $result $alias $integration -}}
+      {{- end -}}
     {{- end -}}
   {{- end -}}
+  {{- $result | toYaml -}}
 {{- end -}}
 
-{{- define "arkcase.core.integrations" -}}
+{{- define "__arkcase.core.integrations.compute" -}}
   {{- $ctx := $ -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "Must send the root context as the only parameter" -}}
   {{- end -}}
 
-  {{- $config := (.Files.Get "integration.yaml" | fromYaml | default dict) -}}
+  {{- $config := (include "__arkcase.core.integrations.config" $ctx | fromYaml) -}}
 
-  {{- $ints := ($.Values.global).integration -}}
+  {{- $integrations := ($.Values.global).integration -}}
   {{- $result := dict -}}
-  {{- $disabled := dict "enabled" false -}}
   {{- $bad := list -}}
-  {{- if and $ints (kindIs "map" $ints) -}}
-    {{- range $name, $t := $ints -}}
+  {{- if and $integrations (kindIs "map" $integrations) -}}
+    {{- $added := dict -}}
+    {{- range $key, $integration := $integrations -}}
 
       {{- /* First ... is this a known integration? If not... complain! */ -}}
-      {{- if not (hasKey $config $name) -}}
-        {{- $bad = append $bad $name -}}
+      {{- if not (hasKey $config $key) -}}
+        {{- $bad = append $bad $key -}}
         {{- continue -}}
       {{- end -}}
 
-      {{- $key := (include "arkcase.core.integrations.computeKey" (dict "name" $name "config" $config)) -}}
-      {{- if not $key -}}
+      {{- $current := get $config $key -}}
+      {{- if not $current.enabled -}}
         {{- /* If this integration is disabled, skip it! */ -}}
         {{- continue -}}
       {{- end -}}
 
-      {{- if and $t (kindIs "map" $t) -}}
-        {{- if or (not (hasKey $t "enabled")) (include "arkcase.toBoolean" $t.enabled) -}}
-          {{- $t = set $t "enabled" true -}}
-        {{- else -}}
-          {{- $t = $disabled -}}
-        {{- end -}}
-      {{- else -}}
-        {{- $t = $disabled -}}
+      {{- if hasKey $added $current.key -}}
+        {{- fail (printf "Duplicate integration configurations detected for [%s]: provided [%s] and [%s]" $current.key $key (get $added $current.key)) -}}
       {{- end -}}
-      {{- $result = set $result $key $t -}}
+
+      {{- $final := dict -}}
+      {{- if and $integration (kindIs "map" $integration) -}}
+        {{- if or (not (hasKey $integration "enabled")) (include "arkcase.toBoolean" $integration.enabled) -}}
+          {{- $final = dict "profiles" $current.springProfiles "config" $integration -}}
+        {{- end -}}
+      {{- end -}}
+
+      {{- if $final -}}
+        {{- $result = set $result $current.configKey $final -}}
+        {{- $added = set $added $current.key $key -}}
+      {{- end -}}
     {{- end -}}
   {{- end -}}
   {{- if $bad -}}
     {{- fail (printf "Unsupported integrations configured: %s" ($bad | sortAlpha)) -}}
   {{- end -}}
   {{- (empty $result) | ternary "" ($result | toYaml) -}}
+{{- end -}}
+
+{{- define "arkcase.core.integrations" -}}
+  {{- $ctx := $ -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "The parameter given must be the root context (. or $)" -}}
+  {{- end -}}
+
+  {{- $cacheKey := "ArkCase-Core-Integrations" -}}
+  {{- $masterCache := dict -}}
+  {{- if (hasKey $ctx $cacheKey) -}}
+    {{- $masterCache = get $ctx $cacheKey -}}
+    {{- if and $masterCache (not (kindIs "map" $masterCache)) -}}
+      {{- $masterCache = dict -}}
+    {{- end -}}
+  {{- end -}}
+  {{- $ctx = set $ctx $cacheKey $masterCache -}}
+
+  {{- $masterKey := $ctx.Release.Name -}}
+  {{- $yamlResult := dict -}}
+  {{- if not (hasKey $masterCache $masterKey) -}}
+    {{- $yamlResult = (include "__arkcase.core.integrations.compute" $ctx) -}}
+    {{- $masterCache = set $masterCache $masterKey ($yamlResult | fromYaml) -}}
+  {{- else -}}
+    {{- $yamlResult = get $masterCache $masterKey | toYaml -}}
+  {{- end -}}
+  {{- $yamlResult -}}
+{{- end -}}
+
+{{- define "arkcase.core.integrations.config" -}}
+  {{- $result := dict -}}
+  {{- range $key, $data := (include "arkcase.core.integrations" $ | fromYaml) -}}
+    {{- $result = set $result $key $data.config -}}
+  {{- end -}}
+  {{- if $result -}}
+    {{- $result | toYaml -}}
+  {{- end -}}
 {{- end -}}
 
 {{- define "arkcase.core.renderLoggers" -}}
@@ -595,4 +675,30 @@
     {{- $masterCache = set $masterCache $chartName $obj -}}
   {{- end -}}
   {{- get $masterCache $chartName | toYaml -}}
+{{- end -}}
+
+{{- define "arkcase.core.springProfiles" -}}
+  {{- $ctx := . -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "Must send the root context as the only parameter" -}}
+  {{- end -}}
+
+  {{- $result := list -}}
+
+  {{- /* Add the OIDC profile if the configuration is set */ -}}
+  {{- /* TODO: SAML will have to be factored in here */ -}}
+  {{- $oidc := (include "arkcase.oidc" $ | fromYaml) -}}
+  {{- $result = append $result ((not (empty $oidc)) | ternary "externalOidc" "ldap") -}}
+
+  {{- /* Add any profiles the integrations required */ -}}
+  {{- range $key, $data := (include "arkcase.core.integrations" $ | fromYaml) -}}
+    {{- $result = concat $result ($data.profiles | default list) -}}
+  {{- end -}}
+
+  {{- /* Add the FOIA profile if the configuration is set */ -}}
+  {{- if (include "arkcase.foia" $ | fromYaml) -}}
+    {{- $result = prepend $result "extension-foia" -}}
+  {{- end -}}
+
+  {{- $result | uniq | toYaml -}}
 {{- end -}}
