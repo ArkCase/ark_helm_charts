@@ -5,11 +5,19 @@
     {{- fail (printf "The baseUrl must be an https:// URL - [%s]" $baseUrl) -}}
   {{- end -}}
 
+  {{- /* Begin preparations for creating a second, private ingress for support access */ -}}
+  {{- $privateUrl := (include "arkcase.tools.conf" (dict "ctx" $ "value" "privateUrl") | toString) -}}
+  {{- if $privateUrl -}}
+    {{- $privateUrl = ((include "arkcase.tools.parseUrl" $privateUrl) | fromYaml) -}}
+    {{- if (ne "https" ($privateUrl.scheme | lower)) -}}
+      {{- fail (printf "The privateUrl must be an https:// URL - [%s]" $privateUrl) -}}
+    {{- end -}}
+  {{- end -}}
+
   {{- $ingress := ($.Values.global.ingress | default dict) -}}
   {{- $ingress = (kindIs "map" $ingress) | ternary $ingress dict -}}
   {{- $enabled := or (not (hasKey $ingress "enabled")) (not (empty (include "arkcase.toBoolean" $ingress.enabled))) -}}
 
-  {{- $path := $baseUrl.path | default "/" -}}
   {{- $foia := (include "arkcase.foia" $ | fromYaml) -}}
   {{- $content := (include "arkcase.cm.info" $ | fromYaml) -}}
   {{- $dev := (include "arkcase.dev" $ | fromYaml) -}}
@@ -23,20 +31,22 @@
   {{- if and $enabled $hostnames -}}
     {{- $secretData := dict -}}
     {{- $secretName := (printf "%s-ingress" (include "arkcase.fullname" $)) -}}
-    {{- $rancher := (include "arkcase.app.rancher" (dict "ctx" $ "ingress" $ingress "baseUrl" $baseUrl) | fromYaml) -}}
-    {{- if $rancher -}}
-      {{- $secretData = $secretName -}}
-    {{- else -}}
-      {{- $secretData = $ingress.secret -}}
-      {{- if (not $secretData) -}}
+
+    {{- $modules := (include "arkcase.app.ingress.sanitize-modules" $ingress | fromYaml) -}}
+    {{- $cloud := (include "arkcase.app.ingress.sanitize-cloud" (dict "ctx" $ "ingress" $ingress "baseUrl" $baseUrl) | fromYaml) -}}
+
+    {{- $secretData = $ingress.secret -}}
+    {{- if not $secretData -}}
+      {{- if $cloud.providesCertificate -}}
+        {{- /* Don't need to render a secret b/c it'll already be provided */ -}}
+        {{- $secretData = $secretName -}}
+      {{- else -}}
         {{- /* Render temporary TLS certificates */ -}}
-        {{- if not $dev -}}
-          {{- fail "You must provide the secret information for the SSL ingress" -}}
-        {{- end -}}
         {{- $cert := genSelfSignedCert (first $hostnames) (list "127.0.0.1") $hostnames 365 -}}
         {{- $secretData = dict "crt" $cert.Cert "key" $cert.Key -}}
       {{- end -}}
     {{- end -}}
+
     {{- if (kindIs "string" $secretData) }}
       {{- $secretName = $secretData }}
     {{- else if (kindIs "map" $secretData) -}}
@@ -72,45 +82,23 @@ kind: Ingress
 metadata:
   name: {{ include "arkcase.fullname" $ | quote }}
   namespace: {{ $.Release.Namespace | quote }}
+testStringValue: |
   labels: {{- include "arkcase.labels" $ | nindent 4 }}
+    {{- with $cloud.labels }}
+      {{- . | toYaml | nindent 4 }}
+    {{- end }}
     {{- with (include "arkcase.values" (dict "ctx" $ "base" "labels") | fromYaml) }}
       {{- toYaml .value | nindent 4 }}
     {{- end }}
   annotations:
-    haproxy-ingress.github.io/backend-protocol: "h1-ssl"
-    haproxy-ingress.github.io/ssl-redirect: "true"
-    haproxy-ingress.github.io/secure-backends: "true"
-    haproxy-ingress.github.io/secure-sni: "host"
-    # Maximum time to wait for a connection to a backend
-    haproxy-ingress.github.io/timeout-connect: "30s"
-    # Maximum time to wait for a complete HTTP request
-    haproxy-ingress.github.io/timeout-http-request: "2m"
-    # Maximum time to wait for a new HTTP request on keep-alive connections
-    haproxy-ingress.github.io/timeout-keep-alive: "5m"
-    # Maximum time a connection should wait on a server queue before return a 503 error to the client
-    # haproxy-ingress.github.io/timeout-queue: "15s"
-    # Maximum inactivity time on the backend side
-    # haproxy-ingress.github.io/timeout-server: "50s"
-    # Maximum inactivity time on the backend side for half-closed connections - FIN_WAIT state
-    # haproxy-ingress.github.io/timeout-server-fin: "50s"
-    #
-    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
-    nginx.ingress.kubernetes.io/ssl-redirect: "true"
-    nginx.ingress.kubernetes.io/preserve-trailing-slash: "true"
-    nginx.ingress.kubernetes.io/proxy-connect-timeout: "30"
-    nginx.ingress.kubernetes.io/auth-keepalive-timeout: "300"
-    nginx.ingress.kubernetes.io/proxy-body-size: "0"
-    {{- with $rancher }}
+    {{- with $cloud.annotations }}
       {{- . | toYaml | nindent 4 }}
     {{- end }}
     {{- with (include "arkcase.values" (dict "ctx" $ "base" "annotations") | fromYaml) }}
-      {{- toYaml . | nindent 4 }}
-    {{- end }}
-    {{- with $ingress.annotations }}
-      {{- toYaml . | nindent 4 }}
+      {{- toYaml .value | nindent 4 }}
     {{- end }}
 spec:
-    {{- with $ingress.className }}
+    {{- with $cloud.className }}
   ingressClassName: {{ . | quote }}
     {{- end }}
   rules:
@@ -136,7 +124,7 @@ spec:
           #       port:
           #         number: 8443
       {{- end }}
-      {{- if or $dev $ingress.artifacts }}
+      {{- if or $dev $modules.entries.artifacts }}
           - path: "/artifacts"
             pathType: Prefix
             backend:
@@ -145,7 +133,7 @@ spec:
                 port:
                   number: 443
       {{- end }}
-      {{- if or $dev $ingress.content }}
+      {{- if or $dev $modules.entries.content }}
         {{- if (eq $content.dialect "alfresco") }}
           - path: "/alfresco"
             pathType: Prefix
@@ -169,8 +157,17 @@ spec:
                 port:
                   number: 8443
         {{- end }}
+        {{- if (eq $content.dialect "s3") }}
+          - path: "/minio"
+            pathType: Prefix
+            backend:
+              service:
+                name: "content-main"
+                port:
+                  number: 9000
+        {{- end -}}
       {{- end }}
-      {{- if or $dev $ingress.messaging }}
+      {{- if or $dev $modules.entries.messaging }}
           - path: "/console"
             pathType: Prefix
             backend:
@@ -179,7 +176,7 @@ spec:
                 port:
                   number: 8443
       {{- end }}
-      {{- if or $dev $ingress.reports }}
+      {{- if or $dev $modules.entries.reports }}
           - path: "/pentaho"
             pathType: Prefix
             backend:
@@ -188,7 +185,7 @@ spec:
                 port:
                   number: 8443
       {{- end }}
-      {{- if or $dev $ingress.search }}
+      {{- if or $dev $modules.entries.search }}
           - path: "/solr"
             pathType: Prefix
             backend:
