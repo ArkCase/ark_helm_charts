@@ -875,6 +875,17 @@ return either the value if correct, or the empty string if not.
   {{- $finalLogs | toYaml -}}
 {{- end -}}
 
+{{- define "arkcase.dev.compute-debug" -}}
+  {{- $debug := $ -}}
+  {{- $result := dict -}}
+  {{- if and $debug (kindIs "map" $debug) -}}
+    {{- if or (not (hasKey $debug "enabled")) (not (empty (include "arkcase.toBoolean" $debug.enabled))) -}}
+      {{- $result = dict "enabled" true "suspend" (and (hasKey $debug "suspend") (not (empty (include "arkcase.toBoolean" $debug.suspend))) | ternary "y" "n") -}}
+    {{- end -}}
+  {{- end -}}
+  {{- $result | toYaml -}}
+{{- end -}}
+
 {{- define "arkcase.dev.compute" -}}
   {{- $ctx := . -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
@@ -964,21 +975,18 @@ return either the value if correct, or the empty string if not.
       {{- end -}}
       {{- $result = set $result "resources" $resources -}}
 
-      {{- $debug := $dev.debug -}}
-      {{- if and $debug (kindIs "map" $debug) -}}
-        {{- $enabled := or (not (hasKey $debug "enabled")) (not (empty (include "arkcase.toBoolean" $debug.enabled))) -}}
-        {{- if $enabled -}}
-          {{- $suspend := and (hasKey $debug "suspend") (not (empty (include "arkcase.toBoolean" $debug.suspend))) | ternary "y" "n" -}}
-          {{- $flags := dict -}}
-          {{- range $k, $v := (omit $debug "port" "suspend" "enabled") -}}
-            {{- $flags = set $flags $k (not (empty (include "arkcase.toBoolean" $v))) -}}
+      {{- $debug := dict -}}
+      {{- if and $dev.debug (kindIs "map" $dev.debug) -}}
+        {{- $debugSrc := $dev.debug -}}
+        {{- if or (not (hasKey $debugSrc "enabled")) (not (empty (include "arkcase.toBoolean" $debugSrc.enabled))) -}}
+          {{- range $part := (list "arkcase" "cloudconfig") -}}
+            {{- $partConf := (dict "enabled" true "suspend" "n") -}}
+            {{- if (hasKey $debugSrc $part) -}}
+              {{- $partConf = (include "arkcase.dev.compute-debug" (get $debugSrc $part) | fromYaml) -}}
+            {{- end -}}
+            {{- $debug = set $debug $part $partConf -}}
           {{- end -}}
-          {{- $debug = dict "enabled" $enabled "suspend" $suspend "flags" $flags -}}
-        {{- else -}}
-          {{- $debug = dict -}}
         {{- end -}}
-      {{- else -}}
-        {{- $debug = dict -}}
       {{- end -}}
       {{- $result = set $result "debug" $debug -}}
 
