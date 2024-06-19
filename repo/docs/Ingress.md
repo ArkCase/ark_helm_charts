@@ -1,13 +1,28 @@
 
 # [ArkCase](https://www.arkcase.com/) Ingress and SSL/TLS Access for Helm
 
+## Table of Contents
+
+* [Introduction](#introduction)
+* [Configuration Example](#configuration-example)
+    * [Annotations](#annotations)
+* [Supported Clouds](#supported-clouds)
+    * [Default (development)](#cloud-default)
+    * [Amazon Web Services](#cloud-aws)
+    * [Microsoft Azure](#cloud-azure)
+
+
+## <a name="introduction"></a>Introduction
+
 This document describes the model and configuration for enabling Ingress and SSL/TLS access to ArkCase as part of the original deployment. As with any community-release project, Issues and PRs are always welcome to help move this code further along.
 
 The ArkCase helm chart supports rendering an `Ingress` resource as part of the deployment procedure. This ingress resource is configured via the `global.ingress` configuration map, and the `global.conf.baseUrl` configuration string. The ingress will, in turn, reference the ArkCase application itself (through the service named `core`), under the path specified in the given `global.conf.baseUrl` value.
 
-The Ingress configuration will be activated if the `global.conf.baseUrl` configuration string is present (and non-empty). This string represents the actual URL through which ArkCase will be accessed. If the parameter is not given, the Ingress resource will not be rendered. If the URL is not valid, this will result in a template rendering error.
+The Ingress configuration will be activated if the `global.conf.baseUrl` configuration string is present and is a valid URL. This string represents the actual URL through which ArkCase will be accessed. If the parameter is not given, the Ingress resource will not be rendered. If the URL is not valid, this will result in a template rendering error.
 
-Finally, if the `global.ingress.secret` value is provided with proper values, then SSL/TLS will be enabled for the Ingress.  The secret configuration can have two formats:
+SSL/TLS will always be enabled for the ingress, as this is a necessity for the application's proper functioning. If the name of a valid secret (of type `kubernetes.io/tls`) is provided, the certificate information within will be used. If, instead, you wish to provide certificates dirctly, they can be embedded into the configuration as shown below. Finally, if you provide neither, and the cloud infrastructure selected does not by default provide a certificate, then the Helm chart will render a self-signed certificate (and secret to hold it), and use it.
+
+This is all governed via the the `global.ingress.secret` value.  The secret configuration can have two formats:
 
 - a string, which denotes the name of the secret (within the same namespace, and of type `kubernetes.io/tls`) which will be referenced by the Ingress resource in order to obtain the requisite SSL/TLS certificates
 - a map, consisting of the following keys:
@@ -15,14 +30,16 @@ Finally, if the `global.ingress.secret` value is provided with proper values, th
   - key:  the PEM-encoded SSL private key to use
   - ca: (*optional*) the PEM-encoded SSL CA certificate chain to serve up
 
+## <a name="configuration-example"></a>Configuration Example
+
 This is a brief example of what a completely valid ingress configuration (except for the certificates, of course), with SSL/TLS support, would look like:
 
 ```yaml
 global:
   conf:
     #
-    # This is the URL through which ArkCase will be accessed. If the scheme is
-    # "https", then you must provide the secret
+    # This is the URL through which ArkCase will be accessed. Only HTTPS
+    # URLs are supported because only crazy people don't use SSL these days :)
     #
     baseUrl: "https://my.arkcase-deployment.com/arkcase"
 
@@ -33,33 +50,108 @@ global:
     # the global.conf.baseUrl value is provided.
     #
     enabled: true
-  
-    #
-    # These boolean flags enable access to specific components via the same URL,
-    # should this be desired. Please note that these will be served via alternate
-    # paths (i.e. /alfresco, /pentaho, etc.). Thus, if the main application is on
-    # the root context, these flags will have no effect. (if not specified, they
-    # default to false)
-    #
-    content: true
-    reports: true
 
     #
     # This is the class name for the ingress class to use. If not given, the default
     # ingress class name for the cluster will be used.
     #
-    className: "haproxy"
+    className: "ingress-class-name"
+    
+    #
+    # You can provide extra labels for the ingress here. These values will override
+    # any conflicting labels added by default from the cloud compatibility layer.
+    #
+    labels:
+      "label1": "value1"
+      "label2": "value2"
+      # ....
+      "labelN": "valueN"
     
     #
     # You can provide extra annotations for the ingress here. These are usually
-    # closely tied to the ingress class being used
+    # closely tied to the ingress class being used. These values will override
+    # any conflicting annotations added by default from the cloud compatibility
+    # layer.
     #
     annotations:
       "annotation1": "value1"
       "annotation2": "value2"
       # ....
       "annotationN": "valueN"
-    
+
+    #
+    # The "cloud" section describes how to integrate with the load balancer and
+    # ingress controller infrastructure as provided by an overarching cloud
+    # environment like AWS, GKE, Azure, or even OpenShift.
+    #
+    # If the "cloud" stanza isn't given or is empty, the type is presumed to be "default"
+    # (i.e. the behavior seen by developers with haproxy annotations, etc), which is tuned
+    # for standalone cluster deployments (i.e. appropriate for development).
+    #
+    # There's an abbreviated syntax using the default values for the cloud's configuration,
+    # for when you don't mean to set any other configurations and just want to get off the
+    # ground quickly:
+    #
+    # cloud: "cloud-name"
+    #
+    # Here's the full syntax:
+    #
+    cloud:
+      #
+      # This will indicate which cloud compatibility settings to use. If no type
+      # is given, or the value is the string "default", then the default cloud
+      # infrastructure defaults for developer mode will be applied.
+      #
+      # For further configuration, a key with the given cloud name can be provided
+      # below, to further tune configurations.
+      #
+      type: "cloud-name" # should be "azure", "aws", "default", or other supported names
+
+      #
+      # This is the key that would be used for AWS (type must also be set to "aws")
+      #
+      aws:
+        # Default is "ELBSecurityPolicy-TLS13-1-2-2021-06"
+        sslPolicy: "ssl-policy-to-use"
+
+        # Default is "internet-facing"
+        scheme: "scheme-to-use"
+
+        # Default is "ip"
+        targetType: "target-type-to-use"
+
+        labels:
+          # ... additional labels to set ...
+        annotations:
+          # ... additional annotations to set ...
+
+      #
+      # This is the key that would be used for Azure (type must also be set to "azure")
+      #
+      azure:
+        # No config values yet, support is forthcoming...
+        labels:
+          # ... additional labels to set ...
+        annotations:
+          # ... additional annotations to set ...
+
+    #
+    # Extra modules (subsystems) to expose via the ingress.
+    #
+    # COMING SOON: public vs. private ingresses so administrators may
+    # have access to other ecosystem applications without exposing them
+    # to the general population.
+    #
+    modules:
+      # A boolean-equivalent value of "true" is transformed to "private", for now.
+      # Since we don't have private-vs-public yet, both private and public are treated the same.
+      # Only values of "public", "private", or "true" will result in access paths being rendered
+      artifacts: "public|private|off"
+      content: "public|private|off"
+      messaging: "public|private|off"
+      reports: "public|private|off"
+      search: "public|private|off"
+
     #
     # If the "secret" value is a string, then it represents the name of
     # the secret containing the SSL certificates (must be of type
@@ -157,12 +249,52 @@ global:
         # ...
 ```
 
-If the `global.conf.baseUrl` configuration value is an ***https://*** URL, then the `global.ingress.secret` configuration is required - in whatever form! This is because it makes no sense to configure an HTTPS ingress with no TLS certificates to match.  Furthermore, if the secret configuration is a map, then the `crt` and `key` values are required. The `ca` value is optional, and generally not needed.
+As mentioned above, `global.conf.baseUrl` MUST be an `https://` URL.
 
-If the baseUrl is an ***http://*** URL, then the secret information will be ignored, even if provided.
-
-### Annotations
+### <a name="annotations"></a>Annotations
 
 The `global.ingress.annotations` section is useful for providing additional instruction to the K8s ingress controller. The ingress class is selected by way of the `global.ingress.className` parameter. Some controllers support more nuanced configuration via proprietary annotations, which can be provided in this section.
 
 Documenting the possible values for those configuration annotations is beyond the scope of this document, and is left as an exercise for the reader.
+
+## <a name="supported-clouds"></a>Supported Clouds
+
+Currently, the application has out-of-the-box support for the following cloud infrastructure providers.  Feel free to submit MRs/PRs to add support for others of your choosing.  The "tag" described below is the string to be used either in the `global.ingress.cloud.type` value, or the `global.ingress.cloud` value when using the abbreviated syntax (see the configuration example, above).
+
+### <a name="cloud-default"></a>Default (i.e. development) Cloud
+
+- Tag: `default`
+- Default Annotations:
+    - `haproxy-ingress.github.io/backend-protocol: "h1-ssl"`
+    - `haproxy-ingress.github.io/ssl-redirect: "true"`
+    - `haproxy-ingress.github.io/secure-backends: "true"`
+    - `haproxy-ingress.github.io/secure-sni: "host"`
+    - `haproxy-ingress.github.io/timeout-connect: "30s"`
+    - `haproxy-ingress.github.io/timeout-http-request: "2m"`
+    - `haproxy-ingress.github.io/timeout-keep-alive: "5m"`
+- Default Labels:
+    - _None_
+
+### <a name="cloud-aws"></a>Amazon Web Services
+
+- Tag: `aws`
+- Default Annotations:
+    - `alb.ingress.kubernetes.io/backend-protocol: ${baseUrl.scheme}`
+    - `alb.ingress.kubernetes.io/listen-ports: [{"HTTPS": ${baseUrl.port}}]`
+    - `alb.ingress.kubernetes.io/scheme: "internet-facing"`
+    - `alb.ingress.kubernetes.io/target-type: "ip"`
+    - `alb.ingress.kubernetes.io/ssl-policy: "ELBSecurityPolicy-TLS13-1-2-2021-06"`
+    - `alb.ingress.kubernetes.io/ssl-redirect: "${baseUrl.port}"`
+    - `aws.k8s.acm.manager/domain_name: "${baseUrl.domainName}"`
+    - `external-dns.alpha.kubernetes.io/hostname: "${baseUrl.hostname}"`
+- Default Labels:
+    - _None_
+
+### <a name="cloud-azure"></a>Microsoft Azure
+
+- Tag: `azure`
+- Default Annotations:
+    - _TBD_
+- Default Labels:
+    - _TBD_
+

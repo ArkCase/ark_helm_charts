@@ -25,32 +25,115 @@
   {{- slice (reverse $elements) 0 2 | reverse | join "-" -}}
 {{- end -}}
 
-{{- define "arkcase.app.rancher" -}}
-  {{- $ctx := .ctx -}}
+{{- define "arkcase.app.ingress.sanitize-modules" -}}
+  {{- $ingress := ($ | default dict) -}}
+  {{- $entries := dict -}}
+  {{- $hasPrivate := false -}}
+  {{- if and $ingress $ingress.modules -}}
+    {{- range $module, $mode := ((kindIs "map" $ingress.modules) | ternary $ingress.modules dict) -}}
+      {{ if (not (include "arkcase.tools.hostnamePart" $module)) -}}
+        {{- continue -}}
+      {{- end -}}
+      {{- $mode = ($mode | toString | default "off" | lower) -}}
+      {{- if (eq "true" $mode) -}}
+        {{- $mode = "public" -}}
+      {{- end -}}
+      {{- if or (eq "public" $mode) (eq "private" $mode) -}}
+        {{- $entries = set $entries $module $mode -}}
+        {{- $hasPrivate = (or $hasPrivate (eq "private" $mode)) -}}
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
+  {{- dict "private" $hasPrivate "entries" $entries | toYaml -}}
+{{- end -}}
+
+{{- define "arkcase.app.ingress.sanitize-cloud" -}}
+  {{- $ctx := $.ctx -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "The 'ctx' parameter given must be the root context (. or $)" -}}
   {{- end -}}
 
-  {{- $ingress := .ingress -}}
-  {{- $baseUrl := .baseUrl -}}
-
-  {{- $result := dict -}}
-  {{- if and (hasKey $ingress "ai5-rancher") (not (empty (include "arkcase.toBoolean" (get $ingress "ai5-rancher")))) -}}
-    {{- $dnsName := $baseUrl.hostname -}}
-    {{- if (hasKey $ingress "ai5-hostname") -}}
-      {{- $dnsName = (include "arkcase.tools.mustSingleHostname" (get $ingress "ai5-hostname" | toString)) -}}
-      {{- /* Make sure the hostname has at least 3 components ... can't be a domain, or a tld */ -}}
-      {{- if (lt (splitList "." $dnsName | len) 3) -}}
-        {{- fail (printf "The ai5-hostname value [%s] is not valid - must have at least 3 components" $dnsName) -}}
-      {{- end -}}
-    {{- end -}}
-
-    {{- /* TODO: Gate these based on specific flags? */ -}}
-    {{- /* We use "toString" everywhere to ensure that the values are strings ... paranoia ;) */ -}}
-    {{- $result = set $result "external-dns.alpha.kubernetes.io/hostname" ($dnsName | toString) -}}
-    {{- $result = set $result "cert-manager.io/common-name" ($baseUrl.hostname | toString) -}}
-    {{- $result = set $result "cert-manager.io/cluster-issuer" (include "arkcase.app.issuerByDomain" $baseUrl.hostname | toString) -}}
+  {{- $baseUrl := $.baseUrl -}}
+  {{- if or (not $baseUrl) (not (kindIs "map" $baseUrl)) -}}
+    {{- fail "Must provide the parsed-out base URL object as the baseUrl parameter" -}}
   {{- end -}}
 
-  {{- $result | toYaml -}}
+  {{- $ingress := ($.ingress | default dict) -}}
+  {{- $result := dict -}}
+
+  {{- /* First, set the basic stuff that overrides everything else */ -}}
+  {{- if $ingress.className -}}
+    {{- $result = set $result "className" $ingress.className -}}
+  {{- end -}}
+  {{- $result = set $result "labels" ((kindIs "map" $ingress.labels) | ternary $ingress.labels dict) -}}
+  {{- $result = set $result "annotations" ((kindIs "map" $ingress.annotations) | ternary $ingress.annotations dict) -}}
+
+  {{- /* Now check to see if we have any special cloud stuff */ -}}
+  {{- /* (we ALWAYS have cloud stuff - even if it's just "default" */ -}}
+  {{- $defaultCloud := (dict "type" "default") -}}
+
+  {{- $cloud := dict -}}
+  {{- if (hasKey $ingress "cloud") -}}
+    {{- /* No backwards compatibility applicable */ -}}
+    {{- $cloud = $ingress.cloud -}}
+  {{- else if (include "arkcase.toBoolean" (get $ingress "ai5-rancher")) -}}
+    {{- /* Provide a little backwards compatibility */ -}}
+    {{- $hostname := $baseUrl.hostname -}}
+    {{- if (hasKey $ingress "ai5-hostname") -}}
+      {{- $hostname = (get $ingress "ai5-hostname" | toString) -}}
+    {{- end -}}
+    {{- $cloud = dict "type" "ai5" "ai5" (dict "public" (ne $hostname $baseUrl.hostname)) -}}
+  {{- end -}}
+
+  {{- /* Make sure the $cloud map has the expected form */ -}}
+  {{- if not (kindIs "map" $cloud) -}}
+    {{- if not (kindIs "string" $cloud) -}}
+      {{- fail (printf "The ingress's cloud specification may be a string or a map, but not a %s: [%s]" (kindOf $cloud) $cloud) -}}
+    {{- end -}}
+    {{- $cloud = dict "type" $cloud -}}
+  {{- end -}}
+  {{- $cloud = merge $cloud $defaultCloud -}}
+
+  {{- /* Get the specific cloud configurations from the values file */ -}}
+  {{- $cloudType := $cloud.type -}}
+  {{- $cloud = ((hasKey $cloud $cloudType) | ternary (get $cloud $cloudType) dict) -}}
+  {{- if not (kindIs "map" $cloud) -}}
+    {{- $cloud = dict -}}
+  {{- end -}}
+
+  {{- /* Get the general cloud configurations from the chart support */ -}}
+  {{- $cloudSettings := ($ctx.Files.Get "clouds.yaml" | fromYaml | default dict) -}}
+  {{- if $cloudSettings -}}
+    {{- if not (hasKey $cloudSettings $cloudType) -}}
+      {{- /* If we were given an unknown cloud configuration, use our default settings */ -}}
+      {{- $cloudType = $defaultCloud.type -}}
+    {{- end -}}
+    {{- $cloudSettings = get $cloudSettings $cloudType -}}
+    {{- if and $cloudSettings (kindIs "map" $cloudSettings) -}}
+
+      {{- /* This will be used for rendering the labels/annotations */ -}}
+      {{- $valueCtx := dict "url" (deepCopy $baseUrl) "cfg" (omit $cloud "labels" "annotations" "providesCertificate") -}}
+
+      {{- /* Compute any dynamic label and annotation values */ -}}
+      {{- range $element := (list "labels" "annotations") -}}
+        {{- if not (hasKey $cloudSettings $element) -}}
+          {{- continue -}}
+        {{- end -}}
+
+        {{- $map := (get $cloudSettings $element) -}}
+        {{- range $key, $value := $map -}}
+          {{- $map = set $map $key (tpl ($value | toString) $valueCtx | trim) -}}
+        {{- end -}}
+        {{- $cloud = set $cloudSettings $element $map -}}
+      {{- end -}}
+
+      {{- /* Apply the computed values where necessary */ -}}
+      {{- $cloud = merge $cloud $cloudSettings -}}
+    {{- end -}}
+  {{- end -}}
+
+  {{- /* Ensure this value is a boolean! */ -}}
+  {{- $cloud = set $cloud "providesCertificate" (not (empty (include "arkcase.toBoolean" $cloud.providesCertificate))) -}}
+
+  {{- merge $result (pick $cloud "className" "labels" "annotations" "providesCertificate") | toYaml -}}
 {{- end -}}
