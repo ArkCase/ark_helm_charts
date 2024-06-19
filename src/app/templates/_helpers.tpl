@@ -102,32 +102,34 @@
   {{- end -}}
 
   {{- /* Get the general cloud configurations from the chart support */ -}}
-  {{- $cloudSupport := ($ctx.Files.Get "clouds.yaml" | fromYaml | default dict) -}}
-  {{- if $cloudSupport -}}
-    {{- if not (hasKey $cloudSupport $cloudType) -}}
+  {{- $cloudSettings := ($ctx.Files.Get "clouds.yaml" | fromYaml | default dict) -}}
+  {{- if $cloudSettings -}}
+    {{- if not (hasKey $cloudSettings $cloudType) -}}
       {{- /* If we were given an unknown cloud configuration, use our default settings */ -}}
       {{- $cloudType = $defaultCloud.type -}}
     {{- end -}}
-    {{- $cloudSupport = get $cloudSupport $cloudType -}}
-    {{- if and $cloudSupport (kindIs "map" $cloudSupport) -}}
-      {{- $cloud = merge $cloud $cloudSupport -}}
-    {{- end -}}
-  {{- end -}}
+    {{- $cloudSettings = get $cloudSettings $cloudType -}}
+    {{- if and $cloudSettings (kindIs "map" $cloudSettings) -}}
 
-  {{- /* This will be used for rendering the labels/annotations */ -}}
-  {{- $valueCtx := dict "url" (deepCopy $baseUrl) "cfg" (omit $cloud "labels" "annotations" "providesCertificate") -}}
+      {{- /* This will be used for rendering the labels/annotations */ -}}
+      {{- $valueCtx := dict "url" (deepCopy $baseUrl) "cfg" (omit $cloud "labels" "annotations" "providesCertificate") -}}
 
-  {{- /* Compute any dynamic label and annotation values */ -}}
-  {{- range $element := (list "labels" "annotations") -}}
-    {{- if not (hasKey $cloud $element) -}}
-      {{- continue -}}
-    {{- end -}}
+      {{- /* Compute any dynamic label and annotation values */ -}}
+      {{- range $element := (list "labels" "annotations") -}}
+        {{- if not (hasKey $cloudSettings $element) -}}
+          {{- continue -}}
+        {{- end -}}
 
-    {{- $map := (get $cloud $element) -}}
-    {{- range $key, $value := $map -}}
-      {{- $map = set $map $key (tpl ($value | toString) $valueCtx | trim) -}}
+        {{- $map := (get $cloudSettings $element) -}}
+        {{- range $key, $value := $map -}}
+          {{- $map = set $map $key (tpl ($value | toString) $valueCtx | trim) -}}
+        {{- end -}}
+        {{- $cloud = set $cloudSettings $element $map -}}
+      {{- end -}}
+
+      {{- /* Apply the computed values where necessary */ -}}
+      {{- $cloud = merge $cloud $cloudSettings -}}
     {{- end -}}
-    {{- $cloud = set $cloud $element $map -}}
   {{- end -}}
 
   {{- /* Ensure this value is a boolean! */ -}}

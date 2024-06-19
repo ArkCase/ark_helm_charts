@@ -48,23 +48,17 @@ default:
     haproxy-ingress.github.io/secure-backends: "true"
     haproxy-ingress.github.io/secure-sni: "host"
     # Maximum time to wait for a connection to a backend
-    haproxy-ingress.github.io/timeout-connect: >
-      {{- $.cfg.timeoutConnect | default "30s" -}}
+    haproxy-ingress.github.io/timeout-connect: "30s"
     # Maximum time to wait for a complete HTTP request
-    haproxy-ingress.github.io/timeout-http-request: >
-      {{- $.cfg.timeoutHttpRequest | default "2m" -}}
+    haproxy-ingress.github.io/timeout-http-request: "2m"
     # Maximum time to wait for a new HTTP request on keep-alive connections
-    haproxy-ingress.github.io/timeout-keep-alive: >
-      {{- $.cfg.timeoutKeepAlive | default "5m" -}}
+    haproxy-ingress.github.io/timeout-keep-alive: "5m"
     # Maximum time a connection should wait on a server queue before return a 503 error to the client
-    # haproxy-ingress.github.io/timeout-queue: >
-    #   {{- $.cfg.timeoutQueue | default "15s" -}}
+    # haproxy-ingress.github.io/timeout-queue: "15s"
     # Maximum inactivity time on the backend side
-    # haproxy-ingress.github.io/timeout-server: >
-    #   {{- $.cfg.timeoutServer | default "50s" -}}
+    # haproxy-ingress.github.io/timeout-server: "50s"
     # Maximum inactivity time on the backend side for half-closed connections - FIN_WAIT state
-    # haproxy-ingress.github.io/timeout-server-fin: >
-    #   {{- $.cfg.timeoutServerFin | default "50s" -}}
+    # haproxy-ingress.github.io/timeout-server-fin: "50s"
 
 ai5:
   # We don't need this, b/c cert-manager
@@ -83,12 +77,9 @@ ai5:
       {{- $.url.scheme | upper -}}
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
     nginx.ingress.kubernetes.io/preserve-trailing-slash: "true"
-    nginx.ingress.kubernetes.io/proxy-connect-timeout: >
-      {{- $.cfg.connectTimeout | default "30" -}}
-    nginx.ingress.kubernetes.io/auth-keepalive-timeout: >
-      {{- $.cfg.authKeepaliveTimeout | default "300" -}}
-    nginx.ingress.kubernetes.io/proxy-body-size: >
-      {{- $.cfg.proxyBodySize | default "0" -}}
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "30"
+    nginx.ingress.kubernetes.io/auth-keepalive-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
 
 aws:
   className: "alb"
@@ -99,14 +90,11 @@ aws:
       {{- $.url.scheme | upper -}}
     alb.ingress.kubernetes.io/listen-ports: >
       {{- list (dict ($.url.scheme | upper) $.url.port) | mustToJson -}}
-    alb.ingress.kubernetes.io/scheme: >
-      {{- $.cfg.scheme | default "internet-facing" -}}
-    alb.ingress.kubernetes.io/target-type: >
-      {{- $.cfg.targetType | default "ip" -}}
-    alb.ingress.kubernetes.io/ssl-policy: >
-      {{- $.cfg.sslPolicy | default "ELBSecurityPolicy-TLS13-1-2-2021-06" -}}
+    alb.ingress.kubernetes.io/scheme: "internet-facing"
+    alb.ingress.kubernetes.io/ssl-policy: "ELBSecurityPolicy-TLS13-1-2-2021-06"
     alb.ingress.kubernetes.io/ssl-redirect: >
       {{- $.url.port -}}
+    alb.ingress.kubernetes.io/target-type: "ip"
     aws.k8s.acm.manager/domain_name: >
       {{- $.url.hostname -}}
     external-dns.alpha.kubernetes.io/hostname: >
