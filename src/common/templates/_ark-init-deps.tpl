@@ -103,7 +103,7 @@ that checks the boot order
       {{- $portSource := dict -}}
       {{- if (hasKey $replacement "url") -}}
         {{- $url := $replacement.url -}}
-        {{- if hasKey $url "host" -}}
+        {{- if hasKey $url "hostname" -}}
           {{- $newHostName = $url.hostname -}}
           {{- $portSource = ((hasKey $url "port") | ternary $url $portSource) -}}
         {{- end -}}
@@ -353,9 +353,9 @@ that checks the boot order (remember to |bool the outcome!)
   {{- end -}}
 {{- end -}}
 
-{{- /* Will return a YAML map with either "url" (dict), or "host" (string) and "port" (int) entries */ -}}
-{{- /* If the "url" member is present, neither "host" nor "port" will be present. */ -}}
-{{- /* If either of the "host" or "port" members are present, then the "url" member will not be present */ -}}
+{{- /* Will return a YAML map with either "url" (dict), or "hostname" (string) and "port" (int) entries */ -}}
+{{- /* If the "url" member is present, neither "hostname" nor "port" will be present. */ -}}
+{{- /* If either of the "hostname" or "port" members are present, then the "url" member will not be present */ -}}
 {{- /* The map may empty, indicating that there is no override value */ -}}
 {{- define "arkcase.dependency.target" -}}
   {{- $ctx := $.ctx -}}
@@ -373,26 +373,34 @@ that checks the boot order (remember to |bool the outcome!)
 
   {{- $result := dict -}}
   {{- range $replacement := (list $global $local) -}}
-    {{- if and (empty $result) $replacement $replacement.found (kindIs "map" $replacement.value) -}}
-      {{- if (hasKey $replacement.value "url") -}}
-        {{- $url := (include "arkcase.tools.parseUrl" ($replacement.value.url | toString) | fromYaml) -}}
-        {{- if $url -}}
-          {{- $result = dict "url" $url -}}
+    {{- if or $result (not $replacement) (not $replacement.found) (not (kindIs "map" $replacement.value)) -}}
+      {{- break -}}
+    {{- end -}}
+
+    {{- /* If this dependency is specified by URL, then parse it */ -}}
+    {{- if (hasKey $replacement.value "url") -}}
+      {{- $url := (include "arkcase.tools.parseUrl" ($replacement.value.url | toString) | fromYaml) -}}
+      {{- if $url -}}
+        {{- $result = dict "url" $url -}}
+      {{- end -}}
+      {{- break -}}
+    {{- end -}}
+
+    {{- /* If it's provided using hostname and port, then use those (port is optional, which lets us use the default "OOTB" value) */ -}}
+    {{- if or (hasKey $replacement.value "hostname") (hasKey $replacement.value "port") -}}
+      {{- $newHostName := "" -}}
+      {{- if (hasKey $replacement.value "hostname") -}}
+        {{- $newHostName = ($replacement.value.hostname | toString) -}}
+        {{- if $newHostName -}}
+          {{- $result = set $result "hostname" $newHostName -}}
         {{- end -}}
-      {{- else if or (hasKey $replacement.value "hostname") (hasKey $replacement.value "port") -}}
-        {{- $newHostName := "" -}}
-        {{- $newPort := 0 -}}
-        {{- if (hasKey $replacement.value "hostname") -}}
-          {{- $newHostName = ($replacement.value.hostname | toString) -}}
-          {{- if $newHostName -}}
-            {{- $result = set $result "host" $newHostName -}}
-          {{- end -}}
-        {{- end -}}
-        {{- if (hasKey $replacement.value "port") -}}
-          {{- $newPort = (include "arkcase.tools.checkNumericPort" $replacement.value.port | atoi) -}}
-          {{- if $newPort -}}
-            {{- $result = set $result "port" $newPort -}}
-          {{- end -}}
+      {{- end -}}
+
+      {{- $newPort := 0 -}}
+      {{- if (hasKey $replacement.value "port") -}}
+        {{- $newPort = (include "arkcase.tools.checkNumericPort" $replacement.value.port | atoi) -}}
+        {{- if $newPort -}}
+          {{- $result = set $result "port" $newPort -}}
         {{- end -}}
       {{- end -}}
     {{- end -}}
