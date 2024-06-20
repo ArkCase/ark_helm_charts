@@ -788,7 +788,7 @@ return either the value if correct, or the empty string if not.
     {{- if $hostInfo._1 -}}
       {{- $port = ($hostInfo._1 | int) -}}
     {{- else if eq "http" $data.scheme -}}
-      {{- $port := 80 -}}
+      {{- $port = 80 -}}
     {{- else if eq "https" $data.scheme -}}
       {{- $port = 443 -}}
     {{- else if eq "ldap" $data.scheme -}}
