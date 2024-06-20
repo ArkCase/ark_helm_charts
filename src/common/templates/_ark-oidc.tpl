@@ -25,29 +25,39 @@
     {{- range $id, $client := $clients -}}
 
       {{- /* This allows us to ignore empty client configurations */ -}}
-      {{- if $client -}}
+      {{- if not $client -}}
+        {{- continue -}}
+      {{- end -}}
 
-        {{- if (not (kindIs "map" $client)) -}}
-          {{- fail (printf "OIDC configuration for client '%s' is of type [%s], but it should be a map" $id (kindOf $client)) -}}
-        {{- end -}}
+      {{- if (not (kindIs "map" $client)) -}}
+        {{- fail (printf "OIDC configuration for client '%s' is of type [%s], but it should be a map" $id (kindOf $client)) -}}
+      {{- end -}}
 
-        {{- /* Allow clients to be enabled/disabled individually */ -}}
-        {{- if or (not (hasKey $client "enabled")) (include "arkcase.toBoolean" $client.enabled) -}}
-          {{- /* TODO: Is this correct? Do we want to check ALL settings? */ -}}
-          {{- $missing := list -}}
-          {{- range $key := $required -}}
-            {{- if (not (hasKey $client $key)) -}}
-              {{- $missing = append $missing $key -}}
-            {{- end -}}
-          {{- end -}}
-          {{- if $missing -}}
-            {{- fail (printf "OIDC Configuration for client '%s' is missing the following configurations: %s" $id $missing) -}}
-          {{- end -}}
+      {{- /* Allow clients to be enabled/disabled individually */ -}}
+      {{- if and (hasKey $client "enabled") (not (include "arkcase.toBoolean" $client.enabled)) -}}
+        {{- continue -}}
+      {{- end -}}
 
-          {{- /* The client is valid! */ -}}
-          {{- $results = set $results $id (omit $client "enabled") -}}
+      {{- /* TODO: Is this correct? Do we want to check ALL settings? */ -}}
+      {{- $missing := list -}}
+      {{- range $key := $required -}}
+        {{- if (not (hasKey $client $key)) -}}
+          {{- $missing = append $missing $key -}}
         {{- end -}}
       {{- end -}}
+
+      {{- if $missing -}}
+        {{- fail (printf "OIDC Configuration for client '%s' is missing the following configurations: %s" $id $missing) -}}
+      {{- end -}}
+
+      {{- /*
+         TODO: The clientId and clientSecret values MUST come from a secret, and
+               be exposed to the application via environment variables, so the
+               generated configuration will point to those envvars
+      */ -}}
+
+      {{- /* The client is valid! */ -}}
+      {{- $results = set $results $id (omit $client "enabled") -}}
     {{- end -}}
   {{- end -}}
   {{- $results | toYaml -}}
@@ -83,7 +93,8 @@
         {{- if $enabled -}}
           {{- $oidc = dict "clients" $clients -}}
           {{- if (hasKey $conf "legacyMode") -}}
-            {{- $oidc = set $oidc "legacyMode" $conf.legacyMode -}}
+            {{- /* Ensure the value is a boolean */ -}}
+            {{- $oidc = set $oidc "legacyMode" (not (empty (include "arkcase.toBoolean" $conf.legacyMode))) -}}
           {{- end -}}
         {{- end -}}
       {{- end -}}

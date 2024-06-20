@@ -1,0 +1,107 @@
+#
+# The URL object has this structure (as produced by "arkcase.tools.parseUrl"):
+#
+# original-url: https://some-login:some-password@some.fully-qualified.host.name/some/path/in/the/url?param1=value2&param2=value2&param3=value3#the-anchor-from-the-url
+#
+# parsed-url:
+#   baseUrl: https://some.fully-qualified.host.name/some/path/in/the/url
+#   context: some
+#   domains:
+#     - ""
+#     - name
+#     - host.name
+#     - fully-qualified.host.name
+#   fragment: the-anchor-from-the-url
+#   host: some.fully-qualified.host.name
+#   hostPort: some.fully-qualified.host.name:443
+#   hostname: some.fully-qualified.host.name
+#   hostnameParts: 4
+#   opaque: ""
+#   parameters:
+#     - param1=value2
+#     - param2=value2
+#     - param3=value3
+#   path: /some/path/in/the/url
+#   pathElements:
+#     - some
+#     - path
+#     - in
+#     - the
+#     - url
+#   port: 443
+#   query: param1=value2&param2=value2&param3=value3
+#   scheme: https
+#   tld: name
+#   url: https://some-login:some-password@some.fully-qualified.host.name/some/path/in/the/url?param1=value2&param2=value2&param3=value3#the-anchor-from-the-url
+#   userinfo: some-login:some-password
+#
+# The context provided for the templates matches this object:
+#
+# context:
+#   url: (parsed URL as above)
+#   cfg: the cloud-specific configurations
+
+default:
+  annotations:
+    haproxy-ingress.github.io/backend-protocol: "h1-ssl"
+    haproxy-ingress.github.io/ssl-redirect: "true"
+    haproxy-ingress.github.io/secure-backends: "true"
+    haproxy-ingress.github.io/secure-sni: "host"
+    # Maximum time to wait for a connection to a backend
+    haproxy-ingress.github.io/timeout-connect: "30s"
+    # Maximum time to wait for a complete HTTP request
+    haproxy-ingress.github.io/timeout-http-request: "2m"
+    # Maximum time to wait for a new HTTP request on keep-alive connections
+    haproxy-ingress.github.io/timeout-keep-alive: "5m"
+    # Maximum time a connection should wait on a server queue before return a 503 error to the client
+    # haproxy-ingress.github.io/timeout-queue: "15s"
+    # Maximum inactivity time on the backend side
+    # haproxy-ingress.github.io/timeout-server: "50s"
+    # Maximum inactivity time on the backend side for half-closed connections - FIN_WAIT state
+    # haproxy-ingress.github.io/timeout-server-fin: "50s"
+
+ai5:
+  # We don't need this, b/c cert-manager
+  providesCertificate: true
+  labels:
+    # None
+  annotations:
+    # This is a quirk of our implementation ...
+    external-dns.alpha.kubernetes.io/hostname: >
+      {{- (hasSuffix ".com" $.url.hostname) | ternary (printf "%s.net" ($.url.hostname | trimSuffix ".com")) $.url.hostname -}}
+    cert-manager.io/common-name: >
+      {{- $.url.hostname -}}
+    cert-manager.io/cluster-issuer: >
+      {{- index $.url.domains 2 | replace "." "-" -}}
+    nginx.ingress.kubernetes.io/backend-protocol: >
+      {{- $.url.scheme | upper -}}
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/preserve-trailing-slash: "true"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "30"
+    nginx.ingress.kubernetes.io/auth-keepalive-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
+
+aws:
+  className: "alb"
+  labels:
+    # None
+  annotations:
+    alb.ingress.kubernetes.io/backend-protocol: >
+      {{- $.url.scheme | upper -}}
+    alb.ingress.kubernetes.io/listen-ports: >
+      {{- list (dict ($.url.scheme | upper) $.url.port) | mustToJson -}}
+    alb.ingress.kubernetes.io/scheme: "internet-facing"
+    alb.ingress.kubernetes.io/ssl-policy: "ELBSecurityPolicy-TLS13-1-2-2021-06"
+    alb.ingress.kubernetes.io/ssl-redirect: >
+      {{- $.url.port -}}
+    alb.ingress.kubernetes.io/target-type: "ip"
+    aws.k8s.acm.manager/domain_name: >
+      {{- $.url.hostname -}}
+    external-dns.alpha.kubernetes.io/hostname: >
+      {{- $.url.hostname -}}
+
+azure:
+  labels:
+    # Unknown
+  annotations:
+    # Unknown

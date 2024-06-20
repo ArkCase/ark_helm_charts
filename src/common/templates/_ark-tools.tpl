@@ -782,23 +782,49 @@ return either the value if correct, or the empty string if not.
     {{- $port := 0 -}}
     {{- if $hostInfo._1 -}}
       {{- $port = ($hostInfo._1 | int) -}}
-    {{- else if eq "https" $data.scheme -}}
-      {{- $port = 443 -}}
     {{- else if eq "http" $data.scheme -}}
       {{- $port := 80 -}}
+    {{- else if eq "https" $data.scheme -}}
+      {{- $port = 443 -}}
+    {{- else if eq "ldap" $data.scheme -}}
+      {{- $port = 389 -}}
     {{- else if eq "ldaps" $data.scheme -}}
       {{- $port = 636 -}}
-    {{- else if eq "ldap" $data.scheme -}}
-      {{- $port := 389 -}}
     {{- else if eq "ftp" $data.scheme -}}
-      {{- $port := 21 -}}
+      {{- $port = 21 -}}
     {{- else if eq "ftps" $data.scheme -}}
-      {{- $port := 990 -}}
+      {{- $port = 990 -}}
+    {{- else if eq "imap" $data.scheme -}}
+      {{- $port = 143 -}}
+    {{- else if eq "imaps" $data.scheme -}}
+      {{- $port = 993 -}}
+    {{- else if eq "pop" $data.scheme -}}
+      {{- $port = 110 -}}
+    {{- else if eq "pops" $data.scheme -}}
+      {{- $port = 995 -}}
+    {{- else if eq "smtp" $data.scheme -}}
+      {{- $port = 25 -}}
+    {{- else if eq "smtps" $data.scheme -}}
+      {{- $port = 465 -}}
+    {{- else if eq "ssh" $data.scheme -}}
+      {{- $port = 22 -}}
     {{- else if eq "sftp" $data.scheme -}}
-      {{- $port := 22 -}}
+      {{- $port = 22 -}}
     {{- end -}}
     {{- $data = set $data "port" $port -}}
     {{- $data = set $data "hostPort" (printf "%s:%d" $data.hostname $data.port) -}}
+  {{- end -}}
+
+  {{- if hasKey $data "hostname" -}}
+    {{- $domains := list -}}
+    {{- $parts := list -}}
+    {{- range $k := (splitList "." $data.hostname | reverse) -}}
+      {{- $parts = prepend $parts $k -}}
+      {{- $domains = append $domains ($parts | join ".") -}}
+    {{- end -}}
+    {{- $data = set $data "tld" (first $domains) -}}
+    {{- $data = set $data "domains" (prepend (initial $domains) "") -}}
+    {{- $data = set $data "hostnameParts" (len $parts) -}}
   {{- end -}}
 
   {{- if hasKey $data "path" -}}
@@ -847,6 +873,17 @@ return either the value if correct, or the empty string if not.
     {{- end -}}
   {{- end -}}
   {{- $finalLogs | toYaml -}}
+{{- end -}}
+
+{{- define "arkcase.dev.compute-debug" -}}
+  {{- $debug := $ -}}
+  {{- $result := dict -}}
+  {{- if and $debug (kindIs "map" $debug) -}}
+    {{- if or (not (hasKey $debug "enabled")) (not (empty (include "arkcase.toBoolean" $debug.enabled))) -}}
+      {{- $result = dict "enabled" true "suspend" (and (hasKey $debug "suspend") (not (empty (include "arkcase.toBoolean" $debug.suspend))) | ternary "y" "n") -}}
+    {{- end -}}
+  {{- end -}}
+  {{- $result | toYaml -}}
 {{- end -}}
 
 {{- define "arkcase.dev.compute" -}}
@@ -938,21 +975,18 @@ return either the value if correct, or the empty string if not.
       {{- end -}}
       {{- $result = set $result "resources" $resources -}}
 
-      {{- $debug := $dev.debug -}}
-      {{- if and $debug (kindIs "map" $debug) -}}
-        {{- $enabled := or (not (hasKey $debug "enabled")) (not (empty (include "arkcase.toBoolean" $debug.enabled))) -}}
-        {{- if $enabled -}}
-          {{- $suspend := and (hasKey $debug "suspend") (not (empty (include "arkcase.toBoolean" $debug.suspend))) | ternary "y" "n" -}}
-          {{- $flags := dict -}}
-          {{- range $k, $v := (omit $debug "port" "suspend" "enabled") -}}
-            {{- $flags = set $flags $k (not (empty (include "arkcase.toBoolean" $v))) -}}
+      {{- $debug := dict -}}
+      {{- if and $dev.debug (kindIs "map" $dev.debug) -}}
+        {{- $debugSrc := $dev.debug -}}
+        {{- if or (not (hasKey $debugSrc "enabled")) (not (empty (include "arkcase.toBoolean" $debugSrc.enabled))) -}}
+          {{- range $part := (list "arkcase" "cloudconfig") -}}
+            {{- $partConf := (dict "enabled" true "suspend" "n") -}}
+            {{- if (hasKey $debugSrc $part) -}}
+              {{- $partConf = (include "arkcase.dev.compute-debug" (get $debugSrc $part) | fromYaml) -}}
+            {{- end -}}
+            {{- $debug = set $debug $part $partConf -}}
           {{- end -}}
-          {{- $debug = dict "enabled" $enabled "suspend" $suspend "flags" $flags -}}
-        {{- else -}}
-          {{- $debug = dict -}}
         {{- end -}}
-      {{- else -}}
-        {{- $debug = dict -}}
       {{- end -}}
       {{- $result = set $result "debug" $debug -}}
 
