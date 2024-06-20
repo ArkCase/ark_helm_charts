@@ -10,9 +10,22 @@
 {{- end -}}
 
 {{- define "arkcase.acme.volumeMount" -}}
-  {{- include "arkcase.subsystem-access.volumeMount.admin" (dict "ctx" $ "subsys" "acme" "key" "password" "mountPath" "/.acme.password") -}}
+  {{- if not (include "arkcase.isRootContext" $) -}}
+    {{- fail "The parameter given should be the root context (. or $)" -}}
+  {{- end -}}
+  {{- include "arkcase.subsystem-access.volumeMount.admin" (dict "ctx" $ "subsys" "acme" "key" "password" "mountPath" "/.acme.password") | nindent 0}}
+- name: &acmeSslVol "acme-ssl-data"
+  mountPath: &acmeSslDir "/.ssl"
 {{- end -}}
 
 {{- define "arkcase.acme.volume" -}}
-  {{- include "arkcase.subsystem-access.volume.admin" (dict "ctx" $ "subsys" "acme") -}}
+  {{- if not (include "arkcase.isRootContext" $) -}}
+    {{- fail "The parameter given should be the root context (. or $)" -}}
+  {{- end -}}
+  {{- include "arkcase.subsystem-access.volume.admin" (dict "ctx" $ "subsys" "acme") | nindent 0}}
+# The shared certificates volume is laughably tiny
+- name: *acmeSslVol
+  emptyDir:
+    medium: "Memory"
+    sizeLimit: 4Mi
 {{- end -}}

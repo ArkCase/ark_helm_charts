@@ -207,6 +207,9 @@ spec:
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "pentaho") | nindent 12 }}
           volumeMounts:
+            {{- include "arkcase.pentaho.license.volumeMounts" (dict "ctx" $ "volume" "secrets" "path" "/app/init/licenses") | nindent 12 }}
+            {{- include "arkcase.trusts.mount" $ | nindent 12 }}
+            {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
             - name: *dataVol
               mountPath: *dataDir
             - name: *tempVol
@@ -215,8 +218,6 @@ spec:
               mountPath: *initDir
             - name: *logsVol
               mountPath: *logsDir
-            - name: &sslVol "ssl-vol"
-              mountPath: &sslDir "/.ssl"
             {{- include "arkcase.trusts.mount" $ | nindent 12 }}
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
             {{- include "arkcase.pentaho.license.volumeMounts" $ | nindent 12 }}
@@ -263,18 +264,11 @@ spec:
           {{- include "arkcase.subsystem.ports" (dict "ctx" $ "name" "clusteredHaproxy") | nindent 10 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "haproxy") | nindent 12 }}
           volumeMounts:
-            - name: *sslVol
-              mountPath: *sslDir
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/etc/haproxy/haproxy.cfg") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/etc/haproxy/lua/responses.lua") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/entrypoint" "subPath" "entrypoint-haproxy") | nindent 12 }}
         {{- end }}
       volumes:
-        # The shared certificates volume is laughably tiny
-        - name: *sslVol
-          emptyDir:
-            medium: "Memory"
-            sizeLimit: 1Mi
         {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "init") | nindent 8 }}
         {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "temp") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}

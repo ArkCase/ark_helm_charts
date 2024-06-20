@@ -293,7 +293,7 @@ spec:
                 -Dconfiguration.client.spring.path=spring
                 -Dspring.profiles.active={{ $springProfiles | join "," }}
                 -Duser.home=$(HOME_DIR)
-                {{- with $debug }}
+                {{- with $debug.arkcase }}
                 -Xdebug
                 -agentlib:jdwp=transport=dt_socket,server=y,suspend={{ .suspend }},address=*:8888
                 -Dcom.sun.management.jmxremote.port=7091 -Dcom.sun.management.jmxremote.authenticate=false
@@ -354,6 +354,8 @@ spec:
             {{- include "arkcase.acme.env" $ | nindent 12 }}
             - name: ARKCASE_JDBC_URL
               value: {{ $db.jdbc.url | quote }}
+            - name: ACME_KEYSTORE_WITH_TRUSTS
+              value: "true"
             - name: ACME_KEY_ALIAS
               value: "arkcase-private-key-$(POD_NAME)"
             - name: JAVA_KEYSTORE
@@ -371,6 +373,13 @@ spec:
                 -XX:MinRAMPercentage=50
                 -XX:MaxRAMPercentage=80
                 -Djava.keystore.key.alias=$(ACME_KEY_ALIAS)
+                {{- with $debug.cloudconfig }}
+                -Xdebug
+                -agentlib:jdwp=transport=dt_socket,server=y,suspend={{ .suspend }},address=*:8889
+                -Dcom.sun.management.jmxremote.port=7092 -Dcom.sun.management.jmxremote.authenticate=false
+                -Dcom.sun.management.jmxremote.ssl=false
+                -XX:FlightRecorderOptions=stackdepth=512,samplethreads=true
+                {{- end }}
             {{- if $dev }}
             - name: DEVELOPMENT
               value: "true"
