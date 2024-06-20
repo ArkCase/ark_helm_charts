@@ -37,17 +37,19 @@ ACME_CLIENT_PASSWORD
   {{- if not (include "arkcase.isRootContext" $) -}}
     {{- fail "The parameter given should be the root context (. or $)" -}}
   {{- end -}}
-- name: &acmeVol "acme"
+- name: &acmePasswordVol "acme-password"
   mountPath: "/.acme.password"
   subPath: &acmePassword {{ include "arkcase.acme.passwordVariable" $ | quote }}
   readOnly: true
+- name: &acmeSslVol "acme-ssl-data"
+  mountPath: &acmeSslDir "/.ssl"
 {{- end -}}
 
 {{- define "arkcase.acme.volume" -}}
   {{- if not (include "arkcase.isRootContext" $) -}}
     {{- fail "The parameter given should be the root context (. or $)" -}}
   {{- end -}}
-- name: *acmeVol
+- name: *acmePasswordVol
   secret:
     optional: false
     secretName: {{ include "arkcase.acme.sharedSecret" $ | quote }}
@@ -55,4 +57,9 @@ ACME_CLIENT_PASSWORD
     items:
       - key: *acmePassword
         path: *acmePassword
+# The shared certificates volume is laughably tiny
+- name: *acmeSslVol
+  emptyDir:
+    medium: "Memory"
+    sizeLimit: 4Mi
 {{- end -}}

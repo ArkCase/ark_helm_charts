@@ -228,8 +228,6 @@ spec:
             {{- include "arkcase.pentaho.license.volumeMounts" (dict "ctx" $ "volume" "secrets" "path" "/app/init/licenses") | nindent 12 }}
             {{- include "arkcase.trusts.mount" $ | nindent 12 }}
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
-            - name: &sslVol "ssl-vol"
-              mountPath: &sslDir "/.ssl"
             - name: *dataVol
               mountPath: *dataDir
             - name: *tempVol
@@ -369,8 +367,7 @@ spec:
           {{- include "arkcase.subsystem.ports" (dict "ctx" $ "name" "clusteredHaproxy") | nindent 10 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "haproxy") | nindent 12 }}
           volumeMounts:
-            - name: *sslVol
-              mountPath: *sslDir
+            {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
             - name: *configMap
               mountPath: "/usr/local/etc/haproxy/haproxy.cfg"
               subPath: &haproxyCfg "haproxy.cfg"
@@ -391,11 +388,6 @@ spec:
         {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "temp") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "logs") | nindent 8 }}
-        # The shared certificates volume is laughably tiny
-        - name: *sslVol
-          emptyDir:
-            medium: "Memory"
-            sizeLimit: 1Mi
         - name: *secrets
           secret:
             optional: false
