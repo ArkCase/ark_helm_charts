@@ -688,7 +688,14 @@
   {{- /* Add the OIDC profile if the configuration is set */ -}}
   {{- /* TODO: SAML will have to be factored in here */ -}}
   {{- $oidc := (include "arkcase.oidc" $ | fromYaml) -}}
-  {{- $result = append $result ((not (empty $oidc)) | ternary "externalOidc" "ldap") -}}
+  {{- $samlconfig := (include "arkcase.saml" $) -}}
+  {{- if (not (empty $oidc)) -}}
+    {{- $result = append $result "externalOidc"  -}}
+  {{- else if and ($samlconfig) (get (fromYaml $samlconfig) "saml") -}}
+    {{- $result = append $result "externalSaml"  -}}
+  {{- else -}}
+    {{- $result = append $result "ldap"  -}}
+  {{- end -}}
 
   {{- /* Add any profiles the integrations required */ -}}
   {{- range $key, $data := (include "arkcase.core.integrations" $ | fromYaml) -}}
