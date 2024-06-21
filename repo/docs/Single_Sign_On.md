@@ -1,6 +1,7 @@
 # Single Sign On (SSO) Integration
 
-- [OIDC](#oidc)
+- [OIDC](#oidc) 
+- [SAML](#saml)
 
 ## Introduction
 
