@@ -385,6 +385,9 @@ spec:
               subPath: &arkcaseOidcYaml "arkcase-oidc.yaml"
               readOnly: true
             - name: *secrets
+              mountPath: "/app/home/.arkcase/acm/spring/spring-config-saml.properties"
+              subPath: &arkcaseSamlProperties "spring-config-saml.properties"
+            - name: *secrets
               mountPath: "/app/home/.arkcase/acm/acm-config-server-repo/ldap/ldap.yaml"
               subPath: &ldapYaml "ldap.yaml"
               readOnly: true
@@ -555,6 +558,8 @@ spec:
                 path: *arkcaseActivemqYaml
               - key: *arkcaseOidcYaml
                 path: *arkcaseOidcYaml
+              - key: *arkcaseSamlProperties
+                path: *arkcaseSamlProperties
               - key: *confYaml
                 path: *confYaml
               - key: *pdfnetSdkLicenseTxt
