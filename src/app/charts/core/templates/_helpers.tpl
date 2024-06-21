@@ -683,17 +683,14 @@
     {{- fail "Must send the root context as the only parameter" -}}
   {{- end -}}
 
-  {{- $result := list -}}
+  {{- /* Assume LDAP will be needed by default - will get overridden below if needed */ -}}
+  {{- $result := list "ldap" -}}
 
-  {{- /* Add the OIDC, SAML, or ldap profile, depending on the authentication configuration */ -}}
-  {{- $oidc := (include "arkcase.oidc" $ | fromYaml) -}}
-  {{- $samlconfig := (include "arkcase.saml" $ | fromYaml) -}}
-  {{- if (not (empty $oidc)) -}}
-    {{- $result = append $result "externalOidc"  -}}
-  {{- else if (not (empty $samlconfig)) -}}
-    {{- $result = append $result "externalSaml"  -}}
-  {{- else -}}
-    {{- $result = append $result "ldap"  -}}
+  {{- /* Add the OIDC or SAML profile, depending on the authentication configuration */ -}}
+  {{- if (include "arkcase.oidc" $ | fromYaml) -}}
+    {{- $result = list "externalOidc"  -}}
+  {{- else if (include "arkcase.saml" $ | fromYaml) -}}
+    {{- $result = list "externalSaml"  -}}
   {{- end -}}
 
   {{- /* Add any profiles the integrations required */ -}}
