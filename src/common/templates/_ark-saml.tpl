@@ -1,6 +1,8 @@
 {{- define "arkcase.saml.config" -}}
   {{- $config := $ -}}
-  {{- $results := dict -}}
+  {{- if not (kindIs "map" $config) -}}
+    {{- fail (printf "The SAML configuration must be given as a map, not a %s: %s" (kindOf $config) $config) -}}
+  {{- end -}}
   {{-
     $required :=
       list
@@ -18,9 +20,8 @@
     {{- fail (printf "SAML Configuration is missing the following keys: %s" $missing) -}}
   {{- end -}}
 
-  {{- /* The config is valid! */ -}}
-  {{- $results = set $results "saml" $config -}}
-  {{- $results | toYaml -}}
+  {{- /* The config is valid! But we only return that which is important */ -}}
+  {{- pick $config "entityId" "identityProviderUrl" | toYaml -}}
 {{- end -}}
 
 {{- define "arkcase.saml.compute" -}}
@@ -33,12 +34,17 @@
   {{- /* This value must be a map with configs, or a true-false string */ -}}
   {{- $conf := (include "arkcase.tools.conf" (dict "ctx" $ctx "value" "sso" "detailed" true) | fromYaml) -}}
   {{- $samlconfig := dict -}}
-  {{- if $conf.found -}}
-    {{- $conf := $conf.value -}}
-    {{- if and $conf $conf.enabled $conf.protocol $conf.saml (include "arkcase.toBoolean" $conf.enabled) (eq "saml" $conf.protocol) -}}
-      {{- $samlconfig = (include "arkcase.saml.config" $conf.saml) | fromYaml -}}
+  {{- if and $conf.found $conf.value -}}
+    {{- $conf = $conf.value -}}
+    {{- if not (kindIs "map" $conf) -}}
+      {{- fail (printf "The SSO configuration must be given as a map, not a %s: %s" (kindOf $conf) $conf) -}}
+    {{- end -}}
+
+    {{- $enabled := (or (not (hasKey $conf "enabled")) (include "arkcase.toBoolean" $conf.enabled)) -}}
+    {{- if and $enabled (eq "saml" $conf.protocol) $conf.saml -}}
+      {{- $samlconfig = (include "arkcase.saml.config" $conf.saml | fromYaml) -}}
       {{- $arkcaseUrl := (include "arkcase.tools.conf" (dict "ctx" $ "value" "baseUrl")) -}}
-      {{- $samlconfig = set $samlconfig "arkcaseUrl" $arkcaseUrl -}}
+      {{- $samlconfig = set $samlconfig "arkcaseUrl" (include "arkcase.tools.parseUrl" $arkcaseUrl | fromYaml) -}}
     {{- end -}}
   {{- end -}}
   {{- $samlconfig | toYaml -}}
