@@ -687,10 +687,10 @@
 
   {{- /* Add the OIDC, SAML, or ldap profile, depending on the authentication configuration */ -}}
   {{- $oidc := (include "arkcase.oidc" $ | fromYaml) -}}
-  {{- $samlconfig := (include "arkcase.saml" $) -}}
+  {{- $samlconfig := (include "arkcase.saml" $ | fromYaml) -}}
   {{- if (not (empty $oidc)) -}}
     {{- $result = append $result "externalOidc"  -}}
-  {{- else if and ($samlconfig) (get (fromYaml $samlconfig) "saml") -}}
+  {{- else if (not (empty $samlconfig)) -}}
     {{- $result = append $result "externalSaml"  -}}
   {{- else -}}
     {{- $result = append $result "ldap"  -}}

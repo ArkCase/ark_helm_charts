@@ -29,19 +29,19 @@
     {{- fail "The single parameter must be the root context ($ or .)" -}}
   {{- end -}}
 
-  {{- $samlconfig := dict -}}
-
   {{- /* TODO: When we add KeyCloak et al, we need to support both local and global configurations */ -}}
   {{- /* This value must be a map with configs, or a true-false string */ -}}
   {{- $conf := (include "arkcase.tools.conf" (dict "ctx" $ctx "value" "sso" "detailed" true) | fromYaml) -}}
-  {{- $saml := dict -}}
+  {{- $samlconfig := dict -}}
   {{- if $conf.found -}}
     {{- $conf := $conf.value -}}
     {{- if and $conf $conf.enabled $conf.protocol $conf.saml (include "arkcase.toBoolean" $conf.enabled) (eq "saml" $conf.protocol) -}}
-      {{- $samlconfig = (include "arkcase.saml.config" $conf.saml) -}}
+      {{- $samlconfig = (include "arkcase.saml.config" $conf.saml) | fromYaml -}}
+      {{- $arkcaseUrl := (include "arkcase.tools.conf" (dict "ctx" $ "value" "baseUrl")) -}}
+      {{- $samlconfig = set $samlconfig "arkcaseUrl" $arkcaseUrl -}}
     {{- end -}}
   {{- end -}}
-  {{- $samlconfig -}}
+  {{- $samlconfig | toYaml -}}
 {{- end -}}
 
 {{- define "arkcase.saml" -}}
@@ -81,8 +81,6 @@
   {{- $yamlResult := dict -}}
   {{- if not (hasKey $masterCache $chartName) -}}
     {{- $yamlResult = (include "arkcase.saml.compute" $ctx) | fromYaml -}}
-    {{- $arkcaseUrl := (include "arkcase.tools.conf" (dict "ctx" $ "value" "baseUrl")) -}}
-    {{- $yamlResult = set $yamlResult "arkcaseUrl" $arkcaseUrl -}}
     {{- $masterCache = set $masterCache $chartName $yamlResult -}}
   {{- else -}}
     {{- $yamlResult = get $masterCache $chartName -}}
