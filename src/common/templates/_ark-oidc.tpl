@@ -1,5 +1,9 @@
 {{- define "arkcase.oidc.clients" -}}
   {{- $clients := $ -}}
+  {{- if not (kindIs "map" $clients) -}}
+    {{- fail (printf "The OIDC configuration must be given as a map, not a %s: %s" (kindOf $clients) $clients) -}}
+  {{- end -}}
+
   {{- $results := dict -}}
   {{- if and $clients (kindIs "map" $clients) -}}
     {{-
@@ -71,32 +75,28 @@
 
   {{- /* TODO: When we add KeyCloak et al, we need to support both local and global configurations */ -}}
   {{- /* This value must be a map with configs, or a true-false string */ -}}
-  {{- $conf := (include "arkcase.tools.conf" (dict "ctx" $ctx "value" "oidc" "detailed" true) | fromYaml) -}}
+  {{- $conf := (include "arkcase.tools.conf" (dict "ctx" $ctx "value" "sso" "detailed" true) | fromYaml) -}}
 
   {{- $oidc := dict -}}
-  {{- if $conf.found -}}
-    {{- $conf := $conf.value -}}
-    {{- if $conf -}}
-      {{- $enabled := true -}}
-      {{- if (hasKey $conf "enabled") -}}
-        {{- $enabled = (not (empty (include "arkcase.toBoolean" $conf.enabled))) -}}
+  {{- if and $conf.found $conf.value -}}
+    {{- $conf = $conf.value -}}
+    {{- if not (kindIs "map" $conf) -}}
+      {{- fail (printf "The SSO configuration must be given as a map, not a %s: %s" (kindOf $conf) $conf) -}}
+    {{- end -}}
+
+    {{- /* The enabled flag is on by default, unless explicitly turned off */ -}}
+    {{- $enabled := or (not (hasKey $conf "enabled")) (include "arkcase.toBoolean" $conf.enabled) -}}
+    {{- if and $enabled $conf.oidc (eq "oidc" $conf.protocol) -}}
+      {{- $conf = $conf.oidc -}}
+      {{- $clients := (include "arkcase.oidc.clients" $conf.clients | fromYaml) -}}
+
+      {{- /* We also condition the configuation on whether there are client configurations */ -}}
+      {{- if not $clients -}}
+        {{- fail "OIDC seems to be enabled, but no clients are defined" -}}
       {{- end -}}
-  
-      {{- /* The enabled flag is on by default, unless explicitly turned off */ -}}
-      {{- if $enabled -}}
-        {{- $clients := (include "arkcase.oidc.clients" $conf.clients | fromYaml) -}}
-  
-        {{- /* We also condition the enabled flag on whether there are client configurations */ -}}
-        {{- $enabled = and $enabled (not (empty $clients)) -}}
-  
-        {{- if $enabled -}}
-          {{- $oidc = dict "clients" $clients -}}
-          {{- if (hasKey $conf "legacyMode") -}}
-            {{- /* Ensure the value is a boolean */ -}}
-            {{- $oidc = set $oidc "legacyMode" (not (empty (include "arkcase.toBoolean" $conf.legacyMode))) -}}
-          {{- end -}}
-        {{- end -}}
-      {{- end -}}
+
+      {{- /* Special consideration here: legacy mode will be enabled if we only have one client, and it's called "arkcase" */ -}}
+      {{- $oidc = dict "clients" $clients "legacy" (and (eq (len $clients) 1) (hasKey $clients "arkcase")) -}}
     {{- end -}}
   {{- end -}}
   {{- $oidc | toYaml -}}
