@@ -685,8 +685,7 @@
 
   {{- $result := list -}}
 
-  {{- /* Add the OIDC profile if the configuration is set */ -}}
-  {{- /* TODO: SAML will have to be factored in here */ -}}
+  {{- /* Add the OIDC, SAML, or ldap profile, depending on the authentication configuration */ -}}
   {{- $oidc := (include "arkcase.oidc" $ | fromYaml) -}}
   {{- $samlconfig := (include "arkcase.saml" $) -}}
   {{- if (not (empty $oidc)) -}}
