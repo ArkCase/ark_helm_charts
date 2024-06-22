@@ -53,10 +53,11 @@
 {{- end -}}
 
 {{- define "__arkcase.core.sso.oidc.parse-clients" -}}
-  {{- $clients := $ -}}
+  {{- $clients := $.oidc -}}
   {{- if not (kindIs "map" $clients) -}}
     {{- fail (printf "The OIDC configuration must be given as a map, not a %s: %s" (kindOf $clients) $clients) -}}
   {{- end -}}
+  {{- $usersDirectory := $.usersDirectory -}}
 
   {{- $results := dict -}}
   {{- if and $clients (kindIs "map" $clients) -}}
@@ -67,13 +68,11 @@
           "clientId"
           "clientSecret"
           "jwkSetUri"
-          "redirectUri"
           "registrationId"
           "scope"
           "tokenUri"
           "userInfoUri"
           "usernameAttribute"
-          "usersDirectory"
           "responseType"
           "responseMode"
     -}}
@@ -111,8 +110,14 @@
                generated configuration will point to those envvars
       */ -}}
 
-      {{- /* The client is valid! */ -}}
-      {{- $results = set $results $id (omit $client "enabled") -}}
+      {{- /* The client is valid! Clean the map a little */ -}}
+      {{- $client = (omit $client "enabled") -}}
+
+      {{- /* Set the usersDirectory to the specified value */ -}}
+      {{- $client = set $client "usersDirectory" $usersDirectory -}}
+
+      {{- /* Store the result */ -}}
+      {{- $results = set $results $id $client -}}
     {{- end -}}
   {{- end -}}
   {{- $results | toYaml -}}
@@ -131,8 +136,11 @@
 
   {{- $results := dict -}}
 
+  {{- /* Set the usersDirectory for all clients to the default one ... */ -}}
+  {{- $usersDirectory := (include "arkcase.ldap" (dict "ctx" $ctx "server" "arkcase" "value" "domain") | replace "." "_") -}}
+
   {{- /* The enabled flag is on by default, unless explicitly turned off */ -}}
-  {{- $clients := (include "__arkcase.core.sso.oidc.parse-clients" $oidc | fromYaml) -}}
+  {{- $clients := (include "__arkcase.core.sso.oidc.parse-clients" (dict "oidc" $oidc "usersDirectory" $usersDirectory) | fromYaml) -}}
 
   {{- /* We also condition the configuation on whether there are client configurations */ -}}
   {{- if not $clients -}}
@@ -141,7 +149,14 @@
 
   {{- /* Special consideration here: legacy mode will be enabled if we only have one client, and it's called "arkcase" */ -}}
   {{- if (and (eq 1 (len $clients)) (or (hasKey $clients "arkcase") (hasKey $clients "legacy"))) -}}
-    {{- $results = dict "clients" (dict "arkcase" ($clients | values | first)) "legacy" true -}}
+    {{- $baseUrl := (include "arkcase.tools.conf" (dict "ctx" $ctx "value" "baseUrl")) -}}
+    {{- /* Remove any potential trailing slashes */ -}}
+    {{- $baseUrl = (regexReplaceAll "/*$" $baseUrl "") -}}
+
+    {{- /* Compute the redirectUri */ -}}
+    {{- $arkcase := ($clients | values | first) -}}
+    {{- $arkcase = set $arkcase "redirectUri" (printf "%s/login/oauth2/code/%s" $baseUrl $arkcase.registrationId) -}}
+    {{- $results = dict "clients" (dict "arkcase" $arkcase) "legacy" true -}}
   {{- else -}}
     {{- $results = dict "clients" $clients "legacy" false -}}
   {{- end -}}
