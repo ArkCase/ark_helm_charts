@@ -4,7 +4,7 @@
 
 - [Introduction](#introduction) 
 - [OpenID Connect](#oidc) 
-- [SAML](#saml)
+- [Security Assertion Markup Language](#saml)
 
 ## <a name="introduction"></a>Introduction
 
