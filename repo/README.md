@@ -19,6 +19,7 @@ Welcome to the [ArkCase](https://www.arkcase.com/) Helm Chart Library!
    - [Development](docs/Development.md)
    - [Resource Requests and Limits](docs/Resources.md)
    - [Clustering](docs/Clustering.md)
+   - [Single Sign-On](docs/Single_Sign_On.md)
 
 ## <a name="overview"></a>Overview
 
@@ -35,6 +36,7 @@ Specifically, the stack is comprised of the following separate components, each 
  - [PostgreSQL](https://www.postgresql.org/)/[MariaDB](https://mariadb.org/), for database storage (only one instance is needed)
  - [Pentaho](https://www.hitachivantara.com/en-us/products/dataops-software/data-integration-analytics.html) (for reporting services)
  - [Alfresco](https://www.alfresco.com/), for content storage services
+ - [Minio](https://min.io/), for content storage services in S3-compatible mode
 
 In particular, Pentaho and Alfresco are offered in both Enterprise and Community editions. The edition deployed is automatically selected by the framework, by way of detecting the presence of the [required license data](docs/Licenses.md) in the configuration at deployment time.
 
