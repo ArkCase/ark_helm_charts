@@ -687,10 +687,10 @@
   {{- $result := list "ldap" -}}
 
   {{- /* Add the OIDC or SAML profile, depending on the authentication configuration */ -}}
-  {{- if (include "arkcase.oidc" $ | fromYaml) -}}
-    {{- $result = list "externalOidc"  -}}
-  {{- else if (include "arkcase.saml" $ | fromYaml) -}}
-    {{- $result = list "externalSaml"  -}}
+  {{- $sso := (include "arkcase.core.sso" $ | fromYaml) -}}
+  {{- if $sso -}}
+    {{- /* This will result in either externalOidc or externalSaml */ -}}
+    {{- $result = list (printf "external%s" ($sso.protocol | title)) -}}
   {{- end -}}
 
   {{- /* Add any profiles the integrations required */ -}}
