@@ -1,13 +1,20 @@
-# Single Sign On (SSO) Integration
+# Single Sign On (SSO) Integration for [ArkCase](https://www.arkcase.com/)
 
-- [OIDC](#oidc) 
+## Table of Contents
+
+- [Introduction](#introduction) 
+- [OpenID Connect](#oidc) 
 - [SAML](#saml)
 
-## Introduction
+## <a name="introduction"></a>Introduction
 
-SSO is supported via [OIDC](https://openid.net/developers/how-connect-works/) or [SAML](https://en.wikipedia.org/wiki/Security_Assertion_Markup_Language).
+This documetn describes how to enable and configure Single Sign-On (*SSO*) functionality for ArkCase using these Helm charts. As with any community-release project, Issues and PRs are always welcome to help move this code further along.
 
-## <a name="oidc"></a>OIDC
+ArkCase supports SSO functionality via either [OpenID Connect](https://openid.net/developers/how-connect-works/) or [Security Assertion Markup Language](https://en.wikipedia.org/wiki/Security_Assertion_Markup_Language). Currently, the two are mutually exclusive and you can enable one or the other, but not both simultaneously. You can also choose to not enable either of them and continue using the default authentication model.
+
+In this document *OpenID Connect* will be abbreviated as *OIDC*, and *Security Assertion Markup Language* as *SAML*.
+
+## <a name="oidc"></a>OpenID Connect
 
 ### Configuration
 
@@ -15,39 +22,42 @@ Supply a map as below.
 
 ```yaml
 global:
-  conf:
-    sso:
-      enabled: true
-      protocol: "oidc"
-      oidc:
-        clients:
-          arkcase:
-            registrationId: "id"
-            clientId: "******"
-            clientSecret: "******"
-            redirectUri: "https://localhost:8443/arkcase/login/oauth2/code/cognito"
-            authorizationUri: "...."
-            tokenUri: "...."
-            jwkSetUri: "...."
-            usernameAttribute: "email"
-            userInfoUri: "...."
-            scope: "email,openid"
-            responseType: "code"
-            responseMode: "form_post"
-            usersDirectory: "...."
+  sso:
+    # Optional - defaults to "true" if not provided
+    enabled: true
+    # Optional - is only needed if the "saml" section is also provided
+    protocol: "oidc"
+    oidc:
+      arkcase:
+        # Optional - defaults to "true" if not provided
+        enabled: true
+        registrationId: "id"
+        redirectUri: "https://localhost:8443/arkcase/login/oauth2/code/cognito"
+        clientId: "******"
+        clientSecret: "******"
+        authorizationUri: "...."
+        tokenUri: "...."
+        jwkSetUri: "...."
+        usernameAttribute: "email"
+        userInfoUri: "...."
+        scope: "email,openid"
+        responseType: "code"
+        responseMode: "form_post"
 ```
 
-The `authorizationUri`, `tokenUri`, `jwkSetUri`, and `userInfoUri` come from your OIDC provider's well known metadata URL. Your identity provider administrator will provide you this URL.
+The keys in the `global.sso.oidc` map indicate client identifiers as they will be displayed in the software for selecting the SSO provider. These _clients_ can be enabled or disabled by adding an `enabled` flag with a value of either `true` or `false`. If the `enabled` flag is not present, the client is assumed to be enabled.
 
-For classic ArkCase (which uses an AngularJS UI, and has a version below 2024), the `registrationId` must match the last path element of the `redirectUri`.  The `redirectUri` must be of the form: `https://$baseUrl/arkcase/login/oauth2/code/$registrationId`.
+The values for `clientId`, `clientSecret`, `authorizationUri`, `tokenUri`, `jwkSetUri`, and `userInfoUri` come from your OIDC provider. Some of these will come from their well-known metadata URL. Your identity provider administrator must provide you with these values for OIDC SSO to succeed. The `scope`, `responseType`, and `responseMode` values shown above work in most situations, but can be changed as circumstances demand for particular OIDC services or customer requirements.
 
-This document will be updated when OIDC is supported on modern ArkCase (Angular UI, versions 2024 and above).
+There are also two modes of operation for OIDC:
 
-The `scope`, `responseType`, and `responseMode` shown above work in most situations, but can be changed as circumstances demand for particular OIDC services or customer requirements.
+- _*Legacy mode*_ is required for versions of ArkCase prior to `2024.01.01` (i.e. `2023.xx.xx` and older). This mode will be activated when the list of computed clients contains a single enabled entry named either `arkcase` or `legacy`. In this mode of operation the value for `redirectUri` will be computed as `${global.conf.baseUrl}/login/oauth2/code/${registrationId}`, and any manually-provided value will be ignored.
 
-`usersDirectory` must be the LDAP Spring bean name of the directory holding the user records for the OIDC users.  By convention, this bean name is formed by replacing the dots in the domain name with underscores.  So, for a login domain `dev.arkcase.com`, the `usersDirectory` is `dev_arkcase_com`.
+- _*Modern mode*_ is required for versions of ArkCase equal to or greater than `2024.01.01`. This mode will be activated when the list of computed clients contains more than one enabled client, or the single client's name is neither `arkcase` nor `legacy` (e.g. you can use the name `default`)
 
-You must obtain the `clientId` and `clientSecret` from your identity provider administrator.
+If the list of clients contains no enabled clients, but OIDC configuration is enabled overall, this will result in a rendering error due to incomplete or inconsistent configuration.
+
+This document will be updated with any changes relevant to _*Modern mode*_. These versions of ArkCase are in a state of constant development, so changes should be expected frequently.
 
 ### User Administration
 
@@ -55,7 +65,7 @@ For ArkCase application users, the ArkCase directory needs a user entry for ever
 
 For FOIA portal users, the work described above is not needed.  Every FOIA portal user gets the same privileges, and ArkCase will add each one to the portal directory as they register their accounts at the identity provider.
 
-## <a name="saml"></a>SAML
+## <a name="saml"></a>Security Assertion Markup Language
 
 ### Configuration
 
@@ -63,20 +73,19 @@ Supply a map as below.
 
 ```yaml
 global:
-  conf:
-    sso:
-      enabled: true
-      protocol: "saml"
-      saml:
-        entityId: "..."
-        identityProviderUrl: "..."
+  sso:
+    # Optional - defaults to "true" if not provided
+    enabled: true
+    # Optional - is only needed if the "oidc" section is also provided
+    protocol: "saml"
+    saml:
+      entityId: "..."
+      identityProviderUrl: "..."
 ```
 
-The `entityId` identifies this ArkCase deployment to the identity provider.  You and the identity provider administrator must agree on this value (similar to the OIDC `clientId`).
+The `entityId` value identifies this ArkCase deployment to the identity provider.  You and the identity provider administrator must agree on this value (similar to the OIDC's `clientId`).  The `identityProviderUrl` is the URL for the SAML metadata from your identity provider, and they must provide you with this value.
 
-The `identityProviderUrl` is the URL of the SAML metadata from your identity provider.  Your identity provider administrator will provide you this value.
-
-You may have to provide the ArkCase SAML metadata URL to your identity provider.  The ArkCase SAML metadata URL will use the form: `https://$baseUrl/arkcase/saml/metadata`.
+You may have to provide the ArkCase SAML metadata URL to your identity provider. In this case, the ArkCase SAML metadata URL will use the form: `${global.conf.baseUrl}/saml/metadata`.
 
 ## User Administration
 
