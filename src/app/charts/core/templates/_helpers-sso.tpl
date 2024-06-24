@@ -24,7 +24,7 @@
   {{- pick $config "entityId" "identityProviderUrl" | toYaml -}}
 {{- end -}}
 
-{{- define "__arkcase.core.sso.saml.compute" -}}
+{{- define "__arkcase.core.sso.compute.saml" -}}
   {{- $ctx := $.ctx -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "The 'ctx' parameter must be the root context ($ or .)" -}}
@@ -58,6 +58,7 @@
     {{- fail (printf "The OIDC configuration must be given as a map, not a %s: %s" (kindOf $clients) $clients) -}}
   {{- end -}}
   {{- $usersDirectory := $.usersDirectory -}}
+  {{- $baseUrl := (printf "%s/login/oauth2/code" $.baseUrl) -}}
 
   {{- $results := dict -}}
   {{- if and $clients (kindIs "map" $clients) -}}
@@ -116,6 +117,9 @@
       {{- /* Set the usersDirectory to the specified value */ -}}
       {{- $client = set $client "usersDirectory" $usersDirectory -}}
 
+      {{- /* Set the redirectUri to the specified value */ -}}
+      {{- $client = set $client "redirectUri" (printf "%s/%s" $baseUrl $client.registrationId) -}}
+
       {{- /* Store the result */ -}}
       {{- $results = set $results $id $client -}}
     {{- end -}}
@@ -123,7 +127,7 @@
   {{- $results | toYaml -}}
 {{- end -}}
 
-{{- define "__arkcase.core.sso.oidc.compute" -}}
+{{- define "__arkcase.core.sso.compute.oidc" -}}
   {{- $ctx := $.ctx -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "The 'ctx' parameter must be the root context ($ or .)" -}}
@@ -134,13 +138,14 @@
     {{- fail (printf "The OIDC configuration must be given as a map, not a %s: %s" (kindOf $oidc) $oidc) -}}
   {{- end -}}
 
-  {{- $results := dict -}}
-
   {{- /* Set the usersDirectory for all clients to the default one ... */ -}}
   {{- $usersDirectory := (include "arkcase.ldap" (dict "ctx" $ctx "server" "arkcase" "value" "domain") | replace "." "_") -}}
+  {{- $baseUrl := (include "arkcase.tools.conf" (dict "ctx" $ctx "value" "baseUrl")) -}}
+  {{- /* Remove any potential trailing slashes */ -}}
+  {{- $baseUrl = (regexReplaceAll "/*$" $baseUrl "") -}}
 
   {{- /* The enabled flag is on by default, unless explicitly turned off */ -}}
-  {{- $clients := (include "__arkcase.core.sso.oidc.parse-clients" (dict "oidc" $oidc "usersDirectory" $usersDirectory) | fromYaml) -}}
+  {{- $clients := (include "__arkcase.core.sso.oidc.parse-clients" (dict "oidc" $oidc "usersDirectory" $usersDirectory "baseUrl" $baseUrl) | fromYaml) -}}
 
   {{- /* We also condition the configuation on whether there are client configurations */ -}}
   {{- if not $clients -}}
@@ -148,20 +153,13 @@
   {{- end -}}
 
   {{- /* Special consideration here: legacy mode will be enabled if we only have one client, and it's called "arkcase" */ -}}
+  {{- $legacy := false -}}
   {{- if (and (eq 1 (len $clients)) (or (hasKey $clients "arkcase") (hasKey $clients "legacy"))) -}}
-    {{- $baseUrl := (include "arkcase.tools.conf" (dict "ctx" $ctx "value" "baseUrl")) -}}
-    {{- /* Remove any potential trailing slashes */ -}}
-    {{- $baseUrl = (regexReplaceAll "/*$" $baseUrl "") -}}
-
-    {{- /* Compute the redirectUri */ -}}
-    {{- $arkcase := ($clients | values | first) -}}
-    {{- $arkcase = set $arkcase "redirectUri" (printf "%s/login/oauth2/code/%s" $baseUrl $arkcase.registrationId) -}}
-    {{- $results = dict "clients" (dict "arkcase" $arkcase) "legacy" true -}}
-  {{- else -}}
-    {{- $results = dict "clients" $clients "legacy" false -}}
+    {{- $legacy = true -}}
+    {{- /* Ensure the single client is called "arkcase" */ -}}
+    {{- $clients = dict "arkcase" (($clients | values | first)) -}}
   {{- end -}}
-
-  {{- $results | toYaml -}}
+  {{- dict "clients" $clients "legacy" $legacy | toYaml -}}
 {{- end -}}
 
 {{- define "__arkcase.core.sso.compute" -}}
@@ -217,7 +215,7 @@
       {{- end -}}
 
       {{- /* This is the actual configuration for the chosen SSO mode */ -}}
-      {{- $conf := (include (printf "__arkcase.core.sso.%s.compute" $protocol) (dict "ctx" $ctx "conf" (get $sso $protocol)) | fromYaml) -}}
+      {{- $conf := (include (printf "__arkcase.core.sso.compute.%s" $protocol) (dict "ctx" $ctx "conf" (get $sso $protocol)) | fromYaml) -}}
       {{- if $conf -}}
         {{- $result = dict "protocol" $protocol "conf" $conf -}}
       {{- end -}}
