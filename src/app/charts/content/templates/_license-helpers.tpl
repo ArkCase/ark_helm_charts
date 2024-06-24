@@ -3,7 +3,8 @@
 {{- end -}}
 
 {{- define "arkcase.alfresco.licenses" -}}
-  {{- if not (include "arkcase.isRootContext" $) -}}
+  {{- $ctx := $ -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "The parameter must be the root context ($ or .)" -}}
   {{- end -}}
 
@@ -20,8 +21,9 @@
   {{- $chartName := (include "arkcase.fullname" $) -}}
   {{- if not (hasKey $masterCache $chartName) -}}
     {{- $result := dict -}}
-    {{- if (($.Values.global).licenses).alfresco -}}
-      {{- $licenses := $.Values.global.licenses.alfresco -}}
+    {{- $licenses := (include "arkcase.license" (dict "ctx" $ctx "name" "alfresco") | fromYaml) -}}
+    {{- if and $licenses $licenses.data -}}
+      {{- $licenses = $licenses.data -}}
       {{- if not (kindIs "string" $licenses) -}}
         {{- fail (printf "Please make sure the alfresco licenses in global.licenses.alfresco is a string (base-64 encoded), not a %s" (kindOf $licenses)) -}}
       {{- end -}}
@@ -41,7 +43,14 @@
 {{- end -}}
 
 {{- define "arkcase.alfresco.license.volumeMounts" -}}
-  {{ $ctx := (hasKey $ "ctx" | ternary $.ctx $) -}}
+  {{- $ctx := $ -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- $ctx = $.ctx -}}
+    {{- if not (include "arkcase.isRootContext" $ctx) -}}
+      {{- fail "The parameter must be the root context ($ or .)" -}}
+    {{- end -}}
+  {{- end -}}
+
   {{- $licenses := (include "arkcase.alfresco.licenses" $ctx | fromYaml) -}}
   {{- if $licenses -}}
     {{- $volume := (get $ "volume") | default "alfresco-licenses" -}}
@@ -58,7 +67,14 @@
 {{- end -}}
 
 {{- define "arkcase.alfresco.license.volume" -}}
-  {{ $ctx := (hasKey $ "ctx" | ternary $.ctx $) -}}
+  {{- $ctx := $ -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- $ctx = $.ctx -}}
+    {{- if not (include "arkcase.isRootContext" $ctx) -}}
+      {{- fail "The parameter must be the root context ($ or .)" -}}
+    {{- end -}}
+  {{- end -}}
+
   {{- $licenses := (include "arkcase.alfresco.licenses" $ctx | fromYaml) -}}
   {{- if $licenses -}}
     {{- $volume := (get $ "volume") | default "alfresco-licenses" -}}

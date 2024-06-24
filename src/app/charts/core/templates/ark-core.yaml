@@ -347,6 +347,8 @@ spec:
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/acm/acm-config-server-repo/arkcase-oidc.yaml") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/acm/spring/spring-config-saml.properties") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/acm/licenses/pdfnet_sdk_license.txt") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/milton.license.properties") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/milton.license.sig") | nindent 12 }}
         - name: cloudconfig
           {{- include "arkcase.image" (dict "ctx" $ "name" "cloudconfig" "repository" "arkcase/cloudconfig") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
@@ -416,87 +418,7 @@ spec:
         {{- include "arkcase.subsystem-access.all.volume" $ | nindent 8 }}
         {{- include "arkcase.trusts.volume" $ | nindent 8 }}
         {{- include "arkcase.acme.volume" $ | nindent 8 }}
-<<<<<<< HEAD
         {{- include "arkcase.file-resource.volumes" $ | nindent 8 }}
-=======
-        - name: *secrets
-          secret:
-            optional: false
-            secretName: *secretName
-            defaultMode: 0444
-            items:
-              - key: *applicationYaml
-                path: *applicationYaml
-              - key: *arkcaseK8sYaml
-                path: *arkcaseK8sYaml
-              - key: *ldapYaml
-                path: *ldapYaml
-              {{- if (eq "alfresco" $content.dialect) }}
-              - key: *camelConfigAlfrescoCmisProperties
-                path: *camelConfigAlfrescoCmisProperties
-              - key: *camelConfigOpenCmisCmisProperties
-                path: *camelConfigOpenCmisCmisProperties
-              {{- end }}
-              - key: *arkcaseActivemqYaml
-                path: *arkcaseActivemqYaml
-              - key: *arkcaseOidcYaml
-                path: *arkcaseOidcYaml
-              - key: *arkcaseSamlProperties
-                path: *arkcaseSamlProperties
-              - key: *confYaml
-                path: *confYaml
-              - key: *pdfnetSdkLicenseTxt
-                path: *pdfnetSdkLicenseTxt
-              {{- if $foia }}
-              - key: *arkcasePortalServerYaml
-                path: *arkcasePortalServerYaml
-              - key: *arkcaseFoiaYaml
-                path: *arkcaseFoiaYaml
-              - key: *ldapFoiaYaml
-                path: *ldapFoiaYaml
-              {{- end }}
-        - name: *configMap
-          configMap:
-            optional: false
-            name: {{ include "arkcase.fullname" $ | quote }}
-            defaultMode: 0444
-            items:
-              - key: *deploy
-                path: *deploy
-                mode: 0555
-              - key: *fixExcel
-                path: *fixExcel
-                mode: 0555
-              - key: *realmFix
-                path: *realmFix
-                mode: 0555
-              - key: *tomcatLive
-                path: *tomcatLive
-                mode: 0555
-              - key: *serverXmlTpl
-                path: *serverXmlTpl
-              - key: *quartzProperties
-                path: *quartzProperties
-              - key: *springConfigProxyXml
-                path: *springConfigProxyXml
-              - key: *log4j2Xml
-                path: *log4j2Xml
-              - key: *seedContent
-                path: *seedContent
-                mode: 0555
-              - key: *seedContentYaml
-                path: *seedContentYaml
-              - key: *envfileArkcase
-                path: *envfileArkcase
-              - key: *envfileCloudconfig
-                path: *envfileCloudconfig
-              {{- if $foia }}
-              - key: *lookupsK8sYaml
-                path: *lookupsK8sYaml
-              - key: *bootstrapYaml
-                path: *bootstrapYaml
-              {{- end }}
->>>>>>> main
         {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "temp") | nindent 8 }}
         {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "wars") | nindent 8 }}
         {{- include "arkcase.core.dev.volumes" $ | nindent 8 }}
