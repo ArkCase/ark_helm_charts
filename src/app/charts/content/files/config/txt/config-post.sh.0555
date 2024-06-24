@@ -85,7 +85,7 @@ for T in "RO" "RW" ; do
 	[ -n "${!U}" ] && [ -n "${!P}" ] || continue
 
 	say "Creating the ${T} service account with username [${!U}] (policy = ${POLICY})..."
-	mcli admin user add "${INSTANCE}" "${!U}" "${!P}" || fail "Failed to create the user account for [${!U}]..."
+	mcli admin user add "${INSTANCE}" < <(echo -en "${!U}\n${!P}") || fail "Failed to create the user account for [${!U}]..."
 	mcli admin policy attach "${INSTANCE}" "${POLICY}" --user "${!U}" || fail "Failed to attach the ${POLICY} policy to user [${!U}]..."
 done
 
