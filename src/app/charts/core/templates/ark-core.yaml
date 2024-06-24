@@ -409,6 +409,15 @@ spec:
               mountPath: "/app/home/.arkcase/acm/licenses/pdfnet_sdk_license.txt"
               subPath: &pdfnetSdkLicenseTxt "pdfnet_sdk_license.txt"
               readOnly: true
+            # Don't enable these yet - this could cause severe breakage
+            # - name: *secrets
+            #   mountPath: "/app/home/.arkcase/custom/WEB-INF/classes/milton.license.properties"
+            #   subPath: &miltonLicenseProperties "milton.license.properties"
+            #   readOnly: true
+            # - name: *secrets
+            #   mountPath: "/app/home/.arkcase/custom/WEB-INF/classes/milton.license.sig"
+            #   subPath: &miltonLicenseSig "milton.license.sig"
+            #   readOnly: true
             - name: *logsVol
               mountPath: *logsDir
             {{- if $foia }}
@@ -564,6 +573,10 @@ spec:
                 path: *confYaml
               - key: *pdfnetSdkLicenseTxt
                 path: *pdfnetSdkLicenseTxt
+              # - key: *miltonLicenseProperties
+              #   path: *miltonLicenseProperties
+              # - key: *miltonLicenseSig
+              #   path: *miltonLicenseSig
               {{- if $foia }}
               - key: *arkcasePortalServerYaml
                 path: *arkcasePortalServerYaml

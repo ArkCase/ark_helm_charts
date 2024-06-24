@@ -1,23 +1,25 @@
 {{- define "arkcase.pentaho.licenses" -}}
-  {{- if not (include "arkcase.isRootContext" $) -}}
+  {{- $ctx := $ -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "The parameter must be the root context ($ or .)" -}}
   {{- end -}}
 
   {{- $key := "PentahoLicenses" -}}
   {{- $masterCache := dict -}}
   {{- if (hasKey $ $key) -}}
-    {{- $masterCache = get $ $key -}}
+    {{- $masterCache = get $ctx $key -}}
     {{- if and $masterCache (not (kindIs "map" $masterCache)) -}}
       {{- $masterCache = dict -}}
     {{- end -}}
   {{- end -}}
-  {{- $crap := set $ $key $masterCache -}}
+  {{- $crap := set $ctx $key $masterCache -}}
 
   {{- $chartName := (include "arkcase.fullname" $) -}}
   {{- if not (hasKey $masterCache $chartName) -}}
     {{- $result := dict -}}
-    {{- if (($.Values.global).licenses).pentaho -}}
-      {{- $licenses := $.Values.global.licenses.pentaho -}}
+    {{- $licenses := (include "arkcase.license" (dict "ctx" $ctx "name" "pentaho") | fromYaml) -}}
+    {{- if and $licenses $licenses.data -}}
+      {{- $licenses = $licenses.data -}}
       {{- if not (kindIs "slice" $licenses) -}}
         {{- fail (printf "Please make sure the pentaho licenses in global.licenses.pentaho is an array of files, not a %s" (kindOf $licenses)) -}}
       {{- end -}}
@@ -48,19 +50,23 @@
 {{- end -}}
 
 {{- define "arkcase.pentaho.license.volumeMounts" -}}
-  {{ $ctx := . -}}
-  {{- if .ctx -}}
-    {{- $ctx = .ctx -}}
+  {{ $ctx := $ -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- $ctx = $.ctx -}}
+    {{- if not (include "arkcase.isRootContext" $ctx) -}}
+      {{- fail "Must provide the root context (. or $) as either the 'ctx' parameter, or the only parameter" -}}
+    {{- end -}}
   {{- end -}}
+
   {{- $licenses := (include "arkcase.pentaho.licenses" $ctx | fromYaml) -}}
   {{- if $licenses -}}
     {{- $volume := "secrets" -}}
-    {{- if and (hasKey . "volume") .volume -}}
-      {{- $volume = .volume -}}
+    {{- if and (hasKey $ "volume") $.volume -}}
+      {{- $volume = $.volume -}}
     {{- end -}}
     {{- $path := "/app/init/licenses" -}}
-    {{- if and (hasKey . "path") .path -}}
-      {{- $path = .path -}}
+    {{- if and (hasKey $ "path") $.path -}}
+      {{- $path = $.path -}}
     {{- end -}}
 # License mounts begin
     {{- range $key, $value := $licenses }}
