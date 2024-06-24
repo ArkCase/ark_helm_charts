@@ -1120,3 +1120,25 @@ return either the value if correct, or the empty string if not.
       replace "'" "&apos;"
   -}}
 {{- end -}}
+
+{{- define "arkcase.license" -}}
+  {{- $ctx := $.ctx -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "Incorrect context given - please submit the root context as the 'ctx' parameter" -}}
+  {{- end -}}
+
+  {{- $name := $.name -}}
+  {{- if not $name -}}
+    {{- fail "Must provide a license name to retrieve" -}}
+  {{- end -}}
+
+  {{- $result := dict -}}
+  {{- $licenses := ($ctx.Values.global).licenses | default dict -}}
+  {{- if and $licenses (not (kindIs "map" $licenses)) -}}
+    {{- fail (printf "The licenses configuration is invalid - it should be a map, not a %s: %s" (kindOf $licenses) $licenses) -}}
+  {{- end -}}
+  {{- if hasKey $licenses $name -}}
+    {{- $result = dict "data" (get $licenses $name) -}}
+  {{- end -}}
+  {{- $result | toYaml -}}
+{{- end -}}
