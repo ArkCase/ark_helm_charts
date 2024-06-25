@@ -55,7 +55,8 @@
 {{- end -}}
 
 {{- define "arkcase.labels.service" -}}
-  {{- include "arkcase.labels.standard" . }}
+{{ include "arkcase.labels.workload" $ }}
+{{ include "arkcase.labels.standard" $ }}
 app.kubernetes.io/service-support: "true"
 {{- end -}}
 
@@ -128,6 +129,36 @@ app.kubernetes.io/part: {{ $partname | quote }}
 {{- define "arkcase.labels.matchLabels.service" -}}
   {{- include "arkcase.labels.matchLabels" . }}
 app.kubernetes.io/service-support: "true"
+{{- end -}}
+
+{{- define "arkcase.labels.workload" -}}
+arkcase.com/task: "work"
+arkcase.com/subsystem: {{ include "arkcase.subsystem.name" $ | quote }}
+{{- end -}}
+
+{{- define "arkcase.labels.test" -}}
+arkcase.com/task: "test"
+arkcase.com/subsystem: {{ include "arkcase.subsystem.name" $ | quote }}
+{{- end -}}
+
+{{- define "arkcase.labels.test.smoke" -}}
+  {{- include "arkcase.labels.test" $ }}
+arkcase.com/test-type: "smoke"
+{{- end -}}
+
+{{- define "arkcase.labels.test.performance" -}}
+  {{- include "arkcase.labels.test" $ }}
+arkcase.com/test-type: "performance"
+{{- end -}}
+
+{{- define "arkcase.labels.test.load" -}}
+  {{- include "arkcase.labels.test" $ }}
+arkcase.com/test-type: "load"
+{{- end -}}
+
+{{- define "arkcase.labels.test.integration" -}}
+  {{- include "arkcase.labels.test" $ }}
+arkcase.com/test-type: "integration"
 {{- end -}}
 
 {{- define "arkcase.tools.normalizePath" -}}
