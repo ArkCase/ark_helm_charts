@@ -31,7 +31,6 @@ spec:
       {{- $domain := (include "arkcase.ldap" (dict "ctx" $ "value" "domain")) }}
       {{- $administrator := (include "arkcase.ldap" (dict "ctx" $ "value" "administator") | default "administrator") }}
       {{- $baseDn := (include "arkcase.ldap.baseDn" $) }}
-      {{- $userBaseDn := (include "arkcase.ldap" (dict "ctx" $ "value" "search.users.base")) }}
       command: [ "/usr/local/bin/run-from-env" ]
       args: [ "SCRIPT" ]
       env: {{- include "arkcase.tools.baseEnv" $ | nindent 8 }}
@@ -43,7 +42,7 @@ spec:
           value: |-
             set -xeuo pipefail
             /usr/local/bin/acme-init
-            /usr/bin/timeout 3 /usr/bin/ldapsearch -H "ldaps://$(SERVICE_NAME)" -D "$(ADMIN_USER)" -y "/app/secrets/DOMAIN_PASSWORD" -b {{ $baseDn | quote }} {{ $userBaseDn | quote }} dn
+            /usr/bin/timeout 3 /usr/bin/ldapsearch -H "ldaps://$(SERVICE_NAME)" -D "$(ADMIN_USER)" -y "/app/secrets/DOMAIN_PASSWORD" -s one -b {{ $baseDn | quote }} "(objectClass=organizationalUnit)" dn
       volumeMounts:
         - name: &secrets "secrets"
           mountPath: "/app/secrets"
