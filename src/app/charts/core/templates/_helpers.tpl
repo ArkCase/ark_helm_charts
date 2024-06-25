@@ -691,6 +691,9 @@
   {{- if $sso -}}
     {{- /* This will result in either externalOidc or externalSaml */ -}}
     {{- $result = list (printf "external%s" ($sso.protocol | title)) -}}
+    {{- if $sso.conf.profiles -}}
+      {{- $result = concat $result $sso.conf.profiles -}}
+    {{- end -}}
   {{- end -}}
 
   {{- /* Add any profiles the integrations required */ -}}

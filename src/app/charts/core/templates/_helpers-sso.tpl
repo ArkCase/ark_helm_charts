@@ -153,13 +153,16 @@
   {{- end -}}
 
   {{- /* Special consideration here: legacy mode will be enabled if we only have one client, and it's called "arkcase" */ -}}
+  {{- $profiles := list -}}
   {{- $legacy := false -}}
   {{- if (and (eq 1 (len $clients)) (or (hasKey $clients "arkcase") (hasKey $clients "legacy"))) -}}
     {{- $legacy = true -}}
     {{- /* Ensure the single client is called "arkcase" */ -}}
     {{- $clients = dict "arkcase" (($clients | values | first)) -}}
+  {{- else -}}
+    {{- $profiles = list "ldap" -}}
   {{- end -}}
-  {{- dict "clients" $clients "legacy" $legacy | toYaml -}}
+  {{- dict "clients" $clients "legacy" $legacy "profiles" $profiles | toYaml -}}
 {{- end -}}
 
 {{- define "__arkcase.core.sso.compute" -}}
