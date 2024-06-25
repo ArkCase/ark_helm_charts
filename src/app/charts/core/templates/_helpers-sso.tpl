@@ -48,7 +48,7 @@
   {{- /* We add this here for convenience later on */ -}}
   {{- $arkcaseUrl := (include "arkcase.tools.conf" (dict "ctx" $ctx "value" "baseUrl")) -}}
   {{- $saml = set $saml "arkcaseUrl" (include "arkcase.tools.parseUrl" $arkcaseUrl | fromYaml) -}}
-
+  {{- $saml = set $saml "profiles" (list "externalSaml") -}}
   {{- $saml | toYaml -}}
 {{- end -}}
 
@@ -159,6 +159,7 @@
     {{- $legacy = true -}}
     {{- /* Ensure the single client is called "arkcase" */ -}}
     {{- $clients = dict "arkcase" (($clients | values | first)) -}}
+    {{- $profiles = list "externalOidc" -}}
   {{- else -}}
     {{- $profiles = list "ldap" -}}
   {{- end -}}
