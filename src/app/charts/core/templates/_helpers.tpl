@@ -689,10 +689,8 @@
   {{- /* Add the OIDC or SAML profile, depending on the authentication configuration */ -}}
   {{- $sso := (include "arkcase.core.sso" $ | fromYaml) -}}
   {{- if $sso -}}
-    {{- /* This will result in either externalOidc or externalSaml */ -}}
-    {{- $result = list (printf "external%s" ($sso.protocol | title)) -}}
-    {{- if $sso.conf.profiles -}}
-      {{- $result = concat $result $sso.conf.profiles -}}
+    {{- if (hasKey $sso.conf "profiles") -}}
+      {{- $result = $sso.conf.profiles -}}
     {{- end -}}
   {{- end -}}
 
