@@ -10,15 +10,13 @@ metadata:
   name: {{ printf "%s-test" (include "arkcase.fullname" $) | quote }}
   namespace: {{ $.Release.Namespace | quote }}
   labels: {{- include "arkcase.labels" $ | nindent 4 }}
+    {{- include "arkcase.labels.test.smoke" $ | nindent 4 }}
     {{- with ($.Values.labels).common }}
       {{- toYaml . | nindent 4 }}
     {{- end }}
     {{- with ($.Values.test).labels }}
       {{- toYaml . | nindent 4 }}
     {{- end }}
-    arkcase.com/task: "test"
-    arkcase.com/test-type: "smoke"
-    arkcase.com/test-subsystem: {{ include "arkcase.subsystem.name" $ | quote }}
   annotations:
     helm.sh/hook: test
     helm.sh/hook-delete-policy: hook-succeeded

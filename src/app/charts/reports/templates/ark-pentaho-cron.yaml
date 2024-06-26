@@ -11,6 +11,7 @@ metadata:
   name: &fullName {{ $fullName | quote }}
   namespace: {{ $.Release.Namespace | quote }}
   labels: {{- include "arkcase.labels" $ | nindent 4 }}
+    {{- include "arkcase.labels.workload" $ | nindent 4 }}
     {{- with ($.Values.labels).common }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
@@ -28,6 +29,7 @@ spec:
       name: *fullName
       namespace: {{ $.Release.Namespace | quote }}
       labels: {{- include "arkcase.labels" $ | nindent 8 }}
+        {{- include "arkcase.labels.workload" $ | nindent 8 }}
         {{- with ($.Values.labels).common }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
