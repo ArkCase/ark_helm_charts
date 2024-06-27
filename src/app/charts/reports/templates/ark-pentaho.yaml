@@ -219,15 +219,12 @@ spec:
             - name: PENTAHO_INSTALLED_LICENSE_PATH
               value: "$(DATA_DIR)/.installedLicenses.xml"
           {{- include "arkcase.subsystem.ports" (dict "ctx" $ "name" ($cluster.enabled | ternary "clusteredPentaho" "pentaho")) | nindent 10 }}
-          {{- with ($.Values.command).pentaho }}
-          command: {{ . | toYaml }}
-          {{- end }}
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "pentaho") | nindent 12 }}
           volumeMounts:
             {{- include "arkcase.pentaho.license.volumeMounts" (dict "ctx" $ "volume" "secrets" "path" "/app/init/licenses") | nindent 12 }}
             {{- include "arkcase.trusts.mount" $ | nindent 12 }}
-            {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
+            {{- include "arkcase.acme.volumeMount-shared" $ | nindent 12 }}
             - name: *dataVol
               mountPath: *dataDir
             - name: *tempVol
@@ -367,7 +364,7 @@ spec:
           {{- include "arkcase.subsystem.ports" (dict "ctx" $ "name" "clusteredHaproxy") | nindent 10 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "haproxy") | nindent 12 }}
           volumeMounts:
-            {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
+            {{- include "arkcase.acme.volumeMount-shared" $ | nindent 12 }}
             - name: *configMap
               mountPath: "/usr/local/etc/haproxy/haproxy.cfg"
               subPath: &haproxyCfg "haproxy.cfg"
@@ -383,7 +380,7 @@ spec:
         {{- end }}
       volumes:
         {{- include "arkcase.trusts.volume" $ | nindent 8 }}
-        {{- include "arkcase.acme.volume" $ | nindent 8 }}
+        {{- include "arkcase.acme.volume-shared" $ | nindent 8 }}
         {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "init") | nindent 8 }}
         {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "temp") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
