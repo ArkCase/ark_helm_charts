@@ -209,7 +209,7 @@ spec:
           volumeMounts:
             {{- include "arkcase.pentaho.license.volumeMounts" (dict "ctx" $ "volume" "secrets" "path" "/app/init/licenses") | nindent 12 }}
             {{- include "arkcase.trusts.mount" $ | nindent 12 }}
-            {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
+            {{- include "arkcase.acme.volumeMount-shared" $ | nindent 12 }}
             - name: *dataVol
               mountPath: *dataDir
             - name: *tempVol
@@ -264,6 +264,7 @@ spec:
           {{- include "arkcase.subsystem.ports" (dict "ctx" $ "name" "clusteredHaproxy") | nindent 10 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "haproxy") | nindent 12 }}
           volumeMounts:
+            {{- include "arkcase.acme.volumeMount-shared" $ | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/etc/haproxy/haproxy.cfg") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/etc/haproxy/lua/responses.lua") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/entrypoint" "subPath" "entrypoint-haproxy") | nindent 12 }}
@@ -274,8 +275,8 @@ spec:
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "logs") | nindent 8 }}
         {{- include "arkcase.trusts.volume" $ | nindent 8 }}
+        {{- include "arkcase.acme.volume-shared" $ | nindent 8 }}
         {{- include "arkcase.pentaho.license.volume" $ | nindent 8 }}
-        {{- include "arkcase.acme.volume" $ | nindent 8 }}
         {{- include "arkcase.subsystem-access.all.volume" $ | nindent 8 }}
         {{- include "arkcase.file-resource.volumes" $ | nindent 8 }}
       {{- with $.Values.nodeSelector }}
