@@ -41,8 +41,12 @@ ACME_CLIENT_PASSWORD
   mountPath: "/.acme.password"
   subPath: &acmePassword {{ include "arkcase.acme.passwordVariable" $ | quote }}
   readOnly: true
-- name: &acmeSslVol "acme-ssl-data"
-  mountPath: &acmeSslDir "/.ssl"
+{{- end -}}
+
+{{- define "arkcase.acme.volumeMount-shared" -}}
+  {{- include "arkcase.acme.volumeMount" $ | nindent 0 }}
+- name: "acme-ssl-vol"
+  mountPath: "/.ssl"
 {{- end -}}
 
 {{- define "arkcase.acme.volume" -}}
@@ -57,8 +61,12 @@ ACME_CLIENT_PASSWORD
     items:
       - key: *acmePassword
         path: *acmePassword
+{{- end -}}
+
+{{- define "arkcase.acme.volume-shared" -}}
+  {{- include "arkcase.acme.volume" $ | nindent 0 }}
 # The shared certificates volume is laughably tiny
-- name: *acmeSslVol
+- name: "acme-ssl-vol"
   emptyDir:
     medium: "Memory"
     sizeLimit: 4Mi
