@@ -450,6 +450,8 @@ spec:
           {{- include "arkcase.image" (dict "ctx" $ "name" "cloudconfig" "repository" "arkcase/cloudconfig") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
+            - name: ACME_WAIT
+              value: "true"
             - name: ACME_KEYSTORE_WITH_TRUSTS
               value: "true"
             - name: ACME_KEY_ALIAS
