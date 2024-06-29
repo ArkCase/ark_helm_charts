@@ -247,6 +247,8 @@ spec:
             {{- include "arkcase.cluster.tomcat.env" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
             {{- include "arkcase.subsystem-access.all.env" $ | nindent 12 }}
+            - name: ARKCASE_JDBC_DRIVER
+              value: {{ $db.jdbc.driver | quote }}
             - name: ARKCASE_JDBC_URL
               value: {{ $db.jdbc.url | quote }}
             - name: HOME_DIR
@@ -355,6 +357,8 @@ spec:
             {{- include "arkcase.cluster.env" $ | nindent 12 }}
             {{- include "arkcase.subsystem-access.all.env" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
+            - name: ARKCASE_JDBC_DRIVER
+              value: {{ $db.jdbc.driver | quote }}
             - name: ARKCASE_JDBC_URL
               value: {{ $db.jdbc.url | quote }}
             - name: ACME_KEYSTORE_WITH_TRUSTS
