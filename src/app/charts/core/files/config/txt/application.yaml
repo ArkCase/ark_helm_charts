@@ -1,4 +1,3 @@
-{{- $db := (include "arkcase.db.schema" (dict "ctx" $ "schema" "cloudconfig") | fromYaml) -}}
 server:
   port: 9999
   ssl:
@@ -14,7 +13,7 @@ server:
 
 spring:
 #   datasource:
-#     driver-class-name: {{ $db.jdbc.driver | quote }}
+#     driver-class-name: "${ARKCASE_JDBC_DRIVER}"
 #     url: "${ARKCASE_JDBC_URL}"
 #     username: "${ARKCASE_JDBC_USERNAME}"
 #     password: "${ARKCASE_JDBC_PASSWORD}"
