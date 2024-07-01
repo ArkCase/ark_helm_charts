@@ -118,10 +118,8 @@ spec:
               value: ":9001"
             {{- include "arkcase.subsystem-access.env.admin" (dict "ctx" $ "name" "MINIO_ROOT_USER" "key" "username") | nindent 12 }}
             {{- include "arkcase.subsystem-access.env.admin" (dict "ctx" $ "name" "MINIO_ROOT_PASSWORD" "key" "password") | nindent 12 }}
-            {{- include "arkcase.subsystem-access.env.cred" (dict "ctx" $ "name" "MINIO_SERVICE_RW_USER" "type" "rw" "key" "username") | nindent 12 }}
-            {{- include "arkcase.subsystem-access.env.cred" (dict "ctx" $ "name" "MINIO_SERVICE_RW_PASSWORD" "type" "rw" "key" "password") | nindent 12 }}
-            {{- include "arkcase.subsystem-access.env.cred" (dict "ctx" $ "name" "MINIO_SERVICE_RO_USER" "type" "ro" "key" "username") | nindent 12 }}
-            {{- include "arkcase.subsystem-access.env.cred" (dict "ctx" $ "name" "MINIO_SERVICE_RO_PASSWORD" "type" "ro" "key" "password") | nindent 12 }}
+            {{- include "arkcase.subsystem-access.env.cred" (dict "ctx" $ "name" "MINIO_ACCESS_USER" "type" "access" "key" "username") | nindent 12 }}
+            {{- include "arkcase.subsystem-access.env.cred" (dict "ctx" $ "name" "MINIO_ACCESS_PASSWORD" "type" "access" "key" "password") | nindent 12 }}
           lifecycle:
             postStart:
               exec:

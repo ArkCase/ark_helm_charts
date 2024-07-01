@@ -72,21 +72,17 @@ INSTANCE="local"
 # Add the configuration for MC control
 mcli config host add "${INSTANCE}" "${ADMIN_URL}" "${MINIO_ROOT_USER}" "${MINIO_ROOT_PASSWORD}"
 
-# We ALWAYS "create" the user accounts b/c we want to always rotate
-# the passwords to whatever they are at the moment of bootup
-PREFIX="MINIO_SERVICE"
-for T in "RO" "RW" ; do
-	POLICY="readonly"
-	[ "${T}" == "RW" ] && POLICY="readwrite"
-	U="${PREFIX}_${T}_USER"
-	P="${PREFIX}_${T}_PASSWORD"
-	[ -v "${U}" ] || continue
-	[ -v "${P}" ] || continue
-	[ -n "${!U}" ] && [ -n "${!P}" ] || continue
+[ -v MINIO_ACCESS_USER ] || MINIO_ACCESS_USER=""
+[ -v MINIO_ACCESS_PASSWORD ] || MINIO_ACCESS_PASSWORD=""
 
-	say "Creating the ${T} service account with username [${!U}] (policy = ${POLICY})..."
-	mcli admin user add "${INSTANCE}" < <(echo -en "${!U}\n${!P}") || fail "Failed to create the user account for [${!U}]..."
-	mcli admin policy attach "${INSTANCE}" "${POLICY}" --user "${!U}" || fail "Failed to attach the ${POLICY} policy to user [${!U}]..."
-done
+[ -v MINIO_ACCESS_POLICY ] || MINIO_ACCESS_POLICY=""
+[ -n "${MINIO_ACCESS_POLICY}" ] || MINIO_ACCESS_POLICY="readwrite"
+
+if [ -n "${MINIO_ACCESS_USER}" ] && [ -n "${MINIO_ACCESS_PASSWORD}" ] ; then
+	# Add the configuration for MC access in read-write mode
+	say "Creating the service account with username [${MINIO_ACCESS_USER}] (policy = ${MINIO_ACCESS_POLICY})..."
+	mcli admin user add "${INSTANCE}" < <(echo -en "${MINIO_ACCESS_USER}\n${MINIO_ACCESS_PASSWORD}") || fail "Failed to create the user account for [${MINIO_ACCESS_USER}]..."
+	mcli admin policy attach "${INSTANCE}" "${MINIO_ACCESS_POLICY}" --user "${MINIO_ACCESS_USER}" || fail "Failed to attach the ${MINIO_ACCESS_POLICY} policy to user [${MINIO_ACCESS_USER}]..."
+fi
 
 exit 0
