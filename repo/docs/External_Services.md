@@ -234,6 +234,12 @@ global:
       arkcase:
         url: "ldaps://ldap:636"
         domain: "my.external-ldap.domain.com"
+        # enableCreatingLdapUsers, enableEditingLdapUsers and syncEnabled default to true
+        # If disabled there will be no connection between LDAP users and Arkcase users,
+        # which is preferential when SSO is used and there are a lot of Arkcase users
+        enableCreatingLdapUsers: "true" 
+        enableEditingLdapUsers: "true"
+        syncEnabled: "true"
         # Don't declare a baseDn unless absolutely necessary
         # baseDn: "ou=Case Management,dc=my,dc=external-ldap,dc=domain,dc=com"
         bind:
