@@ -1,0 +1,38 @@
+apiVersion: mysql.sql.crossplane.io/v1alpha1
+kind: Database
+metadata:
+  name: arkcase-rdbms-alfresco
+  namespace: rds-test
+spec:
+  forProvider: {}
+  providerConfigRef:
+    name: arkcase-rdbms
+---
+apiVersion: mysql.sql.crossplane.io/v1alpha1
+kind: User
+metadata:
+  name: arkcase-rdbms-alfresco
+  namespace: rds-test
+spec:
+  forProvider: {}
+  providerConfigRef:
+    name: arkcase-rdbms
+  writeConnectionSecretToRef:
+    name: arkcase-rdbms-cred-schema-alfresco
+    namespace: rds-test
+---
+apiVersion: mysql.sql.crossplane.io/v1alpha1
+kind: Grant
+metadata:
+  name: arkcase-rdbms-alfresco
+  namespace: rds-test
+spec:
+  forProvider:
+    privileges:
+      - ALL
+    userRef:
+      name: arkcase-rdbms-alfresco
+    databaseRef:
+      name: arkcase-rdbms-alfresco
+  providerConfigRef:
+    name: arkcase-rdbms
