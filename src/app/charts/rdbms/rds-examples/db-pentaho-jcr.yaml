@@ -2,7 +2,6 @@ apiVersion: mysql.sql.crossplane.io/v1alpha1
 kind: Database
 metadata:
   name: arkcase-rdbms-pentaho-jcr
-  namespace: rds-test
 spec:
   forProvider: {}
   providerConfigRef:
@@ -12,20 +11,17 @@ apiVersion: mysql.sql.crossplane.io/v1alpha1
 kind: User
 metadata:
   name: arkcase-rdbms-pentaho-jcr
-  namespace: rds-test
 spec:
   forProvider: {}
   providerConfigRef:
     name: arkcase-rdbms
   writeConnectionSecretToRef:
     name: arkcase-rdbms-cred-schema-pentaho-jcr
-    namespace: rds-test
 ---
 apiVersion: mysql.sql.crossplane.io/v1alpha1
 kind: Grant
 metadata:
   name: arkcase-rdbms-pentaho-jcr
-  namespace: rds-test
 spec:
   forProvider:
     privileges:

@@ -2,7 +2,7 @@
 apiVersion: database.aws.crossplane.io/v1beta1
 kind: RDSInstance
 metadata:
-  name: arkcase-rdbms-test-db
+  name: arkcase-rdbms
 spec:
   forProvider:
     # assume from platform ${application}-${lifecyle}-rds-subnets
@@ -33,8 +33,7 @@ spec:
     # assume from platform, always this name
     name: aws-crossplane-config
   writeConnectionSecretToRef:
-    name: arkcase-rdbms-test-db
-    namespace: rds-test
+    name: arkcase-rdbms-conn-main
 ---
 apiVersion: mysql.sql.crossplane.io/v1alpha1
 kind: ProviderConfig
@@ -44,7 +43,11 @@ spec:
   credentials:
     source: MySQLConnectionSecret
     connectionSecretRef:
-      name: arkcase-rdbms-test-db
-      namespace: rds-test
+      name: arkcase-rdbms-conn-main
   # tls one of preferred(default), skip-verify, or true
+  # NOTE: using "true" caused clients to puke out due to cert trusts, so the CA
+  # referenced above should be part of the client containers' trusts, including Crossplane's...
+  #
+  # Also, said CA must be made available to end-client pods if we want actual, verified SSL/TLS
+  # to be used (this is a good thing for security)
   tls: "skip-verify"
