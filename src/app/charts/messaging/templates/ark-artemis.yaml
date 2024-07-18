@@ -120,6 +120,10 @@ spec:
                 secretKeyRef:
                   name: *secretName
                   key: ENCRYPTION_PASSWORD
+            {{- if $cluster }}
+            - name: ZK_HOST
+              value: {{ include "arkcase.cluster.zookeeper" $ | quote }}
+            {{- end }}
           {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
           {{- with (include "arkcase.values" (dict "ctx" $ "base" "command") | fromYaml) }}
           command: {{ toJson .value }}
