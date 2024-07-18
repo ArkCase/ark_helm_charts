@@ -193,27 +193,18 @@
 {{- end -}}
 
 {{- define "arkcase.cluster.zookeeper" -}}
-  {{- $config := (include "arkcase.cluster" $ | fromYaml) -}}
+  {{- $ctx := $ -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "The only parameter value must be the root context" -}}
+  {{- end -}}
+
+  {{- $config := (include "arkcase.cluster" $ctx | fromYaml) -}}
   {{- if $config.enabled -}}
-    {{- $url := (include "arkcase.tools.conf" (dict "ctx" $ "value" "zookeeper.url") | default "zookeeper:2181") -}}
-    {{- $zk := list -}}
-    {{- range $u := (splitList "," $url | compact) -}}
-      {{- /* $u must be of the form hostname[:port] */ -}}
-      {{- if (not (regexMatch "^([^:]+)(:([1-9][0-9]*))?$" $u)) -}}
-        {{- fail (printf "Bad ZooKeeper coordinate [%s] from URL spec: %s" $u $url) -}}
-      {{- end -}}
-      {{- $p := (splitList ":" $u) -}}
-      {{- $port := 2181 -}}
-      {{- $host := (include "arkcase.tools.mustSingleHostname" (first $p)) -}}
-      {{- if gt (len $p) 1 -}}
-        {{- $port = (last $p | toString | atoi) -}}
-        {{- if or (lt $port 1) (gt $port 65535) -}}
-          {{- fail (printf "Configuration error - the zookeeper port number [%d] must be in the range [1..65535] (from %s)" $port $u) -}}
-        {{- end -}}
-      {{- end -}}
-      {{- $zk = append $zk (printf "%s:%d" $host $port) -}}
-    {{- end -}}
-    {{- join "," $zk -}}
+- name: ZK_HOST
+  valueFrom:
+    configMapKeyRef:
+      name: {{ printf "%s-zookeeper" $ctx.Release.Name | quote }}
+      key: ZK_HOST
   {{- end -}}
 {{- end -}}
 
