@@ -57,9 +57,9 @@ if [ -v ZK_HOST ] ; then
 		[[ "${H}" =~ ^([^:]+)(:([1-9][0-9]*))?$ ]] || fail "\tIgnoring the Zookeeper spec [${H}]: must be in the form \${hostname}:\${port}"
 
 		HOST="${BASH_REMATCH[1]}"
-		[[ "${HOST}" =~ ^([a-z0-9][-a-z0-9]*)?[a-z0-9]([.]([a-z0-9][-a-z0-9]*)?[a-z0-9])*$ ]] || fail "\tInvalid Zookeeper spec [${H}]: invalid host name [${HOST}]"
-
 		PORT="${BASH_REMATCH[3]}"
+
+		[[ "${HOST}" =~ ^([a-z0-9][-a-z0-9]*)?[a-z0-9]([.]([a-z0-9][-a-z0-9]*)?[a-z0-9])*$ ]] || fail "\tInvalid Zookeeper spec [${H}]: invalid host name [${HOST}]"
 		[ -z "${PORT}" ] && PORT="2181"
 		[ ${PORT} -le 65535 ] || fail "\tInvalid Zookeeper spec [${H}]: invalid port number ${PORT}"
 
