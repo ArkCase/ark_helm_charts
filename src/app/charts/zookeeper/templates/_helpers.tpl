@@ -17,7 +17,7 @@
   {{- min 255 (add $nodes $pad) -}}
 {{- end -}}
 
-{{- define "arkcase.zookeeper.zkhost" -}}
+{{- define "__arkcase.zookeeper.zkhost.default" -}}
   {{- $cluster := (include "arkcase.cluster" $ | fromYaml) }}
   {{- $zkHost := list -}}
   {{- if $cluster.enabled -}}
@@ -31,6 +31,18 @@
     {{- end -}}
   {{- end -}}
   {{- $zkHost | join "," -}}
+{{- end -}}
+
+{{- define "arkcase.zookeeper.zkhost" -}}
+  {{- $cluster := (include "arkcase.cluster" $ | fromYaml) }}
+  {{- if $cluster.enabled -}}
+    {{- $external := (include "arkcase.tools.conf" (dict "ctx" $ "value" "zookeeper.url" "detailed" true) | fromYaml) -}}
+    {{- if and $external.global $external.value -}}
+      {{- $external.value -}}
+    {{- else -}}
+      {{- include "__arkcase.zookeeper.zkhost.default" $ -}}
+    {{- end -}}
+  {{- end -}}
 {{- end -}}
 
 {{- define "arkcase.zookeeper.minAvailable" -}}
