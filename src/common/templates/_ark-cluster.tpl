@@ -193,9 +193,18 @@
 {{- end -}}
 
 {{- define "arkcase.cluster.env" -}}
-  {{- $config := (include "arkcase.cluster" $ | fromYaml) -}}
+  {{- $ctx := $ -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "The only parameter value must be the root context" -}}
+  {{- end -}}
+
+  {{- $config := (include "arkcase.cluster" $ctx | fromYaml) -}}
   {{- if $config.enabled -}}
-    {{- include "arkcase.subsystem-access.env.conn" (dict "ctx" $ "subsys" "zookeeper" "key" "url") }}
+- name: ZK_HOST
+  valueFrom:
+    configMapKeyRef:
+      name: {{ printf "%s-zookeeper" $ctx.Release.Name | quote }}
+      key: ZK_HOST
   {{- end -}}
 {{- end -}}
 

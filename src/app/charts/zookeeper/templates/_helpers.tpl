@@ -17,6 +17,22 @@
   {{- min 255 (add $nodes $pad) -}}
 {{- end -}}
 
+{{- define "arkcase.zookeeper.zkhost" -}}
+  {{- $cluster := (include "arkcase.cluster" $ | fromYaml) }}
+  {{- $zkHost := list -}}
+  {{- if $cluster.enabled -}}
+    {{- $release := $.Release.Name -}}
+    {{- $subsystem := (include "arkcase.subsystem.name" $) -}}
+    {{- $podDomain := (include "arkcase.service.headless" $) -}}
+    {{- $port := 2181 -}}
+    {{- $nodes := (include "arkcase.zookeeper.nodes" $cluster.nodes | atoi) -}}
+    {{- range $id := (until $nodes) -}}
+      {{- $zkHost = append $zkHost (printf "%s-%s-%d.%s:%d" $release $subsystem $id $podDomain $port) -}}
+    {{- end -}}
+  {{- end -}}
+  {{- $zkHost | join "," -}}
+{{- end -}}
+
 {{- define "arkcase.zookeeper.minAvailable" -}}
   {{- $nodes := max 1 ($ | toString | atoi) -}}
   {{- /* We can lose at most half of our nodes */ -}}
