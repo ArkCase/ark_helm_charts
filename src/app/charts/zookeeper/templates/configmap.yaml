@@ -13,6 +13,9 @@ metadata:
       {{- toYaml . | nindent 4 }}
     {{- end }}
 data:
+
+  ZK_HOST: {{ include "arkcase.zookeeper.zkhost" $ | quote }}
+
   #
   # Process static files
   #

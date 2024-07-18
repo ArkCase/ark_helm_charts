@@ -174,12 +174,8 @@ spec:
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.cluster.tomcat.env" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
-            {{- if $cluster.enabled }}
-              {{- $zk := (include "arkcase.cluster.zookeeper" $) }}
-              {{- if $zk }}
-            - name: ZK_HOST
-              value: {{ $zk | quote }}
-              {{- end }}
+            {{- if $cluster }}
+              {{- include "arkcase.cluster.zookeeper" $ | nindent 12 }}
             {{- end }}
             - name: DATA_DIR
               value: *dataDir

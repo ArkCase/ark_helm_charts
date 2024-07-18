@@ -102,10 +102,8 @@ spec:
           {{- include "arkcase.image" $ | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
-            {{- $zk := (include "arkcase.cluster.zookeeper" $) -}}
-            {{- if $zk }}
-            - name: ZK_HOST
-              value: {{ $zk | quote }}
+            {{- if $cluster }}
+              {{- include "arkcase.cluster.zookeeper" $ | nindent 12 }}
             {{- end }}
             - name: NODES
               value: {{ $nodes | toString | quote }}
