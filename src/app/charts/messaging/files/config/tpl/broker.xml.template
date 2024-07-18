@@ -233,7 +233,6 @@ under the License.
 				{{- if $cluster.enabled }}
 				<primary>
 					<manager>
-						<class-name>org.apache.activemq.artemis.quorum.zookeeper.CuratorDistributedPrimitiveManager</class-name>
 						<properties>
 							<!-- This should be populated with the ZooKeeper service's host:port combo -->
 							<property key="connect-string" value="${ZK_HOST}" />
