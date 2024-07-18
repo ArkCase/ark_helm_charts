@@ -258,8 +258,7 @@ spec:
         - name: haproxy
           {{- include "arkcase.image" (dict "ctx" $ "name" "haproxy" "repository" "haproxy") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
-            - name: SSL_DIR
-              value: *sslDir
+            {{- include "arkcase.acme.env" $ | nindent 12 }}
           command: [ "/entrypoint" ]
           {{- include "arkcase.subsystem.ports" (dict "ctx" $ "name" "clusteredHaproxy") | nindent 10 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "haproxy") | nindent 12 }}
