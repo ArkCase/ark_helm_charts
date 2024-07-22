@@ -181,6 +181,8 @@ spec:
               value: &confDir "/app/conf"
             - name: HOME_DIR
               value: &homeDir "/app/home"
+            - name: CONF_APP_DIR
+              value: &confAppDir "/app/home/.arkcase"
             - name: TEMP_DIR
               value: &tempDir "/app/home/temp"
             - name: LOGS_DIR
@@ -198,12 +200,18 @@ spec:
                     permissions: "u=rwX,g=rwX,o="
                     flags: [ "recurse", "forced", "create", "changes" ]
                     targets: [ "$(HOME_DIR)", "$(TEMP_DIR)", "$(CONF_DIR)", "$(WARS_DIR)", "$(LOGS_DIR)", "$(FSRV_DIR)", "$(FOIA_DIR)" ]
+                  - ownership:
+                    permissions: "u=rwx,g=rwx,o="
+                    flags: [ "verbose", "forced", "create" ]
+                    targets: [ "/app/home/.arkcase/libraries/html2pdf_chromium.so" ]
           volumeMounts:
             - name: &warsVol "wars"
               mountPath: *warsDir
             {{- include "arkcase.core.dev.permissionMounts" $ | nindent 12 }}
             - name: &homeVol "home"
               mountPath: *homeDir
+            - name: &confVol "conf"
+              mountPath: *confAppDir
             - name: &tempVol "temp"
               mountPath: *tempDir
             - name: &logsVol "logs"
