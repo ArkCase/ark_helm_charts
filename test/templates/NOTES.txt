@@ -3,7 +3,6 @@ subsystem: {{ (include "arkcase.subsystem.name" $) | quote }}
 config-resource: {{- include "arkcase.subsystem-access.conf" $ | nindent 2 }}
 
 ---
-CONN =[{{ include "arkcase.subsystem-access.name.conn"  $ }}]
 CREDS=[{{ include "arkcase.subsystem-access.name.admin" $ }}]
 CREDS=[{{ include "arkcase.subsystem-access.name.cred" $ }}]
 CREDS=[{{ include "arkcase.subsystem-access.name.cred" (dict "ctx" $ "type" "cred-access-hollywood") }}]
@@ -14,7 +13,6 @@ ENABLED = {{ not (empty (include "arkcase.subsystem.enabled" $)) }}
 EXTERNAL = {{ not (empty (include "arkcase.subsystem.external" $)) }}
 
 ---
-{{ include "arkcase.subsystem-access.env.conn" (dict "ctx" $ "key" "hostname" "name" "${key:l}_${key}_${key:u}_MY_${subsys:u}_${subsys:l}_SUPER_var_${type}_${type:l}_${type:u}_${conn}_${conn:l}_${conn:u}" "optional" "true") }}
 {{ include "arkcase.subsystem-access.env.cred" (dict "ctx" $ "type" "schema-arkcase" "key" "mapped" "name" "${key:l}_${key:u}_MY_${subsys:u}_${subsys:l}_SUPER_var_${type}_${type:l}_${type:u}" "optional" "false") }}
 ---
 {{ include "arkcase.subsystem-access.env.admin" (dict "ctx" $ "subsys" "rdbms" "conn" "crap" "key" "username") }}
@@ -22,21 +20,16 @@ EXTERNAL = {{ not (empty (include "arkcase.subsystem.external" $)) }}
 {{ include "arkcase.subsystem-access.env.cred" (dict "ctx" $ "subsys" "rdbms" "type" "schema-pentaho" "key" "username") }}
 {{ include "arkcase.subsystem-access.env.cred" (dict "ctx" $ "subsys" "rdbms" "type" "schema-pentaho" "key" "password") }}
 ---
-{{ include "arkcase.subsystem-access.volumeMount.conn" (dict "ctx" $ "key" "hostname") }}
-{{ include "arkcase.subsystem-access.volumeMount.conn" (dict "ctx" $ "subsys" "rdbms" "key" "hostname") }}
 {{ include "arkcase.subsystem-access.volumeMount.admin" (dict "ctx" $ "subsys" "rdbms" "key" "username") }}
 {{ include "arkcase.subsystem-access.volumeMount.admin" (dict "ctx" $ "subsys" "rdbms" "key" "password") }}
 {{ include "arkcase.subsystem-access.volumeMount.cred" (dict "ctx" $ "subsys" "rdbms" "type" "schema-pentaho" "key" "username") }}
 {{ include "arkcase.subsystem-access.volumeMount.cred" (dict "ctx" $ "subsys" "rdbms" "type" "schema-pentaho" "key" "password") }}
 ---
-{{ include "arkcase.subsystem-access.volume.conn" (dict "ctx" $) }}
-{{ include "arkcase.subsystem-access.volume.conn" (dict "ctx" $ "subsys" "rdbms") }}
 {{ include "arkcase.subsystem-access.volume.admin" (dict "ctx" $ "subsys" "rdbms") }}
 {{ include "arkcase.subsystem-access.volume.admin" (dict "ctx" $ "subsys" "rdbms") }}
 {{ include "arkcase.subsystem-access.volume.cred" (dict "ctx" $ "subsys" "rdbms" "type" "schema-pentaho") }}
 {{ include "arkcase.subsystem-access.volume.cred" (dict "ctx" $ "subsys" "rdbms" "type" "schema-pentaho") }}
 ---
-external-conn: [{{ (include "arkcase.subsystem-access.external.conn" $) }}]
 external-admin: [{{ (include "arkcase.subsystem-access.external.admin" $) }}]
 external-schema-arkcase: [{{ (include "arkcase.subsystem-access.external.cred" (dict "ctx" $ "type" "schema-arkcase")) }}]
 ---
