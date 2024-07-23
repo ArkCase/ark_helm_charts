@@ -29,7 +29,7 @@ spec:
       command: [ "/usr/local/bin/run-from-env" ]
       args: [ "SCRIPT" ]
       env:
-        {{- include "arkcase.subsystem-access.env.conn" (dict "ctx" $ "name" "SERVICE_URL" "key" "url") | nindent 8 }}
+        {{- include "arkcase.subsystem-access.env.admin" (dict "ctx" $ "name" "SERVICE_URL" "key" "url") | nindent 8 }}
         - name: SCRIPT
           value: |-
             set -xeuo pipefail

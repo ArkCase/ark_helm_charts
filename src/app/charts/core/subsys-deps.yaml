@@ -6,85 +6,80 @@ consumes:
   # We specifically don't consume from ZooKeeper b/c those are handled directly
   # by the Clustering templates, and there's no need to address them beyond that
   # zookeeper: {}
+
   app-artifacts:
     main:
-      properties:
-        url: DEPL_URL
+      url: DEPL_URL
+
   content:
     main:
-      properties:
-        url: ARKCASE_CONTENT_URL
-        ui: ARKCASE_CONTENT_UI
-      credentials:
-        admin:
-          username: ARKCASE_CONTENT_USERNAME
-          password: ARKCASE_CONTENT_PASSWORD
+      url: ARKCASE_CONTENT_URL
+      ui: ARKCASE_CONTENT_UI
+      username: ARKCASE_CONTENT_USERNAME
+      password: ARKCASE_CONTENT_PASSWORD
+
   ldap:
-    main:
-      properties:
-        url: ARKCASE_LDAP_MAIN_URL
-      credentials:
-        access:
-          username: ARKCASE_LDAP_MAIN_USERNAME
-          password: ARKCASE_LDAP_MAIN_PASSWORD
+    arkcase:
+      url: ARKCASE_LDAP_URL
+      username: ARKCASE_LDAP_USERNAME
+      password: ARKCASE_LDAP_PASSWORD
+
+    arkcase-admin:
+      url: ARKCASE_LDAP_ADMIN_URL
+      username: ARKCASE_LDAP_ADMIN_USERNAME
+      password: ARKCASE_LDAP_ADMIN_PASSWORD
+
     portal:
-      properties:
-        url: ARKCASE_LDAP_PORTAL_URL
-      credentials:
-        access:
-          username: ARKCASE_LDAP_PORTAL_USERNAME
-          password: ARKCASE_LDAP_PORTAL_PASSWORD
+      url: ARKCASE_LDAP_PORTAL_URL
+      username: ARKCASE_LDAP_PORTAL_USERNAME
+      password: ARKCASE_LDAP_PORTAL_PASSWORD
+
+    portal-admin:
+      url: ARKCASE_LDAP_PORTAL_ADMIN_URL
+      username: ARKCASE_LDAP_PORTAL_ADMIN_USERNAME
+      password: ARKCASE_LDAP_PORTAL_ADMIN_PASSWORD
+
   rdbms:
-    main:
-      properties:
-        host: ARKCASE_JDBC_HOST
-        port: ARKCASE_JDBC_PORT
-      credentials:
-        schema-arkcase:
-          username: ARKCASE_JDBC_USERNAME
-          password: ARKCASE_JDBC_PASSWORD
-          database: ARKCASE_JDBC_DATABASE
-          schema: ARKCASE_JDBC_SCHEMA
-          # instance: ARKCASE_JDBC_INSTANCE
+    arkcase:
+      host: ARKCASE_JDBC_HOST
+      port: ARKCASE_JDBC_PORT
+      username: ARKCASE_JDBC_USERNAME
+      password: ARKCASE_JDBC_PASSWORD
+      database: ARKCASE_JDBC_DATABASE
+      schema: ARKCASE_JDBC_SCHEMA
+      # instance: ARKCASE_JDBC_INSTANCE
+
   reports:
-    main:
-      properties:
-        url: ARKCASE_REPORTS_URL
-      credentials:
-        admin:
-          username: ARKCASE_REPORTS_USERNAME
-          password: ARKCASE_REPORTS_PASSWORD
+    admin:
+      url: ARKCASE_REPORTS_ADMIN_URL
+      username: ARKCASE_REPORTS_ADMIN_USERNAME
+      password: ARKCASE_REPORTS_ADMIN_PASSWORD
+
+    access:
+      url: ARKCASE_REPORTS_URL
+      username: ARKCASE_REPORTS_USERNAME
+      password: ARKCASE_REPORTS_PASSWORD
 
   messaging:
-    main:
-      properties:
-        url: ARKCASE_OPENWIRE_URL
-        proto: ARKCASE_OPENWIRE_PROTO
-        host: ARKCASE_OPENWIRE_HOST
-        port: ARKCASE_OPENWIRE_PORT
-      credentials:
-        admin:
-          username: ARKCASE_OPENWIRE_USERNAME
-          password: ARKCASE_OPENWIRE_PASSWORD
+    openwire:
+      url: ARKCASE_OPENWIRE_URL
+      proto: ARKCASE_OPENWIRE_PROTO
+      host: ARKCASE_OPENWIRE_HOST
+      port: ARKCASE_OPENWIRE_PORT
+      username: ARKCASE_OPENWIRE_USERNAME
+      password: ARKCASE_OPENWIRE_PASSWORD
+
     stomp:
-      properties:
-        url: ARKCASE_STOMP_URL
-        proto: ARKCASE_STOMP_PROTO
-        host: ARKCASE_STOMP_HOST
-        port: ARKCASE_STOMP_PORT
-      credentials:
-        admin:
-          username: ARKCASE_STOMP_USERNAME
-          password: ARKCASE_STOMP_PASSWORD
+      url: ARKCASE_STOMP_URL
+      proto: ARKCASE_STOMP_PROTO
+      host: ARKCASE_STOMP_HOST
+      port: ARKCASE_STOMP_PORT
+      username: ARKCASE_STOMP_USERNAME
+      password: ARKCASE_STOMP_PASSWORD
+
   search:
     main:
-      properties:
-        url: ARKCASE_SOLR_URL
+      url: ARKCASE_SOLR_URL
       # We don't do Solr authentication just yet, but be ready
-      # credentials:
-      #   admin:
-      #     username: ARKCASE_SOLR_ADMIN_USERNAME
-      #     password: ARKCASE_SOLR_ADMIN_PASSWORD
-      #   access:
-      #     username: ARKCASE_SOLR_USERNAME
-      #     password: ARKCASE_SOLR_PASSWORD
+      # username: ARKCASE_SOLR_USERNAME
+      # password: ARKCASE_SOLR_PASSWORD

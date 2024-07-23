@@ -2,5 +2,5 @@
   {{- if not (include "arkcase.isRootContext" $) -}}
     {{- fail "The parameter given must be the root context (. or $)" -}}
   {{- end -}}
-  {{- include "arkcase.subsystem-access.env.conn" (dict "ctx" $ "subsys" "app" "key" "url" "name" "DEPL_URL") }}
+  {{- include "arkcase.subsystem-access.env.admin" (dict "ctx" $ "subsys" "app" "key" "url" "name" "DEPL_URL") }}
 {{- end -}}

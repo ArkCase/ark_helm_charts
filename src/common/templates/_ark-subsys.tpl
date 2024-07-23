@@ -107,8 +107,8 @@ Parameter: either the root context (i.e. "." or "$"), or
 */ -}}
 {{- define "arkcase.subsystem.enabledOrExternal" }}
   {{- $map := (include "arkcase.subsystem" $ | fromYaml) -}}
-  {{- $conf := (include "arkcase.subsystem.conf" $ | fromYaml) -}}
-  {{- if or ($map.data.enabled) (not (empty ($conf.connection))) -}}
+  {{- $external := (not (empty (include "arkcase.subsystem.external" $))) -}}
+  {{- if or ($map.data.enabled) $external -}}
     {{- true -}}
   {{- end -}}
 {{- end }}
@@ -124,27 +124,30 @@ Parameter: either the root context (i.e. "." or "$"), or
 
   {{- $external := false -}}
   {{- $conf := (include "arkcase.subsystem.conf" $ | fromYaml) -}}
-  {{- if $conf.connection -}}
-    {{- $connections := (get $ctx.Values "provided-connections") | default list | compact | sortAlpha -}}
-    {{- if $connections -}}
-      {{- /* TODO: Must also support asking if a specific connection is external? */ -}}
+  {{- /*
+     A subsystem is deemed to be externally-provied if:
 
-      {{- /* Check to see which of the expected connections are overridden in the configuration */ -}}
-      {{- $present := list -}}
-      {{- range $c := $connections -}}
-        {{- if hasKey $conf.connection $c -}}
-          {{- $present = append $present $c -}}
-        {{- end -}}
-      {{- end -}}
+       * the value .Values.global.conf.${subsys}.external is set to a scalar value
+         equivalent to the boolean TRUE
 
-      {{- /* If there are multiple provided connections, then we only consider the service */ -}}
-      {{- /* external if ALL of those connections are provided for in the configuration.   */ -}}
-      {{- $external = (eq (len $connections) (len $present)) -}}
+       * the value .Values.global.conf.${subsys}.external is set to a non-empty map value
+         with the 'enabled' key either not provided, or set to a scalar value equivalent
+         to the boolean TRUE
+
+     In all other scenarios, the subsystem is not interpreted as externally-provided.
+  */ -}}
+
+  {{- if $conf.external -}}
+    {{- if kindIs "slice" $conf.external -}}
+      {{- /* Unsupported type: slice */ -}}
+      {{- $subsys := (include "arkcase.subsystem.name" $ctx) -}}
+      {{- fail (printf "The value global.conf.%s.external may not be a list/array-type" $subsys) -}}
+    {{- else if kindIs "map" $conf.external -}}
+      {{- /* Map value, check for "enabled" */ -}}
+      {{- $external = ((hasKey $conf.external "enabled") | ternary (include "arkcase.toBoolean" $conf.external.enabled) (true | toString) | empty | not) -}}
     {{- else -}}
-      {{- /* If there are no "provided-connections" defined, it means there's only 1 */ -}}
-      {{- if not (empty $conf.connection) -}}
-        {{- $external = true -}}
-      {{- end -}}
+      {{- /* Scalar value */ -}}
+      {{- $external = (not (empty (include "arkcase.toBoolean" ($conf.external | toString)))) -}}
     {{- end -}}
   {{- end -}}
 

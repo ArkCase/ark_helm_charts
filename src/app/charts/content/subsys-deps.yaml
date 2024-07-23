@@ -3,22 +3,17 @@ consumes:
   # by the ACME templates, and there's no need to address them beyond that
   # acme: {}
   ldap:
-    main:
-      properties:
-        url: CONTENT_LDAP_URL
-      credentials:
-        access:
-          username: CONTENT_LDAP_USERNAME
-          password: CONTENT_LDAP_PASSWORD
+    arkcase:
+      url: CONTENT_LDAP_URL
+      username: CONTENT_LDAP_USERNAME
+      password: CONTENT_LDAP_PASSWORD
+
   rdbms:
-    content:
-      properties:
-        host: ALFRESCO_JDBC_HOST
-        port: ALFRESCO_JDBC_PORT
-      credentials:
-        schema-content:
-          username: ALFRESCO_JDBC_USERNAME
-          password: ALFRESCO_JDBC_PASSWORD
-          database: ALFRESCO_JDBC_DATABASE
-          schema: ALFRESCO_JDBC_SCHEMA
-          # instance: ALFRESCO_JDBC_INSTANCE
+    schema-content:
+      host: ALFRESCO_JDBC_HOST
+      port: ALFRESCO_JDBC_PORT
+      username: ALFRESCO_JDBC_USERNAME
+      password: ALFRESCO_JDBC_PASSWORD
+      database: ALFRESCO_JDBC_DATABASE
+      schema: ALFRESCO_JDBC_SCHEMA
+      # instance: ALFRESCO_JDBC_INSTANCE

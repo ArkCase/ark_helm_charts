@@ -6,7 +6,7 @@
   value: "/.ssl"
 - name: ACME_SERVICE_NAME
   value: {{ include "arkcase.service.name" $ | quote }}
-{{ include "arkcase.subsystem-access.env.conn" (dict "ctx" $ "subsys" "acme" "key" "url" "name" "ACME_URL") }}
+{{ include "arkcase.subsystem-access.env.admin" (dict "ctx" $ "subsys" "acme" "key" "url" "name" "ACME_URL") }}
 {{- end -}}
 
 {{- define "arkcase.acme.volumeMount" -}}

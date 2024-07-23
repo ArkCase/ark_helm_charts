@@ -98,7 +98,7 @@ spec:
               value: {{ $pentahoService | quote }}
             - name: PENTAHO_INSTALLED_LICENSE_PATH
               value: "$(DATA_DIR)/.installedLicenses.xml"
-            {{- include "arkcase.subsystem-access.env.conn" (dict "ctx" $ "key" "url" "name" "PENTAHO_SERVER_URL") | nindent 12 }}
+            {{- include "arkcase.subsystem-access.env.admin" (dict "ctx" $ "key" "url" "name" "PENTAHO_SERVER_URL") | nindent 12 }}
             {{- include "arkcase.subsystem-access.env.admin" (dict "ctx" $ "key" "username" "name" "ADMIN_USERNAME") | nindent 12 }}
             {{- include "arkcase.subsystem-access.env.admin" (dict "ctx" $ "key" "password" "name" "ADMIN_PASSWORD") | nindent 12 }}
             - name: LDAP_DOMAIN

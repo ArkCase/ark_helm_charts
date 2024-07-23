@@ -8,48 +8,53 @@ consumes:
   # zookeeper: {}
   app-artifacts:
     main:
-      properties:
-        url: DEPL_URL
+      url: DEPL_URL
+
   core:
-    main:
-      properties:
-        url: ARKCASE_SERVER_URL
-      credentials:
-        access:
-          username: ARKCASE_USERNAME
-          password: ARKCASE_PASSWORD
+    arkcase:
+      url: ARKCASE_SERVER_URL
+      username: ARKCASE_USERNAME
+      password: ARKCASE_PASSWORD
+
   ldap:
-    main:
-      properties:
-        url: REPORTS_LDAP_URL
-      credentials:
-        access:
-          username: REPORTS_LDAP_USERNAME
-          password: REPORTS_LDAP_PASSWORD
+    arkcase:
+      url: REPORTS_LDAP_URL
+      username: REPORTS_LDAP_USERNAME
+      password: REPORTS_LDAP_PASSWORD
+
   rdbms:
-    main:
-      properties:
-        host: REPORTS_JDBC_ARKCASE_HOST
-        port: REPORTS_JDBC_ARKCASE_PORT
-      credentials:
-        schema-arkcase:
-          username: REPORTS_JDBC_ARKCASE_USERNAME
-          password: REPORTS_JDBC_ARKCASE_PASSWORD
-          database: REPORTS_JDBC_ARKCASE_DATABASE
-          schema:   REPORTS_JDBC_ARKCASE_SCHEMA
-    reports:
-      properties:
-        host: REPORTS_JDBC_HOST
-        port: REPORTS_JDBC_PORT
-      credentials:
-        schema-hibernate:
-          username: REPORTS_JDBC_USERNAME
-          password: REPORTS_JDBC_PASSWORD
-          database: REPORTS_JDBC_HIBERNATE_DATABASE
-          schema:   REPORTS_JDBC_HIBERNATE_SCHEMA
-        schema-jcr:
-          database: REPORTS_JDBC_JACKRABBIT_DATABASE
-          schema:   REPORTS_JDBC_JACKRABBIT_SCHEMA
-        schema-quartz:
-          database: REPORTS_JDBC_QUARTZ_DATABASE
-          schema:   REPORTS_JDBC_QUARTZ_SCHEMA
+    arkcase:
+      host: REPORTS_JDBC_ARKCASE_HOST
+      port: REPORTS_JDBC_ARKCASE_PORT
+      username: REPORTS_JDBC_ARKCASE_USERNAME
+      password: REPORTS_JDBC_ARKCASE_PASSWORD
+      database: REPORTS_JDBC_ARKCASE_DATABASE
+      schema:   REPORTS_JDBC_ARKCASE_SCHEMA
+      # instance:   REPORTS_JDBC_ARKCASE_INSTANCE
+
+    hibernate:
+      host: REPORTS_JDBC_HIBERNATE_HOST
+      port: REPORTS_JDBC_HIBERNATE_PORT
+      username: REPORTS_JDBC_HIBERNATE_USERNAME
+      password: REPORTS_JDBC_HIBERNATE_PASSWORD
+      database: REPORTS_JDBC_HIBERNATE_DATABASE
+      schema:   REPORTS_JDBC_HIBERNATE_SCHEMA
+      # instance:   REPORTS_JDBC_HIBERNATE_INSTANCE
+
+    jcr:
+      host: REPORTS_JDBC_JACKRABBIT_HOST
+      port: REPORTS_JDBC_JACKRABBIT_PORT
+      username: REPORTS_JDBC_JACKRABBIT_USERNAME
+      password: REPORTS_JDBC_JACKRABBIT_PASSWORD
+      database: REPORTS_JDBC_JACKRABBIT_DATABASE
+      schema:   REPORTS_JDBC_JACKRABBIT_SCHEMA
+      # instance:   REPORTS_JDBC_JACKRABBIT_INSTANCE
+
+    quartz:
+      host: REPORTS_JDBC_QUARTZ_HOST
+      port: REPORTS_JDBC_QUARTZ_PORT
+      username: REPORTS_JDBC_QUARTZ_USERNAME
+      password: REPORTS_JDBC_QUARTZ_PASSWORD
+      database: REPORTS_JDBC_QUARTZ_DATABASE
+      schema:   REPORTS_JDBC_QUARTZ_SCHEMA
+      # instance:   REPORTS_JDBC_QUARTZ_INSTANCE

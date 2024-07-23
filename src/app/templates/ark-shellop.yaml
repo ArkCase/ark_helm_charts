@@ -85,20 +85,9 @@ spec:
               value: "color"
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           volumeMounts:
-            - name: &configMap "configmap"
-              mountPath: "/hooks/00-ready-marker.sh"
-              subPath: &hookReadyMarkerSh "ready-marker.sh"
-              readOnly: true
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/hooks/00-ready-marker.sh") | nindent 12 }}
       volumes:
-        - name: *configMap
-          configMap:
-            name: {{ $fullName | quote }}
-            optional: false
-            defaultMode: 0444
-            items:
-              - key: *hookReadyMarkerSh
-                path: *hookReadyMarkerSh
-                mode: 0555
+        {{- include "arkcase.file-resource.volumes" $ | nindent 8 }}
       {{- with $.Values.nodeSelector }}
       nodeSelector: {{- toYaml . | nindent 8 }}
       {{- end }}

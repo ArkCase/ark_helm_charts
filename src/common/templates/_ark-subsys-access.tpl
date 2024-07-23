@@ -78,17 +78,10 @@
   {{- $result | toYaml -}}
 {{- end -}}
 
-{{- define "__arkcase.subsystem-access.sanitize-mapped-keys" -}}
-  {{- $base := $ -}}
-  {{- $key := "mapped-keys" -}}
-
-  {{- $mappedKeys := get $base $key -}}
-  {{- if or (not $mappedKeys) (not (kindIs "map" $mappedKeys)) -}}
-    {{- $mappedKeys = dict -}}
-  {{- end -}}
-
+{{- define "__arkcase.subsystem-access.sanitize-mappings" -}}
+  {{- $mappedKeys := $ -}}
   {{- $result := dict -}}
-  {{- if $mappedKeys -}}
+  {{- if and $mappedKeys (kindIs "map" $mappedKeys) -}}
     {{- $regex := "^[a-zA-Z0-9_.-]+$" -}}
     {{- range $k, $v := $mappedKeys -}}
       {{- if or (not $k) (not $v) -}}
@@ -96,120 +89,41 @@
       {{- end -}}
       {{- $v = ($v | toString) -}}
       {{- if not (regexMatch $regex $k) -}}
-        {{- fail (printf "Invalid source key [%s] (mapped into [%s]) in mapped-keys section - must match /%s/" $k $v $regex) -}}
+        {{- fail (printf "Invalid source key [%s] (mapped into [%s]) in mappings section - must match /%s/" $k $v $regex) -}}
       {{- end -}}
       {{- if not (regexMatch $regex $v) -}}
-        {{- fail (printf "Invalid target key [%s] (mapped from [%s]) in mapped-keys section - must match /%s/" $v $k $regex) -}}
+        {{- fail (printf "Invalid target key [%s] (mapped from [%s]) in mappings section - must match /%s/" $v $k $regex) -}}
       {{- end -}}
       {{- $result = set $result $k $v -}}
     {{- end -}}
-
-    {{- if $result -}}
-      {{- $result = dict $key $result -}}
-    {{- end -}}
   {{- end -}}
   {{- $result | toYaml -}}
 {{- end -}}
 
-{{- define "__arkcase.subsystem-access.sanitize-credentials" -}}
-  {{- $credentials := $ -}}
-  {{- if or (not $credentials) (not (kindIs "map" $credentials)) -}}
-    {{- $credentials = dict -}}
-  {{- end -}}
-
-  {{- if and (hasKey $credentials "enabled") (not (include "arkcase.toBoolean" $credentials.enabled)) -}}
-    {{- $credentials = dict -}}
-  {{- end -}}
-
-  {{- $result := dict -}}
-  {{- if $credentials -}}
-    {{- /* Scan over each credential defined in the map, and sanitize it */ -}}
-    {{- range $key, $creds := (omit $credentials "enabled") -}}
-
-      {{- if not (include "arkcase.tools.hostnamePart" $key) -}}
-        {{- fail (printf "Illegal credentials name [%s] must be an RFC-1123 hostname part (no dots!)" $key) -}}
-      {{- end -}}
-
-      {{- /* If it's empty, in any way, shape, or form, skip it */ -}}
-      {{- if not $creds -}}
-        {{- continue -}}
-      {{- end -}}
-
-      {{- if not (kindIs "map" $creds) -}}
-        {{- $creds = (dict "secret" ($creds | toString)) -}}
-      {{- end -}}
-
-      {{- /* Skip disabled credentials */ -}}
-      {{- $enabled := or (not (hasKey $creds "enabled")) (include "arkcase.toBoolean" $creds.enabled) -}}
-      {{- if not $enabled -}}
-        {{- continue -}}
-      {{- end -}}
-
-      {{- $reference := ((hasKey $creds "secret") | ternary $creds.secret "") -}}
-      {{- if not $reference -}}
-        {{- /* If the target secret is null or the empty string, ignore it */ -}}
-        {{- continue -}}
-      {{- end -}}
-
-      {{- if not (include "arkcase.tools.hostnamePart" $reference) -}}
-        {{- fail (printf "Invalid secret credentials reference [%s]" $reference) -}}
-      {{- end -}}
-
-      {{- /* These are the new credentials we will return */ -}}
-      {{- $newCreds := (dict "source" $reference "configMap" false) -}}
-
-      {{- /* The mapped keys are only of use if we have an alternative source */ -}}
-      {{- $newCreds = merge $newCreds (include "__arkcase.subsystem-access.sanitize-mapped-keys" $creds | fromYaml) -}}
-
-      {{- /* Stow the computed credentials */ -}}
-      {{- $result = set $result $key $newCreds -}}
-    {{- end -}}
-  {{- end -}}
-  {{- $result | toYaml -}}
-{{- end -}}
-
-{{- define "__arkcase.subsystem-access.sanitize-multi-connections" -}}
-  {{- $connection := $ -}}
-  {{- if or (not $connection) (not (kindIs "map" $connection)) -}}
-    {{- $connection = dict -}}
+{{- define "__arkcase.subsystem-access.sanitize-external" -}}
+  {{- $external := $ -}}
+  {{- if or (not $external) (not (kindIs "map" $external)) -}}
+    {{- $external = dict -}}
   {{- end -}}
 
   {{- /* If the credential configuration is disabled, treat it as such */ -}}
-  {{- if and (hasKey $connection "enabled") (not (include "arkcase.toBoolean" $connection.enabled)) -}}
-    {{- $connection = dict -}}
+  {{- if and (hasKey $external "enabled") (not (include "arkcase.toBoolean" $external.enabled)) -}}
+    {{- $external = dict -}}
   {{- end -}}
 
   {{- $result := dict -}}
-  {{- if $connection -}}
-    {{- $connection = omit $connection "enabled" -}}
+  {{- if $external -}}
+    {{- $mappings := (include "__arkcase.subsystem-access.sanitize-mappings" $external.mappings | fromYaml) -}}
 
-    {{- $single := pick $connection "credentials" "mapped-keys" "secret" "configMap" -}}
-    {{- $multiple := omit $connection "credentials" "mapped-keys" "secret" "configMap" -}}
-    {{- if and $single $multiple -}}
-      {{- fail (printf "Configuration fault: must either be a multi-connection configuration, or a single-connection configuration: %s" ($ | toYaml | nindent 0)) -}}
-    {{- end -}}
-
-    {{- if $single -}}
-      {{- $single = (include "__arkcase.subsystem-access.sanitize-connection" $single | fromYaml) -}}
-      {{- if $single -}}
-        {{- $result = merge $result (dict "main" $single "default" "main") -}}
+    {{- $connection := get $external "connection" -}}
+    {{- range $k, $c := $connection -}}
+      {{- if not $k -}}
+        {{- fail (printf "Invalid empty-string connection name: %s" ($ | toYaml | nindent 0)) -}}
       {{- end -}}
-    {{- else if $multiple -}}
-      {{- $default := ((hasKey $multiple "default") | ternary (get $multiple "default" | toString) "" | default "main") -}}
-      {{- $multiple = omit $multiple "default" -}}
-      {{- if not (hasKey $multiple $default) -}}
-        {{- fail (printf "Invalid multi-connection configuration: the default is set to '%s', but only these connections are configured: %s" $default (keys $multiple | sortAlpha)) -}}
+      {{- $c = (include "__arkcase.subsystem-access.sanitize-connection" (dict "c" $c "m" $mappings) | fromYaml) -}}
+      {{- if $c -}}
+        {{- $result = set $result $k $c -}}
       {{- end -}}
-      {{- range $k, $c := $multiple -}}
-        {{- if not $k -}}
-          {{- fail (printf "Invalid empty-string connection name: %s" ($ | toYaml | nindent 0)) -}}
-        {{- end -}}
-        {{- $c = (include "__arkcase.subsystem-access.sanitize-connection" $c | fromYaml) -}}
-        {{- if $c -}}
-          {{- $result = set $result $k $c -}}
-        {{- end -}}
-      {{- end -}}
-      {{- $result = set $result "default" $default -}}
     {{- end -}}
   {{- end -}}
 
@@ -217,42 +131,41 @@
 {{- end -}}
 
 {{- define "__arkcase.subsystem-access.sanitize-connection" -}}
-  {{- $connection := $ -}}
+  {{- $connection := $.c -}}
   {{- if or (not $connection) (not (kindIs "map" $connection)) -}}
     {{- $connection = dict -}}
   {{- end -}}
-
-  {{- if and (hasKey $connection "enabled") (not (include "arkcase.toBoolean" $connection.enabled)) -}}
-    {{- /* If the connection configuration is disabled, treat it as such */ -}}
-    {{- $connection = dict -}}
-  {{- end -}}
+  {{- $connection = pick $connection "source" "inherit-mappings" "mappings" -}}
 
   {{- $result := dict -}}
   {{- if $connection -}}
-    {{- $connection = omit $connection "enabled" -}}
+    {{- $inheritMappings := ((hasKey $connection "inherit-mappings") | ternary (include "arkcase.toBoolean" (get $connection "inherit-mappings")) (true | toString) | empty | not) -}}
+    {{- $sharedMappings := dict -}}
+    {{- if and $inheritMappings $.m (kindIs "map" $.m) -}}
+      {{- $sharedMappings = $.m -}}
+    {{- end -}}
+
     {{- $reference := "" -}}
-    {{- $type := "" -}}
-    {{- range (list "secret" "configMap") -}}
-      {{- $type = . -}}
-      {{- if (hasKey $connection $type) -}}
-        {{- $v := get $connection $type -}}
-        {{- if not (include "arkcase.tools.hostnamePart" $v) -}}
-          {{- fail (printf "Invalid %s connection reference [%s]" $type $v) -}}
-        {{- end -}}
-        {{- $reference = $v -}}
-        {{- break -}}
+    {{- if (hasKey $connection "source") -}}
+      {{- $reference = get $connection "source" -}}
+      {{- if not (include "arkcase.tools.hostnamePart" $reference) -}}
+        {{- fail (printf "Invalid connection secret name [%s]" $reference) -}}
       {{- end -}}
     {{- end -}}
 
     {{- if $reference -}}
       {{- /* We only tack the connection info if there actually is a target */ -}}
-      {{- $result = merge $result (dict "configMap" (eq "configMap" $type) "source" $reference) -}}
-      {{- $result = merge $result (include "__arkcase.subsystem-access.sanitize-mapped-keys" $connection | fromYaml) -}}
+      {{- $result = merge $result (dict "source" $reference) -}}
+    {{- end -}}
 
-      {{- $credentials := (include "__arkcase.subsystem-access.sanitize-credentials" $connection.credentials | fromYaml) -}}
-      {{- if $credentials -}}
-        {{- $result = set $result "credentials" $credentials -}}
-      {{- end -}}
+    {{- $mappings := (include "__arkcase.subsystem-access.sanitize-mappings" $connection.mappings | fromYaml) -}}
+
+    {{- /* Add the shared mappings, if desired, without overwriting */ -}}
+    {{- /* We don't sanitize the shared mappings b/c they were already sanitized before we were called */ -}} 
+    {{- $mappings = (merge $mappings $sharedMappings) -}}
+   
+    {{- if $mappings -}}
+      {{- $result = set $result "mappings" $mappings -}}
     {{- end -}}
   {{- end -}}
 
@@ -297,9 +210,9 @@
     {{- $result = set $result "settings" $settings -}}
   {{- end -}}
 
-  {{- $connection := (include "__arkcase.subsystem-access.sanitize-multi-connections" $conf.connection | fromYaml) -}}
-  {{- if $connection -}}
-    {{- $result = set $result "connection" $connection -}}
+  {{- $external := (include "__arkcase.subsystem-access.sanitize-external" $conf.external | fromYaml) -}}
+  {{- if $external -}}
+    {{- $result = set $result "external" $external -}}
   {{- end -}}
 
   {{- $result | toYaml -}}
@@ -522,7 +435,7 @@
   {{- $optional := (not (empty (include "arkcase.toBoolean" ($.optional | default false)))) -}}
 
   {{- /* Now we try to find any mappings for this key */ -}}
-  {{- $mappings := (get $conf "mapped-keys" | default dict) -}}
+  {{- $mappings := (get $conf "mappings" | default dict) -}}
   {{- $sourceKey := (hasKey $mappings $key | ternary (get $mappings $key) $key) -}}
 - name: {{ $envVarName | quote }}
   valueFrom:
@@ -610,7 +523,7 @@
   {{- $volumeName := (printf "vol-%s" (include $volumeNameTemplate $)) -}}
 
   {{- /* Now we try to find any mappings for this key */ -}}
-  {{- $mappings := (get $conf "mapped-keys" | default dict) -}}
+  {{- $mappings := (get $conf "mappings" | default dict) -}}
   {{- $sourceKey := (hasKey $mappings $key | ternary (get $mappings $key) $key) -}}
 
   {{- $mountPath := $.mountPath -}}
@@ -786,7 +699,7 @@
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- $ctx = $.ctx -}}
     {{- if not (include "arkcase.isRootContext" $ctx) -}}
-      {{- fail "Must provide the root context ($ or .) as the 'ctx' parameter" -}}
+      {{- fail "Must provide the root context ($ or .) as either the 'ctx' parameter, or the only parameter" -}}
     {{- end -}}
   {{- end -}}
 
@@ -797,11 +710,12 @@
   {{- $accessConfig := ($ctx.Files.Get "subsys-deps.yaml" | fromYaml | default dict) -}}
   {{- $consumes := ($accessConfig.consumes | default dict) -}}
   {{- range $subsys := (keys $consumes | sortAlpha) -}}
-    {{- $subsysData := (get $consumes $subsys | default dict) -}}
-    {{- if not $subsysData -}}
+    {{- $subsysData := get $consumes $subsys -}}
+
+    {{- /* If there's nothing to consume from this subsystem, skip it */ -}}
+    {{- if or (not $subsysData) (not (kindIs "map" $subsysData)) -}}
       {{- continue -}}
     {{- end -}}
-
 
     {{- $currentEnv := list -}}
     {{- $currentMnt := list -}}
@@ -810,17 +724,19 @@
     {{- $params := (dict "ctx" $ctx "subsys" $subsys) -}}
 
     {{- range $conn := (keys $subsysData | sortAlpha) -}}
-      {{- $connData := (get $subsysData $conn | default dict) -}}
-      {{- if not $connData -}}
+      {{- $connData := get $subsysData $conn -}}
+
+      {{- /* If there's nothing to consume from this subsystem connection, skip it */ -}}
+      {{- if or (not $connData) (not (kindIs "map" $connData)) -}}
         {{- continue -}}
       {{- end -}}
 
       {{- $params = (set $params "conn" $conn) -}}
       {{- $connVolume := false -}}
 
-      {{- $properties := ($connData.properties | default dict) -}}
-      {{- range $connProp := (keys $properties | sortAlpha) -}}
-        {{- $connPropValue := (get $properties $connProp) -}}
+      {{- /* $connData is the set of properties */ -}}
+      {{- range $connProp := (keys $connData | sortAlpha) -}}
+        {{- $connPropValue := (get $connData $connProp) -}}
         {{- if not $connPropValue -}}
           {{- continue -}}
         {{- end -}}
@@ -828,8 +744,8 @@
         {{- $params = (set $params "key" $connProp) -}}
 
         {{- $newPropValue := (include "__arkcase.subsystem-access.all.render.sanitize-propValue" $connPropValue) -}}
-        {{- if not $connPropValue -}}
-              {{- fail (printf "Invalid property value specification for subsystem %s, connection %s, property %s: %s" $subsys $conn $connProp ($connPropValue | toYaml | nindent 0)) -}}
+        {{- if not $newPropValue -}}
+          {{- fail (printf "Invalid property value specification for subsystem %s, connection %s, property %s: %s" $subsys $conn $connProp ($connPropValue | toYaml | nindent 0)) -}}
         {{- end -}}
         {{- $connPropValue = ($newPropValue | fromYaml) -}}
 
@@ -842,7 +758,7 @@
             {{- end -}}
             {{- $p2 = set $p2 "name" $env -}}
           {{- end -}}
-          {{- $currentEnv = concat $currentEnv (include "arkcase.subsystem-access.env.conn" (merge $p2 $params) | fromYamlArray) -}}
+          {{- $currentEnv = concat $currentEnv (include "arkcase.subsystem-access.env.cred" (merge $p2 $params) | fromYamlArray) -}}
         {{- end -}}
 
         {{- if $connPropValue.path -}}
@@ -854,79 +770,25 @@
             {{- end -}}
             {{- $p2 = set $p2 "mountPath" $path -}}
           {{- end -}}
-          {{- $currentMnt = concat $currentMnt (include "arkcase.subsystem-access.volumeMount.conn" (merge $p2 $params) | fromYamlArray) -}}
+          {{- $currentMnt = concat $currentMnt (include "arkcase.subsystem-access.volumeMount.cred" (merge $p2 $params) | fromYamlArray) -}}
           {{- $connVolume = true -}}
         {{- end -}}
       {{- end -}}
 
       {{- $params = omit $params "key" -}}
       {{- if $connVolume -}}
-        {{- $currentVol = concat $currentVol (include "arkcase.subsystem-access.volume.conn" $params | fromYamlArray) -}}
-      {{- end -}}
-
-      {{- $credentials := ($connData.credentials | default dict) -}}
-      {{- range $cred := (keys $credentials | sortAlpha) -}}
-        {{- $credData := (get $credentials $cred | default dict) -}}
-        {{- if not $credData -}}
-          {{- continue -}}
-        {{- end -}}
-
-        {{- $params := (set $params "type" $cred) -}}
-        {{- $credVolume := false -}}
-
-        {{- range $credProp := (keys $credData | sortAlpha) -}}
-          {{- $credPropValue := (get $credData $credProp) -}}
-          {{- if not $credPropValue -}}
-            {{- continue -}}
-          {{- end -}}
-
-          {{- $params = (set $params "key" $credProp) -}}
-
-          {{- $newPropValue := (include "__arkcase.subsystem-access.all.render.sanitize-propValue" $credPropValue) -}}
-          {{- if not $credPropValue -}}
-            {{- fail (printf "Invalid property value specification for subsystem %s, connection %s, credential %s, property %s: %s" $subsys $conn $cred $credProp ($credPropValue | toYaml | nindent 0)) -}}
-          {{- end -}}
-          {{- $credPropValue = ($newPropValue | fromYaml) -}}
-
-          {{- if $credPropValue.env -}}
-            {{- $p2 := dict -}}
-            {{- $env := $credPropValue.env -}}
-            {{- if (kindIs "string" $env) -}}
-              {{- if not (regexMatch "^[a-zA-Z_][a-zA-Z0-9_]*$" $env) -}}
-                {{- fail (printf "Invalid environment variable name: [%s] for subsystem %s, connection %s, credential %s, property %s" $env $subsys $conn $cred $credProp) -}}
-              {{- end -}}
-              {{- $p2 = set $p2 "name" $env -}}
-            {{- end -}}
-            {{- $currentEnv = concat $currentEnv (include "arkcase.subsystem-access.env.cred" (merge $p2 $params) | fromYamlArray) -}}
-          {{- end -}}
-
-          {{- if $credPropValue.path -}}
-            {{- $p2 := dict -}}
-            {{- $path := $credPropValue.path -}}
-            {{- if (kindIs "string" $path) -}}
-              {{- if not (regexMatch "^/[^/]+(/[^/]+)*$" $path) -}}
-                {{- fail (printf "Invalid path specification: [%s] for subsystem %s, connection %s, credential %s, property %s" $path $subsys $conn $cred $credProp) -}}
-              {{- end -}}
-              {{- $p2 = set $p2 "mountPath" $path -}}
-            {{- end -}}
-            {{- $currentMnt = concat $currentMnt (include "arkcase.subsystem-access.volumeMount.cred" (merge $p2 $params) | fromYamlArray) -}}
-            {{- $credVolume = true -}}
-          {{- end -}}
-          {{- $params = omit $params "key" -}}
-
-          {{- if $credVolume -}}
-            {{- $currentVol = concat $currentVol (include "arkcase.subsystem-access.volume.cred" $params | fromYamlArray) -}}
-          {{- end -}}
-        {{- end -}}
+        {{- $currentVol = concat $currentVol (include "arkcase.subsystem-access.volume.cred" $params | fromYamlArray) -}}
       {{- end -}}
     {{- end -}}
 
     {{- if $currentEnv -}}
       {{- $resultEnv = set $resultEnv $subsys $currentEnv -}}
     {{- end -}}
+
     {{- if $currentMnt -}}
       {{- $resultMnt = set $resultMnt $subsys $currentMnt -}}
     {{- end -}}
+
     {{- if $currentVol -}}
       {{- $resultVol = set $resultVol $subsys $currentVol -}}
     {{- end -}}
