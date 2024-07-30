@@ -38,7 +38,7 @@ Return a map which contains the subsystem data map as required by other API call
   {{- end -}}
 
   {{- /* Start structuring our return value */ -}}
-  {{- $map := (dict "ctx" $ctx "name" $subsysName) -}}
+  {{- $map := (dict "name" $subsysName) -}}
 
   {{- /* Cache the information */ -}}
   {{- $subsys := dict -}}
@@ -56,18 +56,29 @@ Return a map which contains the subsystem data map as required by other API call
   {{- else -}}
     {{- /* Set the "enabled" flag, which defaults to TRUE if it's not set */ -}}
     {{- $enabled := true -}}
-    {{- if (hasKey $ctx.Values "enabled") -}}
-      {{- $enabled = $ctx.Values.enabled -}}
+    {{- $local := $ctx.Values -}}
+    {{- $global := $ctx.Values.global | default dict -}}
+    {{- $global := $global.conf | default dict -}}
+    {{- $global := (hasKey $global $subsysName) | ternary (get $global $subsysName) dict | default dict -}}
+
+    {{- range $m := (list $global $local) -}}
+      {{- if or (not $m) (not (kindIs "map" $m)) -}}
+        {{- continue -}}
+      {{- end -}}
+
+      {{- if not (hasKey $m "enabled") -}}
+        {{- continue -}}
+      {{- end -}}
+
+      {{- $enabled = (not (empty (include "arkcase.toBoolean" $m.enabled))) -}}
+      {{- break -}}
     {{- end -}}
-    {{- if not (kindIs "bool" $enabled) -}}
-      {{- $enabled = (eq "true" (toString $enabled | lower)) -}}
-    {{- end -}}
-    {{- $crap := set $data "enabled" $enabled -}}
+    {{- $data = set $data "enabled" $enabled -}}
 
     {{- /* Cache the computed data */ -}}
-    {{- $crap = set $subsys $subsysName $data -}}
+    {{- $subsys = set $subsys $subsysName $data -}}
   {{- end -}}
-  {{- $crap := set $map "data" $data -}}
+  {{- $map = set $map "data" $data -}}
 
   {{- $map | toYaml -}}
 {{- end -}}
@@ -122,36 +133,10 @@ Parameter: either the root context (i.e. "." or "$"), or
     {{- end -}}
   {{- end -}}
 
-  {{- $external := false -}}
   {{- $conf := (include "arkcase.subsystem.conf" $ | fromYaml) -}}
-  {{- /*
-     A subsystem is deemed to be externally-provied if:
-
-       * the value .Values.global.conf.${subsys}.external is set to a scalar value
-         equivalent to the boolean TRUE
-
-       * the value .Values.global.conf.${subsys}.external is set to a non-empty map value
-         with the 'enabled' key either not provided, or set to a scalar value equivalent
-         to the boolean TRUE
-
-     In all other scenarios, the subsystem is not interpreted as externally-provided.
-  */ -}}
-
-  {{- if $conf.external -}}
-    {{- if kindIs "slice" $conf.external -}}
-      {{- /* Unsupported type: slice */ -}}
-      {{- $subsys := (include "arkcase.subsystem.name" $ctx) -}}
-      {{- fail (printf "The value global.conf.%s.external may not be a list/array-type" $subsys) -}}
-    {{- else if kindIs "map" $conf.external -}}
-      {{- /* Map value, check for "enabled" */ -}}
-      {{- $external = ((hasKey $conf.external "enabled") | ternary (include "arkcase.toBoolean" $conf.external.enabled) (true | toString) | empty | not) -}}
-    {{- else -}}
-      {{- /* Scalar value */ -}}
-      {{- $external = (not (empty (include "arkcase.toBoolean" ($conf.external | toString)))) -}}
-    {{- end -}}
+  {{- if and $conf.external ($conf.external).enabled -}}
+    {{- true -}}
   {{- end -}}
-
-  {{- $external | ternary "true" "" -}}
 {{- end -}}
 
 {{- define "arkcase.service.name" }}

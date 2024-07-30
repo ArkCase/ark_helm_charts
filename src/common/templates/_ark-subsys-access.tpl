@@ -1,3 +1,53 @@
+{{- define "__arkcase.subsystem-access.extract-params" -}}
+  {{- $ctx := $ -}}
+  {{- $checkParams := false -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- $ctx = $.ctx -}}
+    {{- if not (include "arkcase.isRootContext" $ctx) -}}
+      {{- fail "Must provide the root context ($ or .) as either the only parameter, or the 'ctx' parameter" -}}
+    {{- end -}}
+    {{- $checkParams = true -}}
+  {{- end -}}
+  {{- $thisSubsys := (include "arkcase.subsystem.name" $ctx) -}}
+  {{- $subsys := $thisSubsys -}}
+  {{- $conn := "main" -}}
+  {{- $key := "" -}}
+  {{- $name := "" -}}
+  {{- $mountPath := "" -}}
+  {{- $optional := "" -}}
+  {{- /* Only consider the parameters if we weren't sent only the root context */ -}}
+  {{- if $checkParams -}}
+    {{- $subsys = ((hasKey $ "subsys") | ternary ($.subsys | default "" | toString) $subsys) | default $subsys -}}
+    {{- $conn = ((hasKey $ "conn") | ternary ($.conn | default "" | toString) $conn) | default $conn -}}
+    {{- $key = ((hasKey $ "key") | ternary ($.key | default "" | toString) $key) | default $key -}}
+    {{- $name = ((hasKey $ "name") | ternary ($.name | default "" | toString) $name) | default $name -}}
+    {{- $optional = ((hasKey $ "optional") | ternary ($.optional | default "" | toString) $optional) | default $optional -}}
+    {{- $mountPath = ((hasKey $ "mountPath") | ternary ($.mountPath | default "" | toString) $mountPath) | default $mountPath -}}
+  {{- end -}}
+
+  {{- $result :=
+     dict
+       "ctxIsRoot" (not $checkParams)
+       "local" (eq $subsys $thisSubsys)
+       "release" $ctx.Release.Name
+       "subsys" $subsys
+       "conn" $conn
+       "key" $key
+       "name" $name
+       "optional" $optional
+  -}}
+  {{- $result = set $result "source" (printf "%s-%s-%s" $result.release $result.subsys $result.conn) -}}
+  {{- $result | toYaml -}}
+{{- end -}}
+
+{{- define "__arkcase.subsystem-access.sanitize-settings" -}}
+  {{- $settings := $ -}}
+  {{- if or (not $settings) (not (kindIs "map" $settings)) -}}
+    {{- $settings = dict -}}
+  {{- end -}}
+  {{- $settings | toYaml -}}
+{{- end -}}
+
 {{- define "__arkcase.subsystem-access.expand-vars.default-case-upper" -}}
   {{- $ | toString | upper -}}
 {{- end -}}
@@ -54,30 +104,6 @@
   {{- $str -}}
 {{- end -}}
 
-{{- define "__arkcase.subsystem-access.extract-params" -}}
-  {{- $ctx := $ -}}
-  {{- $checkParams := false -}}
-  {{- if not (include "arkcase.isRootContext" $ctx) -}}
-    {{- $ctx = $.ctx -}}
-    {{- if not (include "arkcase.isRootContext" $ctx) -}}
-      {{- fail "Must provide the root context ($ or .) as either the only parameter, or the 'ctx' parameter" -}}
-    {{- end -}}
-    {{- $checkParams = true -}}
-  {{- end -}}
-  {{- $thisSubsys := (include "arkcase.subsystem.name" $ctx) -}}
-  {{- $subsys := $thisSubsys -}}
-  {{- $conn := "" -}}
-  {{- /* Only consider the parameters if we weren't sent only the root context */ -}}
-  {{- if $checkParams -}}
-    {{- $subsys = ((hasKey $ "subsys") | ternary ($.subsys | default "" | toString) $subsys) | default $subsys -}}
-    {{- $conn = ((hasKey $ "conn") | ternary ($.conn | default "" | toString) $conn) | default $conn -}}
-  {{- end -}}
-
-  {{- $result := dict "ctxIsRoot" (not $checkParams) "release" $ctx.Release.Name "subsys" $subsys "conn" $conn "local" (eq $subsys $thisSubsys) -}}
-  {{- $result = set $result "radix" (printf "%s-%s-%s" $result.release $result.subsys $result.conn) -}}
-  {{- $result | toYaml -}}
-{{- end -}}
-
 {{- define "__arkcase.subsystem-access.sanitize-mappings" -}}
   {{- $mappedKeys := $ -}}
   {{- $result := dict -}}
@@ -100,84 +126,112 @@
   {{- $result | toYaml -}}
 {{- end -}}
 
+{{- define "__arkcase.subsystem-access.sanitize-connection" -}}
+  {{- $connection := $.c -}}
+
+  {{- /* It may only be a non-empty map (with specific keys) or a non-empty string (the resource name) */ -}}
+  {{- if $connection -}}
+    {{- if (kindIs "string" $connection) -}}
+      {{- $connection = dict "source" $connection -}}
+    {{- else if not (kindIs "map" $connection) -}}
+      {{- $connection = dict -}}
+    {{- end -}}
+  {{- end -}}
+
+  {{- $result := dict -}}
+  {{- if $connection -}}
+    {{- $resource := pick $connection "source" "inherit-mappings" "mappings" -}}
+    {{- $settings := omit $connection "source" "inherit-mappings" "mappings" -}}
+    {{- if and $resource $settings -}}
+      {{- fail (printf "Connection definitions may only supply resource information (source, et al) or connectivity settings (all other values): %s" ($connection | toYaml | nindent 0)) -}}
+    {{- end -}}
+
+    {{- if $resource -}}
+      {{- $inheritMappings := ((hasKey $connection "inherit-mappings") | ternary (include "arkcase.toBoolean" (get $connection "inherit-mappings")) (true | toString) | empty | not) -}}
+      {{- $sharedMappings := dict -}}
+      {{- if and $inheritMappings $.m (kindIs "map" $.m) -}}
+        {{- $sharedMappings = $.m -}}
+      {{- end -}}
+
+      {{- $reference := "" -}}
+      {{- if (hasKey $connection "source") -}}
+        {{- $reference = get $connection "source" -}}
+        {{- if not (include "arkcase.tools.hostnamePart" $reference) -}}
+          {{- fail (printf "Invalid connection secret name [%s]" $reference) -}}
+        {{- end -}}
+      {{- end -}}
+
+      {{- if $reference -}}
+        {{- /* We only tack the connection info if there actually is a target */ -}}
+        {{- $result = merge $result (dict "source" $reference) -}}
+      {{- end -}}
+
+      {{- $mappings := (include "__arkcase.subsystem-access.sanitize-mappings" $connection.mappings | fromYaml) -}}
+
+      {{- /* Add the shared mappings, if desired, without overwriting */ -}}
+      {{- /* We don't sanitize the shared mappings b/c they were already sanitized before we were called */ -}} 
+      {{- $mappings = (merge $mappings $sharedMappings) -}}
+   
+      {{- if $mappings -}}
+        {{- $result = set $result "mappings" $mappings -}}
+      {{- end -}}
+    {{- end -}}
+
+    {{- /* If we're using explicitly-set connectivity settings, then we return them */ -}}
+    {{- if $settings -}}
+      {{- $result = set $result "settings" $settings -}}
+    {{- end -}}
+  {{- end -}}
+  {{- $result | toYaml -}}
+{{- end -}}
+
 {{- define "__arkcase.subsystem-access.sanitize-external" -}}
   {{- $external := $ -}}
-  {{- if or (not $external) (not (kindIs "map" $external)) -}}
+
+  {{- if $external -}}
+    {{- /* If it's a list, then treat it as an empty dict */ -}}
+    {{- if (kindIs "slice" $external) -}}
+      {{- $external = dict -}}
+    {{- end -}}
+
+    {{- /* If it's not a list, and it's not a map, it must be a scalar value */ -}}
+    {{- if not (kindIs "map" $external) -}}
+      {{- $external = dict "enabled" (not (empty (include "arkcase.toBoolean" $external))) -}}
+    {{- end -}}
+  {{- else -}}
     {{- $external = dict -}}
   {{- end -}}
 
-  {{- /* If the credential configuration is disabled, treat it as such */ -}}
-  {{- if and (hasKey $external "enabled") (not (include "arkcase.toBoolean" $external.enabled)) -}}
-    {{- $external = dict -}}
+  {{- /* The value should be sanitized to a map by now ... ignore empty maps */ -}}
+  {{- if $external -}}
+    {{- /* If the credential configuration is disabled, treat it as such */ -}}
+    {{- if and (hasKey $external "enabled") (not (include "arkcase.toBoolean" $external.enabled)) -}}
+      {{- $external = dict -}}
+    {{- end -}}
   {{- end -}}
 
   {{- $result := dict -}}
   {{- if $external -}}
+    {{- /* Make sure we don't return an empty map, whatever happens */ -}}
+    {{- $result = set $result "enabled" true -}}
+
     {{- $mappings := (include "__arkcase.subsystem-access.sanitize-mappings" $external.mappings | fromYaml) -}}
-
-    {{- $connection := get $external "connection" -}}
-    {{- range $k, $c := $connection -}}
+    {{- $connection := dict -}}
+    {{- range $k, $c := $external.connection -}}
       {{- if not $k -}}
-        {{- fail (printf "Invalid empty-string connection name: %s" ($ | toYaml | nindent 0)) -}}
+        {{- fail (printf "Invalid empty-string connection name found: %s" ($external.connection | toYaml | nindent 0)) -}}
       {{- end -}}
-      {{- $c = (include "__arkcase.subsystem-access.sanitize-connection" (dict "c" $c "m" $mappings) | fromYaml) -}}
-      {{- if $c -}}
-        {{- $result = set $result $k $c -}}
+      {{- $r := (include "__arkcase.subsystem-access.sanitize-connection" (dict "c" $c "m" $mappings) | fromYaml) -}}
+      {{- if $r -}}
+        {{- $connection = set $connection $k $r -}}
+      {{- else -}}
+        {{- /* TODO: raise the correct error? */ -}}
       {{- end -}}
     {{- end -}}
+    {{- $result = set $result "connection" $connection -}}
   {{- end -}}
 
   {{- $result | toYaml -}}
-{{- end -}}
-
-{{- define "__arkcase.subsystem-access.sanitize-connection" -}}
-  {{- $connection := $.c -}}
-  {{- if or (not $connection) (not (kindIs "map" $connection)) -}}
-    {{- $connection = dict -}}
-  {{- end -}}
-  {{- $connection = pick $connection "source" "inherit-mappings" "mappings" -}}
-
-  {{- $result := dict -}}
-  {{- if $connection -}}
-    {{- $inheritMappings := ((hasKey $connection "inherit-mappings") | ternary (include "arkcase.toBoolean" (get $connection "inherit-mappings")) (true | toString) | empty | not) -}}
-    {{- $sharedMappings := dict -}}
-    {{- if and $inheritMappings $.m (kindIs "map" $.m) -}}
-      {{- $sharedMappings = $.m -}}
-    {{- end -}}
-
-    {{- $reference := "" -}}
-    {{- if (hasKey $connection "source") -}}
-      {{- $reference = get $connection "source" -}}
-      {{- if not (include "arkcase.tools.hostnamePart" $reference) -}}
-        {{- fail (printf "Invalid connection secret name [%s]" $reference) -}}
-      {{- end -}}
-    {{- end -}}
-
-    {{- if $reference -}}
-      {{- /* We only tack the connection info if there actually is a target */ -}}
-      {{- $result = merge $result (dict "source" $reference) -}}
-    {{- end -}}
-
-    {{- $mappings := (include "__arkcase.subsystem-access.sanitize-mappings" $connection.mappings | fromYaml) -}}
-
-    {{- /* Add the shared mappings, if desired, without overwriting */ -}}
-    {{- /* We don't sanitize the shared mappings b/c they were already sanitized before we were called */ -}} 
-    {{- $mappings = (merge $mappings $sharedMappings) -}}
-   
-    {{- if $mappings -}}
-      {{- $result = set $result "mappings" $mappings -}}
-    {{- end -}}
-  {{- end -}}
-
-  {{- $result | toYaml -}}
-{{- end -}}
-
-{{- define "__arkcase.subsystem-access.sanitize-settings" -}}
-  {{- $settings := $ -}}
-  {{- if or (not $settings) (not (kindIs "map" $settings)) -}}
-    {{- $settings = dict -}}
-  {{- end -}}
-  {{- $settings | toYaml -}}
 {{- end -}}
 
 {{- define "__arkcase.subsystem-access.conf.render" -}}
@@ -187,6 +241,7 @@
   {{- /* Gather up the configurations for the given subsystem */ -}}
   {{- $conf := dict -}}
 
+  {{- /* First apply the global settings, which are the overrides */ -}}
   {{- $global := (($ctx.Values.global).conf | default dict) -}}
   {{- if (hasKey $global $params.subsys) -}}
     {{- $global = get $global $params.subsys -}}
@@ -199,6 +254,7 @@
   {{- if $params.local -}}
     {{- $localConfig := ($ctx.Values.configuration | default dict) -}}
     {{- if and $localConfig (kindIs "map" $localConfig) -}}
+      {{- /* We add the local configurations later b/c the global ones override */ -}}
       {{- $conf = merge $conf (dict "settings" $localConfig) -}}
     {{- end -}}
   {{- end -}}
@@ -216,10 +272,6 @@
   {{- end -}}
 
   {{- $result | toYaml -}}
-{{- end -}}
-
-{{- define "arkcase.subsystem.conf" -}}
-  {{- include "arkcase.subsystem-access.conf" $ -}}
 {{- end -}}
 
 {{- define "arkcase.subsystem-access.conf" -}}
@@ -247,12 +299,39 @@
   {{- $yamlResult -}}
 {{- end -}}
 
+{{- define "arkcase.subsystem-access.name" -}}
+  {{- $params := (include "__arkcase.subsystem-access.extract-params" $ | fromYaml) -}}
+  {{- $ctx := ($params.ctxIsRoot | ternary $ $.ctx) -}}
+
+  {{- $regex := "^[a-z0-9]+(-[a-z0-9]+)*$" -}}
+  {{- if (not (regexMatch $regex $params.conn)) -}}
+    {{- fail (printf "Invalid connection name [%s] for subsystem [%s] - must match /%s/" $params.conn $params.subsys $params.conn $regex) -}}
+  {{- end -}}
+
+  {{- /* Get the subsystem configuration */ -}}
+  {{- $conf := (include "arkcase.subsystem-access.conf" $ | fromYaml) -}}
+
+  {{- $name := $params.source -}}
+  {{- if $conf.external -}}
+    {{- /* Is the connection an external one? Were we given a name for its resource? */ -}}
+    {{- $conn := $conf.external.connection | default dict -}}
+    {{- if (hasKey $conn $params.conn) -}}
+      {{- $conn := get $conn $params.conn -}}
+      {{- $name = $conn.source | default $name -}}
+    {{- end -}}
+  {{- end -}}
+  {{- $name -}}
+{{- end -}}
+
+{{- define "arkcase.subsystem.conf" -}}
+  {{- include "arkcase.subsystem-access.conf" $ -}}
+{{- end -}}
+
 {{- define "arkcase.subsystem-access.external.conn" -}}
   {{- $params := (include "__arkcase.subsystem-access.extract-params" $ | fromYaml) -}}
   {{- $ctx := ($params.ctxIsRoot | ternary $ $.ctx) -}}
-  {{- $args := (dict "ctx" $ctx "type" "conn" "subsys" $params.subsys) -}}
 
-  {{- $conf := (include "arkcase.subsystem-access.conf" $args | fromYaml) -}}
+  {{- $conf := (include "arkcase.subsystem-access.conf" (merge $params "ctx" $ctx) | fromYaml) -}}
   {{- $conf = ($conf.connection | default dict) -}}
   {{- if not $params.conn -}}
     {{- $defaultConn := $conf.default | default "main" -}}
@@ -306,29 +385,6 @@
 
   {{- $creds := ((get ($conf.credentials | default dict) (trimPrefix "cred-" $type)) | default dict) -}}
   {{- (empty $creds) | ternary "" "true" -}}
-{{- end -}}
-
-{{- define "__arkcase.subsystem-access.name" -}}
-  {{- $params := (include "__arkcase.subsystem-access.extract-params" $ | fromYaml) -}}
-  {{- $ctx := ($params.ctxIsRoot | ternary $ $.ctx) -}}
-
-  {{- if not (hasKey $ "type") -}}
-    {{- fail "Must provide a 'type' to render the name for" -}}
-  {{- end -}}
-  {{- $type := ($.type | default $.type | toString) -}}
-
-  {{- $regex := "^[a-z0-9]+(-[a-z0-9]+)*$" -}}
-  {{- if (not (regexMatch $regex $type)) -}}
-    {{- fail (printf "Invalid resource type [%s] for subsystem [%s], connection [%s] - must match /%s/" $type $params.subsys $params.conn $regex) -}}
-  {{- end -}}
-
-  {{- $conf := (include "arkcase.subsystem-access.conf" $ | fromYaml) -}}
-  {{- $conf = ($conf.connection | default dict) -}}
-  {{- if not $params.conn -}}
-    {{- $defaultConn := $conf.default | default "main" -}}
-    {{- $params = merge (dict "conn" $defaultConn "radix" (printf "%s%s" $params.radix $defaultConn)) $params -}}
-  {{- end -}}
-  {{- printf "%s-%s" $params.radix $type -}}
 {{- end -}}
 
 {{- /* Params: subsys? */ -}}
