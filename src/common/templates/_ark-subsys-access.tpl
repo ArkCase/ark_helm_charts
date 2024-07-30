@@ -1,53 +1,3 @@
-{{- define "__arkcase.subsystem-access.extract-params" -}}
-  {{- $ctx := $ -}}
-  {{- $checkParams := false -}}
-  {{- if not (include "arkcase.isRootContext" $ctx) -}}
-    {{- $ctx = $.ctx -}}
-    {{- if not (include "arkcase.isRootContext" $ctx) -}}
-      {{- fail "Must provide the root context ($ or .) as either the only parameter, or the 'ctx' parameter" -}}
-    {{- end -}}
-    {{- $checkParams = true -}}
-  {{- end -}}
-  {{- $thisSubsys := (include "arkcase.subsystem.name" $ctx) -}}
-  {{- $subsys := $thisSubsys -}}
-  {{- $conn := "main" -}}
-  {{- $key := "" -}}
-  {{- $name := "" -}}
-  {{- $mountPath := "" -}}
-  {{- $optional := "" -}}
-  {{- /* Only consider the parameters if we weren't sent only the root context */ -}}
-  {{- if $checkParams -}}
-    {{- $subsys = ((hasKey $ "subsys") | ternary ($.subsys | default "" | toString) $subsys) | default $subsys -}}
-    {{- $conn = ((hasKey $ "conn") | ternary ($.conn | default "" | toString) $conn) | default $conn -}}
-    {{- $key = ((hasKey $ "key") | ternary ($.key | default "" | toString) $key) | default $key -}}
-    {{- $name = ((hasKey $ "name") | ternary ($.name | default "" | toString) $name) | default $name -}}
-    {{- $optional = ((hasKey $ "optional") | ternary ($.optional | default "" | toString) $optional) | default $optional -}}
-    {{- $mountPath = ((hasKey $ "mountPath") | ternary ($.mountPath | default "" | toString) $mountPath) | default $mountPath -}}
-  {{- end -}}
-
-  {{- $result :=
-     dict
-       "ctxIsRoot" (not $checkParams)
-       "local" (eq $subsys $thisSubsys)
-       "release" $ctx.Release.Name
-       "subsys" $subsys
-       "conn" $conn
-       "key" $key
-       "name" $name
-       "optional" $optional
-  -}}
-  {{- $result = set $result "source" (printf "%s-%s-%s" $result.release $result.subsys $result.conn) -}}
-  {{- $result | toYaml -}}
-{{- end -}}
-
-{{- define "__arkcase.subsystem-access.sanitize-settings" -}}
-  {{- $settings := $ -}}
-  {{- if or (not $settings) (not (kindIs "map" $settings)) -}}
-    {{- $settings = dict -}}
-  {{- end -}}
-  {{- $settings | toYaml -}}
-{{- end -}}
-
 {{- define "__arkcase.subsystem-access.expand-vars.default-case-upper" -}}
   {{- $ | toString | upper -}}
 {{- end -}}
@@ -72,6 +22,8 @@
   {{- if (regexMatch "^[ul]$" $defaultCase) -}}
     {{- $caseTemplate = (printf "%s-%s" $caseTemplate (eq "u" $defaultCase | ternary "upper" "lower"))  -}}
   {{- end -}}
+
+  {{- $die := (contains "$" $str) -}}
 
   {{- range $v := (list "subsys" "conn" "type" "key" "rand-ascii" "rand-alpha-num") -}}
 
@@ -98,10 +50,116 @@
     {{- $str = $str | replace (printf "${%s:l}" $v) ($safe | lower) -}}
     {{- $str = $str | replace (printf "${%s}"   $v) (include $caseTemplate $safe) -}}
     {{- $str = $str | replace (printf "${%s:u}" $v) ($safe | upper) -}}
-
   {{- end -}}
 
-  {{- $str -}}
+  {{- ($hasRegex | ternary (mustRegexReplaceAll $regex $str $replace) $str) -}}
+{{- end -}}
+
+{{- define "__arkcase.subsystem-access.extract-params" -}}
+  {{- $ctx := $ -}}
+  {{- $checkParams := false -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- $ctx = $.ctx -}}
+    {{- if not (include "arkcase.isRootContext" $ctx) -}}
+      {{- fail "Must provide the root context ($ or .) as either the only parameter, or the 'ctx' parameter" -}}
+    {{- end -}}
+    {{- $checkParams = true -}}
+  {{- end -}}
+  {{- $thisSubsys := (include "arkcase.subsystem.name" $ctx) -}}
+  {{- $subsys := $thisSubsys -}}
+  {{- $conn := "main" -}}
+  {{- $key := "" -}}
+  {{- $name := "" -}}
+  {{- $mountPath := "" -}}
+  {{- $optional := false -}}
+
+  {{- /* Only consider the parameters if we weren't sent only the root context */ -}}
+  {{- if $checkParams -}}
+    {{- $subsys = ((hasKey $ "subsys") | ternary ($.subsys | default "" | toString) $subsys) | default $subsys -}}
+    {{- $conn = ((hasKey $ "conn") | ternary ($.conn | default "" | toString) $conn) | default $conn -}}
+    {{- $key = ((hasKey $ "key") | ternary ($.key | default "" | toString) $key) | default $key -}}
+    {{- $name = ((hasKey $ "name") | ternary ($.name | default "" | toString) $name) | default $name -}}
+    {{- $mountPath = ((hasKey $ "mountPath") | ternary ($.mountPath | default "" | toString) $mountPath) | default $mountPath -}}
+
+    {{- $optional = ((hasKey $ "optional") | ternary $.optional $optional) -}}
+    {{- $optional = (not (empty (include "arkcase.toBoolean" $optional))) -}}
+  {{- end -}}
+
+  {{- /* Now, validate! */ -}}
+  {{- $regex := "^[a-z0-9]+(-[a-z0-9]+)*$" -}}
+
+  {{- if (not (regexMatch $regex $subsys)) -}}
+    {{- fail (printf "Invalid subsystem name [%s] - must match /%s/" $subsys $regex) -}}
+  {{- end -}}
+
+  {{- if (not (regexMatch $regex $conn)) -}}
+    {{- fail (printf "Invalid connection name [%s] for subsystem %s - must match /%s/" $conn $subsys $regex) -}}
+  {{- end -}}
+
+  {{- if $key -}}
+    {{- $regex = "^[-._a-zA-Z0-9]+$" -}}
+    {{- if (not (regexMatch $regex $key)) -}}
+      {{- fail (printf "Invalid configuration key [%s] for connection %s, subsystem %s - must match /%s/" $key $conn $subsys $regex) -}}
+    {{- end -}}
+  {{- end -}}
+
+  {{- $vars := (dict "subsys" $subsys "conn" $conn "key" ($key | snakecase)) -}}
+  {{- if $name -}}
+    {{- $name = (include "__arkcase.subsystem-access.expand-vars" (dict "str" $name "params" $vars "regex" "[-.]" "replace" "_" "defaultCase" "u")) -}}
+  {{- end -}}
+
+  {{- if $mountPath -}}
+    {{- $mountPath = (include "__arkcase.subsystem-access.expand-vars" (dict "str" $mountPath "params" $vars)) -}}
+  {{- end -}}
+
+  {{- $release := $ctx.Release.Name -}}
+  {{- $result :=
+     dict
+       "ctxIsRoot" (not $checkParams)
+       "local" (eq $subsys $thisSubsys)
+       "release" $release
+       "subsys" $subsys
+       "conn" $conn
+       "key" $key
+       "name" $name
+       "mountPath" $mountPath
+       "optional" $optional
+       "source" (printf "%s-%s-%s" $release $subsys $conn)
+  -}}
+
+  {{- /* Render the name, if a one wasn't given */ -}}
+  {{- if (not $result.name) -}}
+    {{- /* ARKCASE_${SUBSYS}_${CONN} */ -}}
+    {{- $subsysPart := ($result.local | ternary "" (printf "_%s" $result.subsys)) -}}
+    {{- $result = set $result "name" (printf "ARKCASE%s_%s" $subsysPart $conn | upper | replace "-" "_" | replace "." "_") -}}
+  {{- end -}}
+
+  {{- /* Render the mountPath, if one wasn't given */ -}}
+  {{- if not $result.mountPath -}}
+    {{- /* /srv/arkcase/${subsys}/${conn} */ -}}
+    {{- $subsysPart := ($result.local | ternary "" (printf "/%s" $result.subsys)) -}}
+    {{- $result = set $result "mountPath" (printf "/srv/arkcase%s/%s" $subsysPart $conn) -}}
+  {{- end -}}
+
+  {{- if $key -}}
+    {{- /* If a name wasn't given, then append the key */ -}}
+    {{- if not $name -}}
+      {{- $result = set $result "name" (printf "%s_%s" $result.name ($key | snakecase | upper | replace "-" "_" | replace "." "_")) -}}
+    {{- end -}}
+    {{- if not $mountPath -}}
+      {{- $result = set $result "mountPath" (printf "%s/%s" $result.mountPath $key) -}}
+    {{- end -}}
+  {{- end -}}
+
+  {{- $result | toYaml -}}
+{{- end -}}
+
+{{- define "__arkcase.subsystem-access.sanitize-settings" -}}
+  {{- $settings := $ -}}
+  {{- if or (not $settings) (not (kindIs "map" $settings)) -}}
+    {{- $settings = dict -}}
+  {{- end -}}
+  {{- $settings | toYaml -}}
 {{- end -}}
 
 {{- define "__arkcase.subsystem-access.sanitize-mappings" -}}
@@ -327,45 +385,12 @@
   {{- include "arkcase.subsystem-access.conf" $ -}}
 {{- end -}}
 
-{{- define "arkcase.subsystem-access.external.conn" -}}
+{{- define "arkcase.subsystem-access.env" -}}
   {{- $params := (include "__arkcase.subsystem-access.extract-params" $ | fromYaml) -}}
   {{- $ctx := ($params.ctxIsRoot | ternary $ $.ctx) -}}
 
-  {{- $conf := (include "arkcase.subsystem-access.conf" (merge $params "ctx" $ctx) | fromYaml) -}}
-  {{- $conf = ($conf.connection | default dict) -}}
-  {{- if not $params.conn -}}
-    {{- $defaultConn := $conf.default | default "main" -}}
-    {{- $params = merge (dict "conn" $defaultConn "radix" (printf "%s%s" $params.radix $defaultConn)) $params -}}
-  {{- end -}}
-  {{- $conf = (get $conf $params.conn | default dict) -}}
+  {{- $type := "" -}}
 
-  {{- (empty $conf) | ternary "" "true" -}}
-{{- end -}}
-
-{{- define "arkcase.subsystem-access.external.admin" -}}
-  {{- $params := (include "__arkcase.subsystem-access.extract-params" $ | fromYaml) -}}
-  {{- $ctx := ($params.ctxIsRoot | ternary $ $.ctx) -}}
-  {{- $args := (dict "ctx" $ctx "type" "cred-admin" "subsys" $params.subsys) -}}
-
-  {{- $conf := (include "arkcase.subsystem-access.conf" $args | fromYaml) -}}
-  {{- $conf = ($conf.connection | default dict) -}}
-  {{- if not $params.conn -}}
-    {{- $defaultConn := $conf.default | default "main" -}}
-    {{- $params = merge (dict "conn" $defaultConn "radix" (printf "%s%s" $params.radix $defaultConn)) $params -}}
-  {{- end -}}
-  {{- $conf = (get $conf $params.conn | default dict) -}}
-
-  {{- $creds := ((get ($conf.credentials | default dict) "admin") | default dict) -}}
-  {{- (empty $creds) | ternary "" "true" -}}
-{{- end -}}
-
-{{- define "arkcase.subsystem-access.external.cred" -}}
-  {{- $params := (include "__arkcase.subsystem-access.extract-params" $ | fromYaml) -}}
-  {{- $ctx := ($params.ctxIsRoot | ternary $ $.ctx) -}}
-  {{- $type := "access" -}}
-  {{- if not $params.ctxIsRoot -}}
-    {{- $type = ($.type | default $type | toString) -}}
-  {{- end -}}
   {{- $regex := "^[a-z0-9]+(-[a-z0-9]+)*$" -}}
   {{- if (not (regexMatch $regex $type)) -}}
     {{- fail (printf "Invalid resource type [%s] for subsystem [%s], connection [%s] - must match /%s/" $type $params.subsys $params.conn $regex) -}}
@@ -424,7 +449,8 @@
   {{- if or $params.ctxIsRoot (not (hasKey $ "key")) -}}
     {{- fail "Must provide a 'key' parameter" -}}
   {{- end -}}
-  {{- $ctx := $.ctx -}}
+
+  {{- $ctx := ($params.ctxIsRoot | ternary $ $.ctx) -}}
 
   {{- $conf := (include "arkcase.subsystem-access.conf" $ | fromYaml) -}}
   {{- $conf = ($conf.connection | default dict) -}}
