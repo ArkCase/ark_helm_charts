@@ -106,20 +106,22 @@ spec:
           {{- include "arkcase.image" (dict "ctx" $ "name" "minio" "repository" "arkcase/minio") | nindent 10 }}
           {{- include "arkcase.subsystem.ports" (dict "ctx" $ "name" "minio") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
-            {{- include "arkcase.subsystem-access.all.env" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
+            {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
             - name: NODES
               value: {{ $nodes | toString | quote }}
             - name: DATA_DIR
               value: *dataDir
-            - name: MINIO_ADDRESS
-              value: ":9000"
-            - name: MINIO_CONSOLE_ADDRESS
-              value: ":9001"
-            {{- include "arkcase.subsystem-access.env.admin" (dict "ctx" $ "name" "MINIO_ROOT_USER" "key" "username") | nindent 12 }}
-            {{- include "arkcase.subsystem-access.env.admin" (dict "ctx" $ "name" "MINIO_ROOT_PASSWORD" "key" "password") | nindent 12 }}
-            {{- include "arkcase.subsystem-access.env.cred" (dict "ctx" $ "name" "MINIO_ACCESS_USER" "type" "access" "key" "username") | nindent 12 }}
-            {{- include "arkcase.subsystem-access.env.cred" (dict "ctx" $ "name" "MINIO_ACCESS_PASSWORD" "type" "access" "key" "password") | nindent 12 }}
+            - name: MINIO_ADMIN_URL
+              value: "$(CONTENT_ADMIN_URL)"
+            - name: MINIO_ROOT_USER
+              value: "$(CONTENT_ADMIN_USERNAME)"
+            - name: MINIO_ROOT_PASSWORD
+              value: "$(CONTENT_ADMIN_PASSWORD)"
+            - name: MINIO_USER
+              value: "$(CONTENT_USERNAME)"
+            - name: MINIO_PASSWORD
+              value: "$(CONTENT_PASSWORD)"
           lifecycle:
             postStart:
               exec:
@@ -131,14 +133,14 @@ spec:
               mountPath: *dataDir
             - name: *initVolume
               mountPath: *initDir
-            {{- include "arkcase.subsystem-access.all.volumeMount" $ | nindent 12 }}
+            {{- include "arkcase.subsystem-access.volumeMounts" $ | nindent 12 }}
             {{- include "arkcase.trusts.mount" $ | nindent 12 }}
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/config-post.sh") | nindent 12 }}
       volumes:
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
         {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "init") | nindent 8 }}
-        {{- include "arkcase.subsystem-access.all.volume" $ | nindent 8 }}
+        {{- include "arkcase.subsystem-access.volumes" $ | nindent 8 }}
         {{- include "arkcase.trusts.volume" $ | nindent 8 }}
         {{- include "arkcase.acme.volume" $ | nindent 8 }}
         {{- include "arkcase.file-resource.volumes" $ | nindent 8 }}

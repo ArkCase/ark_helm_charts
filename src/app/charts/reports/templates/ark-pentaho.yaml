@@ -172,9 +172,7 @@ spec:
         - name: pentaho
           {{- include "arkcase.image" $ | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
-            {{- include "arkcase.subsystem-access.all.env" $ | nindent 12 }}
-            {{- include "arkcase.subsystem-access.env.admin" (dict "ctx" $ "key" "username" "name" "ADMIN_USERNAME") | nindent 12 }}
-            {{- include "arkcase.subsystem-access.env.admin" (dict "ctx" $ "key" "password" "name" "ADMIN_PASSWORD") | nindent 12 }}
+            {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
             {{- include "arkcase.cluster.env" $ | nindent 12 }}
             {{- include "arkcase.cluster.tomcat.env" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
@@ -193,8 +191,6 @@ spec:
               value: {{ $serviceName | quote }}
             - name: PENTAHO_SERVER_URL
               value: "https://$(PENTAHO_SERVICE):8443/pentaho"
-            - name: LDAP_DOMAIN
-              value: {{ include "arkcase.ldap" (dict "ctx" $ "value" "domain") | quote }}
             - name: CLUSTER_ENABLED
               value: {{ $cluster.enabled | toString | quote }}
             - name: ADMIN_PORT
@@ -210,6 +206,7 @@ spec:
             {{- include "arkcase.pentaho.license.volumeMounts" (dict "ctx" $ "volume" "secrets" "path" "/app/init/licenses") | nindent 12 }}
             {{- include "arkcase.trusts.mount" $ | nindent 12 }}
             {{- include "arkcase.acme.volumeMount-shared" $ | nindent 12 }}
+            {{- include "arkcase.subsystem-access.volumeMounts" $ | nindent 12 }}
             - name: *dataVol
               mountPath: *dataDir
             - name: *tempVol
@@ -221,7 +218,6 @@ spec:
             {{- include "arkcase.trusts.mount" $ | nindent 12 }}
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
             {{- include "arkcase.pentaho.license.volumeMounts" $ | nindent 12 }}
-            {{- include "arkcase.subsystem-access.all.volumeMount" $ | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/.template-vars.yaml") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/tomcat/webapps/pentaho/META-INF/context.xml") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/pentaho-solutions/system/jackrabbit/repository.xml") | nindent 12 }}
@@ -276,7 +272,7 @@ spec:
         {{- include "arkcase.trusts.volume" $ | nindent 8 }}
         {{- include "arkcase.acme.volume-shared" $ | nindent 8 }}
         {{- include "arkcase.pentaho.license.volume" $ | nindent 8 }}
-        {{- include "arkcase.subsystem-access.all.volume" $ | nindent 8 }}
+        {{- include "arkcase.subsystem-access.volumes" $ | nindent 8 }}
         {{- include "arkcase.file-resource.volumes" $ | nindent 8 }}
       {{- with $.Values.nodeSelector }}
       nodeSelector: {{- toYaml . | nindent 8 }}

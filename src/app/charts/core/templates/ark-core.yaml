@@ -213,6 +213,7 @@ spec:
           {{- $contentData := printf "%s.yaml" $contentScript }}
           command: [ "/usr/local/bin/only-once" ]
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
             - name: WRAPPED_STATE
               value: *homeDir
             - name: WRAPPED_SCRIPT
@@ -221,12 +222,16 @@ spec:
             #   value: "...."
             - name: INIT_SEED_CONF
               value: {{ $contentData | quote }}
-            {{- include "arkcase.subsystem-access.env.admin" (dict "ctx" $ "subsys" "content" "key" "url" "name" "INIT_SEED_CONTENT") | nindent 12 }}
+            - name: INIT_SEED_CONTENT
+              value: "$(ARKCASE_CONTENT_ADMIN_URL)"
             {{- if (eq $content.dialect "alfresco") }}
-            {{- include "arkcase.subsystem-access.env.admin" (dict "ctx" $ "subsys" "content" "key" "ui" "name" "INIT_SEED_UI") | nindent 12 }}
+            - name: INIT_SEED_UI
+              value: "$(ARKCASE_CONTENT_ADMIN_UI)"
             {{- end }}
-            {{- include "arkcase.subsystem-access.env.admin" (dict "ctx" $ "subsys" "content" "key" "username" "name" "INIT_SEED_USERNAME") | nindent 12 }}
-            {{- include "arkcase.subsystem-access.env.admin" (dict "ctx" $ "subsys" "content" "key" "password" "name" "INIT_SEED_PASSWORD") | nindent 12 }}
+            - name: INIT_SEED_USERNAME
+              value: "$(ARKCASE_CONTENT_ADMIN_USERNAME)"
+            - name: INIT_SEED_PASSWORD
+              value: "$(ARKCASE_CONTENT_ADMIN_PASSWORD)"
             - name: INIT_SEED_IGNORE_DUPES
               value: "true"
             {{- if (eq $content.dialect "s3") }}
@@ -235,6 +240,7 @@ spec:
               value: "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem"
             {{- end }}
           volumeMounts:
+            {{- include "arkcase.subsystem-access.volumeMounts" $ | nindent 12 }}
             - name: *homeVol
               mountPath: *homeDir
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" $contentScript) | nindent 12 }}
@@ -246,7 +252,7 @@ spec:
             {{- include "arkcase.cluster.env" $ | nindent 12 }}
             {{- include "arkcase.cluster.tomcat.env" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
-            {{- include "arkcase.subsystem-access.all.env" $ | nindent 12 }}
+            {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
             - name: ARKCASE_JDBC_DRIVER
               value: {{ $db.jdbc.driver | quote }}
             - name: ARKCASE_JDBC_URL
@@ -306,9 +312,9 @@ spec:
           resources: {{- include "arkcase.resources" (dict "ctx" $ "part" "arkcase") | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "arkcase") | nindent 12 }}
           volumeMounts:
-            {{- include "arkcase.subsystem-access.all.volumeMount" $ | nindent 12 }}
             {{- include "arkcase.trusts.mount" $ | nindent 12 }}
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
+            {{- include "arkcase.subsystem-access.volumeMounts" $ | nindent 12 }}
             - name: *homeVol
               mountPath: *homeDir
             - name: *confVol
@@ -355,7 +361,7 @@ spec:
           {{- include "arkcase.image" (dict "ctx" $ "name" "cloudconfig" "repository" "arkcase/cloudconfig") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.cluster.env" $ | nindent 12 }}
-            {{- include "arkcase.subsystem-access.all.env" $ | nindent 12 }}
+            {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
             - name: ARKCASE_JDBC_DRIVER
               value: {{ $db.jdbc.driver | quote }}
@@ -399,7 +405,7 @@ spec:
           resources: {{- include "arkcase.resources" (dict "ctx" $ "part" "cloudconfig") | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "cloudconfig") | nindent 12 }}
           volumeMounts:
-            {{- include "arkcase.subsystem-access.all.volumeMount" $ | nindent 12 }}
+            {{- include "arkcase.subsystem-access.volumeMounts" $ | nindent 12 }}
             {{- include "arkcase.trusts.mount" $ | nindent 12 }}
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
             - name: *confVol
@@ -419,7 +425,7 @@ spec:
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/arkcase-oidc.yaml") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/arkcase-server.yaml") | nindent 12 }}
       volumes:
-        {{- include "arkcase.subsystem-access.all.volume" $ | nindent 8 }}
+        {{- include "arkcase.subsystem-access.volumes" $ | nindent 8 }}
         {{- include "arkcase.trusts.volume" $ | nindent 8 }}
         {{- include "arkcase.acme.volume" $ | nindent 8 }}
         {{- include "arkcase.file-resource.volumes" $ | nindent 8 }}

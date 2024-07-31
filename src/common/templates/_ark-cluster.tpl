@@ -205,6 +205,7 @@
     configMapKeyRef:
       name: {{ printf "%s-zookeeper" $ctx.Release.Name | quote }}
       key: ZK_HOST
+      optional: false
   {{- end -}}
 {{- end -}}
 

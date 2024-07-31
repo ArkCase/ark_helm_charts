@@ -67,21 +67,22 @@ spec:
         - name: postgres
           {{- include "arkcase.image" (dict "ctx" $ "name" "postgresql" "repository" "arkcase/postgres") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
-            {{- include "arkcase.subsystem-access.all.env" $ | nindent 12 }}
-            {{- include "arkcase.subsystem-access.env.admin" (dict "ctx" $ "key" "password" "name" "POSTGRESQL_ADMIN_PASSWORD") | nindent 12 }}
+            {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
+            - name: POSTGRESQL_ADMIN_PASSWORD
+              value: "$(DB_ROOT_PASSWORD)"
           {{- include "arkcase.rdbms.ports" $ | nindent 10 }}
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "postgres") | nindent 12 }}
           volumeMounts:
-            {{- include "arkcase.subsystem-access.all.volumeMount" $ | nindent 12 }}
+            {{- include "arkcase.subsystem-access.volumeMounts" $ | nindent 12 }}
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
             - name: "init"
               mountPath: "/opt/app-root/src/postgresql-init"
             - name: *dataVol
               mountPath: "/var/lib/pgsql/data"
       volumes:
-        {{- include "arkcase.subsystem-access.all.volume" $ | nindent 8 }}
+        {{- include "arkcase.subsystem-access.volumes" $ | nindent 8 }}
         {{- include "arkcase.acme.volume" $ | nindent 8 }}
         {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "init") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}

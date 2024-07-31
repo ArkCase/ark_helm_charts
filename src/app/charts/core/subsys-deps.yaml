@@ -17,14 +17,19 @@ consumes:
       ui: ARKCASE_CONTENT_UI
       username: ARKCASE_CONTENT_USERNAME
       password: ARKCASE_CONTENT_PASSWORD
+    admin:
+      url: ARKCASE_CONTENT_ADMIN_URL
+      ui: ARKCASE_CONTENT_ADMIN_UI
+      username: ARKCASE_CONTENT_ADMIN_USERNAME
+      password: ARKCASE_CONTENT_ADMIN_PASSWORD
 
   ldap:
-    arkcase:
+    main:
       url: ARKCASE_LDAP_URL
       username: ARKCASE_LDAP_USERNAME
       password: ARKCASE_LDAP_PASSWORD
 
-    arkcase-admin:
+    main-admin:
       url: ARKCASE_LDAP_ADMIN_URL
       username: ARKCASE_LDAP_ADMIN_USERNAME
       password: ARKCASE_LDAP_ADMIN_PASSWORD
@@ -41,7 +46,7 @@ consumes:
 
   rdbms:
     arkcase:
-      host: ARKCASE_JDBC_HOST
+      entrypoint: ARKCASE_JDBC_HOST
       port: ARKCASE_JDBC_PORT
       username: ARKCASE_JDBC_USERNAME
       password: ARKCASE_JDBC_PASSWORD
@@ -50,18 +55,18 @@ consumes:
       # instance: ARKCASE_JDBC_INSTANCE
 
   reports:
+    main:
+      url: ARKCASE_REPORTS_URL
+      username: ARKCASE_REPORTS_USERNAME
+      password: ARKCASE_REPORTS_PASSWORD
+
     admin:
       url: ARKCASE_REPORTS_ADMIN_URL
       username: ARKCASE_REPORTS_ADMIN_USERNAME
       password: ARKCASE_REPORTS_ADMIN_PASSWORD
 
-    access:
-      url: ARKCASE_REPORTS_URL
-      username: ARKCASE_REPORTS_USERNAME
-      password: ARKCASE_REPORTS_PASSWORD
-
   messaging:
-    openwire:
+    main:
       url: ARKCASE_OPENWIRE_URL
       proto: ARKCASE_OPENWIRE_PROTO
       host: ARKCASE_OPENWIRE_HOST

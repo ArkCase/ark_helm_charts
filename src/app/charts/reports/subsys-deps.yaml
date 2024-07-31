@@ -6,7 +6,17 @@ consumes:
   # We specifically don't consume from ZooKeeper b/c those are handled directly
   # by the Clustering templates, and there's no need to address them beyond that
   # zookeeper: {}
-  app-artifacts:
+  $self:
+    admin:
+      url: PENTAHO_SERVER_ADMIN_URL
+      username: ADMIN_USERNAME
+      password: ADMIN_PASSWORD
+    main:
+      url: PENTAHO_SERVER_URL
+      username: PENTAHO_USERNAME
+      password: PENTAHO_PASSWORD
+
+  app:
     main:
       url: DEPL_URL
 
@@ -17,14 +27,18 @@ consumes:
       password: ARKCASE_PASSWORD
 
   ldap:
-    arkcase:
+    main:
       url: REPORTS_LDAP_URL
       username: REPORTS_LDAP_USERNAME
       password: REPORTS_LDAP_PASSWORD
+      domain: REPORTS_LDAP_DOMAIN
+      baseDn: REPORTS_LDAP_BASE_DN
+      searchUsersBase: REPORTS_LDAP_SEARCH_USERS_BASE
+      searchGroupsBase: REPORTS_LDAP_SEARCH_GROUPS_BASE
 
   rdbms:
     arkcase:
-      host: REPORTS_JDBC_ARKCASE_HOST
+      entrypoint: REPORTS_JDBC_ARKCASE_HOST
       port: REPORTS_JDBC_ARKCASE_PORT
       username: REPORTS_JDBC_ARKCASE_USERNAME
       password: REPORTS_JDBC_ARKCASE_PASSWORD
@@ -33,7 +47,7 @@ consumes:
       # instance:   REPORTS_JDBC_ARKCASE_INSTANCE
 
     hibernate:
-      host: REPORTS_JDBC_HIBERNATE_HOST
+      entrypoint: REPORTS_JDBC_HIBERNATE_HOST
       port: REPORTS_JDBC_HIBERNATE_PORT
       username: REPORTS_JDBC_HIBERNATE_USERNAME
       password: REPORTS_JDBC_HIBERNATE_PASSWORD
@@ -42,7 +56,7 @@ consumes:
       # instance:   REPORTS_JDBC_HIBERNATE_INSTANCE
 
     jcr:
-      host: REPORTS_JDBC_JACKRABBIT_HOST
+      entrypoint: REPORTS_JDBC_JACKRABBIT_HOST
       port: REPORTS_JDBC_JACKRABBIT_PORT
       username: REPORTS_JDBC_JACKRABBIT_USERNAME
       password: REPORTS_JDBC_JACKRABBIT_PASSWORD
@@ -51,7 +65,7 @@ consumes:
       # instance:   REPORTS_JDBC_JACKRABBIT_INSTANCE
 
     quartz:
-      host: REPORTS_JDBC_QUARTZ_HOST
+      entrypoint: REPORTS_JDBC_QUARTZ_HOST
       port: REPORTS_JDBC_QUARTZ_PORT
       username: REPORTS_JDBC_QUARTZ_USERNAME
       password: REPORTS_JDBC_QUARTZ_PASSWORD

@@ -50,7 +50,7 @@ spec:
         - name: samba
           {{- include "arkcase.image" $ | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
-            {{- include "arkcase.subsystem-access.all.env" $ | nindent 12 }}
+            {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
             - name: DOMAIN
               valueFrom:

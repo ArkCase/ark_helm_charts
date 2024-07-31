@@ -1,16 +1,28 @@
 consumes:
+  $self:
+    main:
+      url: CONTENT_URL
+      ui: CONTENT_UI
+      username: CONTENT_USERNAME
+      password: CONTENT_PASSWORD
+    admin:
+      url: CONTENT_ADMIN_URL
+      ui: CONTENT_ADMIN_UI
+      username: CONTENT_ADMIN_USERNAME
+      password: CONTENT_ADMIN_PASSWORD
+
   # We specifically don't consume from ACME b/c those are handled directly
   # by the ACME templates, and there's no need to address them beyond that
   # acme: {}
   ldap:
-    arkcase:
+    main:
       url: CONTENT_LDAP_URL
       username: CONTENT_LDAP_USERNAME
       password: CONTENT_LDAP_PASSWORD
 
   rdbms:
-    schema-content:
-      host: ALFRESCO_JDBC_HOST
+    content:
+      entrypoint: ALFRESCO_JDBC_HOST
       port: ALFRESCO_JDBC_PORT
       username: ALFRESCO_JDBC_USERNAME
       password: ALFRESCO_JDBC_PASSWORD

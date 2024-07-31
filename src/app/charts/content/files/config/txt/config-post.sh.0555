@@ -48,10 +48,10 @@ fi
 [ -v INIT_MAX_WAIT ] || INIT_MAX_WAIT=300
 [[ "${INIT_MAX_WAIT}" =~ ^[1-9][0-9]*$ ]] || INIT_MAX_WAIT=300
 
-[ -v ADMIN_URL ] || ADMIN_URL=""
-[ -n "${ADMIN_URL}" ] || ADMIN_URL="https://localhost:9000"
-[[ "${ADMIN_URL}" =~ ^(.*)/*$ ]] && ADMIN_URL="${BASH_REMATCH[1]}"
-PROBE_URL="${ADMIN_URL}/minio/health/ready"
+[ -v MINIO_ADMIN_URL ] || MINIO_ADMIN_URL=""
+[ -n "${MINIO_ADMIN_URL}" ] || MINIO_ADMIN_URL="https://localhost:9000"
+[[ "${MINIO_ADMIN_URL}" =~ ^(.*)/*$ ]] && MINIO_ADMIN_URL="${BASH_REMATCH[1]}"
+PROBE_URL="${MINIO_ADMIN_URL}/minio/health/ready"
 
 START="$(date +%s)"
 say "Starting the polling cycle"
@@ -70,19 +70,19 @@ say "The URL [${PROBE_URL}] responded, continuing"
 INSTANCE="local"
 
 # Add the configuration for MC control
-mcli config host add "${INSTANCE}" "${ADMIN_URL}" "${MINIO_ROOT_USER}" "${MINIO_ROOT_PASSWORD}"
+mcli config host add "${INSTANCE}" "${MINIO_ADMIN_URL}" "${MINIO_ROOT_USER}" "${MINIO_ROOT_PASSWORD}"
 
-[ -v MINIO_ACCESS_USER ] || MINIO_ACCESS_USER=""
-[ -v MINIO_ACCESS_PASSWORD ] || MINIO_ACCESS_PASSWORD=""
+[ -v MINIO_USER ] || MINIO_USER=""
+[ -v MINIO_PASSWORD ] || MINIO_PASSWORD=""
 
-[ -v MINIO_ACCESS_POLICY ] || MINIO_ACCESS_POLICY=""
-[ -n "${MINIO_ACCESS_POLICY}" ] || MINIO_ACCESS_POLICY="readwrite"
+[ -v MINIO_POLICY ] || MINIO_POLICY=""
+[ -n "${MINIO_POLICY}" ] || MINIO_POLICY="readwrite"
 
-if [ -n "${MINIO_ACCESS_USER}" ] && [ -n "${MINIO_ACCESS_PASSWORD}" ] ; then
+if [ -n "${MINIO_USER}" ] && [ -n "${MINIO_PASSWORD}" ] ; then
 	# Add the configuration for MC access in read-write mode
-	say "Creating the service account with username [${MINIO_ACCESS_USER}] (policy = ${MINIO_ACCESS_POLICY})..."
-	mcli admin user add "${INSTANCE}" < <(echo -en "${MINIO_ACCESS_USER}\n${MINIO_ACCESS_PASSWORD}") || fail "Failed to create the user account for [${MINIO_ACCESS_USER}]..."
-	mcli admin policy attach "${INSTANCE}" "${MINIO_ACCESS_POLICY}" --user "${MINIO_ACCESS_USER}" || fail "Failed to attach the ${MINIO_ACCESS_POLICY} policy to user [${MINIO_ACCESS_USER}]..."
+	say "Creating the service account with username [${MINIO_USER}] (policy = ${MINIO_POLICY})..."
+	mcli admin user add "${INSTANCE}" < <(echo -en "${MINIO_USER}\n${MINIO_PASSWORD}") || fail "Failed to create the user account for [${MINIO_USER}]..."
+	mcli admin policy attach "${INSTANCE}" "${MINIO_POLICY}" --user "${MINIO_USER}" || fail "Failed to attach the ${MINIO_POLICY} policy to user [${MINIO_USER}]..."
 fi
 
 exit 0

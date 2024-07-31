@@ -75,10 +75,8 @@ spec:
           {{- include "arkcase.image" $ | nindent 10 }}
           {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
-            {{- include "arkcase.subsystem-access.all.env" $ | nindent 12 }}
+            {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
-            {{- include "arkcase.subsystem-access.env.admin" (dict "ctx" $ "key" "username" "name" "ALFRESCO_ADMIN_USERNAME") | nindent 12 }}
-            {{- include "arkcase.subsystem-access.env.admin" (dict "ctx" $ "key" "password" "name" "ALFRESCO_ADMIN_PASSWORD") | nindent 12 }}
             - name: &key METADATA_KEYSTORE_PASSWORD
               valueFrom:
                 secretKeyRef:
@@ -99,7 +97,6 @@ spec:
                 -Dmetadata-keystore.aliases=metadata
                 -Dmetadata-keystore.metadata.password=$(METADATA_KEYSTORE_METADATA_PASSWORD)
                 -Dmetadata-keystore.metadata.algorithm=DESede
-
             {{- $content := (include "arkcase.cm.info" $ | fromYaml) }}
             {{- $indexing := (not (empty (include "arkcase.content.indexing" $))) }}
             - name: DATA_DIR
@@ -143,7 +140,7 @@ spec:
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" $partName) | nindent 12 }}
           volumeMounts:
             {{- include "arkcase.alfresco.license.volumeMounts" (dict "ctx" $ "volume" "alfresco-license" "path" "/usr/local/tomcat/shared/classes/alfresco/extension/license") | nindent 12 }}
-            {{- include "arkcase.subsystem-access.all.volumeMount" $ | nindent 12 }}
+            {{- include "arkcase.subsystem-access.volumeMounts" $ | nindent 12 }}
             {{- include "arkcase.trusts.mount" $ | nindent 12 }}
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
             - name: *dataVol
@@ -158,7 +155,7 @@ spec:
       volumes:
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
         {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "init") | nindent 8 }}
-        {{- include "arkcase.subsystem-access.all.volume" $ | nindent 8 }}
+        {{- include "arkcase.subsystem-access.volumes" $ | nindent 8 }}
         {{- include "arkcase.trusts.volume" $ | nindent 8 }}
         {{- include "arkcase.acme.volume" $ | nindent 8 }}
         {{- include "arkcase.alfresco.license.volume" (dict "ctx" $ "volume" "alfresco-license") | nindent 8 }}

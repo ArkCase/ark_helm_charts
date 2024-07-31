@@ -105,32 +105,19 @@ spec:
           {{- include "arkcase.image" $ | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.cluster.env" $ | nindent 12 }}
-            {{- include "arkcase.subsystem-access.all.env" $ | nindent 12 }}
+            {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
             - name: ARTEMIS_NEW_USER_MODEL
               value: "true"
-            #
-            # Add the administrator information
-            #
-            {{- $admin := (include "arkcase.artemis.admin" $ | fromYaml) }}
-            {{- include "arkcase.subsystem-access.env.admin" (dict "ctx" $ "key" "username" "name" "ARTEMIS_ADMIN_USERNAME") | nindent 12 }}
-            {{- include "arkcase.subsystem-access.env.admin" (dict "ctx" $ "key" "password" "name" "ARTEMIS_ADMIN_PASSWORD") | nindent 12 }}
-            - name: ARTEMIS_ADMIN_ROLES
-              value: {{ $admin.roles | quote }}
             #
             # Add the configured users
             #
             {{- $users := (include "arkcase.artemis.users" $ | fromYaml) }}
             {{- range $index, $user := (keys $users | sortAlpha) }}
-              {{- include "arkcase.subsystem-access.env.cred" (dict "ctx" $ "type" $user "key" "username" "name" (printf "ARTEMIS_CRED_USERNAME_%d" $index)) | nindent 12 }}
-              {{- include "arkcase.subsystem-access.env.cred" (dict "ctx" $ "type" $user "key" "password" "name" (printf "ARTEMIS_CRED_PASSWORD_%d" $index)) | nindent 12 }}
-              {{- include "arkcase.subsystem-access.env.cred" (dict "ctx" $ "type" $user "key" "roles"    "name" (printf "ARTEMIS_CRED_ROLES_%d"    $index)) | nindent 12 }}
+              {{- include "arkcase.subsystem-access.env" (dict "ctx" $ "conn" $user "key" "username" "name" (printf "ARTEMIS_USERNAME_%d" $index)) | nindent 12 }}
+              {{- include "arkcase.subsystem-access.env" (dict "ctx" $ "conn" $user "key" "password" "name" (printf "ARTEMIS_PASSWORD_%d" $index)) | nindent 12 }}
+              {{- include "arkcase.subsystem-access.env" (dict "ctx" $ "conn" $user "key" "roles"    "name" (printf "ARTEMIS_ROLES_%d"    $index)) | nindent 12 }}
             {{- end }}
-            #
-            # Some other stuff
-            #
-            {{- include "arkcase.subsystem-access.env.cred" (dict "ctx" $ "type" "cluster" "key" "password" "name" "ARTEMIS_CLUSTER_PASSWORD") | nindent 12 }}
-            {{- include "arkcase.subsystem-access.env.cred" (dict "ctx" $ "type" "cluster" "key" "encryption" "name" "ARTEMIS_ENCRYPTION_PASSWORD") | nindent 12 }}
           {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
           {{- with (include "arkcase.values" (dict "ctx" $ "base" "command") | fromYaml) }}
           command: {{ toJson .value }}
@@ -138,7 +125,7 @@ spec:
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "artemis") | nindent 12 }}
           volumeMounts:
-            {{- include "arkcase.subsystem-access.all.volumeMount" $ | nindent 12 }}
+            {{- include "arkcase.subsystem-access.volumeMounts" $ | nindent 12 }}
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
             - name: &confVol "conf"
               mountPath: "/app/conf"
@@ -162,7 +149,7 @@ spec:
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "logs") | nindent 8 }}
         {{- include "arkcase.file-resource.volumes" $ | nindent 8 }}
-        {{- include "arkcase.subsystem-access.all.volume" $ | nindent 8 }}
+        {{- include "arkcase.subsystem-access.volumes" $ | nindent 8 }}
       {{- with $.Values.nodeSelector }}
       nodeSelector: {{- toYaml . | nindent 8 }}
       {{- end }}
