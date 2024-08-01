@@ -1,5 +1,4 @@
 {{- if (include "arkcase.subsystem.enabled" $) -}}
-{{- $passwordFilePath := "/.secrets/password" -}}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -64,13 +63,13 @@ spec:
         - name: step
           {{- include "arkcase.image" $ | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
-            {{- include "arkcase.subsystem-access.all.env" $ | nindent 12 }}
+            {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
             - name: DOCKER_STEPCA_INIT_NAME
               value: "ArkCase on Kubernetes"
             - name: DOCKER_STEPCA_INIT_SERVICE_NAME
               value: {{ include "arkcase.service.name" $ | quote }}
             - name: DOCKER_STEPCA_INIT_PASSWORD_FILE
-              value: {{ $passwordFilePath | quote }}
+              value: "/.secrets/password"
             # Not yet ... but soon!
             # - name: DOCKER_STEPCA_INIT_ACME
             #   value: "true"
@@ -83,13 +82,11 @@ spec:
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "step") | nindent 12 }}
           volumeMounts:
-            {{- include "arkcase.subsystem-access.all.volumeMount" $ | nindent 12 }}
-            {{- include "arkcase.subsystem-access.volumeMount.admin" (dict "ctx" $ "mountPath" $passwordFilePath "key" "password") | nindent 12 }}
+            {{- include "arkcase.subsystem-access.volumeMount" $ | nindent 12 }}
             - name: *dataVolume
               mountPath: *dataDir
       volumes:
-        {{- include "arkcase.subsystem-access.all.volume" $ | nindent 8 }}
-        {{- include "arkcase.subsystem-access.volume.admin" $ | nindent 8 }}
+        {{- include "arkcase.subsystem-access.volume" $ | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
       {{- with $.Values.nodeSelector }}
       nodeSelector: {{- toYaml . | nindent 8 }}

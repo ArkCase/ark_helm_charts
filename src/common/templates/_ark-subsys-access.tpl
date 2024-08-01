@@ -684,10 +684,10 @@
   {{- include "__arkcase.subsystem-access.interface" (dict "params" $ "type" "env") -}}
 {{- end -}}
 
-{{- define "arkcase.subsystem-access.volumeMounts" -}}
+{{- define "arkcase.subsystem-access.volumeMount" -}}
   {{- include "__arkcase.subsystem-access.interface" (dict "params" $ "type" "volumeMount") -}}
 {{- end -}}
 
-{{- define "arkcase.subsystem-access.volumes" -}}
+{{- define "arkcase.subsystem-access.volume" -}}
   {{- include "__arkcase.subsystem-access.interface" (dict "params" $ "type" "volume") -}}
 {{- end -}}

@@ -13,7 +13,7 @@
   {{- if not (include "arkcase.isRootContext" $) -}}
     {{- fail "The parameter given should be the root context (. or $)" -}}
   {{- end -}}
-  {{- include "arkcase.subsystem-access.volumeMounts" (dict "ctx" $ "subsys" "acme" "key" "password" "mountPath" "/.acme.password") | nindent 0}}
+  {{- include "arkcase.subsystem-access.volumeMount" (dict "ctx" $ "subsys" "acme" "key" "password" "mountPath" "/.acme.password") | nindent 0}}
 {{- end -}}
 
 {{- define "arkcase.acme.volumeMount-shared" -}}
@@ -26,7 +26,7 @@
   {{- if not (include "arkcase.isRootContext" $) -}}
     {{- fail "The parameter given should be the root context (. or $)" -}}
   {{- end -}}
-  {{- include "arkcase.subsystem-access.volumes" (dict "ctx" $ "subsys" "acme") | nindent 0}}
+  {{- include "arkcase.subsystem-access.volume" (dict "ctx" $ "subsys" "acme") | nindent 0}}
 {{- end -}}
 
 {{- define "arkcase.acme.volume-shared" -}}
