@@ -1,43 +1,48 @@
 ---
-subsystem: {{ (include "arkcase.subsystem.name" $) | quote }}
-config-resource: {{- include "arkcase.subsystem-access.conf" $ | nindent 2 }}
+
+ENABLED  : {{ not (empty (include "arkcase.subsystem.enabled" $)) }}
+EXTERNAL : {{ not (empty (include "arkcase.subsystem.external" $)) }}
+ENABLED_OR_EXTERNAL : {{ not (empty (include "arkcase.subsystem.enabledOrExternal" $)) }}
+SUBSYSTEM_NAME: {{ (include "arkcase.subsystem.name" $) | quote }}
+SUBSYSTEM_INFO: {{ (include "arkcase.subsystem" $ | nindent 2) }}
 
 ---
-CREDS=[{{ include "arkcase.subsystem-access.name.admin" $ }}]
-CREDS=[{{ include "arkcase.subsystem-access.name.cred" $ }}]
-CREDS=[{{ include "arkcase.subsystem-access.name.cred" (dict "ctx" $ "type" "cred-access-hollywood") }}]
+CONFIGURATION: {{- include "arkcase.subsystem-access.conf" $ | nindent 2 }}
 
 ---
+BASE  =[{{ include "arkcase.subsystem-access.name" $ }}]
+ADMIN =[{{ include "arkcase.subsystem-access.name" (dict "ctx" $ "conn" "admin") }}]
+OTHER =[{{ include "arkcase.subsystem-access.name" (dict "ctx" $ "subsys" "othersubsys") }}]
+TEST  =[{{ include "arkcase.subsystem-access.name" (dict "ctx" $ "subsys" "someother" "conn" "connection") }}]
 
-ENABLED = {{ not (empty (include "arkcase.subsystem.enabled" $)) }}
-EXTERNAL = {{ not (empty (include "arkcase.subsystem.external" $)) }}
-
+{{- /* -}}
 ---
-{{ include "arkcase.subsystem-access.env.cred" (dict "ctx" $ "type" "schema-arkcase" "key" "mapped" "name" "${key:l}_${key:u}_MY_${subsys:u}_${subsys:l}_SUPER_var_${type}_${type:l}_${type:u}" "optional" "false") }}
+{{- $ctx := $ }}
+{{- range $subsys := (list ($.Chart.Name) "subsys-one" "subsystwo" "sub3") }}
+  {{- range $conn := (list "main" "admin" "extra") }}
+    {{- range $key := (list "" "firstKey" "anotherValue") }}
+      {{- range $name := (list "" "ONE_VAR" "OTHER_VAR" "${subsys}-CRAP-${key}-${conn}") }}
+        {{- range $mountPath := (list "" "/one/mount/point" "/another/mount") }}
+          {{- range $optional := (list "" "false" "true") }}
+            {{-
+              $p := dict
+                "ctx" $ctx
+                "subsys" $subsys
+                "conn" $conn
+                "key" $key
+                "name" $name
+                "mountPath" $mountPath
+                "optional" $optional
+            }}
 ---
-{{ include "arkcase.subsystem-access.env.admin" (dict "ctx" $ "subsys" "rdbms" "conn" "crap" "key" "username") }}
-{{ include "arkcase.subsystem-access.env.admin" (dict "ctx" $ "subsys" "rdbms" "key" "password") }}
-{{ include "arkcase.subsystem-access.env.cred" (dict "ctx" $ "subsys" "rdbms" "type" "schema-pentaho" "key" "username") }}
-{{ include "arkcase.subsystem-access.env.cred" (dict "ctx" $ "subsys" "rdbms" "type" "schema-pentaho" "key" "password") }}
+PARAMS: {{- (omit $p "ctx") | toYaml | nindent 2 }}
+RESULT: {{- include "__arkcase.subsystem-access.extract-params" $p | nindent 2 }}
+          {{- end }}
+        {{- end }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+{{- */ -}}
 ---
-{{ include "arkcase.subsystem-access.volumeMount.admin" (dict "ctx" $ "subsys" "rdbms" "key" "username") }}
-{{ include "arkcase.subsystem-access.volumeMount.admin" (dict "ctx" $ "subsys" "rdbms" "key" "password") }}
-{{ include "arkcase.subsystem-access.volumeMount.cred" (dict "ctx" $ "subsys" "rdbms" "type" "schema-pentaho" "key" "username") }}
-{{ include "arkcase.subsystem-access.volumeMount.cred" (dict "ctx" $ "subsys" "rdbms" "type" "schema-pentaho" "key" "password") }}
----
-{{ include "arkcase.subsystem-access.volume.admin" (dict "ctx" $ "subsys" "rdbms") }}
-{{ include "arkcase.subsystem-access.volume.admin" (dict "ctx" $ "subsys" "rdbms") }}
-{{ include "arkcase.subsystem-access.volume.cred" (dict "ctx" $ "subsys" "rdbms" "type" "schema-pentaho") }}
-{{ include "arkcase.subsystem-access.volume.cred" (dict "ctx" $ "subsys" "rdbms" "type" "schema-pentaho") }}
----
-external-admin: [{{ (include "arkcase.subsystem-access.external.admin" $) }}]
-external-schema-arkcase: [{{ (include "arkcase.subsystem-access.external.cred" (dict "ctx" $ "type" "schema-arkcase")) }}]
----
-ALL
----
-{{ include "__arkcase.subsystem-access.all.render" $ | nindent 0 }}
----
-ENVS: {{- include "arkcase.subsystem-access.all.env" $ | nindent 2 }}
-VOLUME_MOUNTS: {{- include "arkcase.subsystem-access.all.volumeMount" $ | nindent 2 }}
-VOLUMES: {{- include "arkcase.subsystem-access.all.volume" $ | nindent 2 }}
----
+{{- include "__arkcase.subsystem-access.deps" $ | nindent 0 }}

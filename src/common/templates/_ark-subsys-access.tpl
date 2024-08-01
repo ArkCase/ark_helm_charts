@@ -71,8 +71,6 @@
   {{- $key := "" -}}
   {{- $name := "" -}}
   {{- $mountPath := "" -}}
-  {{- $source := "" -}}
-  {{- $mappedKey := "" -}}
   {{- $optional := false -}}
 
   {{- /* Only consider the parameters if we weren't sent only the root context */ -}}
@@ -82,11 +80,6 @@
     {{- $key = ((hasKey $ "key") | ternary ($.key | default "" | toString) $key) | default $key -}}
     {{- $name = ((hasKey $ "name") | ternary ($.name | default "" | toString) $name) | default $name -}}
     {{- $mountPath = ((hasKey $ "mountPath") | ternary ($.mountPath | default "" | toString) $mountPath) | default $mountPath -}}
-    {{- if $key -}}
-      {{- $mappedKey = ((hasKey $ "mappedKey") | ternary ($.mappedKey | default "" | toString) $key) | default $key -}}
-    {{- end -}}
-    {{- $source = ((hasKey $ "source") | ternary ($.source | default "" | toString) $source) | default $source -}}
-
     {{- $optional = ((hasKey $ "optional") | ternary $.optional $optional) -}}
     {{- $optional = (not (empty (include "arkcase.toBoolean" $optional))) -}}
   {{- end -}}
@@ -98,6 +91,8 @@
     {{- fail (printf "Invalid subsystem name [%s] - must match /%s/" $subsys $regex) -}}
   {{- end -}}
 
+  {{- $conf := (include "arkcase.subsystem-access.conf" (dict "ctx" $ctx "subsys" $subsys) | fromYaml) -}}
+
   {{- if (not (regexMatch $regex $conn)) -}}
     {{- fail (printf "Invalid connection name [%s] for subsystem %s - must match /%s/" $conn $subsys $regex) -}}
   {{- end -}}
@@ -108,6 +103,7 @@
       {{- fail (printf "Invalid configuration key [%s] for connection %s, subsystem %s - must match /%s/" $key $conn $subsys $regex) -}}
     {{- end -}}
 
+    {{- /* TODO: Compute the actual mapped key from the configuration */ -}}
     {{- if and $mappedKey (not (regexMatch $regex $mappedKey)) -}}
       {{- fail (printf "Invalid configuration mapped key [%s] for key %s, connection %s, subsystem %s - must match /%s/" $mappedKey $key $conn $subsys $regex) -}}
     {{- end -}}
@@ -124,9 +120,8 @@
 
   {{- $release := $ctx.Release.Name -}}
 
-  {{- if not $source -}}
-    {{- $source = (printf "%s-%s-%s" $release $subsys $conn) -}}
-  {{- end -}}
+  {{- $source := (printf "%s-%s-%s" $release $subsys $conn) -}}
+  {{- /* TODO: Compute the actual source from the configuration */ -}}
 
   {{- $result :=
      dict
