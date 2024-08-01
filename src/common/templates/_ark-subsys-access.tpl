@@ -677,7 +677,9 @@
       {{- end -}}
     {{- end -}}
   {{- end -}}
-  {{- $result | toYaml -}}
+  {{- if $result -}}
+    {{- $result | toYaml -}}
+  {{- end -}}
 {{- end }}
 
 {{- define "arkcase.subsystem-access.env" -}}
