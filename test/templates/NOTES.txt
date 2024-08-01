@@ -15,7 +15,6 @@ ADMIN =[{{ include "arkcase.subsystem-access.name" (dict "ctx" $ "conn" "admin")
 OTHER =[{{ include "arkcase.subsystem-access.name" (dict "ctx" $ "subsys" "othersubsys") }}]
 TEST  =[{{ include "arkcase.subsystem-access.name" (dict "ctx" $ "subsys" "someother" "conn" "connection") }}]
 
-{{- /* -}}
 ---
 {{- $ctx := $ }}
 {{- range $subsys := (list ($.Chart.Name) "subsys-one" "subsystwo" "sub3") }}
@@ -36,13 +35,21 @@ TEST  =[{{ include "arkcase.subsystem-access.name" (dict "ctx" $ "subsys" "someo
             }}
 ---
 PARAMS: {{- (omit $p "ctx") | toYaml | nindent 2 }}
-RESULT: {{- include "__arkcase.subsystem-access.extract-params" $p | nindent 2 }}
+RESULT: {{- include "__arkcase.subsystem-access.extract-params-mapped" $p | nindent 2 }}
           {{- end }}
         {{- end }}
       {{- end }}
     {{- end }}
   {{- end }}
 {{- end }}
-{{- */ -}}
 ---
 {{- include "__arkcase.subsystem-access.deps" $ | nindent 0 }}
+---
+env: {{- include "arkcase.subsystem-access.env" $ | nindent 2 }}
+volumeMounts: {{- include "arkcase.subsystem-access.volumeMounts" $ | nindent 2 }}
+volumes: {{- include "arkcase.subsystem-access.volumes" $ | nindent 2 }}
+---
+{{- $params := (dict "ctx" $ "subsys" "some-other-subsys" "conn" "main-connection" "key" "someKeyThatDoesNotExist") -}}
+env: {{- include "arkcase.subsystem-access.env" $params | nindent 2 }}
+volumeMounts: {{- include "arkcase.subsystem-access.volumeMounts" $params | nindent 2 }}
+volumes: {{- include "arkcase.subsystem-access.volumes" $params | nindent 2 }}
