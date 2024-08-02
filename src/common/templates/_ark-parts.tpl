@@ -25,7 +25,7 @@
     {{- end -}}
   {{- end -}}
 
-  {{- if and $partname (regexMatch "^([a-z][a-z0-9-]*)?[a-z]$" $partname) -}}
+  {{- if and $partname (regexMatch "^([a-z0-9][a-z0-9-]*)?[a-z0-9]$" $partname) -}}
     {{- $partname -}}
   {{- end -}}
 {{- end -}}
