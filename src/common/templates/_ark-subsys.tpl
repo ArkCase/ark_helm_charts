@@ -33,7 +33,7 @@ Return a map which contains the subsystem data map as required by other API call
       {{- $subsysName = get $ctx "arkcase-subsystem" -}}
     {{- else -}}
       {{- $subsysName = .Chart.Name -}}
-      {{- $marker := set $ctx "arkcase-subsystem" $subsysName -}}
+      {{- $ctx = set $ctx "arkcase-subsystem" $subsysName -}}
     {{- end -}}
   {{- end -}}
 
