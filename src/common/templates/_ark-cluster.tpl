@@ -200,12 +200,7 @@
 
   {{- $config := (include "arkcase.cluster" $ctx | fromYaml) -}}
   {{- if $config.enabled -}}
-- name: ZK_HOST
-  valueFrom:
-    configMapKeyRef:
-      name: {{ printf "%s-zookeeper" $ctx.Release.Name | quote }}
-      key: ZK_HOST
-      optional: false
+    {{- include "arkcase.subsystem-access.env" (dict "ctx" $ "subsys" "zookeeper" "key" "zkHost" "name" "ZK_HOST") -}}
   {{- end -}}
 {{- end -}}
 
