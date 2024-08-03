@@ -57,3 +57,8 @@ volumes: {{- include "arkcase.subsystem-access.volume" $params | nindent 2 }}
 {{- include "arkcase.subsystem-access.env" (dict "ctx" $ "subsys" "zookeeper" "key" "zkHost" "name" "ZK_HOST" "optional" "false") | nindent 0 }}
 {{- include "arkcase.subsystem-access.volumeMount" (dict "ctx" $ "subsys" "zookeeper" "key" "zkHost" "optional" "true") | nindent 0 }}
 {{- include "arkcase.subsystem-access.volume" (dict "ctx" $ "subsys" "zookeeper" "key" "zkHost" "mountPath" "/kaka/seka" "optional" "true") | nindent 0 }}
+---
+env: {{- include "arkcase.acme.env" $ | nindent 2 }}
+volumeMounts: {{- include "arkcase.acme.volumeMount" $ | nindent 2 }}
+volumes: {{- include "arkcase.acme.volume" $ | nindent 2 }}
+

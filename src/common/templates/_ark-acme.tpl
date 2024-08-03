@@ -6,14 +6,14 @@
   value: "/.ssl"
 - name: ACME_SERVICE_NAME
   value: {{ include "arkcase.service.name" $ | quote }}
-{{ include "arkcase.subsystem-access.env" (dict "ctx" $ "subsys" "acme" "key" "url" "name" "ACME_URL") }}
+{{ include "arkcase.subsystem-access.env" (dict "ctx" $ "subsys" "acme" "key" "url" "name" "ACME_URL") | nindent 0 }}
 {{- end -}}
 
 {{- define "arkcase.acme.volumeMount" -}}
   {{- if not (include "arkcase.isRootContext" $) -}}
     {{- fail "The parameter given should be the root context (. or $)" -}}
   {{- end -}}
-  {{- include "arkcase.subsystem-access.volumeMount" (dict "ctx" $ "subsys" "acme" "key" "password" "mountPath" "/.acme.password") | nindent 0}}
+  {{- include "arkcase.subsystem-access.volumeMount" (dict "ctx" $ "subsys" "acme" "conn" "main" "key" "password" "mountPath" "/.acme.password") -}}
 {{- end -}}
 
 {{- define "arkcase.acme.volumeMount-shared" -}}
@@ -26,7 +26,7 @@
   {{- if not (include "arkcase.isRootContext" $) -}}
     {{- fail "The parameter given should be the root context (. or $)" -}}
   {{- end -}}
-  {{- include "arkcase.subsystem-access.volume" (dict "ctx" $ "subsys" "acme") | nindent 0}}
+  {{- include "arkcase.subsystem-access.volume" (dict "ctx" $ "subsys" "acme" "conn" "main") -}}
 {{- end -}}
 
 {{- define "arkcase.acme.volume-shared" -}}
