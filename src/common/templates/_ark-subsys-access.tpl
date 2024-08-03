@@ -651,9 +651,17 @@
   {{- $depsData = (get $depsData $.type | default dict) -}}
   {{- $renderTemplate := (printf "__arkcase.subsystem-access.deps-compute.%s" $.type) -}}
 
+  {{- /* These parameters will be passed downstream */ -}}
+  {{- $args := (dict "ctx" $ctx "optional" $params.optional) -}}
+
+  {{- if $filter.key -}}
+    {{- /* These parameters must be preserved from the base, but only if the key is provided */ -}}
+    {{- $args = merge $args ($params.ctxIsRoot | ternary dict (pick $.params "name" "mountPath")) -}}
+  {{- end -}}
+
   {{- $result := list -}}
   {{- range $subsys := ($filter.subsys | ternary (list $params.subsys) (keys $depsData | sortAlpha)) -}}
-    {{- $args := (dict "ctx" $ctx "subsys" $subsys) -}}
+    {{- $args = set $args "subsys" $subsys -}}
     {{- $subsysData := (get $depsData $subsys | default dict) -}}
     {{- range $conn := ($filter.conn | ternary (list $params.conn) (keys $subsysData | sortAlpha)) -}}
       {{- $args = set $args "conn" $conn -}}

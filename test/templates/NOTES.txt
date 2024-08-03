@@ -46,10 +46,14 @@ RESULT: {{- include "__arkcase.subsystem-access.extract-params-mapped" $p | nind
 {{- include "__arkcase.subsystem-access.deps" $ | nindent 0 }}
 ---
 env: {{- include "arkcase.subsystem-access.env" $ | nindent 2 }}
-volumeMounts: {{- include "arkcase.subsystem-access.volumeMounts" $ | nindent 2 }}
-volumes: {{- include "arkcase.subsystem-access.volumes" $ | nindent 2 }}
+volumeMounts: {{- include "arkcase.subsystem-access.volumeMount" $ | nindent 2 }}
+volumes: {{- include "arkcase.subsystem-access.volume" $ | nindent 2 }}
 ---
 {{- $params := (dict "ctx" $ "subsys" "some-other-subsys" "conn" "main-connection" "key" "someKeyThatDoesNotExist") -}}
 env: {{- include "arkcase.subsystem-access.env" $params | nindent 2 }}
-volumeMounts: {{- include "arkcase.subsystem-access.volumeMounts" $params | nindent 2 }}
-volumes: {{- include "arkcase.subsystem-access.volumes" $params | nindent 2 }}
+volumeMounts: {{- include "arkcase.subsystem-access.volumeMount" $params | nindent 2 }}
+volumes: {{- include "arkcase.subsystem-access.volume" $params | nindent 2 }}
+---
+{{- include "arkcase.subsystem-access.env" (dict "ctx" $ "subsys" "zookeeper" "key" "zkHost" "name" "ZK_HOST" "optional" "false") | nindent 0 }}
+{{- include "arkcase.subsystem-access.volumeMount" (dict "ctx" $ "subsys" "zookeeper" "key" "zkHost" "optional" "true") | nindent 0 }}
+{{- include "arkcase.subsystem-access.volume" (dict "ctx" $ "subsys" "zookeeper" "key" "zkHost" "mountPath" "/kaka/seka" "optional" "true") | nindent 0 }}
