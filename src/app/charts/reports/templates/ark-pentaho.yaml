@@ -189,8 +189,6 @@ spec:
               value: {{ $db.scripts | quote }}
             - name: PENTAHO_SERVICE
               value: {{ $serviceName | quote }}
-            - name: PENTAHO_SERVER_URL
-              value: "https://$(PENTAHO_SERVICE):8443/pentaho"
             - name: CLUSTER_ENABLED
               value: {{ $cluster.enabled | toString | quote }}
             - name: ADMIN_PORT
