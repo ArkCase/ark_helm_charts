@@ -127,10 +127,7 @@ spec:
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.deployment.env" $ | nindent 12 }}
           volumeMounts:
-            - name: &configMap "config-map"
-              mountPath: "/deploy"
-              subPath: &deploy "deploy"
-              readOnly: true
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/deploy") | nindent 12 }}
             - name: &initVol "init"
               mountPath: &initDir "/app/init"
             - name: &dataVol "data"
@@ -213,8 +210,6 @@ spec:
               mountPath: *initDir
             - name: *logsVol
               mountPath: *logsDir
-            {{- include "arkcase.trusts.mount" $ | nindent 12 }}
-            {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
             {{- include "arkcase.pentaho.license.volumeMounts" $ | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/.template-vars.yaml") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/tomcat/webapps/pentaho/META-INF/context.xml") | nindent 12 }}
