@@ -1,7 +1,7 @@
 {{- define "arkcase.cluster.info.rules" -}}
   {{- /* Find the chart's own clustering rules */ -}}
 
-  {{- $rules := (.Files.Get "cluster.yaml" | fromYaml) -}}
+  {{- $rules := (.Files.Get "clustering.yaml" | fromYaml) -}}
   {{- if (not (kindIs "map" $rules)) -}}
     {{- $rules = dict -}}
   {{- end -}}
