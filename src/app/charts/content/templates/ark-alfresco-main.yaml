@@ -1,10 +1,11 @@
 {{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.content.external" $)) (eq "alfresco" (include "arkcase.content.info.dialect" $)) -}}
 {{- $schema := (include "arkcase.db.schema" (dict "ctx" $ "schema" "content") | fromYaml) -}}
+{{- $fullname := (include "arkcase.fullname" $) -}}
 ---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: &fullname {{ include "arkcase.fullname" $ | quote }}
+  name: &fullname {{ $fullname | quote }}
   namespace: {{ $.Release.Namespace | quote }}
   labels: {{- include "arkcase.labels.service" $ | nindent 4 }}
     {{- with (include "arkcase.values" (dict "ctx" $ "base" "labels") | fromYaml) }}
@@ -80,12 +81,12 @@ spec:
             - name: &key METADATA_KEYSTORE_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: *fullname
+                  name: &metadataSecret {{ printf "%s-metadata" $fullname | quote }}
                   key: *key
             - name: &key METADATA_KEYSTORE_METADATA_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: *fullname
+                  name: *metadataSecret
                   key: *key
             - name: JAVA_TOOL_OPTIONS
               value: >-
