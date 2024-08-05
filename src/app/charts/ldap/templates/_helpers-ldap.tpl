@@ -178,3 +178,21 @@ result: "DC=some,DC=domain,DC=com"
 
   {{- get $settings $server | toYaml -}}
 {{- end -}}
+
+{{- define "arkcase.ldap.flat" -}}
+  {{- $ctx := ((hasKey $ "ctx") | ternary $.ctx $) -}}
+  {{- $ldap := (include "arkcase.ldap" $ | fromYaml) -}}
+  {{- $result := dict -}}
+  {{- range $k, $v := (include "arkcase.ldap" (dict "ctx" $ctx "server" "arkcase") | fromYaml) -}}
+    {{- if (kindIs "map" $v) -}}
+      {{- range $subK, $subV := $v -}}
+        {{- $result = set $result (printf "%s%s" $k (title $subK)) ($subV | toString | default "") -}}
+      {{- end -}}
+    {{- else if (kindIs "slice" $v) -}}
+      {{- $result = set $result $k $v -}}
+    {{- else -}}
+      {{- $result = set $result $k ($v | toString | default "") -}}
+    {{- end -}}
+  {{- end -}}
+  {{- $result | toYaml -}}
+{{- end -}}
