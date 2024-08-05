@@ -651,3 +651,35 @@ Parameter: a dict with two keys:
         number: {{ $port }}
   {{- end }}
 {{- end -}}
+
+{{- define "arkcase.subsystem.settings" -}}
+  {{- $ctx := $ -}}
+  {{- $thisSubsys := (include "arkcase.subsystem.name" $ctx) -}}
+  {{- $subsys := $thisSubsys -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- $ctx = $.ctx -}}
+    {{- if not (include "arkcase.isRootContext" $ctx) -}}
+      {{- fail "The root context (. or $) must be given as either the only parameter, or the 'ctx' parameter" -}}
+    {{- end -}}
+    {{- $subsys = (hasKey $ "subsys") | ternary $.subsys "" | default $thisSubsys -}}
+  {{- end -}}
+
+  {{- /* Fetch the configuration values */ -}}
+  {{- $local := (eq $subsys $thisSubsys) | ternary ($ctx.Values.configuration) dict | default dict -}}
+  {{- if (not (kindIs "map" $global)) -}}
+    {{- $local = dict -}}
+  {{- end -}}
+
+  {{- $global := (get ($ctx.Values.global | default dict) $subsys | default dict) -}}
+  {{- if (not (kindIs "map" $global)) -}}
+    {{- $global = dict -}}
+  {{- end -}}
+
+  {{- $global = (hasKey $global "settings") | ternary $global.settings "" | default dict -}}
+  {{- if (not (kindIs "map" $global)) -}}
+    {{- $global = dict -}}
+  {{- end -}}
+
+  {{- /* At this point, $local has the chart's default values, and $global has the overrides */ -}}
+  {{- dict "global" $global "local" $local "subsys" $subsys -}}
+{{- end -}}
