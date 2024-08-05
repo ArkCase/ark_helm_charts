@@ -28,13 +28,20 @@ consumes:
 
   ldap:
     main:
+      domain: REPORTS_LDAP_DOMAIN
       url: REPORTS_LDAP_URL
       username: REPORTS_LDAP_USERNAME
       password: REPORTS_LDAP_PASSWORD
-      domain: REPORTS_LDAP_DOMAIN
+      rootDn: REPORTS_LDAP_ROOT_DN
       baseDn: REPORTS_LDAP_BASE_DN
-      searchUsersBase: REPORTS_LDAP_SEARCH_USERS_BASE
-      searchGroupsBase: REPORTS_LDAP_SEARCH_GROUPS_BASE
+      userBaseDn: REPORTS_LDAP_USER_BASE_DN
+      userListFilter: REPORTS_LDAP_USER_LIST_FILTER
+      userSearchFilter: REPORTS_LDAP_USER_SEARCH_FILTER
+      userNameAttribute: REPORTS_LDAP_USER_NAME_ATTRIBUTE
+      groupBaseDn: REPORTS_LDAP_GROUP_BASE_DN
+      groupListFilter: REPORTS_LDAP_GROUP_LIST_FILTER
+      groupSearchFilter: REPORTS_LDAP_GROUP_SEARCH_FILTER
+      groupNameAttribute: REPORTS_LDAP_GROUP_NAME_ATTRIBUTE
 
   rdbms:
     arkcase:
@@ -46,7 +53,7 @@ consumes:
       schema:   REPORTS_JDBC_ARKCASE_SCHEMA
       # instance:   REPORTS_JDBC_ARKCASE_INSTANCE
 
-    hibernate:
+    pentaho:
       entrypoint: REPORTS_JDBC_HIBERNATE_HOST
       port: REPORTS_JDBC_HIBERNATE_PORT
       username: REPORTS_JDBC_HIBERNATE_USERNAME
@@ -55,7 +62,7 @@ consumes:
       schema:   REPORTS_JDBC_HIBERNATE_SCHEMA
       # instance:   REPORTS_JDBC_HIBERNATE_INSTANCE
 
-    jcr:
+    pentaho-jcr:
       entrypoint: REPORTS_JDBC_JACKRABBIT_HOST
       port: REPORTS_JDBC_JACKRABBIT_PORT
       username: REPORTS_JDBC_JACKRABBIT_USERNAME
@@ -64,7 +71,7 @@ consumes:
       schema:   REPORTS_JDBC_JACKRABBIT_SCHEMA
       # instance:   REPORTS_JDBC_JACKRABBIT_INSTANCE
 
-    quartz:
+    pentaho-quartz:
       entrypoint: REPORTS_JDBC_QUARTZ_HOST
       port: REPORTS_JDBC_QUARTZ_PORT
       username: REPORTS_JDBC_QUARTZ_USERNAME
