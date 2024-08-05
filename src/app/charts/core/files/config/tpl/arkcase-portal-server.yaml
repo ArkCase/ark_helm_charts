@@ -16,17 +16,17 @@ portal:
   id: {{ $foia.portalId | quote }}
   url: *url
   arkcaseUrl: "https://localhost:8443/arkcase"
-  groupName: "ARKCASE_PORTAL_USER@{{ $foia.ldap.domain | upper }}"
+  groupName: "ARKCASE_PORTAL_USER@${PORTAL_LDAP_DOMAIN}"
   # authentication type, possible values (basic, external)
   authenticationType: "basic"
-  userId: "${ARKCASE_LDAP_PORTAL_USERNAME}"
-  password: "${ARKCASE_LDAP_PORTAL_PASSWORD}"
+  userId: "${PORTAL_LDAP_USERNAME}"
+  password: "${PORTAL_LDAP_PASSWORD}"
   # portal configuration type
   externalConfiguration: false
   authenticatedMode: {{ not $foia.disableAuth }}
-  activemqUrl: "${ARKCASE_OPENWIRE_URL}"
-  activemqUsername: "${ARKCASE_OPENWIRE_USERNAME}"
-  activemqPassword: "${ARKCASE_OPENWIRE_PASSWORD}"
+  activemqUrl: "${ARKCASE_MQ_AMQP_URL}"
+  activemqUsername: "${ARKCASE_MQ_USERNAME}"
+  activemqPassword: "${ARKCASE_MQ_PASSWORD}"
   serviceProvider:
     directory.name: "foiaportal"
   keystoreFilename: "${JAVA_KEYSTORE}"

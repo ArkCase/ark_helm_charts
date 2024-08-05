@@ -37,9 +37,9 @@ spring:
   jms:
     pub-sub-domain: true
   activemq: &openwire-connection
-    broker-url: "${ARKCASE_OPENWIRE_URL}"
-    user: "${ARKCASE_OPENWIRE_USERNAME}"
-    password: "${ARKCASE_OPENWIRE_PASSWORD}"
+    broker-url: "${ARKCASE_MQ_AMQP_URL}"
+    user: "${ARKCASE_MQ_USERNAME}"
+    password: "${ARKCASE_MQ_PASSWORD}"
 properties.folder.path: "/app/conf"
 branding.files.folder.path: "/app/conf/branding"
 logging:

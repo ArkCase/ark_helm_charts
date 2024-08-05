@@ -5,13 +5,13 @@
 {{- $foiaDomain := ($foia.ldap.domain | upper) -}}
 external.integration:
   enable: true
-  userId: "${ARKCASE_LDAP_PORTAL_USERNAME}@{{ $foia.ldap.domain }}"
+  userId: "${ARKCASE_LDAP_PORTAL_USERNAME}@${PORTAL_LDAP_DOMAIN}"
 
 gov.foia.broker:
   file_upload_url: "file:///app/fsrv/"
-  url: "${ARKCASE_OPENWIRE_URL}"
-  userName: "${ARKCASE_OPENWIRE_USERNAME}"
-  password: "${ARKCASE_OPENWIRE_PASSWORD}"
+  url: "${ARKCASE_MQ_AMQP_URL}"
+  userName: "${ARKCASE_MQ_USERNAME}"
+  password: "${ARKCASE_MQ_PASSWORD}"
   keystore: "${JAVA_KEYSTORE}"
   keystore.password: "${JAVA_KEYSTORE_PASS}"
   truststore: "${JAVA_TRUSTSTORE}"

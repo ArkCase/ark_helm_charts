@@ -3,15 +3,15 @@
 springConfigLdapProperties:
   ldapDirectoryConfig:
     arkcase:
-      ldapUrl: "${ARKCASE_LDAP_MAIN_URL}"
-      userDomain: {{ $userDomain }}
-      authUserDn: "${ARKCASE_LDAP_MAIN_USERNAME}"
-      authUserPassword: "${ARKCASE_LDAP_MAIN_PASSWORD}"
-      base: {{ include "arkcase.ldap.baseDn" $param }}
-      userSearchBase: {{ include "arkcase.ldap" (merge (dict "value" "search.users.base") $param) }}
-      groupSearchBase: {{ include "arkcase.ldap" (merge (dict "value" "search.groups.base") $param) }}
-      userPrefix: {{ include "arkcase.ldap" (merge (dict "value" "search.users.prefix") $param) }}
-      groupPrefix: {{ include "arkcase.ldap" (merge (dict "value" "search.groups.prefix") $param) }}
+      ldapUrl: "${ARKCASE_LDAP_URL}"
+      userDomain: "${ARKCASE_LDAP_DOMAIN}"
+      authUserDn: "${ARKCASE_LDAP_USERNAME}"
+      authUserPassword: "${ARKCASE_LDAP_PASSWORD}"
+      base: "${ARKCASE_LDAP_BASE_DN},${ARKCASE_LDAP_ROOT_DN}"
+      userSearchBase: "${ARKCASE_LDAP_USER_BASE_DN}"
+      groupSearchBase: "${ARKCASE_LDAP_GROUP_BASE_DN}"
+      userPrefix: "${ARKCASE_LDAP_USER_PREFIX}"
+      groupPrefix: "${ARKCASE_LDAP_GROUP_PREFIX}"
       userAttributes: cn,userAccountControl,sn,givenName,dn,distinguishedname,memberOf,sAMAccountName,userPrincipalName,uid,uidNumber,c,co,company,department,title,shadowMax,shadowLastChange,msDS-UserPasswordExpiryTimeComputed,modifyTimestamp,description,member
       syncPageSize: 500
       enableEditingLdapUsers: {{ include "arkcase.toBoolean" (include "arkcase.ldap" (merge (dict "value" "enableEditingLdapUsers") $param)) | default true }}
