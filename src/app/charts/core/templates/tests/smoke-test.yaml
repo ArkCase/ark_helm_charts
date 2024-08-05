@@ -1,5 +1,5 @@
 {{- if (include "arkcase.subsystem.enabled" $) }}
-{{- $foia := (include "arkcase.foia" $ | fromYaml) -}}
+  {{- $foia := (include "arkcase.foia" $ | fromYaml) -}}
 apiVersion: v1
 kind: Pod
 metadata:

@@ -60,13 +60,6 @@
   {{- if $foia.enabled -}}
     {{- /* We want FOIA, so enable it and figure out the rest of the configurations */ -}}
 
-    {{- /* LDAP configuration */ -}}
-    {{- /* constant value */ -}}
-    {{- $ldapServer := "foia" -}}
-    {{- $ldapDomain := (include "arkcase.ldap" (dict "ctx" $ "server" $ldapServer "value" "domain")) -}}
-    {{- $ldapUserPrefix := (include "arkcase.ldap" (dict "ctx" $ "server" $ldapServer "value" "search.user.prefix") | default "") -}}
-    {{- $ldapGroupPrefix := (include "arkcase.ldap" (dict "ctx" $ "server" $ldapServer "value" "search.groups.prefix") | default "") -}}
-
     {{- $generateUsers := (not (empty (include "arkcase.toBoolean" $foia.generateUsers))) -}}
     {{- $disableAuth := (not (empty (include "arkcase.toBoolean" $foia.disableAuth))) -}}
 
@@ -106,13 +99,6 @@
         "disableAuth" $disableAuth
         "generateUsers" $generateUsers
         "portalId" $portalId
-        "ldap" (
-          dict
-            "server" $ldapServer
-            "userPrefix" $ldapUserPrefix
-            "groupPrefix" $ldapGroupPrefix
-            "domain" $ldapDomain
-          )
         "notificationGroups" $notificationGroups
     -}}
   {{- end -}}
