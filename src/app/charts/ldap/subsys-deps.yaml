@@ -2,3 +2,22 @@ consumes:
   # We specifically don't consume from ACME b/c those are handled directly
   # by the ACME templates, and there's no need to address them beyond that
   # acme: {}
+  $self:
+    admin:
+      password: DOMAINPASS
+    main:
+      domain: DOMAIN_NAME
+  reports:
+    main:
+      username: MANAGED_REPORTS_USERNAME
+      password: MANAGED_REPORTS_PASSWORD
+    main-admin:
+      username: MANAGED_REPORTS_ADMIN_USERNAME
+      password: MANAGED_REPORTS_ADMIN_PASSWORD
+  content:
+    main:
+      username: MANAGED_CONTENT_USERNAME
+      password: MANAGED_CONTENT_PASSWORD
+    main-admin:
+      username: MANAGED_CONTENT_ADMIN_USERNAME
+      password: MANAGED_CONTENT_ADMIN_PASSWORD

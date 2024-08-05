@@ -139,13 +139,12 @@
   {{- end -}}
 
   {{- /* Set the usersDirectory for all clients to the default one ... */ -}}
-  {{- $usersDirectory := (include "arkcase.ldap" (dict "ctx" $ctx "server" "arkcase" "value" "domain") | replace "." "_") -}}
   {{- $baseUrl := (include "arkcase.tools.conf" (dict "ctx" $ctx "value" "baseUrl")) -}}
   {{- /* Remove any potential trailing slashes */ -}}
   {{- $baseUrl = (regexReplaceAll "/*$" $baseUrl "") -}}
 
   {{- /* The enabled flag is on by default, unless explicitly turned off */ -}}
-  {{- $clients := (include "__arkcase.core.sso.oidc.parse-clients" (dict "oidc" $oidc "usersDirectory" $usersDirectory "baseUrl" $baseUrl) | fromYaml) -}}
+  {{- $clients := (include "__arkcase.core.sso.oidc.parse-clients" (dict "oidc" $oidc "usersDirectory" "arkcase" "baseUrl" $baseUrl) | fromYaml) -}}
 
   {{- /* We also condition the configuation on whether there are client configurations */ -}}
   {{- if not $clients -}}

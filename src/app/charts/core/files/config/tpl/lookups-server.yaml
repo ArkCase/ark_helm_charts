@@ -7,7 +7,7 @@ lookupsConfiguration:
         {{- $index := 0 }}
         {{- range $group := $foia.notificationGroups }}
         group{{ $index }}:
-          value: {{ printf "%s%s@%s" $foia.ldap.groupPrefix $group $foia.ldap.domain | quote }}
+          value: {{ printf "%s%s@${PORTAL_LDAP_DOMAIN}" $foia.ldap.groupPrefix $group | quote }}
           order: {{ $index }}
           {{- $index = add 1 $index }}
         {{- end }}

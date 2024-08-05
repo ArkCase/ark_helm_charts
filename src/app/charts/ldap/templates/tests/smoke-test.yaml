@@ -26,30 +26,24 @@ spec:
   containers:
     - name: test
       {{- include "arkcase.image" (dict "ctx" $ "name" "smoke-test" "repository" "arkcase/nettest") | nindent 6 }}
-      {{- $domain := (include "arkcase.ldap" (dict "ctx" $ "value" "domain")) }}
-      {{- $administrator := (include "arkcase.ldap" (dict "ctx" $ "value" "administator") | default "administrator") }}
-      {{- $baseDn := (include "arkcase.ldap.baseDn" $) }}
       command: [ "/usr/local/bin/run-from-env" ]
       args: [ "SCRIPT" ]
       env: {{- include "arkcase.tools.baseEnv" $ | nindent 8 }}
+        {{- include "arkcase.subsystem-access.env" (dict "ctx" $ "conn" "admin" "key" "username" "name" "ADMIN_USERNAME") | nindent 8 }}
+        {{- include "arkcase.subsystem-access.env" (dict "ctx" $ "conn" "main" "key" "realm" "name" "ADMIN_REALM") | nindent 8 }}
+        {{- include "arkcase.subsystem-access.env" (dict "ctx" $ "conn" "main" "key" "baseDn" "name" "BASE_DN") | nindent 8 }}
         - name: SERVICE_NAME
           value: {{ include "arkcase.service.name" $ | quote }}
         - name: ADMIN_USER
-          value: {{ printf "%s\\%s" (include "arkcase.ldap.realm" $) $administrator | quote }}
+          value: "$(REALM)\\$(ADMIN_USERNAME)"
         - name: SCRIPT
           value: |-
             set -xeuo pipefail
             /usr/local/bin/acme-init
-            /usr/bin/timeout 3 /usr/bin/ldapsearch -H "ldaps://$(SERVICE_NAME)" -D "$(ADMIN_USER)" -y "/app/secrets/DOMAIN_PASSWORD" -s one -b {{ $baseDn | quote }} "(objectClass=organizationalUnit)" dn
+            /usr/bin/timeout 3 /usr/bin/ldapsearch -H "ldaps://$(SERVICE_NAME)" -D "$(ADMIN_USERNAME)" -y "/.password" -s one -b "$(BASE_DN)" "(objectClass=organizationalUnit)" dn
       volumeMounts:
-        - name: &secrets "secrets"
-          mountPath: "/app/secrets"
-          readOnly: true
+        {{- include "arkcase.subsystem-access.volumeMount" (dict "ctx" $ "conn" "admin" "key" "password" "mountPath" "/.password") | nindent 8 }}
   volumes:
-    - name: *secrets
-      secret:
-        optional: false
-        secretName: {{ include "arkcase.fullname" $ | quote }}
-        defaultMode: 0444
+    {{- include "arkcase.subsystem-access.volumeMount" (dict "ctx" $ "conn" "admin") | nindent 4 }}
   restartPolicy: Never
 {{- end }}

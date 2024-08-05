@@ -665,17 +665,12 @@ Parameter: a dict with two keys:
   {{- end -}}
 
   {{- /* Fetch the configuration values */ -}}
-  {{- $local := (eq $subsys $thisSubsys) | ternary ($ctx.Values.configuration) dict | default dict -}}
-  {{- if (not (kindIs "map" $global)) -}}
+  {{- $local := (eq $subsys $thisSubsys) | ternary (dig "Values" "configuration" "" $ctx) dict | default dict -}}
+  {{- if (not (kindIs "map" $local)) -}}
     {{- $local = dict -}}
   {{- end -}}
 
-  {{- $global := (get ($ctx.Values.global | default dict) $subsys | default dict) -}}
-  {{- if (not (kindIs "map" $global)) -}}
-    {{- $global = dict -}}
-  {{- end -}}
-
-  {{- $global = (hasKey $global "settings") | ternary $global.settings "" | default dict -}}
+  {{- $global := (dig "Values" "global" "conf" $subsys "settings" "" $ctx) -}}
   {{- if (not (kindIs "map" $global)) -}}
     {{- $global = dict -}}
   {{- end -}}

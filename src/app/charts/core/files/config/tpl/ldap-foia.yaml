@@ -1,6 +1,6 @@
 {{- $foia := (include "arkcase.foia" $ | fromYaml) -}}
 {{- if $foia -}}
-  {{- $param := (dict "ctx" $ "server" $foia.ldap.server) -}}
+  {{- $ldap := (include "arkcase.core.ldap" (dict "ctx" $ "server" "portal") | fromYaml) -}}
 springConfigLdapProperties:
   ldapDirectoryConfig:
     foiaportal:
@@ -15,8 +15,8 @@ springConfigLdapProperties:
       groupPrefix: "${PORTAL_LDAP_GROUP_PREFIX}"
       userAttributes: cn,userAccountControl,sn,givenName,dn,distinguishedname,memberOf,sAMAccountName,userPrincipalName,uid,uidNumber,c,co,company,department,title,shadowMax,shadowLastChange,msDS-UserPasswordExpiryTimeComputed,modifyTimestamp,description,member
       syncPageSize: 500
-      enableEditingLdapUsers: {{ include "arkcase.toBoolean" (include "arkcase.ldap" (merge (dict "value" "enableEditingLdapUsers") $param)) | default true }}
-      enableCreatingLdapUsers: {{ include "arkcase.toBoolean" (include "arkcase.ldap" (merge (dict "value" "enableCreatingLdapUsers") $param)) | default true }}
+      enableEditingLdapUsers: {{ $ldap.enableEdit }}
+      enableCreatingLdapUsers: {{ $ldap.enableCreate }}
       directoryType: activedirectory
       userSearchFilter: (&(objectClass=user)(sAMAccountName=%s))
       allUsersFilter: (&(objectCategory=person)(objectClass=user)(!(userAccountControl:1.2.840.113556.1.4.803:=2)))
@@ -33,7 +33,7 @@ springConfigLdapProperties:
       groupsSortingAttribute: cn
       userControlGroup:
       groupControlGroup:
-      syncEnabled: {{ include "arkcase.toBoolean" (include "arkcase.ldap" (merge (dict "value" "syncEnabled") $param)) | default true }}
+      syncEnabled: {{ $ldap.enableSync }}
       autoGenerateUserId: true
       partialSyncCron: 0 0/30 * 1/1 * ? *
       fullSyncCron: 0 5 0 1/1 * ? *

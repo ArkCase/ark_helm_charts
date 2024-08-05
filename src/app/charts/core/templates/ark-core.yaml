@@ -157,8 +157,9 @@ spec:
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.deployment.env" $ | nindent 12 }}
             {{- include "arkcase.core.dev.deployEnv" $ | nindent 12 }}
+            {{- include "arkcase.subsystem-access.env" (dict "ctx" $ "subsys" "ldap" "conn" "main" "key" "domain" "name" "LDAP_DOMAIN") | nindent 12 }}
             - name: REALM_FIX
-              value: {{ printf "arkcase.org=%s" (include "arkcase.ldap" (dict "ctx" $ "value" "domain")) | quote }}
+              value: "arkcase.org=$(LDAP_DOMAIN)"
           volumeMounts:
             {{- include "arkcase.core.dev.deployMounts" $ | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/deploy") | nindent 12 }}

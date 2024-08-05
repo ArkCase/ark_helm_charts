@@ -47,18 +47,14 @@ configuration:
     # tls: my-secret-name
 
   ldap:
+    common:
+      # Common settings
     default: "arkcase"
     arkcase: &ldapArkcase
       domain: "dev.arkcase.com"
-      url: "ldaps://ldap:636"
-      # Base DN will be taken as relative from the root DN
+      # Base DN will be taken as relative from the root DN, which will
+      # be computed from the domain, unless expressly provided
       baseDn: "ou=ArkCase"
-      bind:
-        dn: "cn=arkcase-admin,ou=Users,${baseDn}"
-        password: "$arkcase-admin$"
-      admin:
-        dn: "cn=arkcase-admin"
-        role: "cn=ARKCASE_ADMINISTRATOR"
       search:
         users:
           base: "ou=Users"
@@ -79,9 +75,6 @@ configuration:
     foia:
       <<: *ldapArkcase
       baseDn: "ou=ArkCase Portal"
-      bind:
-        dn: "cn=portal-admin,ou=Users,${baseDn}"
-        password: "$portal-admin$"
 
   configServer:
     # For now, it's collocated ... eventually it will live elsewhere

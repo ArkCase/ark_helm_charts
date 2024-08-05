@@ -95,8 +95,6 @@ spec:
               value: {{ $pentahoService | quote }}
             - name: PENTAHO_INSTALLED_LICENSE_PATH
               value: "$(DATA_DIR)/.installedLicenses.xml"
-            - name: LDAP_DOMAIN
-              value: {{ include "arkcase.ldap" (dict "ctx" $ "value" "domain") | quote }}
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "cron") | nindent 12 }}
           volumeMounts:

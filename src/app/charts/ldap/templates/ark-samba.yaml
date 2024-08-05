@@ -1,8 +1,9 @@
 {{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.samba.external" $)) }}
+  {{- $fullname := (include "arkcase.fullname" $) -}}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ include "arkcase.fullname" $ | quote }}
+  name: {{ $fullname | quote }}
   namespace: {{ $.Release.Namespace | quote }}
   labels: {{- include "arkcase.labels.service" $ | nindent 4 }}
     {{- with ($.Values.labels).common }}
@@ -52,16 +53,6 @@ spec:
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
-            - name: DOMAIN
-              valueFrom:
-                secretKeyRef:
-                  name: &secretName {{ include "arkcase.fullname" $ | quote }}
-                  key: DOMAIN_NAME
-            - name: DOMAINPASS
-              valueFrom:
-                secretKeyRef:
-                  name: *secretName
-                  key: DOMAIN_PASSWORD
             - name: JOIN
               value: "false"
             #- name: JOINSITE
@@ -106,7 +97,7 @@ spec:
         - name: *secrets
           secret:
             optional: false
-            secretName: *secretName
+            secretName: {{ printf "%s-seed" $fullname | quote }}
             defaultMode: 0444
       {{- with $.Values.nodeSelector }}
       nodeSelector: {{- toYaml . | nindent 8 }}

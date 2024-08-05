@@ -1,0 +1,32 @@
+default: "arkcase"
+
+arkcase: &ldapArkcase
+  domain: "dev.arkcase.com"
+  # rootDn: <compute-from-domain if not expressly provided>
+  baseDn: "ou=ArkCase"
+
+  user: &ldapArkcaseUser
+    baseDn: "ou=Users"
+    class: "user"
+    listFilter: "(objectClass=${userClass})"
+    searchFilter: "(&(objectClass=${userClass})(sAMAccountName={0}))"
+    nameAttribute: "sAMAccountName"
+    membership: "(&(objectClass=${userClass})(memberOf={0}))"
+    prefix: ""
+
+  group: &ldapArkcaseGroup
+    baseDn: "ou=Groups"
+    class: "group"
+    listFilter: "(objectClass=${groupClass})"
+    searchFilter: "(&(objectClass=${groupClass})(cn={0}))"
+    nameAttribute: "cn"
+    membership: "(&(objectClass=${groupClass})(member={0}))"
+    prefix: ""
+
+portal:
+  <<: *ldapArkcase
+  baseDn: "ou=ArkCase Portal"
+
+  user:
+    <<: *ldapArkcaseUser
+    prefix: "portal."

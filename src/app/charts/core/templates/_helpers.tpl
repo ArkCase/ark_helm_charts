@@ -470,45 +470,11 @@
   {{- end }}
 {{- end -}}
 
-{{- define "arkcase.core.fixGroupDomain" -}}
-  {{- $domains := $.domains -}}
-  {{- $role := $.role -}}
-  {{- $group := $.group -}}
-
-  {{- $defaultDomain := "default" -}}
-
-  {{- /* Find the domain, if any */ -}}
-  {{- $groupSpec := ($group | lower | trim) -}}
-  {{- $groupName := (regexReplaceAll "^([^@]*)(@.*)?$" $groupSpec "$1") -}}
-  {{- if not $groupName -}}
-    {{- fail (printf "Illegal group spec [%s] for role mapping [%s]" $groupSpec $role) -}}
-  {{- end -}}
-
-  {{- /* Parse out the domain. If no domain is found, use the default domain */ -}}
-  {{- $domain := (regexReplaceAll "^[^@]*(@(.*))?$" $groupSpec "$2" | default $defaultDomain) -}}
-
-  {{- /* See if it's a domain that needs replacing, and do so */ -}}
-  {{- if (hasKey $domains $domain) -}}
-    {{- $domain = get $domains $domain -}}
-  {{- else -}}
-    {{- /* It's not a known/replaceable domain ... it must be a valid RFC-1123 domain name */ -}}
-    {{- if or (not (include "arkcase.tools.isHostname" ($domain | lower))) (not (contains "." $domain)) -}}
-      {{- /* Not a valid domain and not replaceable? Use the default domain */ -}}
-      {{- $domain = get $domains $defaultDomain -}}
-    {{- end -}}
-  {{- end -}}
-
-  {{- /* This is the final group to be added to the list */ -}}
-  {{- (printf "%s@%s" $groupName $domain | upper) -}}
-{{- end -}}
-
 {{- define "arkcase.core.mergeRoles" -}}
   {{- $ctx := $.ctx -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "Must send the root context as the 'ctx' parameter" -}}
   {{- end -}}
-
-  {{- $domains := $.domains -}}
 
   {{- $finalMappings := $.base -}}
   {{- $overlay := $.overlay -}}
@@ -570,8 +536,6 @@
           {{- fail (printf "Invalid group name [%s] for role mapping [%s]" $ovlGroup $ovlRole) -}}
         {{- end -}}
 
-        {{- $g = (include "arkcase.core.fixGroupDomain" (dict "domains" $domains "role" $ovlRole "group" $g)) -}}
-
         {{- $finalGroups = ($remove | ternary (without $finalGroups $g) (append $finalGroups $g)) -}}
       {{- end -}}
 
@@ -608,9 +572,7 @@
     {{- $defaultMappings = dict -}}
   {{- end -}}
 
-  {{- /* Compute the LDAP domains once */ -}}
-  {{- $domains := (include "arkcase.ldap.domains" $ctx | fromYaml) -}}
-  {{- $param := (dict "ctx" $ctx "domains" $domains) -}}
+  {{- $param := (dict "ctx" $ctx) -}}
 
   {{- /* This will be the final result map, which output as YAML can be used for the final mappings */ -}}
   {{- $result := dict -}}
@@ -678,7 +640,7 @@
 {{- end -}}
 
 {{- define "arkcase.core.springProfiles" -}}
-  {{- $ctx := . -}}
+  {{- $ctx := $ -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "Must send the root context as the only parameter" -}}
   {{- end -}}
@@ -705,4 +667,28 @@
   {{- end -}}
 
   {{- $result | uniq | toYaml -}}
+{{- end -}}
+
+{{- define "arkcase.core.ldap" -}}
+  {{- $ctx := $ -}}
+  {{- $server := "default" -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- $ctx := $.ctx -}}
+    {{- if not (include "arkcase.isRootContext" $ctx) -}}
+      {{- fail "Must send the root context as the only parameter" -}}
+    {{- end -}}
+    {{- $server = ((hasKey $ "server") | ternary $.server "" | default $server) -}}
+  {{- end -}}
+
+  {{- $settings := dig "Values" "global" "conf" "core" "settings" "ldap" $server "" $ -}}
+  {{- if not (kindIs "map" $settings) -}}
+    {{- $settings = dict -}}
+  {{- end -}}
+
+  {{- $result := dict -}}
+  {{- range $key := (list "Edit" "Create" "Sync") -}}
+    {{- $v := (include "arkcase.toBoolean" (get $settings $key) | default "true") -}}
+    {{- $result = set $result (printf "enable%s" $key) (not (empty $v)) -}}
+  {{- end -}}
+  {{- $result | toYaml -}}
 {{- end -}}

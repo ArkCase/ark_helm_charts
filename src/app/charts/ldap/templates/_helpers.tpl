@@ -2,8 +2,8 @@
   {{- $serverNames := (include "arkcase.ldap.serverNames" $ | fromYaml) -}}
   {{- $external := 0 -}}
   {{- range $server := $serverNames.result -}}
-    {{- $url := (include "arkcase.ldap" (dict "ctx" $ "server" $server "value" "url" "detailed" true) | fromYaml) -}}
-    {{- if and $url $url.external -}}
+    {{- $ldap := (include "arkcase.ldap" (dict "ctx" $ "server" $server) | fromYaml) -}}
+    {{- if $ldap.external -}}
       {{- $external = add $external 1 -}}
     {{- end -}}
   {{- end -}}
