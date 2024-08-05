@@ -9,9 +9,6 @@
 # This should group all application-specific configurations
 #
 configuration:
-  # Console username and password: Please set a secure password
-  rootPassword: admin
-
   # Limit, in GiB, of how big the KahaDB store can grow
   maxStoreUsageGb: 50
 
@@ -20,10 +17,6 @@ configuration:
 
   db:
     dialect: "postgresql"
-    hostname: "localhost"
-
-dbinit:
-  admin: "password"
 
 resources:
   development:

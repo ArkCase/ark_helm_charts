@@ -12,95 +12,11 @@
 # This should group all application-specific configurations
 #
 configuration:
-
   baseUrl: "https://server.dev.arkcase.com:8443/arkcase"
 
   proxy:
     reports: "https://reports:8443"
     weather: "https://api.openweathermap.org/data/2.5"
-
-  db:
-    dialect: "postgres"
-    hostname: "rdbms"
-    # port: ...
-    # adminUsername: ....
-    # adminPassword: ....
-
-    schema:
-      arkcase:
-        database: "arkcase"
-        # schema: "public"
-        # instance: "..."
-        username: "arkcase"
-        password: "arkcase"
-      cloudconfig:
-        database: "cloudconfig"
-        # schema: "public"
-        # instance: "..."
-        username: "cloudconfig"
-        password: "cloudconfig"
-
-  ingress:
-    enabled: false
-    # className: haproxy
-    # hostName: my.host.name
-    # tls: my-secret-name
-
-  ldap:
-    common:
-      # Common settings
-    default: "arkcase"
-    arkcase: &ldapArkcase
-      domain: "dev.arkcase.com"
-      # Base DN will be taken as relative from the root DN, which will
-      # be computed from the domain, unless expressly provided
-      baseDn: "ou=ArkCase"
-      search:
-        users:
-          base: "ou=Users"
-          attribute: "sAMAccountName"
-          filter: "(&(objectClass=user)(sAMAccountName={0}))"
-          allFilter: "(objectClass=user)"
-          prefix: ""
-        groups:
-          base: "ou=Groups"
-          attribute: "cn"
-          filter: "(&(objectClass=group)(cn={0}))"
-          allFilter: "(objectClass=group)"
-          membership: "(&(objectClass=group)(member={0}))"
-          ignoreCase: "false"
-          subtree: "true"
-          rolePrefix: ""
-          prefix: ""
-    foia:
-      <<: *ldapArkcase
-      baseDn: "ou=ArkCase Portal"
-
-  configServer:
-    # For now, it's collocated ... eventually it will live elsewhere
-    url: "https://localhost:9999"
-
-  content: &content
-    dialect: "alfresco"
-
-  messaging: &messaging
-    url: "ssl://messaging"
-    stomp: 61613
-    openwire: 61616
-    username: "arkcase"
-    password: "arkcase"
-
-  reports:
-    url: "https://reports:8443"
-
-  search:
-    url: "https://search:8983"
-
-  # Add configurations here
-  cloudconfig:
-    # Settings for config
-
-  arkcase:
 
 resources:
   development:

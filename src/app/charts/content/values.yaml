@@ -9,70 +9,11 @@
 # This should group all application-specific configurations
 #
 configuration:
-
-  # Turn indexing on or off
-  indexing: true
-
-  content:
-    dialect: "alfresco"
-
-  ingress:
-    enabled: false
-    className: haproxy
-    # hostName: my.host.name
-    # tls: my-secret-name
-
-  db:
-    dialect: "postgres"
-    hostname: "rdbms"
-    # port: ...
-    # adminUsername
-    # adminPassword
-
-    schema:
-      content:
-        database: "content"
-        # schema: "public"
-        # instance: "..."
-        username: "content"
-        password: "content"
-
-  ldap:
-    default: "arkcase"
-    arkcase: &ldapArkcase
-      domain: "dev.arkcase.com"
-      url: "ldaps://ldap:636"
-      # Base DN will be taken as relative from the root DN
-      baseDn: "ou=ArkCase"
-      bind:
-        dn: "cn=arkcase-admin,ou=Users,${baseDn}"
-        password: "$arkcase-admin$"
-      admin:
-        dn: "cn=arkcase-admin"
-        role: "cn=ARKCASE_ADMINISTRATOR"
-      search:
-        users:
-          base: "ou=Users"
-          attribute: "sAMAccountName"
-          filter: "(&(objectClass=user)(sAMAccountName={0}))"
-          allFilter: "(objectClass=user)"
-          prefix: ""
-        groups:
-          base: "ou=Groups"
-          attribute: "cn"
-          filter: "(&(objectClass=group)(cn={0}))"
-          allFilter: "(objectClass=group)"
-          membership: "(&(objectClass=group)(member={0}))"
-          ignoreCase: "false"
-          subtree: "true"
-          rolePrefix: ""
-          prefix: ""
-    foia:
-      <<: *ldapArkcase
-      baseDn: "ou=ArkCase Portal"
-      bind:
-        dn: "cn=portal-admin,ou=Users,${baseDn}"
-        password: "$portal-admin$"
+  # We swap the default out to "s3"
+  dialect: "s3"
+  alfresco:
+    # Turn indexing on or off
+    indexing: true
 
 initDependencies:
   enabled: true
