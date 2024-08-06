@@ -55,7 +55,6 @@ ENV_LDAP_SEED_FILE = "LDAP_SEED_FILE"
 ENV_LDAP_URL = "LDAP_URL"
 ENV_LDAP_ADMIN_USER = "LDAP_ADMIN_USER"
 ENV_LDAP_ADMIN_PASS = "LDAP_ADMIN_PASS"
-ENV_LDAP_DOMAIN = "LDAP_DOMAIN"
 ENV_LDAP_REALM = "LDAP_REALM"
 ENV_LDAP_ROOT_DN = "LDAP_ROOT_DN"
 ENV_LDAP_BASE_DN = "LDAP_BASE_DN"
@@ -70,7 +69,6 @@ parser.add_argument("seedfile", action="store", help=f"The seed file to use (if 
 parser.add_argument("--ldap-url", action="store", help=f"The URL for the LDAP server to connect to (if not given, it will be read from the {ENV_LDAP_URL} environment variable)", type=str, nargs=1)
 parser.add_argument("--ldap-admin-user", action="store", help=f"The administrator username to authenticate with (if not given, it will be read from the {ENV_LDAP_ADMIN_USER} environment variable)", type=str, nargs=1)
 parser.add_argument("--ldap-admin-pass", action="store", help=f"The administrator password to authenticate with (if not given, it will be read from the {ENV_LDAP_ADMIN_PASS} environment variable)", type=str, nargs=1)
-parser.add_argument("--ldap-domain", action="store", help=f"The authentication domain for the LDAP tree (if not given, it will be read from the {ENV_LDAP_DOMAIN} environment variable)", type=str, nargs=1)
 parser.add_argument("--ldap-realm", action="store", help=f"The authentication realm's name for the LDAP tree (if not given, it will be read from the {ENV_LDAP_REALM} environment variable)", type=str, nargs=1)
 parser.add_argument("--ldap-root-dn", action="store", help=f"The root DN for the LDAP tree (if not given, it will be read from the {ENV_LDAP_ROOT_DN} environment variable)", type=str, nargs=1)
 parser.add_argument("--ldap-base-dn", action="store", help=f"The base DN (relative to the root DN) for where the users and groups are stored in (if not given, it will be read from the {ENV_LDAP_BASE_DN} environment variable)", type=str, nargs=1)
@@ -541,20 +539,21 @@ else:
 	LDAP_ADMIN_PASS = None
 
 # Deduce the actual base DN removing the root DN from the end
-DOMAIN = get_config_value(None, None, args, "ldap_domain", ENV_LDAP_DOMAIN)
 DOMAIN_REALM = get_config_value(None, None, args, "ldap_realm", ENV_LDAP_REALM)
 
 DOMAIN_ROOT_DN = get_config_value(None, None, args, "ldap_root_dn", ENV_LDAP_ROOT_DN)
 if not DOMAIN_ROOT_DN:
 	fail(f"Must provide the root DN for the LDAP tree")
-DOMAIN_BASE_DN = get_config_value(None, None, args, "ldap_base_dn", ENV_LDAP_BASE_DN)
 
-if DOMAIN_BASE_DN == DOMAIN_ROOT_DN:
-	# If they're the same, then set it as empty ...
-	DOMAIN_BASE_DN = ""
-else:
-	# Remove the root DN from the base DN
-	DOMAIN_BASE_DN = DOMAIN_BASE_DN.replace("," + DOMAIN_ROOT_DN, "")
+DOMAIN_BASE_DN = get_config_value(None, None, args, "ldap_base_dn", ENV_LDAP_BASE_DN)
+if DOMAIN_BASE_DN:
+	if DOMAIN_BASE_DN.endswith(DOMAIN_ROOT_DN):
+		if DOMAIN_BASE_DN == DOMAIN_ROOT_DN:
+			# If they're the same, then set it as empty ...
+			DOMAIN_BASE_DN = ""
+		else:
+			# Remove the root DN from the base DN
+			DOMAIN_BASE_DN = DOMAIN_BASE_DN.replace(f",{DOMAIN_ROOT_DN}", "")
 
 USER_OU = get_config_value(None, None, args, "ldap_user_ou", ENV_LDAP_USER_OU)
 if USER_OU:
