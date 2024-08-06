@@ -4,10 +4,10 @@
     {{- fail "The parameter given must be the root context (. or $)" -}}
   {{- end -}}
 
-  {{- $global := (dig "Values" "global" "conf" "rdbms" "settings" "" $ctx | default dict) -}}
+  {{- $global := (dig "conf" "rdbms" "settings" "" $ctx.Values.global | default dict) -}}
 
   {{- /* Compute the dialect, falling back to the default if necessary */ -}}
-  {{- $dialect = (get $global "dialect" | toString | default "postgresql") -}}
+  {{- $dialect := (get $global "dialect" | toString | default "postgresql") -}}
   {{- if not $dialect -}}
     {{- fail "Must provide the name of the database dialect to use in global.conf.rdbms.dialect" -}}
   {{- end -}}
