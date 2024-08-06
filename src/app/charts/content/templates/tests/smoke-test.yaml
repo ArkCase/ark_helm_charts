@@ -1,5 +1,6 @@
-{{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.content.external" $)) }}
-{{- $enterprise := (include "arkcase.enterprise" $) -}}
+{{- if (include "arkcase.subsystem.enabled" $) -}}
+  {{- $cmInfo := (include "arkcase.cm.info" $ | fromYaml) -}}
+  {{- $enterprise := (include "arkcase.enterprise" $) -}}
 apiVersion: v1
 kind: Pod
 metadata:
@@ -36,7 +37,7 @@ spec:
           value: |-
             set -xeuo pipefail
             /usr/local/bin/acme-init
-            {{- if (eq "alfresco" (include "arkcase.content.info.dialect" $)) }}
+            {{- if (eq "alfresco" $cmInfo.dialect) }}
             /usr/bin/timeout 3 /usr/bin/openssl s_client -connect "$(SERVICE_NAME)-activemq:61616" -verify_quiet -verify_return_error -showcerts </dev/null
             /usr/bin/curl -fsSL -m 3 -o /dev/null "https://$(SERVICE_NAME)-main:8443/alfresco/"
             /usr/bin/timeout 3 /usr/bin/openssl s_client -connect "$(SERVICE_NAME)-search:8983" -verify_quiet -verify_return_error -showcerts </dev/null

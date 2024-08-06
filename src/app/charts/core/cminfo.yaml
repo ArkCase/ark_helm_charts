@@ -1,19 +1,11 @@
 alfresco:
-  url: https://content-main:8443/alfresco
-  ui: https://content-share:8443/share
-  username: admin
-  settings:
-    site: acm
-    rm: rm
-    sync: false
+  site: acm
+  rm: rm
+  sync: false
   aliases:
     - cmis
 
 s3:
-  url: https://content-main:9000/
-  ui: https://content-main:9001/minio
-  username: administrator
-  settings:
-    bucket: arkcase
+  bucket: arkcase
   aliases:
     - minio

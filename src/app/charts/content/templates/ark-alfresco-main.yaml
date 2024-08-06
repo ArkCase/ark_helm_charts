@@ -1,5 +1,5 @@
-{{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.content.external" $)) (eq "alfresco" (include "arkcase.content.info.dialect" $)) -}}
-{{- $schema := (include "arkcase.db.schema" (dict "ctx" $ "schema" "content") | fromYaml) -}}
+{{- if and (include "arkcase.subsystem.enabled" $) (eq "alfresco" (include "arkcase.content.info.dialect" $)) -}}
+{{- $db := (include "arkcase.db.info" $ | fromYaml) -}}
 {{- $fullname := (include "arkcase.fullname" $) -}}
 ---
 apiVersion: apps/v1
@@ -107,8 +107,8 @@ spec:
                 -XX:MinRAMPercentage=50
                 -XX:MaxRAMPercentage=80
                 -Ddir.root=$(DATA_DIR)
-                -Ddb.driver={{ $schema.jdbc.driver | squote }}
-                -Ddb.url={{ $schema.jdbc.url | squote }}
+                -Ddb.driver={{ $db.jdbc.driver | squote }}
+                -Ddb.url={{ $db.jdbc.url | squote }}
                 -Dsolr.secureComms=https
                 -Dsolr.host={{ include "arkcase.alfresco.service" (dict "ctx" $ "name" "search") | quote }}
                 -Dsolr.port.ssl=8983

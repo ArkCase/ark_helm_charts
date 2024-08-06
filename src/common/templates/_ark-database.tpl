@@ -9,7 +9,7 @@
   {{- /* Compute the dialect, falling back to the default if necessary */ -}}
   {{- $dialect := (get $global "dialect" | toString | default "postgresql") -}}
   {{- if not $dialect -}}
-    {{- fail "Must provide the name of the database dialect to use in global.conf.rdbms.dialect" -}}
+    {{- fail "Must provide the name of the database dialect to use in global.conf.rdbms.settings.dialect" -}}
   {{- end -}}
   {{- $dialect = lower $dialect -}}
 

@@ -6,7 +6,7 @@
   {{- $foia := (include "arkcase.foia" $ | fromYaml) -}}
   {{- $content := (include "arkcase.cm.info" $ | fromYaml) -}}
   {{- $cluster := (include "arkcase.cluster" $ | fromYaml) -}}
-  {{- $db := (include "arkcase.db.schema" (dict "ctx" $ "schema" "arkcase") | fromYaml) -}}
+  {{- $db := (include "arkcase.db.info" $ | fromYaml) -}}
   {{- /* Disable clustering multinodes for now ... not supported for ArkCase just yet */ -}}
   {{- $cluster = set $cluster "nodes" 1 -}}
   {{- $nodes := (min 4 ($cluster.nodes | int)) -}}

@@ -21,16 +21,6 @@
   {{- printf "%s-%s" (include "common.name" $ctx) $name -}}
 {{- end -}}
 
-{{- define "arkcase.content.external" -}}
-  {{- if not (include "arkcase.isRootContext" $) -}}
-    {{- fail "The parameter must be the root context" -}}
-  {{- end -}}
-  {{- $content := (include "arkcase.cm.info" $ | fromYaml) -}}
-  {{- if $content.url.global -}}
-    {{- true -}}
-  {{- end -}}
-{{- end -}}
-
 {{- define "arkcase.content.info.dialect" -}}
   {{- if not (include "arkcase.isRootContext" $) -}}
     {{- fail "The parameter must be the root context" -}}
@@ -43,9 +33,9 @@
   {{- if not (include "arkcase.isRootContext" $) -}}
     {{- fail "The parameter must be the root context" -}}
   {{- end -}}
-  {{- $content := (include "arkcase.cm.info" $ | fromYaml) -}}
 
-  {{- $nodes := ($content.settings.nodes | default 1 | toString | atoi) -}}
+  {{- $content := (include "arkcase.cm.info" $ | fromYaml) -}}
+  {{- $nodes := ($content.nodes | default 1 | toString | atoi) -}}
   {{- if (lt $nodes 1) -}}
     {{- $nodes = 1 -}}
   {{- else if (gt $nodes 1) -}}
@@ -63,9 +53,9 @@
   {{- if not (include "arkcase.isRootContext" $) -}}
     {{- fail "The parameter must be the root context" -}}
   {{- end -}}
-  {{- $content := (include "arkcase.cm.info" $ | fromYaml) -}}
 
-  {{- $nodes := ($content.settings.nodes | default 1 | toString) -}}
+  {{- $content := (include "arkcase.cm.info" $ | fromYaml) -}}
+  {{- $nodes := ($content.nodes | default 1 | toString) -}}
 
   {{- /* If it's not set at all, use the default of 1 node */ -}}
   {{- if not $nodes -}}
@@ -107,8 +97,9 @@
   {{- if not (include "arkcase.isRootContext" $) -}}
     {{- fail "The parameter must be the root context" -}}
   {{- end -}}
+
   {{- $content := (include "arkcase.cm.info" $ | fromYaml) -}}
-  {{- if or (not (hasKey $content.settings "indexing")) (include "arkcase.toBoolean" $content.settings.indexing) -}}
+  {{- if or (not (hasKey $content "indexing")) (include "arkcase.toBoolean" $content.indexing) -}}
     {{- true -}}
   {{- end -}}
 {{- end -}}
