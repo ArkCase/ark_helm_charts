@@ -180,7 +180,7 @@ spec:
               value: *initDir
             - name: LOGS_DIR
               value: *logsDir
-            - name: DB_DIALECT
+            - name: DB_FILES_DIALECT
               value: {{ $db.filesDialect | quote }}
             - name: DB_SCRIPTS
               value: {{ $db.scripts | quote }}

@@ -3,7 +3,6 @@ mysql: &mysql
   filesDialect: *dialect
   reports: mysql
   databaseType: MySQL
-  port: 3306
   scripts: mysql
   quartz: StdJDBCDelegate
   jdbc:
@@ -21,7 +20,6 @@ oracle10g: &oracle10g
   filesDialect: *dialect
   reports: oracle
   databaseType: Oracle
-  port: 1521
   quartz: oracle.OracleDelegate
   jdbc:
     driver: oracle.jdbc.driver.OracleDriver
@@ -51,7 +49,6 @@ postgresql:
   filesDialect: *dialect
   reports: *dialect
   databaseType: PostgreSQL
-  port: 5432
   quartz: PostgreSQLDelegate
   jdbc:
     driver: org.postgresql.Driver
@@ -67,7 +64,6 @@ sqlserver:
   filesDialect: *dialect
   reports: &mssql mssql
   databaseType: MS SQL Server
-  port: 1433
   quartz: MSSQLDelegate
   jcr: *mssql
   jdbc:

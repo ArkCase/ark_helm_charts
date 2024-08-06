@@ -34,12 +34,12 @@ spec:
       command: [ "/usr/local/bin/run-from-env" ]
       args: [ "SCRIPT" ]
       env:
-        - name: SERVICE_NAME
-          value: {{ include "arkcase.service.name" $ | quote }}
+        {{- include "arkcase.subsystem-access.env" (dict "ctx" $ "conn" "admin" "key" "endpoint" "name" "SERVICE_HOST") -}}
+        {{- include "arkcase.subsystem-access.env" (dict "ctx" $ "conn" "admin" "key" "port" "name" "SERVICE_PORT") -}}
         - name: SCRIPT
           value: |-
             set -xeuo pipefail
             /usr/local/bin/acme-init
-            /usr/bin/timeout 3 /usr/bin/openssl s_client -connect "$(SERVICE_NAME):{{ $db.port }}" -verify_quiet -verify_return_error -showcerts {{ $startTls }} < /dev/null
+            /usr/bin/timeout 3 /usr/bin/openssl s_client -connect "$(SERVICE_HOST):$(SERVICE_PORT)" -verify_quiet -verify_return_error -showcerts {{ $startTls }} < /dev/null
   restartPolicy: Never
 {{- end }}

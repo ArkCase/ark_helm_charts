@@ -136,11 +136,8 @@
     {{- fail "The 'ctx' parameter given must be the root context (. or $)" -}}
   {{- end -}}
   {{- $result := list -}}
+  {{- $db := (include "arkcase.db.info" $ctx | fromYaml) -}}
   {{- range $schema := (list "arkcase" "hibernate" "jackrabbit" "quartz") -}}
-    {{- $db := (include "arkcase.db.schema" (dict "ctx" $ctx "schema" $schema) | fromYaml) -}}
-    {{- if not $db -}}
-      {{- continue -}}
-    {{- end -}}
     {{- if not $result -}}
       {{- $result = append $result (dict "name" "REPORTS_JDBC_DRIVER" "value" ($db.jdbc.driver | toString)) -}}
       {{- $result = append $result (dict "name" "REPORTS_JDBC_VALIDATION_QUERY" "value" ($db.validationQuery | toString)) -}}
@@ -150,11 +147,6 @@
     {{- $replacement := (printf "$(%s_" $prefix) -}}
     {{- $url = ($url | replace "$(PREFIX_" $replacement) -}}
 
-    {{- /* This is FUGLY ... but necessary. May find a nicer way to do this */ -}}
-    {{- if ne $schema "arkcase" -}}
-      {{- $url = ($url | replace (printf "%sHOST)" $replacement) "$(REPORTS_JDBC_HOST)") -}}
-      {{- $url = ($url | replace (printf "%sPORT)" $replacement) "$(REPORTS_JDBC_PORT)") -}}
-    {{- end -}}
     {{- $result = append $result (dict "name" (printf "%s_URL" $prefix) "value" $url) -}}
   {{- end -}}
   {{- if $result -}}

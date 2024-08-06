@@ -1,14 +1,17 @@
 #!/bin/bash
 
-timestamp() {
+timestamp()
+{
 	/usr/bin/date -Ins -u
 }
 
-say() {
+say()
+{
 	echo -e "$(timestamp): ${@}"
 }
 
-fail() {
+fail()
+{
 	say "${@}" 1>&2
 	exit ${EXIT_CODE:-1}
 }
@@ -23,6 +26,8 @@ set -euo pipefail
 [ -v PENTAHO_SERVER ] || PENTAHO_SERVER="${PENTAHO_HOME}/pentaho-server"
 [ -e "${PENTAHO_SERVER}" ] || fail "The Pentaho server directory could not be found at [${PENTAHO_SERVER}], cannot continue."
 [ -d "${PENTAHO_SERVER}" ] || fail "The path [${PENTAHO_SERVER}] is not a directory, cannot continue."
+
+PENTAHO_SOLUTIONS="${PENTAHO_SERVER}/pentaho-solutions"
 
 ###################################################################
 # IDENTIFY VALUES FOR CLUSTERING SUPPORT                          #
@@ -43,7 +48,7 @@ export NODE_ID="$(( 10#${NODE_ID} ))"
 #
 # Apply the changes to the server.xml template
 #
-SERVER_XML="/app/pentaho/pentaho-server/tomcat/conf/server.xml.tpl"
+SERVER_XML="${PENTAHO_SERVER}/tomcat/conf/server.xml.tpl"
 if [ -f "${SERVER_XML}" ] ; then
 	TARGET="${SERVER_XML%*.tpl}"
 	say "Editing [${TARGET}] to remove the redundant cluster member"
@@ -52,7 +57,7 @@ if [ -f "${SERVER_XML}" ] ; then
 	unset TARGET XPATH
 fi
 
-REPOSITORY_XML="/app/pentaho/pentaho-server/pentaho-solutions/system/jackrabbit/repository.xml.tpl"
+REPOSITORY_XML="${PENTAHO_SOLUTIONS}/system/jackrabbit/repository.xml.tpl"
 if [ -f "${REPOSITORY_XML}" ] ; then
 	TARGET="${REPOSITORY_XML%*.tpl}"
 	VALUE="$(hostname)"
@@ -156,8 +161,8 @@ fi
 # Render the correct server.properties file                       #
 ###################################################################
 PROPERTIES_TEMPLATES=(
-	"${PENTAHO_SERVER}/pentaho-solutions/system/server.properties"
-	"${PENTAHO_SERVER}/pentaho-solutions/system/pdi-pur-plugin/plugin.properties"
+	"${PENTAHO_SOLUTIONS}/system/server.properties"
+	"${PENTAHO_SOLUTIONS}/system/pdi-pur-plugin/plugin.properties"
 	"${PENTAHO_PDI_PLUGINS}/pdi-pur-plugin/plugin.properties"
 )
 for P in "${PROPERTIES_TEMPLATES[@]}" ; do
@@ -260,7 +265,7 @@ if [ -n "${LAUNCH}" ] ; then
 	say "Avoiding re-installation of JCR default content"
 	while read zip ; do
 		mv -vf "${zip}" "${zip}.installed"
-	done < <(find "${PENTAHO_SERVER}/pentaho-solutions/system/default-content" -type f -name '*.zip')
+	done < <(find "${PENTAHO_SOLUTIONS}/system/default-content" -type f -name '*.zip')
 fi
 say "Launching Pentaho as: ${CMD[@]@Q}"
 "${CMD[@]}"
