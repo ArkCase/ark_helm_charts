@@ -1,18 +1,12 @@
 #!/usr/bin/python
 import argparse
-import concurrent.futures
-import errno
 import hashlib
 import json
 import logging
 import re
 import os
-import socket
 import subprocess
 import sys
-import threading
-import time
-import traceback
 import yaml
 
 EXE_SAMBA_TOOL = "/usr/bin/samba-tool"
@@ -21,33 +15,19 @@ EXE_NET = "/usr/bin/net"
 SID_RE = re.compile("^.* SID (S-\\S*)$", re.IGNORECASE)
 DN_SPLIT_RE = re.compile("(?<!\\\\),")
 
+#
+# Seedable values
+#
 KEY_DEBUG = "debug"
-KEY_LDAP = "server"
-KEY_LDAP_URL = "url"
-KEY_LDAP_ADMIN_USER = "adminUser"
-KEY_LDAP_ADMIN_PASS = "adminPass"
-KEY_LDAP_USER_PREFIX = "userPrefix"
-KEY_LDAP_GROUP_PREFIX = "groupPrefix"
-KEY_LDAP_DEFAULT_PASSWORD = "defaultPassword"
-KEY_LDAP_RESET_PASSWORD = "resetPassword"
-KEY_LDAP_BASE_DN = "baseDn"
-KEY_LDAP_USER_OU = "userou"
-KEY_LDAP_GROUP_OU = "groupou"
-KEY_LDAP_USERNAME_AS_CN = "usernameAsCn"
-
-DEFAULT_RESET_PASSWORD = False
-DEFAULT_USERNAME_AS_CN = True
-
-KEY_SECRET_DOMAIN_NAME = "NAME"
-KEY_SECRET_DOMAIN_ROOT_DN = "ROOT_DN"
-KEY_SECRET_DOMAIN_BASE_DN = "BASE_DN"
-KEY_SECRET_DOMAIN_REALM = "REALM"
-KEY_SECRETS = [ KEY_SECRET_DOMAIN_NAME, KEY_SECRET_DOMAIN_ROOT_DN, KEY_SECRET_DOMAIN_BASE_DN, KEY_SECRET_DOMAIN_REALM ]
-
-KEY_USERS = "users"
+KEY_SERVER_INFO = "server"
+KEY_ADMINISTRATOR = "administrator"
+KEY_DEFAULT_PASSWORD = "defaultPassword"
+KEY_RESET_PASSWORD = "resetPassword"
+KEY_USERNAME_AS_CN = "usernameAsCn"
 KEY_PASSWORD = "password"
 KEY_EXPIRATION_DAYS = "expirationDays"
-KEY_ADMINISTRATOR = "administrator"
+
+KEY_USERS = "users"
 USER_ATTRIBUTES = {
 	"firstName" : "given-name",
 	"lastName" : "surname",
@@ -63,30 +43,42 @@ GROUP_ATTRIBUTES = {
 	"notes" : None,
 }
 
+#
+# Default settings
+#
+DEFAULT_RESET_PASSWORD = False
+DEFAULT_USERNAME_AS_CN = True
+
 ENV_DEBUG = "DEBUG"
 
+ENV_LDAP_SEED_FILE = "LDAP_SEED_FILE"
 ENV_LDAP_URL = "LDAP_URL"
 ENV_LDAP_ADMIN_USER = "LDAP_ADMIN_USER"
 ENV_LDAP_ADMIN_PASS = "LDAP_ADMIN_PASS"
-
-ENV_SEED_FILE = "LDAP_SEED_FILE"
-ENV_USER_PREFIX = "LDAP_USER_PREFIX"
-ENV_GROUP_PREFIX = "LDAP_GROUP_PREFIX"
-ENV_DEFAULT_PASSWORD = "LDAP_DEFAULT_PASSWORD"
-ENV_EXPIRATION_DAYS = "LDAP_EXPIRATION_DAYS"
+ENV_LDAP_DOMAIN = "LDAP_DOMAIN"
+ENV_LDAP_REALM = "LDAP_REALM"
+ENV_LDAP_ROOT_DN = "LDAP_ROOT_DN"
+ENV_LDAP_BASE_DN = "LDAP_BASE_DN"
+ENV_LDAP_USER_OU = "LDAP_USER_OU"
+ENV_LDAP_USER_PREFIX = "LDAP_USER_PREFIX"
+ENV_LDAP_GROUP_OU = "LDAP_GROUP_OU"
+ENV_LDAP_GROUP_PREFIX = "LDAP_GROUP_PREFIX"
 
 parser = argparse.ArgumentParser(description="LDAP User/Group Initializer Script")
-parser.add_argument("seedfile", action="store", help=f"The seed file to use (if not given, it will be read from the {ENV_SEED_FILE} environment variable)", type=str, nargs="?")
-parser.add_argument("--user-prefix", action="store", help=f"The prefix to apply to all user names created (if not given, it will be read from the {ENV_USER_PREFIX} environment variable)", type=str, nargs=1)
-parser.add_argument("--group-prefix", action="store", help=f"The prefix to apply to all group names created (if not given, it will be read from the {ENV_GROUP_PREFIX} environment variable)", type=str, nargs=1)
-parser.add_argument("--default-password", action="store", help=f"The default password to be assigned to all users created (if not given, it will be read from the {ENV_DEFAULT_PASSWORD} environment variable)", type=str, nargs=1)
-parser.add_argument("--expiration-days", action="store", help=f"The default expiration days to assign the new passwords if none is given specifically (if not given, it will be read from the {ENV_EXPIRATION_DAYS} environment variable)", type=str, nargs=1)
+parser.add_argument("seedfile", action="store", help=f"The seed file to use (if not given, it will be read from the {ENV_LDAP_SEED_FILE} environment variable)", type=str, nargs="?")
 
 parser.add_argument("--ldap-url", action="store", help=f"The URL for the LDAP server to connect to (if not given, it will be read from the {ENV_LDAP_URL} environment variable)", type=str, nargs=1)
 parser.add_argument("--ldap-admin-user", action="store", help=f"The administrator username to authenticate with (if not given, it will be read from the {ENV_LDAP_ADMIN_USER} environment variable)", type=str, nargs=1)
-parser.add_argument("--ldap-admin-password", action="store", help=f"The administrator password to authenticate with (if not given, it will be read from the {ENV_LDAP_ADMIN_PASS} environment variable)", type=str, nargs=1)
-
-parser.add_argument("--debug", action="store_true", help=f"Enable debug mode (if not given, it will be read from the {ENV_DEBUG} environment variable)")
+parser.add_argument("--ldap-admin-pass", action="store", help=f"The administrator password to authenticate with (if not given, it will be read from the {ENV_LDAP_ADMIN_PASS} environment variable)", type=str, nargs=1)
+parser.add_argument("--ldap-domain", action="store", help=f"The authentication domain for the LDAP tree (if not given, it will be read from the {ENV_LDAP_DOMAIN} environment variable)", type=str, nargs=1)
+parser.add_argument("--ldap-realm", action="store", help=f"The authentication realm's name for the LDAP tree (if not given, it will be read from the {ENV_LDAP_REALM} environment variable)", type=str, nargs=1)
+parser.add_argument("--ldap-root-dn", action="store", help=f"The root DN for the LDAP tree (if not given, it will be read from the {ENV_LDAP_ROOT_DN} environment variable)", type=str, nargs=1)
+parser.add_argument("--ldap-base-dn", action="store", help=f"The base DN (relative to the root DN) for where the users and groups are stored in (if not given, it will be read from the {ENV_LDAP_BASE_DN} environment variable)", type=str, nargs=1)
+parser.add_argument("--ldap-user-ou", action="store", help=f"The OU (relative to the base DN) where the users are to be created (if not given, it will be read from the {ENV_LDAP_USER_OU} environment variable)", type=str, nargs=1)
+parser.add_argument("--ldap-user-prefix", action="store", help=f"The prefix to apply to every user's name being created (if not given, it will be read from the {ENV_LDAP_USER_PREFIX} environment variable)", type=str, nargs=1)
+parser.add_argument("--ldap-group-ou", action="store", help=f"The OU (relative to the base DN) where the groups are to be created (if not given, it will be read from the {ENV_LDAP_GROUP_OU} environment variable)", type=str, nargs=1)
+parser.add_argument("--ldap-group-prefix", action="store", help=f"The prefix to apply to every group's name being created (if not given, it will be read from the {ENV_LDAP_GROUP_PREFIX} environment variable)", type=str, nargs=1)
+parser.add_argument("--debug", action="store_const", const=True, help=f"Enable debug mode (if not given, it will be read from the {ENV_DEBUG} environment variable)")
 
 args = parser.parse_args()
 
@@ -122,24 +114,9 @@ def to_boolean(v, d=False):
 	# Anything else gets stringed and compared with "true"
 	return (str(v).lower() == "true")
 
-#
-# Read the required domain configurations
-#
-SECRETS = {}
-for s in KEY_SECRETS:
-	f = f"/app/secrets/DOMAIN_{s}"
-	try:
-		with open(f, "rt") as o:
-			SECRETS[s] = o.read()
-	except Exception as e:
-		fail(f"Failed to read a required secret [{f}]: {e}")
 
-DOMAIN_NAME = SECRETS[KEY_SECRET_DOMAIN_NAME]
-DOMAIN_REALM = SECRETS[KEY_SECRET_DOMAIN_REALM]
-DOMAIN_ROOT_DN = SECRETS[KEY_SECRET_DOMAIN_ROOT_DN]
-
-def get_config_value(conf, confName, args, argName, envName, default = None):
-	if hasattr(args, argName):
+def read_config_value(conf, confName, args, argName, envName, default = None):
+	if args and argName and hasattr(args, argName):
 		v = getattr(args, argName)
 
 		if v is not None:
@@ -147,24 +124,61 @@ def get_config_value(conf, confName, args, argName, envName, default = None):
 				v = v[0]
 			return str(v)
 
-	if conf and (confName in conf):
+	if conf and confName and (confName in conf):
 		v = conf[confName]
 		if v is not None:
 			return str(v)
 
-	if envName in os.environ:
+	if envName and envName in os.environ:
 		v = os.environ[envName]
 		if v:
 			return str(v)
 
 	return default
 
+def get_config_value(conf, confName, args, argName, envName, default = None):
+	v = read_config_value(conf, confName, args, argName, envName, default = default)
+	if v:
+		# If it's of the form @file:/..., then read the contents from that file
+		# If it's of the form @env:ENVVAR then read the contents from that envvar
+
+		# Otherwise, use the value verbatim
+		if v.startswith("@file:"):
+			# read the contents of the file, return the default if it can't be read
+			p = os.path.expandvars(v[6:])
+			try:
+				with open(p, "rt") as f:
+					v = f.read().strip()
+			except FileNotFoundError:
+				logging.error(f"The file [{p}] could not be found (from [{v}])")
+				v = None
+			except Exception as e:
+				fail(f"The file [{p}] could not be read (from [{v}]): {e}")
+
+		elif v.startswith("@env:"):
+			# read the contents of the envvar, return the default if it doesn't exist
+			try:
+				v = os.environ[v[5:]]
+			except KeyError:
+				v = None
+
+	# We check again b/c it may have changed above...
+	if v is None:
+		return default
+
+	return v
+
+#
+# Locate the seeds file
+#
 if len(sys.argv) < 2:
 	# If no parameter is given, use an environment variable
-	if ENV_SEED_FILE not in os.environ:
+	if ENV_LDAP_SEED_FILE not in os.environ:
 		parser.print_help(sys.stderr)
 		sys.exit(1)
-	source_file = os.environ[ENV_SEED_FILE]
+
+	source_file = os.environ[ENV_LDAP_SEED_FILE]
+
 	# Check if this points to a file ...
 	source_file_is_file = (os.path.exists(source_file) and os.path.isfile(source_file))
 else:
@@ -176,6 +190,9 @@ else:
 	else:
 		source_file_is_file = True
 
+#
+# Parse the seeds file
+#
 show_data = True
 try:
 	if source_file_is_file:
@@ -201,9 +218,15 @@ except Exception as e:
 		logging.error(e)
 		sys.exit(1)
 
+#
+# For debugging purposes
+#
 if show_data:
 	logging.debug(f"Loaded configuration: [{json.dumps(data, indent=4)}]")
 
+#
+# For easy, repeat rendering of the authentication details
+#
 def render_auth_info():
 	# TODO: Find the admin user and password
 	info = []
@@ -220,7 +243,7 @@ def run_command(command):
 	return subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
 def samba_tool(flags):
-	return run_command([ EXE_SAMBA_TOOL ] + render_auth_info() + flags)
+	return run_command([ EXE_SAMBA_TOOL ] + flags + render_auth_info())
 
 def render_user_id(userId):
 	return f"{USER_PREFIX}{userId}"
@@ -340,8 +363,8 @@ def create_user(userId, userData):
 	if result.returncode == 0:
 		# The user exists ... so at worst reset the password...
 
-		if KEY_LDAP_RESET_PASSWORD in userData:
-			resetPassword = to_boolean(userData[KEY_LDAP_RESET_PASSWORD], RESET_PASSWORD)
+		if KEY_RESET_PASSWORD in userData:
+			resetPassword = to_boolean(userData[KEY_RESET_PASSWORD], RESET_PASSWORD)
 		else:
 			resetPassword = RESET_PASSWORD
 
@@ -364,8 +387,8 @@ def create_user(userId, userData):
 			command += [ f"--{attFlag}={userData[attName]}" ]
 
 	usernameAsCn = USERNAME_AS_CN
-	if KEY_LDAP_USERNAME_AS_CN in userData:
-		usernameAsCn = to_boolean(userData[KEY_LDAP_USERNAME_AS_CN], USERNAME_AS_CN)
+	if KEY_USERNAME_AS_CN in userData:
+		usernameAsCn = to_boolean(userData[KEY_USERNAME_AS_CN], USERNAME_AS_CN)
 
 	if usernameAsCn:
 		logging.info("\t...with the username as the CN value")
@@ -486,92 +509,94 @@ def apply_memberships(groupId, members):
 		fail(f"Failed to apply the memberships for group '{groupId}' (rc={result})")
 
 serverInfo = {}
-if KEY_LDAP in data:
-	serverInfo = data[KEY_LDAP]
+if KEY_SERVER_INFO in data:
+	serverInfo = data[KEY_SERVER_INFO]
 	if type(serverInfo) != dict:
 		serverInfo = {}
 
-USER_PREFIX = ""
-v = get_config_value(serverInfo, KEY_LDAP_USER_PREFIX, args, "user_prefix", ENV_USER_PREFIX)
-if v:
-	USER_PREFIX = f"{v}."
+DEBUG = to_boolean(get_config_value(serverInfo, KEY_DEBUG, args, "debug", ENV_DEBUG), False)
 
-GROUP_PREFIX = ""
-v = get_config_value(serverInfo, KEY_LDAP_GROUP_PREFIX, args, "group_prefix", ENV_GROUP_PREFIX)
-if v:
-	GROUP_PREFIX = f"{v}."
-
-EXPIRATION_DAYS = get_config_value(serverInfo, KEY_EXPIRATION_DAYS, args, "expiration_days", ENV_EXPIRATION_DAYS)
+EXPIRATION_DAYS = get_config_value(serverInfo, KEY_EXPIRATION_DAYS, args, "expiration_days", None)
 if EXPIRATION_DAYS is not None:
 	try:
 		EXPIRATION_DAYS = int(EXPIRATION_DAYS)
 	except:
 		fail(f"The configuration value [{EXPIRATION_DAYS}] is not a valid integer - cannot proceeed")
 
-DEFAULT_PASSWORD = get_config_value(serverInfo, KEY_LDAP_DEFAULT_PASSWORD, args, "default_password", ENV_DEFAULT_PASSWORD)
+DEFAULT_PASSWORD = get_config_value(serverInfo, KEY_DEFAULT_PASSWORD, args, "default_password", None)
 if not DEFAULT_PASSWORD:
 	DEFAULT_PASSWORD = None
 
-LDAP_URL = get_config_value(serverInfo, KEY_LDAP_URL, args, "ldap_url", ENV_LDAP_URL)
+LDAP_URL = get_config_value(None, None, args, "ldap_url", ENV_LDAP_URL)
 if not LDAP_URL:
 	LDAP_URL = None
 
-LDAP_ADMIN_USER = get_config_value(serverInfo, KEY_LDAP_ADMIN_USER, args, "ldap_admin_user", ENV_LDAP_ADMIN_USER)
+LDAP_ADMIN_USER = get_config_value(None, None, args, "ldap_admin_user", ENV_LDAP_ADMIN_USER)
 if LDAP_ADMIN_USER:
-	LDAP_ADMIN_PASS = get_config_value(serverInfo, KEY_LDAP_ADMIN_PASS, args, "ldap_admin_password", ENV_LDAP_ADMIN_PASS)
+	LDAP_ADMIN_PASS = get_config_value(None, None, args, "ldap_admin_password", ENV_LDAP_ADMIN_PASS)
 	if not LDAP_ADMIN_PASS:
 		fail(f"Must provide a password to authenticate the user {LDAP_ADMIN_USER} with")
 else:
 	LDAP_ADMIN_USER = None
-
-DEBUG = get_config_value(serverInfo, KEY_DEBUG, args, "debug", ENV_DEBUG)
-if DEBUG:
-	DEBUG = (DEBUG.lower() == "true")
-else:
-	DEBUG = False
+	LDAP_ADMIN_PASS = None
 
 # Deduce the actual base DN removing the root DN from the end
+DOMAIN = get_config_value(None, None, args, "ldap_domain", ENV_LDAP_DOMAIN)
+DOMAIN_REALM = get_config_value(None, None, args, "ldap_realm", ENV_LDAP_REALM)
 
-try:
-	DOMAIN_BASE_DN = serverInfo[KEY_LDAP_BASE_DN]
-	if type(DOMAIN_BASE_DN) != str:
-		DOMAIN_BASE_DN = SECRETS[KEY_SECRET_DOMAIN_BASE_DN]
-except KeyError:
-	DOMAIN_BASE_DN = SECRETS[KEY_SECRET_DOMAIN_BASE_DN]
+DOMAIN_ROOT_DN = get_config_value(None, None, args, "ldap_root_dn", ENV_LDAP_ROOT_DN)
+if not DOMAIN_ROOT_DN:
+	fail(f"Must provide the root DN for the LDAP tree")
+DOMAIN_BASE_DN = get_config_value(None, None, args, "ldap_base_dn", ENV_LDAP_BASE_DN)
 
 if DOMAIN_BASE_DN == DOMAIN_ROOT_DN:
+	# If they're the same, then set it as empty ...
 	DOMAIN_BASE_DN = ""
 else:
 	# Remove the root DN from the base DN
 	DOMAIN_BASE_DN = DOMAIN_BASE_DN.replace("," + DOMAIN_ROOT_DN, "")
 
-USER_OU = None
-try:
-	USER_OU = serverInfo[KEY_LDAP_USER_OU]
-	if type(USER_OU) != str:
-		USER_OU = None
-	else:
-		if DOMAIN_BASE_DN:
-			USER_OU += f",{DOMAIN_BASE_DN}"
-		USER_OU_FULL = f"{USER_OU},{DOMAIN_ROOT_DN}"
-		logging.info(f"User OU: {USER_OU_FULL}")
-except KeyError:
+USER_OU = get_config_value(None, None, args, "ldap_user_ou", ENV_LDAP_USER_OU)
+if USER_OU:
+	if DOMAIN_BASE_DN:
+		USER_OU += f",{DOMAIN_BASE_DN}"
+	USER_OU_FULL = f"{USER_OU},{DOMAIN_ROOT_DN}"
+	logging.info(f"User OU: {USER_OU_FULL}")
+else:
 	USER_OU = None
 	USER_OU_FULL = None
 
-USERNAME_AS_CN = DEFAULT_USERNAME_AS_CN
+USER_PREFIX = ""
+v = get_config_value(None, None, args, "ldap_user_prefix", ENV_LDAP_USER_PREFIX)
+if v and (not (v.endswith("."))):
+	USER_PREFIX = f"{v}."
+
+GROUP_OU = get_config_value(None, None, args, "ldap_group_ou", ENV_LDAP_GROUP_OU)
+if GROUP_OU:
+	if DOMAIN_BASE_DN:
+		GROUP_OU += f",{DOMAIN_BASE_DN}"
+	GROUP_OU_FULL = f"{GROUP_OU},{DOMAIN_ROOT_DN}"
+	logging.info(f"Group OU: {GROUP_OU_FULL}")
+else:
+	GROUP_OU = None
+	GROUP_OU_FULL = None
+
+GROUP_PREFIX = ""
+v = get_config_value(None, None, args, "ldap_group_prefix", ENV_LDAP_GROUP_PREFIX)
+if v and (not (v.endswith("."))):
+	GROUP_PREFIX = f"{v}."
+
 try:
-	USERNAME_AS_CN = to_boolean(serverInfo[KEY_LDAP_USERNAME_AS_CN], DEFAULT_USERNAME_AS_CN)
+	USERNAME_AS_CN = to_boolean(serverInfo[KEY_USERNAME_AS_CN], DEFAULT_USERNAME_AS_CN)
 except KeyError:
-	# Leave it on the default value
-	pass
+	USERNAME_AS_CN = DEFAULT_USERNAME_AS_CN
 
 if USERNAME_AS_CN:
 	logging.info("Will use the username as the CN value, unless overridden by individual users")
 
 RESET_PASSWORD = DEFAULT_RESET_PASSWORD
 try:
-	RESET_PASSWORD = to_boolean(serverInfo[KEY_LDAP_RESET_PASSWORD], DEFAULT_RESET_PASSWORD)
+	RESET_PASSWORD = to_boolean(serverInfo[KEY_RESET_PASSWORD], DEFAULT_RESET_PASSWORD)
 except KeyError:
 	# Leave it on the default value
 	pass
@@ -579,20 +604,6 @@ except KeyError:
 if RESET_PASSWORD:
 	logging.info("Will reset the user passwords, unless overridden by individual users")
 
-
-GROUP_OU = None
-try:
-	GROUP_OU = serverInfo[KEY_LDAP_GROUP_OU]
-	if type(GROUP_OU) != str:
-		GROUP_OU = None
-	else:
-		if DOMAIN_BASE_DN:
-			GROUP_OU += f",{DOMAIN_BASE_DN}"
-		GROUP_OU_FULL = f"{GROUP_OU},{DOMAIN_ROOT_DN}"
-		logging.info(f"Group OU: {GROUP_OU_FULL}")
-except KeyError:
-	GROUP_OU = None
-	GROUP_OU_FULL = None
 
 try:
 	memberships = {}
