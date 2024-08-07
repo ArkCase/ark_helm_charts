@@ -53,6 +53,8 @@ spec:
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
+            - name: DOMAINPASS
+              value: "$(MANAGED_DOMAIN_PASSWORD)"
             - name: JOIN
               value: "false"
             #- name: JOINSITE
@@ -74,6 +76,7 @@ spec:
             {{- include "arkcase.subsystem-access.volumeMount" $ | nindent 12 }}
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/init/init.d/000-init-seeds-wrapper" "subPath" "init-seeds-wrapper") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/init/init.d/001-init-managed" "subPath" "init-managed") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/init-seeds") | nindent 12 }}
             - name: "init"
               mountPath: "/app/init"

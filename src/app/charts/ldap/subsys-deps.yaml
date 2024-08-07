@@ -4,9 +4,15 @@ consumes:
   # acme: {}
   $self:
     admin:
-      password: DOMAINPASS
+      username: MANAGED_DOMAIN_USERNAME
+      password: MANAGED_DOMAIN_PASSWORD
     main:
       domain: DOMAIN_NAME
+      username: MANAGED_LDAP_ARKCASE_USERNAME
+      password: MANAGED_LDAP_ARKCASE_PASSWORD
+    portal:
+      username: MANAGED_LDAP_PORTAL_USERNAME
+      password: MANAGED_LDAP_PORTAL_PASSWORD
   reports:
     main:
       username: MANAGED_REPORTS_USERNAME
@@ -21,3 +27,10 @@ consumes:
     main-admin:
       username: MANAGED_CONTENT_ADMIN_USERNAME
       password: MANAGED_CONTENT_ADMIN_PASSWORD
+  core:
+    main:
+      username: MANAGED_ARKCASE_USERNAME
+      password: MANAGED_ARKCASE_PASSWORD
+    main-admin:
+      username: MANAGED_ARKCASE_ADMIN_USERNAME
+      password: MANAGED_ARKCASE_ADMIN_PASSWORD
