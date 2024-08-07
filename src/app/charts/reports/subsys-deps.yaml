@@ -7,14 +7,15 @@ consumes:
   # by the Clustering templates, and there's no need to address them beyond that
   # zookeeper: {}
   $self:
-    admin:
-      url: PENTAHO_SERVER_ADMIN_URL
-      username: ADMIN_USERNAME
-      password: ADMIN_PASSWORD
     main:
       url: PENTAHO_SERVER_URL
       username: PENTAHO_USERNAME
       password: PENTAHO_PASSWORD
+    main-admin:
+      url: PENTAHO_SERVER_ADMIN_URL
+      username: ADMIN_USERNAME
+      password: ADMIN_PASSWORD
+      group: PENTAHO_ADMIN_GROUP
 
   app:
     main:
