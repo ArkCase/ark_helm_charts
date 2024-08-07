@@ -20,6 +20,14 @@ DN_SPLIT_RE = re.compile("(?<!\\\\),")
 #
 KEY_DEBUG = "debug"
 KEY_SERVER_INFO = "server"
+KEY_DOMAIN = "domain"
+KEY_REALM = "realm"
+KEY_ROOT_DN = "rootDn"
+KEY_BASE_DN = "baseDn"
+KEY_USER_OU = "userou"
+KEY_USER_PREFIX = "userPrefix"
+KEY_GROUP_OU = "groupou"
+KEY_GROUP_PREFIX = "groupPrefix"
 KEY_ADMINISTRATOR = "administrator"
 KEY_DEFAULT_PASSWORD = "defaultPassword"
 KEY_RESET_PASSWORD = "resetPassword"
@@ -539,13 +547,13 @@ else:
 	LDAP_ADMIN_PASS = None
 
 # Deduce the actual base DN removing the root DN from the end
-DOMAIN_REALM = get_config_value(None, None, args, "ldap_realm", ENV_LDAP_REALM)
+DOMAIN_REALM = get_config_value(serverInfo, KEY_REALM, args, "ldap_realm", ENV_LDAP_REALM)
 
-DOMAIN_ROOT_DN = get_config_value(None, None, args, "ldap_root_dn", ENV_LDAP_ROOT_DN)
+DOMAIN_ROOT_DN = get_config_value(serverInfo, KEY_ROOT_DN, args, "ldap_root_dn", ENV_LDAP_ROOT_DN)
 if not DOMAIN_ROOT_DN:
 	fail(f"Must provide the root DN for the LDAP tree")
 
-DOMAIN_BASE_DN = get_config_value(None, None, args, "ldap_base_dn", ENV_LDAP_BASE_DN)
+DOMAIN_BASE_DN = get_config_value(serverInfo, KEY_BASE_DN, args, "ldap_base_dn", ENV_LDAP_BASE_DN)
 if DOMAIN_BASE_DN:
 	if DOMAIN_BASE_DN.endswith(DOMAIN_ROOT_DN):
 		if DOMAIN_BASE_DN == DOMAIN_ROOT_DN:
@@ -555,7 +563,7 @@ if DOMAIN_BASE_DN:
 			# Remove the root DN from the base DN
 			DOMAIN_BASE_DN = DOMAIN_BASE_DN.replace(f",{DOMAIN_ROOT_DN}", "")
 
-USER_OU = get_config_value(None, None, args, "ldap_user_ou", ENV_LDAP_USER_OU)
+USER_OU = get_config_value(serverInfo, KEY_USER_OU, args, "ldap_user_ou", ENV_LDAP_USER_OU)
 if USER_OU:
 	if DOMAIN_BASE_DN:
 		USER_OU += f",{DOMAIN_BASE_DN}"
@@ -566,11 +574,11 @@ else:
 	USER_OU_FULL = None
 
 USER_PREFIX = ""
-v = get_config_value(None, None, args, "ldap_user_prefix", ENV_LDAP_USER_PREFIX)
+v = get_config_value(serverInfo, KEY_USER_PREFIX, args, "ldap_user_prefix", ENV_LDAP_USER_PREFIX)
 if v and (not (v.endswith("."))):
 	USER_PREFIX = f"{v}."
 
-GROUP_OU = get_config_value(None, None, args, "ldap_group_ou", ENV_LDAP_GROUP_OU)
+GROUP_OU = get_config_value(serverInfo, KEY_GROUP_OU, args, "ldap_group_ou", ENV_LDAP_GROUP_OU)
 if GROUP_OU:
 	if DOMAIN_BASE_DN:
 		GROUP_OU += f",{DOMAIN_BASE_DN}"
@@ -581,7 +589,7 @@ else:
 	GROUP_OU_FULL = None
 
 GROUP_PREFIX = ""
-v = get_config_value(None, None, args, "ldap_group_prefix", ENV_LDAP_GROUP_PREFIX)
+v = get_config_value(serverInfo, KEY_GROUP_PREFIX, args, "ldap_group_prefix", ENV_LDAP_GROUP_PREFIX)
 if v and (not (v.endswith("."))):
 	GROUP_PREFIX = f"{v}."
 

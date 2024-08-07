@@ -53,19 +53,26 @@ spec:
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
             {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
-            {{- include "arkcase.subsystem-access.env" (dict "ctx" $ "key" "rootDn" "name" "ROOT_DN") | nindent 12 }}
-            {{- include "arkcase.subsystem-access.env" (dict "ctx" $ "conn" "main" "key" "baseDn" "name" "ARKCASE_BASE_DN") | nindent 12 }}
-            {{- include "arkcase.subsystem-access.env" (dict "ctx" $ "conn" "main" "key" "userBaseDn" "name" "ARKCASE_USER_BASE_DN") | nindent 12 }}
-            {{- include "arkcase.subsystem-access.env" (dict "ctx" $ "conn" "main" "key" "groupBaseDn" "name" "ARKCASE_GROUP_BASE_DN") | nindent 12 }}
-            {{- include "arkcase.subsystem-access.env" (dict "ctx" $ "conn" "portal" "key" "baseDn" "name" "PORTAL_BASE_DN") | nindent 12 }}
-            {{- include "arkcase.subsystem-access.env" (dict "ctx" $ "conn" "portal" "key" "userBaseDn" "name" "PORTAL_USER_BASE_DN") | nindent 12 }}
-            {{- include "arkcase.subsystem-access.env" (dict "ctx" $ "conn" "portal" "key" "groupBaseDn" "name" "PORTAL_GROUP_BASE_DN") | nindent 12 }}
-            - name: MANAGED_USERS_OU
-              value: "$(ARKCASE_USER_BASE_DN),$(ARKCASE_BASE_DN),$(ROOT_DN)"
-            - name: MANAGED_GROUPS_OU
-              value: "$(ARKCASE_GROUP_BASE_DN),$(ARKCASE_BASE_DN),$(ROOT_DN)"
-            - name: DOMAINPASS
+            - name: DOMAIN
+              value: "$(ARKCASE_DOMAIN)"
+            - name: DOMAIN_REALM
+              value: "$(ARKCASE_REALM)"
+            - name: DOMAIN_ROOT_DN
+              value: "$(ARKCASE_ROOT_DN)"
+            - name: DOMAIN_USERNAME
+              value: "$(MANAGED_DOMAIN_USERNAME)"
+            - name: DOMAIN_PASSWORD
               value: "$(MANAGED_DOMAIN_PASSWORD)"
+            - name: DOMAINPASS
+              value: "$(DOMAIN_PASSWORD)"
+            - name: MANAGED_ROOT_DN
+              value: "$(ARKCASE_ROOT_DN)"
+            - name: MANAGED_BASE_DN
+              value: "$(ARKCASE_BASE_DN)"
+            - name: MANAGED_USERS_OU
+              value: "$(ARKCASE_USER_BASE_DN)"
+            - name: MANAGED_GROUPS_OU
+              value: "$(ARKCASE_GROUP_BASE_DN)"
             - name: JOIN
               value: "false"
             #- name: JOINSITE
@@ -78,16 +85,18 @@ spec:
               value: "true"
             - name: SERVICE_NAME
               value: {{ include "arkcase.name" $ | quote }}
+            - name: SECRETS_DIR
+              value: "/run/secrets"
             - name: SEED_DIR
-              value: &seedDir "/app/secrets"
+              value: &seedDir "/seeds"
           {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "samba") | nindent 12 }}
           volumeMounts:
-            {{- include "arkcase.subsystem-access.volumeMount" $ | nindent 12 }}
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
+            {{- include "arkcase.subsystem-access.volumeMount" $ | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/init/init.d/000-init-seeds-wrapper" "subPath" "init-seeds-wrapper") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/init/init.d/001-init-managed" "subPath" "init-managed") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/boot/000-init-managed" "subPath" "init-managed") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/init-seeds") | nindent 12 }}
             - name: "init"
               mountPath: "/app/init"
@@ -97,7 +106,7 @@ spec:
               mountPath: "/var/lib/samba"
             - name: "logs"
               mountPath: "/var/log/samba"
-            - name: &secrets "secrets"
+            - name: &seedFiles "seed-files"
               mountPath: *seedDir
               readOnly: true
       volumes:
@@ -108,7 +117,7 @@ spec:
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "logs") | nindent 8 }}
         {{- include "arkcase.file-resource.volumes" $ | nindent 8 }}
-        - name: *secrets
+        - name: *seedFiles
           secret:
             optional: false
             secretName: {{ printf "%s-seed" $fullname | quote }}

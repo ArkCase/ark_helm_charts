@@ -7,12 +7,23 @@ consumes:
       username: MANAGED_DOMAIN_USERNAME
       password: MANAGED_DOMAIN_PASSWORD
     main:
-      domain: DOMAIN_NAME
       username: MANAGED_LDAP_ARKCASE_USERNAME
       password: MANAGED_LDAP_ARKCASE_PASSWORD
+      domain: ARKCASE_DOMAIN
+      realm: ARKCASE_REALM
+      rootDn: ARKCASE_ROOT_DN
+      baseDn: ARKCASE_BASE_DN
+      userBaseDn: ARKCASE_USER_BASE_DN
+      groupBaseDn: ARKCASE_GROUP_BASE_DN
     portal:
       username: MANAGED_LDAP_PORTAL_USERNAME
       password: MANAGED_LDAP_PORTAL_PASSWORD
+      domain: PORTAL_DOMAIN
+      realm: PORTAL_REALM
+      rootDn: PORTAL_ROOT_DN
+      baseDn: PORTAL_BASE_DN
+      userBaseDn: PORTAL_USER_BASE_DN
+      groupBaseDn: PORTAL_GROUP_BASE_DN
   reports:
     main:
       username: MANAGED_REPORTS_USERNAME
@@ -30,9 +41,6 @@ consumes:
       password: MANAGED_CONTENT_ADMIN_PASSWORD
       group: MANAGED_CONTENT_ADMIN_GROUPS
   core:
-    main:
-      username: MANAGED_ARKCASE_USERNAME
-      password: MANAGED_ARKCASE_PASSWORD
     main-admin:
       username: MANAGED_ARKCASE_ADMIN_USERNAME
       password: MANAGED_ARKCASE_ADMIN_PASSWORD

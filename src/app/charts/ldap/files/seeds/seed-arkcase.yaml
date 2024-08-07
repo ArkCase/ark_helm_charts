@@ -5,15 +5,11 @@ server:
   # usernameAsCn: true
   expirationDays: 0
 
-  # The Base DN within which all data for this seed will be rendered
-  baseDn: "@env:BASE_DN"
-
-  # The OU within which to create the users. If not given, the default
-  # will be used (cn=Users)
+  domain: "@env:ARKCASE_DOMAIN"
+  realm: "@env:ARKCASE_REALM"
+  rootDn: "@env:ARKCASE_ROOT_DN"
+  baseDn: "@env:ARKCASE_BASE_DN"
   userou: "@env:ARKCASE_USER_BASE_DN"
-
-  # The OU within which to create the users. If not given, the default
-  # will be used (cn=Users)
   groupou: "@env:ARKCASE_GROUP_BASE_DN"
 
 # NOTE: for group memberships, groups prefixed with "+" reference

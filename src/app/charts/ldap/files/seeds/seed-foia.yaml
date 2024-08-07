@@ -4,15 +4,11 @@ server:
   # usernameAsCn: true
   expirationDays: 0
 
-  # The Base DN within which all data for this seed will be rendered
+  domain: "@env:PORTAL_DOMAIN"
+  realm: "@env:PORTAL_REALM"
+  rootDn: "@env:PORTAL_ROOT_DN"
   baseDn: "@env:PORTAL_BASE_DN"
-
-  # The OU within which to create the users. If not given, the default
-  # will be used (cn=Users)
   userou: "@env:PORTAL_USER_BASE_DN"
-
-  # The OU within which to create the users. If not given, the default
-  # will be used (cn=Users)
   groupou: "@env:PORTAL_GROUP_BASE_DN"
 
   # The default password for seeded users

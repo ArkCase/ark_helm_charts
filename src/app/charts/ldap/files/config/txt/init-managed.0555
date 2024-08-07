@@ -58,7 +58,7 @@ execute()
 	#
 	# Proceed with the execution
 	#
-	say "🚀 ${@}"
+	# say "🚀 ${@}"
 	( exec "${@}" )
 	return ${?}
 }
@@ -99,18 +99,41 @@ samba_tool()
 # Used all over
 RC=0
 
+[ -v MANAGED_ROOT_DN ] || fail "Must provide the root DN to use for the LDAP tree"
+[ -n "${MANAGED_ROOT_DN}" ] || fail "The value for MANAGED_ROOT_DN may not be the empty string"
+
+[ -v MANAGED_BASE_DN ] || MANAGED_BASE_DN=""
+
 USER_OU_FLAGS=()
 [ -v MANAGED_USERS_OU ] || MANAGED_USERS_OU=""
 if [ -n "${MANAGED_USERS_OU}" ] ; then
-	OUT="$(samba_tool ou listobjects "${MANAGED_USERS_OU}" 2>&1)" || warn "The managed users' OU [${MANAGED_USERS_OU}] was not found. This may cause problems if there's a need to create users"
+	[ -n "${MANAGED_BASE_DN}" ] && MANAGED_USERS_OU+=",${MANAGED_BASE_DN}"
+else
+	MANAGED_USERS_OU="${MANAGED_BASE_DN}"
+fi
+
+if [ -n "${MANAGED_USERS_OU}" ] ; then
+	FULL_OU="${MANAGED_USERS_OU},${MANAGED_ROOT_DN}"
+	OUT="$(samba_tool ou listobjects "${FULL_OU}" 2>&1)" || warn "The managed users' OU [${FULL_OU}] was not found. This may cause problems if there's a need to create users"
+
+	ok "Any missing users will be created at [${FULL_OU}]"
 	USER_OU_FLAGS+=(--userou="${MANAGED_USERS_OU}")
 fi
 
 GROUP_OU_FLAGS=()
 [ -v MANAGED_GROUPS_OU ] || MANAGED_GROUPS_OU=""
 if [ -n "${MANAGED_GROUPS_OU}" ] ; then
-	OUT="$(samba_tool ou listobjects "${MANAGED_GROUPS_OU}" 2>&1)" || warn "The managed groups' OU [${MANAGED_GROUPS_OU}] was not found. This may cause problems if there's a need to create groups"
-	GROUP_OU_FLAGS+=(--userou="${MANAGED_GROUPS_OU}")
+	[ -n "${MANAGED_BASE_DN}" ] && MANAGED_GROUPS_OU+=",${MANAGED_BASE_DN}"
+else
+	MANAGED_GROUPS_OU="${MANAGED_BASE_DN}"
+fi
+
+if [ -n "${MANAGED_GROUPS_OU}" ] ; then
+	FULL_OU="${MANAGED_GROUPS_OU},${MANAGED_ROOT_DN}"
+	OUT="$(samba_tool ou listobjects "${FULL_OU}" 2>&1)" || warn "The managed groups' OU [${FULL_OU}] was not found. This may cause problems if there's a need to create groups"
+
+	ok "Any missing groups will be created at [${FULL_OU}]"
+	GROUP_OU_FLAGS+=(--groupou="${MANAGED_GROUPS_OU}")
 fi
 
 declare -A GROUP_MEMBERSHIPS=()
@@ -131,7 +154,7 @@ while read ACCOUNT ; do
 	# Does the user exist? If not, create them!
 	#
 	RC=0
-	OUT="$(samba_tool user show "${USERNAME}" 1>&2)" || RC=${?}
+	OUT="$(samba_tool user show "${USERNAME}" 2>&1)" || RC=${?}
 	if [ ${RC} -ne 0 ] ; then
 		warn "The user account [${USERNAME}] does not exist (${OUT}), will try to create it"
 		ACC="${ACCOUNT//_/ }"
@@ -150,7 +173,7 @@ while read ACCOUNT ; do
 	#
 	doing "Setting the password for the ${ACCOUNT} account"
 	samba_tool user setpassword "${USERNAME}" --newpassword="${PASSWORD}" || fail "Failed to set the new password for the account ${ACCOUNT}: [${USERNAME}]/[sha256:${PASSWORD_SUM}]"
-	ok "Password set!"
+	ok "Password set for ${USERNAME} (sha256:${PASSWORD_SUM})!"
 
 	doing "Removing the password expiration for the ${ACCOUNT}"
 	samba_tool user setexpiry "${USERNAME}" --noexpiry || fail "Failed to remove the password expiration for the account ${ACCOUNT}"
@@ -178,7 +201,7 @@ if [ ${#GROUP_MEMBERSHIPS[@]} -gt 0 ] ; then
 		OUT="$(samba_tool group show "${GROUP}" 2>&1)" || RC=${?}
 		if [ ${RC} -ne 0 ] ; then
 			warn "The group [${GROUP}] does not exist (${OUT}), will try to create it"
-			samba_tool group add "${USERNAME}" \
+			samba_tool group add "${GROUP}" \
 				"${GROUP_OU_FLAGS[@]}" || fail "Failed to create the group [${GROUP}]"
 			ok "Group created!"
 		fi
@@ -187,7 +210,7 @@ if [ ${#GROUP_MEMBERSHIPS[@]} -gt 0 ] ; then
 		read -a MEMBERS < <(list_sorted "${MEMBERS[@]}")
 
 		doing "Adding these group members to the ${GROUP} group: [${MEMBERS}]"
-		samba_tool group addmembers "${GROUP}" "${MEMBERS}" || { warn "Failed to add the members to the group!" ; continue ; }
+		samba_tool group addmembers "${GROUP}" "${MEMBERS}" || { warn "Failed to add the members to the group (rc=${?})!" ; continue ; }
 		ok "Members added!"
 	done < <(list_sorted "${!GROUP_MEMBERSHIPS[@]}")
 fi
