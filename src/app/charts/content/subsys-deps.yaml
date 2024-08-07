@@ -5,11 +5,12 @@ consumes:
       ui: CONTENT_UI
       username: CONTENT_USERNAME
       password: CONTENT_PASSWORD
-    admin:
+    main-admin:
       url: CONTENT_ADMIN_URL
       ui: CONTENT_ADMIN_UI
       username: CONTENT_ADMIN_USERNAME
       password: CONTENT_ADMIN_PASSWORD
+      group: CONTENT_ADMIN_GROUP
 
   # We specifically don't consume from ACME b/c those are handled directly
   # by the ACME templates, and there's no need to address them beyond that
