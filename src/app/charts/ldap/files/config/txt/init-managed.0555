@@ -2,12 +2,12 @@
 
 set -euo pipefail
 
-[ -v DEBUG ] || DEBUG=""
-case "${DEBUG,,}" in
-	true | t | yes | y ) DEBUG="true" ;;
-	* ) DEBUG="false" ;;
+[ -v DEBUG_MANAGED ] || DEBUG_MANAGED=""
+case "${DEBUG_MANAGED,,}" in
+	true | t | yes | y ) DEBUG_MANAGED="true" ;;
+	* ) DEBUG_MANAGED="false" ;;
 esac
-export DEBUG
+export DEBUG_MANAGED
 
 timestamp()
 {
@@ -50,7 +50,7 @@ execute()
 	#
 	# Show the command about to be executed
 	#
-	if "${DEBUG}" ; then
+	if "${DEBUG_MANAGED}" ; then
 		say "👀 ${@@Q}"
 		return 0
 	fi
