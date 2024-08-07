@@ -1,23 +1,19 @@
 server:
-  # url: ldaps://crapola
-  # adminUser: jsadfl;asdl;fuysa;ldfu
-  # adminPass: "$!@!@$!@$!@$"
   # userPrefix: 123
   # groupPrefix: 968
-  # defaultPassword: "34"
   # usernameAsCn: true
   expirationDays: 0
 
   # The Base DN within which all data for this seed will be rendered
-  baseDn: "ou=ArkCase Portal"
+  baseDn: "@env:PORTAL_BASE_DN"
 
   # The OU within which to create the users. If not given, the default
   # will be used (cn=Users)
-  userou: "ou=Users"
+  userou: "@env:PORTAL_USER_BASE_DN"
 
   # The OU within which to create the users. If not given, the default
   # will be used (cn=Users)
-  groupou: "ou=Groups"
+  groupou: "@env:PORTAL_GROUP_BASE_DN"
 
   # The default password for seeded users
   defaultPassword: "$123456$"

@@ -51,8 +51,19 @@ spec:
         - name: samba
           {{- include "arkcase.image" $ | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
-            {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
+            {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
+            {{- include "arkcase.subsystem-access.env" (dict "ctx" $ "key" "rootDn" "name" "ROOT_DN") | nindent 12 }}
+            {{- include "arkcase.subsystem-access.env" (dict "ctx" $ "conn" "main" "key" "baseDn" "name" "ARKCASE_BASE_DN") | nindent 12 }}
+            {{- include "arkcase.subsystem-access.env" (dict "ctx" $ "conn" "main" "key" "userBaseDn" "name" "ARKCASE_USER_BASE_DN") | nindent 12 }}
+            {{- include "arkcase.subsystem-access.env" (dict "ctx" $ "conn" "main" "key" "groupBaseDn" "name" "ARKCASE_GROUP_BASE_DN") | nindent 12 }}
+            {{- include "arkcase.subsystem-access.env" (dict "ctx" $ "conn" "portal" "key" "baseDn" "name" "PORTAL_BASE_DN") | nindent 12 }}
+            {{- include "arkcase.subsystem-access.env" (dict "ctx" $ "conn" "portal" "key" "userBaseDn" "name" "PORTAL_USER_BASE_DN") | nindent 12 }}
+            {{- include "arkcase.subsystem-access.env" (dict "ctx" $ "conn" "portal" "key" "groupBaseDn" "name" "PORTAL_GROUP_BASE_DN") | nindent 12 }}
+            - name: MANAGED_USERS_OU
+              value: "$(ARKCASE_USER_BASE_DN),$(ARKCASE_BASE_DN),$(ROOT_DN)"
+            - name: MANAGED_GROUPS_OU
+              value: "$(ARKCASE_GROUP_BASE_DN),$(ARKCASE_BASE_DN),$(ROOT_DN)"
             - name: DOMAINPASS
               value: "$(MANAGED_DOMAIN_PASSWORD)"
             - name: JOIN
