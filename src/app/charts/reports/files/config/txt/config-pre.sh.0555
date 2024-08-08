@@ -17,7 +17,7 @@ set -euo pipefail
 [ -v INIT_DIR ] || INIT_DIR="${BASE_DIR}/init"
 
 [ -v DB_FILES_DIALECT ] || fail "The DB dialect (\${DB_FILES_DIALECT}) has not been chosen"
-[[ "${DB_FILES_DIALECT}" =~ / ]] || fail "The DB files dialect [${DB_FILES_DIALECT}] may not contain slashes"
+[[ "${DB_FILES_DIALECT}" =~ / ]] && fail "The DB files dialect [${DB_FILES_DIALECT}] may not contain slashes"
 
 say "Initializing the Pentaho database configurations at [${PENTAHO_SERVER}]..."
 
