@@ -93,7 +93,7 @@ that checks the boot order
       {{- fail (printf "The dependency declaration for %s has conflicting settings: may only have URL or host/port specs" $host) -}}
     {{- end -}}
 
-    {{- if and (not (hasKey $settings "url") (not (hasKey $settings "port")) -}}
+    {{- if and (not (hasKey $settings "url")) (not (hasKey $settings "port")) -}}
       {{- fail (printf "The dependency declaration for %s doesn't have any port information - no URL or port given" $host) -}}
     {{- end -}}
 
