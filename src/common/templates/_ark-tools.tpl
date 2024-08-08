@@ -1186,11 +1186,11 @@ return either the value if correct, or the empty string if not.
   {{- $result | toYaml -}}
 {{- end -}}
 
-{{- define "arkcase.get-existing.secrets" -}}
+{{- define "arkcase.get-existing.secret" -}}
   {{- include "__arkcase.get-existing" (merge (dict "secret" true) $) -}}
 {{- end -}}
 
-{{- define "arkcase.get-existing.configs" -}}
+{{- define "arkcase.get-existing.config" -}}
   {{- include "__arkcase.get-existing" (merge (dict "secret" false) $) -}}
 {{- end -}}
 

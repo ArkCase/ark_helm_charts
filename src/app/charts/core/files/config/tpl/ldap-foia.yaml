@@ -6,7 +6,7 @@ springConfigLdapProperties:
     foiaportal:
       ldapUrl: "${PORTAL_LDAP_URL}"
       userDomain: "${PORTAL_LDAP_DOMAIN}"
-      authUserDn: "${PORTAL_LDAP_USERNAME}"
+      authUserDn: "${PORTAL_LDAP_REALM}\\${PORTAL_LDAP_USERNAME}"
       authUserPassword: "${PORTAL_LDAP_PASSWORD}"
       base: "${PORTAL_LDAP_BASE_DN},${PORTAL_LDAP_ROOT_DN}"
       userSearchBase: "${PORTAL_LDAP_USER_BASE_DN}"

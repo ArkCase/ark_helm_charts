@@ -50,7 +50,7 @@ fi
 
 [ -v MINIO_ADMIN_URL ] || MINIO_ADMIN_URL=""
 [ -n "${MINIO_ADMIN_URL}" ] || MINIO_ADMIN_URL="https://localhost:9000"
-[[ "${MINIO_ADMIN_URL}" =~ ^(.*)/*$ ]] && MINIO_ADMIN_URL="${BASH_REMATCH[1]}"
+[[ "${MINIO_ADMIN_URL}" =~ ^(.*)/+$ ]] && MINIO_ADMIN_URL="${BASH_REMATCH[1]}"
 PROBE_URL="${MINIO_ADMIN_URL}/minio/health/ready"
 
 START="$(date +%s)"
