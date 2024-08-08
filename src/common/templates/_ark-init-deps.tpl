@@ -135,6 +135,8 @@ that checks the boot order
   {{- include "arkcase.image" (dict "ctx" $ctx "name" "nettest" "repository" "arkcase/nettest") | nindent 2 }}
   command: [ "/usr/local/bin/wait-for-ports" ]
   env: {{- include "arkcase.tools.baseEnv" $ctx | nindent 4 }}
+    {{- include "arkcase.acme.env" $ctx | nindent 4 }}
+    {{- include "arkcase.subsystem-access.env" $ctx | nindent 4 }}
     - name: INIT_DEPENDENCIES
       value: |- {{- $yaml | toYaml | nindent 8 }}
   {{- end -}}
