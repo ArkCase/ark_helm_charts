@@ -9,7 +9,7 @@ network:
     timeout: 10
     attempts: 60
   dependencies:
-    app-artifacts:
+    app:
       url: "@env:DEPL_URL"
     acme:
       url: "@env:ACME_URL"
@@ -32,6 +32,10 @@ settings:
       username: CONTENT_ADMIN_USERNAME
       password: CONTENT_ADMIN_PASSWORD
       group: CONTENT_ADMIN_GROUP
+
+  app:
+    main:
+      url: DEPL_URL
 
   # We specifically don't consume from ACME b/c those are handled directly
   # by the ACME templates, and there's no need to address them beyond that

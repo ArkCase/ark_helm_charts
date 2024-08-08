@@ -10,7 +10,7 @@ network:
   dependencies:
     acme:
       url: "@env:ACME_URL"
-    app-artifacts:
+    app:
       url: "@env:DEPL_URL"
     zookeeper:
       clusterOnly: true
@@ -24,3 +24,7 @@ settings:
   # We specifically don't consume from ZooKeeper b/c those are handled directly
   # by the Clustering templates, and there's no need to address them beyond that
   # zookeeper: {}
+
+  app:
+    main:
+      url: DEPL_URL

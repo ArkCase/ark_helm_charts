@@ -1,4 +1,4 @@
-network:
+etwork:
   enabled: true
   mode: all
   template:
@@ -11,7 +11,7 @@ network:
   dependencies:
     acme:
       url: "@env:ACME_URL"
-    app-artifacts:
+    app:
       url: "@env:DEPL_URL"
     content:
       url: "@env:ARKCASE_CONTENT_URL"
@@ -34,23 +34,22 @@ settings:
   # by the Clustering templates, and there's no need to address them beyond that
   # zookeeper: {}
 
-  app-artifacts:
+  app:
     main:
       url: DEPL_URL
-      hostname: DEPL_HOST
-      port: DEPL_PORT
 
   content:
+    main-admin:
+      url: ARKCASE_CONTENT_ADMIN_URL
+      ui: ARKCASE_CONTENT_ADMIN_UI
+      username: ARKCASE_CONTENT_ADMIN_USERNAME
+      password: ARKCASE_CONTENT_ADMIN_PASSWORD
+
     main:
       url: ARKCASE_CONTENT_URL
       ui: ARKCASE_CONTENT_UI
       username: ARKCASE_CONTENT_USERNAME
       password: ARKCASE_CONTENT_PASSWORD
-    admin:
-      url: ARKCASE_CONTENT_ADMIN_URL
-      ui: ARKCASE_CONTENT_ADMIN_UI
-      username: ARKCASE_CONTENT_ADMIN_USERNAME
-      password: ARKCASE_CONTENT_ADMIN_PASSWORD
 
   ldap:
     main-admin:
@@ -94,15 +93,15 @@ settings:
       # instance: ARKCASE_JDBC_INSTANCE
 
   reports:
+    main-admin:
+      url: ARKCASE_REPORTS_ADMIN_URL
+      username: ARKCASE_REPORTS_ADMIN_USERNAME
+      password: ARKCASE_REPORTS_ADMIN_PASSWORD
+
     main:
       url: ARKCASE_REPORTS_URL
       username: ARKCASE_REPORTS_USERNAME
       password: ARKCASE_REPORTS_PASSWORD
-
-    admin:
-      url: ARKCASE_REPORTS_ADMIN_URL
-      username: ARKCASE_REPORTS_ADMIN_USERNAME
-      password: ARKCASE_REPORTS_ADMIN_PASSWORD
 
   messaging:
     arkcase:

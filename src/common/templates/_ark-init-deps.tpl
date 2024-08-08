@@ -136,7 +136,6 @@ that checks the boot order
   command: [ "/usr/local/bin/wait-for-ports" ]
   env: {{- include "arkcase.tools.baseEnv" $ctx | nindent 4 }}
     {{- include "arkcase.acme.env" $ctx | nindent 4 }}
-    {{- include "arkcase.deployment.env" $ctx | nindent 4 }}
     {{- include "arkcase.subsystem-access.env" $ctx | nindent 4 }}
     - name: INIT_DEPENDENCIES
       value: |- {{- $yaml | toYaml | nindent 8 }}
