@@ -12,44 +12,6 @@ configuration:
   # Use the default journal type. The other type is mem (or memory)
   journalType: db
 
-initDependencies:
-  enabled: true
-  template:
-    mode: any
-    initialDelay: 10
-    delay: 10
-    timeout: 10
-    attempts: 60
-  mode: all
-  dependencies:
-    acme:
-      ports:
-        - 9000
-
-    app-artifacts:
-      ports:
-        - 443
-
-    rdbms:
-      # By using the approach that any of these ports is
-      # sufficient, we cover all our bases regarding the RDBMS
-      # backend in use, be it MS-SQL (1433), Oracle (1521),
-      # MySQL (3306), or PostgreSQL (5432)
-      ports:
-        - 1433
-        - 1521
-        - 3306
-        - 5432
-
-    ldap:
-      ports:
-        - 636
-
-    zookeeper:
-      clusterOnly: true
-      ports:
-        - 2181
-
 resources:
   development:
     limits: "2Gi,1"

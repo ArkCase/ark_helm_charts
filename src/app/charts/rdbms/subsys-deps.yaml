@@ -1,4 +1,18 @@
-consumes:
+network:
+  enabled: true
+  mode: all
+  template:
+    # Any of the required ports are enough to succeed
+    mode: any
+    initialDelay: 10
+    delay: 10
+    timeout: 10
+    attempts: 60
+  dependencies:
+    acme:
+      url: "@env:ACME_URL"
+
+settings:
   # We specifically don't consume from ACME b/c those are handled directly
   # by the ACME templates, and there's no need to address them beyond that
   # acme: {}

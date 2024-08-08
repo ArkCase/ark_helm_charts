@@ -1,4 +1,25 @@
-consumes:
+network:
+  enabled: true
+  mode: all
+  template:
+    # Any of the required ports are enough to succeed
+    mode: any
+    initialDelay: 10
+    delay: 10
+    timeout: 10
+    attempts: 60
+  dependencies:
+    app-artifacts:
+      url: "@env:DEPL_URL"
+    acme:
+      url: "@env:ACME_URL"
+    ldap:
+      url: "@env:CONTENT_LDAP_URL"
+    rdbms:
+      host: "@env:ALFRESCO_JDBC_HOST"
+      port: "@env:ALFRESCO_JDBC_PORT"
+
+settings:
   $self:
     main:
       url: CONTENT_URL

@@ -25,49 +25,6 @@ resources:
     cloudconfig:
       limits: "2Gi,1"
 
-initDependencies:
-  enabled: true
-  mode: all
-  template:
-    # Any of the required ports are enough to succeed
-    mode: any
-    initialDelay: 10
-    delay: 10
-    timeout: 10
-    attempts: 120
-  dependencies:
-    app-artifacts:
-      ports:
-        - 443
-    rdbms:
-      ports:
-        # In case of SQLServer
-        - 1433
-        # In case of Oracle
-        - 1521
-        # In case of MySQL/MariaDB
-        - 3306
-        # In case of PostgreSQL
-        - 5432
-    acme:
-      ports:
-        - 9000
-    ldap:
-      ports:
-        - 636
-    messaging:
-      ports:
-        - 61613
-        - 61614
-        - 61616
-    search:
-      ports:
-        - 8983
-    content:
-      ports:
-        - 8443
-        - 9000
-
 # Please leave the `replicaCount` to 1 for the time being. Clustering is not
 # supported yet.
 replicaCount: 1

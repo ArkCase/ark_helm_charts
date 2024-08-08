@@ -1,4 +1,36 @@
-consumes:
+network:
+  enabled: true
+  template:
+    mode: any
+    initialDelay: 10
+    delay: 10
+    timeout: 10
+    attempts: 60
+  mode: all
+  dependencies:
+    acme:
+      url: "@env:ACME_URL"
+    app-artifacts:
+      url: "@env:DEPL_URL"
+    db-arkcase:
+      host: "@env:REPORTS_JDBC_ARKCASE_HOST"
+      port: "@env:REPORTS_JDBC_ARKCASE_PORT"
+    db-hibernate:
+      host: "@env:REPORTS_JDBC_HIBERNATE_HOST"
+      port: "@env:REPORTS_JDBC_HIBERNATE_PORT"
+    db-jcr:
+      host: "@env:REPORTS_JDBC_JACKRABBIT_HOST"
+      port: "@env:REPORTS_JDBC_JACKRABBIT_PORT"
+    db-quartz:
+      host: "@env:REPORTS_JDBC_QUARTZ_HOST"
+      port: "@env:REPORTS_JDBC_QUARTZ_PORT"
+    ldap:
+      url: "@env:REPORTS_LDAP_URL"
+    zookeeper:
+      clusterOnly: true
+      port: 2181
+
+settings:
   # We specifically don't consume from ACME b/c those are handled directly
   # by the ACME templates, and there's no need to address them beyond that
   # acme: {}

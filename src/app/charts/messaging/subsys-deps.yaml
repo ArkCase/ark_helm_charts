@@ -1,4 +1,21 @@
-consumes:
+network:
+  enabled: true
+  template:
+    mode: any
+    initialDelay: 10
+    delay: 10
+    timeout: 10
+    attempts: 60
+  mode: all
+  dependencies:
+    acme:
+      url: "@env:ACME_URL"
+    # TODO: This should be cleaner, but is good enough for now
+    zookeeper:
+      clusterOnly: true
+      port: 2181
+
+settings:
   # We specifically don't consume from ACME b/c those are handled directly
   # by the ACME templates, and there's no need to address them beyond that
   # acme: {}

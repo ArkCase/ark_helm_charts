@@ -504,9 +504,9 @@
   {{- $resultMnt := dict -}}
   {{- $resultVol := dict -}}
 
-  {{- $consumes := ($accessConfig.consumes | default dict) -}}
-  {{- range $subsys := (keys $consumes | sortAlpha) -}}
-    {{- $subsysData := get $consumes $subsys -}}
+  {{- $settings := ($accessConfig.settings | default dict) -}}
+  {{- range $subsys := (keys $settings | sortAlpha) -}}
+    {{- $subsysData := get $settings $subsys -}}
 
     {{- /* If there's nothing to consume from this subsystem, skip it */ -}}
     {{- if or (not $subsysData) (not (kindIs "map" $subsysData)) -}}

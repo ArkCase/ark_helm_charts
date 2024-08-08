@@ -1,4 +1,31 @@
-consumes:
+network:
+  enabled: true
+  mode: all
+  template:
+    # Any of the required ports are enough to succeed
+    mode: any
+    initialDelay: 10
+    delay: 10
+    timeout: 10
+    attempts: 120
+  dependencies:
+    acme:
+      url: "@env:ACME_URL"
+    app-artifacts:
+      url: "@env:DEPL_URL"
+    content:
+      url: "@env:ARKCASE_CONTENT_URL"
+    ldap:
+      url: "@env:ARKCASE_LDAP_URL"
+    messaging:
+      url: "@env:ARKCASE_MQ_AMQP_URL"
+    rdbms:
+      host: "@env:ARKCASE_JDBC_HOST"
+      port: "@env:ARKCASE_JDBC_PORT"
+    search:
+      url: "@env:ARKCASE_SOLR_URL"
+
+settings:
   # We specifically don't consume from ACME b/c those are handled directly
   # by the ACME templates, and there's no need to address them beyond that
   # acme: {}
@@ -10,6 +37,8 @@ consumes:
   app-artifacts:
     main:
       url: DEPL_URL
+      hostname: DEPL_HOST
+      port: DEPL_PORT
 
   content:
     main:

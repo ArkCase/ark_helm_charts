@@ -16,20 +16,6 @@ resources:
 
 platform: ""
 
-initDependencies:
-  enabled: true
-  template:
-    mode: any
-    initialDelay: 10
-    delay: 10
-    timeout: 10
-    attempts: 60
-  mode: all
-  dependencies:
-    acme:
-      ports:
-        - 9000
-
 image:
   # pullPolicy: IfNotPresent
 

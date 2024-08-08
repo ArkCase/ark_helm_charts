@@ -15,37 +15,6 @@ configuration:
     # Turn indexing on or off
     indexing: true
 
-initDependencies:
-  enabled: true
-  mode: all
-  template:
-    # Any of the required ports are enough to succeed
-    mode: any
-    initialDelay: 10
-    delay: 10
-    timeout: 10
-    attempts: 60
-  dependencies:
-    app-artifacts:
-      ports:
-        - 443
-    acme:
-      ports:
-        - 9000
-    ldap:
-      ports:
-        - 636
-    rdbms:
-      ports:
-        # In case of SQLServer
-        - 1433
-        # In case of Oracle
-        - 1521
-        # In case of MySQL/MariaDB
-        - 3306
-        # In case of PostgreSQL
-        - 5432
-
 resources:
   default:
     activemq: "1Gi"
