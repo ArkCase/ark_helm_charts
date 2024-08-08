@@ -138,12 +138,18 @@
   {{- $result := list -}}
   {{- $db := (include "arkcase.db.info" $ctx | fromYaml) -}}
   {{- range $schema := (list "arkcase" "hibernate" "jackrabbit" "quartz") -}}
-    {{- $url := ($db.jdbc.format | toString) -}}
     {{- $prefix := (printf "REPORTS_JDBC_%s" ($schema | upper)) -}}
     {{- $replacement := (printf "$(%s_" $prefix) -}}
-    {{- $url = ($url | replace "$(PREFIX_" $replacement) -}}
+
+    {{- $url := ($db.jdbc.format | default "" | toString | replace "$(PREFIX_" $replacement) -}}
+    {{- $driver := ($db.jdbc.driver | default "" | toString | replace "$(PREFIX_" $replacement) -}}
+    {{- $validationQuery := ($db.validationQuery | default "" | toString | replace "$(PREFIX_" $replacement) -}}
 
     {{- $result = append $result (dict "name" (printf "%s_URL" $prefix) "value" $url) -}}
+    {{- $result = append $result (dict "name" (printf "%s_DRIVER" $prefix) "value" $driver) -}}
+    {{- if $validationQuery -}}
+      {{- $result = append $result (dict "name" (printf "%s_VALIDATION_QUERY" $prefix) "value" $validationQuery) -}}
+    {{- end -}}
   {{- end -}}
   {{- if $result -}}
     {{- $result | toYaml -}}

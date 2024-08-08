@@ -42,17 +42,22 @@ CHANGELOGS=("create_quartz:quartz")
 "${ARKCASE_ENTERPRISE}" && CHANGELOGS+=("pentaho_mart:hibernate")
 
 # We do it like this so we don't enter it multiple times
-export LIQUIBASE_COMMAND_DRIVER="${REPORTS_JDBC_DRIVER}"
-[ -n "${LIQUIBASE_COMMAND_DRIVER}" ] || fail "No JDBC driver given, cannot continue"
 
 for CHANGELOG in "${CHANGELOGS[@]}" ; do
 	IFS=":" read CHANGELOG DB <<< "${CHANGELOG}"
 	say "Running changelog ${CHANGELOG} ..."
-	URLVAR="REPORTS_JDBC_${DB^^}_URL"
+	URL="REPORTS_JDBC_${DB^^}_URL"
+	USERNAME="REPORTS_JDBC_${DB^^}_USERNAME"
+	PASSWORD="REPORTS_JDBC_${DB^^}_PASSWORD"
+	DRIVER="REPORTS_JDBC_${DB^^}_DRIVER"
+
+	export LIQUIBASE_COMMAND_DRIVER="${!DRIVER}"
+	[ -n "${LIQUIBASE_COMMAND_DRIVER}" ] || fail "No JDBC driver given for database ${DB}, cannot continue"
+
 	./liquibase update \
 		--changelog-file="changelog.${CHANGELOG}.xml" \
-		--url="${!URLVAR}" \
-		--username="${REPORTS_JDBC_USERNAME}" \
-		--password="${REPORTS_JDBC_PASSWORD}"
+		--url="${!URL}" \
+		--username="${!USERNAME}" \
+		--password="${!PASSWORD}"
 done
 say "Changelogs complete."
