@@ -1,0 +1,58 @@
+#
+# Details regarding the administrative password
+#
+admin:
+  # Make sure this is set every time
+  force: true
+  username: "@env:DB_ADMIN_USERNAME"
+  password: "@env:DB_ADMIN_PASSWORD"
+
+#
+# Applies to both users and databases - maps the old name
+# to the new one, in order to render user renaming queries
+#
+# TODO: Before we can unleash the new names, we must add the code to
+#       do the renames/recreates for users and databases
+# renames:
+#   jcr: pentaho-jcr
+#   quartz: pentaho-quartz
+#   content: alfresco
+
+#
+# Map a database name to the username who will
+# be granted full permissions on the database
+#
+# TODO: For now we use the old names. The new names are commented out.
+databases:
+  arkcase: arkcase
+  content: content
+  # alfresco: alfresco
+  pentaho: pentaho
+  # pentaho-jcr: pentaho-jcr
+  jcr: jcr
+  # pentaho-quartz: pentaho-quartz
+  quartz: quartz
+
+#
+# Map the username to the password specification
+#
+# TODO: For now we use the old names. The new names are commented out
+users:
+  arkcase:
+    username: "@env:DB_ARKCASE_USERNAME"
+    password: "@env:DB_ARKCASE_PASSWORD"
+  # alfresco:
+  content:
+    username: "@env:DB_ALFRESCO_USERNAME"
+    password: "@env:DB_ALFRESCO_PASSWORD"
+  pentaho:
+    username: "@env:DB_PENTAHO_USERNAME"
+    password: "@env:DB_PENTAHO_PASSWORD"
+  # pentaho-jcr:
+  jcr:
+    username: "@env:DB_PENTAHO_JCR_USERNAME"
+    password: "@env:DB_PENTAHO_JCR_PASSWORD"
+  # pentaho-quartz:
+  quartz:
+    username: "@env:DB_PENTAHO_QUARTZ_USERNAME"
+    password: "@env:DB_PENTAHO_QUARTZ_PASSWORD"

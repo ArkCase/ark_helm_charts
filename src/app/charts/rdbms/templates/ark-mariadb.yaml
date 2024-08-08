@@ -89,6 +89,7 @@ spec:
         {{- include "arkcase.acme.volume" $ | nindent 8 }}
         {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "init") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
+        {{- include "arkcase.file-resource.volumes" $ | nindent 8 }}
       {{- with $.Values.nodeSelector }}
       nodeSelector: {{- toYaml . | nindent 8 }}
       {{- end }}
