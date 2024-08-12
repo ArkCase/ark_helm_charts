@@ -685,26 +685,6 @@ return either the value if correct, or the empty string if not.
   {{- $result -}}
 {{- end -}}
 
-{{- define "arkcase.tools.conf.isGlobal" -}}
-  {{- $var := . -}}
-  {{- if and $var (not (kindIs "string" $var)) -}}
-    {{- $var = (toString $var) -}}
-  {{- else if not $var -}}
-    {{- $var = "" -}}
-  {{- end -}}
-  {{- (hasPrefix "Values.global.conf." (include "arkcase.tools.normalizeDots" $var)) | ternary "true" "" -}}
-{{- end -}}
-
-{{- define "arkcase.tools.conf.isLocal" -}}
-  {{- $var := . -}}
-  {{- if and $var (not (kindIs "string" $var)) -}}
-    {{- $var = (toString $var) -}}
-  {{- else if not $var -}}
-    {{- $var = "" -}}
-  {{- end -}}
-  {{- (hasPrefix "Values.configuration." (include "arkcase.tools.normalizeDots" $var)) | ternary "true" "" -}}
-{{- end -}}
-
 {{- define "arkcase.tools.global" -}}
   {{- $ctx := .ctx -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
@@ -757,6 +737,7 @@ return either the value if correct, or the empty string if not.
   {{- else if not $value -}}
     {{- $value = "" -}}
   {{- end -}}
+  {{- $value = (include "arkcase.tools.normalizeDots" $value) -}}
 
   {{- $prefix := (.prefix | default "") -}}
   {{- if and $prefix (kindIs "string" $prefix) -}}
@@ -770,15 +751,17 @@ return either the value if correct, or the empty string if not.
 
   {{- $result := dict -}}
   {{- $searched := list -}}
-  {{- range (list (printf "global.conf.%s" $ctx.Chart.Name) "global.conf" "configuration") -}}
+  {{- $subsys := (include "arkcase.subsystem.name" $ctx) -}}
+  {{- range $base := (list (printf "global.subsys.%s.settings" $subsys) "global.settings" "configuration") -}}
     {{- if not $result -}}
-      {{- $key := (empty $value) | ternary . (printf "%s.%s" . $value ) -}}
+      {{- /* Compose the correct value */ -}}
+      {{- $key := (empty $value) | ternary $base (printf "%s.%s" $base $value ) -}}
       {{- if $debug -}}
         {{- $searched = append $searched (printf "Values.%s" $key) -}}
       {{- end -}}
       {{- $r := (include "arkcase.tools.get" (dict "ctx" $ctx "name" (printf "Values.%s" $key)) | fromYaml) -}}
       {{- if and $r $r.found -}}
-        {{- $result = set $r "global" (hasPrefix "global.conf" $key) -}}
+        {{- $result = set $r "global" (hasPrefix "global." $key) -}}
       {{- end -}}
     {{- end -}}
   {{- end -}}
@@ -788,7 +771,7 @@ return either the value if correct, or the empty string if not.
     {{- end -}}
   {{- end -}}
   {{- if $debug -}}
-    {{- fail (dict "result" $result "searched" $searched "global" (dict "conf" (($ctx.Values.global).conf | default dict)) "configuration" ($ctx.Values.configuration | default dict) | toYaml | nindent 0) -}}
+    {{- fail (dict "result" $result "searched" $searched "global" (dict "conf" ($ctx.Values.global | default dict)) "configuration" ($ctx.Values.configuration | default dict) | toYaml | nindent 0) -}}
   {{- end -}}
   {{- if .detailed -}}
     {{- $result | toYaml -}}
