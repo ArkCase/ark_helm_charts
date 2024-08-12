@@ -4,7 +4,7 @@
     {{- fail "The parameter given must be the root context (. or $)" -}}
   {{- end -}}
 
-  {{- $global := (dig "conf" "rdbms" "settings" "" $ctx.Values.global | default dict) -}}
+  {{- $global := (dig "conf" "content" "settings" "" $ctx.Values.global | default dict) -}}
 
   {{- /* Compute the dialect, falling back to the default if necessary */ -}}
   {{- $dialect := (get $global "dialect" | toString | default "s3") -}}
