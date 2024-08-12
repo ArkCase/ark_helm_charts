@@ -142,13 +142,9 @@ def read_config_value(conf, confName, args, argName, envName, default = None):
 
 	return default
 
-def get_config_value(conf, confName, args, argName, envName, default = None):
-	v = read_config_value(conf, confName, args, argName, envName, default = default)
+def resolve_value(v, default = None):
 	if v:
 		# If it's of the form @file:/..., then read the contents from that file
-		# If it's of the form @env:ENVVAR then read the contents from that envvar
-
-		# Otherwise, use the value verbatim
 		if v.startswith("@file:"):
 			# read the contents of the file, return the default if it can't be read
 			p = os.path.expandvars(v[6:])
@@ -161,6 +157,7 @@ def get_config_value(conf, confName, args, argName, envName, default = None):
 			except Exception as e:
 				fail(f"The file [{p}] could not be read (from [{v}]): {e}")
 
+		# If it's of the form @env:ENVVAR then read the contents from that envvar
 		elif v.startswith("@env:"):
 			# read the contents of the envvar, return the default if it doesn't exist
 			try:
@@ -168,11 +165,15 @@ def get_config_value(conf, confName, args, argName, envName, default = None):
 			except KeyError:
 				v = None
 
-	# We check again b/c it may have changed above...
+	# Otherwise, use the value verbatim
 	if v is None:
 		return default
 
 	return v
+
+def get_config_value(conf, confName, args, argName, envName, default = None):
+	v = read_config_value(conf, confName, args, argName, envName, default = default)
+	return resolve_value(v, default)
 
 #
 # Locate the seeds file
@@ -252,6 +253,9 @@ def samba_tool(flags):
 	return run_command([ EXE_SAMBA_TOOL ] + flags + render_auth_info())
 
 def render_user_id(userId):
+	# Allow the use of @env: and @file:
+	userId = resolve_value(userId, userId)
+
 	return f"{USER_PREFIX}{userId}"
 
 def render_group_id(groupId):
@@ -259,6 +263,10 @@ def render_group_id(groupId):
 	# it as-is, no prefix. If it doesn't start with a plus sign, apply the prefix
 	if groupId.startswith("+"):
 		return re.sub("^\+", "", groupId)
+
+	# Allow the use of @env: and @file:
+	groupId = resolve_value(groupId, groupId)
+
 	return f"{GROUP_PREFIX}{groupId}"
 
 # To track which OUs have been created via ensure_ou_exists()
@@ -376,6 +384,9 @@ def create_user(userId, userData):
 
 		if resetPassword:
 			set_user_password(userId, userData)
+
+		# Maybe also apply admin rights
+		grant_ldap_admin_rights(userId, userData)
 
 		return None
 

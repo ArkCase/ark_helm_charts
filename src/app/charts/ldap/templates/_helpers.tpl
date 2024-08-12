@@ -32,12 +32,20 @@
   {{- end -}}
 
   {{- /* Fill in the gaps with the default seeds, if they're not covered */ -}}
-  {{- range $path, $_ := (.Files.Glob "files/seeds/seed-*.yaml") }}
+  {{- range $path, $_ := (.Files.Glob "files/seeds/seed-*.yaml") -}}
     {{- $k := ($path | base) -}}
     {{- if not (hasKey $result $k) -}}
       {{- $result = set $result $k ($.Files.Get $path) -}}
     {{- end -}}
-  {{- end }}
+  {{- end -}}
+
+  {{- /* We don't allow override of these b/c these are for internal use only */ -}}
+  {{- range $path, $_ := (.Files.Glob "files/seeds/managed-*.yaml") -}}
+    {{- $k := ($path | base) -}}
+    {{- if not (hasKey $result $k) -}}
+      {{- $result = set $result $k ($.Files.Get $path) -}}
+    {{- end -}}
+  {{- end -}}
 
   {{- $result | toYaml -}}
 {{- end -}}

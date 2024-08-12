@@ -52,14 +52,12 @@ settings:
       password: ARKCASE_CONTENT_PASSWORD
 
   ldap:
-    main-admin:
+    main:
       url: ARKCASE_LDAP_URL
+      domain: ARKCASE_LDAP_DOMAIN
+      realm: ARKCASE_LDAP_REALM
       username: ARKCASE_LDAP_USERNAME
       password: ARKCASE_LDAP_PASSWORD
-      realm: ARKCASE_LDAP_REALM
-
-    main:
-      domain: ARKCASE_LDAP_DOMAIN
       rootDn: ARKCASE_LDAP_ROOT_DN
       baseDn: ARKCASE_LDAP_BASE_DN
       userBaseDn: ARKCASE_LDAP_USER_BASE_DN
@@ -67,14 +65,12 @@ settings:
       groupBaseDn: ARKCASE_LDAP_GROUP_BASE_DN
       groupPrefix: ARKCASE_LDAP_GROUP_PREFIX
 
-    portal-admin:
+    portal:
       url: PORTAL_LDAP_URL
+      domain: PORTAL_LDAP_DOMAIN
+      realm: PORTAL_LDAP_REALM
       username: PORTAL_LDAP_USERNAME
       password: PORTAL_LDAP_PASSWORD
-      realm: PORTAL_LDAP_REALM
-
-    portal:
-      domain: PORTAL_LDAP_DOMAIN
       rootDn: PORTAL_LDAP_ROOT_DN
       baseDn: PORTAL_LDAP_BASE_DN
       userBaseDn: PORTAL_LDAP_USER_BASE_DN
@@ -84,7 +80,7 @@ settings:
 
   rdbms:
     arkcase:
-      entrypoint: ARKCASE_JDBC_HOST
+      endpoint: ARKCASE_JDBC_HOST
       port: ARKCASE_JDBC_PORT
       username: ARKCASE_JDBC_USERNAME
       password: ARKCASE_JDBC_PASSWORD
