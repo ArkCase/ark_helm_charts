@@ -23,7 +23,8 @@ network:
       host: "@env:ARKCASE_JDBC_HOST"
       port: "@env:ARKCASE_JDBC_PORT"
     search:
-      url: "@env:ARKCASE_SOLR_URL"
+      host: "@env:ARKCASE_SOLR_HOST"
+      port: "@env:ARKCASE_SOLR_PORT"
 
 settings:
   # We specifically don't consume from ACME b/c those are handled directly
@@ -110,7 +111,9 @@ settings:
 
   search:
     main:
-      url: ARKCASE_SOLR_URL
+      scheme: ARKCASE_SOLR_SCHEME
+      host: ARKCASE_SOLR_HOST
+      port: ARKCASE_SOLR_PORT
       # We don't do Solr authentication just yet, but be ready
       # username: ARKCASE_SOLR_USERNAME
       # password: ARKCASE_SOLR_PASSWORD
