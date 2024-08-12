@@ -195,7 +195,7 @@ done < <(list_accounts)
 # Apply group memberships, if applicable
 #
 if [ ${#GROUP_MEMBERSHIPS[@]} -gt 0 ] ; then
-	say "Applying group memberships..."
+	doing "Applying group memberships..."
 	while read GROUP ; do
 		RC=0
 		OUT="$(samba_tool group show "${GROUP}" 2>&1)" || RC=${?}
