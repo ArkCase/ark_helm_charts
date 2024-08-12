@@ -54,7 +54,7 @@ fi
 PROBE_URL="${MINIO_ADMIN_URL}/minio/health/ready"
 
 START="$(date +%s)"
-say "Starting the polling cycle"
+say "Starting the polling cycle for [${PROBE_URL}]"
 while true ; do
 	curl -fsSL -m 5 "${PROBE_URL}" &>/dev/null && break
 	NOW="$(date +%s)"

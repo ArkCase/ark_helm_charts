@@ -112,8 +112,6 @@ spec:
               value: {{ $nodes | toString | quote }}
             - name: DATA_DIR
               value: *dataDir
-            - name: MINIO_ADMIN_URL
-              value: "$(CONTENT_ADMIN_URL)"
             - name: MINIO_ROOT_USER
               value: "$(CONTENT_ADMIN_USERNAME)"
             - name: MINIO_ROOT_PASSWORD
