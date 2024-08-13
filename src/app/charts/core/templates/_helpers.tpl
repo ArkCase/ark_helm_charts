@@ -560,10 +560,10 @@
   {{- end -}}
 
   {{- /* Next, find the "global.conf" value */ -}}
-  {{- $conf := $global.conf -}}
-  {{- if (not (kindIs "map" $conf)) -}}
-    {{- $conf = dict -}}
-    {{- $global = set $global "conf" $conf -}}
+  {{- $settings := $global.settings -}}
+  {{- if (not (kindIs "map" $settings)) -}}
+    {{- $settings = dict -}}
+    {{- $global = set $global "settings" $settings -}}
   {{- end -}}
 
   {{- /* Ok ... now load the role-mappings.yaml file */ -}}
@@ -596,10 +596,10 @@
 
   {{- /* Finally, find the conf.roles-to-groups entry */ -}}
   {{- $mappingsKey := "roles-to-groups" -}}
-  {{- $mappings := get $conf $mappingsKey -}}
+  {{- $mappings := get $settings $mappingsKey -}}
   {{- if (not (kindIs "map" $mappings)) -}}
     {{- $mappings = dict -}}
-    {{- $conf = set $conf $mappingsKey $mappings -}}
+    {{- $settings = set $settings $mappingsKey $mappings -}}
   {{- end -}}
 
   {{- /* If there are mappings to be applied, apply them */ -}}
@@ -673,14 +673,14 @@
   {{- $ctx := $ -}}
   {{- $server := "default" -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
-    {{- $ctx := $.ctx -}}
+    {{- $ctx = $.ctx -}}
     {{- if not (include "arkcase.isRootContext" $ctx) -}}
       {{- fail "Must send the root context as the only parameter" -}}
     {{- end -}}
     {{- $server = ((hasKey $ "server") | ternary $.server "" | default $server) -}}
   {{- end -}}
 
-  {{- $settings := dig "Values" "global" "conf" "core" "settings" "ldap" $server "" $ -}}
+  {{- $settings := (dig "subsys" "core" "settings" "ldap" $server "" ($ctx.Values.global | default dict)) -}}
   {{- if not (kindIs "map" $settings) -}}
     {{- $settings = dict -}}
   {{- end -}}

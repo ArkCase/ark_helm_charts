@@ -49,12 +49,12 @@
   {{- end }}
 {{- end -}}
 
-{{- define "arkcase.pentaho.license.volume.name" -}}
+{{- define "arkcase.pentaho.license.secret.name" -}}
   {{ $ctx := $ -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "Must include the root context as the only parameter" -}}
   {{- end -}}
-  {{- printf "%s-licenses" (include "common.name" $) -}}
+  {{- printf "%s-%s-licenses" $.Release.Name (include "arkcase.subsystem.name" $) -}}
 {{- end -}}
 
 {{- define "arkcase.pentaho.license.volumeMounts" -}}
@@ -69,7 +69,6 @@
   {{- end }}
   {{- $licenses := (include "arkcase.pentaho.licenses" $ctx | fromYaml) -}}
   {{- if $licenses -}}
-    {{- $volume := (include "arkcase.pentaho.license.volume.name" $ctx) -}}
 # License mounts begin
     {{- range $key, $value := $licenses }}
 - name: "pentaho-licenses"
@@ -88,12 +87,11 @@
   {{- end -}}
   {{- $licenses := (include "arkcase.pentaho.licenses" $ctx | fromYaml) -}}
   {{- if $licenses -}}
-    {{- $volume := (include "arkcase.pentaho.license.volume.name" $ctx) -}}
 # License volume begins
 - name: "pentaho-licenses"
   secret:
     optional: false
-    secretName: {{ $volume | quote }}
+    secretName: {{ include "arkcase.pentaho.license.secret.name" $ctx | quote }}
     defaultMode: 0444
 # License volume ends
   {{- end -}}

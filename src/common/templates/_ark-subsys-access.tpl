@@ -348,7 +348,7 @@
   {{- $conf := dict -}}
 
   {{- /* First apply the global settings, which are the overrides */ -}}
-  {{- $global := (($ctx.Values.global).conf | default dict) -}}
+  {{- $global := (($ctx.Values.global).subsys | default dict) -}}
   {{- if (hasKey $global $params.subsys) -}}
     {{- $global = get $global $params.subsys -}}
     {{- if and $global (kindIs "map" $global) -}}

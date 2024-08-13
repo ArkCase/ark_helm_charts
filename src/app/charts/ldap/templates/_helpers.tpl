@@ -22,7 +22,7 @@
   {{- /* Otherwise, use those as our boot-up seeds */ -}}
 
   {{- /* The seeds must be a dict whose entries must dicts themselves */ -}}
-  {{- $seeds := ((($.Values.global).conf).ldap).seed -}}
+  {{- $seeds := ((($.Values.global).subsys).ldap).seed -}}
 
   {{- $result := dict -}}
   {{- if and $seeds (kindIs "map" $seeds) -}}

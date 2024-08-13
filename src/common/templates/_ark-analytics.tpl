@@ -13,7 +13,7 @@
 
   {{- $local := (($ctx.Values.configuration).analytics | default dict) -}}
 
-  {{- $global := (($ctx.Values.global).conf).analytics -}}
+  {{- $global := ((($ctx.Values.global).subsys).analytics | default dict) -}}
   {{- if not $global -}}
     {{- $global = $ctx.Values -}}
 
@@ -22,10 +22,10 @@
     {{- end -}}
     {{- $global = $ctx.Values.global -}}
 
-    {{- if or (not (hasKey $global "conf")) (not (kindIs "map" $global.conf)) -}}
-      {{- $global = set $global "conf" dict -}}
+    {{- if or (not (hasKey $global "subsys")) (not (kindIs "map" $global.subsys)) -}}
+      {{- $global = set $global "subsys" dict -}}
     {{- end -}}
-    {{- $global = $global.conf -}}
+    {{- $global = $global.subsys -}}
 
     {{- if or (not (hasKey $global "analytics")) (not (kindIs "map" $global.analytics)) -}}
       {{- $global = set $global "analytics" dict -}}

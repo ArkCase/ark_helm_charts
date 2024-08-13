@@ -57,9 +57,7 @@ Return a map which contains the subsystem data map as required by other API call
     {{- /* Set the "enabled" flag, which defaults to TRUE if it's not set */ -}}
     {{- $enabled := true -}}
     {{- $local := $ctx.Values -}}
-    {{- $global := $ctx.Values.global | default dict -}}
-    {{- $global := $global.conf | default dict -}}
-    {{- $global := (hasKey $global $subsysName) | ternary (get $global $subsysName) dict | default dict -}}
+    {{- $global := dig "subsys" $subsysName dict ($ctx.Values.global | default dict) -}}
 
     {{- range $m := (list $global $local) -}}
       {{- if or (not $m) (not (kindIs "map" $m)) -}}
@@ -670,7 +668,7 @@ Parameter: a dict with two keys:
     {{- $local = dict -}}
   {{- end -}}
 
-  {{- $global := (dig "conf" $subsys "settings" "" $ctx.Values.global) -}}
+  {{- $global := (dig "subsys" $subsys "settings" "" $ctx.Values.global) -}}
   {{- if (not (kindIs "map" $global)) -}}
     {{- $global = dict -}}
   {{- end -}}

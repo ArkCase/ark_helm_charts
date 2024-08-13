@@ -13,7 +13,7 @@
     {{- fail (printf "You must supply a string value for the 'hostname' parameter (%s)" (kindOf $hostname)) -}}
   {{- end -}}
 
-  {{- $global := (include "arkcase.tools.get" (dict "ctx" $ctx "name" (printf "Values.global.conf.%s" $hostname)) | fromYaml) -}}
+  {{- $global := (include "arkcase.tools.get" (dict "ctx" $ctx "name" (printf "Values.global.subsys.%s" $hostname)) | fromYaml) -}}
   {{- $local := (include "arkcase.tools.get" (dict "ctx" $ctx "name" (printf "Values.configuration.%s" $hostname)) | fromYaml) -}}
 
   {{- $result := dict -}}

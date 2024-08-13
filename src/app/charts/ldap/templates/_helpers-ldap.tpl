@@ -30,7 +30,7 @@ result: "DC=some,DC=domain,DC=com"
     {{- fail (printf "The file '%s' did not contain the required server default information" $defaultsFile) -}}
   {{- end -}}
 
-  {{- $settings := (((($ctx.Values.global).conf).ldap).settings | default dict) -}}
+  {{- $settings := (((($ctx.Values.global).subsys).ldap).settings | default dict) -}}
   {{- if (not (kindIs "map" $settings)) -}}
     {{- $settings = dict -}}
   {{- end -}}

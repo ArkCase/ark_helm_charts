@@ -711,7 +711,7 @@ return either the value if correct, or the empty string if not.
 
   {{- $result := (include "arkcase.tools.get" (dict "ctx" $ctx "name" (printf "Values.global.%s" $value)) | fromYaml) -}}
   {{- if $debug -}}
-    {{- fail (dict "result" $result "global" (dict "conf" ($ctx.Values.global | default dict)) | toYaml | nindent 0) -}}
+    {{- fail (dict "result" $result "global" ($ctx.Values.global | default dict) | toYaml | nindent 0) -}}
   {{- end -}}
   {{- if .detailed -}}
     {{- $result | toYaml -}}
@@ -771,7 +771,7 @@ return either the value if correct, or the empty string if not.
     {{- end -}}
   {{- end -}}
   {{- if $debug -}}
-    {{- fail (dict "result" $result "searched" $searched "global" (dict "conf" ($ctx.Values.global | default dict)) "configuration" ($ctx.Values.configuration | default dict) | toYaml | nindent 0) -}}
+    {{- fail (dict "result" $result "searched" $searched "global" ($ctx.Values.global | default dict) "configuration" ($ctx.Values.configuration | default dict) | toYaml | nindent 0) -}}
   {{- end -}}
   {{- if .detailed -}}
     {{- $result | toYaml -}}
