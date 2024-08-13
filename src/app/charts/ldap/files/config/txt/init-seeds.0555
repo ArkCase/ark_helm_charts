@@ -467,27 +467,37 @@ def grant_ldap_admin_rights(principalId, principalData):
 
 	return True
 
+def split_groups(groups):
+	if not groups:
+		return []
+
+	if type(groups) != list:
+		groups = DN_SPLIT_RE.split(str(groups))
+
+	return list(filter(None, groups))
+
 def compile_memberships(memberships, memberId, memberData):
 	# No group memberships given
 	if KEY_GROUPS not in memberData:
 		return
 
-	if not memberData[KEY_GROUPS]:
+	groups = split_groups(memberData[KEY_GROUPS])
+	if not groups:
 		return
 
-	for groupId in memberData[KEY_GROUPS]:
+	for groupId in groups:
 		groupId = render_group_id(groupId)
 		if groupId not in memberships:
 			memberships[groupId] = set()
 		memberships[groupId].add(memberId)
 
 def create_group(groupId, groupData):
+	# Render the final group ID, applying prefixes and all that jazz
+	groupId = render_group_id(groupId)
+
 	if groupId.startswith("+"):
 		logging.info(f"The group ID [{groupId}] is not owned by ArkCase, skipping its creation")
 		return None
-
-	# Render the final group ID, applying prefixes and all that jazz
-	groupId = render_group_id(groupId)
 
 	# First: check to see if the group exists...
 	command = [ "group", "show", groupId ]
