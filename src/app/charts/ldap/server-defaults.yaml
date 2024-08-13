@@ -11,7 +11,7 @@ arkcase: &ldapArkcase
     listFilter: "(objectClass=${userClass})"
     searchFilter: "(&(objectClass=${userClass})(sAMAccountName={0}))"
     nameAttribute: "sAMAccountName"
-    membership: "(&(objectClass=${userClass})(memberOf={0}))"
+    membershipFilter: "(&(objectClass=${userClass})(memberOf={0}))"
     prefix: ""
 
   group: &ldapArkcaseGroup
@@ -20,7 +20,7 @@ arkcase: &ldapArkcase
     listFilter: "(objectClass=${groupClass})"
     searchFilter: "(&(objectClass=${groupClass})(cn={0}))"
     nameAttribute: "cn"
-    membership: "(&(objectClass=${groupClass})(member={0}))"
+    membershipFilter: "(&(objectClass=${groupClass})(member={0}))"
     prefix: ""
 
 portal:
