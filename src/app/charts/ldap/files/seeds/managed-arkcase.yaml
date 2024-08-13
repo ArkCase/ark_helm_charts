@@ -11,3 +11,7 @@ users:
   "@env:MANAGED_LDAP_ARKCASE_USERNAME":
     password: "@env:MANAGED_LDAP_ARKCASE_PASSWORD"
     administrator: true
+
+groups:
+  ARKCASE_ADMINISTRATOR:
+    groups: "@env:MANAGED_REPORTS_ADMIN_GROUPS"
