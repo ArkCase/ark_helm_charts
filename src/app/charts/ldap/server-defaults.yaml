@@ -21,6 +21,7 @@ arkcase: &ldapArkcase
     searchFilter: "(&(objectClass=${groupClass})(cn={0}))"
     nameAttribute: "cn"
     membershipFilter: "(&(objectClass=${groupClass})(member={0}))"
+    recursiveMembershipFilter: "(member:1.2.840.113556.1.4.1941:={0})"
     prefix: ""
 
 portal:
