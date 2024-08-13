@@ -4,15 +4,15 @@
 springConfigLdapProperties:
   ldapDirectoryConfig:
     foiaportal:
-      ldapUrl: "@{env:PORTAL_LDAP_URL}"
-      userDomain: "@{env:PORTAL_LDAP_DOMAIN}"
-      authUserDn: "@{env:PORTAL_LDAP_REALM}\\@{env:PORTAL_LDAP_USERNAME}"
-      authUserPassword: "@{env:PORTAL_LDAP_PASSWORD}"
-      base: "@{env:PORTAL_LDAP_BASE_DN},@{env:PORTAL_LDAP_ROOT_DN}"
-      userSearchBase: "@{env:PORTAL_LDAP_USER_BASE_DN}"
-      groupSearchBase: "@{env:PORTAL_LDAP_GROUP_BASE_DN}"
-      userPrefix: "@{env:PORTAL_LDAP_USER_PREFIX}"
-      groupPrefix: "@{env:PORTAL_LDAP_GROUP_PREFIX}"
+      ldapUrl: "@{PORTAL_LDAP_URL}"
+      userDomain: "@{PORTAL_LDAP_DOMAIN}"
+      authUserDn: "@{PORTAL_LDAP_REALM}\\@{PORTAL_LDAP_USERNAME}"
+      authUserPassword: "@{PORTAL_LDAP_PASSWORD}"
+      base: "@{PORTAL_LDAP_BASE_DN},@{PORTAL_LDAP_ROOT_DN,,}"
+      userSearchBase: "@{PORTAL_LDAP_USER_BASE_DN}"
+      groupSearchBase: "@{PORTAL_LDAP_GROUP_BASE_DN}"
+      userPrefix: "@{PORTAL_LDAP_USER_PREFIX}"
+      groupPrefix: "@{PORTAL_LDAP_GROUP_PREFIX}"
       userAttributes: cn,userAccountControl,sn,givenName,dn,distinguishedname,memberOf,sAMAccountName,userPrincipalName,uid,uidNumber,c,co,company,department,title,shadowMax,shadowLastChange,msDS-UserPasswordExpiryTimeComputed,modifyTimestamp,description,member
       syncPageSize: 500
       enableEditingLdapUsers: {{ $ldap.enableEdit }}
