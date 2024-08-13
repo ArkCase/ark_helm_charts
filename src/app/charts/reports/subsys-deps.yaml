@@ -43,7 +43,7 @@ settings:
       url: PENTAHO_SERVER_URL
       username: PENTAHO_USERNAME
       password: PENTAHO_PASSWORD
-    main-admin:
+    admin:
       url: PENTAHO_SERVER_ADMIN_URL
       username: ADMIN_USERNAME
       password: ADMIN_PASSWORD
@@ -54,7 +54,8 @@ settings:
       url: DEPL_URL
 
   core:
-    main-admin:
+    # TODO: Investigate if we can use a non-administrative user here
+    reports:
       url: ARKCASE_SERVER_URL
       username: ARKCASE_USERNAME
       password: ARKCASE_PASSWORD
