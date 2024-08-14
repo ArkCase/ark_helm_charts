@@ -198,6 +198,10 @@ spec:
                     permissions: "u=rwX,g=rwX,o="
                     flags: [ "recurse", "forced", "create", "changes" ]
                     targets: [ "$(HOME_DIR)", "$(TEMP_DIR)", "$(CONF_DIR)", "$(WARS_DIR)", "$(LOGS_DIR)", "$(FSRV_DIR)", "$(FOIA_DIR)" ]
+                  - ownership:
+                    permissions: "u=rwx,g=rwx,o="
+                    flags: [ "verbose", "forced", "create" ]
+                    targets: [ "$(CONF_DIR)/libraries/html2pdf_chromium.so" ]
           volumeMounts:
             - name: &warsVol "wars"
               mountPath: *warsDir
