@@ -175,7 +175,7 @@ while read ACCOUNT ; do
 	samba_tool user setpassword "${USERNAME}" --newpassword="${PASSWORD}" || fail "Failed to set the new password for the account ${ACCOUNT}: [${USERNAME}]/[sha256:${PASSWORD_SUM}]"
 	ok "Password set for ${USERNAME} (sha256:${PASSWORD_SUM})!"
 
-	doing "Removing the password expiration for the ${ACCOUNT}"
+	doing "Removing the password expiration for the ${ACCOUNT} account"
 	samba_tool user setexpiry "${USERNAME}" --noexpiry || fail "Failed to remove the password expiration for the account ${ACCOUNT}"
 	ok "Expiration removed!"
 

@@ -19,8 +19,8 @@ portal:
   groupName: "ARKCASE_PORTAL_USER@${PORTAL_LDAP_DOMAIN}"
   # authentication type, possible values (basic, external)
   authenticationType: "basic"
-  userId: "${PORTAL_LDAP_USERNAME}"
-  password: "${PORTAL_LDAP_PASSWORD}"
+  userId: "${PORTAL_ADMIN_USERNAME}@${PORTAL_LDAP_DOMAIN}"
+  password: "${PORTAL_ADMIN_PASSWORD}"
   # portal configuration type
   externalConfiguration: false
   authenticatedMode: {{ not $foia.disableAuth }}
@@ -28,7 +28,7 @@ portal:
   activemqUsername: "${ARKCASE_MQ_USERNAME}"
   activemqPassword: "${ARKCASE_MQ_PASSWORD}"
   serviceProvider:
-    directory.name: "foiaportal"
+    directory.name: "portal"
   keystoreFilename: "${JAVA_KEYSTORE}"
   keystorePassword: "${JAVA_KEYSTORE_PASS}"
   truststoreFilename: "${JAVA_TRUSTSTORE}"

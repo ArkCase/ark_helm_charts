@@ -3,7 +3,7 @@
   {{- $ldap := (include "arkcase.core.ldap" (dict "ctx" $ "server" "portal") | fromYaml) -}}
 springConfigLdapProperties:
   ldapDirectoryConfig:
-    foiaportal:
+    portal:
       ldapUrl: "@{PORTAL_LDAP_URL}"
       userDomain: "@{PORTAL_LDAP_DOMAIN}"
       authUserDn: "@{PORTAL_LDAP_REALM}\\@{PORTAL_LDAP_USERNAME}"

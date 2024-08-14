@@ -3,8 +3,10 @@ import argparse
 import hashlib
 import json
 import logging
-import re
 import os
+import random
+import re
+import string
 import subprocess
 import sys
 import yaml
@@ -317,13 +319,18 @@ def ensure_ou_exists(ou):
 		# Ooops ... something went wrong
 		fail(f"Failed to create the OU [{currentOu}]: {result}")
 
+def random_password():
+	return "".join(random.SystemRandom().choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(32))
+
 def set_user_password(userId, userData):
 	if KEY_PASSWORD in userData:
 		password = userData[KEY_PASSWORD]
 	else:
 		password = DEFAULT_PASSWORD
 
-	if not password:
+	if password and (password == "${random}"):
+		password = random_password()
+	elif not password:
 		# Use this value if there's no default password set, and
 		# the user doesn't have a password configured, either
 		password = f"${userId}$"
