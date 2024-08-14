@@ -53,14 +53,14 @@ result: "DC=some,DC=domain,DC=com"
 
     {{- $final := dict -}}
 
-    {{- /* First, compute the rootDn based on the domain */ -}}
-    {{- $final = set $final "domain" (pluck "domain" $set $def | compact | first) -}}
+    {{- /* Compute the domain */ -}}
+    {{- $final = set $final "domain" (pluck "domain" $set $settings $def | compact | first) -}}
 
     {{- /* Compute the realm based on the domain */ -}}
-    {{- $final = set $final "realm" (get $set "realm" | default (include "__arkcase.ldap.realm" $final.domain)) -}}
+    {{- $final = set $final "realm" (pluck "realm" $set $settings | compact | first | default (include "__arkcase.ldap.realm" $final.domain)) -}}
 
     {{- /* Compute the rootDn from the domain unless it's expressly given */ -}}
-    {{- $final = set $final "rootDn" (get $set "rootDn" | default (include "__arkcase.ldap.dc" $final.domain)) -}}
+    {{- $final = set $final "rootDn" (pluck "rootDn" $set $settings | compact | first | default (include "__arkcase.ldap.dc" $final.domain)) -}}
 
     {{- /* Continue to use this idiom moving forward */ -}}
     {{- $final = set $final "baseDn" (pluck "baseDn" $set $def | compact | first) -}}
