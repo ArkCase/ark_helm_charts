@@ -315,7 +315,7 @@ def ensure_ou_exists(ou):
 			continue
 
 		# Ooops ... something went wrong
-		fail(f"Failed to create the OU [{currentOu}] (rc={result}")
+		fail(f"Failed to create the OU [{currentOu}]: {result}")
 
 def set_user_password(userId, userData):
 	if KEY_PASSWORD in userData:
@@ -338,7 +338,7 @@ def set_user_password(userId, userData):
 
 	result = samba_tool(command)
 	if result.returncode != 0:
-		fail(f"Failed to set the password for '{userId}' (rc={result})")
+		fail(f"Failed to set the password for '{userId}': {result}")
 
 	if KEY_EXPIRATION_DAYS in userData:
 		expiration = userData[KEY_EXPIRATION_DAYS]
@@ -366,7 +366,7 @@ def set_user_password(userId, userData):
 
 	result = samba_tool(command)
 	if result.returncode != 0:
-		fail(f"Failed to set the password expiration for '{userId}' (rc={result})")
+		fail(f"Failed to set the password expiration for '{userId}': {result}")
 
 def create_user(userId, userData):
 	userId = render_user_id(userId)
@@ -413,7 +413,7 @@ def create_user(userId, userData):
 
 	result = samba_tool(command)
 	if result.returncode != 0:
-		fail(f"Failed to create the user '{userId}' (rc={result})")
+		fail(f"Failed to create the user '{userId}': {result}")
 
 	set_user_password(userId, userData)
 
@@ -467,21 +467,22 @@ def grant_ldap_admin_rights(principalId, principalData):
 
 	return True
 
-def split_groups(groups):
-	if not groups:
+def split_csv_values(values):
+	if not values:
 		return []
 
-	if type(groups) != list:
-		groups = DN_SPLIT_RE.split(str(groups))
+	if (type(values) != list) and (type(values) != set):
+		# Split values by comma, supporting escaped commas
+		values = DN_SPLIT_RE.split(str(values))
 
-	return list(filter(None, groups))
+	return set(filter(None, values))
 
 def compile_memberships(memberships, memberId, memberData):
 	# No group memberships given
 	if KEY_GROUPS not in memberData:
 		return
 
-	groups = split_groups(memberData[KEY_GROUPS])
+	groups = split_csv_values(memberData[KEY_GROUPS])
 	if not groups:
 		return
 
@@ -520,7 +521,7 @@ def create_group(groupId, groupData):
 
 	result = samba_tool(command)
 	if result.returncode != 0:
-		fail(f"Failed to create the group '{groupId}' (rc={result})")
+		fail(f"Failed to create the group '{groupId}': {result}")
 
 	grant_ldap_admin_rights(groupId, groupData)
 	return groupId
@@ -528,12 +529,29 @@ def create_group(groupId, groupData):
 def apply_memberships(groupId, members):
 	if not members:
 		return
-	logging.info(f"Applying group memberships for '{groupId}' = {members}")
-	command = [ "group", "addmembers", groupId, ",".join(members) ]
+
+	command = [ "group", "listmembers", groupId ]
 
 	result = samba_tool(command)
 	if result.returncode != 0:
-		fail(f"Failed to apply the memberships for group '{groupId}' (rc={result})")
+		fail(f"Failed to list the members for group {groupId}: {result}")
+
+	# We have the list of members in stdout, so turn it into a list
+	current_members = split_csv_values(result.stdout.decode("UTF-8").splitlines())
+	if current_members:
+		# Remove potentially duplicate members
+		members = members.difference(current_members)
+
+		# If there are no new members to add, ignore it
+		if not members:
+			return
+
+	logging.info(f"Applying group memberships for '{groupId}' = {members}")
+	command = [ "group", "addmembers", groupId, ",".join(sorted(members)) ]
+
+	result = samba_tool(command)
+	if result.returncode != 0:
+		fail(f"Failed to apply the memberships for group '{groupId}': {result}")
 
 serverInfo = {}
 if KEY_SERVER_INFO in data:
@@ -669,7 +687,7 @@ try:
 
 	# 3) apply the memberships
 	for groupId, members in memberships.items():
-		apply_memberships(groupId, sorted(members))
+		apply_memberships(groupId, set(filter(None, members)))
 
 	# Done!
 	sys.exit(0)
