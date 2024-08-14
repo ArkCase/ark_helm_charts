@@ -77,8 +77,12 @@ spec:
           volumeMounts:
             {{- include "arkcase.subsystem-access.volumeMount" $ | nindent 12 }}
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
-            - name: "init"
+            - name: &initVol "init"
               mountPath: "/opt/app-root/src/postgresql-init"
+              subPath: "init.d"
+            - name: *initVol
+              mountPath: "/opt/app-root/src/postgresql-start"
+              subPath: "boot.d"
             - name: *dataVol
               mountPath: "/var/lib/pgsql/data"
       volumes:

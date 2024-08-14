@@ -20,9 +20,11 @@
     - name: INIT_DB_CONF
       value: "/dbinit-config.yaml"
     - name: INIT_DB_STORE
-      value: &initDbStorePath "/dbinit"
+      value: "/scripts/init.d"
+    - name: BOOT_DB_STORE
+      value: "/scripts/boot.d"
     - name: INIT_DB_SECRETS
-      value: &dbInitSecretsMount "/dbsecrets"
+      value: &dbInitSecretsMount "/secrets"
     - name: INIT_DB_SHELL
       value: {{ $shell | quote }}
     {{- if $scriptSources }}
@@ -33,6 +35,6 @@
     # This volume mount is required b/c this is where we'll put the rendered initialization scripts
     # that the DB container is expected to execute during startup
     - name: {{  $volume | quote  }}
-      mountPath: *initDbStorePath
+      mountPath: "/scripts"
     {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ctx "mountPath" "/dbinit-config.yaml") | nindent 4 }}
 {{- end -}}
