@@ -659,17 +659,33 @@
     {{- $args = merge $args ($params.ctxIsRoot | ternary dict (pick $.params "name" "mountPath")) -}}
   {{- end -}}
 
+  {{- /* By default, assume we'll used the cached value */ -}}
+  {{- $useCached := true -}}
+
+  {{- if $supportsKey -}}
+    {{- if and (eq "env" $.type) (or (hasKey $.params "name") (hasKey $.params "optional")) -}}
+      {{- $useCached = false -}}
+    {{- end -}}
+    {{- if and (eq "volumeMount" $.type) (hasKey $.params "mountPath") -}}
+      {{- $useCached = false -}}
+    {{- end -}}
+  {{- else -}}
+    {{- if (hasKey $.params "optional") -}}
+      {{- $useCached = false -}}
+    {{- end -}}
+  {{- end -}}
+
   {{- $result := list -}}
   {{- range $subsys := ($filter.subsys | ternary (list $params.subsys) (keys $depsData | sortAlpha)) -}}
     {{- $args = set $args "subsys" $subsys -}}
     {{- $subsysData := (get $depsData $subsys | default dict) -}}
     {{- range $conn := ($filter.conn | ternary (list $params.conn) (keys $subsysData | sortAlpha)) -}}
       {{- $args = set $args "conn" $conn -}}
-      {{- $connData := (get $subsysData $conn | default dict) -}}
+      {{- $connData := ($useCached | ternary (get $subsysData $conn | default dict) dict) -}}
       {{- if $supportsKey -}}
         {{- range $key := ($filter.key | ternary (list $params.key) (keys $connData | sortAlpha)) -}}
           {{- $args = set $args "key" $key -}}
-          {{- $keyData := (get $connData $key | default dict) -}}
+          {{- $keyData := ($useCached | ternary (get $connData $key | default dict) dict) -}}
           {{- if not $keyData -}}
             {{- $keyParams := (include "__arkcase.subsystem-access.extract-params-mapped" $args | fromYaml) -}}
             {{- $keyData = (include $renderTemplate $keyParams | fromYaml) -}}
