@@ -53,10 +53,11 @@ spec:
           {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
           env:
             {{- include "arkcase.acme.env" $ | nindent 12 }}
+            {{- include "arkcase.alfresco.service.env" $ | nindent 12 }}
             - name: REPO_SCHEME
               value: "https"
             - name: REPO_HOST
-              value: {{ include "arkcase.alfresco.service" (dict "ctx" $ "name" "main") | quote }}
+              value: $(SERVICE_ALFRESCO_MAIN)
             - name: REPO_PORT
               value: "8443"
             - name: REPO_CONTEXT

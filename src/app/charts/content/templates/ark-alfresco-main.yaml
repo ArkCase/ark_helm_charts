@@ -78,6 +78,9 @@ spec:
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
+            {{- include "arkcase.alfresco.service.env" $ | nindent 12 }}
+            - name: ALFRESCO_ADMIN_PASSWORD_VAR
+              value: "CONTENT_ADMIN_PASSWORD"
             - name: &key METADATA_KEYSTORE_PASSWORD
               valueFrom:
                 secretKeyRef:
@@ -110,28 +113,28 @@ spec:
                 -Ddb.driver={{ $db.jdbc.driver | squote }}
                 -Ddb.url={{ $db.jdbc.url | squote }}
                 -Dsolr.secureComms=https
-                -Dsolr.host={{ include "arkcase.alfresco.service" (dict "ctx" $ "name" "search") | quote }}
+                -Dsolr.host=$(SERVICE_ALFRESCO_SEARCH)
                 -Dsolr.port.ssl=8983
                 -Dsolr.base.url=/solr
                 -Dsolr.http.connection.timeout=1000
                 -Dindex.subsystem.name={{ $indexing | ternary "solr6" "noindex" }}
-                -Dshare.host={{ include "arkcase.alfresco.service" (dict "ctx" $ "name" "share") | quote }}
+                -Dshare.host=$(SERVICE_ALFRESCO_SHARE)
                 -Dshare.port=8443
                 -Dshare.scheme=https
-                -Dalfresco.host={{ $content.url.hostname | quote }}
+                -Dalfresco.host=$(SERVICE_ALFRESCO_MAIN)
                 -Dalfresco.port=8443
                 -Dalfresco.scheme=https
-                -Daos.baseUrlOverwrite={{ printf "%s/aos" $content.url.baseUrl | quote }}
+                -Daos.baseUrlOverwrite="https://$(SERVICE_ALFRESCO_MAIN):8443/aos"
                 -Dopencmis.server.override=true
-                -Dopencmis.server.value={{ printf "%s/api" $content.url.baseUrl | quote }}
-                -Dmessaging.broker.url="failover:(nio+ssl://{{- include "arkcase.alfresco.service" (dict "ctx" $ "name" "activemq") -}}:61616)?timeout=3000&jms.useCompression=true"
+                -Dopencmis.server.value="https://$(SERVICE_ALFRESCO_MAIN):8443/api"
+                -Dmessaging.broker.url="failover:(nio+ssl://$(SERVICE_ALFRESCO_ACTIVEMQ):61616)?timeout=3000&jms.useCompression=true"
                 -Ddeployment.method=HELM_CHART
                 -Dcsrf.filter.enabled=false
-                -DlocalTransform.core-aio.url=https://{{- include "arkcase.alfresco.service" (dict "ctx" $ "name" "xform-core-aio") -}}:8090/
+                -DlocalTransform.core-aio.url=https://$(SERVICE_ALFRESCO_XFORM_CORE_AIO):8090/
               {{- if (include "arkcase.enterprise" $) }}
-                -Dsfs.url=https://{{- include "arkcase.alfresco.service" (dict "ctx" $ "name" "sfs") -}}:8099/
+                -Dsfs.url=https://$(SERVICE_ALFRESCO_SFS):8099/
                 -Dtransform.service.enabled=true
-                -Dtransform.service.url=https://{{- include "arkcase.alfresco.service" (dict "ctx" $ "name" "xform-router") -}}:8095
+                -Dtransform.service.url=https://$(SERVICE_ALFRESCO_XFORM_ROUTER):8095
                 -Ddsync.service.uris=https://localhost:9090/alfresco
               {{- end }}
           {{- with (include "arkcase.values" (dict "ctx" $ "base" "command") | fromYaml) }}
@@ -149,7 +152,7 @@ spec:
             - name: *initVol
               mountPath: *initDir
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/tomcat-live") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/tomcat/shared/classes/alfresco-global.properties") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/tomcat/shared/classes/alfresco-global.properties.tpl") | nindent 12 }}
             {{- if and (eq "alfresco" $content.dialect) (include "arkcase.toBoolean" $content.settings.sync) }}
               {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/tomcat/shared/classes/alfresco/extension/audit/alfresco-audit-arkcase-extractors.xml") | nindent 12 }}
             {{- end }}

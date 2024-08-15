@@ -15,10 +15,25 @@
   {{- $secretKey -}}
 {{- end -}}
 
-{{- define "arkcase.alfresco.service" -}}
-  {{- $ctx := .ctx -}}
-  {{- $name := .name -}}
-  {{- printf "%s-%s" (include "common.name" $ctx) $name -}}
+{{- define "arkcase.alfresco.service.env" -}}
+  {{- $ctx := $ -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "The parameter must be the root context" -}}
+  {{- end -}}
+
+  {{- $result := list -}}
+  {{- $common := (include "common.name" $ctx) -}}
+  {{- range $part := (list "main" "share" "activemq" "search" "sfs" "xform-core-aio" "xform-router") -}}
+    {{- $result = append $result (
+        dict
+          "name" (printf "SERVICE_ALFRESCO_%s" ($part | replace "-" "_" | replace "." "_" | upper))
+          "value" (printf "%s-%s" $common $part)
+      )
+    -}}
+  {{- end -}}
+  {{- if $result -}}
+    {{- $result | toYaml -}}
+  {{- end -}}
 {{- end -}}
 
 {{- define "arkcase.content.info.dialect" -}}

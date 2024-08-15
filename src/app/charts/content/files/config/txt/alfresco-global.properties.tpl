@@ -53,9 +53,10 @@ synchronization.syncWhenMissingPeopleLogIn=true
 ldap.authentication.active=true
 ldap.authentication.allowGuestLogin=false
 ldap.authentication.authenticateFTP=false
-ldap.authentication.defaultAdministratorUserNames=
+ldap.authentication.defaultAdministratorUserNames=${CONTENT_ADMIN_USERNAME}
 ldap.authentication.escapeCommasInBind=false
 ldap.authentication.escapeCommasInUid=false
+ldap.authentication.userNameFormat=%s@${CONTENT_LDAP_DOMAIN}
 ldap.authentication.java.naming.factory.initial=com.sun.jndi.ldap.LdapCtxFactory
 ldap.authentication.java.naming.read.timeout=0
 ldap.authentication.java.naming.security.authentication=simple
@@ -75,13 +76,13 @@ ldap.synchronization.userFirstNameAttributeName=givenName
 ldap.synchronization.userLastNameAttributeName=sn
 ldap.synchronization.userOrganizationalIdAttributeName=o
 ldap.synchronization.java.naming.security.authentication=simple
-ldap.synchronization.java.naming.security.principal=${CONTENT_LDAP_USERNAME}
+ldap.synchronization.java.naming.security.principal=${CONTENT_LDAP_REALM}\\${CONTENT_LDAP_USERNAME}
 ldap.synchronization.java.naming.security.credentials=${CONTENT_LDAP_PASSWORD}
 
 #################################################################
 # For Active Directory / Samba
 #################################################################
-authentication.chain=external1:external,ldap1:ldap,alfrescoNtlm1:alfrescoNtlm
+authentication.chain=external1:external,ldap1:ldap-ad,alfrescoNtlm1:alfrescoNtlm
 
 ldap.synchronization.groupDifferentialQuery=(&(objectclass\=group)(!(whenChanged<\={0})))
 ldap.synchronization.groupQuery=objectClass\=group
@@ -91,6 +92,9 @@ ldap.synchronization.personQuery=objectClass\=user
 ldap.synchronization.personType=user
 ldap.synchronization.timestampFormat=yyyyMMddHHmmss'.0Z'
 ldap.synchronization.userIdAttributeName=samAccountName
+ldap.synchronization.userSearchBase=${CONTENT_LDAP_USER_BASE_DN},${CONTENT_LDAP_BASE_DN},${CONTENT_LDAP_ROOT_DN}
+ldap.synchronization.groupSearchBase=${CONTENT_LDAP_GROUP_BASE_DN},${CONTENT_LDAP_BASE_DN},${CONTENT_LDAP_ROOT_DN}
+
 
 #################################################################
 # Remove unneeded Alfresco activity
