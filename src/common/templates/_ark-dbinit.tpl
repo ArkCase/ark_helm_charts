@@ -308,9 +308,11 @@ that checks the boot order (remember to |bool the outcome!)
     - name: INIT_DB_CONF
       value: |- {{- $yaml.config | toYaml | nindent 8 }}
     - name: INIT_DB_STORE
-      value: &dbInitStoreMount "/dbinit"
+      value: "/scripts/init.d"
+    - name: BOOT_DB_STORE
+      value: "/scripts/boot.d"
     - name: INIT_DB_SECRETS
-      value: &dbInitSecretsMount "/dbsecrets"
+      value: &dbInitSecretsMount "/secrets"
     - name: INIT_DB_SHELL
       value: {{ $shell | quote }}
     {{- if $scriptSources }}
@@ -321,7 +323,7 @@ that checks the boot order (remember to |bool the outcome!)
     # This volume mount is required b/c this is where we'll put the rendered initialization scripts
     # that the DB container is expected to execute during startup
     - name: {{  $volume | quote  }}
-      mountPath: *dbInitStoreMount
+      mountPath: "/scripts"
       {{- if $yaml.secret }}
     - name: {{ (printf "%s-secret" $yaml.secret.name) | quote }}
       mountPath: *dbInitSecretsMount
