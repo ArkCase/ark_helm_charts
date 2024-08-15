@@ -32,15 +32,13 @@ spec:
         {{- include "arkcase.subsystem-access.env" (dict "ctx" $ "conn" "admin" "key" "username" "name" "ADMIN_USERNAME") | nindent 8 }}
         {{- include "arkcase.subsystem-access.env" (dict "ctx" $ "conn" "admin" "key" "password" "name" "ADMIN_PASSWORD") | nindent 8 }}
         {{- include "arkcase.subsystem-access.env" (dict "ctx" $ "conn" "main" "key" "realm" "name" "ADMIN_REALM") | nindent 8 }}
-        {{- include "arkcase.subsystem-access.env" (dict "ctx" $ "conn" "main" "key" "baseDn" "name" "BASE_DN") | nindent 8 }}
+        {{- include "arkcase.subsystem-access.env" (dict "ctx" $ "conn" "main" "key" "rootDn" "name" "ROOT_DN") | nindent 8 }}
         - name: SERVICE_NAME
           value: {{ include "arkcase.service.name" $ | quote }}
-        - name: ADMIN_USER
-          value: "$(REALM)\\$(ADMIN_USERNAME)"
         - name: SCRIPT
           value: |-
             set -xeuo pipefail
             /usr/local/bin/acme-init
-            /usr/bin/timeout 3 /usr/bin/ldapsearch -H "ldaps://$(SERVICE_NAME)" -D "$(ADMIN_USERNAME)" -y <(echo -n "$(ADMIN_PASSWORD)") -s one -b "$(BASE_DN)" "(objectClass=organizationalUnit)" dn
+            /usr/bin/timeout 3 /usr/bin/ldapsearch -H "ldaps://$(SERVICE_NAME)" -D "$(ADMIN_REALM)\\$(ADMIN_USERNAME)" -y <(echo -n "$(ADMIN_PASSWORD)") -s base -b "$(ROOT_DN)" "(objectClass=*)" dn
   restartPolicy: Never
 {{- end }}
