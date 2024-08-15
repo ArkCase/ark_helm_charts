@@ -30,6 +30,7 @@ spec:
       args: [ "SCRIPT" ]
       env: {{- include "arkcase.tools.baseEnv" $ | nindent 8 }}
         {{- include "arkcase.subsystem-access.env" (dict "ctx" $ "conn" "admin" "key" "username" "name" "ADMIN_USERNAME") | nindent 8 }}
+        {{- include "arkcase.subsystem-access.env" (dict "ctx" $ "conn" "admin" "key" "password" "name" "ADMIN_PASSWORD") | nindent 8 }}
         {{- include "arkcase.subsystem-access.env" (dict "ctx" $ "conn" "main" "key" "realm" "name" "ADMIN_REALM") | nindent 8 }}
         {{- include "arkcase.subsystem-access.env" (dict "ctx" $ "conn" "main" "key" "baseDn" "name" "BASE_DN") | nindent 8 }}
         - name: SERVICE_NAME
@@ -40,10 +41,6 @@ spec:
           value: |-
             set -xeuo pipefail
             /usr/local/bin/acme-init
-            /usr/bin/timeout 3 /usr/bin/ldapsearch -H "ldaps://$(SERVICE_NAME)" -D "$(ADMIN_USERNAME)" -y "/.password" -s one -b "$(BASE_DN)" "(objectClass=organizationalUnit)" dn
-      volumeMounts:
-        {{- include "arkcase.subsystem-access.volumeMount" (dict "ctx" $ "conn" "admin" "key" "password" "mountPath" "/.password") | nindent 8 }}
-  volumes:
-    {{- include "arkcase.subsystem-access.volumeMount" (dict "ctx" $ "conn" "admin") | nindent 4 }}
+            /usr/bin/timeout 3 /usr/bin/ldapsearch -H "ldaps://$(SERVICE_NAME)" -D "$(ADMIN_USERNAME)" -y <(echo -n "$(ADMIN_PASSWORD)") -s one -b "$(BASE_DN)" "(objectClass=organizationalUnit)" dn
   restartPolicy: Never
 {{- end }}
