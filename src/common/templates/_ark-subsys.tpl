@@ -476,7 +476,7 @@ Parameter: the root context (i.e. "." or "$")
     {{- fail "Incorrect context given - either submit the root context as the only parameter, or a 'ctx' parameter pointing to it" -}}
   {{- end -}}
 
-  {{- if (include "arkcase.subsystem.enabledOrExternal" $ctx) }}
+  {{- if (include "arkcase.subsystem.enabled" $ctx) }}
     {{- /* Gather the global ports */ -}}
     {{- $service := pick $ctx.Values.service "ports" "type" "probes" "canDebug" }}
     {{- $ports := list }}
