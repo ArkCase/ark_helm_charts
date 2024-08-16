@@ -79,6 +79,15 @@ spec:
             {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
             {{- include "arkcase.alfresco.service.env" $ | nindent 12 }}
+            - name: ALFRESCO_JDBC_DRIVER
+              value: {{ $db.jdbc.driver | quote }}
+            - name: ALFRESCO_JDBC_URL
+              value: {{ $db.jdbc.url | quote }}
+            - name: ALFRESCO_PASSWORD_RESET
+              value: "true"
+            - name: ALFRESCO_ADMIN_USERNAME
+              value: "$(CONTENT_ADMIN_USERNAME)"
+            # The lack of $() is correct - this is used for bash indirection
             - name: ALFRESCO_ADMIN_PASSWORD_VAR
               value: "CONTENT_ADMIN_PASSWORD"
             - name: &key METADATA_KEYSTORE_PASSWORD
@@ -109,19 +118,19 @@ spec:
               value: >-
                 -XX:MinRAMPercentage=50
                 -XX:MaxRAMPercentage=80
-                -Ddir.root=$(DATA_DIR)
-                -Ddb.driver={{ $db.jdbc.driver | squote }}
-                -Ddb.url={{ $db.jdbc.url | squote }}
+                -Ddir.root="$(DATA_DIR)"
+                -Ddb.driver="$(ALFRESCO_JDBC_DRIVER)"
+                -Ddb.url="$(ALFRESCO_JDBC_URL)"
                 -Dsolr.secureComms=https
-                -Dsolr.host=$(SERVICE_ALFRESCO_SEARCH)
+                -Dsolr.host="$(SERVICE_ALFRESCO_SEARCH)"
                 -Dsolr.port.ssl=8983
                 -Dsolr.base.url=/solr
                 -Dsolr.http.connection.timeout=1000
                 -Dindex.subsystem.name={{ $indexing | ternary "solr6" "noindex" }}
-                -Dshare.host=$(SERVICE_ALFRESCO_SHARE)
+                -Dshare.host="$(SERVICE_ALFRESCO_SHARE)"
                 -Dshare.port=8443
                 -Dshare.scheme=https
-                -Dalfresco.host=$(SERVICE_ALFRESCO_MAIN)
+                -Dalfresco.host="$(SERVICE_ALFRESCO_MAIN)"
                 -Dalfresco.port=8443
                 -Dalfresco.scheme=https
                 -Daos.baseUrlOverwrite="https://$(SERVICE_ALFRESCO_MAIN):8443/aos"
@@ -130,16 +139,13 @@ spec:
                 -Dmessaging.broker.url="failover:(nio+ssl://$(SERVICE_ALFRESCO_ACTIVEMQ):61616)?timeout=3000&jms.useCompression=true"
                 -Ddeployment.method=HELM_CHART
                 -Dcsrf.filter.enabled=false
-                -DlocalTransform.core-aio.url=https://$(SERVICE_ALFRESCO_XFORM_CORE_AIO):8090/
+                -DlocalTransform.core-aio.url="https://$(SERVICE_ALFRESCO_XFORM_CORE_AIO):8090/"
               {{- if (include "arkcase.enterprise" $) }}
-                -Dsfs.url=https://$(SERVICE_ALFRESCO_SFS):8099/
+                -Dsfs.url="https://$(SERVICE_ALFRESCO_SFS):8099/"
                 -Dtransform.service.enabled=true
-                -Dtransform.service.url=https://$(SERVICE_ALFRESCO_XFORM_ROUTER):8095
+                -Dtransform.service.url="https://$(SERVICE_ALFRESCO_XFORM_ROUTER):8095"
                 -Ddsync.service.uris=https://localhost:9090/alfresco
               {{- end }}
-          {{- with (include "arkcase.values" (dict "ctx" $ "base" "command") | fromYaml) }}
-          command: {{ toJson .value }}
-          {{- end }}
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" $partName) | nindent 12 }}
           volumeMounts:

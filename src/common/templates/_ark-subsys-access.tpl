@@ -277,7 +277,7 @@
       {{- /* Add the shared mappings, if desired, without overwriting */ -}}
       {{- /* We don't sanitize the shared mappings b/c they were already sanitized before we were called */ -}} 
       {{- $mappings = (merge $mappings $sharedMappings) -}}
-   
+
       {{- if $mappings -}}
         {{- $result = set $result "mappings" $mappings -}}
       {{- end -}}
@@ -720,4 +720,44 @@
 
 {{- define "arkcase.subsystem-access.volume" -}}
   {{- include "__arkcase.subsystem-access.interface" (dict "params" $ "type" "volume") -}}
+{{- end -}}
+
+{{- define "__arkcase.subsystem-access.urlParts" -}}
+  {{- $url := $.url -}}
+  {{- if $url -}}
+    {{- $b64 := ($.b64 | default false) -}}
+
+    {{- /* If it wasn't a URL object, parse it! */ -}}
+    {{- if (kindIs "string" $url) -}}
+      {{- $url = (include "arkcase.tools.parseUrl" $url | fromYaml) -}}
+    {{- end -}}
+
+    {{- /* Copy out the keys, with possible alternate names */ -}}
+    {{- $result := dict -}}
+    {{- range $key, $name := (dict "baseUrl" "url" "scheme" "" "hostname" "host" "port" "" "path" "") -}}
+
+      {{- /* Make sure it's a string! */ -}}
+      {{- $value := (get $url $key | default "") -}}
+      {{- $value = (kindIs "string" $value) | ternary $value ($value | toString | atoi | toString) -}}
+
+      {{- /* Apply b64enc if necessary */ -}}
+      {{- $value = (empty $b64) | ternary $value ($value | b64enc) -}}
+
+      {{- /* Store the final value! */ -}}
+      {{- $result = set $result ($name | default $key) $value -}}
+    {{- end -}}
+
+    {{- /* If there's no result, we output nothing */ -}}
+    {{- if $result -}}
+      {{- $result | toYaml -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+
+{{- define "arkcase.subsystem-access.urlParts" -}}
+  {{- include "__arkcase.subsystem-access.urlParts" (dict "url" $ "b64" false) -}}
+{{- end -}}
+
+{{- define "arkcase.subsystem-access.urlParts.base64" -}}
+  {{- include "__arkcase.subsystem-access.urlParts" (dict "url" $ "b64" true) -}}
 {{- end -}}
