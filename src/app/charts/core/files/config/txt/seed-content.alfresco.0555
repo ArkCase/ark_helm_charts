@@ -46,6 +46,35 @@ def to_boolean(v):
 		return ("true" == v.lower())
 	return True if v else False
 
+def resolve_value(v, default = None):
+	if v:
+		# If it's of the form @file:/..., then read the contents from that file
+		if v.startswith("@file:"):
+			# read the contents of the file, return the default if it can't be read
+			p = os.path.expandvars(v[6:])
+			try:
+				with open(p, "rt") as f:
+					v = f.read().strip()
+			except FileNotFoundError:
+				logging.error(f"The file [{p}] could not be found (from [{v}])")
+				v = None
+			except Exception as e:
+				fail(f"The file [{p}] could not be read (from [{v}]): {e}")
+
+		# If it's of the form @env:ENVVAR then read the contents from that envvar
+		elif v.startswith("@env:"):
+			# read the contents of the envvar, return the default if it doesn't exist
+			try:
+				v = os.environ[v[5:]]
+			except KeyError:
+				v = None
+
+	# Otherwise, use the value verbatim
+	if v is None:
+		return default
+
+	return v
+
 if args.config:
 	# If the parameter is given, use it
 	source_file = args.config
@@ -172,6 +201,8 @@ def login():
 	return session
 
 def add_administrator(session, name, group, required):
+
+	name = resolve_value(name)
 
 	required = to_boolean(required)
 
@@ -350,6 +381,7 @@ def create_categories(session, site, root, contents):
 def grant_group_access(session, site, admin_role, groups):
 	logging.info(f"\tGranting access to site [{site}]")
 	for group, role in groups.items():
+		group = resolve_value(group)
 		full_group_name = f"GROUP_{urllib.parse.quote(group, safe='')}"
 		rsp = session.get(f"{CONTENT}/api/-default-/public/alfresco/versions/1/groups/{full_group_name}")
 		if rsp.status_code >= 400:
@@ -387,7 +419,7 @@ if "recordsManagement" in data:
 		fail("The configuration data is malformed - the 'recordsManagement' value must be a map")
 
 	if "site" in rmConf:
-		rmSite = str(rmConf["site"])
+		rmSite = resolve_value(str(rmConf["site"]))
 
 	if "enabled" in rmConf:
 		rmEnabled = to_boolean(rmConf["enabled"])
@@ -445,7 +477,7 @@ try:
 	session.headers["Accept"] = "*/*"
 
 	for name, site in sites.items():
-		name = name.strip()
+		name = resolve_value(name.strip())
 		if not name:
 			fail("The configuration data is malformed - there is a site with an empty name")
 

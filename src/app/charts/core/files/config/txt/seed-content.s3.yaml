@@ -9,7 +9,7 @@ defaults:
 buckets:
 
   # Key = bucket name, value = bucket configuration
-  arkcase:
+  "@env:ARKCASE_CONTENT_BUCKET":
     # If acl is not given, the default value will be "private"
     # Must be one of private, public-read, public-read-write, authenticated-read
     acl: "private"

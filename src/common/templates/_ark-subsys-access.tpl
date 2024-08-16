@@ -561,6 +561,8 @@
           {{- $env := $connPropValue.env -}}
           {{- if (kindIs "string" $env) -}}
             {{- $p2 = set $p2 "name" $env -}}
+          {{- else -}}
+            {{- $p2 = merge $env $p2 -}}
           {{- end -}}
           {{- $connEnv = set $connEnv $connProp (include "__arkcase.subsystem-access.deps-compute.env" (merge $p2 $computeParams) | fromYaml) -}}
         {{- end -}}
@@ -570,6 +572,8 @@
           {{- $path := $connPropValue.path -}}
           {{- if (kindIs "string" $path) -}}
             {{- $p2 = set $p2 "mountPath" $path -}}
+          {{- else -}}
+            {{- $p2 = merge $path $p2 -}}
           {{- end -}}
           {{- $connMnt = set $connMnt $connProp (include "__arkcase.subsystem-access.deps-compute.volumeMount" (merge $p2 $computeParams) | fromYaml) -}}
         {{- end -}}

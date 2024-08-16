@@ -83,7 +83,7 @@ if [ -n "${MINIO_USER}" ] && [ -n "${MINIO_PASSWORD}" ] ; then
 	say "Creating the service account with username [${MINIO_USER}] (policy = ${MINIO_POLICY})..."
 	mcli admin user add "${INSTANCE}" < <(echo -en "${MINIO_USER}\n${MINIO_PASSWORD}") || fail "Failed to create the user account for [${MINIO_USER}]..."
 
-	POLICY_ATTACHED="$(mcli admin policy entities local --user "${MINIO_USER}" --json | jq ".result.userMappings[].policies[] | select(. == \"${MINIO_POLICY}\")")"
+	POLICY_ATTACHED="$(mcli admin policy entities local --user "${MINIO_USER}" --json | jq -r ".result?.userMappings[]?.policies[]? | select(. == \"${MINIO_POLICY}\")")"
 
 	# If the policy isn't attached, attach it
 	[ -n "${POLICY_ATTACHED}" ] || \

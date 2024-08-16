@@ -2,7 +2,7 @@
 admins:
   users:
     # Make the arkcase admin also an Alfresco admin, unless they don't exist
-    arkcase-admin: false
+    "@env:ARKCASE_ADMIN_USERNAME": false
   # Don't do this by default, as we don't necessarily want all ArkCase admins to also be Alfresco admins
   # groups:
   #   ARKCASE_ADMINISTRATOR: false
@@ -14,7 +14,7 @@ recordsManagement:
   #
   # The name of the RM site (must be described below, if not given, "rm" will be used)
   #
-  site: "rm"
+  site: "@env:ARKCASE_CONTENT_RM"
 
   #
   # A quick switch to enable/disable RM site creation (defaults to true if not given). If this
@@ -32,7 +32,7 @@ sites:
   # which will be created. As such, it must comply with Alfresco's
   # site naming restrictions (^[0-9a-zA-Z-]{1,72}$)
   #
-  acm:
+  "@env:ARKCASE_CONTENT_SITE":
     #
     # The metadata to apply to the site upon creation
     #
@@ -86,7 +86,7 @@ sites:
   # slightly differently to regular sites. Otherwise, its definition
   # identical
   #
-  rm:
+  "@env:ARKCASE_CONTENT_RM":
     #
     # The metadata to apply to the site upon creation
     #

@@ -50,6 +50,35 @@ def to_boolean(v):
 		return ("true" == v.lower())
 	return True if v else False
 
+def resolve_value(v, default = None):
+	if v:
+		# If it's of the form @file:/..., then read the contents from that file
+		if v.startswith("@file:"):
+			# read the contents of the file, return the default if it can't be read
+			p = os.path.expandvars(v[6:])
+			try:
+				with open(p, "rt") as f:
+					v = f.read().strip()
+			except FileNotFoundError:
+				logging.error(f"The file [{p}] could not be found (from [{v}])")
+				v = None
+			except Exception as e:
+				fail(f"The file [{p}] could not be read (from [{v}]): {e}")
+
+		# If it's of the form @env:ENVVAR then read the contents from that envvar
+		elif v.startswith("@env:"):
+			# read the contents of the envvar, return the default if it doesn't exist
+			try:
+				v = os.environ[v[5:]]
+			except KeyError:
+				v = None
+
+	# Otherwise, use the value verbatim
+	if v is None:
+		return default
+
+	return v
+
 def aws(*args):
 	cmd = [ "aws" ] + list(args) + ["--endpoint-url", CONTENT]
 	if DEBUG:
@@ -208,7 +237,7 @@ try:
 		if type(config) != dict:
 			fail(f"The configuration data is malformed - the value 'buckets.{name}' must be a dict")
 
-		name = name.strip()
+		name = resolve_value(name.strip())
 		if not name:
 			fail("The configuration data is malformed - there is a bucket with an empty name")
 
