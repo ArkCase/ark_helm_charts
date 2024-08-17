@@ -599,7 +599,7 @@ Parse a volume declaration and return a map that contains the following (possibl
     dict
       "ctx" $ctx
       "template" "__arkcase.persistence.buildVolume.compute"
-      "masterKey" $volumeName
+      "key" $volumeName
       "params" (set $ "name" $name)
   -}}
   {{- include "__arkcase.tools.getCachedValue" $args -}}

@@ -11,17 +11,18 @@
 configuration:
   # We swap the default out to "s3"
   dialect: "s3"
+
   alfresco:
-    # Turn indexing on or off
-    indexing: true
+    # Turn indexing off by default
+    indexing: false
 
 resources:
   default:
     activemq: "1Gi"
-    main: "4Gi,*-2"
-    search: "2Gi,*-1"
+    main: "4Gi"
+    search: "2Gi"
     sfs: "512Mi"
-    share: "2Gi,*-2"
+    share: "2Gi"
     xform-core-aio: "1536Mi"
     xform-router: "1Gi"
 

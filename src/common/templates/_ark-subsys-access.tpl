@@ -386,7 +386,7 @@
     dict
       "ctx" $ctx
       "template" "__arkcase.subsystem-access.conf.compute"
-      "masterKey" (printf "%s-%s" $params.release $params.subsys)
+      "key" (printf "%s-%s" $params.release $params.subsys)
       "params" (merge (dict "ctx" $ctx) $params)
   -}}
   {{- include "__arkcase.tools.getCachedValue" $args -}}
@@ -601,7 +601,7 @@
     dict
       "ctx" $
       "template" "__arkcase.subsystem-access.deps-compute"
-      "masterKey" $ctx.Release.Name
+      "key" $ctx.Release.Name
   -}}
   {{- include "__arkcase.tools.getCachedValue" $args -}}
 {{- end -}}

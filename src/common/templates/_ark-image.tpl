@@ -506,7 +506,7 @@ Fetch and compute if necessary the image information for the named image
     dict
       "ctx" $ctx
       "template" "__arkcase.image.info.compute"
-      "masterKey" (printf "%s-%s" (include "common.fullname" $ctx) $name)
+      "key" (printf "%s-%s" (include "common.fullname" $ctx) $name)
       "params" (
         dict
           "ctx" $ctx

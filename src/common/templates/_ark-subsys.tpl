@@ -436,7 +436,6 @@ spec:
     dict
       "ctx" $
       "template" "__arkcase.subsystem.service.global.compute"
-      "masterKey" $ctx.Release.Name
   -}}
   {{- include "__arkcase.tools.getCachedValue" $args -}}
 {{- end -}}

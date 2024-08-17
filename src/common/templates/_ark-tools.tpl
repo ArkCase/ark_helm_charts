@@ -1191,16 +1191,16 @@ return either the value if correct, or the empty string if not.
   {{- $ctx = set $ctx $template $masterCache -}}
 
   {{- /* We do not use arkcase.fullname b/c we don't want to deal with partnames */ -}}
-  {{- $masterKey := ($.masterKey | default (include "common.fullname" $ctx)) -}}
+  {{- $key := ($.key | default (include "common.fullname" $ctx)) -}}
   {{- $yamlResult := dict -}}
-  {{- if not (hasKey $masterCache $masterKey) -}}
+  {{- if not (hasKey $masterCache $key) -}}
     {{- $yamlResult = (include $template $params) -}}
-    {{- $masterCache = set $masterCache $masterKey ($yamlResult | fromYaml | default dict) -}}
+    {{- $masterCache = set $masterCache $key ($yamlResult | fromYaml | default dict) -}}
   {{- else -}}
-    {{- $yamlResult = get $masterCache $masterKey | toYaml -}}
+    {{- $yamlResult = get $masterCache $key | toYaml -}}
   {{- end -}}
   {{- if $.debug -}}
-    {{- fail (dict "$" (omit $ "ctx") "$masterKey" $masterKey "result" ($yamlResult | fromYaml) "masterCache" $masterCache | toYaml | nindent 0) -}}
+    {{- fail (dict "$" (omit $ "ctx") "$key" $key "result" ($yamlResult | fromYaml) "masterCache" $masterCache | toYaml | nindent 0) -}}
   {{- end -}}
   {{- $yamlResult -}}
 {{- end -}}
