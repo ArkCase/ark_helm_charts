@@ -304,7 +304,7 @@ spec:
   {{- $type -}}
 {{- end -}}
 
-{{- define "arkcase.subsystem.service.global.compute" -}}
+{{- define "__arkcase.subsystem.service.global.compute" -}}
   {{- $ctx := $ }}
   {{- if hasKey $ "ctx" -}}
     {{- $ctx = $.ctx -}}
@@ -432,29 +432,13 @@ spec:
 
 {{- define "arkcase.subsystem.service.global" -}}
   {{- $ctx := $ -}}
-  {{- if not (include "arkcase.isRootContext" $ctx) -}}
-    {{- fail "The parameter given must be the root context (. or $)" -}}
-  {{- end -}}
-
-  {{- $cacheKey := "ArkCase-GlobalServiceOverrides" -}}
-  {{- $masterCache := dict -}}
-  {{- if (hasKey $ctx $cacheKey) -}}
-    {{- $masterCache = get $ctx $cacheKey -}}
-    {{- if and $masterCache (not (kindIs "map" $masterCache)) -}}
-      {{- $masterCache = dict -}}
-    {{- end -}}
-  {{- end -}}
-  {{- $ctx = set $ctx $cacheKey $masterCache -}}
-
-  {{- $masterKey := $ctx.Release.Name -}}
-  {{- $yamlResult := dict -}}
-  {{- if not (hasKey $masterCache $masterKey) -}}
-    {{- $yamlResult = (include "arkcase.subsystem.service.global.compute" $ctx) -}}
-    {{- $masterCache = set $masterCache $masterKey ($yamlResult | fromYaml) -}}
-  {{- else -}}
-    {{- $yamlResult = get $masterCache $masterKey | toYaml -}}
-  {{- end -}}
-  {{- $yamlResult -}}
+  {{- $args :=
+    dict
+      "ctx" $
+      "template" "__arkcase.subsystem.service.global.compute"
+      "masterKey" $ctx.Release.Name
+  -}}
+  {{- include "__arkcase.tools.getCachedValue" $args -}}
 {{- end -}}
 
 {{- /*
@@ -652,27 +636,18 @@ Parameter: a dict with two keys:
 
 {{- define "arkcase.subsystem.settings" -}}
   {{- $ctx := $ -}}
-  {{- $thisSubsys := (include "arkcase.subsystem.name" $ctx) -}}
-  {{- $subsys := $thisSubsys -}}
-  {{- if not (include "arkcase.isRootContext" $ctx) -}}
-    {{- $ctx = $.ctx -}}
-    {{- if not (include "arkcase.isRootContext" $ctx) -}}
-      {{- fail "The root context (. or $) must be given as either the only parameter, or the 'ctx' parameter" -}}
-    {{- end -}}
-    {{- $subsys = (hasKey $ "subsys") | ternary $.subsys "" | default $thisSubsys -}}
-  {{- end -}}
 
-  {{- /* Fetch the configuration values */ -}}
-  {{- $local := (eq $subsys $thisSubsys) | ternary $ctx.Values.configuration dict | default dict -}}
-  {{- if (not (kindIs "map" $local)) -}}
-    {{- $local = dict -}}
-  {{- end -}}
+  {{- $subsys := (include "arkcase.subsystem.name" $ctx) -}}
 
-  {{- $global := (dig "subsys" $subsys "settings" "" $ctx.Values.global) -}}
-  {{- if (not (kindIs "map" $global)) -}}
+  {{- $global := (dig "subsys" $subsys "settings" dict ($ctx.Values.global | default dict)) -}}
+  {{- if not (kindIs "map" $global) -}}
     {{- $global = dict -}}
   {{- end -}}
 
-  {{- /* At this point, $local has the chart's default values, and $global has the overrides */ -}}
-  {{- dict "global" $global "local" $local "subsys" $subsys -}}
+  {{- $local := $ctx.Values.configuration -}}
+  {{- if not (kindIs "map" $local) -}}
+    {{- $local = dict -}}
+  {{- end -}}
+
+  {{- merge $global $local | toYaml -}}
 {{- end -}}

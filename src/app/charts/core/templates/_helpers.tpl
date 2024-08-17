@@ -552,19 +552,7 @@
     {{- fail "Must send the root context as the only parameter" -}}
   {{- end -}}
 
-  {{- /* First, find the "Values.global" values */ -}}
-  {{- $global := $.Values.global -}}
-  {{- if (not (kindIs "map" $global)) -}}
-    {{- $global = dict -}}
-    {{- $crap := set $.Values "global" $global -}}
-  {{- end -}}
-
-  {{- /* Next, find the "global.conf" value */ -}}
-  {{- $settings := $global.settings -}}
-  {{- if (not (kindIs "map" $settings)) -}}
-    {{- $settings = dict -}}
-    {{- $global = set $global "settings" $settings -}}
-  {{- end -}}
+  {{- $settings := (include "arkcase.subsystem.settings" $ctx | fromYaml) -}}
 
   {{- /* Ok ... now load the role-mappings.yaml file */ -}}
   {{- $defaultMappings := (.Files.Get "role-mappings.yaml" | fromYaml) -}}
@@ -599,7 +587,6 @@
   {{- $mappings := get $settings $mappingsKey -}}
   {{- if (not (kindIs "map" $mappings)) -}}
     {{- $mappings = dict -}}
-    {{- $settings = set $settings $mappingsKey $mappings -}}
   {{- end -}}
 
   {{- /* If there are mappings to be applied, apply them */ -}}
@@ -680,14 +667,15 @@
     {{- $server = ((hasKey $ "server") | ternary $.server "" | default $server) -}}
   {{- end -}}
 
-  {{- $settings := (dig "subsys" "core" "settings" "ldap" $server "" ($ctx.Values.global | default dict)) -}}
-  {{- if not (kindIs "map" $settings) -}}
-    {{- $settings = dict -}}
+  {{- $settings := (include "arkcase.subsystem.settings" $ctx | fromYaml) -}}
+  {{- $server = (dig "ldap" $server "" ($settings | default dict)) -}}
+  {{- if not (kindIs "map" $server) -}}
+    {{- $server = dict -}}
   {{- end -}}
 
   {{- $result := dict -}}
   {{- range $key := (list "Edit" "Create" "Sync") -}}
-    {{- $v := (include "arkcase.toBoolean" (get $settings $key) | default "true") -}}
+    {{- $v := (include "arkcase.toBoolean" (get $server ($key | lower)) | default "true") -}}
     {{- $result = set $result (printf "enable%s" $key) (not (empty $v)) -}}
   {{- end -}}
   {{- $result | toYaml -}}

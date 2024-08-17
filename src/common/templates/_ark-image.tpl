@@ -228,7 +228,7 @@
   {{- merge $override $result | toYaml -}}
 {{- end -}}
 
-{{- define "arkcase.image.pullSecrets.compute" -}}
+{{- define "__arkcase.image.pullSecrets.compute" -}}
   {{- $chart := .chart -}}
   {{- $edition := .edition -}}
   {{- $data := .data -}}
@@ -298,13 +298,8 @@
   {{- $r | toYaml -}}
 {{- end -}}
 
-{{- define "arkcase.image.pullSecrets.cached" -}}
-  {{- $ctx := . -}}
-  {{- if not (include "arkcase.isRootContext" $ctx) -}}
-    {{- fail "The parameter given must be the root context (. or $)" -}}
-  {{- end -}}
-
-  {{- $edition := (empty (include "arkcase.enterprise" $ctx) | ternary "community" "enterprise") -}}
+{{- define "__arkcase.image.pullSecrets.cached" -}}
+  {{- $ctx := $ -}}
 
   {{- /* First things first: do we have any global overrides? */ -}}
   {{- $global := $ctx.Values.global -}}
@@ -320,30 +315,17 @@
     {{- $local = dict -}}
   {{- end -}}
 
-  {{- /* The keys on this map are the images in the local repository */ -}}
   {{- $chart := $ctx.Chart.Name -}}
   {{- $data := dict "local" $local "global" $global -}}
+  {{- $edition := (empty (include "arkcase.enterprise" $ctx) | ternary "community" "enterprise") -}}
 
-  {{- $cacheKey := "ArkCase-PullSecret" -}}
-  {{- $masterCache := dict -}}
-  {{- if (hasKey $ctx $cacheKey) -}}
-    {{- $masterCache = get $ctx $cacheKey -}}
-    {{- if and $masterCache (not (kindIs "map" $masterCache)) -}}
-      {{- $masterCache = dict -}}
-    {{- end -}}
-  {{- end -}}
-  {{- $ctx = set $ctx $cacheKey $masterCache -}}
-
-  {{- /* We do not use arkcase.fullname b/c we don't want to deal with partnames */ -}}
-  {{- $chartName := (include "common.fullname" $ctx) -}}
-  {{- $yamlResult := dict -}}
-  {{- if not (hasKey $masterCache $chartName) -}}
-    {{- $yamlResult = include "arkcase.image.pullSecrets.compute" (dict "chart" $chart "edition" $edition "data" $data) -}}
-    {{- $masterCache = set $masterCache $chartName ($yamlResult | fromYaml) -}}
-  {{- else -}}
-    {{- $yamlResult = get $masterCache $chartName | toYaml -}}
-  {{- end -}}
-  {{- $yamlResult -}}
+  {{- $args :=
+    dict
+      "ctx" $
+      "template" "__arkcase.image.pullSecrets.compute"
+      "params" (dict "chart" $chart "edition" $edition "data" $data)
+  -}}
+  {{- include "__arkcase.tools.getCachedValue" $args -}}
 {{- end -}}
 
 {{- /*
@@ -355,7 +337,7 @@ Render the pull secret
     {{- fail "The parameter given must be the root context (. or $)" -}}
   {{- end -}}
 
-  {{- $r := (include "arkcase.image.pullSecrets.cached" $ctx | fromYaml) -}}
+  {{- $r := (include "__arkcase.image.pullSecrets.cached" $ctx | fromYaml) -}}
   {{- if and $r $r.value -}}
 imagePullSecrets: {{- toYaml $r.value | nindent 2 }}
   {{- end -}}
@@ -374,7 +356,7 @@ Compute the image information for the named image, including registry, repositor
 and image pull policy, while taking into account the edition in play (enterprise vs.
 community) in order to choose the correct image.
 */ -}}
-{{- define "arkcase.image.info.cached" -}}
+{{- define "__arkcase.image.info.compute" -}}
   {{- $ctx := .ctx -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "The 'ctx' parameter must be the root context (. or $)" -}}
@@ -491,7 +473,7 @@ community) in order to choose the correct image.
 Fetch and compute if necessary the image information for the named image
 */ -}}
 {{- define "arkcase.image.info" -}}
-  {{- $ctx := . -}}
+  {{- $ctx := $ -}}
   {{- $name := "" -}}
   {{- $repository := "" -}}
   {{- $tag := "" -}}
@@ -520,26 +502,21 @@ Fetch and compute if necessary the image information for the named image
 
   {{- $enterprise := (not (empty (include "arkcase.enterprise" $ctx))) -}}
 
-  {{- $cacheKey := "ArkCase-ContainerImages" -}}
-  {{- $masterCache := dict -}}
-  {{- if (hasKey $ctx $cacheKey) -}}
-    {{- $masterCache = get $ctx $cacheKey -}}
-    {{- if and $masterCache (not (kindIs "map" $masterCache)) -}}
-      {{- $masterCache = dict -}}
-    {{- end -}}
-  {{- end -}}
-  {{- $ctx = set $ctx $cacheKey $masterCache -}}
-
-  {{- /* We do not use arkcase.fullname b/c we don't want to deal with partnames */ -}}
-  {{- $imageName := (printf "%s-%s" (include "common.fullname" $ctx) $name) -}}
-  {{- $yamlResult := "" -}}
-  {{- if not (hasKey $masterCache $imageName) -}}
-    {{- $yamlResult = include "arkcase.image.info.cached" (dict "ctx" $ctx "name" $name "enterprise" $enterprise "repository" $repository "tag" $tag "useChartTag" $useChartTag) -}}
-    {{- $masterCache = set $masterCache $imageName ($yamlResult | fromYaml) -}}
-  {{- else -}}
-    {{- $yamlResult = get $masterCache $imageName | toYaml -}}
-  {{- end -}}
-  {{- $yamlResult -}}
+  {{- $args :=
+    dict
+      "ctx" $ctx
+      "template" "__arkcase.image.info.compute"
+      "params" (
+        dict
+          "ctx" $ctx
+          "name" $name
+          "enterprise" $enterprise
+          "repository" $repository
+          "tag" $tag
+          "useChartTag" $useChartTag
+      )
+  -}}
+  {{- include "__arkcase.tools.getCachedValue" $args -}}
 {{- end -}}
 
 {{- /*

@@ -28,7 +28,7 @@
   {{- $result | toYaml -}}
 {{- end -}}
 
-{{- define "__arkcase.file-resources.list-files.render" -}}
+{{- define "__arkcase.file-resources.list-files.compute" -}}
   {{- $result := dict }}
   {{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.subsystem.external" $)) -}}
     {{- $ctx := $ -}}
@@ -84,30 +84,12 @@
 {{- end -}}
 
 {{- define "__arkcase.file-resources.list-files" -}}
-  {{- $ctx := $ -}}
-  {{- if not (include "arkcase.isRootContext" $ctx) -}}
-    {{- fail "The parameter value must be the root context" -}}
-  {{- end -}}
-
-  {{- $cacheKey := "ArkCase-File-Resources-List" -}}
-  {{- $masterCache := dict -}}
-  {{- if (hasKey $ $cacheKey) -}}
-    {{- $masterCache = get $ $cacheKey -}}
-    {{- if and $masterCache (not (kindIs "map" $masterCache)) -}}
-      {{- $masterCache = dict -}}
-    {{- end -}}
-  {{- end -}}
-  {{- $crap := set $ $cacheKey $masterCache -}}
-
-  {{- $chartName := (include "arkcase.fullname" $) -}}
-  {{- if not (hasKey $masterCache $chartName) -}}
-    {{- $obj := (include "__arkcase.file-resources.list-files.render" $ | fromYaml) -}}
-    {{- if not $obj -}}
-      {{- $obj = dict -}}
-    {{- end -}}
-    {{- $masterCache = set $masterCache $chartName $obj -}}
-  {{- end -}}
-  {{- get $masterCache $chartName | toYaml -}}
+  {{- $args :=
+    dict
+      "ctx" $
+      "template" "__arkcase.file-resources.list-files.compute"
+  -}}
+  {{- include "__arkcase.tools.getCachedValue" $args -}}
 {{- end -}}
 
 {{- define "arkcase.file-resources" -}}

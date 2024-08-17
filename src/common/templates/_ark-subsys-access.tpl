@@ -340,26 +340,24 @@
   {{- $result | toYaml -}}
 {{- end -}}
 
-{{- define "__arkcase.subsystem-access.conf.render" -}}
-  {{- $params := (include "__arkcase.subsystem-access.extract-params" $ | fromYaml) -}}
-  {{- $ctx := ($params.ctxIsRoot | ternary $ $.ctx) -}}
+{{- define "__arkcase.subsystem-access.conf.compute" -}}
+  {{- $params := $ -}}
+  {{- $ctx := $params.ctx -}}
 
   {{- /* Gather up the configurations for the given subsystem */ -}}
   {{- $conf := dict -}}
 
+  {{- $global := (dig "subsys" $params.subsys "" ($ctx.Values.global | default dict) | default dict) -}}
+
   {{- /* First apply the global settings, which are the overrides */ -}}
-  {{- $global := (($ctx.Values.global).subsys | default dict) -}}
-  {{- if (hasKey $global $params.subsys) -}}
-    {{- $global = get $global $params.subsys -}}
-    {{- if and $global (kindIs "map" $global) -}}
-      {{- $conf = $global -}}
-    {{- end -}}
+  {{- if (kindIs "map" $global) -}}
+    {{- $conf = merge $conf $global -}}
   {{- end -}}
 
   {{- /* If this is being called for the local subsystem, we can add our internal configurations as well */ -}}
   {{- if $params.local -}}
     {{- $localConfig := ($ctx.Values.configuration | default dict) -}}
-    {{- if and $localConfig (kindIs "map" $localConfig) -}}
+    {{- if (kindIs "map" $localConfig) -}}
       {{- /* We add the local configurations later b/c the global ones override */ -}}
       {{- $conf = merge $conf (dict "settings" $localConfig) -}}
     {{- end -}}
@@ -384,25 +382,14 @@
   {{- $params := (include "__arkcase.subsystem-access.extract-params" $ | fromYaml) -}}
   {{- $ctx := ($params.ctxIsRoot | ternary $ $.ctx) -}}
 
-  {{- $cacheKey := "ArkCase-ConfigResources" -}}
-  {{- $masterCache := dict -}}
-  {{- if (hasKey $ctx $cacheKey) -}}
-    {{- $masterCache = get $ctx $cacheKey -}}
-    {{- if and $masterCache (not (kindIs "map" $masterCache)) -}}
-      {{- $masterCache = dict -}}
-    {{- end -}}
-  {{- end -}}
-  {{- $ctx = set $ctx $cacheKey $masterCache -}}
-
-  {{- $masterKey := (printf "%s-%s" $params.release $params.subsys) -}}
-  {{- $yamlResult := dict -}}
-  {{- if not (hasKey $masterCache $masterKey) -}}
-    {{- $yamlResult = (include "__arkcase.subsystem-access.conf.render" $) -}}
-    {{- $masterCache = set $masterCache $masterKey ($yamlResult | fromYaml) -}}
-  {{- else -}}
-    {{- $yamlResult = get $masterCache $masterKey | toYaml -}}
-  {{- end -}}
-  {{- $yamlResult -}}
+  {{- $args :=
+    dict
+      "ctx" $ctx
+      "template" "__arkcase.subsystem-access.conf.compute"
+      "masterKey" (printf "%s-%s" $params.release $params.subsys)
+      "params" (merge (dict "ctx" $ctx) $params)
+  -}}
+  {{- include "__arkcase.tools.getCachedValue" $args -}}
 {{- end -}}
 
 {{- define "arkcase.subsystem.conf" -}}
@@ -610,29 +597,13 @@
 
 {{- define "__arkcase.subsystem-access.deps" -}}
   {{- $ctx := $ -}}
-  {{- if not (include "arkcase.isRootContext" $ctx) -}}
-    {{- fail "The parameter given must be the root context (. or $)" -}}
-  {{- end -}}
-
-  {{- $cacheKey := "ArkCase-Subsystem-Access-Dependencies" -}}
-  {{- $masterCache := dict -}}
-  {{- if (hasKey $ctx $cacheKey) -}}
-    {{- $masterCache = get $ctx $cacheKey -}}
-    {{- if and $masterCache (not (kindIs "map" $masterCache)) -}}
-      {{- $masterCache = dict -}}
-    {{- end -}}
-  {{- end -}}
-  {{- $ctx = set $ctx $cacheKey $masterCache -}}
-
-  {{- $masterKey := $ctx.Release.Name -}}
-  {{- $yamlResult := dict -}}
-  {{- if not (hasKey $masterCache $masterKey) -}}
-    {{- $yamlResult = (include "__arkcase.subsystem-access.deps-compute" $ctx) -}}
-    {{- $masterCache = set $masterCache $masterKey ($yamlResult | fromYaml) -}}
-  {{- else -}}
-    {{- $yamlResult = get $masterCache $masterKey | toYaml -}}
-  {{- end -}}
-  {{- $yamlResult -}}
+  {{- $args :=
+    dict
+      "ctx" $
+      "template" "__arkcase.subsystem-access.deps-compute"
+      "masterKey" $ctx.Release.Name
+  -}}
+  {{- include "__arkcase.tools.getCachedValue" $args -}}
 {{- end -}}
 
 {{- /* Params: subsys?, conn?, type?, key?, name?, optional? */ -}}

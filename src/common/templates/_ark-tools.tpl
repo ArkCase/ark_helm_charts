@@ -893,7 +893,7 @@ return either the value if correct, or the empty string if not.
   {{- $finalLogs | toYaml -}}
 {{- end -}}
 
-{{- define "arkcase.dev.compute-debug" -}}
+{{- define "__arkcase.dev.compute-debug" -}}
   {{- $debug := $ -}}
   {{- $result := dict -}}
   {{- if and $debug (kindIs "map" $debug) -}}
@@ -904,7 +904,7 @@ return either the value if correct, or the empty string if not.
   {{- $result | toYaml -}}
 {{- end -}}
 
-{{- define "arkcase.dev.compute" -}}
+{{- define "__arkcase.dev.compute" -}}
   {{- $ctx := . -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "The parameter must be the root context (. or $)" -}}
@@ -1000,7 +1000,7 @@ return either the value if correct, or the empty string if not.
           {{- range $part := (list "arkcase" "cloudconfig") -}}
             {{- $partConf := (dict "enabled" true "suspend" "n") -}}
             {{- if (hasKey $debugSrc $part) -}}
-              {{- $partConf = (include "arkcase.dev.compute-debug" (get $debugSrc $part) | fromYaml) -}}
+              {{- $partConf = (include "__arkcase.dev.compute-debug" (get $debugSrc $part) | fromYaml) -}}
             {{- end -}}
             {{- $debug = set $debug $part $partConf -}}
           {{- end -}}
@@ -1029,25 +1029,16 @@ return either the value if correct, or the empty string if not.
 {{- end -}}
 
 {{- define "arkcase.dev" -}}
-  {{- $ctx := . -}}
-  {{- if not (include "arkcase.isRootContext" $ctx) -}}
-    {{- fail "The parameter must be the root context (. or $)" -}}
-  {{- end -}}
-
-  {{- $cacheKey := "ArkCase-DevelopmentMode" -}}
-  {{- $masterCache := dict -}}
-  {{- $result := dict -}}
-  {{- if (hasKey $ctx $cacheKey) -}}
-    {{- $result = (get $ctx $cacheKey | toYaml) -}}
-  {{- else -}}
-    {{- $result = (include "arkcase.dev.compute" $ctx) -}}
-    {{- $ctx = set $ctx $cacheKey ($result | fromYaml) -}}
-  {{- end -}}
-  {{- $result -}}
+  {{- $args :=
+    dict
+      "ctx" $
+      "template" "__arkcase.dev.compute"
+  -}}
+  {{- include "__arkcase.tools.getCachedValue" $args -}}
 {{- end -}}
 
-{{- define "arkcase.enterprise.compute" -}}
-  {{- $ctx := . -}}
+{{- define "__arkcase.enterprise.compute" -}}
+  {{- $ctx := $ -}}
 
   {{- /* For now, default to the community edition */ -}}
   {{- $enterprise := false -}}
@@ -1089,30 +1080,12 @@ return either the value if correct, or the empty string if not.
 {{- end -}}
 
 {{- define "arkcase.enterprise" -}}
-  {{- $ctx := . -}}
-  {{- if not (include "arkcase.isRootContext" $ctx) -}}
-    {{- fail "The parameter must be the root context (. or $)" -}}
-  {{- end -}}
-
-  {{- $cacheKey := "ArkCase-EnterpriseMode" -}}
-  {{- $masterCache := dict -}}
-  {{- if (hasKey $ctx $cacheKey) -}}
-    {{- $masterCache = get $ctx $cacheKey -}}
-    {{- if and $masterCache (not (kindIs "map" $masterCache)) -}}
-      {{- $masterCache = dict -}}
-    {{- end -}}
-  {{- end -}}
-  {{- $ctx = set $ctx $cacheKey $masterCache -}}
-
-  {{- $cacheKey = (include "common.fullname" $ctx) -}}
-  {{- $result := "" -}}
-  {{- if not (hasKey $masterCache $cacheKey) -}}
-    {{- $result = (include "arkcase.enterprise.compute" $ctx) -}}
-    {{- $masterCache = set $masterCache $cacheKey $result -}}
-  {{- else -}}
-    {{- $result = get $masterCache $cacheKey -}}
-  {{- end -}}
-  {{- $result -}}
+  {{- $args :=
+    dict
+      "ctx" $
+      "template" "__arkcase.enterprise.compute"
+  -}}
+  {{- include "__arkcase.tools.getCachedValue" $args -}}
 {{- end -}}
 
 {{- define "arkcase.xmlUnescape" -}}
@@ -1197,4 +1170,34 @@ return either the value if correct, or the empty string if not.
     {{- $result = dict "data" (get $licenses $name) -}}
   {{- end -}}
   {{- $result | toYaml -}}
+{{- end -}}
+
+{{- define "__arkcase.tools.getCachedValue" -}}
+  {{- $ctx := $.ctx -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "The root context (. or $) must be given as the 'ctx' parameter" -}}
+  {{- end -}}
+
+  {{- $template := $.template -}}
+  {{- $params := $.params | default $ctx -}}
+
+  {{- $masterCache := dict -}}
+  {{- if (hasKey $ctx $template) -}}
+    {{- $masterCache = get $ctx $template -}}
+    {{- if and $masterCache (not (kindIs "map" $masterCache)) -}}
+      {{- $masterCache = dict -}}
+    {{- end -}}
+  {{- end -}}
+  {{- $ctx = set $ctx $template $masterCache -}}
+
+  {{- /* We do not use arkcase.fullname b/c we don't want to deal with partnames */ -}}
+  {{- $masterKey := ($.masterKey | default (include "common.fullname" $ctx)) -}}
+  {{- $yamlResult := dict -}}
+  {{- if not (hasKey $masterCache $masterKey) -}}
+    {{- $yamlResult = (include $template $params) -}}
+    {{- $masterCache = set $masterCache $masterKey ($yamlResult | fromYaml | default dict) -}}
+  {{- else -}}
+    {{- $yamlResult = get $masterCache $masterKey | toYaml -}}
+  {{- end -}}
+  {{- $yamlResult -}}
 {{- end -}}

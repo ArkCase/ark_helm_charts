@@ -43,7 +43,7 @@
   {{- $result | toYaml -}}
 {{- end -}}
 
-{{- define "arkcase.cluster.info.render" -}}
+{{- define "__arkcase.cluster.info.compute" -}}
   {{- $global := dict -}}
 
   {{- /* First, find the "global" values */ -}}
@@ -133,29 +133,12 @@
 {{- end -}}
 
 {{- define "arkcase.cluster.info" -}}
-  {{- if not (include "arkcase.isRootContext" $) -}}
-    {{- fail "The parameter value must be the root context" -}}
-  {{- end -}}
-
-  {{- $cacheKey := "ArkCase-Clustering" -}}
-  {{- $masterCache := dict -}}
-  {{- if (hasKey $ $cacheKey) -}}
-    {{- $masterCache = get $ $cacheKey -}}
-    {{- if and $masterCache (not (kindIs "map" $masterCache)) -}}
-      {{- $masterCache = dict -}}
-    {{- end -}}
-  {{- end -}}
-  {{- $crap := set $ $cacheKey $masterCache -}}
-
-  {{- $chartName := (include "arkcase.fullname" $) -}}
-  {{- if not (hasKey $masterCache $chartName) -}}
-    {{- $obj := (include "arkcase.cluster.info.render" $ | fromYaml) -}}
-    {{- if not $obj -}}
-      {{- $obj = dict -}}
-    {{- end -}}
-    {{- $masterCache = set $masterCache $chartName $obj -}}
-  {{- end -}}
-  {{- get $masterCache $chartName | toYaml -}}
+  {{- $args :=
+    dict
+      "ctx" $
+      "template" "__arkcase.cluster.info.compute"
+  -}}
+  {{- include "__arkcase.tools.getCachedValue" $args -}}
 {{- end -}}
 
 {{- define "arkcase.cluster" -}}
