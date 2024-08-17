@@ -24,11 +24,11 @@
 {{- end -}}
 
 {{- define "arkcase.persistence.getDefaultSetting" -}}
-  {{- $ctx := .ctx -}}
+  {{- $ctx := $.ctx -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "The 'ctx' parameter must be the root context (. or $)" -}}
   {{- end -}}
-  {{- $name := .name -}}
+  {{- $name := $.name -}}
   {{- if or (not $name) (not (kindIs "string" $name)) -}}
     {{- fail "The 'name' parameter must be the name of the setting to retrieve" -}}
   {{- end -}}
@@ -54,7 +54,6 @@
   {{- if (hasKey $local $name) -}}
     {{- $result = set $result "local" (get $local $name) -}}
   {{- end -}}
-
   {{- $result | toYaml -}}
 {{- end -}}
 
@@ -594,10 +593,13 @@ Parse a volume declaration and return a map that contains the following (possibl
     {{- $name = (printf "%s-%s" $partname $name) -}}
   {{- end -}}
 
+  {{- $volumeName := (printf "%s-%s" (include "arkcase.fullname" $ctx) $name) -}}
+
   {{- $args :=
     dict
       "ctx" $ctx
       "template" "__arkcase.persistence.buildVolume.compute"
+      "masterKey" $volumeName
       "params" (set $ "name" $name)
   -}}
   {{- include "__arkcase.tools.getCachedValue" $args -}}
@@ -853,19 +855,19 @@ Render the entries for volumeClaimTemplates:, per configurations
 Render the PersistentVolume and PersistentVolumeClaim objects for a given volume, per configurations
 */ -}}
 {{- define "arkcase.persistence.declareResources" -}}
-  {{- $ctx := .ctx -}}
+  {{- $ctx := $.ctx -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "The 'ctx' parameter must be the root context (. or $)" -}}
   {{- end -}}
 
-  {{- $volumeName := .volume -}}
+  {{- $volumeName := $.volume -}}
   {{- if not $volumeName -}}
     {{- fail "Must provide the 'volumeName' of the resources to declare" -}}
   {{- end -}}
 
   {{- $settings := (include "arkcase.persistence.settings" $ctx | fromYaml) -}}
   {{- if $settings.enabled -}}
-    {{- $volume := (include "arkcase.persistence.buildVolume" (set . "name" $volumeName) | fromYaml) -}}
+    {{- $volume := (include "arkcase.persistence.buildVolume" (set $ "name" $volumeName) | fromYaml) -}}
     {{- $mode := $volume.render.mode -}}
     {{- if and (eq $mode "volume") (not (hasKey $volume "volumeName")) -}}
       {{- $partname := (include "arkcase.part.name" $ctx) -}}

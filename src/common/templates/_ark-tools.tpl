@@ -1199,5 +1199,8 @@ return either the value if correct, or the empty string if not.
   {{- else -}}
     {{- $yamlResult = get $masterCache $masterKey | toYaml -}}
   {{- end -}}
+  {{- if $.debug -}}
+    {{- fail (dict "$" (omit $ "ctx") "$masterKey" $masterKey "result" ($yamlResult | fromYaml) "masterCache" $masterCache | toYaml | nindent 0) -}}
+  {{- end -}}
   {{- $yamlResult -}}
 {{- end -}}
