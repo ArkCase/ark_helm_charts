@@ -44,7 +44,10 @@ settings:
     admin:
       username: MANAGED_REPORTS_ADMIN_USERNAME
       password: MANAGED_REPORTS_ADMIN_PASSWORD
-      group: MANAGED_REPORTS_ADMIN_GROUPS
+      group:
+        env:
+          name: MANAGED_REPORTS_ADMIN_GROUPS
+          optional: true
   content:
     main:
       username: MANAGED_CONTENT_USERNAME
@@ -52,7 +55,10 @@ settings:
     admin:
       username: MANAGED_CONTENT_ADMIN_USERNAME
       password: MANAGED_CONTENT_ADMIN_PASSWORD
-      group: MANAGED_CONTENT_ADMIN_GROUPS
+      group:
+        env:
+          name: MANAGED_CONTENT_ADMIN_GROUPS
+          optional: true
   core:
     main-admin:
       username: MANAGED_ARKCASE_ADMIN_USERNAME

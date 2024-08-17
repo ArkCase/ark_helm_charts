@@ -47,9 +47,9 @@
     {{- end -}}
 
     {{- $safe := ($hasRegex | ternary (mustRegexReplaceAll $regex $value $replace) $value) -}}
-    {{- $str = $str | replace (printf "${%s:l}" $v) ($safe | lower) -}}
+    {{- $str = $str | replace (printf "${%s^^}" $v) ($safe | lower) -}}
     {{- $str = $str | replace (printf "${%s}"   $v) (include $caseTemplate $safe) -}}
-    {{- $str = $str | replace (printf "${%s:u}" $v) ($safe | upper) -}}
+    {{- $str = $str | replace (printf "${%s,,}" $v) ($safe | upper) -}}
   {{- end -}}
 
   {{- ($hasRegex | ternary (mustRegexReplaceAll $regex $str $replace) $str) -}}
