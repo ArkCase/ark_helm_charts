@@ -4,7 +4,7 @@
     {{- fail "The parameter given must be the root context (. or $)" -}}
   {{- end -}}
 
-  {{- $settings := (include "arkcase.subsystem.settings" $ctx | fromYaml) -}}
+  {{- $settings := (include "arkcase.subsystem.settings" (dict "ctx" $ctx "subsys" "rdbms") | fromYaml) -}}
 
   {{- /* Compute the dialect, falling back to the default if necessary */ -}}
   {{- $dialect := (get $settings "dialect" | default "postgresql" | toString | lower) -}}

@@ -636,17 +636,29 @@ Parameter: a dict with two keys:
 
 {{- define "arkcase.subsystem.settings" -}}
   {{- $ctx := $ -}}
+  {{- $subsys := "" -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- $ctx = $.ctx -}}
+    {{- if not (include "arkcase.isRootContext" $ctx) -}}
+      {{- fail "The root context (. or $) must be provied as either the only parameter, or the 'ctx' parameter" -}}
+    {{- end -}}
+    {{- $subsys = ($.subsys | toString | default "") -}}
+  {{- end -}}
 
-  {{- $subsys := (include "arkcase.subsystem.name" $ctx) -}}
+  {{- $this := (include "arkcase.subsystem.name" $ctx) -}}
+  {{- $subsys = ($subsys | default $this) -}}
 
-  {{- $global := (dig "subsys" $subsys "settings" dict ($ctx.Values.global | default dict)) -}}
+  {{- $global := (dig "subsys" $subsys "settings" "" ($ctx.Values.global | default dict) | default dict) -}}
   {{- if not (kindIs "map" $global) -}}
     {{- $global = dict -}}
   {{- end -}}
 
-  {{- $local := $ctx.Values.configuration -}}
-  {{- if not (kindIs "map" $local) -}}
-    {{- $local = dict -}}
+  {{- $local := dict -}}
+  {{- if (ne $this $subsys) -}}
+    {{- $local = $ctx.Values.configuration -}}
+    {{- if not (kindIs "map" $local) -}}
+      {{- $local = dict -}}
+    {{- end -}}
   {{- end -}}
 
   {{- merge $global $local | toYaml -}}
