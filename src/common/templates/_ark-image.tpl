@@ -479,17 +479,17 @@ Fetch and compute if necessary the image information for the named image
   {{- $tag := "" -}}
   {{- $useChartTag := false -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
-    {{- $ctx = .ctx -}}
+    {{- $ctx = $.ctx -}}
     {{- if not (include "arkcase.isRootContext" $ctx) -}}
       {{- fail "The given 'ctx' parameter must be the root context (. or $)" -}}
     {{- end -}}
 
-    {{- $name = .name -}}
+    {{- $name = $.name -}}
     {{- if not $name -}}
       {{- fail "The given 'name' parameter must be present and not be the empty string" -}}
     {{- end -}}
-    {{- $repository = .repository -}}
-    {{- $tag = .tag -}}
+    {{- $repository = $.repository -}}
+    {{- $tag = ($.tag | default "") -}}
     {{- $useChartTag = (not (empty (include "arkcase.toBoolean" .useChartTag))) -}}
   {{- else -}}
     {{- $useChartTag = true -}}
@@ -506,6 +506,7 @@ Fetch and compute if necessary the image information for the named image
     dict
       "ctx" $ctx
       "template" "__arkcase.image.info.compute"
+      "masterKey" (printf "%s-%s" (include "common.fullname" $ctx) $name)
       "params" (
         dict
           "ctx" $ctx
@@ -523,7 +524,7 @@ Fetch and compute if necessary the image information for the named image
 Render the image name taking into account the registry, repository, image name, and tag.
 */ -}}
 {{- define "arkcase.image" -}}
-  {{- $imageInfo := (include "arkcase.image.info" . | fromYaml) -}}
+  {{- $imageInfo := (include "arkcase.image.info" $ | fromYaml) -}}
 image: {{ $imageInfo.image | quote }}
   {{- with ($imageInfo.pullPolicy | default "Always") }}
 imagePullPolicy: {{ . }}
