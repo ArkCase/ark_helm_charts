@@ -357,20 +357,20 @@ and image pull policy, while taking into account the edition in play (enterprise
 community) in order to choose the correct image.
 */ -}}
 {{- define "__arkcase.image.info.compute" -}}
-  {{- $ctx := .ctx -}}
+  {{- $ctx := $.ctx -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "The 'ctx' parameter must be the root context (. or $)" -}}
   {{- end -}}
 
-  {{- $name := .name -}}
-  {{- $repository := .repository -}}
-  {{- $tag := .tag -}}
-  {{- $useChartTag := .useChartTag -}}
+  {{- $name := $.name -}}
+  {{- $repository := $.repository -}}
+  {{- $tag := $.tag -}}
+  {{- $useChartTag := $.useChartTag -}}
 
-  {{- if not (hasKey . "enterprise") -}}
+  {{- if not (hasKey $ "enterprise") -}}
     {{- fail "The enterprise flag must be set" -}}
   {{- end -}}
-  {{- $edition := .enterprise | ternary "enterprise" "community" -}}
+  {{- $edition := $.enterprise | ternary "enterprise" "community" -}}
 
   {{- /* First things first: do we have any global overrides? */ -}}
   {{- $global := $ctx.Values.global -}}
