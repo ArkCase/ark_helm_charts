@@ -23,8 +23,7 @@ network:
       host: "@env:ARKCASE_JDBC_HOST"
       port: "@env:ARKCASE_JDBC_PORT"
     search:
-      host: "@env:ARKCASE_SOLR_HOST"
-      port: "@env:ARKCASE_SOLR_PORT"
+      url: "@env:ARKCASE_SOLR_URL"
 
 settings:
   # We specifically don't consume from ACME b/c those are handled directly
@@ -56,10 +55,6 @@ settings:
 
     main:
       url: ARKCASE_CONTENT_URL
-      scheme: ARKCASE_CONTENT_SCHEME
-      host: ARKCASE_CONTENT_HOST
-      port: ARKCASE_CONTENT_PORT
-      path: ARKCASE_CONTENT_PATH
       ui: ARKCASE_CONTENT_UI
       username: ARKCASE_CONTENT_USERNAME
       password: ARKCASE_CONTENT_PASSWORD
@@ -125,8 +120,6 @@ settings:
 
     main:
       url: ARKCASE_REPORTS_URL
-      host: ARKCASE_REPORTS_HOST
-      port: ARKCASE_REPORTS_PORT
       username: ARKCASE_REPORTS_USERNAME
       password: ARKCASE_REPORTS_PASSWORD
 
@@ -135,15 +128,11 @@ settings:
       username: ARKCASE_MQ_USERNAME
       password: ARKCASE_MQ_PASSWORD
       amqpUrl: ARKCASE_MQ_AMQP_URL
-      stompScheme: ARKCASE_MQ_STOMP_SCHEME
-      stompHost: ARKCASE_MQ_STOMP_HOST
-      stompPort: ARKCASE_MQ_STOMP_PORT
+      stompUrl: ARKCASE_MQ_STOMP_URL
 
   search:
     main:
-      scheme: ARKCASE_SOLR_SCHEME
-      host: ARKCASE_SOLR_HOST
-      port: ARKCASE_SOLR_PORT
+      url: ARKCASE_SOLR_URL
       # We don't do Solr authentication just yet, but be ready
       # username: ARKCASE_SOLR_USERNAME
       # password: ARKCASE_SOLR_PASSWORD
