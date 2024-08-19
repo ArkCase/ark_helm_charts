@@ -1,40 +1,35 @@
+{{- define "__arkcase.pentaho.licenses.compute" -}}
+  {{- $ctx := $ -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "The parameter must be the root context ($ or .)" -}}
+  {{- end -}} 
+
+  {{- $result := dict -}}
+  {{- $licenses := (include "arkcase.license" (dict "ctx" $ctx "name" "pentaho") | fromYaml) -}}
+  {{- if and $licenses $licenses.data -}}
+    {{- $licenses = $licenses.data -}}
+    {{- if not (kindIs "slice" $licenses) -}}
+      {{- fail (printf "Please make sure the pentaho licenses in global.licenses.pentaho is an array of files, not a %s" (kindOf $licenses)) -}}
+    {{- end -}}
+    {{- range $pos, $license := $licenses -}}
+      {{- $result = set $result (printf "pentaho_license_%d.lic" $pos) $license -}}
+    {{- end -}}
+  {{- end -}}
+  {{- $result | toYaml -}}
+{{- end -}}
+
 {{- define "arkcase.pentaho.licenses" -}}
   {{- $ctx := $ -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "The parameter must be the root context ($ or .)" -}}
-  {{- end -}}
-
-  {{- $key := "PentahoLicenses" -}}
-  {{- $masterCache := dict -}}
-  {{- if (hasKey $ $key) -}}
-    {{- $masterCache = get $ctx $key -}}
-    {{- if and $masterCache (not (kindIs "map" $masterCache)) -}}
-      {{- $masterCache = dict -}}
-    {{- end -}}
-  {{- end -}}
-  {{- $crap := set $ctx $key $masterCache -}}
-
-  {{- $chartName := (include "arkcase.fullname" $) -}}
-  {{- if not (hasKey $masterCache $chartName) -}}
-    {{- $result := dict -}}
-    {{- $licenses := (include "arkcase.license" (dict "ctx" $ctx "name" "pentaho") | fromYaml) -}}
-    {{- if and $licenses $licenses.data -}}
-      {{- $licenses = $licenses.data -}}
-      {{- if not (kindIs "slice" $licenses) -}}
-        {{- fail (printf "Please make sure the pentaho licenses in global.licenses.pentaho is an array of files, not a %s" (kindOf $licenses)) -}}
-      {{- end -}}
-      {{- $pos := 0 -}}
-      {{- range $license := $licenses -}}
-        {{- $result = set $result (printf "pentaho_license_%d.lic" $pos) $license -}}
-        {{- $pos = add $pos 1 -}}
-      {{- end -}}
-    {{- end -}}
-    {{- if not $result -}}
-      {{- $result = dict -}}
-    {{- end -}}
-    {{- $masterCache = set $masterCache $chartName $result -}}
-  {{- end -}}
-  {{- get $masterCache $chartName | toYaml -}}
+  {{- end -}} 
+    
+  {{- $args :=
+    dict  
+      "ctx" $ctx
+      "template" "__arkcase.pentaho.licenses.compute"
+  -}}
+  {{- include "__arkcase.tools.getCachedValue" $args -}}
 {{- end -}}
 
 {{- define "arkcase.pentaho.license.secrets" -}}

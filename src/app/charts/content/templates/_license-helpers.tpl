@@ -2,44 +2,34 @@
   {{- printf "%s-licenses" (include "arkcase.basename" $) -}}
 {{- end -}}
 
+{{- define "__arkcase.alfresco.licenses.compute" -}}
+  {{- $ctx := $ -}}
+  {{- $result := dict -}}
+  {{- $licenses := (include "arkcase.license" (dict "ctx" $ctx "name" "alfresco") | fromYaml) -}}
+  {{- if and $licenses $licenses.data -}}
+    {{- $licenses = $licenses.data -}}
+    {{- if not (kindIs "string" $licenses) -}}
+      {{- fail (printf "Please make sure the alfresco licenses in global.licenses.alfresco is a string (base-64 encoded), not a %s" (kindOf $licenses)) -}}
+    {{- end -}}
+    {{- range $pos, $license := (list $licenses) -}}
+      {{- $result = set $result (printf "alfresco_license_%d.lic" $pos) $license -}}
+    {{- end -}}
+  {{- end -}}
+  {{- $result | toYaml -}}
+{{- end -}}
+
 {{- define "arkcase.alfresco.licenses" -}}
   {{- $ctx := $ -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "The parameter must be the root context ($ or .)" -}}
   {{- end -}}
 
-  {{- $key := "AlfrescoLicense" -}}
-  {{- $masterCache := dict -}}
-  {{- if (hasKey $ $key) -}}
-    {{- $masterCache = get $ $key -}}
-    {{- if and $masterCache (not (kindIs "map" $masterCache)) -}}
-      {{- $masterCache = dict -}}
-    {{- end -}}
-  {{- end -}}
-  {{- $crap := set $ $key $masterCache -}}
-
-  {{- $chartName := (include "arkcase.fullname" $) -}}
-  {{- if not (hasKey $masterCache $chartName) -}}
-    {{- $result := dict -}}
-    {{- $licenses := (include "arkcase.license" (dict "ctx" $ctx "name" "alfresco") | fromYaml) -}}
-    {{- if and $licenses $licenses.data -}}
-      {{- $licenses = $licenses.data -}}
-      {{- if not (kindIs "string" $licenses) -}}
-        {{- fail (printf "Please make sure the alfresco licenses in global.licenses.alfresco is a string (base-64 encoded), not a %s" (kindOf $licenses)) -}}
-      {{- end -}}
-      {{- $licenses = list $licenses -}}
-      {{- $pos := 0 -}}
-      {{- range $license := $licenses -}}
-        {{- $result = set $result (printf "alfresco_license_%d.lic" $pos) $license -}}
-        {{- $pos = add $pos 1 -}}
-      {{- end -}}
-    {{- end -}}
-    {{- if not $result -}}
-      {{- $result = dict -}}
-    {{- end -}}
-    {{- $masterCache = set $masterCache $chartName $result -}}
-  {{- end -}}
-  {{- get $masterCache $chartName | toYaml -}}
+  {{- $args :=
+    dict
+      "ctx" $ctx
+      "template" "__arkcase.alfresco.licenses.compute"
+  -}}
+  {{- include "__arkcase.tools.getCachedValue" $args -}}
 {{- end -}}
 
 {{- define "arkcase.alfresco.license.volumeMounts" -}}

@@ -408,28 +408,15 @@
 {{- define "arkcase.core.integrations" -}}
   {{- $ctx := $ -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
-    {{- fail "The parameter given must be the root context (. or $)" -}}
-  {{- end -}}
+    {{- fail "The parameter must be the root context ($ or .)" -}}
+  {{- end -}} 
 
-  {{- $cacheKey := "ArkCase-Core-Integrations" -}}
-  {{- $masterCache := dict -}}
-  {{- if (hasKey $ctx $cacheKey) -}}
-    {{- $masterCache = get $ctx $cacheKey -}}
-    {{- if and $masterCache (not (kindIs "map" $masterCache)) -}}
-      {{- $masterCache = dict -}}
-    {{- end -}}
-  {{- end -}}
-  {{- $ctx = set $ctx $cacheKey $masterCache -}}
-
-  {{- $masterKey := $ctx.Release.Name -}}
-  {{- $yamlResult := dict -}}
-  {{- if not (hasKey $masterCache $masterKey) -}}
-    {{- $yamlResult = (include "__arkcase.core.integrations.compute" $ctx) -}}
-    {{- $masterCache = set $masterCache $masterKey ($yamlResult | fromYaml) -}}
-  {{- else -}}
-    {{- $yamlResult = get $masterCache $masterKey | toYaml -}}
-  {{- end -}}
-  {{- $yamlResult -}}
+  {{- $args :=
+    dict
+      "ctx" $ctx
+      "template" "__arkcase.core.integrations.compute"
+  -}}
+  {{- include "__arkcase.tools.getCachedValue" $args -}}
 {{- end -}}
 
 {{- define "arkcase.core.integrations.config" -}}
@@ -546,7 +533,7 @@
   {{- $finalMappings | toYaml -}}
 {{- end -}}
 
-{{- define "arkcase.core.rolesToGroups.render" -}}
+{{- define "__arkcase.core.rolesToGroups.compute" -}}
   {{- $ctx := $ -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "Must send the root context as the only parameter" -}}
@@ -602,28 +589,15 @@
 {{- define "arkcase.core.rolesToGroups" -}}
   {{- $ctx := $ -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
-    {{- fail "Must send the root context as the only parameter" -}}
-  {{- end -}}
+    {{- fail "The parameter must be the root context ($ or .)" -}}
+  {{- end -}} 
 
-  {{- $cacheKey := "ArkCase-Roles-To-Groups" -}}
-  {{- $masterCache := dict -}}
-  {{- if (hasKey $ $cacheKey) -}}
-    {{- $masterCache = get $ $cacheKey -}}
-    {{- if and $masterCache (not (kindIs "map" $masterCache)) -}}
-      {{- $masterCache = dict -}}
-    {{- end -}}
-  {{- end -}}
-  {{- $crap := set $ $cacheKey $masterCache -}}
-
-  {{- $chartName := (include "arkcase.fullname" $ctx) -}}
-  {{- if not (hasKey $masterCache $chartName) -}}
-    {{- $obj := (include "arkcase.core.rolesToGroups.render" $ctx | fromYaml) -}}
-    {{- if not $obj -}}
-      {{- $obj = dict -}}
-    {{- end -}}
-    {{- $masterCache = set $masterCache $chartName $obj -}}
-  {{- end -}}
-  {{- get $masterCache $chartName | toYaml -}}
+  {{- $args :=
+    dict
+      "ctx" $ctx
+      "template" "__arkcase.core.rolesToGroups.compute"
+  -}}
+  {{- include "__arkcase.tools.getCachedValue" $args -}}
 {{- end -}}
 
 {{- define "arkcase.core.springProfiles" -}}
