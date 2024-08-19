@@ -1,0 +1,16 @@
+#!/bin/bash
+
+if [ -v ALT_VARS ] ; then
+	ALT_VARS=(${ALT_VARS})
+	set -- "${ALT_VARS[@]}"
+fi
+
+for VAR in "${@}" ; do
+	[ -v "${VAR}" ] || continue
+	[ -n "${!VAR}" ] || continue
+	V="${!VAR}"
+	L="${V,,}"
+	U="${V^^}"
+	echo "export ${VAR}_LOWER=${L@Q}"
+	echo "export ${VAR}_UPPER=${U@Q}"
+done
