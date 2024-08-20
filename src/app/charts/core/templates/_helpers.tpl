@@ -275,7 +275,7 @@
       "port" $port
       "username" $username
       "password" $password
-      "from" $from
+      "userFrom" $from
   -}}
   {{- $result := dict "sender" $sender -}}
 
