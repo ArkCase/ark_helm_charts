@@ -280,7 +280,7 @@
   {{- $result := dict "sender" $sender -}}
 
   {{- $host = "localhost" -}}
-  {{- $v = (include "arkcase.tools.conf" (dict "ctx" $ "value" "email.send.host" "detailed" true) | fromYaml) -}}
+  {{- $v = (include "arkcase.tools.conf" (dict "ctx" $ "value" "email.receive.host" "detailed" true) | fromYaml) -}}
   {{- if and $v $v.global $v.value (eq $v.type "string") -}}
     {{- /* This will explode or give us a valid value */ -}}
     {{- $host = (include "arkcase.tools.singleHostname" $v.value) -}}
@@ -291,11 +291,11 @@
   {{- $result = set $result "host" $host -}}
 
   {{- $port = $null -}}
-  {{- $v = (include "arkcase.tools.conf" (dict "ctx" $ "value" "email.send.port" "detailed" true) | fromYaml) -}}
+  {{- $v = (include "arkcase.tools.conf" (dict "ctx" $ "value" "email.receive.port" "detailed" true) | fromYaml) -}}
   {{- if and $v $v.global $v.value -}}
     {{- $port = (include "arkcase.tools.checkNumericPort" $v.value) -}}
     {{- if not $port -}}
-      {{- fail (printf "Invalid email.port [%s] - must be a valid port number in the range [1..65535]" $v.value) -}}
+      {{- fail (printf "Invalid email.receive.port [%s] - must be a valid port number in the range [1..65535]" $v.value) -}}
     {{- end -}}
     {{- $result = set $result "port" $port -}}
   {{- end }}
