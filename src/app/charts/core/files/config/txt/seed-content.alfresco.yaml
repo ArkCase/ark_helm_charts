@@ -1,8 +1,12 @@
 # These usernames/groupnames will be added to the ALFRESCO_ADMINISTRATORS group
 admins:
   users:
-    # Make the arkcase admin also an Alfresco admin, unless they don't exist
+
+    # Make the ArkCase Alfresco service account also an Alfresco admin, unless they don't exist
+    "@env:ARKCASE_CONTENT_USERNAME": false
+    # Make the ArkCase Admin account also an Alfresco admin, unless they don't exist
     "@env:ARKCASE_ADMIN_USERNAME": false
+
   # Don't do this by default, as we don't necessarily want all ArkCase admins to also be Alfresco admins
   # groups:
   #   ARKCASE_ADMINISTRATOR: false
