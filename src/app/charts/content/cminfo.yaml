@@ -1,7 +1,12 @@
 alfresco:
   url: https://content-main:8443/alfresco
   ui: https://content-share:8443/share
-  username: admin
+  users:
+    admin: alfresco-admin
+    main: alfresco-user
+  groups:
+    admin:
+      - alfresco-administrators
   settings:
     site: acm
     rm: rm
@@ -12,8 +17,14 @@ alfresco:
 s3:
   url: https://content-main:9000/
   ui: https://content-main:9001/minio
-  username: administrator
+  users:
+    admin: s3-admin
+    main: s3-user
+  groups:
+    admin:
+      - s3-administrators
   settings:
     bucket: arkcase
+    region: us-east-1
   aliases:
     - minio
