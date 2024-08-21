@@ -135,7 +135,7 @@ spec:
                 -Dalfresco.scheme=https
                 -Daos.baseUrlOverwrite="https://$(SERVICE_ALFRESCO_MAIN):8443/aos"
                 -Dopencmis.server.override=true
-                -Dopencmis.server.value="https://$(SERVICE_ALFRESCO_MAIN):8443/api"
+                -Dopencmis.server.value="https://$(SERVICE_ALFRESCO_MAIN):8443/alfresco/api"
                 -Dmessaging.broker.url="failover:(nio+ssl://$(SERVICE_ALFRESCO_ACTIVEMQ):61616)?timeout=3000&jms.useCompression=true"
                 -Ddeployment.method=HELM_CHART
                 -Dcsrf.filter.enabled=false
