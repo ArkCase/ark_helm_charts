@@ -2,14 +2,14 @@
 Compute the LDAP dc=XXX,dc=XXX from a given domain name
 
 usage: ( include "__arkcase.ldap.dc" "some.domain.com" )
-result: "DC=some,DC=domain,DC=com"
+result: "dc=some,dc=domain,dc=com"
 */}}
 {{- define "__arkcase.ldap.dc" -}}
-  {{- $parts := splitList "." (include "arkcase.tools.mustHostname" $ | upper) | compact -}}
+  {{- $parts := splitList "." (include "arkcase.tools.mustHostname" $ | lower) | compact -}}
   {{- $dc := "" -}}
   {{- $sep := "" -}}
   {{- range $parts -}}
-    {{- $dc = (printf "%s%sDC=%s" $dc $sep .) -}}
+    {{- $dc = (printf "%s%sdc=%s" $dc $sep .) -}}
     {{- if (eq $sep "") -}}
       {{- $sep = "," -}}
     {{- end -}}
@@ -51,7 +51,7 @@ result: "DC=some,DC=domain,DC=com"
     {{- $final := dict -}}
 
     {{- /* Compute the domain */ -}}
-    {{- $final = set $final "domain" (pluck "domain" $set $settings $def | compact | first | upper) -}}
+    {{- $final = set $final "domain" (pluck "domain" $set $settings $def | compact | first | lower) -}}
 
     {{- /* Compute the realm based on the domain */ -}}
     {{- $final = set $final "realm" (pluck "realm" $set $settings | compact | first | default (include "__arkcase.ldap.realm" $final.domain)) -}}
