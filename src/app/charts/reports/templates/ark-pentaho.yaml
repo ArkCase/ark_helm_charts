@@ -210,7 +210,6 @@ spec:
             - name: *logsVol
               mountPath: *logsDir
             {{- include "arkcase.pentaho.license.volumeMounts" $ | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/.template-vars.yaml") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/tomcat/webapps/pentaho/META-INF/context.xml") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/pentaho-solutions/system/jackrabbit/repository.xml") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/pentaho-solutions/system/applicationContext-security-ldap.properties") | nindent 12 }}
