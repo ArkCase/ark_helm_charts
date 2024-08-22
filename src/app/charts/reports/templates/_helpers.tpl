@@ -141,12 +141,16 @@
     {{- $prefix := (printf "REPORTS_JDBC_%s" ($schema | upper)) -}}
     {{- $replacement := (printf "$(%s_" $prefix) -}}
 
-    {{- $url := ($db.jdbc.format | default "" | toString | replace "$(PREFIX_" $replacement) -}}
-    {{- $driver := ($db.jdbc.driver | default "" | toString | replace "$(PREFIX_" $replacement) -}}
-    {{- $validationQuery := ($db.validationQuery | default "" | toString | replace "$(PREFIX_" $replacement) -}}
+    {{- $dialect := ($db.dialect | default "" | toString | upper | replace "$(PREFIX_" $replacement) -}}
+    {{- $result = append $result (dict "name" (printf "%s_DIALECT" $prefix) "value" $dialect) -}}
 
+    {{- $url := ($db.jdbc.format | default "" | toString | replace "$(PREFIX_" $replacement) -}}
     {{- $result = append $result (dict "name" (printf "%s_URL" $prefix) "value" $url) -}}
+
+    {{- $driver := ($db.jdbc.driver | default "" | toString | replace "$(PREFIX_" $replacement) -}}
     {{- $result = append $result (dict "name" (printf "%s_DRIVER" $prefix) "value" $driver) -}}
+
+    {{- $validationQuery := ($db.validationQuery | default "" | toString | replace "$(PREFIX_" $replacement) -}}
     {{- if $validationQuery -}}
       {{- $result = append $result (dict "name" (printf "%s_VALIDATION_QUERY" $prefix) "value" $validationQuery) -}}
     {{- end -}}
