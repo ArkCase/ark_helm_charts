@@ -174,7 +174,7 @@ for JOB in "${JOBS[@]}" ; do
 	if run-kjb "${JOB}" < /dev/null &> "${JOB_LOG}" ; then
 		say "Job completed successfully"
 	else
-		say "Errors detected, please review the above logs."
+		say "Errors detected, please review the log at [${JOB_LOG}]"
 	fi
 done
 
