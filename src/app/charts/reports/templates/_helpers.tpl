@@ -135,24 +135,36 @@
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "The 'ctx' parameter given must be the root context (. or $)" -}}
   {{- end -}}
+
   {{- $result := list -}}
   {{- $db := (include "arkcase.db.info" $ctx | fromYaml) -}}
   {{- range $schema := (list "arkcase" "hibernate" "jackrabbit" "quartz") -}}
     {{- $prefix := (printf "REPORTS_JDBC_%s" ($schema | upper)) -}}
     {{- $replacement := (printf "$(%s_" $prefix) -}}
 
-    {{- $dialect := ($db.dialect | default "" | toString | upper | replace "$(PREFIX_" $replacement) -}}
-    {{- $result = append $result (dict "name" (printf "%s_DIALECT" $prefix) "value" $dialect) -}}
+    {{- $name := "" -}}
+    {{- $value := "" -}}
 
-    {{- $url := ($db.jdbc.format | default "" | toString | replace "$(PREFIX_" $replacement) -}}
-    {{- $result = append $result (dict "name" (printf "%s_URL" $prefix) "value" $url) -}}
+    {{- $name = (printf "%s_DIALECT" $prefix) -}}
+    {{- $value = ($db.dialect | default "" | toString | upper | replace "$(PREFIX_" $replacement) -}}
+    {{- $result = append $result (dict "name" $name "value" $value) -}}
 
-    {{- $driver := ($db.jdbc.driver | default "" | toString | replace "$(PREFIX_" $replacement) -}}
-    {{- $result = append $result (dict "name" (printf "%s_DRIVER" $prefix) "value" $driver) -}}
+    {{- $name = (printf "%s_DBTYPE" $prefix) -}}
+    {{- $value = ($db.databaseType | default "" | toString | upper | replace "$(PREFIX_" $replacement) -}}
+    {{- $result = append $result (dict "name" $name "value" $value) -}}
 
-    {{- $validationQuery := ($db.validationQuery | default "" | toString | replace "$(PREFIX_" $replacement) -}}
-    {{- if $validationQuery -}}
-      {{- $result = append $result (dict "name" (printf "%s_VALIDATION_QUERY" $prefix) "value" $validationQuery) -}}
+    {{- $name = (printf "%s_URL" $prefix) -}}
+    {{- $value = ($db.jdbc.url | default "" | toString | replace "$(PREFIX_" $replacement) -}}
+    {{- $result = append $result (dict "name" $name "value" $value) -}}
+
+    {{- $name = (printf "%s_DRIVER" $prefix) -}}
+    {{- $value = ($db.jdbc.driver | default "" | toString | replace "$(PREFIX_" $replacement) -}}
+    {{- $result = append $result (dict "name" $name "value" $value) -}}
+
+    {{- $value = ($db.validationQuery | default "" | toString | replace "$(PREFIX_" $replacement) -}}
+    {{- if $value -}}
+      {{- $name = (printf "%s_VALIDATION_QUERY" $prefix) -}}
+      {{- $result = append $result (dict "name" $name "value" $value) -}}
     {{- end -}}
   {{- end -}}
   {{- if $result -}}

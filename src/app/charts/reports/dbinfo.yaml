@@ -8,7 +8,7 @@ mysql: &mysql
   jdbc:
     driver: com.mysql.cj.jdbc.Driver
     type: mysql
-    format: "jdbc:mysql://$(PREFIX_HOST):$(PREFIX_PORT)/$(PREFIX_DATABASE)?sslMode=VERIFY_IDENTITY"
+    url: "jdbc:mysql://$(PREFIX_HOST):$(PREFIX_PORT)/$(PREFIX_DATABASE)?sslMode=VERIFY_IDENTITY"
   validationQuery: "SELECT 1"
   aliases:
     - mariadb
@@ -24,8 +24,8 @@ oracle10g: &oracle10g
   jdbc:
     driver: oracle.jdbc.driver.OracleDriver
     type: oracle
-    format: "jdbc:oracle:thin:@$(PREFIX_HOST):$(PREFIX_PORT)"
-    # format: "jdbc:oracle:thin:@$(PREFIX_HOST):$(PREFIX_PORT)${INSTANCE}"
+    url: "jdbc:oracle:thin:@$(PREFIX_HOST):$(PREFIX_PORT)"
+    # url: "jdbc:oracle:thin:@$(PREFIX_HOST):$(PREFIX_PORT)${INSTANCE}"
     # instance:
     #   format: "/$(PREFIX_INSTANCE)"
   validationQuery: "SELECT 1 FROM DUAL"
@@ -53,7 +53,7 @@ postgresql:
   jdbc:
     driver: org.postgresql.Driver
     type: postgresql
-    format: "jdbc:postgresql://$(PREFIX_HOST):$(PREFIX_PORT)/$(PREFIX_DATABASE)?ssl=true&sslrootcert=/.ssl/ca-int.pem"
+    url: "jdbc:postgresql://$(PREFIX_HOST):$(PREFIX_PORT)/$(PREFIX_DATABASE)?ssl=true&sslrootcert=/.ssl/ca-int.pem"
   validationQuery: "SELECT 1"
   aliases:
     - psql
@@ -69,8 +69,8 @@ sqlserver:
   jdbc:
     driver: com.microsoft.sqlserver.jdbc.SQLServerDriver
     type: sqlserver
-    format: "jdbc:sqlserver://$(PREFIX_HOST)$(PREFIX_INSTANCE):$(PREFIX_PORT);DatabaseName=$(PREFIX_DATABASE);encrypt=true;trustServerCertificate=false;"
-    # format: "jdbc:sqlserver://$(PREFIX_HOST)${INSTANCE}:$(PREFIX_PORT);DatabaseName=$(PREFIX_DATABASE);encrypt=true;trustServerCertificate=false;"
+    url: "jdbc:sqlserver://$(PREFIX_HOST)$(PREFIX_INSTANCE):$(PREFIX_PORT);DatabaseName=$(PREFIX_DATABASE);encrypt=true;trustServerCertificate=false;"
+    # url: "jdbc:sqlserver://$(PREFIX_HOST)${INSTANCE}:$(PREFIX_PORT);DatabaseName=$(PREFIX_DATABASE);encrypt=true;trustServerCertificate=false;"
     # instance:
     #   format: "\\$(PREFIX_INSTANCE)"
   validationQuery: "SELECT 1"
