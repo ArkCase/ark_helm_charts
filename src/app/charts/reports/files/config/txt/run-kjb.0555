@@ -2,33 +2,46 @@
 set -euo pipefail
 
 DEFAULT_LOG_KEEP=30
-[ -v LOG_KEEP ] || LOG_KEEP=${DEFAULT_LOG_KEEP}
+[ -v LOG_KEEP ] || LOG_KEEP=""
+[ -n "${LOG_KEEP}" ] || LOG_KEEP="${DEFAULT_LOG_KEEP}"
 [[ "${LOG_KEEP}" =~ ^[1-9][0-9]*$ ]] || LOG_KEEP=${DEFAULT_LOG_KEEP}
 
-[ -v BASE_DIR ] || BASE_DIR="/app"
-[ -v CONF_KJB ] || CONF_KJB="config"
+[ -v BASE_DIR ] || BASE_DIR=""
+[ -n "${BASE_DIR}" ] || BASE_DIR="/app"
 
-[ -v PENTAHO_PDI_HOME ] || PENTAHO_PDI_HOME="${BASE_DIR}/pentaho-pdi"
+[ -v CONF_KJB ] || CONF_KJB=""
+[ -n "${CONF_KJB}" ] || CONF_KJB="config"
 
-timestamp() {
+[ -v PENTAHO_PDI_HOME ] || PENTAHO_PDI_HOME=""
+[ -n "${PENTAHO_PDI_HOME}" ] || PENTAHO_PDI_HOME="${BASE_DIR}/pentaho-pdi"
+
+# This will help with cleanup
+RENDERED=()
+
+timestamp()
+{
 	date -Ins -u
 }
 
-say() {
+say()
+{
 	echo -e "$(timestamp): ${@}"
 }
 
-fail() {
+fail()
+{
 	say "${@}" 1>&2
 	exit ${EXIT_CODE:-1}
 }
 
-usage() {
+usage()
+{
 	echo -e "usage: ${BASH_SOURCE:-${0}} file.kjb"
 	exit 1
 }
 
-cleanup_logs() {
+cleanup_logs()
+{
 	if [ -n "${LOG}" ] && [ -f "${LOG}" ] ; then
 		# Compress the newly-produced log, if it exists
 		gzip -9 "${LOG}"
@@ -36,6 +49,15 @@ cleanup_logs() {
 	while read log ; do
 		rm -f "${log}" &>/dev/null || true
 	done < <(find "${LOGS_DIR}" -type f -name "${JOB_NAME}-*.log.gz" | sort -r | tail -n +$(( LOG_KEEP + 1 )) )
+}
+
+cleanup()
+{
+	cleanup_logs
+	if [ ${#RENDERED[@]} -gt 0 ] ; then
+		# Make sure we shred every single file we rendered into disk
+		shred -z -x "${RENDERED[@]}" &>/dev/null
+	fi
 }
 
 [ ${#} -eq 1 ] || usage
@@ -55,7 +77,7 @@ LOGS_DIR="${JOB_DIR}/logs"
 LOG="${LOGS_DIR}/${JOB_NAME}-$(date -u +%Y%m%d-%H%M%S).log"
 say "Log will be stored at: [${LOG}]"
 exec &> >(tee --output-error=exit "${LOG}") || fail "Failed to initialize script logging to [${LOG}]"
-trap cleanup_logs EXIT
+trap cleanup EXIT
 
 # To temporarily disable template rendering, for debugging purposes
 [ -v NORENDER ] || NORENDER="false"
@@ -87,19 +109,56 @@ if [ -d "${DIR}/${CONF_KJB}" ] ; then
 		# This double-check makes it easier to use this script
 		# in developers' environments
 		RENDER_TPL="$(type -P render-template)" || true
-		CONF_TPL="${CONF_KJB}.tpl"
-		if [ -d "${CONF_TPL}" ] && [ -n "${RENDER_TPL}" ] ; then
-			# Find all the templates within the configuration
-			# templates directory and render the final files
-			# within ${CONF_KJB}
-			while read T ; do
+		if [ -n "${RENDER_TPL}" ] ; then
+			# Find all the templates within the entire tree,
+			# and render the final files.
+			#
+			# If the found item is a directory, then every file
+			# within is processed, and the output goes to the
+			# corresponding file within the sibling directory
+			# of the same name, minus the "*.tpl" suffix.
+			#
+			# If the found item is a file, it will be rendered
+			# to its corresponding file, minus the "*.tpl" suffix,
+			# in the same directory.
+			#
+			# We're careful here to avoid double-rendering, so
+			# first we find all files with the name "*.tpl", but
+			# which are NOT within a folder with the name "*.tpl".
+			# Then we process the folders with the name "*.tpl",
+			# but which are NOT within a folder with the name
+			# "*.tpl", and render the files within as described above
+
+			# Process the files
+			while read SRC ; do
 				# Remove the leading "./"
-				T="${T#*/}"
-				F="${CONF_KJB}/${T}"
-				mkdir -p "${F%/*}"
-				say "Rendering [${F}]..."
-				"${RENDER_TPL}" < "${CONF_TPL}/${T}" > "${F}"
-			done < <(cd "${CONF_TPL}" && find . -type f | sort)
+				TGT="${SRC#*/}"
+				# Remove the trailing ".tpl"
+				TGT="${TGT%.*}"
+				say "Rendering [${TGT}]..."
+				"${RENDER_TPL}" < "${SRC}" > "${TGT}"
+				RENDERED+=("${TGT}")
+			done < <(find . -type f -iname '*.tpl' -not -ipath '*/*.tpl/*' | sort)
+
+			# Process the directories
+			while read DIR ; do
+				# Remove the leading "./"
+				SIB="${DIR#*/}"
+				# Remove the trailing ".tpl"
+				SIB="${SIB%.*}"
+				say "Rendering files within [${SIB}]..."
+				while read SRC ; do
+					# Remove the leading "./"
+					SRC="${SRC#*/}"
+					# Remove the trailing ".tpl"
+					TGT="${SIB}/${SRC%.*}"
+					# Pre-pend the orignal template directory path
+					SRC="${DIR}/${SRC}"
+					say "\tRendering [${TGT}]..."
+					"${RENDER_TPL}" < "${SRC}" > "${TGT}"
+					RENDERED+=("${TGT}")
+				done < <(cd "${DIR}" && find . -type f | sort)
+			done < <(find . -type d -iname '*.tpl' -not -ipath '*/*.tpl/*' | sort)
 		fi
 	fi
 fi
@@ -118,7 +177,7 @@ fi
 
 say "Executing KJB: [${JOB}]"
 cd "${PENTAHO_PDI_HOME}/data-integration"
-./kitchen.sh -file:"${JOB}" "${LOG_FLAG[@]}" < /dev/null
-RC=${?}
+RC=0
+./kitchen.sh -file:"${JOB}" "${LOG_FLAG[@]}" < /dev/null || RC=${?}
 say "Exit Status: [${RC}]"
 exit ${RC}
