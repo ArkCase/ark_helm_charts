@@ -6,29 +6,35 @@ case "${DEBUG,,}" in
 	* ) DEBUG="false" ;;
 esac
 
-timestamp() {
+timestamp()
+{
 	/usr/bin/date -Ins -u
 }
 
-say() {
+say()
+{
 	echo -e "$(timestamp): ${@}"
 }
 
-err() {
+err()
+{
 	say "ERROR: ${@}" 1>&2
 }
 
-fail() {
+fail()
+{
 	say "${@}"
 	exit ${EXIT_CODE:-1}
 }
 
-cleanup() {
+cleanup()
+{
 	[ -v RUN_MARKER ] || RUN_MARKER=""
 	[ -z "${RUN_MARKER}" ] || rm -rf "${RUN_MARKER}" &>/dev/null
 }
 
-poll_url() {
+poll_url()
+{
 	local URL="${1}"
 	local START="$(date +%s)"
 	say "Starting the polling cycle for [${URL}]..."
