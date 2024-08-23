@@ -2,24 +2,29 @@
 
 set -euo pipefail
 
-timestamp() {
+timestamp()
+{
 	/usr/bin/date -Ins -u
 }
 
-say() {
+say()
+{
 	echo -e "$(timestamp): ${@}"
 }
 
-err() {
+err()
+{
 	say "❌ ${@}" 1>&2
 }
 
-fail() {
+fail()
+{
 	say "❌ ${@}" 1>&2
 	exit ${EXIT_CODE:-1}
 }
 
-find_schedules() {
+find_schedules()
+{
 	if [ ${#} -lt 1 ] ; then
 		find "${DATA_DIR}" -type f -iname '*.cron'
 		return 0
@@ -31,7 +36,8 @@ find_schedules() {
 	done
 }
 
-usage() {
+usage()
+{
 	echo -e "usage: ${BASH_SOURCE:-${0}} [-r | --reset | -h | --help ]" 1>&2
 	exit 1
 }
