@@ -1,6 +1,7 @@
 #!/bin/bash
+set -euo pipefail
 
-[ -v DEBUG ] || DEBUG="false"
+[ -v DEBUG ] || DEBUG=""
 case "${DEBUG,,}" in
 	true | t | 1 | on | y | yes | enabled | enable | active ) DEBUG="true" ;;
 	* ) DEBUG="false" ;;
@@ -8,7 +9,7 @@ esac
 
 timestamp()
 {
-	/usr/bin/date -Ins -u
+	date -Ins -u
 }
 
 say()
@@ -18,12 +19,12 @@ say()
 
 err()
 {
-	say "ERROR: ${@}" 1>&2
+	say "❌ ${@}"
 }
 
 fail()
 {
-	say "${@}"
+	err "${@}"
 	exit ${EXIT_CODE:-1}
 }
 
@@ -43,7 +44,6 @@ debug_report_installer()
 
 WORKDIRS=()
 trap cleanup EXIT
-set -euo pipefail
 
 [ -v BASE_DIR ] || BASE_DIR=""
 [ -n "${BASE_DIR}" ] || BASE_DIR="/app"

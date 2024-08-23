@@ -1,20 +1,6 @@
 #!/bin/bash
 set -euo pipefail
 
-DEFAULT_LOG_KEEP=30
-[ -v LOG_KEEP ] || LOG_KEEP=""
-[ -n "${LOG_KEEP}" ] || LOG_KEEP="${DEFAULT_LOG_KEEP}"
-[[ "${LOG_KEEP}" =~ ^[1-9][0-9]*$ ]] || LOG_KEEP=${DEFAULT_LOG_KEEP}
-
-[ -v BASE_DIR ] || BASE_DIR=""
-[ -n "${BASE_DIR}" ] || BASE_DIR="/app"
-
-[ -v CONF_KJB ] || CONF_KJB=""
-[ -n "${CONF_KJB}" ] || CONF_KJB="config"
-
-[ -v PENTAHO_PDI_HOME ] || PENTAHO_PDI_HOME=""
-[ -n "${PENTAHO_PDI_HOME}" ] || PENTAHO_PDI_HOME="${BASE_DIR}/pentaho-pdi"
-
 timestamp()
 {
 	date -Ins -u
@@ -25,9 +11,14 @@ say()
 	echo -e "$(timestamp): ${@}"
 }
 
+err()
+{
+	say "❌ ${@}"
+}
+
 fail()
 {
-	say "${@}" 1>&2
+	err "${@}"
 	exit ${EXIT_CODE:-1}
 }
 
@@ -53,6 +44,20 @@ cleanup()
 	cleanup_logs
 }
 
+DEFAULT_LOG_KEEP=30
+[ -v LOG_KEEP ] || LOG_KEEP=""
+[ -n "${LOG_KEEP}" ] || LOG_KEEP="${DEFAULT_LOG_KEEP}"
+[[ "${LOG_KEEP}" =~ ^[1-9][0-9]*$ ]] || LOG_KEEP=${DEFAULT_LOG_KEEP}
+
+[ -v BASE_DIR ] || BASE_DIR=""
+[ -n "${BASE_DIR}" ] || BASE_DIR="/app"
+
+[ -v CONF_KJB ] || CONF_KJB=""
+[ -n "${CONF_KJB}" ] || CONF_KJB="config"
+
+[ -v PENTAHO_PDI_HOME ] || PENTAHO_PDI_HOME=""
+[ -n "${PENTAHO_PDI_HOME}" ] || PENTAHO_PDI_HOME="${BASE_DIR}/pentaho-pdi"
+
 [ ${#} -eq 1 ] || usage
 
 JOB="${1}"
@@ -73,86 +78,102 @@ exec &> >(tee --output-error=exit "${LOG}") || fail "Failed to initialize script
 trap cleanup EXIT
 
 # To temporarily disable template rendering, for debugging purposes
-[ -v NORENDER ] || NORENDER="false"
-case "${NORENDER,,}" in
-	true | t | yes | y | on | en | enable | enabled ) NORENDER="true" ;;
-	* ) NORENDER="false"
+[ -v NOTEMPLATES ] || NOTEMPLATES="false"
+case "${NOTEMPLATES,,}" in
+	true | t | yes | y | on | en | enable | enabled ) NOTEMPLATES="true" ;;
+	* ) NOTEMPLATES="false" ;;
 esac
 
 ################################################################################
 # Are there any templates to render?
 ################################################################################
-DIR="$(dirname "${JOB}")"
-if [ -d "${DIR}/${CONF_KJB}" ] ; then
+CONF_KJB="${JOB_DIR}/${CONF_KJB}"
 
-	CONF_KJB="${DIR}/${CONF_KJB}"
-
+if [ -d "${CONF_KJB}" ] ; then
+	say "Found the configuration directory at [${CONF_KJB}]"
 	# The config directory should contain a kettle directory
 	# with all the files (or templates) that would go in .kettle,
 	# and a metastore directory with all the files (or templates)
 	# that would go in .pentaho/metastore
 
 	[ -d "${CONF_KJB}/.kettle" ] && export KETTLE_HOME="${CONF_KJB}"
-	[ -d "${CONF_KJB}/metastore" ] && export JAVA_TOOL_OPTIONS="-DPENTAHO_METASTORE_FOLDER=${CONF_KJB}"
+	[ -d "${CONF_KJB}/metastore" ] && export JAVA_TOOL_OPTIONS="${JAVA_TOOL_OPTIONS:-} -DPENTAHO_METASTORE_FOLDER=${CONF_KJB}"
 
-	# Allow rendering to be disabled
-	if "${NORENDER}" ; then
-		say "Template rendering was disabled"
-	else
+else
+	say "The configuration directory [${CONF_KJB}] was not found, will not set the KETTLE_HOME and PENTAHO_METASTORE_FOLDER variables"
+fi
+
+# Allow rendering to be disabled
+if "${NOTEMPLATES}" ; then
+	say "Template rendering was disabled"
+else
+	# This double-check makes it easier to use this script
+	# in developers' environments
+	type -P render-template &>/dev/null || fail "Could not find the render-template executable in the path"
+	type -P encrypt-passwords &>/dev/null || fail "Could not find the encrypt-passwords executable in the path"
+
+	# Find all the templates within the entire tree,
+	# and render the final files.
+	#
+	# If the found item is a directory, then every file
+	# within is processed, and the output goes to the
+	# corresponding file within the sibling directory
+	# of the same name, minus the "*.tpl" suffix.
+	#
+	# If the found item is a file, it will be rendered
+	# to its corresponding file, minus the "*.tpl" suffix,
+	# in the same directory.
+	#
+	# We're careful here to avoid double-rendering, so
+	# first we find all files with the name "*.tpl", but
+	# which are NOT within a folder with the name "*.tpl".
+	# Then we process the folders with the name "*.tpl",
+	# but which are NOT within a folder with the name
+	# "*.tpl", and render the files within as described above
+
+	(
+		set -euo pipefail
+
+		cd "${JOB_DIR}"
+
+		# Encrypt the passwords, so we don't persist sensitive
+		# values to disk unencrypted
+		say "Encrypting passwords for Kettle"
 		source <(/usr/local/bin/encrypt-passwords kettle) || fail "Failed to encrypt the passwords"
-		# This double-check makes it easier to use this script
-		# in developers' environments
-		RENDER_TPL="$(type -P render-template)" || true
-		if [ -n "${RENDER_TPL}" ] ; then
-			# Find all the templates within the entire tree,
-			# and render the final files.
-			#
-			# If the found item is a directory, then every file
-			# within is processed, and the output goes to the
-			# corresponding file within the sibling directory
-			# of the same name, minus the "*.tpl" suffix.
-			#
-			# If the found item is a file, it will be rendered
-			# to its corresponding file, minus the "*.tpl" suffix,
-			# in the same directory.
-			#
-			# We're careful here to avoid double-rendering, so
-			# first we find all files with the name "*.tpl", but
-			# which are NOT within a folder with the name "*.tpl".
-			# Then we process the folders with the name "*.tpl",
-			# but which are NOT within a folder with the name
-			# "*.tpl", and render the files within as described above
 
-			# Process the files
+		say "Rendering any necessary templated files"
+		# Process the files
+		while read SRC ; do
+			# Remove the leading "./"
+			TGT="${SRC#*/}"
+			# Remove the trailing ".tpl"
+			TGT="${TGT%.*}"
+			say "Rendering [${TGT}]..."
+			render-template < "${SRC}" > "${TGT}"
+		done < <(find . -type f -iname '*.tpl' -not -ipath '*/*.tpl/*' | sort)
+
+		say "Rendering any necessary templated directories"
+		# Process the directories
+		while read SRC_DIR ; do
+			# Remove the leading "./"
+			TGT_DIR="${SRC_DIR#*/}"
+			# Remove the trailing ".tpl"
+			TGT_DIR="${TGT_DIR%.*}"
+			say "Rendering files within [${TGT_DIR}]..."
 			while read SRC ; do
 				# Remove the leading "./"
-				TGT="${SRC#*/}"
-				# Remove the trailing ".tpl"
-				TGT="${TGT%.*}"
-				say "Rendering [${TGT}]..."
-				"${RENDER_TPL}" < "${SRC}" > "${TGT}"
-			done < <(find . -type f -iname '*.tpl' -not -ipath '*/*.tpl/*' | sort)
+				SRC="${SRC#*/}"
+				# Pre-pend the target path
+				TGT="${TGT_DIR}/${SRC}"
+				# Pre-pend the orignal template directory path
+				SRC="${SRC_DIR}/${SRC}"
+				say "\tRendering [${TGT}]..."
+				render-template < "${SRC}" > "${TGT}"
+			done < <(cd "${SRC_DIR}" && find . -type f | sort)
+		done < <(find . -type d -iname '*.tpl' -not -ipath '*/*.tpl/*' | sort)
 
-			# Process the directories
-			while read SRC_DIR ; do
-				# Remove the leading "./"
-				TGT_DIR="${SRC_DIR#*/}"
-				# Remove the trailing ".tpl"
-				TGT_DIR="${TGT_DIR%.*}"
-				say "Rendering files within [${TGT_DIR}]..."
-				while read SRC ; do
-					# Remove the leading "./"
-					SRC="${SRC#*/}"
-					# Pre-pend the target path
-					TGT="${TGT_DIR}/${SRC}"
-					# Pre-pend the orignal template directory path
-					SRC="${SRC_DIR}/${SRC}"
-					say "\tRendering [${TGT}]..."
-					"${RENDER_TPL}" < "${SRC}" > "${TGT}"
-				done < <(cd "${SRC_DIR}" && find . -type f | sort)
-			done < <(find . -type d -iname '*.tpl' -not -ipath '*/*.tpl/*' | sort)
-		fi
-	fi
+		say "Template rendering completed"
+	)
 fi
 
 LOG_FLAG=()

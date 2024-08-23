@@ -1,24 +1,33 @@
 #!/bin/bash
+set -euo pipefail
 
-timestamp() {
+timestamp()
+{
 	date -Ins -u
 }
 
-say() {
+say()
+{
 	echo -e "$(timestamp): ${@}"
 }
 
-fail() {
-	say "${@}" 1>&2
+err()
+{
+	say "❌ ${@}"
+}
+
+fail()
+{
+	err "${@}"
 	exit ${EXIT_CODE:-1}
 }
 
-set -euo pipefail
-
-[ -v SSL_DIR ] || SSL_DIR="/.ssl"
+[ -v SSL_DIR ] || SSL_DIR=""
+[ -n "${SSL_DIR}" ] || SSL_DIR="/.ssl"
 CERT="${SSL_DIR}/haproxy-cert.pem"
 
-[ -v MAX_WAIT ] || MAX_WAIT="300"
+[ -v MAX_WAIT ] || MAX_WAIT=""
+[ -n "${MAX_WAIT}" ] || MAX_WAIT="300"
 [[ "${MAX_WAIT}" =~ ^[1-9][0-9]*$ ]] || MAX_WAIT="300"
 
 say "Waiting up to ${MAX_WAIT} seconds for the SSL certificates to become available"

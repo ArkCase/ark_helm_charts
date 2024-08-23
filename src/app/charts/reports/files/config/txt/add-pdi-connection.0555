@@ -2,31 +2,42 @@
 
 set -euo pipefail
 
-timestamp() {
+timestamp()
+{
 	date -Ins -u
 }
 
-say() {
+say()
+{
 	echo -e "$(timestamp): ${@}"
 }
 
-fail() {
-	say "${@}" 1>&2
+err()
+{
+	say "❌ ${@}"
+}
+
+fail()
+{
+	err "${@}"
 	exit ${EXIT_CODE:-1}
 }
 
-usage() {
+usage()
+{
 	echo -e "usage: ${BASH_SOURCE:-${0}} connection.json"
 	exit 1
 }
 
-is_http_success() {
+is_http_success()
+{
 	local HTTP_CODE="${1}"
 	[ ${HTTP_CODE} -ge 200 ] && [ ${HTTP_CODE} -le 299 ] && return 0
 	return 1
 }
 
-run_curl() {
+run_curl()
+{
 	local ENDPOINT="${1}"
 	local METHOD="${2:-""}"
 	local POST_FILE="${3:-""}"
@@ -82,14 +93,16 @@ run_curl() {
 	fi
 }
 
-connection_exists() {
+connection_exists()
+{
 	local NAME="${1}"
 	run_curl "/plugin/data-access/api/datasource/jdbc/connection" "" "" "false" | \
 		jq -r '.Item[]["$"]' | \
 		grep -q "^${NAME}$"
 }
 
-delete_connection() {
+delete_connection()
+{
 	local NAME="${1}"
 
 	local ENCODED="$(echo -n "${NAME}" | jq -sRr @uri)"
@@ -99,7 +112,8 @@ delete_connection() {
 	return 1
 }
 
-create_connection() {
+create_connection()
+{
 	local FILE="${1}"
 
 	if ! jq -r < "${FILE}" &>/dev/null ; then

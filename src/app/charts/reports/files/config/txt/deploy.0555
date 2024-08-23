@@ -1,20 +1,41 @@
 #!/bin/bash
 set -euo pipefail
 
-[ -v BASE_DIR ] || BASE_DIR="/app"
-[ -v INIT_DIR ] || INIT_DIR="${BASE_DIR}/init"
-[ -v REPS_DIR ] || REPS_DIR="${INIT_DIR}/reports"
-[ -v DATA_DIR ] || DATA_DIR="${BASE_DIR}/data"
-[ -v DWHS_DIR ] || DWHS_DIR="${DATA_DIR}/dw"
-
-say() {
-	echo -e "$(date -u -Ins): ${@}"
+timestamp()
+{
+	date -Ins -u
 }
 
-fail() {
-	say "${@}" 1>&2
+say()
+{
+	echo -e "$(timestamp): ${@}"
+}
+
+err()
+{
+	say "❌ ${@}"
+}
+
+fail()
+{
+	err "${@}"
 	exit ${EXIT_CODE:-1}
 }
+
+[ -v BASE_DIR ] || BASE_DIR=""
+[ -n "${BASE_DIR}" ] || BASE_DIR="/app"
+
+[ -v INIT_DIR ] || INIT_DIR=""
+[ -n "${INIT_DIR}" ] || INIT_DIR="${BASE_DIR}/init"
+
+[ -v REPS_DIR ] || REPS_DIR=""
+[ -n "${REPS_DIR}" ] || REPS_DIR="${INIT_DIR}/reports"
+
+[ -v DATA_DIR ] || DATA_DIR=""
+[ -n "${DATA_DIR}" ] || DATA_DIR="${BASE_DIR}/data"
+
+[ -v DWHS_DIR ] || DWHS_DIR=""
+[ -n "${DWHS_DIR}" ] || DWHS_DIR="${DATA_DIR}/dw"
 
 #
 # Deploy all reports

@@ -1,9 +1,25 @@
 #!/bin/bash
 set -euo pipefail
 
-fail() {
-	echo -e "$(date -Ins -u): ${@}" 1>&2
-	exit 1
+timestamp()
+{
+	date -Ins -u
+}
+
+say()
+{
+	echo -e "$(timestamp): ${@}"
+}
+
+err()
+{
+	say "❌ ${@}"
+}
+
+fail()
+{
+	err "${@}"
+	exit ${EXIT_CODE:-1}
 }
 
 [ -v VARS ] || VARS=""

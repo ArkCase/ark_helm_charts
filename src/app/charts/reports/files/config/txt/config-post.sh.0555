@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 [ -v DEBUG ] || DEBUG="false"
 case "${DEBUG,,}" in
@@ -8,7 +9,7 @@ esac
 
 timestamp()
 {
-	/usr/bin/date -Ins -u
+	date -Ins -u
 }
 
 say()
@@ -18,12 +19,12 @@ say()
 
 err()
 {
-	say "ERROR: ${@}" 1>&2
+	say "❌ ${@}"
 }
 
 fail()
 {
-	say "${@}"
+	err "${@}"
 	exit ${EXIT_CODE:-1}
 }
 
@@ -58,7 +59,6 @@ poll_url()
 
 RUN_MARKER="${PENTAHO_HOME}/.initRan"
 trap cleanup EXIT
-set -euo pipefail
 
 [ -v BASE_DIR ] || BASE_DIR="/app"
 [ -v DATA_DIR ] || DATA_DIR="${BASE_DIR}/data"
@@ -94,12 +94,16 @@ while read JOB ; do
 
 	INCOMPLETE="false"
 	if [ -d "${DPL}" ] ; then
-		while read T ; do
-			# Remove the ".tpl" extension...
-			F="${T%.*}"
-			say "Rendering [${F}]..."
-			render-template < "${T}" > "${F}"
-		done < <(find "${DPL}" -type f -iname '*.tpl' | sort)
+		(
+			set -euo pipefail
+			source <(/usr/local/bin/encrypt-passwords kettle) || fail "Failed to encrypt the passwords"
+			while read T ; do
+				# Remove the ".tpl" extension...
+				F="${T%.*}"
+				say "Rendering [${F}]..."
+				render-template < "${T}" > "${F}"
+			done < <(find "${DPL}" -type f -iname '*.tpl' | sort)
+		)
 
 		# Find any connections (i.e. connection-*.json)
 		while read CONNECTION ; do

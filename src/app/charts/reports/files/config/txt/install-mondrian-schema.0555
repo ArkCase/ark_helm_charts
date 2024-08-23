@@ -1,29 +1,41 @@
 #!/bin/bash
-
 set -euo pipefail
 
-timestamp() {
+timestamp()
+{
 	date -Ins -u
 }
 
-say() {
+say()
+{
 	echo -e "$(timestamp): ${@}"
 }
 
-fail() {
-	say "${@}" 1>&2
+err()
+{
+	say "❌ ${@}"
+}
+
+fail()
+{
+	err "${@}"
 	exit ${EXIT_CODE:-1}
 }
 
-usage() {
+usage()
+{
 	echo -e "usage: ${BASH_SOURCE:-${0}} schema.xml"
 	exit 1
 }
 
+[ -v ADMIN_USERNAME ] || ADMIN_USERNAME=""
+[ -n "${ADMIN_USERNAME}" ] || ADMIN_USERNAME="admin"
 
-[ -v ADMIN_USERNAME ] || ADMIN_USERNAME="admin"
-[ -v ADMIN_PASSWORD ] || ADMIN_PASSWORD="password"
-[ -v PENTAHO_URL ] || PENTAHO_URL="https://localhost:8443/pentaho"
+[ -v ADMIN_PASSWORD ] || ADMIN_PASSWORD=""
+[ -n "${ADMIN_PASSWORD}" ] || ADMIN_PASSWORD="password"
+
+[ -v PENTAHO_URL ] || PENTAHO_URL=""
+[ -n "${PENTAHO_URL}" ] || PENTAHO_URL="https://localhost:8443/pentaho"
 
 [ ${#} -eq 1 ] || usage
 

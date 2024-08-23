@@ -1,15 +1,24 @@
 #!/bin/bash
-
 set -euo pipefail
+
+timestamp()
+{
+	date -Ins -u
+}
 
 say()
 {
-	echo -e "${@}"
+	echo -e "$(timestamp): ${@}"
+}
+
+err()
+{
+	say "❌ ${@}"
 }
 
 fail()
 {
-	say "❌ ${@}" 1>&2
+	err "${@}"
 	exit ${EXIT_CODE:-1}
 }
 

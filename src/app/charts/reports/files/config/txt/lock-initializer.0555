@@ -1,43 +1,52 @@
 #!/bin/bash
-
 set -euo pipefail
 
-[ -v DEBUG ] || DEBUG="false"
+[ -v DEBUG ] || DEBUG=""
 case "${DEBUG,,}" in
 	true | t | 1 | on | y | yes | enabled | enable | active ) DEBUG="true" ;;
 	* ) DEBUG="false" ;;
 esac
 
-timestamp() {
-	/usr/bin/date -Ins -u
+timestamp()
+{
+	date -Ins -u
 }
 
-say() {
+say()
+{
 	echo -e "$(timestamp): ${@}"
 }
 
-err() {
-	say "ERROR: ${@}" 1>&2
+err()
+{
+	say "❌ ${@}"
 }
 
-fail() {
-	say "${@}"
+fail()
+{
+	err "${@}"
 	exit ${EXIT_CODE:-1}
 }
 
-cleanup() {
+cleanup()
+{
 	[ -v RUN_MARKER ] || RUN_MARKER=""
 	[ -z "${RUN_MARKER}" ] || rm -rf "${RUN_MARKER}" &>/dev/null
 }
 
-usage() {
+usage()
+{
 	say "usage: ${BASH_SOURCE:-${0}} lock-marker initializer-process"
 }
 
 [ ${#} -ne 2 ] && usage
 
-[ -v BASE_DIR ] || BASE_DIR="/app"
-[ -v LOGS_DIR ] || LOGS_DIR="${BASE_DIR}/logs"
+[ -v BASE_DIR ] || BASE_DIR=""
+[ -n "${BASE_DIR}" ] || BASE_DIR="/app"
+
+[ -v LOGS_DIR ] || LOGS_DIR=""
+[ -n "${LOGS_DIR}" ] || LOGS_DIR="${BASE_DIR}/logs"
+
 [ -d "${LOGS_DIR}" ] || mkdir -p "${LOGS_DIR}"
 if [ -d "${LOGS_DIR}" ] ; then
     LOG_FILE="${LOGS_DIR}/lock-initializer.log"
