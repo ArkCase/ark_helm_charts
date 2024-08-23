@@ -236,6 +236,7 @@ spec:
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/init/reports/001-foia-base-reports.zip" "subPath" (printf "foia-base-reports.%s.zip" $db.reports)) | nindent 12 }}
             {{- end }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/render-template") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/encrypt-passwords") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/run-kjb") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/add-pdi-connection") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/install-mondrian-schema") | nindent 12 }}

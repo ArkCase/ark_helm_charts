@@ -15,9 +15,6 @@ DEFAULT_LOG_KEEP=30
 [ -v PENTAHO_PDI_HOME ] || PENTAHO_PDI_HOME=""
 [ -n "${PENTAHO_PDI_HOME}" ] || PENTAHO_PDI_HOME="${BASE_DIR}/pentaho-pdi"
 
-# This will help with cleanup
-RENDERED=()
-
 timestamp()
 {
 	date -Ins -u
@@ -54,10 +51,6 @@ cleanup_logs()
 cleanup()
 {
 	cleanup_logs
-	if [ ${#RENDERED[@]} -gt 0 ] ; then
-		# Make sure we shred every single file we rendered into disk
-		shred -z -x "${RENDERED[@]}" &>/dev/null
-	fi
 }
 
 [ ${#} -eq 1 ] || usage
@@ -106,6 +99,7 @@ if [ -d "${DIR}/${CONF_KJB}" ] ; then
 	if "${NORENDER}" ; then
 		say "Template rendering was disabled"
 	else
+		source <(/usr/local/bin/encrypt-passwords kettle) || fail "Failed to encrypt the passwords"
 		# This double-check makes it easier to use this script
 		# in developers' environments
 		RENDER_TPL="$(type -P render-template)" || true
@@ -137,27 +131,25 @@ if [ -d "${DIR}/${CONF_KJB}" ] ; then
 				TGT="${TGT%.*}"
 				say "Rendering [${TGT}]..."
 				"${RENDER_TPL}" < "${SRC}" > "${TGT}"
-				RENDERED+=("${TGT}")
 			done < <(find . -type f -iname '*.tpl' -not -ipath '*/*.tpl/*' | sort)
 
 			# Process the directories
-			while read DIR ; do
+			while read SRC_DIR ; do
 				# Remove the leading "./"
-				SIB="${DIR#*/}"
+				TGT_DIR="${SRC_DIR#*/}"
 				# Remove the trailing ".tpl"
-				SIB="${SIB%.*}"
-				say "Rendering files within [${SIB}]..."
+				TGT_DIR="${TGT_DIR%.*}"
+				say "Rendering files within [${TGT_DIR}]..."
 				while read SRC ; do
 					# Remove the leading "./"
 					SRC="${SRC#*/}"
-					# Remove the trailing ".tpl"
-					TGT="${SIB}/${SRC%.*}"
+					# Pre-pend the target path
+					TGT="${TGT_DIR}/${SRC}"
 					# Pre-pend the orignal template directory path
-					SRC="${DIR}/${SRC}"
+					SRC="${SRC_DIR}/${SRC}"
 					say "\tRendering [${TGT}]..."
 					"${RENDER_TPL}" < "${SRC}" > "${TGT}"
-					RENDERED+=("${TGT}")
-				done < <(cd "${DIR}" && find . -type f | sort)
+				done < <(cd "${SRC_DIR}" && find . -type f | sort)
 			done < <(find . -type d -iname '*.tpl' -not -ipath '*/*.tpl/*' | sort)
 		fi
 	fi

@@ -106,6 +106,7 @@ spec:
             {{- include "arkcase.trusts.mount" $ | nindent 12 }}
             {{- include "arkcase.pentaho.license.volumeMounts" $ | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/render-template") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/encrypt-passwords") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/run-kjb") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/entrypoint" "subPath" "entrypoint-cron") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/deploy-job-schedules") | nindent 12 }}
