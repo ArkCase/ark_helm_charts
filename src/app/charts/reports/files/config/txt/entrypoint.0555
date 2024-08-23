@@ -158,21 +158,6 @@ else
 fi
 
 ###################################################################
-# Render the correct server.properties file                       #
-###################################################################
-PROPERTIES_TEMPLATES=(
-	"${PENTAHO_SOLUTIONS}/system/server.properties"
-	"${PENTAHO_SOLUTIONS}/system/pdi-pur-plugin/plugin.properties"
-	"${PENTAHO_PDI_PLUGINS}/pdi-pur-plugin/plugin.properties"
-)
-for P in "${PROPERTIES_TEMPLATES[@]}" ; do
-	T="${P}.tpl"
-	[ -e "${T}" ] || continue
-	say "Rendering [${P}]..."
-	render-template < "${T}" > "${P}"
-done
-
-###################################################################
 # CLEAN OUT JACKRABBIT TEMPORARY FILES                            #
 ###################################################################
 [ -v JCR_DIR ] || JCR_DIR="${DATA_DIR}/jackrabbit/repository"
