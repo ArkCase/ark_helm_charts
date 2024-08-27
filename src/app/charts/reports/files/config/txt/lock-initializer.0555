@@ -1,32 +1,8 @@
 #!/bin/bash
 set -euo pipefail
+. /.functions
 
-[ -v DEBUG ] || DEBUG=""
-case "${DEBUG,,}" in
-	true | t | 1 | on | y | yes | enabled | enable | active ) DEBUG="true" ;;
-	* ) DEBUG="false" ;;
-esac
-
-timestamp()
-{
-	date -Ins -u
-}
-
-say()
-{
-	echo -e "$(timestamp): ${@}"
-}
-
-err()
-{
-	say "❌ ${@}"
-}
-
-fail()
-{
-	err "${@}"
-	exit ${EXIT_CODE:-1}
-}
+set_as_boolean DEBUG
 
 cleanup()
 {
@@ -41,19 +17,10 @@ usage()
 
 [ ${#} -ne 2 ] && usage
 
-[ -v BASE_DIR ] || BASE_DIR=""
-[ -n "${BASE_DIR}" ] || BASE_DIR="/app"
+set_or_default BASE_DIR "/app"
+set_or_default LOGS_DIR "${BASE_DIR}/logs"
 
-[ -v LOGS_DIR ] || LOGS_DIR=""
-[ -n "${LOGS_DIR}" ] || LOGS_DIR="${BASE_DIR}/logs"
-
-[ -d "${LOGS_DIR}" ] || mkdir -p "${LOGS_DIR}"
-if [ -d "${LOGS_DIR}" ] ; then
-    LOG_FILE="${LOGS_DIR}/lock-initializer.log"
-    exec > >(/usr/bin/tee -a "${LOG_FILE}")
-    exec 2>&1
-    say "Logs redirected to [${LOG_FILE}]"
-fi
+redirect_logs "${LOGS_DIR}/lock-initializer.log"
 
 [ -v PENTAHO_VERSION ] || fail "The PENTAHO_VERSION variable isn't set, please update your Pentaho container image"
 
@@ -74,8 +41,6 @@ export CURATOR_WRAPPER_JAR="/usr/local/bin/curator-wrapper.jar"
 export CURATOR_WRAPPER_CONF="/usr/local/etc/curator-wrapper.yaml"
 
 (
-	export JAVA_TOOL_OPTIONS="-Dzookeeper.client.secure=true"
-	set -x
-	exec java -jar "${CURATOR_WRAPPER_JAR}" -c "${CURATOR_WRAPPER_CONF}"
+	execute java -Dzookeeper.client.secure=true -jar "${CURATOR_WRAPPER_JAR}" -c "${CURATOR_WRAPPER_CONF}"
 )
 exit ${?}

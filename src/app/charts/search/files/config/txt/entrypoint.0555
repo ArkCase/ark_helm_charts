@@ -1,36 +1,23 @@
 #!/bin/bash
-
-timestamp() {
-	/usr/bin/date -Isec -u
-}
-
-say() {
-	echo -e "$(timestamp): ${@}"
-}
-
-fail() {
-	say "${@}" 1>&2
-	exit ${EXIT_CODE:-1}
-}
-
 set -euo pipefail
+. /.functions
 
 #
 # First things first: enable SSL
 #
-[ -v SSL_DIR ] || export SSL_DIR="/.ssl"
-
-acme-init
+init_ssl
 
 #
 # Now, continue with the boot
 #
 
-[ -v INIT_MARKER ] || INIT_MARKER="${DATA_DIR}/.initialized"
+set_or_default BASE_DIR "/app"
+set_or_default DATA_DIR "/app/data"
+set_or_default INIT_MARKER "${DATA_DIR}/.initialized"
 
 # This is important: ${HOME_DIR} must be *ephemeral* - this flag is only meant to
 # inform when the init script ran, so we can run the post-init script in the helm chart
-[ -v RUN_MARKER ] || RUN_MARKER="${HOME_DIR}/.initRan"
+set_or_default RUN_MARKER "${HOME_DIR}/.initRan"
 
 if [ -e "${INIT_MARKER}" ] ; then
 	say "Persistence is already initialized, proceeding with the normal boot"
@@ -43,8 +30,10 @@ else
 	touch "${RUN_MARKER}"
 fi
 
+set_or_default SOLR_LOGS_DIR "${DATA_DIR}/logs"
 [ -v SOLR_LOGS_DIR ] || export SOLR_LOGS_DIR="${DATA_DIR}/logs"
-[ -d "${SOLR_LOGS_DIR}" ] || mkdir -p "${SOLR_LOGS_DIR}" || say "WARNING: Failed to find and create the log directory at [${SOLR_LOGS_DIR}]"
+
+ensure_dir "${SOLR_LOGS_DIR}"
 
 if [ -v ZK_HOST ] ; then
 	# Validate the hostnames
@@ -74,12 +63,11 @@ if [ -v ZK_HOST ] ; then
 	say "Enabling SSL on the cluster"
 	(
 		set -euo pipefail
-		cd "/app/solr"
+		cd "${BASE_DIR}/solr"
 		exec server/scripts/cloud-scripts/zkcli.sh -zkhost "${ZK_HOST}" -cmd clusterprop -name urlScheme -val https
 	)
 	say "SSL Enabled!"
 fi
 
 set -- "${HOME_DIR}/bin/solr" start -f -cloud
-say "Launching Solr as: ${@@Q}"
-exec "${@}"
+execute "${@}"

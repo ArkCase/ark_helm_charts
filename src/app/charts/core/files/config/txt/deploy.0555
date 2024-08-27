@@ -1,47 +1,26 @@
 #!/bin/bash
 set -euo pipefail
+. /.functions
 
-[ -v BASE_DIR ] || BASE_DIR="/app"
-[ -v DEPL_DIR ] || DEPL_DIR="${BASE_DIR}/depl"
-[ -v CONF_DIR ] || CONF_DIR="${DEPL_DIR}/conf"
-[ -v WARS_DIR ] || WARS_DIR="${DEPL_DIR}/wars"
+set_or_default BASE_DIR "/app"
+set_or_default DEPL_DIR "${BASE_DIR}/depl"
+set_or_default CONF_DIR "${DEPL_DIR}/conf"
+set_or_default WARS_DIR "${DEPL_DIR}/wars"
 
 # Temporarily put them here... eventually they'll have
 # a dedicated place to live
-[ -v EXTS_DIR ] || EXTS_DIR="${CONF_DIR}"
+set_or_default EXTS_DIR "${CONF_DIR}"
 
-say() {
-	echo -e "$(date -u -Ins): ${@}"
-}
+set_or_default SKIP_WARS ""
+SKIP_CONF="$(to_boolean "${SKIP_CONF:-false}")"
 
-fail() {
-	say "${@}" 1>&2
-	exit ${EXIT_CODE:-1}
-}
+DEV="$(to_boolean "${DEV:-false}")"
+FORCE_DEPLOY="$(to_boolean "${FORCE_DEPLOY:-false}")"
 
-[ -v SKIP_WARS ] || SKIP_WARS=""
-[ -v SKIP_CONF ] || SKIP_CONF="false"
-
-[ -v DEV ] || DEV="false"
-case "${DEV,,}" in
-	true | t | yes | y | on | en | enabled | enable | 1 ) DEV="true" ;;
-	* ) DEV="false" ;;
-esac
-
-[ -v FORCE_DEPLOY ] || FORCE_DEPLOY="false"
-case "${FORCE_DEPLOY,,}" in
-	true | t | yes | y | on | en | enabled | enable | 1 ) FORCE_DEPLOY="true" ;;
-	* ) FORCE_DEPLOY="false" ;;
-esac
-
-if ${DEV} ; then
+if "${DEV}" ; then
 	SKIP_WARS="$(echo "${SKIP_WARS}" | tr '/' '\n' | sort -u | sed -e '/^\s*$/d')"
-	case "${SKIP_CONF,,}" in
-		true | t | yes | y | on | en | enabled | enable | 1 ) SKIP_CONF="true" ;;
-		* ) SKIP_CONF="false" ;;
-	esac
 
-	[ -v DEV_DIR ] || DEV_DIR="${BASE_DIR}/dev"
+	set_or_default DEV_DIR "${BASE_DIR}/dev"
 	DEV_WARS_DIR="${DEV_DIR}/wars"
 	DEV_CONF_DIR="${DEV_DIR}/conf"
 fi
@@ -54,7 +33,7 @@ readarray -t WAR < <(echo -n "${WAR}")
 say "Found ${#WAR[@]} WAR files to deploy: [${WAR[@]}]"
 for war in "${WAR[@]}" ; do
 
-	if ${DEV} ; then
+	if "${DEV}" ; then
 		ARTIFACT_NAME="${war##*/}"
 		BASENAME="${ARTIFACT_NAME%.*}"
 
@@ -82,7 +61,7 @@ for war in "${WAR[@]}" ; do
 	deploy-artifact extractdir "${war}" "${WARS_DIR}" || fail "Failed to deploy the WAR from [${war}]"
 done
 
-if ${DEV} ; then
+if "${DEV}" ; then
 	ARTIFACT_NAME="01-conf.zip"
 	BASENAME="${ARTIFACT_NAME%.*}"
 
@@ -94,7 +73,7 @@ if ${DEV} ; then
 	fi
 fi
 
-if ! ${SKIP_CONF} ; then
+if ! "${SKIP_CONF}" ; then
 	#
 	# Deploy all the .arkcase configurations
 	#
@@ -133,5 +112,5 @@ fi
 #
 realm-fix || fail "Failed to fix the realms information in the rules files"
 
-say "Configuration Initialization Complete"
+ok "Configuration Initialization Complete"
 exit 0

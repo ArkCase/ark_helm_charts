@@ -1,26 +1,6 @@
 #!/bin/bash
 set -euo pipefail
-
-timestamp()
-{
-	date -Ins -u
-}
-
-say()
-{
-	echo -e "$(timestamp): ${@}"
-}
-
-err()
-{
-	say "❌ ${@}"
-}
-
-fail()
-{
-	err "${@}"
-	exit ${EXIT_CODE:-1}
-}
+. /.functions
 
 usage()
 {
@@ -28,38 +8,28 @@ usage()
 	exit 1
 }
 
-[ -v ADMIN_USERNAME ] || ADMIN_USERNAME=""
-[ -n "${ADMIN_USERNAME}" ] || ADMIN_USERNAME="admin"
-
-[ -v ADMIN_PASSWORD ] || ADMIN_PASSWORD=""
-[ -n "${ADMIN_PASSWORD}" ] || ADMIN_PASSWORD="password"
-
-[ -v PENTAHO_URL ] || PENTAHO_URL=""
-[ -n "${PENTAHO_URL}" ] || PENTAHO_URL="https://localhost:8443/pentaho"
-
 [ ${#} -eq 1 ] || usage
 
 SCHEMA_FILE="${1}"
-[ -n "${SCHEMA_FILE}" ] || fail "The schema filename may not be the empty string"
-[ -e "${SCHEMA_FILE}" ] || fail "The file [${SCHEMA_FILE}] does not exist"
-[ -f "${SCHEMA_FILE}" ] || fail "The path [${SCHEMA_FILE}] is not a regular file"
-[ -r "${SCHEMA_FILE}" ] || fail "The file [${SCHEMA_FILE}] is not readable"
-
+require_file_readable "${SCHEMA_FILE}"
 case "${SCHEMA_FILE,,}" in
 	*.xml ) ;;
 	* ) fail "The schema file must have an extension of .xml (case-insensitive)" ;;
 esac
-
 SCHEMA_FILE="$(readlink -f "${SCHEMA_FILE}")"
 
 xmllint --noout "${SCHEMA_FILE}" &>/dev/null || fail "The schema file at [${SCHEMA_FILE}] is not valid XML, can't install"
 
 NAME="$(xmlstarlet sel -t -v "/Schema/@name" "${SCHEMA_FILE}")" || fail "Failed to parse the name out of the schema at [${SCHEMA_FILE}]"
 [ -n "${NAME}" ] || fail "The Mondrian schema at [${SCHEMA_FILE}] lacks a name, can't install"
-ENCODED="$(echo -n "${NAME}" | jq -sRr @uri)"
+ENCODED="$(urlencode "${NAME}")"
+
+set_or_default ADMIN_USERNAME "admin"
+set_or_default ADMIN_PASSWORD "password"
+set_or_default PENTAHO_URL "https://localhost:8443/pentaho"
 
 say "Installing the Mondrian schema [${NAME}] from [${SCHEMA_FILE}]..."
-exec curl -fsSL \
+execute curl -fsSL \
 	-H "Content-Type: multipart/form-data" \
 	-X PUT \
 	-F uploadInput="@${SCHEMA_FILE}" \

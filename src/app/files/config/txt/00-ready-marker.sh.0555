@@ -1,9 +1,10 @@
 #!/bin/bash
 
 set -euo pipefail
+. /.functions
 
-[ -v MARKER_LABEL ] || MARKER_LABEL="com.arkcase/readyTagger"
-[ -v NAMESPACE ] || NAMESPACE="default"
+set_or_default MARKER_LABEL "com.arkcase/readyTagger"
+set_or_default NAMESPACE "default"
 
 COMMAND=""
 [ ${#} -gt 0 ] && COMMAND="${1}"
@@ -29,16 +30,7 @@ kubernetes:
 EOF
 fi
 
-say() {
-	echo -e "$(date -Ins): ${@}"
-}
-
-fail() {
-	say "${@}" 1>&2
-	exit ${EXIT_CODE:-1}
-}
-
-[ -v READY_LABEL ] || READY_LABEL="com.arkcase/ready"
+set_or_default READY_LABEL "com.arkcase/ready"
 
 DATA="$(<"${BINDING_CONTEXT_PATH}")"
 
@@ -83,4 +75,4 @@ case "${STATUS,,}" in
 esac
 
 # Apply the label change
-exec kubectl label pod --namespace "${POD_NAMESPACE}" "${POD_NAME}" "${READY_LABEL}${READY_VALUE}"
+execute kubectl label pod --namespace "${POD_NAMESPACE}" "${POD_NAME}" "${READY_LABEL}${READY_VALUE}"

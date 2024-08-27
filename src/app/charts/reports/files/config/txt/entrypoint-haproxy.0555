@@ -1,36 +1,14 @@
 #!/bin/bash
 set -euo pipefail
+. /.functions
 
-timestamp()
-{
-	date -Ins -u
-}
-
-say()
-{
-	echo -e "$(timestamp): ${@}"
-}
-
-err()
-{
-	say "❌ ${@}"
-}
-
-fail()
-{
-	err "${@}"
-	exit ${EXIT_CODE:-1}
-}
-
-[ -v SSL_DIR ] || SSL_DIR=""
-[ -n "${SSL_DIR}" ] || SSL_DIR="/.ssl"
+set_or_default SSL_DIR
 CERT="${SSL_DIR}/haproxy-cert.pem"
 
-[ -v MAX_WAIT ] || MAX_WAIT=""
-[ -n "${MAX_WAIT}" ] || MAX_WAIT="300"
+set_or_default MAX_WAIT
 [[ "${MAX_WAIT}" =~ ^[1-9][0-9]*$ ]] || MAX_WAIT="300"
 
-say "Waiting up to ${MAX_WAIT} seconds for the SSL certificates to become available"
+waiting "Waiting up to ${MAX_WAIT} seconds for the SSL certificates to become available"
 START="$(date +%s)"
 while true ; do
 	[ -s "${CERT}" ] && [ -r "${CERT}" ] && break
@@ -40,5 +18,4 @@ while true ; do
 done
 
 CMD=("/usr/local/bin/docker-entrypoint.sh" "/usr/local/sbin/haproxy" "-f" "/usr/local/etc/haproxy/haproxy.cfg")
-say "Launching HAProxy as: ${CMD[@]@Q}"
-exec "${CMD[@]}"
+execute "${CMD[@]}"

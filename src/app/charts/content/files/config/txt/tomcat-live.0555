@@ -1,17 +1,7 @@
 #!/bin/bash
 
 set -euo pipefail
-
-say()
-{
-	echo -e "${@}"
-}
-
-fail()
-{
-	say "❌ ${@}" 1>&2
-	exit ${EXIT_CODE:-1}
-}
+. /.functions
 
 #
 # Ping Tomcat's internal communications port, which is only opened once
@@ -25,4 +15,4 @@ MSG=""
 #
 # All is well... ready to go!
 #
-say "✅ Tomcat is started!"
+ok "Tomcat is live!"

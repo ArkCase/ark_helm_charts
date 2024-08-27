@@ -38,7 +38,8 @@ spec:
         - name: SCRIPT
           value: |-
             set -xeuo pipefail
-            /usr/local/bin/acme-init
-            /usr/bin/timeout 3 /usr/bin/ldapsearch -H "ldaps://$(SERVICE_NAME)" -D "$(ADMIN_REALM)\\$(ADMIN_USERNAME)" -y <(echo -n "$(ADMIN_PASSWORD)") -s base -b "$(ROOT_DN)" "(objectClass=*)" dn
+            . /.functions
+            init_ssl
+            timeout 3 ldapsearch -H "ldaps://$(SERVICE_NAME)" -D "$(ADMIN_REALM)\\$(ADMIN_USERNAME)" -y <(echo -n "$(ADMIN_PASSWORD)") -s base -b "$(ROOT_DN)" "(objectClass=*)" dn
   restartPolicy: Never
 {{- end }}

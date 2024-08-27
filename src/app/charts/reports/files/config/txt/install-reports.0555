@@ -1,32 +1,8 @@
 #!/bin/bash
 set -euo pipefail
+. /.functions
 
-[ -v DEBUG ] || DEBUG=""
-case "${DEBUG,,}" in
-	true | t | 1 | on | y | yes | enabled | enable | active ) DEBUG="true" ;;
-	* ) DEBUG="false" ;;
-esac
-
-timestamp()
-{
-	date -Ins -u
-}
-
-say()
-{
-	echo -e "$(timestamp): ${@}"
-}
-
-err()
-{
-	say "❌ ${@}"
-}
-
-fail()
-{
-	err "${@}"
-	exit ${EXIT_CODE:-1}
-}
+set_as_boolean DEBUG
 
 cleanup()
 {
@@ -45,32 +21,17 @@ debug_report_installer()
 WORKDIRS=()
 trap cleanup EXIT
 
-[ -v BASE_DIR ] || BASE_DIR=""
-[ -n "${BASE_DIR}" ] || BASE_DIR="/app"
+set_or_default BASE_DIR "/app"
+set_or_default INIT_DIR "${BASE_DIR}/init"
+set_or_default DATA_DIR "${BASE_DIR}/data"
+set_or_default LOGS_DIR "${BASE_DIR}/logs"
 
-[ -v INIT_DIR ] || INIT_DIR=""
-[ -n "${INIT_DIR}" ] || INIT_DIR="${BASE_DIR}/init"
+redirect_logs "${LOGS_DIR}/install-reports.log"
 
-[ -v DATA_DIR ] || DATA_DIR=""
-[ -n "${DATA_DIR}" ] || DATA_DIR="${BASE_DIR}/data"
-
-[ -v LOGS_DIR ] || LOGS_DIR=""
-[ -n "${LOGS_DIR}" ] || LOGS_DIR="${BASE_DIR}/logs"
-
-if [ -d "${LOGS_DIR}" ] ; then
-	LOG_FILE="${LOGS_DIR}/install-reports.log"
-	exec >> >(/usr/bin/tee -a "${LOG_FILE}")
-	exec 2>&1
-	say "Logs redirected to [${LOG_FILE}]"
-fi
-
-[ -v ADMIN_URL ] || ADMIN_URL=""
-[ -n "${ADMIN_URL}" ] || ADMIN_URL="https://localhost:8443/pentaho/"
+set_or_default ADMIN_URL "https://localhost:8443/pentaho/"
 
 # We have to sanitize the Admin URL to remove any trailing slashes
-shopt -s extglob
-ADMIN_URL="${ADMIN_URL%%+(/)}"
-shopt -u extglob
+[[ "${ADMIN_URL}" =~ ^(.*[^/])/+$ ]] && ADMIN_URL="${BASH_REMATCH[1]}"
 
 DIVIDER=":///:"
 
@@ -152,8 +113,9 @@ install_report()
 		*.jar ) ARCHIVE_TYPE="zip" ;;
 		*.zip )
 			# Special case: if the zip file has a file named ${EXPORT_MANIFEST} in
-			# the root of the archive, we install the zip file directly
-			unzip -t "${SRC_FILE}" "${EXPORT_MANIFEST}" &>/dev/null && ARCHIVE_TYPE="zip"
+			# the root of the archive, we install the zip file directly, so we leave
+			# the ARCHIVE_TYPE empty so the file won't be extracted
+			unzip -t "${SRC_FILE}" "${EXPORT_MANIFEST}" &>/dev/null || ARCHIVE_TYPE="zip"
 			;;
 		* ) ;;
 	esac
@@ -243,23 +205,15 @@ list_reports()
 		sort
 }
 
-[ -v ADMIN_USERNAME ] || ADMIN_USERNAME=""
-[ -n "${ADMIN_USERNAME}" ] || ADMIN_USERNAME="admin"
-[ -v ADMIN_PASSWORD ] || ADMIN_PASSWORD=""
-[ -n "${ADMIN_PASSWORD}" ] || ADMIN_PASSWORD="password"
-
-[ -v PENTAHO_HOME ] || PENTAHO_HOME=""
-[ -n "${PENTAHO_HOME}" ] || PENTAHO_HOME="${BASE_DIR}/pentaho"
-
-[ -v REPORT_INSTALLER ] || REPORT_INSTALLER=""
-[ -n "${REPORT_INSTALLER}" ] || REPORT_INSTALLER="${PENTAHO_HOME}/pentaho-server/import-export.sh"
-
-[ -v EXPORT_MANIFEST ] || EXPORT_MANIFEST=""
-[ -n "${EXPORT_MANIFEST}" ] || EXPORT_MANIFEST="exportManifest.xml"
+set_or_default ADMIN_USERNAME "admin"
+set_or_default ADMIN_PASSWORD "password"
+set_or_default PENTAHO_HOME "${BASE_DIR}/pentaho"
+set_or_default REPORT_INSTALLER "${PENTAHO_HOME}/pentaho-server/import-export.sh"
+set_or_default EXPORT_MANIFEST "exportManifest.xml"
 
 REPORTS_DB="${DATA_DIR}/.installedReports"
 
-if ${DEBUG} || [ -x "${REPORT_INSTALLER}" ] ; then
+if ${DEBUG} || is_file_executable "${REPORT_INSTALLER}" ; then
 	#
 	# Install reports
 	#

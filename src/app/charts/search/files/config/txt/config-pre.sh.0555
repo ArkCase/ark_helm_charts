@@ -1,30 +1,20 @@
 #!/bin/bash
-
-timestamp() {
-	/usr/bin/date -Isec -u
-}
-
-say() {
-	echo -e "$(timestamp): ${@}"
-}
-
-fail() {
-	say "${@}" 1>&2
-	exit ${EXIT_CODE:-1}
-}
-
 set -euo pipefail
+. /.functions
 
 # First things first - duplicate the Solr home contents into ${SOLR_HOME}
 say "\tInitializing the SOLR_HOME at [${SOLR_HOME}]"
-mkdir -p "${SOLR_HOME}"
+ensure_dir "${SOLR_HOME}"
 ( cd "${HOME_DIR}/server/solr" && tar -cf - . ) | tar -C "${SOLR_HOME}" -xf -
 say "\t\t...SOLR_HOME is ready"
 
 # Run the scripts due to be run before Solr is booted up
-[ -v INIT_DIR ] || INIT_DIR="/app/init"
+set_or_default BASE_DIR "/app"
+set_or_default INIT_DIR "${BASE_DIR}/init"
+
 INIT_DIR="${INIT_DIR}/pre"
-if [ -d "${INIT_DIR}" ] ; then
+doing "Initializing from the pre-initialization scripts in [${INIT_DIR}]..."
+if is_dir_readable "${INIT_DIR}" ; then
 	cd "${INIT_DIR}" || fail "Failed to CD into [${INIT_DIR}]"
 	(
 		set -euo pipefail
@@ -36,5 +26,5 @@ if [ -d "${INIT_DIR}" ] ; then
 		done < <(/usr/bin/find . -mindepth 1 -maxdepth 1 -type f -name '*.sh' | sort)
 	) || fail "Initialization failed"
 fi
-say "Initialization complete"
+ok "Initialization complete"
 exit 0

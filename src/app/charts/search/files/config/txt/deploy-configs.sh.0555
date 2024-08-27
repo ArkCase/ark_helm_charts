@@ -1,19 +1,9 @@
 #!/bin/bash
+set -euo pipefail
+. /.functions
 
-say() {
-	echo -e "${@}"
-}
-
-err() {
-	say "ERROR: ${@}" 1>&2
-}
-
-fail() {
-	say "${@}"
-	exit ${EXIT_CODE:-1}
-}
-
-deploy_config() {
+deploy_config()
+{
 	local CONF="${1}"
 	local CONF_SOURCE="${2##*/}"
 	local CONF_TARGET="${3##*/}"
@@ -33,11 +23,11 @@ deploy_config() {
 	CONF="$(readlink -f "${CONF}")"
 
 	pushd "${CONF_HOME}"
-	if [ -d "${CONF_TARGET}" ] ; then
+	if is_dir_readable "${CONF_TARGET}" ; then
 		say "The ${CONF_TARGET} configuration seems to already be deployed, skipping initialization"
 		return 0
 	fi
-	if [ ! -d "${CONF_SOURCE}" ] ; then
+	if ! is_dir_readable "${CONF_SOURCE}" ; then
 		say "The ${CONF_SOURCE} configuration can't be found"
 		return 1
 	fi
@@ -52,8 +42,6 @@ deploy_config() {
 	popd
 	return 0
 }
-
-set -euo pipefail
 
 [ -v SOLR_HOME ] || fail "Can't find the SOLR_HOME variable - can't continue"
 CONF_HOME="${SOLR_HOME}/configsets"

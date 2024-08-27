@@ -1,26 +1,6 @@
 #!/bin/bash
 set -euo pipefail
-
-timestamp()
-{
-	date -Ins -u
-}
-
-say()
-{
-	echo -e "$(timestamp): ${@}"
-}
-
-err()
-{
-	say "❌ ${@}"
-}
-
-fail()
-{
-	err "${@}"
-	exit ${EXIT_CODE:-1}
-}
+. /.functions
 
 [ -v VARS ] || VARS=""
 
@@ -35,9 +15,7 @@ fi
 VARS=()
 for F in "${FILES[@]}" ; do
 	[ -n "${F}" ] || continue
-	[ -e "${F}" ] || fail "The variable file [${F}] does not exist"
-	[ -f "${F}" ] || fail "The path [${F}] is not a regular file"
-	[ -r "${F}" ] || fail "The variable file [${F}] is not readable"
+	require_file_readable "${F}"
 	case "${F,,}" in
 		*.json | *.yaml | *.yml ) ;;
 		* ) fail "Template variable files must have a .yaml/.yml or .json extension: [${F}]" ;;
@@ -46,8 +24,7 @@ for F in "${FILES[@]}" ; do
 done
 
 # Ensure we have a valid value for the missing key spec
-[ -v MISSING_KEY ] || MISSING_KEY=""
-[ -n "${MISSING_KEY}" ] || MISSING_KEY="zero"
+set_or_default MISSING_KEY "zero"
 
 # Fold to lowercase
 MISSING_KEY="${MISSING_KEY,,}"

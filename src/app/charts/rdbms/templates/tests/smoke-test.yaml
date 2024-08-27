@@ -39,7 +39,8 @@ spec:
         - name: SCRIPT
           value: |-
             set -xeuo pipefail
-            /usr/local/bin/acme-init
-            /usr/bin/timeout 3 /usr/bin/openssl s_client -connect "$(SERVICE_HOST):$(SERVICE_PORT)" -verify_quiet -verify_return_error -showcerts {{ $startTls }} < /dev/null
+            . /.functions
+            init_ssl
+            timeout 3 openssl s_client -connect "$(SERVICE_HOST):$(SERVICE_PORT)" -verify_quiet -verify_return_error -showcerts {{ $startTls }} < /dev/null
   restartPolicy: Never
 {{- end -}}

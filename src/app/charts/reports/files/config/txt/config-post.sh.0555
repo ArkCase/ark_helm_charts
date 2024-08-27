@@ -1,32 +1,8 @@
 #!/bin/bash
 set -euo pipefail
+. /.functions
 
-[ -v DEBUG ] || DEBUG="false"
-case "${DEBUG,,}" in
-	true | t | 1 | on | y | yes | enabled | enable | active ) DEBUG="true" ;;
-	* ) DEBUG="false" ;;
-esac
-
-timestamp()
-{
-	date -Ins -u
-}
-
-say()
-{
-	echo -e "$(timestamp): ${@}"
-}
-
-err()
-{
-	say "❌ ${@}"
-}
-
-fail()
-{
-	err "${@}"
-	exit ${EXIT_CODE:-1}
-}
+set_as_boolean DEBUG
 
 cleanup()
 {
@@ -34,54 +10,27 @@ cleanup()
 	[ -z "${RUN_MARKER}" ] || rm -rf "${RUN_MARKER}" &>/dev/null
 }
 
-poll_url()
-{
-	local URL="${1}"
-	local START="$(date +%s)"
-	say "Starting the polling cycle for [${URL}]..."
-	while true ; do
-		/usr/bin/curl -fsSL -m 5 "${URL}" &>/dev/null && break
-		local NOW="$(date +%s)"
-		if [ $(( NOW - START )) -ge ${INIT_MAX_WAIT} ] ; then
-			err "Timed out waiting for the URL [${URL}] to come up"
-			return 1
-		fi
-		# If sleep didn't succeed, it means it got signaled, which
-		# Means we need to stop what we're doing and puke out
-		if ! sleep ${INIT_POLL_SLEEP} ; then
-			err "Sleep interrupted, can't continue polling"
-			return 1
-		fi
-	done
-	say "The URL [${URL}] has responded, continuing"
-	return 0
-}
-
 RUN_MARKER="${PENTAHO_HOME}/.initRan"
 trap cleanup EXIT
 
-[ -v BASE_DIR ] || BASE_DIR="/app"
-[ -v DATA_DIR ] || DATA_DIR="${BASE_DIR}/data"
-[ -v DWHS_DIR ] || DWHS_DIR="${DATA_DIR}/dw"
-[ -v LOGS_DIR ] || LOGS_DIR="${BASE_DIR}/logs"
-[ -v INIT_DIR ] || INIT_DIR="${BASE_DIR}/init"
-[ -v ADMIN_PORT ] || ADMIN_PORT="8443"
+set_or_default BASE_DIR "/app"
+set_or_default INIT_DIR "${BASE_DIR}/init"
+set_or_default DATA_DIR "${BASE_DIR}/data"
+set_or_default DWHS_DIR "${DATA_DIR}/dw"
+set_or_default LOGS_DIR "${BASE_DIR}/logs"
 
-if [ -d "${LOGS_DIR}" ] ; then
-	LOG_FILE="${LOGS_DIR}/config-post.log"
-	exec >> >(/usr/bin/tee -a "${LOG_FILE}")
-	exec 2>&1
-	say "Logs redirected to [${LOG_FILE}]"
-fi
+set_or_default ADMIN_PORT "8443"
 
-# By default, wait up to 300 seconds if not told otherwise
-[ -v INIT_POLL_SLEEP ] || INIT_POLL_SLEEP=2
+redirect_logs "${LOGS_DIR}/config-post.log"
+
+# By default, wait up to 900 seconds if not told otherwise
+set_or_default INIT_POLL_SLEEP
 [[ "${INIT_POLL_SLEEP}" =~ ^[1-9][0-9]*$ ]] || INIT_POLL_SLEEP=2
-[ -v INIT_MAX_WAIT ] || INIT_MAX_WAIT=900
+set_or_default INIT_MAX_WAIT
 [[ "${INIT_MAX_WAIT}" =~ ^[1-9][0-9]*$ ]] || INIT_MAX_WAIT=900
 
-[ -v ADMIN_URL ] || ADMIN_URL="https://localhost:${ADMIN_PORT}/pentaho/"
-poll_url "${ADMIN_URL}" || fail "Cannot continue configuration if Pentaho is not online"
+set_or_default ADMIN_URL "https://localhost:${ADMIN_PORT}/pentaho/"
+poll_url "${ADMIN_URL}" "${INIT_MAX_WAIT}" "${INIT_POLL_SLEEP}" || fail "Cannot continue configuration if Pentaho is not online"
 
 [ -f "${RUN_MARKER}" ] || exit 0
 
@@ -90,25 +39,25 @@ poll_url "${ADMIN_URL}" || fail "Cannot continue configuration if Pentaho is not
 JOBS=()
 while read JOB ; do
 	DPL="${JOB}/deploy"
-	say "Deploying the DW reports at [${JOB}]..."
+	doing "Deploying the DW reports at [${JOB}]..."
 
 	INCOMPLETE="false"
 	if [ -d "${DPL}" ] ; then
 		(
 			set -euo pipefail
-			source <(/usr/local/bin/encrypt-passwords kettle) || fail "Failed to encrypt the passwords"
+			source <(encrypt-passwords kettle) || fail "Failed to encrypt the passwords"
 			while read T ; do
 				# Remove the ".tpl" extension...
 				F="${T%.*}"
-				say "Rendering [${F}]..."
+				doing "Rendering [${F}]..."
 				render-template < "${T}" > "${F}"
 			done < <(find "${DPL}" -type f -iname '*.tpl' | sort)
 		)
 
 		# Find any connections (i.e. connection-*.json)
 		while read CONNECTION ; do
-			if ! /usr/local/bin/add-pdi-connection "${CONNECTION}" ; then
-				say "\tconnection installation failed!"
+			if ! add-pdi-connection "${CONNECTION}" ; then
+				err "\tconnection installation failed!"
 				INCOMPLETE="true"
 				continue
 			fi
@@ -125,8 +74,8 @@ while read JOB ; do
 
 		# Find any Mondrian schemata (i.e. schema-*.xml)
 		while read SCHEMA ; do
-			if ! /usr/local/bin/install-mondrian-schema "${SCHEMA}" ; then
-				say "\tschema installation failed!"
+			if ! install-mondrian-schema "${SCHEMA}" ; then
+				err "\tschema installation failed!"
 				INCOMPLETE="true"
 				continue
 			fi
@@ -134,14 +83,14 @@ while read JOB ; do
 	fi
 
 	if ${INCOMPLETE} ; then
-		say "The artifacts for the job at [${JOB}] are incomplete, will not launch the job"
+		err "The artifacts for the job at [${JOB}] are incomplete, will not launch the job"
 		continue
 	fi
 
 	# Find the first *.kjb (case-insensitive) file in that folder, and run that
 	JOB="$(find "${JOB}" -mindepth 1 -maxdepth 1 -type f -iname '*.kjb' | sort | head -1)"
 	if [ -n "${JOB}" ] ; then
-		say "\tAdding a PDI bootup job: [${JOB}]"
+		doing "\tAdding a PDI bootup job: [${JOB}]"
 		JOBS+=("${JOB}")
 	fi
 
@@ -151,15 +100,15 @@ JOBS_COUNT=${#JOBS[@]}
 if [ ${JOBS_COUNT} -gt 0 ] ; then
 	# Before we can run the dataminer first time, we MUST wait for
 	# ArkCase to come up ... if it doesn't, we're screwed
-	[ -v CORE_URL ] || CORE_URL="https://core:8443/arkcase/"
+	set_or_default CORE_URL "https://core:8443/arkcase/"
 	say "Found ${JOBS_COUNT} dataminers:"
 	for J in "${JOBS[@]}" ; do
 		say "\t${J}"
 	done
-	say "Launching the background poller for [${CORE_URL}]..."
-	coproc { poll_url "${CORE_URL}" ; }
+	running "Launching the background poller for [${CORE_URL}]..."
+	coproc { poll_url "${CORE_URL}" "${INIT_MAX_WAIT}" "${INIT_POLL_SLEEP}" ; }
 else
-	say "No jobs found, will not wait for ArkCase to boot up"
+	warn "No jobs found, will not wait for ArkCase to boot up"
 fi
 
 # Install the reports ... this *has* to happen last b/c the PDI stuff
@@ -167,26 +116,25 @@ fi
 #
 # We also run this in parallel with waiting for ArkCase to come up, b/c
 # we try to be efficient with time :D
-say "Deploying reports"
-/usr/local/bin/install-reports
-say "Reports deployed"
+doing "Deploying reports"
+install-reports
+ok "Reports deployed"
 
 # If we have to rejoin with the ArkCase poller, do so...
 if [ -v COPROC_PID ] ; then
-	say "Joining the background poller for [${CORE_URL}]..."
+	waiting "Joining the background poller for [${CORE_URL}]..."
 	wait ${COPROC_PID} || fail "Failed to wait for ArkCase to be online"
 fi
 
 # Leave this here ... if there are no jobs, nothing will happen...
 for JOB in "${JOBS[@]}" ; do
 	JOB_LOG="${JOB%.*}.log"
-	say "Launching the first-time PDI job [${JOB}]..."
+	doing "Launching the first-time PDI job [${JOB}]..."
 	if run-kjb "${JOB}" < /dev/null &> "${JOB_LOG}" ; then
-		say "Job completed successfully"
+		ok "Job completed successfully"
 	else
-		say "Errors detected, please review the log at [${JOB_LOG}]"
+		err "Errors detected, please review the log at [${JOB_LOG}]"
 	fi
 done
 
-say "Post-configuration completed"
-exit 0
+ok "Post-configuration completed"

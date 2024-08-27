@@ -33,7 +33,8 @@ spec:
         - name: SCRIPT
           value: |-
             set -xeuo pipefail
-            /usr/local/bin/acme-init
-            /usr/bin/curl -fsSL -m 3 -o /dev/null "$(SERVICE_URL)/health"
+            . /.functions
+            init_ssl
+            curl -fsSL -m 3 -o /dev/null "$(SERVICE_URL)/health"
   restartPolicy: Never
 {{- end -}}

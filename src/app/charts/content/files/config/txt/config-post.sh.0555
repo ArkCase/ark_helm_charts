@@ -1,60 +1,26 @@
 #!/bin/bash
 set -euo pipefail
+. /.functions
 
-[ -v DEBUG ] || DEBUG="false"
-case "${DEBUG,,}" in
-	true | t | 1 | on | y | yes | enabled | enable | active ) DEBUG="true" ;;
-	* ) DEBUG="false" ;;
-esac
+set_or_default BASE_DIR "/app"
+set_or_default DATA_DIR "${BASE_DIR}/data"
+set_or_default LOGS_DIR "${DATA_DIR}"
 
-timestamp()
-{
-	date -Ins -u
-}
-
-say()
-{
-	echo -e "$(timestamp): ${@}"
-}
-
-err()
-{
-	say "❌ ${@}" 1>&2
-}
-
-fail()
-{
-	err "${@}"
-	exit ${EXIT_CODE:-1}
-}
-
-[ -v BASE_DIR ] || BASE_DIR=""
-[ -n "${BASE_DIR}" ] || BASE_DIR="/app"
-[ -v DATA_DIR ] || DATA_DIR=""
-[ -n "${DATA_DIR}" ] || DATA_DIR="${BASE_DIR}/data"
-[ -v LOGS_DIR ] || LOGS_DIR=""
-[ -n "${LOGS_DIR}" ] || LOGS_DIR="${DATA_DIR}"
-
-if [ -d "${LOGS_DIR}" ] ; then
-	LOG_FILE="${LOGS_DIR}/config-post.log"
-	exec >> >(tee -a "${LOG_FILE}")
-	exec 2>&1
-	say "Logs redirected to [${LOG_FILE}]"
-fi
+is_dir_readwrite "${LOGS_DIR}" && redirect_logs "${LOGS_DIR}/config-post.log"
 
 # By default, wait up to 300 seconds if not told otherwise
-[ -v INIT_POLL_SLEEP ] || INIT_POLL_SLEEP=2
+set_or_default INIT_POLL_SLEEP 2
 [[ "${INIT_POLL_SLEEP}" =~ ^[1-9][0-9]*$ ]] || INIT_POLL_SLEEP=2
-[ -v INIT_MAX_WAIT ] || INIT_MAX_WAIT=300
+
+set_or_default INIT_MAX_WAIT 300
 [[ "${INIT_MAX_WAIT}" =~ ^[1-9][0-9]*$ ]] || INIT_MAX_WAIT=300
 
-[ -v MINIO_ADMIN_URL ] || MINIO_ADMIN_URL=""
-[ -n "${MINIO_ADMIN_URL}" ] || MINIO_ADMIN_URL="https://localhost:9000"
+set_or_default MINIO_ADMIN_URL "https://localhost:9000"
 [[ "${MINIO_ADMIN_URL}" =~ ^(.*)/+$ ]] && MINIO_ADMIN_URL="${BASH_REMATCH[1]}"
 PROBE_URL="${MINIO_ADMIN_URL}/minio/health/ready"
 
 START="$(date +%s)"
-say "Starting the polling cycle for [${PROBE_URL}]"
+waiting "Starting the polling cycle for [${PROBE_URL}]"
 while true ; do
 	curl -fsSL -m 5 "${PROBE_URL}" &>/dev/null && break
 	NOW="$(date +%s)"
@@ -65,18 +31,16 @@ while true ; do
 done
 OUT="$(curl -fL -m 5 "${PROBE_URL}" 2>&1)" || fail "Unable to access the URL [${PROBE_URL}] (rc=${?}): ${OUT}"
 
-say "The URL [${PROBE_URL}] responded, continuing"
+ok "The URL [${PROBE_URL}] responded, continuing"
 
 INSTANCE="local"
 
 # Add the configuration for MC control
 mcli config host add "${INSTANCE}" "${MINIO_ADMIN_URL}" "${MINIO_ROOT_USER}" "${MINIO_ROOT_PASSWORD}"
 
-[ -v MINIO_USER ] || MINIO_USER=""
-[ -v MINIO_PASSWORD ] || MINIO_PASSWORD=""
-
-[ -v MINIO_POLICY ] || MINIO_POLICY=""
-[ -n "${MINIO_POLICY}" ] || MINIO_POLICY="readwrite"
+set_or_default MINIO_USER ""
+set_or_default MINIO_PASSWORD ""
+set_or_default MINIO_POLICY "readwrite"
 
 if [ -n "${MINIO_USER}" ] && [ -n "${MINIO_PASSWORD}" ] ; then
 	# Add the configuration for MC access in read-write mode

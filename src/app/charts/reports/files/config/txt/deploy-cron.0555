@@ -1,35 +1,10 @@
 #!/bin/bash
 set -euo pipefail
+. /.functions
 
-timestamp()
-{
-	date -Ins -u
-}
-
-say()
-{
-	echo -e "$(timestamp): ${@}"
-}
-
-err()
-{
-	say "❌ ${@}"
-}
-
-fail()
-{
-	err "${@}"
-	exit ${EXIT_CODE:-1}
-}
-
-[ -v BASE_DIR ] || BASE_DIR=""
-[ -n "${BASE_DIR}" ] || BASE_DIR="/app"
-
-[ -v INIT_DIR ] || INIT_DIR=""
-[ -n "${INIT_DIR}" ] || INIT_DIR="${BASE_DIR}/init"
-
-[ -v DATA_DIR ] || DATA_DIR=""
-[ -n "${DATA_DIR}" ] || DATA_DIR="${BASE_DIR}/data"
+set_or_default BASE_DIR "/app"
+set_or_default INIT_DIR "${BASE_DIR}/init"
+set_or_default DATA_DIR "${BASE_DIR}/data"
 
 #
 # Extract all the Data Warehousing stuff
@@ -42,5 +17,5 @@ for dwhs in "${DWHS[@]}" ; do
 	deploy-artifact extract-dir "${dwhs}" "${DATA_DIR}"
 done
 
-say "Artifact deployment complete"
+ok "Artifact deployment complete"
 exit 0

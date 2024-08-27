@@ -1,34 +1,17 @@
 #!/bin/bash
 
 set -euo pipefail
+. /.functions
 
-timestamp()
-{
-	date -Ins
-}
+set_or_default BASE_DIR "/app"
+set_or_default SEED_DIR "${BASE_DIR}/seeds"
 
-say()
-{
-	echo -e "$(timestamp): ${@}"
-}
-
-fail()
-{
-	say "${@}" 1>&2
-	exit ${EXIT_CODE:-1}
-}
-
-[ -v BASE_DIR ] || BASE_DIR=""
-[ -n "${BASE_DIR}" ] || BASE_DIR="/app"
-
-[ -v SEED_DIR ] || SEED_DIR=""
-[ -n "${SEED_DIR}" ] || SEED_DIR="${BASE_DIR}/seeds"
-
-[ -d "${SEED_DIR}" ] || fail "The seed file directory [${SEED_DIR}] was not found"
+is_dir_readable "${SEED_DIR}" || fail "The seed file directory [${SEED_DIR}] was not found"
 SEED_DIR="$(readlink -f "${SEED_DIR}")" || fail "Failed to resolve the real path for the seed dir (rc=${?})"
 
+doing "Applying initialization seeds..."
 while read FILE ; do
-	say "Seeding LDAP based on the data from [${FILE}]..."
+	doing "Seeding LDAP based on the data from [${FILE}]..."
 	init-seeds "${FILE}" || fail "Failed to initialize the seeds from [${FILE}]"
 done < <(find "${SEED_DIR}" -type f -name 'seed-*.yaml' | sort -u)
-exit 0
+ok "Initialization seeds applied"
