@@ -21,7 +21,7 @@ SCHEMA_FILE="$(readlink -f "${SCHEMA_FILE}")"
 
 DATA_SOURCE=""
 [ ${#} -eq 2 ] && DATA_SOURCE="${2}"
-[ -n "${DATA_SOURCE}" ] || DATA_SOURCE="ArkCase"
+[ -n "${DATA_SOURCE}" ] || DATA_SOURCE="${MONDRIAN_SCHEMA_DATASOURCE:-"acm3DataSource"}"
 
 xmllint --noout "${SCHEMA_FILE}" &>/dev/null || fail "The schema file at [${SCHEMA_FILE}] is not valid XML, can't install"
 

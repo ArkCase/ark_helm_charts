@@ -171,3 +171,7 @@
     {{- $result | toYaml -}}
   {{- end -}}
 {{- end -}}
+
+{{- define "arkcase.pentaho.acm3ds" -}}
+acm3DataSource
+{{- end -}}

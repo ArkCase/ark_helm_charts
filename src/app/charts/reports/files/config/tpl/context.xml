@@ -1,6 +1,7 @@
+{{- $acm3ds := (include "arkcase.pentaho.acm3ds" $) -}}
 <?xml version="1.0" encoding="UTF-8"?>
 <Context path="/pentaho" docbase="webapps/pentaho/">
-  <Resource name="jdbc/acm3DataSource" auth="Container" type="javax.sql.DataSource"
+  <Resource name="jdbc/{{ $acm3ds }}" auth="Container" type="javax.sql.DataSource"
             factory="org.pentaho.di.core.database.util.DecryptingDataSourceFactory"
             driverClassName="${REPORTS_JDBC_ARKCASE_DRIVER}"
             initialSize="0"

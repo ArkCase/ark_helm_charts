@@ -174,6 +174,8 @@ spec:
             {{- include "arkcase.cluster.tomcat.env" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
             {{- include "arkcase.pentaho.jdbc-urls" $ | nindent 12 }}
+            - name: MONDRIAN_DATASOURCE_NAME
+              value: {{ include "arkcase.pentaho.acm3ds" $ | quote }}
             - name: DATA_DIR
               value: *dataDir
             - name: INIT_DIR
