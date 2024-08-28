@@ -235,4 +235,5 @@ if [ -n "${LAUNCH}" ] ; then
 		mv -vf "${zip}" "${zip}.installed"
 	done < <(find "${PENTAHO_SOLUTIONS}/system/default-content" -type f -name '*.zip')
 fi
-execute "${CMD[@]}"
+running "${CMD[@]@Q}"
+"${CMD[@]}"
