@@ -45,12 +45,12 @@ set_or_default DATA_DIR "${BASE_DIR}/data"
 set_or_default LOGS_DIR "${DATA_DIR}/logs"
 
 ensure_dir "${LOGS_DIR}"
-redirect_logs "${LOGS_DIR}/create-collections.log"
+redirect_logs "${LOGS_DIR}/create-cores.log"
 
 [ -v SOLR_HOME ] || fail "Can't find the SOLR_HOME variable - can't continue"
 
 CONF_HOME="${SOLR_HOME}/configsets"
-is_dir_readwrite || fail "Can't find the configsets directory at [${CONF_HOME}]"
+is_dir_readwrite "${CONF_HOME}" || fail "Can't find the configsets directory at [${CONF_HOME}]"
 
 # If there are no collection to add, skip this job
 [ -v SOLR_CORES ] || exit 0
