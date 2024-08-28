@@ -126,11 +126,13 @@ set_or_default RUN_MARKER "${PENTAHO_HOME}/.initRan"
 # INITIALIZE PERSISTENT DATA AND CONFIGURATIONS                   #
 ###################################################################
 if [ -e "${INIT_MARKER}" ] ; then
-	say "Persistence is already initialized, proceeding with the normal boot"
+	ok "Persistence is already initialized, proceeding with the normal boot"
 else
-	say "Persistence has not been initialized, proceeding with the first-time initialization"
+	doing "Persistence has not been initialized, proceeding with the first-time initialization"
 
 	/config-pre.sh || fail "Pre-configuration failed - the Pentaho initialization may not be complete"
+
+	ok "Pre-initialization succeeded!"
 
 	touch "${INIT_MARKER}"
 	touch "${RUN_MARKER}"
@@ -139,12 +141,14 @@ fi
 ###################################################################
 # CLEAN OUT JACKRABBIT TEMPORARY FILES                            #
 ###################################################################
+doing "Clearing out the Jackrabbit temporary files"
 set_or_default JCR_DIR "${DATA_DIR}/jackrabbit/repository"
 is_dir "${JCR_DIR}" && rm -rf "${JCR_DIR}" &>/dev/null
 mkdir -p "${JCR_DIR}"
 
 # Just in case... for clustering
 hostname > "${JCR_DIR}/cluster_node.id"
+ok "Generated the JCR cluster node ID file"
 
 ###################################################################
 # LOCK FOR FIRST INITIALIZATION TO AVOID PROBLEMS IN CLUSTERING   #
