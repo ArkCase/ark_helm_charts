@@ -4,11 +4,12 @@ set -euo pipefail
 
 usage()
 {
-	echo -e "usage: ${BASH_SOURCE:-${0}} schema.xml"
+	echo -e "usage: ${BASH_SOURCE:-${0}} schema.xml [dataSource]"
 	exit 1
 }
 
-[ ${#} -eq 1 ] || usage
+[ ${#} -lt 1 ] || usage
+[ ${#} -gt 2 ] || usage
 
 SCHEMA_FILE="${1}"
 require_file_readable "${SCHEMA_FILE}"
@@ -17,6 +18,10 @@ case "${SCHEMA_FILE,,}" in
 	* ) fail "The schema file must have an extension of .xml (case-insensitive)" ;;
 esac
 SCHEMA_FILE="$(readlink -f "${SCHEMA_FILE}")"
+
+DATA_SOURCE=""
+[ ${#} -eq 2 ] && DATA_SOURCE="${2}"
+[ -n "${DATA_SOURCE}" ] || DATA_SOURCE="ArkCase"
 
 xmllint --noout "${SCHEMA_FILE}" &>/dev/null || fail "The schema file at [${SCHEMA_FILE}] is not valid XML, can't install"
 
@@ -35,6 +40,6 @@ execute curl -fsSL \
 	-F uploadInput="@${SCHEMA_FILE}" \
 	-F overwrite="true" \
 	-F xmlaEnabledFlag="false" \
-	-F parameters="Datasource=ArkCase" \
+	-F parameters="Datasource=${DATA_SOURCE}" \
 	--config <(echo -n "--user \"${ADMIN_USERNAME}:${ADMIN_PASSWORD}\"") \
 	"${PENTAHO_URL}/plugin/data-access/api/datasource/analysis/catalog/${ENCODED}"
