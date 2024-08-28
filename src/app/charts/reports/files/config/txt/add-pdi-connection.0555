@@ -96,14 +96,16 @@ create_connection()
 {
 	local FILE="${1}"
 
-	if ! jq -r < "${FILE}" &>/dev/null ; then
-		say "The file [${JSON_FILE}] is not properly-formatted JSON"
+	local JSON="$(render-template < "${FILE}")"
+
+	if ! jq -r <<< "${JSON}" &>/dev/null ; then
+		err "The file [${FILE}] did not render into properly-formatted JSON"
 		return 1
 	fi
 
-	local NAME="$(jq -r '.name' < "${FILE}")"
+	local NAME="$(jq -r '.name' <<< "${JSON}")"
 	if [ -z "${NAME}" ] ; then
-		say "The connection at [${JSON_FILE}] doesn't have a name"
+		err "The connection at [${FILE}] doesn't have a name"
 		return 1
 	fi
 
@@ -117,20 +119,20 @@ create_connection()
 	fi
 
 	say "Installing a new connection [${NAME}] from [${FILE}]..."
-	local RESULT="$(run_curl "/plugin/data-access/api/connection/add" "POST" <(render-template < "${FILE}"))" && return 0
+	local RESULT="$(run_curl "/plugin/data-access/api/connection/add" "POST" <(echo -n "${JSON}"))" && return 0
 	say "Failed to create the database connection [${NAME}] (http code = ${RESULT})"
 	return 1
 }
 
 [ ${#} -eq 1 ] || usage
 
+CONNECTION_FILE="${1}"
+require_file_readable "${CONNECTION_FILE}"
+
 set_or_default PENTAHO_URL "https://localhost:8443/pentaho"
 set_or_default ADMIN_USERNAME "arkcase-admin"
 set_or_default ADMIN_PASSWORD '$arkcase-admin$'
 set_as_boolean REPLACE "true"
 
-JSON_FILE="${1}"
-require_file_readable "${JSON_FILE}"
-
-create_connection "${JSON_FILE}"
+create_connection "${CONNECTION_FILE}"
 exit ${?}
