@@ -172,6 +172,7 @@
   {{- end -}}
 {{- end -}}
 
+{{- /* We use a specific, static value to ensure the same name is used all over */ -}}
 {{- define "arkcase.pentaho.acm3ds" -}}
 acm3DataSource
 {{- end -}}
