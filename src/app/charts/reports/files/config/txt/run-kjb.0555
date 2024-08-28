@@ -41,7 +41,7 @@ set_or_default CONF_KJB "config"
 set_or_default PENTAHO_PDI_HOME "${BASE_DIR}/pentaho-pdi"
 
 set_or_default LOGS_DIR "${JOB_DIR}/logs"
-sensure_dir "${LOGS_DIR}"
+ensure_dir "${LOGS_DIR}"
 
 LOG="${LOGS_DIR}/${JOB_NAME}-$(date -u +%Y%m%d-%H%M%S).log"
 redirect_logs "${LOG}"
