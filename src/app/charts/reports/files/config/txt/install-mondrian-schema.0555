@@ -8,8 +8,8 @@ usage()
 	exit 1
 }
 
-[ ${#} -lt 1 ] || usage
-[ ${#} -gt 2 ] || usage
+[ ${#} -ge 1 ] || usage
+[ ${#} -le 2 ] || usage
 
 SCHEMA_FILE="${1}"
 require_file_readable "${SCHEMA_FILE}"
