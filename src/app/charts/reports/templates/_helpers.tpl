@@ -149,7 +149,7 @@
     {{- $value = ($db.dialect | default "" | toString | upper | replace "$(PREFIX_" $replacement) -}}
     {{- $result = append $result (dict "name" $name "value" $value) -}}
 
-    {{- $name = (printf "%s_DBTYPE" $prefix) -}}
+    {{- $name = (printf "%s_TYPE" $prefix) -}}
     {{- $value = ($db.databaseType | default "" | toString | upper | replace "$(PREFIX_" $replacement) -}}
     {{- $result = append $result (dict "name" $name "value" $value) -}}
 
