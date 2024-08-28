@@ -97,6 +97,13 @@ mark_report_installed()
 	echo "${HASH}=${DEST}" >> "${REPORTS_DB}"
 }
 
+has_export_manifest()
+{
+	local SRC="${REPORTS_DIR}/${1}"
+	unzip -t "${SRC}" "${EXPORT_MANIFEST}" &>/dev/null || return 1
+	return 0
+}
+
 install_report()
 {
 	local SRC_FILE="${1}"
@@ -111,12 +118,13 @@ install_report()
 		*.tar.bz2 | *.tbz2 ) ARCHIVE_TYPE="tbz" ;;
 		*.tar.xz | *.txz ) ARCHIVE_TYPE="txz" ;;
 		*.jar ) ARCHIVE_TYPE="zip" ;;
-		*.zip )
-			# Special case: if the zip file has a file named ${EXPORT_MANIFEST} in
-			# the root of the archive, we install the zip file directly, so we leave
-			# the ARCHIVE_TYPE empty so the file won't be extracted
-			unzip -t "${SRC_FILE}" "${EXPORT_MANIFEST}" &>/dev/null || ARCHIVE_TYPE="zip"
-			;;
+
+		# Special case: if the zip file has a file named ${EXPORT_MANIFEST} in
+		# the root of the archive, we install the zip file directly, so we leave
+		# the ARCHIVE_TYPE empty so the file won't be extracted
+		*.zip ) has_export_manifest "${SRC_FILE}" || ARCHIVE_TYPE="zip" ;;
+
+		# ?!?! ... upload it directly
 		* ) ;;
 	esac
 
