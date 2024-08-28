@@ -13,11 +13,6 @@ cleanup()
 	fi
 }
 
-debug_report_installer()
-{
-	say "\t${@}" 1>&2
-}
-
 WORKDIRS=()
 trap cleanup EXIT
 
@@ -69,13 +64,12 @@ extract_archive()
 
 is_report_installed()
 {
-	local DEST="${1}"
+	local FILE="${1}"
 	local HASH="${2}"
-
 
 	# Is it listed in the reports database file? (only consider the last entry)
 	[ -f "${REPORTS_DB}" ] || return 1
-	local EXISTING="$(egrep "^([0-9a-f]{64})=${DEST}$" "${REPORTS_DB}" | tail -1)" || return 1
+	local EXISTING="$(egrep "^([0-9a-f]{64})=${FILE}$" "${REPORTS_DB}" | tail -1)" || return 1
 
 	# Does the record in the database file match our expected pattern?
 	[[ "${EXISTING,,}" =~ ^([0-9a-f]{64})=(.*)$ ]] || return 1
@@ -84,7 +78,7 @@ is_report_installed()
 	[ "${BASH_REMATCH[0],,}" != "${HASH,,}" ] || return 1
 
 	# Does the filename match exactly? (just for paranoia's sake)
-	[ "${BASH_REMATCH[1]}" != "${DEST}" ] || return 1
+	[ "${BASH_REMATCH[1]}" != "${FILE}" ] || return 1
 
 	# Everything matches, the report is already installed
 	return 0
@@ -92,9 +86,9 @@ is_report_installed()
 
 mark_report_installed()
 {
-	local DEST="${1}"
+	local FILE="${1}"
 	local HASH="${2}"
-	echo "${HASH}=${DEST}" >> "${REPORTS_DB}"
+	echo "${HASH}=${FILE}" >> "${REPORTS_DB}"
 }
 
 has_export_manifest()
