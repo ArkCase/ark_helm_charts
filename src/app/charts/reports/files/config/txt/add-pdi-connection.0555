@@ -117,7 +117,7 @@ create_connection()
 	fi
 
 	say "Installing a new connection [${NAME}] from [${FILE}]..."
-	local RESULT="$(run_curl "/plugin/data-access/api/connection/add" "POST" "${FILE}")" && return 0
+	local RESULT="$(run_curl "/plugin/data-access/api/connection/add" "POST" <(render-template < "${FILE}"))" && return 0
 	say "Failed to create the database connection [${NAME}] (http code = ${RESULT})"
 	return 1
 }
