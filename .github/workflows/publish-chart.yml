@@ -9,29 +9,29 @@ on:
       - "*/test/**"
       - "*/release/**"
 
-#
-# We put these here to control these targets, so we can use the same
-# action for future Helm charts that go to different repos
-#
-env:
-  #
-  # The source directory relative to the root of the checkout where the
-  # eligible charts are to be found.
-  #
-  CHART_SRC_DIR: "src"
-
-  #
-  # The source directory relative to the root of the checkout where the
-  # publishable documentation is to be found.
-  #
-  DOC_SRC_DIR: "doc"
-
-  #
-  # The Helm repo to where the chart will be published (should be guessed,
-  # but can be specified directly if needed)
-  #
-  # PUBLISH_HELM_REPO_URL: "https://arkcase.github.io/ark_helm_charts/"
-
 jobs:
   publish-chart:
     uses: arkcase/github-action-templates/.github/workflows/publish-helm-chart-from-tag.yaml@main
+
+    #
+    # We put these here to control these targets, so we can use the same
+    # action for future Helm charts that go to different repos
+    #
+    with:
+      #
+      # The source directory relative to the root of the checkout where the
+      # eligible charts are to be found.
+      #
+      CHART_SRC_DIR: "src"
+
+      #
+      # The source directory relative to the root of the checkout where the
+      # publishable documentation is to be found.
+      #
+      DOC_SRC_DIR: "src"
+
+      #
+      # The Helm repo to where the chart will be published (should be guessed,
+      # but can be specified directly if needed)
+      #
+      # PUBLISH_HELM_REPO_URL: "https://arkcase.github.io/ark_helm_charts/"
