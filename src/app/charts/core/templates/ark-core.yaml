@@ -302,6 +302,7 @@ spec:
               value: >-
                 -XX:MinRAMPercentage=50.0
                 -XX:MaxRAMPercentage=80.0
+                -Dk8s.rename.ldap.directories=true
                 -Djava.keystore.key.alias=$(ACME_KEY_ALIAS)
                 -Dsaml.keystore.defaultKeyName=$(ACME_KEY_ALIAS)
                 -Dacm.configurationserver.propertyfile=$(HOME_DIR)/.arkcase/acm/conf.yml
