@@ -8,6 +8,8 @@ set_or_default PENTAHO_PDI_HOME "${BASE_DIR}/pentaho"
 set_or_default PENTAHO_PDI_PLUGINS "${PENTAHO_PDI_HOME}/data-integration/plugins"
 set_or_default PENTAHO_SERVER "${PENTAHO_HOME}/pentaho-server"
 
+set_as_boolean CLUSTER_ENABLED
+
 require_dir_readable "${PENTAHO_SERVER}"
 
 PENTAHO_SOLUTIONS="${PENTAHO_SERVER}/pentaho-solutions"
@@ -116,16 +118,13 @@ LOG4J2_XML="${PENTAHO_SERVER}/tomcat/webapps/pentaho/WEB-INF/classes/log4j2.xml"
 set_or_default TOMCAT_LOGS_DIR "${LOGS_DIR}/tomcat"
 export TOMCAT_LOGS_DIR
 
-set_or_default INIT_MARKER "${DATA_DIR}/.initialized"
-
-# This is important: ${PENTAHO_HOME} must be *ephemeral* - this flag is only meant to
-# inform when the init script ran, so we can run the post-init script in the helm chart
-set_or_default RUN_MARKER "${PENTAHO_HOME}/.initRan"
+set_or_default FIRST_TIME_MARKER "${DATA_DIR}/.initialized"
 
 ###################################################################
 # INITIALIZE PERSISTENT DATA AND CONFIGURATIONS                   #
 ###################################################################
-if [ -e "${INIT_MARKER}" ] ; then
+if [ -e "${FIRST_TIME_MARKER}" ] ; then
+	# If this marker exists, it means this is NOT the first boot
 	ok "Persistence is already initialized, proceeding with the normal boot"
 else
 	doing "Persistence has not been initialized, proceeding with the first-time initialization"
@@ -134,8 +133,7 @@ else
 
 	ok "Pre-initialization succeeded!"
 
-	touch "${INIT_MARKER}"
-	touch "${RUN_MARKER}"
+	touch "${FIRST_TIME_MARKER}"
 fi
 
 ###################################################################
@@ -155,44 +153,51 @@ ok "Generated the JCR cluster node ID file"
 ###################################################################
 
 INITIALIZER_PROCESS="/config-post.sh"
-MARKER="$(dd if=/dev/urandom bs=3 count=16 2>/dev/null | base64 --wrap=0)"
-say "Acquiring the initializer lock"
-coproc "/lock-initializer" "${MARKER}" "${INITIALIZER_PROCESS}"
-LOCK_OUT="${COPROC[0]}"
-LOCK_PID="${COPROC_PID}"
-say "Co-process started (pid=${LOCK_PID}, fd=${LOCK_OUT})"
+INITIALIZER="false"
+if as_boolean "${CLUSTER_ENABLED}" ; then
+	MARKER="$(dd if=/dev/urandom bs=3 count=16 2>/dev/null | base64 --wrap=0)"
+	say "Acquiring the initializer lock"
+	coproc "/lock-initializer" "${MARKER}" "${INITIALIZER_PROCESS}"
+	LOCK_OUT="${COPROC[0]}"
+	LOCK_PID="${COPROC_PID}"
+	say "Co-process started (pid=${LOCK_PID}, fd=${LOCK_OUT})"
 
-RC=0
-LAUNCH="exec"
-LOCK_START="$(date +%s)"
-while true ; do
-	# Has the marker been output?
-	if read -u ${LOCK_OUT} LINE &>/dev/null ; then
-		# A successful read ...
+	LOCK_START="$(date +%s)"
+	while true ; do
+		# Has the marker been output?
+		if read -u ${LOCK_OUT} LINE &>/dev/null ; then
+			# A successful read ...
 
-		# If it's not our marker, keep reading!
-		[ "${LINE}" != "${MARKER}" ] && continue
+			# If it's not our marker, keep reading!
+			[ "${LINE}" != "${MARKER}" ] && continue
 
-		# If it was our marker, end the loop!
-		ok "Initialization lock acquired"
-		# Don't use exec to launch Pentaho
-		LAUNCH=""
+			# If it was our marker, end the loop!
+			ok "Initialization lock acquired"
+			# Don't use exec to launch Pentaho
+			INITIALIZER="true"
+			break
+		fi
+
+		# The read failed ... is the coproc still running?
+		kill -0 ${LOCK_PID} &>/dev/null && continue
+
+		# It's not running... did it exit successfully?
+		RC=0
+		wait ${LOCK_PID} &>/dev/null || RC=${?}
+
+		# If it's not running and its exit status is not 0, then there was
+		[ ${RC} -eq 0 ] || fail "Initializer lock failed - cannot continue (rc=${RC})"
+
+		ok "Another process executed the initialization"
 		break
-	fi
-
-	# The read failed ... is the coproc still running?
-	kill -0 ${LOCK_PID} &>/dev/null && continue
-
-	# It's not running... did it exit successfully?
-	wait ${LOCK_PID} &>/dev/null || RC=${?}
-
-	# If it's not running and its exit status is not 0, then there was
-	[ ${RC} -eq 0 ] || fail "Initializer lock failed - cannot continue (rc=${RC})"
-
-	ok "Another process executed the initialization"
-	break
-done
-LOCK_END="$(date +%s)"
+	done
+	LOCK_END="$(date +%s)"
+else
+	# If clustering is not enabled, then we simply mark ourselvs as the
+	# initializers, and fire off the config-post initializer process
+	INITIALIZER="true"
+	coproc "${INITIALIZER_PROCESS}"
+fi
 
 ###################################################################
 # ENABLE THE ARKCASE SHARED KEY                                   #
@@ -207,8 +212,7 @@ LOCK_END="$(date +%s)"
 ###################################################################
 
 CMD=("${PENTAHO_SERVER}/start-pentaho.sh" "${@}")
-if [ -n "${LAUNCH}" ] ; then
-	CMD=("${LAUNCH}" "${CMD[@]}")
+if ! as_boolean "${INITIALIZER}" ; then
 
 	# If we had to wait more than 10 seconds for the initialization lock
 	# then it means this is the first boot, so we do stupid things to

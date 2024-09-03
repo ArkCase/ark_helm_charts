@@ -4,15 +4,6 @@ set -euo pipefail
 
 set_as_boolean DEBUG
 
-cleanup()
-{
-	[ -v RUN_MARKER ] || RUN_MARKER=""
-	[ -z "${RUN_MARKER}" ] || rm -rf "${RUN_MARKER}" &>/dev/null
-}
-
-RUN_MARKER="${PENTAHO_HOME}/.initRan"
-trap cleanup EXIT
-
 set_or_default BASE_DIR "/app"
 set_or_default INIT_DIR "${BASE_DIR}/init"
 set_or_default DATA_DIR "${BASE_DIR}/data"
@@ -31,8 +22,6 @@ set_or_default INIT_MAX_WAIT
 
 set_or_default ADMIN_URL "https://localhost:${ADMIN_PORT}/pentaho/"
 poll_url "${ADMIN_URL}" "${INIT_MAX_WAIT}" "${INIT_POLL_SLEEP}" || fail "Cannot continue configuration if Pentaho is not online"
-
-is_file "${RUN_MARKER}" || quit "Run marker not found!"
 
 # First things first: go through every config directory in the DW reports areas,
 # and render all the templates. THEN, add all the connections and schemas, one by one
