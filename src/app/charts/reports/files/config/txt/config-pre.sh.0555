@@ -8,19 +8,21 @@ set_or_default INIT_DIR "${BASE_DIR}/init"
 [ -v DB_FILES_DIALECT ] || fail "The DB dialect (\${DB_FILES_DIALECT}) has not been chosen"
 [[ "${DB_FILES_DIALECT}" =~ / ]] && fail "The DB files dialect [${DB_FILES_DIALECT}] may not contain slashes"
 
-say "Initializing the Pentaho database configurations at [${PENTAHO_SERVER}]..."
+say "Initializing the Pentaho database configurations at [${PENTAHO_SERVER}] for [${DB_FILES_DIALECT}]..."
 
 PENTAHO_SOLUTIONS="${PENTAHO_SERVER}/pentaho-solutions"
 
 # Set the correct audit_sql ... no harm in doing this every time (right?)
 SRC_AUDIT_XML="${PENTAHO_SOLUTIONS}/system/dialects/${DB_FILES_DIALECT}/audit_sql.xml"
-[ -f "${SRC_AUDIT_XML}" ] || fail "There's no audit_sql.xml file for DB dialect [${DB_FILES_DIALECT}], cannot continue"
+is_file_readable "${SRC_AUDIT_XML}" || fail "There's no audit_sql.xml file for DB dialect [${DB_FILES_DIALECT}], cannot continue"
 TGT_AUDIT_XML="${PENTAHO_SOLUTIONS}/system/audit_sql.xml"
 say "Setting the audit_xml file for dialect ${DB_FILES_DIALECT}..."
 cp -vf "${SRC_AUDIT_XML}" "${TGT_AUDIT_XML}" || fail "Failed to copy the audit sql XML configuration file for file dialect [${DB_FILE_DIALECT}]: [${SRC_AUDIT_XML}] -> [${TGT_AUDIT_XML}]"
  
-TGT_HIBERNATE_CFG_XML="${PENTAHO_SOLUTIONS}/system/hibernate/active.hibernate.cfg.xml"
 SRC_HIBERNATE_CFG_XML="${PENTAHO_SOLUTIONS}/system/hibernate/${DB_FILES_DIALECT}.hibernate.cfg.xml"
+is_file_readable "${SRC_HIBERNATE_CFG_XML}" || fail "There's no hibernate.cfg.xml for DB dialect [${DB_FILES_DIALECT}], cannot continue"
+TGT_HIBERNATE_CFG_XML="${PENTAHO_SOLUTIONS}/system/hibernate/active.hibernate.cfg.xml"
+say "Setting the hibernate configuration for dialect ${DB_FILES_DIALECT}..."
 cp -vf "${SRC_HIBERNATE_CFG_XML}" "${TGT_HIBERNATE_CFG_XML}" || fail "Failed to copy the Hibernate configuration XML file for file dialect [${DB_FILES_DIALECT}] : [${SRC_HIBERNATE_CFG_XML}] -> [${TGT_HIBERNATE_CFG_XML}]"
 
 [ -v LB_DIR ] || LB_DIR="${BASE_DIR}/lb"

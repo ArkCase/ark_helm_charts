@@ -118,23 +118,12 @@ LOG4J2_XML="${PENTAHO_SERVER}/tomcat/webapps/pentaho/WEB-INF/classes/log4j2.xml"
 set_or_default TOMCAT_LOGS_DIR "${LOGS_DIR}/tomcat"
 export TOMCAT_LOGS_DIR
 
-set_or_default FIRST_TIME_MARKER "${DATA_DIR}/.initialized"
-
 ###################################################################
 # INITIALIZE PERSISTENT DATA AND CONFIGURATIONS                   #
 ###################################################################
-if [ -e "${FIRST_TIME_MARKER}" ] ; then
-	# If this marker exists, it means this is NOT the first boot
-	ok "Persistence is already initialized, proceeding with the normal boot"
-else
-	doing "Persistence has not been initialized, proceeding with the first-time initialization"
-
-	/config-pre.sh || fail "Pre-configuration failed - the Pentaho initialization may not be complete"
-
-	ok "Pre-initialization succeeded!"
-
-	touch "${FIRST_TIME_MARKER}"
-fi
+doing "Proceeding with the boot initialization"
+/config-pre.sh || fail "Pre-configuration failed - the Pentaho initialization may not be complete"
+ok "Pre-initialization succeeded!"
 
 ###################################################################
 # CLEAN OUT JACKRABBIT TEMPORARY FILES                            #
@@ -153,7 +142,7 @@ ok "Generated the JCR cluster node ID file"
 ###################################################################
 
 INITIALIZER_PROCESS="/config-post.sh"
-INITIALIZER="false"
+INITIALIZER_MODE="false"
 if as_boolean "${CLUSTER_ENABLED}" ; then
 	MARKER="$(dd if=/dev/urandom bs=3 count=16 2>/dev/null | base64 --wrap=0)"
 	say "Acquiring the initializer lock"
@@ -174,7 +163,7 @@ if as_boolean "${CLUSTER_ENABLED}" ; then
 			# If it was our marker, end the loop!
 			ok "Initialization lock acquired"
 			# Don't use exec to launch Pentaho
-			INITIALIZER="true"
+			INITIALIZER_MODE="true"
 			break
 		fi
 
@@ -195,24 +184,13 @@ if as_boolean "${CLUSTER_ENABLED}" ; then
 else
 	# If clustering is not enabled, then we simply mark ourselvs as the
 	# initializers, and fire off the config-post initializer process
-	INITIALIZER="true"
+	INITIALIZER_MODE="true"
 	coproc "${INITIALIZER_PROCESS}"
 fi
 
-###################################################################
-# ENABLE THE ARKCASE SHARED KEY                                   #
-###################################################################
-
-# Disable this for now - AdHoc reports pukes if this is enabled
-# read ARKCASE_SHARED_KEY rest < <(sha256sum "${SSL_DIR}/ca-chain.pem")
-# export ARKCASE_SHARED_KEY
-
-###################################################################
-# LAUNCH THE SERVER PROCESS                                       #
-###################################################################
-
-CMD=("${PENTAHO_SERVER}/start-pentaho.sh" "${@}")
-if ! as_boolean "${INITIALIZER}" ; then
+# If we're not the initializer, then we have to jump through
+# an extra hoop or two in order to boot up cleanly...
+if ! as_boolean "${INITIALIZER_MODE}" ; then
 
 	# If we had to wait more than 10 seconds for the initialization lock
 	# then it means this is the first boot, so we do stupid things to
@@ -239,5 +217,19 @@ if ! as_boolean "${INITIALIZER}" ; then
 		mv -vf "${zip}" "${zip}.installed"
 	done < <(find "${PENTAHO_SOLUTIONS}/system/default-content" -type f -name '*.zip')
 fi
+
+###################################################################
+# ENABLE THE ARKCASE SHARED KEY                                   #
+###################################################################
+
+# Disable this for now - AdHoc reports pukes if this is enabled
+# read ARKCASE_SHARED_KEY rest < <(sha256sum "${SSL_DIR}/ca-chain.pem")
+# export ARKCASE_SHARED_KEY
+
+###################################################################
+# LAUNCH THE SERVER PROCESS                                       #
+###################################################################
+
+CMD=("${PENTAHO_SERVER}/start-pentaho.sh" "${@}")
 running "${CMD[@]@Q}"
 "${CMD[@]}"
