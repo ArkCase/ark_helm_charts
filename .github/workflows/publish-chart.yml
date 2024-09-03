@@ -13,6 +13,11 @@ jobs:
   publish-chart:
     uses: arkcase/github-action-templates/.github/workflows/publish-helm-chart-from-tag.yaml@main
 
+    # We use this secret to gain the identity of jenkins-armedia, so
+    # we can allow the underlying workflow to delete bad tags
+    secrets:
+      RELEASE_WORKFLOW_PAT: ${{ secrets.RELEASE_WORKFLOW_PAT }}
+
     #
     # We put these here to control these targets, so we can use the same
     # action for future Helm charts that go to different repos
