@@ -9,9 +9,6 @@ on:
       - "*/test/**"
       - "*/release/**"
 
-# This is necessary to enable the "bad branch" deletion code
-permissions: write-all
-
 jobs:
   publish-chart:
     uses: arkcase/github-action-templates/.github/workflows/publish-helm-chart-from-tag.yaml@main
