@@ -66,7 +66,6 @@ spec:
           {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
-            {{- include "arkcase.pentaho.jdbc-urls" $ | nindent 12 }}
             - name: DATA_DIR
               value: *dataDir
             - name: INIT_DIR
@@ -90,6 +89,8 @@ spec:
           {{- include "arkcase.image" $ | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
+            {{- include "arkcase.pentaho.jdbc-urls" $ | nindent 12 }}
+            {{- include "arkcase.pentaho.extraDataSources.env" $ | nindent 12 }}
             - name: DATA_DIR
               value: *dataDir
             - name: PENTAHO_SERVICE

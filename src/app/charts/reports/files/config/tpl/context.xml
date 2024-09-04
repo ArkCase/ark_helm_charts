@@ -122,4 +122,13 @@
             username="${REPORTS_JDBC_JACKRABBIT_USERNAME}"
             validationQuery="${REPORTS_JDBC_JACKRABBIT_VALIDATION_QUERY}"
             />
+
+  <!--
+    Any DataSources below this line are added by configuration and only exist
+    to support any PDI DataWarehousing jobs or extra Mondrian schemata
+  -->
+{{- include "arkcase.pentaho.extraDataSources.context-xml" $ | nindent 2 }}
+  <!--
+    End of custom data sources
+  -->
 </Context>
