@@ -242,6 +242,12 @@ acm3DataSource
     {{- /* No need to parse the YAML, the template will explode if a bad dialect is given */ -}}
     {{- $ds = set $ds "dialect" $dialect -}}
 
+    {{- $mappings := ($info.mappings | default dict) -}}
+    {{- if not (kindIs "map" $mappings) -}}
+      {{- $mappings = dict -}}
+    {{- end -}}
+    {{- $ds = set $ds "mappings" (pick $mappings "endpoint" "port" "database" "username" "password") -}}
+
     {{- $result = set $result $name $ds -}}
   {{- end -}}
 
@@ -298,29 +304,42 @@ acm3DataSource
     {{- $replacement := (printf "$(%s_" $prefix) -}}
 
     {{- $name := "" -}}
+    {{- $key := "" -}}
     {{- $value := "" -}}
 
     {{- $secretKeyRef := (dict "name" $ds.secret "optional" false) -}}
 
+    {{- $mappings := $ds.mappings -}}
+
     {{- /* These go straight to the target secret */ -}}
     {{- $name = (printf "%s_HOST" $prefix) -}}
-    {{- $value = (dict "secretKeyRef" (merge (dict "key" "endpoint") $secretKeyRef)) -}}
+    {{- $key = "endpoint" -}}
+    {{- $key = (hasKey $mappings $key | ternary (get $mappings $key) $key | default $key | toString) -}}
+    {{- $value = (dict "secretKeyRef" (merge (dict "key" $key) $secretKeyRef)) -}}
     {{- $result = append $result (dict "name" $name "valueFrom" $value) -}}
 
     {{- $name = (printf "%s_PORT" $prefix) -}}
-    {{- $value = (dict "secretKeyRef" (merge (dict "key" "port") $secretKeyRef)) -}}
+    {{- $key = "port" -}}
+    {{- $key = (hasKey $mappings $key | ternary (get $mappings $key) $key | default $key | toString) -}}
+    {{- $value = (dict "secretKeyRef" (merge (dict "key" $key) $secretKeyRef)) -}}
     {{- $result = append $result (dict "name" $name "valueFrom" $value) -}}
 
     {{- $name = (printf "%s_DATABASE" $prefix) -}}
-    {{- $value = (dict "secretKeyRef" (merge (dict "key" "database") $secretKeyRef)) -}}
+    {{- $key = "database" -}}
+    {{- $key = (hasKey $mappings $key | ternary (get $mappings $key) $key | default $key | toString) -}}
+    {{- $value = (dict "secretKeyRef" (merge (dict "key" $key) $secretKeyRef)) -}}
     {{- $result = append $result (dict "name" $name "valueFrom" $value) -}}
 
     {{- $name = (printf "%s_USERNAME" $prefix) -}}
-    {{- $value = (dict "secretKeyRef" (merge (dict "key" "username") $secretKeyRef)) -}}
+    {{- $key = "username" -}}
+    {{- $key = (hasKey $mappings $key | ternary (get $mappings $key) $key | default $key | toString) -}}
+    {{- $value = (dict "secretKeyRef" (merge (dict "key" $key) $secretKeyRef)) -}}
     {{- $result = append $result (dict "name" $name "valueFrom" $value) -}}
 
     {{- $name = (printf "%s_PASSWORD" $prefix) -}}
-    {{- $value = (dict "secretKeyRef" (merge (dict "key" "password") $secretKeyRef)) -}}
+    {{- $key = "password" -}}
+    {{- $key = (hasKey $mappings $key | ternary (get $mappings $key) $key | default $key | toString) -}}
+    {{- $value = (dict "secretKeyRef" (merge (dict "key" $key) $secretKeyRef)) -}}
     {{- $result = append $result (dict "name" $name "valueFrom" $value) -}}
 
     {{- /* These are rendered from the DB config */ -}}
