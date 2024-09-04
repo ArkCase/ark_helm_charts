@@ -1,0 +1,36 @@
+#!/bin/bash
+set -euo pipefail
+. /.functions
+
+usage()
+{
+	echo -e "usage: ${BASH_ARGV0:-${BASH_SOURCE:-${0}}} kjb-dir"
+	exit 1
+}
+
+[ ${#} -eq 1 ] || usage
+
+JOB="${1}"
+is_dir_readable "${JOB}" || fail "No directory [${JOB}] was found"
+
+# First things first: go through every config directory in the DW reports areas,
+# and render all the templates. THEN, add all the connections and schemas, one by one
+DPL="${JOB}/deploy"
+doing "Deploying the resources needed by the DW report at [${JOB}]..."
+
+INCOMPLETE="false"
+is_dir_readable "${DPL}" || quit "No artifacts to deploy for DW job [${JOB}]"
+
+# Find any Mondrian schemata (i.e. schema-*.xml)
+while read SCHEMA ; do
+	install-mondrian-schema "${SCHEMA}" && continue
+
+	err "Failed to install the Mondrian schema [${SCHEMA}]"
+	INCOMPLETE="true"
+
+done < <(find "${DPL}" -mindepth 2 -maxdepth 2 -type f -iname 'schema.xml' | sort)
+
+# If we failed to install any of the above, report it ...
+as_boolean "${INCOMPLETE}" && fail "The artifacts for the job at [${JOB}] are incomplete"
+
+quit "The artifacts for the job at [${JOB}] were installed correctly"

@@ -2,6 +2,8 @@
 set -euo pipefail
 . /.functions
 
+DS_FILE="datasource.txt"
+
 usage()
 {
 	echo -e "usage: ${BASH_SOURCE:-${0}} schema.xml [dataSource]"
@@ -21,7 +23,6 @@ SCHEMA_FILE="$(readlink -f "${SCHEMA_FILE}")"
 
 DATA_SOURCE=""
 [ ${#} -eq 2 ] && DATA_SOURCE="${2}"
-[ -n "${DATA_SOURCE}" ] || DATA_SOURCE="${MONDRIAN_SCHEMA_DATASOURCE:-"acm3DataSource"}"
 
 xmllint --noout "${SCHEMA_FILE}" &>/dev/null || fail "The schema file at [${SCHEMA_FILE}] is not valid XML, can't install"
 
@@ -29,9 +30,32 @@ NAME="$(xmlstarlet sel -t -v "/Schema/@name" "${SCHEMA_FILE}")" || fail "Failed 
 [ -n "${NAME}" ] || fail "The Mondrian schema at [${SCHEMA_FILE}] lacks a name, can't install"
 ENCODED="$(urlencode "${NAME}")"
 
+# The DataSource name to use in the event one isn't found
+set_or_default DEFAULT_DATA_SOURCE "acm3DataSource"
+
+# If there's no DataSource name given, we try to find a file called ${DS_FILE}
+# living right next to the schema file, and use the first non-blank, non-comment line
+# as its name
+if [ -z "${DATA_SOURCE}" ] ; then
+	DS_FILE="$(dirname "${SCHEMA_FILE}")/${DS_FILE}"
+	if is_file_readable "${DS_FILE}" ; then
+		DATA_SOURCE="$(cat "${DS_FILE}" | sed -e '/^\s*#/d' -e '/^\s*$/d' | head -1 | tr -d '[[:space:]\n]')"
+		[ -n "${DATA_SOURCE}" ] || fail "The DataSource file at [${DS_FILE}] did not contain a DataSource name"
+	fi
+fi
+
+# No data source anywhere? Assume the default...
+[ -n "${DATA_SOURCE}" ] || DATA_SOURCE="${DEFAULT_DATA_SOURCE}"
+
+set_or_default PENTAHO_URL "https://localhost:8443/pentaho"
 set_or_default ADMIN_USERNAME "admin"
 set_or_default ADMIN_PASSWORD "password"
-set_or_default PENTAHO_URL "https://localhost:8443/pentaho"
+
+# TODO: This can't be activated until we figure out a clean
+# way to validate datasources defined in Tomcat's context.xml,
+# because this service endpoint doesn't take those into account
+# eyes "Validating the existence of the DataSource [${DATA_SOURCE}]..."
+# check-datasource "${DATA_SOURCE}" || fail "The DataSource [${DATA_SOURCE}] was not found in Pentaho"
 
 say "Installing the Mondrian schema [${NAME}] from [${SCHEMA_FILE}]..."
 execute curl -fsSL \

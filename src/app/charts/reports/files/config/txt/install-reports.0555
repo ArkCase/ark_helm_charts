@@ -223,8 +223,13 @@ if ${DEBUG} || is_file_executable "${REPORT_INSTALLER}" ; then
 	REPORTS_DIR="${INIT_DIR}/reports"
 	while read FILE ; do
 
-		# TODO: Implement the "check if changed" thing, and only
-		# deploy the report if it's new or changed
+		MARKER="${REPORTS_DIR}/.${FILE}.deployed"
+
+		# Has this file been deployed?
+		is_file "${MARKER}" || continue
+
+		# Regardless what happens, clear out the marker
+		rm -f "${MARKER}" &>/dev/null || true
 
 		# TODO: What if we want to undeploy? How do we do that?
 
