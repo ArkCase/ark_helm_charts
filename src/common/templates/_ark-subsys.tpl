@@ -653,7 +653,7 @@ Parameter: a dict with two keys:
   {{- end -}}
 
   {{- $local := dict -}}
-  {{- if (ne $this $subsys) -}}
+  {{- if (eq $this $subsys) -}}
     {{- $local = $ctx.Values.configuration -}}
     {{- if not (kindIs "map" $local) -}}
       {{- $local = dict -}}
