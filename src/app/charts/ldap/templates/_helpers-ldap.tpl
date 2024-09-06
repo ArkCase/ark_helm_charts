@@ -143,12 +143,18 @@ result: "dc=some,dc=domain,dc=com"
     {{- fail (printf "The LDAP server configuration '%s' could not be found" $server) -}}
   {{- end -}}
 
-  {{- get $settings $server | toYaml -}}
+  {{- $result := get $settings $server -}}
+  {{- if not (kindIs "map" $result) -}}
+    {{- $result = dict -}}
+  {{- end -}}
+
+  {{- $settings = (include "arkcase.subsystem.settings" $ctx | fromYaml) -}}
+
+  {{- $result | toYaml -}}
 {{- end -}}
 
 {{- define "arkcase.ldap.flat" -}}
   {{- $ctx := ((hasKey $ "ctx") | ternary $.ctx $) -}}
-  {{- $ldap := (include "arkcase.ldap" $ | fromYaml) -}}
   {{- $server := ((hasKey $ "server") | ternary $.server "" | toString | default "arkcase") -}}
   {{- $result := dict -}}
   {{- range $k, $v := (include "arkcase.ldap" (dict "ctx" $ctx "server" $server) | fromYaml) -}}

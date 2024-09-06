@@ -1,15 +1,6 @@
 {{- define "arkcase.samba.external" -}}
-  {{- $serverNames := (include "arkcase.ldap.serverNames" $ | fromYaml) -}}
-  {{- $external := 0 -}}
-  {{- range $server := $serverNames.result -}}
-    {{- $ldap := (include "arkcase.ldap" (dict "ctx" $ "server" $server) | fromYaml) -}}
-    {{- if $ldap.external -}}
-      {{- $external = add $external 1 -}}
-    {{- end -}}
-  {{- end -}}
-  {{- /* If all the servers are external, then LDAP is external. */ -}}
-  {{- /* Otherwise, there is at least one tree to serve. */ -}}
-  {{- (eq $external (len $serverNames.result)) | ternary "true" "" -}}
+  {{- $conf := (include "arkcase.subsystem-access.conf" $ | fromYaml) -}}
+  {{- not (empty $conf.external) | ternary "true" "" -}}
 {{- end -}}
 
 {{- define "arkcase.samba.seeds" -}}
