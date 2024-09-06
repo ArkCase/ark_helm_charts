@@ -641,8 +641,8 @@
     {{- $server = ((hasKey $ "server") | ternary $.server "" | default $server) -}}
   {{- end -}}
 
-  {{- $settings := (include "arkcase.subsystem.settings" $ctx | fromYaml) -}}
-  {{- $server = (dig "ldap" $server "" ($settings | default dict)) -}}
+  {{- $settings := (include "arkcase.subsystem.settings" (dict "ctx" $ctx "subsys" "ldap") | fromYaml) -}}
+  {{- $server = (dig $server "" ($settings | default dict)) -}}
   {{- if not (kindIs "map" $server) -}}
     {{- $server = dict -}}
   {{- end -}}
