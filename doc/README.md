@@ -75,7 +75,7 @@ The above command will result in a deployment of pre-configured containers, inte
 
 ## <a name="security"></a>Security
 
-Due to the highly varied nature of the security requriements each deployer may choose to require or enforce, it's impossiblte to anticipate and support them beyond granting the ability to run (portions of) the stack under service accounts. This helm chart supports the following syntax for indicating service account usage:
+Due to the highly varied nature of the security requriements each deployer may choose to require or enforce, it's impossible to anticipate and support them beyond granting the ability to run (portions of) the stack under service accounts. This helm chart supports the following syntax for indicating service account usage:
 
 ```yaml
 
