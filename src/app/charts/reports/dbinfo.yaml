@@ -55,7 +55,7 @@ postgresql:
   jdbc:
     driver: org.postgresql.Driver
     type: postgresql
-    format: "jdbc:postgresql://${HOSTNAME}:${PORT}/${DATABASE}?ssl=true&sslrootcert=/.ssl/ca-int.pem"
+    format: "jdbc:postgresql://${HOSTNAME}:${PORT}/${DATABASE}?ssl=true&sslrootcert=/etc/pki/tls/cert.pem"
   validationQuery: "SELECT 1"
   aliases:
     - psql
