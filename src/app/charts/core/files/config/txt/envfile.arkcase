@@ -26,6 +26,10 @@ source <(/usr/local/bin/render-altcase-vars)
 # Add more stuff...
 #
 
-# Disable this for now. Ad-hoc reports pukes if this is set
-# read ARKCASE_PENTAHO_SHARED_KEY rest < <(sha256sum "${SSL_DIR}/ca-chain.pem")
-# export ARKCASE_PENTAHO_SHARED_KEY
+# Don't enable this yet, until ACS-1502 is merged
+# read ARKCASE_HEADER_SHARED_KEY rest < <(sha256sum "${SSL_DIR}/ca-chain.pem")
+# export ARKCASE_HEADER_SHARED_KEY
+
+# Don't enable this yet, until ACS-1502 is merged
+# This enables preauth header encryption when talking to Pentaho
+# export ARKCASE_ENCRYPTED_HEADERS="X-ARKCASE-EXTERNAL-USER"
