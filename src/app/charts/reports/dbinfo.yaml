@@ -53,7 +53,7 @@ postgresql:
   jdbc:
     driver: org.postgresql.Driver
     type: postgresql
-    url: "jdbc:postgresql://$(PREFIX_HOST):$(PREFIX_PORT)/$(PREFIX_DATABASE)?ssl=true&sslrootcert=/.ssl/ca-int.pem"
+    url: "jdbc:postgresql://$(PREFIX_HOST):$(PREFIX_PORT)/$(PREFIX_DATABASE)?ssl=true&sslrootcert=/etc/pki/tls/cert.pem"
   validationQuery: "SELECT 1"
   aliases:
     - psql
