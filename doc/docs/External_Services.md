@@ -219,7 +219,7 @@ ArkCase requires a place to store the documents that are uploaded to into it by 
 - Subsystem Name: `content`
 
 - Settings:
-    - `dialect`: the content store engine's dialect - must be one of `alfresco`, `cmis` (an alias for `alfresco`), `s3`, or `minio` (an alias for `s3`)
+    - `dialect`: the content store engine's dialect - must be one of `alfresco`, `cmis` (an alias for `alfresco`), `s3`, or `minio` (an alias for `s3`). If this value is not provided, the default dialect is `s3`.
 
 - Connections:
     - `main`, `admin`:
@@ -320,7 +320,7 @@ ArkCase, Pentaho (a.k.a. _reports_), and Alfresco (when used) require a relation
 - Subsystem Name: `rdbms`
 
 - Settings:
-    - `dialect`: The database dialect to use. Must be either `mariadb` (aliased as `mysql`), or `postgresql` (aliased as `psql` or `postgres`). If this value is not provided, the default dialect is PostgreSQL.
+    - `dialect`: The database dialect to use. Must be either `mariadb` (aliased as `mysql`), or `postgresql` (aliased as `psql` or `postgres`). If this value is not provided, the default dialect is `postgresql`.
 
 - Connections:
     - `arkcase`:
