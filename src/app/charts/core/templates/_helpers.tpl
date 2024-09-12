@@ -268,15 +268,23 @@
     {{- end -}}
   {{- end }}
 
-  {{-
-    $sender := dict
-      "encryption" (first $connect)
-      "host" $host
-      "port" $port
-      "username" $username
-      "password" $password
-      "userFrom" $from
-  -}}
+  {{- $type := $null -}}
+  {{- $v = (include "arkcase.tools.conf" (dict "ctx" $ "value" "email.send.type" "detailed" true) | fromYaml) -}}
+  {{- if and $v $v.global $v.value (eq $v.type "string") -}}
+    {{- $type = $v.value -}}
+  {{- end }}
+
+  {{- $sender := dict -}}
+  {{- if $type }}
+    {{- $_ := set $sender "type" $type -}}
+  {{- end }}
+  {{- $_ := set $sender "encryption" (first $connect) -}}
+  {{- $_ := set $sender "host" $host -}}
+  {{- $_ := set $sender "port" $port -}}
+  {{- $_ := set $sender "username" $username -}}
+  {{- $_ := set $sender "password" $password -}}
+  {{- $_ := set $sender "userFrom" $from -}}
+
   {{- $result := dict "sender" $sender -}}
 
   {{- $host = "localhost" -}}
