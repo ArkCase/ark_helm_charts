@@ -4,6 +4,13 @@ set -euo pipefail
 . /.functions
 
 #
+# If we're in developer and debugging is enabled, we
+# completely disregard the liveness probe and just
+# return a 0 exit status
+#
+as_boolean "${DEVELOPER:-false}" && as_boolean "${DEBUG:-false}" && quit "DEBUG mode enabled, this health check is disabled"
+
+#
 # Ping Tomcat's internal communications port, which is only opened once
 # Tomcat successfully completes its bootup sequence
 #

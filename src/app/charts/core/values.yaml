@@ -175,10 +175,8 @@ service:
     probes:
       enabled: true
       spec:
-        httpGet:
-          scheme: HTTPS
-          path: "/actuator/health"
-          port: *cloudconfigPort
+        exec:
+          command: [ "/usr/local/bin/cloudconfig-live" ]
         initialDelaySeconds: 0
         periodSeconds: 10
         timeoutSeconds: 10
@@ -192,18 +190,6 @@ service:
       - name: arkcase-https
         protocol: TCP
         port: &arkcasePort 8443
-      - name: arkcase-debug
-        protocol: TCP
-        port: 8888
-      - name: arkcase-jmx
-        protocol: TCP
-        port: 7091
-      - name: config-debug
-        protocol: TCP
-        port: 8889
-      - name: config-jmx
-        protocol: TCP
-        port: 7092
 
     probes:
       enabled: true

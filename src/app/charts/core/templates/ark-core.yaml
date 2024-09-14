@@ -285,6 +285,8 @@ spec:
             {{- if $dev }}
             - name: DEVELOPMENT
               value: "true"
+            - name: DEBUG
+              value: {{ not (empty $debug.arkcase) | toString | quote }}
             - name: DEV_UID
               value: {{ $devUid | toString | quote }}
             - name: DEV_GID
@@ -407,6 +409,8 @@ spec:
             {{- if $dev }}
             - name: DEVELOPMENT
               value: "true"
+            - name: DEBUG
+              value: {{ not (empty $debug.cloudconfig) | toString | quote }}
             - name: DEV_UID
               value: {{ $devUid | toString | quote }}
             - name: DEV_GID
@@ -430,6 +434,7 @@ spec:
             {{- end }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/.env" "subPath" "envfile.cloudconfig") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/render-altcase-vars") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/cloudconfig-live") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/spring/quartz.properties") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/application.yaml") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/arkcase-activemq.yaml") | nindent 12 }}
