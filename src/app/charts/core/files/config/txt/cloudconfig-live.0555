@@ -8,7 +8,7 @@ set -euo pipefail
 # completely disregard the liveness probe and just
 # return a 0 exit status
 #
-as_boolean "${DEVELOPER:-false}" && as_boolean "${DEBUG:-false}" && quit "DEBUG mode enabled, this health check is disabled"
+as_boolean "${DEVELOPMENT:-false}" && as_boolean "${DEBUG:-false}" && quit "DEBUG mode enabled, this health check is disabled"
 
 #
 # Ping CloudConfig's actuator/health endpoint, which is only available once
