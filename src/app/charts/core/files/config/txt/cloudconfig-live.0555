@@ -16,7 +16,7 @@ as_boolean "${DEVELOPMENT:-false}" && as_boolean "${DEBUG:-false}" && quit "DEBU
 #
 RESULT="$( timeout --signal=KILL 5 curl -fsSL https://localhost:9999/actuator/health 2>&1 )" || fail "CloudConfig is not started (${?}): ${RESULT}"
 
-STATUS="$(jq -r ".status" <<< "${RESULT}")" || fail "Invalid result response (wrapped in []): [${RESULT}]"
+STATUS="$(jq -r ".status" <<< "${RESULT}" 2>&1)" || fail "Invalid result response (wrapped in []): [${RESULT}]"
 [ -n "${STATUS}" ] || fail "CloudConfig did not report a status"
 [ "${STATUS,,}" == "up" ] || fail "CloudConfig status is [${STATUS}]"
 
