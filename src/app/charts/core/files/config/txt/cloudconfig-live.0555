@@ -14,7 +14,7 @@ as_boolean "${DEVELOPMENT:-false}" && as_boolean "${DEBUG:-false}" && quit "DEBU
 # Ping CloudConfig's actuator/health endpoint, which is only available once
 # CloudConfig successfully completes its bootup sequence
 #
-RESULT="$( timeout --signal=KILL 5 curl -fL https://localhost:9999/actuator/health 2>&1 )" || fail "CloudConfig is not started (${?}): ${RESULT}"
+RESULT="$( timeout --signal=KILL 5 curl -fsSL https://localhost:9999/actuator/health 2>&1 )" || fail "CloudConfig is not started (${?}): ${RESULT}"
 
 STATUS="$(jq -r ".status" <<< "${RESULT}")" || fail "Invalid result response (wrapped in []): [${RESULT}]"
 [ -n "${STATUS}" ] || fail "CloudConfig did not report a status"
