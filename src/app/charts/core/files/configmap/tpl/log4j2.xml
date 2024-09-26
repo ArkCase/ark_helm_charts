@@ -62,7 +62,7 @@
         {{- include "arkcase.core.renderLoggers" (dict "ctx" $ "loggers" $loggers) | nindent 8 }}
         <Root level="info" additivity="false">
             <AppenderRef ref="Console"/>
-            <AppenderRef ref="file-log"/>
+<!--             <AppenderRef ref="file-log"/> -->
         </Root>
     </Loggers>
 </Configuration>
