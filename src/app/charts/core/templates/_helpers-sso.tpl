@@ -3,25 +3,17 @@
   {{- if not (kindIs "map" $config) -}}
     {{- fail (printf "The SAML configuration must be given as a map, not a %s: %s" (kindOf $config) $config) -}}
   {{- end -}}
-  {{-
-    $required :=
-      list
-        "entityId"
-        "identityProviderUrl"
-  -}}
 
-  {{- $missing := list -}}
-  {{- range $key := $required -}}
-    {{- if (not (hasKey $config $key)) -}}
-      {{- $missing = append $missing $key -}}
-    {{- end -}}
+  {{- if not (hasKey $config "entityId") -}}
+    {{- fail "The SAML Configuration is missing the entityId value" -}}
   {{- end -}}
-  {{- if $missing -}}
-    {{- fail (printf "The SAML Configuration is missing the following keys: %s" $missing) -}}
+
+  {{- if eq (hasKey $config "identityProviderUrl") (hasKey $config "identityProviderMetadata") -}}
+    {{- fail "The SAML configuration must contain exactly one of 'identityProviderUrl' or 'identityProviderMetadata'" -}}
   {{- end -}}
 
   {{- /* The config is valid! But we only return that which is important */ -}}
-  {{- pick $config "entityId" "identityProviderUrl" | toYaml -}}
+  {{- pick $config "entityId" "identityProviderUrl" "identityProviderMetadata" | toYaml -}}
 {{- end -}}
 
 {{- define "__arkcase.core.sso.compute.saml" -}}
@@ -37,12 +29,20 @@
   {{- end -}}
 
   {{- $saml = (include "__arkcase.core.sso.saml.parse-config" $saml | fromYaml) -}}
-
-  {{- /* We parse the required URLs right away, to make sure they're valid and for further use */ -}}
-  {{- $identityProviderUrl := ($saml.identityProviderUrl | toString) -}}
-  {{- $saml = set $saml "identityProviderUrl" (include "arkcase.tools.parseUrl" $identityProviderUrl | fromYaml) -}}
-  {{- if not $saml.identityProviderUrl -}}
-    {{- fail (printf "The SAML identityProviderUrl is not a valid URL: [%s]" $identityProviderUrl) -}}
+  {{- if (hasKey $saml "identityProviderUrl") -}}
+    {{- /* We parse the required URLs right away, to make sure they're valid and for further use */ -}}
+    {{- $identityProviderUrl := ($saml.identityProviderUrl | toString) -}}
+    {{- $saml = set $saml "identityProviderUrl" (include "arkcase.tools.parseUrl" $identityProviderUrl | fromYaml) -}}
+    {{- if not $saml.identityProviderUrl -}}
+      {{- fail (printf "The SAML identityProviderUrl is not a valid URL: [%s]" $identityProviderUrl) -}}
+    {{- end -}}
+  {{- else -}}
+    {{- /* Analyze the metadata given */ -}}
+    {{- $identityProviderMetadata := ($saml.identityProviderMetadata | toString) -}}
+    {{- $saml = set $saml "identityProviderMetadata" $identityProviderMetadata -}}
+    {{- if not $saml.identityProviderMetadata -}}
+      {{- fail "The SAML identityProviderMetadata cannot be an empty string" -}}
+    {{- end -}}
   {{- end -}}
 
   {{- /* We add this here for convenience later on */ -}}
