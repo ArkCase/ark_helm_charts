@@ -10,6 +10,7 @@
   {{- $cluster = set $cluster "nodes" 1 -}}
   {{- $nodes := (min 4 ($cluster.nodes | int)) -}}
   {{- $serviceAccountName := (include "arkcase.serviceAccountName" $) }}
+  {{- $saml := (include "arkcase.core.sso.saml" $ | fromYaml) -}}
 ---
   {{- $serviceAccountName = (or (empty $serviceAccountName) (eq "default" $serviceAccountName)) | ternary (include "arkcase.fullname" $) $serviceAccountName }}
 apiVersion: v1
@@ -373,6 +374,10 @@ spec:
               mountPath: "/.env"
               subPath: &envfileArkcase "envfile.arkcase"
               readOnly: true
+            - name: *configMap
+              mountPath: "/app/home/.arkcase/acm/spring-security/spring-security-config-external-saml.xml"
+              subPath: &arkcaseSamlConfigXml "spring-security-config-external-saml.xml"
+              readOnly: true
             - name: &secrets "secrets"
               mountPath: "/app/home/.arkcase/acm/acm-config-server-repo/application.yaml"
               subPath: &applicationYaml "application.yaml"
@@ -392,6 +397,12 @@ spec:
             - name: *secrets
               mountPath: "/app/home/.arkcase/acm/spring/spring-config-saml.properties"
               subPath: &arkcaseSamlProperties "spring-config-saml.properties"
+            {{- if and $saml $saml.identityProviderMetadata }}
+            - name: *secrets
+              mountPath: "/app/home/.arkcase/acm/sso/idp.xml"
+              subPath: &arkcaseIdpXml "idp.xml"
+              readOnly: true
+            {{- end }}
             - name: *secrets
               mountPath: "/app/home/.arkcase/acm/acm-config-server-repo/ldap/ldap.yaml"
               subPath: &ldapYaml "ldap.yaml"
@@ -574,6 +585,10 @@ spec:
                 path: *arkcaseOidcYaml
               - key: *arkcaseSamlProperties
                 path: *arkcaseSamlProperties
+            {{- if and $saml $saml.identityProviderMetadata }}
+              - key: *arkcaseIdpXml
+                path: *arkcaseIdpXml
+            {{- end }}
               - key: *confYaml
                 path: *confYaml
               - key: *pdfnetSdkLicenseTxt
@@ -621,6 +636,8 @@ spec:
                 mode: 0555
               - key: *seedContentYaml
                 path: *seedContentYaml
+              - key: *arkcaseSamlConfigXml
+                path: *arkcaseSamlConfigXml
               - key: *envfileArkcase
                 path: *envfileArkcase
               - key: *envfileCloudconfig
