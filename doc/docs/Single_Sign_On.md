@@ -98,9 +98,16 @@ global:
                 <ds:Transforms>
                     <ds:Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"/>
                     <!-- ... -->
+
+      # Alternative syntax if you prefer to populate a secret with the XML beforehand, by some other means
+      # identityProviderMetadata:
+      #   secret: name-of-your-secret
+      #   key: key-in-that-secret-for-the-idp.xml-file
 ```
 
-The `entityId` value identifies this ArkCase deployment to the identity provider.  You and the identity provider administrator must agree on this value (similar to the OIDC's `clientId`).  The `identityProviderUrl` is the URL for the SAML metadata from your identity provider, and they must provide you with this value. If operating in an airgapped environment, you must download this file manually, and instead use the `identityProviderMetadata` parameter to attach the metadata XML contents directly. It is an error to specify both `identityProviderUrl` and `identityProviderMetadata` at the same time.
+The `entityId` value identifies this ArkCase deployment to the identity provider.  You and the identity provider administrator must agree on this value (similar to the OIDC's `clientId`).  The `identityProviderUrl` is the URL for the SAML metadata from your identity provider, and they must provide you with this value. If operating in an airgapped environment, you must download this file manually, and instead use the `identityProviderMetadata` parameter to either attach the metadata XML contents directly, or add them to a secret of your choosing. If using a secret, you must at least provide the `secret` value. The default value for `key`, if not provided, is `idp.xml`.
+
+It is an error to specify both `identityProviderUrl` and `identityProviderMetadata` at the same time.
 
 You may have to provide the ArkCase SAML metadata URL to your identity provider. In this case, the ArkCase SAML metadata URL will use the form: `${global.conf.baseUrl}/saml/metadata`.
 

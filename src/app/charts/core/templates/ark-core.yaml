@@ -397,10 +397,10 @@ spec:
             - name: *secrets
               mountPath: "/app/home/.arkcase/acm/spring/spring-config-saml.properties"
               subPath: &arkcaseSamlProperties "spring-config-saml.properties"
-            {{- if and $saml $saml.identityProviderMetadata }}
-            - name: *secrets
+            {{- if ($saml).identityProviderMetadata }}
+            - name: &idpMetadataSecret "saml-idp-metadata"
               mountPath: "/app/home/.arkcase/acm/sso/idp.xml"
-              subPath: &arkcaseIdpXml "idp.xml"
+              subPath: &idpMetadataKey {{ $saml.identityProviderMetadata.key | quote }}
               readOnly: true
             {{- end }}
             - name: *secrets
@@ -585,10 +585,6 @@ spec:
                 path: *arkcaseOidcYaml
               - key: *arkcaseSamlProperties
                 path: *arkcaseSamlProperties
-            {{- if and $saml $saml.identityProviderMetadata }}
-              - key: *arkcaseIdpXml
-                path: *arkcaseIdpXml
-            {{- end }}
               - key: *confYaml
                 path: *confYaml
               - key: *pdfnetSdkLicenseTxt
@@ -605,6 +601,16 @@ spec:
               - key: *ldapFoiaYaml
                 path: *ldapFoiaYaml
               {{- end }}
+        {{- if ($saml).identityProviderMetadata }}
+        - name: *idpMetadataSecret
+          secret:
+            optional: false
+            secretName: {{ $saml.identityProviderMetadata.secret | quote }}
+            defaultMode: 0444
+            items:
+              - key: *idpMetadataKey
+                path: *idpMetadataKey
+        {{- end }}
         - name: *configMap
           configMap:
             optional: false
