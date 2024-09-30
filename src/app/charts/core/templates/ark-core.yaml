@@ -367,12 +367,10 @@ spec:
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/acm/acm-config-server-repo/arkcase-oidc.yaml") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/acm/spring/spring-config-saml.properties") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/acm/spring-security/spring-security-config-external-saml.xml") | nindent 12 }}
-            {{- if and $saml $saml.identityProviderMetadata }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/acm/sso/idp.xml") | nindent 12 }}
-            {{- end }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/acm/licenses/pdfnet_sdk_license.txt") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/milton.license.properties") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/milton.license.sig") | nindent 12 }}
+            {{- include "arkcase.core.sso.saml.idpMetadata.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/acm/saml.sso/idp.xml") | nindent 12 }}
         - name: cloudconfig
           {{- include "arkcase.image" (dict "ctx" $ "name" "cloudconfig" "repository" "arkcase/cloudconfig") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
@@ -460,6 +458,7 @@ spec:
           {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "foia") | nindent 8 }}
           {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "fsrv") | nindent 8 }}
         {{- end }}
+        {{- include "arkcase.core.sso.saml.idpMetadata.volume" $ | nindent 8 }}
   volumeClaimTemplates:
     {{- if or (not $dev.conf) $dev.conf.file }}
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "conf") | nindent 4 }}

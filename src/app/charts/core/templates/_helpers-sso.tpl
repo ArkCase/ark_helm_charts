@@ -16,6 +16,59 @@
   {{- pick $config "entityId" "identityProviderUrl" "identityProviderMetadata" | toYaml -}}
 {{- end -}}
 
+{{- define "arkcase.core.sso.saml-metadata-secret" -}}
+  {{- $ctx := $ -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "The 'ctx' parameter must be the root context ($ or .)" -}}
+  {{- end -}}
+  {{- (printf "%s-sso-saml" (include "arkcase.fullname" $ctx)) -}}
+{{- end -}}
+
+{{- define "arkcase.core.sso.saml-metadata-key" -}}
+  {{- $ctx := $ -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "The 'ctx' parameter must be the root context ($ or .)" -}}
+  {{- end -}}
+idp.xml
+{{- end -}}
+
+{{- define "__arkcase.core.sso.saml.parse-idp-metadata" -}}
+  {{- $ctx := $.ctx -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "The 'ctx' parameter must be the root context ($ or .)" -}}
+  {{- end -}}
+
+  {{- $metadata := required "The value for global.sso.saml.identityProviderMetadata may not be empty" $.metadata -}}
+
+  {{- $result := dict "secret" (include "arkcase.core.sso.saml-metadata-secret" $ctx) "key" (include "arkcase.core.sso.saml-metadata-key" $ctx) -}}
+  {{- if (kindIs "map" $metadata) -}}
+    {{- if not (hasKey $metadata "secret") -}}
+      {{- fail "The value for global.sso.saml.identityProviderMetadata.secret must be provided" -}}
+    {{- end -}}
+    {{- /* Ignore everything else in the map */ -}}
+    {{- $result = merge (pick $metadata "secret" "key") $result -}}
+  {{- else -}}
+    {{- /* we do it like this so we keep the default values in place for consumption by other templates */ -}}
+    {{- $result = set $result "metadata" ($metadata | toString) -}}
+  {{- end -}}
+
+  {{- /* Now we validate the secret name and the key name */ -}}
+  {{- if not (include "arkcase.tools.hostnamePart" $result.secret) -}}
+    {{- fail (printf "Illegal secret name [%s] for the SAML secret" $result.secret) -}}
+  {{- end -}}
+  {{- if not (mustRegexMatch "^[a-zA-Z0-9._-]+$" $result.key) -}}
+    {{- fail (printf "Illegal secret key name [%s] for the SAML secret" $result.key) -}}
+  {{- end -}}
+
+  {{- /*
+    This map will contain the name of the secret that will house the IDP data,
+    and the name of the key within that secret that holds the data. If the
+    data was provided inline, then these values will be the default values,
+    and a secret holding the data will be generated.
+  */ -}}
+  {{- $result | toYaml -}}
+{{- end -}}
+
 {{- define "__arkcase.core.sso.compute.saml" -}}
   {{- $ctx := $.ctx -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
@@ -38,11 +91,8 @@
     {{- end -}}
   {{- else -}}
     {{- /* Analyze the metadata given */ -}}
-    {{- $identityProviderMetadata := ($saml.identityProviderMetadata | toString) -}}
-    {{- $saml = set $saml "identityProviderMetadata" $identityProviderMetadata -}}
-    {{- if not $saml.identityProviderMetadata -}}
-      {{- fail "The SAML identityProviderMetadata cannot be an empty string" -}}
-    {{- end -}}
+    {{- $parsed := (include "__arkcase.core.sso.saml.parse-idp-metadata" (dict "ctx" $ctx "metadata" $saml.identityProviderMetadata) | fromYaml) -}}
+    {{- $saml = set $saml "identityProviderMetadata" $parsed -}}
   {{- end -}}
 
   {{- /* We add this here for convenience later on */ -}}
@@ -256,4 +306,37 @@
 
 {{- define "arkcase.core.sso.oidc" -}}
   {{- include "__arkcase.core.sso-protocol" (dict "ctx" $ "proto" "oidc") -}}
+{{- end -}}
+
+{{- define "arkcase.core.sso.saml.idpMetadata.volumeMount" -}}
+  {{- $ctx := $.ctx -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "The 'ctx' parameter must be the root context ($ or .)" -}}
+  {{- end -}} 
+  {{- $mountPath := (required "Must provide a non-empty mountPath value" $.mountPath) -}}
+  {{- $saml := (include "arkcase.core.sso.saml" $ctx | fromYaml) -}}
+  {{- if ($saml).identityProviderMetadata }}
+- name: &idpMetadataSecret "saml-idp-metadata"
+  mountPath: {{ $mountPath | toString | quote }}
+  subPath: &idpMetadataKey {{ $saml.identityProviderMetadata.key | quote }}
+  readOnly: true
+  {{- end }}
+{{- end -}}
+
+{{- define "arkcase.core.sso.saml.idpMetadata.volume" -}}
+  {{- $ctx := $ -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "The parameter must be the root context ($ or .)" -}}
+  {{- end -}} 
+  {{- $saml := (include "arkcase.core.sso.saml" $ | fromYaml) -}}
+  {{- if ($saml).identityProviderMetadata }}
+- name: *idpMetadataSecret
+  secret:
+    optional: false
+    secretName: {{ $saml.identityProviderMetadata.secret | quote }}
+    defaultMode: 0444
+    items:
+      - key: *idpMetadataKey
+        path: *idpMetadataKey
+  {{- end }}
 {{- end -}}
