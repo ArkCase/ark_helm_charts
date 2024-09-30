@@ -42,7 +42,7 @@ idp.xml
 
   {{- $result := dict "secret" (include "arkcase.core.sso.saml-metadata-secret" $ctx) "key" (include "arkcase.core.sso.saml-metadata-key" $ctx) -}}
   {{- if (kindIs "map" $metadata) -}}
-    {{- if not (hasKey "secret" $metadata) -}}
+    {{- if not (hasKey $metadata "secret") -}}
       {{- fail "The value for global.sso.saml.identityProviderMetadata.secret must be provided" -}}
     {{- end -}}
     {{- /* Ignore everything else in the map */ -}}
@@ -65,8 +65,7 @@ idp.xml
     and the name of the key within that secret that holds the data. If the
     data was provided inline, then these values will be the default values,
     and a secret holding the data will be generated.
-    */
-  -}}
+  */ -}}
   {{- $result | toYaml -}}
 {{- end -}}
 
