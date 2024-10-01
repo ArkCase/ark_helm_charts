@@ -370,7 +370,7 @@ spec:
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/acm/licenses/pdfnet_sdk_license.txt") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/milton.license.properties") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/milton.license.sig") | nindent 12 }}
-            {{- include "arkcase.core.sso.saml.idpMetadata.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/acm/saml.sso/idp.xml") | nindent 12 }}
+            {{- include "arkcase.core.sso.saml.idpMetadata.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/acm/sso/idp.xml") | nindent 12 }}
         - name: cloudconfig
           {{- include "arkcase.image" (dict "ctx" $ "name" "cloudconfig" "repository" "arkcase/cloudconfig") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
