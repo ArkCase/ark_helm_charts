@@ -70,6 +70,16 @@
     {{- /* In case it comes with a leading slash */ -}}
     {{- $context = trimPrefix "/" $context -}}
 
+    {{- /* New! Configurable container image suffix */ -}}
+    {{- $containerSuffix := $key -}}
+    {{- if (hasKey $portal "containerSuffix") -}}
+      {{- $containerSuffix = ($portal.containerSuffix | default "" | toString | lower) -}}
+      {{- $containerSuffixRegex := "^[a-z0-9]+$" -}}
+      {{- if not (regexMatch $containerSuffixRegex $containerSuffix) -}}
+        {{- fail (printf "The portal container suffix [%s] is not valid - must match /%s/" $containerSuffix $containerSuffixRegex) -}}
+      {{- end -}}
+    {{- end -}}
+
     {{- $portalId := (hasKey $portal "portalId" | ternary $portal.portalId "") -}}
     {{- if or (not $portalId) (not (kindIs "string" $portalId)) -}}
       {{- /* This default value was taken from the installer */ -}}
@@ -103,6 +113,7 @@
     {{-
       $result = dict
         "context" $context
+        "containerSuffix" $containerSuffix
         "apiSecret" $apiSecret
         "disableAuth" $disableAuth
         "generateUsers" $generateUsers
