@@ -1,29 +1,29 @@
 
 # [ArkCase](https://www.arkcase.com/) Helm Chart Library
 
-***NOTE**: In a rare first, this documentation is slightly ahead of the code it covers. If something described here doesn't work with the current version of the charts, check in within a few days, and it more than likely will. These charts will remain in a constant state of flux until they reach 1.0 status, as we're using them to guide the development roadmap. Adjustments to the docs will be made if/when we find better/cleaner ways to do things on the backend.*
-
 Welcome to the [ArkCase](https://www.arkcase.com/) Helm Chart Library!
 
-Here's a table of contents so you can quickly reach the documentation section you're most interested in:
+<a name="toc"></a>Here's a table of contents so you can quickly reach the documentation section you're most interested in:
 
  - [Overview](#overview)
  - [Preparation for Deployment](#preparation)
  - [Deployment](#deployment)
-   - [Development](#development-mode)
-   - [Production](#production-mode)
  - [Security](#security)
- - [Configuration](#configuration)
-   - [Licenses](#licenses)
-   - [Ingress and SSL/TLS Access](#ingress)
-   - [Persistence Layer](#persistence)
-   - [Externally-provided Services](#external-services)
-   - [Deploying Custom ArkCase Versions](#custom-arkcase)
- - [Development](#dev-integration)
+ - Configuration
+   - [Licenses](docs/Licenses.md)
+   - [Service Type Overrides](docs/Service_Overrides.md)
+   - [Ingress and SSL/TLS Access](docs/Ingress.md)
+   - [Persistence Layer](docs/Persistence.md)
+   - [Externally-provided Services](docs/External_Services.md)
+   - [Deploying Custom ArkCase Versions](docs/Custom_Arkcase.md)
+   - [Development](docs/Development.md)
+   - [Resource Requests and Limits](docs/Resources.md)
+   - [Clustering](docs/Clustering.md)
+   - [Single Sign-On](docs/Single_Sign_On.md)
 
 ## <a name="overview"></a>Overview
 
-This repository houses the set of Helm charts and supporting library charts for deploying [ArkCase](https://www.arkcase.com/) in a [Kubernetes](https://kubernetes.io/) environment, running on [Linux](https://www.linux.org/) (for now, this is the only supported platform). These charts have only been tested in vanilla Kubernetes and [EKS](https://aws.amazon.com/eks/) environments. However, it's not unreasonable to expect these charts to work OOTB with other stacks such as [OpenShift](https://www.redhat.com/en/technologies/cloud-computing/openshift/kubernetes-engine), [MiniKube](https://minikube.sigs.k8s.io/docs/start/), and [K3s](https://k3s.io/).
+This repository houses the set of Helm charts and supporting library charts for deploying [ArkCase](https://www.arkcase.com/) in a [Kubernetes](https://kubernetes.io/) environment, running on [Linux](https://www.linux.org/) (for now, this is the only supported platform). These charts have only been tested in vanilla Kubernetes, [Rancher Desktop](https://arkcase.github.io/ark_helm_charts/) and [EKS](https://aws.amazon.com/eks/) environments. However, it's not unreasonable to expect these charts to work OOTB with other stacks such as [OpenShift](https://www.redhat.com/en/technologies/cloud-computing/openshift/kubernetes-engine), [MiniKube](https://minikube.sigs.k8s.io/docs/start/), and [K3s](https://k3s.io/) or [K3d](https://k3d.io/).
 
 The charts are designed to facilitate the application's deployment and configuration for (almost) any deployment environment, and are meant to facilitate the deployment of an entire, working stack in a matter of minutes.
 
@@ -36,8 +36,9 @@ Specifically, the stack is comprised of the following separate components, each 
  - [PostgreSQL](https://www.postgresql.org/)/[MariaDB](https://mariadb.org/), for database storage (only one instance is needed)
  - [Pentaho](https://www.hitachivantara.com/en-us/products/dataops-software/data-integration-analytics.html) (for reporting services)
  - [Alfresco](https://www.alfresco.com/), for content storage services
+ - [Minio](https://min.io/), for content storage services in S3-compatible mode
 
-In particular, Pentaho and Alfresco are offered in both Enterprise and Community editions. The edition deployed is automatically selected by the framework, by way of detecting the presence of the [required license data](#licenses) in the configuration at deployment time.
+In particular, Pentaho and Alfresco are offered in both Enterprise and Community editions. The edition deployed is automatically selected by the framework, by way of detecting the presence of the [required license data](docs/Licenses.md) in the configuration at deployment time.
 
 ## <a name="preparation"></a>Preparation for Deployment
 
@@ -62,46 +63,15 @@ Without further ado ... the steps:
 
 ## <a name="preparation"></a>Deployment
 
-Before you can deploy ArkCase, it's important to understand that it can be deployed in two modes: [*production*](#production) mode, and [*development*](#development) mode. By default, if deployed with no configurations, the charts will build an application in ***production*** mode. This has recently changed from the previos default of **development** mode, since it's more congruent with the chart's intended use, and develoment environments are more easily configured.
+***NOTE:** production mode and development mode no longer exist. The chart now has a single, unique deployment mode: *production*.**
 
 The simplest way to deploy the chart is by using helm, and referencing any additional configuration files you may need (such as licenses, or other configurations):
 
     $ helm install arkcase arkcase/app -f licenses.yaml -f ingress.yaml -f conf.yaml
 
-The contents of the configuration files are discussed in the [configuration section](#configuration).
+The contents of the configuration files are discussed in depth in other documents. Look through the [table of contents](#toc) to find what you're looking for.
 
-The above command will result in a deployment of pre-configured containers, interoperating with each other in order to support the included ArkCase instance. The number and types of containers may vary due to configurations. For instance: if you select to use an external LDAP service, then the Samba container will not be started. The same applies for other [external services](#external-services).
-
-### <a name="development-mode"></a>Development
-
-The mode of operation mainly affects the persistence layer. In *development* mode, all persistence is handled via ***hostPath*** volumes. In development mode it's still possible to configure the persistence layer to use a combination of rendered ***hostPath*** volumes, with actual cluster-provided volumes (i.e. [GlusterFS](https://www.gluster.org/), [Ceph](https://docs.ceph.com/en/quincy/), [NFS](https://en.wikipedia.org/wiki/Network_File_System), etc). You can find more details on how to do this [in this document](docs/Persistence.md).
-
-The intent of supporting *development* mode is to facilitate the charts' use by developers in single-cluster environments, where persistence can be provided safely by a single host. This lowers the environment bar required for a developer to get an instance up and running, for testing and development purposes.
-
-Enabling development mode may also enable many other features related to the deployment location for the actual ArkCase WAR file, as well as the configuration directory (a.k.a.: *.arkcase*). Through these features, Developers will be able to deploy the whole stack using custom ArkCase WAR files, configurations, and even run it in (remote) debugger mode.
-
-Details on how to use **development** mode are available [here](#dev-integration). Development mode can be explicitly enabled via the instructions in that document, or by enabling the configuration value:
-
-```yaml
-global.mode: "development"
-```
-
-Other (case-insensitive) abbreviations such as "dev", "devel", or "develop" are also accepted. If an invalid value is used, ***production*** mode is defaulted.
-
-### <a name="production-mode"></a>Production
-
-In *production* mode, things become more ***real***, if you will. No hostPath volumes are rendered, and instead all generated persistence is managed via volume claim templates declared with each Pod or StatefulSet. The particulars of the persistence layer are described [here](#persistence).
-
-Production mode is enabled implicitly by default, but may be enabled explicitly if you need to combine some of the features from production mode with other features from development mode. To enable production mode ***explicitly***, you'll need to set this configuration value (in YAML syntax):
-
-```yaml
-# Enable production mode
-global.mode: "production"
-```
-
-If production mode is enabled, but a default *storageClassName* is not configured, all volume claim templates rendered will lack that setting and thus will be expected to be provisioned by the cluster with [the default storage class](https://kubernetes.io/docs/tasks/administer-cluster/change-default-storage-class/).
-
-Finally, you may refer to the [documentation on the persistence layer](#persistence) for more details on how to configure persistence.
+The above command will result in a deployment of pre-configured containers, interoperating with each other in order to support the included ArkCase instance. The number and types of containers may vary due to configurations. For instance: if you select to use an external LDAP service, then the Samba container will not be started. The same applies for other [external services](docs/External_Services.md).
 
 ## <a name="security"></a>Security
 
@@ -118,29 +88,3 @@ global:
 You can also specify the value using `--set global.security.serviceAccountName=arkcase-service-account` at deploy time as part of the `helm` command.
 
 Finally, this chart currently doesn't support individualized service accounts for each component because no such requirement has been identified. This is not, however, out of the question should a solid use-case for this functionality be discovered.
-
-## <a name="configuration"></a>Configuration
-
-### <a name="licenses"></a>Licenses
-
-The information on how to configure component licenses can be found [in this document](docs/Licenses.md).
-
-### <a name="ingress"></a>Ingress and SSL/TLS Access
-
-The information on how to configure the ingress, and the SSL/TLS certificates for secure access can be found [in this document](docs/Ingress.md).
-
-### <a name="persistence"></a>Persistence
-
-The information on how to configure the persistence layer can be found [in this document](docs/Persistence.md).
-
-### <a name="external-services"></a>External Services
-
-The information on how to configure the stack to consume services provided by external components (i.e. an external database, an external AD instance, etc.) can be found [in this document](docs/External_Services.md).
-
-### <a name="custom-arkcase"></a>Deploying Custom ArkCase Versions
-
-The information on how to deploy your custom ArkCase version with this stack can be found [in this document](docs/Custom_Arkcase.md).
-
-## <a name="dev-integration"></a>Development
-
-The information on how to deploy ArkCase for development with this stack can be found [in this document](docs/Development.md).
