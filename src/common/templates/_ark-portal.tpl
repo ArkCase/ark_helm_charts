@@ -58,14 +58,16 @@
     {{- $disableAuth := (not (empty (include "arkcase.toBoolean" $portal.disableAuth))) -}}
 
     {{- /* New! Configurable portal context!! */ -}}
-    {{- $context := (printf "/%s" $key) -}}
+    {{- $context := $key -}}
     {{- if (hasKey $portal "context") -}}
       {{- $context = ($portal.context | default "" | toString) -}}
-      {{- $contextRegex := "^/[^/]+$" -}}
+      {{- $contextRegex := "^/?[^/]+$" -}}
       {{- if not (regexMatch $contextRegex $context) -}}
         {{- fail (printf "The portal context [%s] is not valid - must match /%s/" $context $contextRegex) -}}
       {{- end -}}
     {{- end -}}
+
+    {{- /* In case it comes with a leading slash */ -}}
     {{- $context = trimPrefix "/" $context -}}
 
     {{- $portalId := (hasKey $portal "portalId" | ternary $portal.portalId "") -}}
