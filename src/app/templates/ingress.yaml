@@ -18,7 +18,7 @@
   {{- $ingress = (kindIs "map" $ingress) | ternary $ingress dict -}}
   {{- $enabled := or (not (hasKey $ingress "enabled")) (not (empty (include "arkcase.toBoolean" $ingress.enabled))) -}}
 
-  {{- $foia := (include "arkcase.foia" $ | fromYaml) -}}
+  {{- $portal := (include "arkcase.portal" $ | fromYaml) -}}
   {{- $content := (include "arkcase.cm.info" $ | fromYaml) -}}
   {{- $dev := (include "arkcase.dev" $ | fromYaml) -}}
 
@@ -112,7 +112,7 @@ spec:
                 name: "core"
                 port:
                   number: 8443
-      {{- if $foia }}
+      {{- if $portal }}
           # We'll re-enable this when we figure out how to cleanly
           # expose Neo4j for user consumption
           # - path: "/browser"

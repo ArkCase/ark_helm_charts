@@ -1,5 +1,5 @@
 {{- if (include "arkcase.subsystem.enabled" $) }}
-{{- $foia := (include "arkcase.foia" $ | fromYaml) -}}
+{{- $portal := (include "arkcase.portal" $ | fromYaml) -}}
 apiVersion: v1
 kind: Pod
 metadata:
@@ -32,15 +32,19 @@ spec:
       env:
         - name: SERVICE_NAME
           value: {{ include "arkcase.service.name" $ | quote }}
+        {{- if $portal }}
+        - name: PORTAL_CONTEXT
+          value: {{ $portal.context | quote }}
+        {{- end }}
         - name: SCRIPT
           value: |-
             set -xeuo pipefail
             /usr/local/bin/acme-init
             /usr/bin/curl -fsSL -m 3 -o /dev/null "https://$(SERVICE_NAME):9999/actuator/health"
             /usr/bin/curl -fsSL -m 3 -o /dev/null "https://$(SERVICE_NAME):8443/arkcase/login"
-            {{- if $foia }}
+            {{- if $portal }}
             /usr/bin/curl -fsSL -m 3 -o /dev/null "https://$(SERVICE_NAME):8443/arkcase/external-portal/rest/request/authenticatedMode"
-            /usr/bin/curl -fsSL -m 3 -o /dev/null "https://$(SERVICE_NAME):8443/foia/"
+            /usr/bin/curl -fsSL -m 3 -o /dev/null "https://$(SERVICE_NAME):8443/$(PORTAL_CONTEXT)/"
             {{- end }}
   restartPolicy: Never
 {{- end }}

@@ -10,13 +10,35 @@ set -euo pipefail
 # a dedicated place to live
 [ -v EXTS_DIR ] || EXTS_DIR="${CONF_DIR}"
 
-say() {
+say()
+{
 	echo -e "$(date -u -Ins): ${@}"
 }
 
-fail() {
+fail()
+{
 	say "${@}" 1>&2
 	exit ${EXIT_CODE:-1}
+}
+
+get_portal_war()
+{
+	local P=""
+	local F=""
+	for w in "${@}" ; do
+		case "${w}" in
+			*/portal.war ) P="${w}" ;;
+			*/foia.war ) F="${w}" ;;
+		esac
+	done
+
+	# If both are non-empty, we return an error
+	[ -n "${P}" ] && [ -n "${F}" ] && return 1
+
+	# This will result in the "winner" ... so spit out its name
+	local W="${P}${F}"
+	[ -n "${W}" ] && echo -n "${W}"
+	return 0
 }
 
 [ -v SKIP_WARS ] || SKIP_WARS=""
@@ -50,18 +72,40 @@ fi
 # Deploy all WAR files
 #
 WAR="$(list-artifacts /arkcase/wars)" || fail "Failed to list the WAR files to be deployed"
+
 readarray -t WAR < <(echo -n "${WAR}")
+
+# Special case: sanitize the WAR list, make sure we have at most
+# one of "portal.war" and "foia.war", because having both is a problem
+PORTAL_WAR="$(get_portal_war "${WAR[@]}")" || fail "Cannot include multiple portal WAR files in the deployment - at most one is allowed!"
+
 say "Found ${#WAR[@]} WAR files to deploy: [${WAR[@]}]"
 for war in "${WAR[@]}" ; do
 
+	ARTIFACT_NAME="${war##*/}"
+	BASENAME="${ARTIFACT_NAME%.*}"
+
+	# The default WAR's target is its basename without the extension
+	# inside of WARS_DIR
+	WAR_TGT="${BASENAME}"
+
+	# If this is the Portal WAR, we can potentially pick where
+	# it will be deployed into, other than the default path
+	[ "${war}" == "${PORTAL_WAR}" ] && [ -v PORTAL_CONTEXT ] && WAR_TGT="${PORTAL_CONTEXT:-${WAR_TGT}}"
+
+	# Pre-pend the actual target's parent directory
+	WAR_TGT="${WARS_DIR}/${WAR_TGT}"
+
 	if ${DEV} ; then
-		ARTIFACT_NAME="${war##*/}"
-		BASENAME="${ARTIFACT_NAME%.*}"
+		WAR_PAT="${BASENAME}"
 
 		# If we're in dev mode, then first we check to see if this
-		# WAR is in the list of excluded WARs
-		if grep -q "^${BASENAME}$" <<< "${SKIP_WARS}" ; then
-			say "The WAR file [${BASENAME}] is on the skip list, will ignore"
+		# WAR is in the list of excluded WARs. We support treating
+		# "foia" and "portal" as interchangeable (for now, at least)
+		[ "${war}" == "${PORTAL_WAR}" ] && WAR_PAT="(portal|foia)"
+
+		if egrep -q "^${WAR_PAT}$" <<< "${SKIP_WARS}" ; then
+			say "The WAR file [${BASENAME}] is on the skip list, will ignore (matched /^${WAR_PAT}$/)"
 			continue
 		fi
 
@@ -71,15 +115,17 @@ for war in "${WAR[@]}" ; do
 		if [ -s "${DEV_WARS_DIR}/${ARTIFACT_NAME}" ] ; then
 			# We have a custom WAR to deploy! Use it!
 			say "Found a development WAR at [${DEV_WARS_DIR}/${ARTIFACT_NAME}], will deploy it instead"
-			mkdir -p "${WARS_DIR}/${BASENAME}"
-			unzip -o -d "${WARS_DIR}/${BASENAME}" "${DEV_WARS_DIR}/${ARTIFACT_NAME}"
+			mkdir -p "${WAR_TGT}"
+			unzip -o -d "${WAR_TGT}" "${DEV_WARS_DIR}/${ARTIFACT_NAME}"
 			continue
 		fi
 	fi
 
+	mkdir -p "${WAR_TGT}" || fail "Failed to create the extraction target at [${WAR_TGT}]"
+
 	# There's no development version, and the WAR is not excluded,
 	# so let's go ahead and deploy it normally
-	deploy-artifact extractdir "${war}" "${WARS_DIR}" || fail "Failed to deploy the WAR from [${war}]"
+	deploy-artifact extract "${war}" "${WAR_TGT}" || fail "Failed to deploy the WAR from [${war}] into [${WAR_TGT}]"
 done
 
 if ${DEV} ; then

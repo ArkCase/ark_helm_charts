@@ -1,8 +1,6 @@
 {{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.subsystem.external" $)) }}
 {{- $db := (include "arkcase.db.info" $ | fromYaml) -}}
-{{- $foia := (include "arkcase.foia" $ | fromYaml) -}}
-{{- $cronFoia := (include "arkcase.tools.conf" (dict "ctx" $ "value" "cron.foia")) -}}
-{{- $cronAnalytics := (include "arkcase.tools.conf" (dict "ctx" $ "value" "cron.analytics")) -}}
+{{- $portal := (include "arkcase.portal" $ | fromYaml) -}}
 {{- $fullName := (include "arkcase.fullname" $) -}}
 {{- $serviceName := (include "arkcase.service.name" $) -}}
 {{- $cluster := (include "arkcase.cluster" $ | fromYaml) -}}
@@ -337,10 +335,11 @@ spec:
               mountPath: "/usr/local/bin/install-mondrian-schema"
               subPath: &installMondrianSchema "install-mondrian-schema"
               readOnly: true
-            {{- if $foia }}
+            {{- if $portal }}
+            # We can't safely rename this from *-foia-* to *-portal-* yet...
             - name: *configMap
               mountPath: "/app/init/reports/001-foia-base-reports.zip"
-              subPath: &foiaBaseReportsZip {{ printf "foia-base-reports.%s.zip" $db.reports | quote }}
+              subPath: &portalBaseReportsZip {{ printf "foia-base-reports.%s.zip" $db.reports | quote }}
               readOnly: true
             {{- end }}
             - name: *configMap
@@ -458,9 +457,9 @@ spec:
               - key: *installMondrianSchema
                 path: *installMondrianSchema
                 mode: 0555
-              {{- if $foia }}
-              - key: *foiaBaseReportsZip
-                path: *foiaBaseReportsZip
+              {{- if $portal }}
+              - key: *portalBaseReportsZip
+                path: *portalBaseReportsZip
               {{- end }}
               - key: *lockInitializer
                 path: *lockInitializer

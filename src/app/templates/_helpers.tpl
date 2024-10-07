@@ -1,10 +1,10 @@
 {{- define "arkcase.app.image.artifacts" -}}
   {{- $imageName := "artifacts" -}}
-  {{- $foia := (include "arkcase.foia" $.ctx | fromYaml) -}}
-  {{- if $foia -}}
-    {{- $imageName = (printf "%s-foia" $imageName) -}}
+  {{- $portal := (include "arkcase.portal" $.ctx | fromYaml) -}}
+  {{- if $portal -}}
+    {{- $imageName = (printf "%s-%s" $imageName $portal.containerSuffix) -}}
   {{- end -}}
-  {{- $param := (merge (dict "name" $imageName) (omit $ "name")) -}}
+  {{- $param := (merge (dict "name" $imageName) $) -}}
   {{- include "arkcase.image" $param }}
 {{- end -}}
 

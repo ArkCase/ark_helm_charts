@@ -1,7 +1,7 @@
-{{- $foia := (include "arkcase.foia" $ | fromYaml) -}}
-{{- if $foia -}}
-{{- /* Eventually we'll need to graft other profiles in here like "ims" or "eeoc" */ -}}
-{{- $profiles := list "custom_base" "foia" "custom" "server" "runtime" -}}
+{{- $portal := (include "arkcase.portal" $ | fromYaml) -}}
+{{- if $portal -}}
+  {{- /* Eventually we'll need to graft other profiles in here like "ims" or "eeoc" */ -}}
+  {{- $profiles := list "custom_base" "foia" "custom" "server" "runtime" -}}
 spring:
   cloud:
     config:
