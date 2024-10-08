@@ -1,8 +1,7 @@
-{{- if (include "arkcase.subsystem.enabledOrExternal" .) -}}
+{{- if (include "arkcase.subsystem.enabled" $) -}}
 
 Step CA:
 
-  - The connectivity password is on the secret '{{ include "arkcase.acme.sharedSecret" $ }}'
-    under the key '{{ include "arkcase.acme.passwordVariable" $ }}'
+  - The connectivity password is on the secret '{{ include "arkcase.subsystem-access.name" $ }}'
 
 {{- end -}}

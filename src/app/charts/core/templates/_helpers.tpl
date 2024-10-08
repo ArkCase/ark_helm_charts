@@ -399,28 +399,15 @@
 {{- define "arkcase.core.integrations" -}}
   {{- $ctx := $ -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
-    {{- fail "The parameter given must be the root context (. or $)" -}}
-  {{- end -}}
+    {{- fail "The parameter must be the root context ($ or .)" -}}
+  {{- end -}} 
 
-  {{- $cacheKey := "ArkCase-Core-Integrations" -}}
-  {{- $masterCache := dict -}}
-  {{- if (hasKey $ctx $cacheKey) -}}
-    {{- $masterCache = get $ctx $cacheKey -}}
-    {{- if and $masterCache (not (kindIs "map" $masterCache)) -}}
-      {{- $masterCache = dict -}}
-    {{- end -}}
-  {{- end -}}
-  {{- $ctx = set $ctx $cacheKey $masterCache -}}
-
-  {{- $masterKey := $ctx.Release.Name -}}
-  {{- $yamlResult := dict -}}
-  {{- if not (hasKey $masterCache $masterKey) -}}
-    {{- $yamlResult = (include "__arkcase.core.integrations.compute" $ctx) -}}
-    {{- $masterCache = set $masterCache $masterKey ($yamlResult | fromYaml) -}}
-  {{- else -}}
-    {{- $yamlResult = get $masterCache $masterKey | toYaml -}}
-  {{- end -}}
-  {{- $yamlResult -}}
+  {{- $args :=
+    dict
+      "ctx" $ctx
+      "template" "__arkcase.core.integrations.compute"
+  -}}
+  {{- include "__arkcase.tools.getCachedValue" $args -}}
 {{- end -}}
 
 {{- define "arkcase.core.integrations.config" -}}
@@ -461,45 +448,11 @@
   {{- end }}
 {{- end -}}
 
-{{- define "arkcase.core.fixGroupDomain" -}}
-  {{- $domains := $.domains -}}
-  {{- $role := $.role -}}
-  {{- $group := $.group -}}
-
-  {{- $defaultDomain := "default" -}}
-
-  {{- /* Find the domain, if any */ -}}
-  {{- $groupSpec := ($group | lower | trim) -}}
-  {{- $groupName := (regexReplaceAll "^([^@]*)(@.*)?$" $groupSpec "$1") -}}
-  {{- if not $groupName -}}
-    {{- fail (printf "Illegal group spec [%s] for role mapping [%s]" $groupSpec $role) -}}
-  {{- end -}}
-
-  {{- /* Parse out the domain. If no domain is found, use the default domain */ -}}
-  {{- $domain := (regexReplaceAll "^[^@]*(@(.*))?$" $groupSpec "$2" | default $defaultDomain) -}}
-
-  {{- /* See if it's a domain that needs replacing, and do so */ -}}
-  {{- if (hasKey $domains $domain) -}}
-    {{- $domain = get $domains $domain -}}
-  {{- else -}}
-    {{- /* It's not a known/replaceable domain ... it must be a valid RFC-1123 domain name */ -}}
-    {{- if or (not (include "arkcase.tools.isHostname" ($domain | lower))) (not (contains "." $domain)) -}}
-      {{- /* Not a valid domain and not replaceable? Use the default domain */ -}}
-      {{- $domain = get $domains $defaultDomain -}}
-    {{- end -}}
-  {{- end -}}
-
-  {{- /* This is the final group to be added to the list */ -}}
-  {{- (printf "%s@%s" $groupName $domain | upper) -}}
-{{- end -}}
-
 {{- define "arkcase.core.mergeRoles" -}}
   {{- $ctx := $.ctx -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "Must send the root context as the 'ctx' parameter" -}}
   {{- end -}}
-
-  {{- $domains := $.domains -}}
 
   {{- $finalMappings := $.base -}}
   {{- $overlay := $.overlay -}}
@@ -561,8 +514,6 @@
           {{- fail (printf "Invalid group name [%s] for role mapping [%s]" $ovlGroup $ovlRole) -}}
         {{- end -}}
 
-        {{- $g = (include "arkcase.core.fixGroupDomain" (dict "domains" $domains "role" $ovlRole "group" $g)) -}}
-
         {{- $finalGroups = ($remove | ternary (without $finalGroups $g) (append $finalGroups $g)) -}}
       {{- end -}}
 
@@ -573,25 +524,13 @@
   {{- $finalMappings | toYaml -}}
 {{- end -}}
 
-{{- define "arkcase.core.rolesToGroups.render" -}}
+{{- define "__arkcase.core.rolesToGroups.compute" -}}
   {{- $ctx := $ -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "Must send the root context as the only parameter" -}}
   {{- end -}}
 
-  {{- /* First, find the "Values.global" values */ -}}
-  {{- $global := $.Values.global -}}
-  {{- if (not (kindIs "map" $global)) -}}
-    {{- $global = dict -}}
-    {{- $crap := set $.Values "global" $global -}}
-  {{- end -}}
-
-  {{- /* Next, find the "global.conf" value */ -}}
-  {{- $conf := $global.conf -}}
-  {{- if (not (kindIs "map" $conf)) -}}
-    {{- $conf = dict -}}
-    {{- $global = set $global "conf" $conf -}}
-  {{- end -}}
+  {{- $settings := (include "arkcase.subsystem.settings" $ctx | fromYaml) -}}
 
   {{- /* Ok ... now load the role-mappings.yaml file */ -}}
   {{- $defaultMappings := (.Files.Get "role-mappings.yaml" | fromYaml) -}}
@@ -599,9 +538,7 @@
     {{- $defaultMappings = dict -}}
   {{- end -}}
 
-  {{- /* Compute the LDAP domains once */ -}}
-  {{- $domains := (include "arkcase.ldap.domains" $ctx | fromYaml) -}}
-  {{- $param := (dict "ctx" $ctx "domains" $domains) -}}
+  {{- $param := (dict "ctx" $ctx) -}}
 
   {{- /* This will be the final result map, which output as YAML can be used for the final mappings */ -}}
   {{- $result := dict -}}
@@ -626,10 +563,9 @@
 
   {{- /* Finally, find the conf.roles-to-groups entry */ -}}
   {{- $mappingsKey := "roles-to-groups" -}}
-  {{- $mappings := get $conf $mappingsKey -}}
+  {{- $mappings := get $settings $mappingsKey -}}
   {{- if (not (kindIs "map" $mappings)) -}}
     {{- $mappings = dict -}}
-    {{- $conf = set $conf $mappingsKey $mappings -}}
   {{- end -}}
 
   {{- /* If there are mappings to be applied, apply them */ -}}
@@ -645,32 +581,19 @@
 {{- define "arkcase.core.rolesToGroups" -}}
   {{- $ctx := $ -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
-    {{- fail "Must send the root context as the only parameter" -}}
-  {{- end -}}
+    {{- fail "The parameter must be the root context ($ or .)" -}}
+  {{- end -}} 
 
-  {{- $cacheKey := "ArkCase-Roles-To-Groups" -}}
-  {{- $masterCache := dict -}}
-  {{- if (hasKey $ $cacheKey) -}}
-    {{- $masterCache = get $ $cacheKey -}}
-    {{- if and $masterCache (not (kindIs "map" $masterCache)) -}}
-      {{- $masterCache = dict -}}
-    {{- end -}}
-  {{- end -}}
-  {{- $crap := set $ $cacheKey $masterCache -}}
-
-  {{- $chartName := (include "arkcase.fullname" $ctx) -}}
-  {{- if not (hasKey $masterCache $chartName) -}}
-    {{- $obj := (include "arkcase.core.rolesToGroups.render" $ctx | fromYaml) -}}
-    {{- if not $obj -}}
-      {{- $obj = dict -}}
-    {{- end -}}
-    {{- $masterCache = set $masterCache $chartName $obj -}}
-  {{- end -}}
-  {{- get $masterCache $chartName | toYaml -}}
+  {{- $args :=
+    dict
+      "ctx" $ctx
+      "template" "__arkcase.core.rolesToGroups.compute"
+  -}}
+  {{- include "__arkcase.tools.getCachedValue" $args -}}
 {{- end -}}
 
 {{- define "arkcase.core.springProfiles" -}}
-  {{- $ctx := . -}}
+  {{- $ctx := $ -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "Must send the root context as the only parameter" -}}
   {{- end -}}
@@ -697,4 +620,29 @@
   {{- end -}}
 
   {{- $result | uniq | toYaml -}}
+{{- end -}}
+
+{{- define "arkcase.core.ldap" -}}
+  {{- $ctx := $ -}}
+  {{- $server := "default" -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- $ctx = $.ctx -}}
+    {{- if not (include "arkcase.isRootContext" $ctx) -}}
+      {{- fail "Must send the root context as the only parameter" -}}
+    {{- end -}}
+    {{- $server = ((hasKey $ "server") | ternary $.server "" | default $server) -}}
+  {{- end -}}
+
+  {{- $settings := (include "arkcase.subsystem.settings" (dict "ctx" $ctx "subsys" "ldap") | fromYaml) -}}
+  {{- $server = (dig $server "" ($settings | default dict)) -}}
+  {{- if not (kindIs "map" $server) -}}
+    {{- $server = dict -}}
+  {{- end -}}
+
+  {{- $result := dict -}}
+  {{- range $key := (list "Edit" "Create" "Sync") -}}
+    {{- $v := (include "arkcase.toBoolean" (get $server ($key | lower)) | default "true") -}}
+    {{- $result = set $result (printf "enable%s" $key) (not (empty $v)) -}}
+  {{- end -}}
+  {{- $result | toYaml -}}
 {{- end -}}

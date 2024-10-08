@@ -5,6 +5,17 @@
 goodIPs: [ "1.2.3.4", "255.255.255.255", "0.0.0.0", "1.1.1.1", "1.023.3.33" ]
 badIPs: [ "1.2.3.4", "www.google.com", "a", "255.255.255.255", "0.0.0.0", "255.255.255.256", "-bad hostname", "-.-.-", "some.hostname.com.", "some.hostname.com-", "non-single.hostname" ]
 
+provided-connections:
+  - "main"
+  - "crap"
+
+configuration:
+  this: is
+  something: to
+  run: [ "some", "tests", "with" ]
+  as:
+    part: of our
+    test: suite
 
 image:
   #registry: "RegistryName"

@@ -1,0 +1,43 @@
+server:
+  # userPrefix: 123
+  # groupPrefix: 968
+  # usernameAsCn: true
+  expirationDays: 0
+
+  domain: "@env:PORTAL_DOMAIN"
+  realm: "@env:PORTAL_REALM"
+  rootDn: "@env:PORTAL_ROOT_DN"
+  baseDn: "@env:PORTAL_BASE_DN"
+  userou: "@env:PORTAL_USER_BASE_DN"
+  groupou: "@env:PORTAL_GROUP_BASE_DN"
+
+  # The default password for seeded users
+  defaultPassword: "$123456$"
+
+# NOTE: for group memberships, groups prefixed with "+" reference
+# groups that already exist in AD, and thus won't have any prefixes
+# applied, and the names will be treated verbatim (minus the leading
+# "+"). This allows our seeding to include memberships of default
+# groups such as "Administrators", etc.
+
+# Remember to apply the group prefix to the group ID
+groups:
+  ARKCASE_PORTAL_ADMINISTRATOR:
+    administrator: true
+    description: "ArkCase Portal Administrators"
+  ARKCASE_PORTAL_USER:
+    description: "ArkCase Portal Users"
+
+# Remember to apply the user prefix to the user ID
+# Remember to apply the group prefix to the group IDs in the membership list
+users:
+  portal-admin:
+    mail: "portal-admin@armedia.com"
+    firstName: "ArkCase Portal"
+    lastName: "Administrator"
+    password: "${random}"
+    groups:
+      - ARKCASE_PORTAL_ADMINISTRATOR
+      - ARKCASE_PORTAL_USER
+      - OFFICERS
+    #   - +Administrators

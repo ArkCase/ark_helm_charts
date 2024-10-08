@@ -1,0 +1,26 @@
+#!/bin/bash
+
+set -euo pipefail
+. /.functions
+
+#
+# If we're in developer and debugging is enabled, we
+# completely disregard the liveness probe and just
+# return a 0 exit status
+#
+as_boolean "${DEVELOPMENT:-false}" && as_boolean "${DEBUG:-false}" && quit "DEBUG mode enabled, this health check is disabled"
+
+#
+# Ping CloudConfig's actuator/health endpoint, which is only available once
+# CloudConfig successfully completes its bootup sequence
+#
+RESULT="$( timeout --signal=KILL 5 curl -fsSL https://localhost:9999/actuator/health 2>&1 )" || fail "CloudConfig is not started (${?}): ${RESULT}"
+
+STATUS="$(jq -r ".status" <<< "${RESULT}" 2>&1)" || fail "Invalid result response (wrapped in []): [${RESULT}]"
+[ -n "${STATUS}" ] || fail "CloudConfig did not report a status"
+[ "${STATUS,,}" == "up" ] || fail "CloudConfig status is [${STATUS}]"
+
+#
+# All is well... ready to go!
+#
+ok "CloudConfig is live!"

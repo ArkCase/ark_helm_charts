@@ -1,0 +1,53 @@
+---
+apiVersion: database.aws.crossplane.io/v1beta1
+kind: RDSInstance
+metadata:
+  name: arkcase-rdbms
+spec:
+  forProvider:
+    # assume from platform ${application}-${lifecyle}-rds-subnets
+    dbSubnetGroupName: "fedramp-test-rds-subnets"
+    allocatedStorage: 20
+    applyModificationsImmediately: true
+    autoMinorVersionUpgrade: true
+    backupRetentionPeriod: 0
+    caCertificateIdentifier: rds-ca-2019
+    copyTagsToSnapshot: false
+    dbInstanceClass: db.t3.medium
+    deletionProtection: false
+    enableIAMDatabaseAuthentication: false
+    enablePerformanceInsights: false
+    engine: mariadb
+    engineVersion: "10.6"
+    skipFinalSnapshotBeforeDeletion: true
+    licenseModel: general-public-license
+    masterUsername: root
+    dbName: arkcase
+    multiAZ: false
+    port: 3306
+    publiclyAccessible: false
+    region: us-east-1
+    storageEncrypted: false
+    storageType: standard
+  providerConfigRef:
+    # assume from platform, always this name
+    name: aws-crossplane-config
+  writeConnectionSecretToRef:
+    name: arkcase-rdbms-conn-main
+---
+apiVersion: mysql.sql.crossplane.io/v1alpha1
+kind: ProviderConfig
+metadata:
+  name: arkcase-rdbms
+spec:
+  credentials:
+    source: MySQLConnectionSecret
+    connectionSecretRef:
+      name: arkcase-rdbms-conn-main
+  # tls one of preferred(default), skip-verify, or true
+  # NOTE: using "true" caused clients to puke out due to cert trusts, so the CA
+  # referenced above should be part of the client containers' trusts, including Crossplane's...
+  #
+  # Also, said CA must be made available to end-client pods if we want actual, verified SSL/TLS
+  # to be used (this is a good thing for security)
+  tls: "skip-verify"

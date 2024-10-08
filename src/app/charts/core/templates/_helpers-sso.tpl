@@ -189,13 +189,12 @@ idp.xml
   {{- end -}}
 
   {{- /* Set the usersDirectory for all clients to the default one ... */ -}}
-  {{- $usersDirectory := (include "arkcase.ldap" (dict "ctx" $ctx "server" "arkcase" "value" "domain") | replace "." "_") -}}
   {{- $baseUrl := (include "arkcase.tools.conf" (dict "ctx" $ctx "value" "baseUrl")) -}}
   {{- /* Remove any potential trailing slashes */ -}}
   {{- $baseUrl = (regexReplaceAll "/*$" $baseUrl "") -}}
 
   {{- /* The enabled flag is on by default, unless explicitly turned off */ -}}
-  {{- $clients := (include "__arkcase.core.sso.oidc.parse-clients" (dict "oidc" $oidc "usersDirectory" $usersDirectory "baseUrl" $baseUrl) | fromYaml) -}}
+  {{- $clients := (include "__arkcase.core.sso.oidc.parse-clients" (dict "oidc" $oidc "usersDirectory" "arkcase" "baseUrl" $baseUrl) | fromYaml) -}}
 
   {{- /* We also condition the configuation on whether there are client configurations */ -}}
   {{- if not $clients -}}
@@ -281,45 +280,15 @@ idp.xml
 {{- define "arkcase.core.sso" -}}
   {{- $ctx := $ -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
-    {{- fail "The parameter given must be the root context (. or $)" -}}
-  {{- end -}}
+    {{- fail "The parameter must be the root context ($ or .)" -}}
+  {{- end -}} 
 
-  {{- /* First things first: do we have any global overrides? */ -}}
-  {{- $global := $ctx.Values.global -}}
-  {{- if or (not $global) (not (kindIs "map" $global)) -}}
-    {{- $global = dict -}}
-  {{- end -}}
-
-  {{- /* Now get the local values */ -}}
-  {{- $local := $ctx.Values.configuration -}}
-  {{- if or (not $local) (not (kindIs "map" $local)) -}}
-    {{- $local = dict -}}
-  {{- end -}}
-
-  {{- /* The keys on this map are the images in the local repository */ -}}
-  {{- $chart := $ctx.Chart.Name -}}
-  {{- $data := dict "local" $local "global" $global -}}
-
-  {{- $cacheKey := "ArkCase-SSO" -}}
-  {{- $masterCache := dict -}}
-  {{- if (hasKey $ctx $cacheKey) -}}
-    {{- $masterCache = get $ctx $cacheKey -}}
-    {{- if and $masterCache (not (kindIs "map" $masterCache)) -}}
-      {{- $masterCache = dict -}}
-    {{- end -}}
-  {{- end -}}
-  {{- $ctx = set $ctx $cacheKey $masterCache -}}
-
-  {{- /* We do not use arkcase.fullname b/c we don't want to deal with partnames */ -}}
-  {{- $chartName := (include "common.fullname" $ctx) -}}
-  {{- $yamlResult := dict -}}
-  {{- if not (hasKey $masterCache $chartName) -}}
-    {{- $yamlResult = (include "__arkcase.core.sso.compute" $ctx) | fromYaml -}}
-    {{- $masterCache = set $masterCache $chartName $yamlResult -}}
-  {{- else -}}
-    {{- $yamlResult = get $masterCache $chartName -}}
-  {{- end -}}
-  {{- $yamlResult | toYaml -}}
+  {{- $args :=
+    dict
+      "ctx" $ctx
+      "template" "__arkcase.core.sso.compute"
+  -}}
+  {{- include "__arkcase.tools.getCachedValue" $args -}}
 {{- end -}}
 
 {{- define "__arkcase.core.sso-protocol" -}}
@@ -337,4 +306,37 @@ idp.xml
 
 {{- define "arkcase.core.sso.oidc" -}}
   {{- include "__arkcase.core.sso-protocol" (dict "ctx" $ "proto" "oidc") -}}
+{{- end -}}
+
+{{- define "arkcase.core.sso.saml.idpMetadata.volumeMount" -}}
+  {{- $ctx := $.ctx -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "The 'ctx' parameter must be the root context ($ or .)" -}}
+  {{- end -}} 
+  {{- $mountPath := (required "Must provide a non-empty mountPath value" $.mountPath) -}}
+  {{- $saml := (include "arkcase.core.sso.saml" $ctx | fromYaml) -}}
+  {{- if ($saml).identityProviderMetadata }}
+- name: &idpMetadataSecret "saml-idp-metadata"
+  mountPath: {{ $mountPath | toString | quote }}
+  subPath: &idpMetadataKey {{ $saml.identityProviderMetadata.key | quote }}
+  readOnly: true
+  {{- end }}
+{{- end -}}
+
+{{- define "arkcase.core.sso.saml.idpMetadata.volume" -}}
+  {{- $ctx := $ -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "The parameter must be the root context ($ or .)" -}}
+  {{- end -}} 
+  {{- $saml := (include "arkcase.core.sso.saml" $ | fromYaml) -}}
+  {{- if ($saml).identityProviderMetadata }}
+- name: *idpMetadataSecret
+  secret:
+    optional: false
+    secretName: {{ $saml.identityProviderMetadata.secret | quote }}
+    defaultMode: 0444
+    items:
+      - key: *idpMetadataKey
+        path: *idpMetadataKey
+  {{- end }}
 {{- end -}}

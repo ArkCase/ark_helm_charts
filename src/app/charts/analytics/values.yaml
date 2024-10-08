@@ -2,14 +2,12 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
-# For now, disabled by default
-enabled: false
+# This can be set to "false" by parent charts. If not defined, it will be taken as true
 
 #
-# This should group all application-specific configurations
+# For now, disabled by default
 #
-configuration:
-  password: "odeY1naen8ahquoo"
+enabled: false
 
 # resources:
 #   default: "1Gi-*,0.5-*"
@@ -35,8 +33,7 @@ initDependencies:
     attempts: 60
   dependencies:
     acme:
-      ports:
-        - 9000
+      url: "@env:ACME_URL"
 
 # You generally shouldn't mess with these. These exist to support some name-generation templates
 nameOverride: ""
