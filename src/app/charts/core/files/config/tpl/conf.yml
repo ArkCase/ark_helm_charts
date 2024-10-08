@@ -1,8 +1,8 @@
-{{- $foia := (include "arkcase.foia" $ | fromYaml) -}}
+{{- $portal := (include "arkcase.portal" $ | fromYaml) -}}
 {{- $custom := (include "arkcase.customization" $) -}}
 {{- $customBase := (printf "%s_base" $custom) -}}
-{{- $profiles := (empty $foia) | ternary (list $customBase $custom "server" "runtime") (list $customBase "foia" $custom "server" "FOIA_server" "runtime") -}}
-{{- $appNames := list "arkcase" "arkcase-activemq" "arkcase-oidc" "ldap" "lookups" ((empty $foia) | ternary "" "arkcase-portal") -}}
+{{- $profiles := (empty $portal) | ternary (list $customBase $custom "server" "runtime") (list $customBase "foia" $custom "server" "FOIA_server" "runtime") -}}
+{{- $appNames := list "arkcase" "arkcase-activemq" "arkcase-oidc" "ldap" "lookups" ((empty $portal) | ternary "" "arkcase-portal") -}}
 application:
   name:
     #

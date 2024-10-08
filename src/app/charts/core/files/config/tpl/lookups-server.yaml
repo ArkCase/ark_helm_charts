@@ -1,11 +1,11 @@
-{{- $foia := (include "arkcase.foia" $ | fromYaml) -}}
-{{- if $foia -}}
+{{- $portal := (include "arkcase.portal" $ | fromYaml) -}}
+{{- if $portal -}}
 lookupsConfiguration:
   standardLookup:
     downloadResponseNotificationGroup:
       entries:
         {{- $index := 0 }}
-        {{- range $group := $foia.notificationGroups }}
+        {{- range $group := $portal.notificationGroups }}
         group{{ $index }}:
           value: {{ printf "${PORTAL_GROUP_PREFIX}%s@${PORTAL_LDAP_DOMAIN_UPPER}" $group | quote }}
           order: {{ $index }}

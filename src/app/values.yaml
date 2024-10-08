@@ -64,9 +64,13 @@ image:
     # tag: &arkcaseVersion "2023.01.01-02"
 
   artifacts-foia:
-    registry: "207428623785.dkr.ecr.us-east-1.amazonaws.com"
+    registry: &private-registry "207428623785.dkr.ecr.us-east-1.amazonaws.com"
     repository: "arkcase/artifacts-foia"
     # tag: &arkcaseVersion "2023.01.01-02"
+
+  artifacts-portal:
+    registry: *private-registry
+    repository: "arkcase/artifacts-portal"
 
 # You generally shouldn't mess with these. These exist to support some name-generation templates
 nameOverride: ""

@@ -1,5 +1,5 @@
-{{- $foia := (include "arkcase.foia" $ | fromYaml) -}}
-{{- if $foia -}}
+{{- $portal := (include "arkcase.portal" $ | fromYaml) -}}
+{{- if $portal -}}
   {{- $ldap := (include "arkcase.core.ldap" (dict "ctx" $ "server" "portal") | fromYaml) -}}
 springConfigLdapProperties:
   ldapDirectoryConfig:

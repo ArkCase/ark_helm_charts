@@ -186,15 +186,6 @@
   {{- $content.ui.baseUrl -}}
 {{- end -}}
 
-{{- define "arkcase.core.image.deploy" -}}
-  {{- $imageName := "deploy" -}}
-  {{- if (include "arkcase.foia" $.ctx | fromYaml) -}}
-    {{- $imageName = (printf "%s-foia" $imageName) -}}
-  {{- end -}}
-  {{- $param := (merge (dict "name" $imageName) (omit $ "name")) -}}
-  {{- include "arkcase.image" $param }}
-{{- end -}}
-
 {{- define "arkcase.core.email" -}}
   {{- if not (include "arkcase.isRootContext" $) -}}
     {{- fail "Must send the root context as the only parameter" -}}
@@ -560,12 +551,13 @@
     {{- $result = (include "arkcase.core.mergeRoles" (merge (dict "base" $result "overlay" $default) $param) | fromYaml) -}}
   {{- end -}}
 
-  {{- if (include "arkcase.foia" $ctx | fromYaml) -}}
-    {{- $foia := (get $defaultMappings "foia") | default dict -}}
-    {{- $foia = (kindIs "map" $foia) | ternary $foia dict -}}
-    {{- if $foia -}}
-      {{- /* We overlay the FOIA mappings */ -}}
-      {{- $result = (include "arkcase.core.mergeRoles" (merge (dict "base" $result "overlay" $foia) $param) | fromYaml) -}}
+  {{- $portal := (include "arkcase.portal" $ctx | fromYaml) -}}
+  {{- if $portal -}}
+    {{- $portalMappings := (get $defaultMappings "portal") | default dict -}}
+    {{- $portalMappings = (kindIs "map" $portalMappings) | ternary $portalMappings dict -}}
+    {{- if $portalMappings -}}
+      {{- /* We overlay the portal mappings */ -}}
+      {{- $result = (include "arkcase.core.mergeRoles" (merge (dict "base" $result "overlay" $portalMappings) $param) | fromYaml) -}}
     {{- end -}}
   {{- end -}}
 
@@ -623,7 +615,7 @@
   {{- end -}}
 
   {{- /* Add the FOIA profile if the configuration is set */ -}}
-  {{- if (include "arkcase.foia" $ | fromYaml) -}}
+  {{- if (include "arkcase.portal" $ | fromYaml) -}}
     {{- $result = prepend $result "extension-foia" -}}
   {{- end -}}
 

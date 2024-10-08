@@ -1,75 +1,84 @@
-{{- define "arkcase.foia.enabled" -}}
+{{- define "arkcase.portal" -}}
   {{- $ctx := $ -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "The single parameter must be the root context ($ or .)" -}}
   {{- end -}}
 
-  {{- /* This value must be a map with configs, or a true-false string */ -}}
-  {{- $foia := (($ctx.Values.global).foia) -}}
-  {{- if $foia -}}
-    {{- if or (kindIs "bool" $foia) (kindIs "string" $foia) -}}
-      {{- $foia = (not (empty (include "arkcase.toBoolean" $foia))) | ternary (dict "enabled" true) dict -}}
-    {{- else if (kindIs "map" $foia) -}}
+  {{- $global := ($ctx.Values.global | default dict) -}}
+  {{- $portal := dict -}}
+  {{- $key := "" -}}
+  {{- range $key = (list "portal" "foia") -}}
+    {{- /* We only ignore a key if it's not set */ -}}
+    {{- if not (hasKey $ctx.Values.global $key) -}}
+      {{- continue -}}
+    {{- end -}}
+
+    {{- /* If the key was set, we consume its contents */ -}}
+    {{- $portal = (get $global $key | default dict) -}}
+    {{- if not $portal -}}
+      {{- $portal = dict "enabled" false -}}
+      {{- break -}}
+    {{- end -}}
+
+    {{- /* This value must be a map with configs, or a true-false string */ -}}
+    {{- if or (kindIs "bool" $portal) (kindIs "string" $portal) -}}
+      {{- $portal = dict "enabled" (not (empty (include "arkcase.toBoolean" $portal))) -}}
+    {{- end -}}
+
+    {{- if (kindIs "map" $portal) -}}
       {{- /* All is well, sanitize the "enabled" flag */ -}}
-      {{- if (hasKey $foia "enabled") -}}
-        {{- $foia = set $foia "enabled" (not (empty (include "arkcase.toBoolean" $foia.enabled))) -}}
+      {{- /* Unlike other features, the portal must be explicitly enabled */ -}}
+      {{- if (hasKey $portal "enabled") -}}
+        {{- $portal = set $portal "enabled" (not (empty (include "arkcase.toBoolean" $portal.enabled))) -}}
       {{- else -}}
-        {{- /* Unlike other features, FOIA must be explicitly enabled */ -}}
-        {{- $foia = set $foia "enabled" false -}}
+        {{- $portal = dict -}}
       {{- end -}}
     {{- else -}}
-      {{- fail (printf "The global.foia configuration is bad - must be a bool, a string, or a map (%s)" (kindOf $foia)) -}}
+      {{- fail (printf "The global.%s configuration is bad - must be a bool, a string, or a map, but is a %s" $key (kindOf $portal)) -}}
     {{- end -}}
-  {{- else -}}
-    {{- /* Empty value or equivalent, we don't care about the type and simply don't activate anything */ -}}
-    {{- $foia = dict -}}
-  {{- end -}}
-  {{- if $foia.enabled -}}
-    {{- true -}}
-  {{- end -}}
-{{- end -}}
 
-{{- define "arkcase.foia" -}}
-  {{- $ctx := $ -}}
-  {{- if not (include "arkcase.isRootContext" $ctx) -}}
-    {{- fail "The single parameter must be the root context ($ or .)" -}}
+    {{- break -}}
   {{- end -}}
 
-  {{- /* This value must be a map with configs, or a true-false string */ -}}
-  {{- $foia := (($ctx.Values.global).foia) -}}
-  {{- if $foia -}}
-    {{- if or (kindIs "bool" $foia) (kindIs "string" $foia) -}}
-      {{- $foia = (not (empty (include "arkcase.toBoolean" $foia))) | ternary (dict "enabled" true) dict -}}
-    {{- else if (kindIs "map" $foia) -}}
-      {{- /* All is well, sanitize the "enabled" flag */ -}}
-      {{- if (hasKey $foia "enabled") -}}
-        {{- $foia = set $foia "enabled" (not (empty (include "arkcase.toBoolean" $foia.enabled))) -}}
-      {{- else -}}
-        {{- /* Unlike other features, FOIA must be explicitly enabled */ -}}
-        {{- $foia = set $foia "enabled" false -}}
-      {{- end -}}
-    {{- else -}}
-      {{- fail (printf "The global.foia configuration is bad - must be a bool, a string, or a map (%s)" (kindOf $foia)) -}}
-    {{- end -}}
-  {{- else -}}
-    {{- /* Empty value or equivalent, we don't care about the type and simply don't activate anything */ -}}
-    {{- $foia = dict -}}
-  {{- end -}}
-
+  {{- /* By here, $portal should have a dict - empty or not - that we can analyze further */ -}}
   {{- $result := dict -}}
-  {{- if $foia.enabled -}}
-    {{- /* We want FOIA, so enable it and figure out the rest of the configurations */ -}}
+  {{- if $portal.enabled -}}
 
-    {{- $generateUsers := (not (empty (include "arkcase.toBoolean" $foia.generateUsers))) -}}
-    {{- $disableAuth := (not (empty (include "arkcase.toBoolean" $foia.disableAuth))) -}}
+    {{- /* We want a portal, so enable it and figure out the rest of the configurations */ -}}
 
-    {{- $portalId := (hasKey $foia "portalId" | ternary $foia.portalId "") -}}
+    {{- $generateUsers := (not (empty (include "arkcase.toBoolean" $portal.generateUsers))) -}}
+    {{- $disableAuth := (not (empty (include "arkcase.toBoolean" $portal.disableAuth))) -}}
+
+    {{- /* New! Configurable portal context!! */ -}}
+    {{- $context := $key -}}
+    {{- if (hasKey $portal "context") -}}
+      {{- $context = ($portal.context | default "" | toString) -}}
+      {{- $contextRegex := "^/?[^/]+$" -}}
+      {{- if not (regexMatch $contextRegex $context) -}}
+        {{- fail (printf "The portal context [%s] is not valid - must match /%s/" $context $contextRegex) -}}
+      {{- end -}}
+    {{- end -}}
+
+    {{- /* In case it comes with a leading slash */ -}}
+    {{- $context = trimPrefix "/" $context -}}
+
+    {{- /* New! Configurable container image suffix */ -}}
+    {{- $containerSuffix := $key -}}
+    {{- if (hasKey $portal "containerSuffix") -}}
+      {{- $containerSuffix = ($portal.containerSuffix | default "" | toString | lower) -}}
+      {{- $containerSuffixRegex := "^[a-z0-9]+$" -}}
+      {{- if not (regexMatch $containerSuffixRegex $containerSuffix) -}}
+        {{- fail (printf "The portal container suffix [%s] is not valid - must match /%s/" $containerSuffix $containerSuffixRegex) -}}
+      {{- end -}}
+    {{- end -}}
+
+    {{- $portalId := (hasKey $portal "portalId" | ternary $portal.portalId "") -}}
     {{- if or (not $portalId) (not (kindIs "string" $portalId)) -}}
       {{- /* This default value was taken from the installer */ -}}
       {{- $portalId = "8c41ee4e-49d4-4acb-8bce-866e52de3e4e" -}}
     {{- end -}}
 
-    {{- $apiSecret := (hasKey $foia "apiSecret" | ternary $foia.apiSecret "") -}}
+    {{- $apiSecret := (hasKey $portal "apiSecret" | ternary $portal.apiSecret "") -}}
     {{- if or (not $apiSecret) (not (kindIs "string" $apiSecret)) -}}
       {{- $apiSecret = "voSNRpEtMsK0ocueclMvd97KE7aTezFTtEOoYfe2MtX7/8t+dq1dXvlOMpD10B8Nu+R/UE8CA1rvD4o2Nrb9gwZt" -}}
     {{- end -}}
@@ -77,7 +86,7 @@
     {{- /* If we're not authenticating, then we won't be generating users */ -}}
     {{- $generateUsers = and $generateUsers (not $disableAuth) -}}
 
-    {{- $notificationGroups := ($foia.notificationGroups | default list) -}}
+    {{- $notificationGroups := ($portal.notificationGroups | default list) -}}
     {{- if $notificationGroups -}}
       {{- if (kindIs "map" $notificationGroups) -}}
         {{- $notificationGroups = (keys $notificationGroups) -}}
@@ -95,6 +104,8 @@
     {{- /* default values */ -}}
     {{-
       $result = dict
+        "context" $context
+        "containerSuffix" $containerSuffix
         "apiSecret" $apiSecret
         "disableAuth" $disableAuth
         "generateUsers" $generateUsers
