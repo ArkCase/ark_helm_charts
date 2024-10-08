@@ -1,4 +1,4 @@
-{{- define "arkcase.portal" -}}
+{{- define "__arkcase.portal.compute" -}}
   {{- $ctx := $ -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "The single parameter must be the root context ($ or .)" -}}
@@ -114,4 +114,13 @@
     -}}
   {{- end -}}
   {{- $result | toYaml -}}
+{{- end -}}
+
+{{- define "arkcase.portal" -}}
+  {{- $args :=
+    dict
+      "ctx" $
+      "template" "__arkcase.portal.compute"
+  -}}
+  {{- include "__arkcase.tools.getCachedValue" $args -}}
 {{- end -}}
