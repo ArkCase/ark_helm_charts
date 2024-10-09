@@ -462,8 +462,8 @@ spec:
               subPath: &arkcaseFoiaYaml "arkcase-FOIA_server.yaml"
               readOnly: true
             - name: *secrets
-              mountPath: "/app/home/.arkcase/acm/acm-config-server-repo/ldap/ldap-portal.yaml"
-              subPath: &ldapPortalYaml "ldap-portal.yaml"
+              mountPath: "/app/home/.arkcase/acm/acm-config-server-repo/ldap/ldap-foia.yaml"
+              subPath: &ldapFoiaYaml "ldap-foia.yaml"
               readOnly: true
             {{- end }}
         - name: cloudconfig
@@ -558,8 +558,8 @@ spec:
               subPath: *arkcaseFoiaYaml
               readOnly: true
             - name: *secrets
-              mountPath: "/app/conf/ldap/ldap-portal.yaml"
-              subPath: *ldapPortalYaml
+              mountPath: "/app/conf/ldap/ldap-foia.yaml"
+              subPath: *ldapFoiaYaml
               readOnly: true
             {{- end }}
       volumes:
@@ -602,8 +602,8 @@ spec:
                 path: *arkcasePortalServerYaml
               - key: *arkcaseFoiaYaml
                 path: *arkcaseFoiaYaml
-              - key: *ldapPortalYaml
-                path: *ldapPortalYaml
+              - key: *ldapFoiaYaml
+                path: *ldapFoiaYaml
               {{- end }}
         {{- if ($saml).identityProviderMetadata }}
         - name: *idpMetadataSecret
