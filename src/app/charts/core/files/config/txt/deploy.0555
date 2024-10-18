@@ -7,6 +7,26 @@ set_or_default DEPL_DIR "${BASE_DIR}/depl"
 set_or_default CONF_DIR "${DEPL_DIR}/conf"
 set_or_default WARS_DIR "${DEPL_DIR}/wars"
 
+get_portal_war()
+{
+	local P=""
+	local F=""
+	for w in "${@}" ; do
+		case "${w}" in
+			*/portal.war ) P="${w}" ;;
+			*/foia.war ) F="${w}" ;;
+		esac
+	done
+
+	# If both are non-empty, we return an error
+	[ -n "${P}" ] && [ -n "${F}" ] && return 1
+
+	# This will result in the "winner" ... so spit out its name
+	local W="${P}${F}"
+	[ -n "${W}" ] && echo -n "${W}"
+	return 0
+}
+
 # Temporarily put them here... eventually they'll have
 # a dedicated place to live
 set_or_default EXTS_DIR "${CONF_DIR}"
