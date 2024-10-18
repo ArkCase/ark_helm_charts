@@ -1,7 +1,7 @@
 {{- define "arkcase.cluster.info.rules" -}}
   {{- /* Find the chart's own clustering rules */ -}}
 
-  {{- $rules := (.Files.Get "cluster.yaml" | fromYaml) -}}
+  {{- $rules := (.Files.Get "clustering.yaml" | fromYaml) -}}
   {{- if (not (kindIs "map" $rules)) -}}
     {{- $rules = dict -}}
   {{- end -}}
@@ -43,7 +43,7 @@
   {{- $result | toYaml -}}
 {{- end -}}
 
-{{- define "arkcase.cluster.info.render" -}}
+{{- define "__arkcase.cluster.info.compute" -}}
   {{- $global := dict -}}
 
   {{- /* First, find the "global" values */ -}}
@@ -133,29 +133,12 @@
 {{- end -}}
 
 {{- define "arkcase.cluster.info" -}}
-  {{- if not (include "arkcase.isRootContext" $) -}}
-    {{- fail "The parameter value must be the root context" -}}
-  {{- end -}}
-
-  {{- $cacheKey := "ArkCase-Clustering" -}}
-  {{- $masterCache := dict -}}
-  {{- if (hasKey $ $cacheKey) -}}
-    {{- $masterCache = get $ $cacheKey -}}
-    {{- if and $masterCache (not (kindIs "map" $masterCache)) -}}
-      {{- $masterCache = dict -}}
-    {{- end -}}
-  {{- end -}}
-  {{- $crap := set $ $cacheKey $masterCache -}}
-
-  {{- $chartName := (include "arkcase.fullname" $) -}}
-  {{- if not (hasKey $masterCache $chartName) -}}
-    {{- $obj := (include "arkcase.cluster.info.render" $ | fromYaml) -}}
-    {{- if not $obj -}}
-      {{- $obj = dict -}}
-    {{- end -}}
-    {{- $masterCache = set $masterCache $chartName $obj -}}
-  {{- end -}}
-  {{- get $masterCache $chartName | toYaml -}}
+  {{- $args :=
+    dict
+      "ctx" $
+      "template" "__arkcase.cluster.info.compute"
+  -}}
+  {{- include "__arkcase.tools.getCachedValue" $args -}}
 {{- end -}}
 
 {{- define "arkcase.cluster" -}}
@@ -192,7 +175,7 @@
   {{- $cluster | toYaml -}}
 {{- end -}}
 
-{{- define "arkcase.cluster.zookeeper" -}}
+{{- define "arkcase.cluster.env" -}}
   {{- $ctx := $ -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "The only parameter value must be the root context" -}}
@@ -200,11 +183,7 @@
 
   {{- $config := (include "arkcase.cluster" $ctx | fromYaml) -}}
   {{- if $config.enabled -}}
-- name: ZK_HOST
-  valueFrom:
-    configMapKeyRef:
-      name: {{ printf "%s-zookeeper" $ctx.Release.Name | quote }}
-      key: ZK_HOST
+    {{- include "arkcase.subsystem-access.env" (dict "ctx" $ "subsys" "zookeeper" "key" "zkHost" "name" "ZK_HOST") -}}
   {{- end -}}
 {{- end -}}
 

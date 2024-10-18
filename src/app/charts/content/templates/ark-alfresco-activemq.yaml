@@ -1,4 +1,4 @@
-{{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.content.external" $)) (eq "alfresco" (include "arkcase.content.info.dialect" $)) -}}
+{{- if and (include "arkcase.subsystem.enabled" $) (eq "alfresco" (include "arkcase.content.info.dialect" $)) -}}
 ---
 apiVersion: apps/v1
 kind: StatefulSet

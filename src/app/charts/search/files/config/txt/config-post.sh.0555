@@ -1,0 +1,52 @@
+#!/bin/bash
+set -euo pipefail
+. /.functions
+
+cleanup()
+{
+	[ -v RUN_MARKER ] || RUN_MARKER=""
+	[ -z "${RUN_MARKER}" ] || rm -rf "${RUN_MARKER}" &>/dev/null
+}
+
+RUN_MARKER="${HOME_DIR}/.initRan"
+trap cleanup EXIT
+
+set_or_default BASE_DIR "/app"
+set_or_default INIT_DIR "${BASE_DIR}/init"
+set_or_default DATA_DIR "${BASE_DIR}/data"
+set_or_default LOGS_DIR "${DATA_DIR}/logs"
+
+redirect_logs "${LOGS_DIR}/config-post.log"
+
+# By default, wait up to 90 seconds if not told otherwise
+set_or_default INIT_POLL_SLEEP
+[[ "${INIT_POLL_SLEEP}" =~ ^[1-9][0-9]*$ ]] || INIT_POLL_SLEEP=2
+
+set_or_default INIT_MAX_WAIT
+[[ "${INIT_MAX_WAIT}" =~ ^[1-9][0-9]*$ ]] || INIT_MAX_WAIT=90
+
+set_or_default SOLR_URL "https://localhost:8983/solr"
+SOLR_URL+="/admin/info/health"
+
+poll_url "${SOLR_URL}" "${INIT_MAX_WAIT}" "${INIT_POLL_SLEEP}" || exit 1
+
+# Don't run if init didn't run
+[ -f "${RUN_MARKER}" ] || exit 0
+
+# Run the scripts due to be run before Solr is booted up
+INIT_DIR="${INIT_DIR}/post"
+doing "Initializing from the post-initialization scripts in [${INIT_DIR}]..."
+if is_dir_readable "${INIT_DIR}" ; then
+	cd "${INIT_DIR}" || fail "Failed to CD into [${INIT_DIR}]"
+	(
+		set -euo pipefail
+		while read script ; do
+			[ -x "${script}" ] || continue
+			# Run the script
+			say "\tInitializing from script [${script}]..."
+			"${script}" || exit 1
+		done < <(/usr/bin/find . -mindepth 1 -maxdepth 1 -type f -name '*.sh' | sort)
+	) || fail "Initialization failed"
+fi
+ok "Initialization complete"
+exit 0

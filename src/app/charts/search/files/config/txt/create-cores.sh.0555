@@ -1,0 +1,122 @@
+#!/bin/bash
+set -euo pipefail
+. /.functions
+
+create()
+{
+	local NAME="${1}"
+	local CONF="${2}"
+	local SHARDS="${3}"
+	local REPLICAS="${4}"
+
+	[[ "${SHARDS}" =~ ^[1-9][0-9]*$ ]] || SHARDS=1
+	[[ "${REPLICAS}" =~ ^[1-9][0-9]*$ ]] || REPLICAS=1
+
+	solr create -c "${NAME}" -d "${CONF_HOME}/${CONF}" -n "${CONF}" -shards ${SHARDS} -replicationFactor ${REPLICAS} -V
+}
+
+config_exists()
+{
+	local CONF="${1}"
+	local DIR="${CONF_HOME}/${CONF}"
+	is_dir_readable "${DIR}" || return 1
+	return 0
+}
+
+exists()
+{
+	local NAME="${1}"
+	local RC=0
+
+	# Run the query
+	local JSON="$(curl -fL "https://localhost:8983/solr/admin/collections?action=colstatus&collection=${NAME}")" || RC=${?}
+	[ ${RC} -eq 0 ] || return ${RC}
+
+	# Examine the result
+	local RESULT="$(jq -r ".${NAME}.stateFormat // \"missing\"" <<< "${JSON}")" || return ${?}
+
+	RC=0
+	[ "${RESULT}" == "missing" ] && RC=1
+	return ${RC}
+}
+
+set_or_default BASE_DIR "/app"
+set_or_default DATA_DIR "${BASE_DIR}/data"
+set_or_default LOGS_DIR "${DATA_DIR}/logs"
+
+ensure_dir "${LOGS_DIR}"
+redirect_logs "${LOGS_DIR}/create-cores.log"
+
+[ -v SOLR_HOME ] || fail "Can't find the SOLR_HOME variable - can't continue"
+
+CONF_HOME="${SOLR_HOME}/configsets"
+is_dir_readwrite "${CONF_HOME}" || fail "Can't find the configsets directory at [${CONF_HOME}]"
+
+# If there are no collection to add, skip this job
+[ -v SOLR_CORES ] || exit 0
+
+[ -v NODES ] || NODES=1
+[[ "${NODES}" =~ ^[1-9][0-9]*$ ]] || fail "The number of nodes [${NODES}] is not a valid number"
+
+# Default values
+SHARDS=1
+REPLICAS=${NODES}
+
+# Have we been given a number of nodes that merits more sophisticated logic?
+if [ ${NODES} -gt 2 ] ; then
+	SHARDS=${NODES}
+	REPLICAS=$(( ( SHARDS + 1 ) / 2 ))
+fi
+
+readarray -d , -t CORES < <(echo -n "${SOLR_CORES}" | sed -e 's;,\+;,;g')
+eyes "Validating the collection specifications"
+
+set_or_default RETRY_ATTEMPTS
+[[ "${RETRY_ATTEMPTS}" =~ ^[1-9][0-9]*$ ]] || RETRY_ATTEMPTS=5
+
+set_or_default RETRY_WAIT
+[[ "${RETRY_WAIT}" =~ ^[1-9][0-9]*$ ]] || RETRY_WAIT=10
+
+CREATED=0
+EXISTING=0
+for C in "${CORES[@]}" ; do
+	# Each collection must have the format NAME=CONFIG
+	[[ "${C}" =~ ^([^=]+)=([^=]+)$ ]] || fail "\tThe collection specification [${C}] is invalid - it must be in the form \${NAME}=\${CONFIG}"
+	NAME="${BASH_REMATCH[1]}"
+	CONF="${BASH_REMATCH[2]}"
+
+	config_exists "${CONF}" || fail "The [${CONF}] configuration for collection [${NAME}] doesn't exist."
+
+	SUCCESS="false"
+	for (( A = 0 ; A < ${RETRY_ATTEMPTS} ; A++ )) ; do
+		if [ ${A} -gt 0 ] ; then
+			warn "Possible race to creation of collection [${NAME}], will wait ${RETRY_WAIT} seconds and try again"
+			sleep ${RETRY_WAIT} || fail "\tInterrupted waiting to retry the creation of the [${NAME}] collection"
+		fi
+
+		if exists "${NAME}" ; then
+			warn "The [${NAME}] collection already exists, skipping its creation"
+			(( EXISTING += 1 ))
+			SUCCESS="true"
+			break
+		fi
+
+		if create "${NAME}" "${CONF}" "${SHARDS}" "${REPLICAS}" ; then
+			ok "The [${NAME}] collection was created successfully"
+			(( CREATED += 1 ))
+			SUCCESS="true"
+			break
+		fi
+	done
+	${SUCCESS} || fail "\tFailed to create the collection as specified by [${C}]"
+done
+
+ok "Work summary:"
+
+PLURAL=""
+[ ${CREATED} -eq 1 ] || PLURAL="s"
+say "\t${CREATED} collection${PLURAL} created"
+
+PLURAL=""
+[ ${EXISTING} -eq 1 ] || PLURAL="s"
+say "\t${EXISTING} collection${PLURAL} already existed"
