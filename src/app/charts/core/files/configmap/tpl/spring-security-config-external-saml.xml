@@ -37,7 +37,7 @@
 
         <!-- Open URL -->
         <http use-expressions="true" request-matcher="regex"
-            pattern=".*acm_email_ticket=.*$|.*EXT_TRANS_ID=.*$" security="none">
+            pattern=".*acm_email_ticket=.*$|.*EXT_TRANS_ID=.*$|^samlLoginError.html$|^/samlLoginError.html$" security="none">
         </http>
 
         <!-- Saml Entry Point authenticates users against IDP server for REST calls -->
