@@ -16,10 +16,10 @@ portal:
   id: {{ $portal.portalId | quote }}
   url: *url
   arkcaseUrl: "https://localhost:8443/arkcase"
-  groupName: "ARKCASE_PORTAL_USER@${PORTAL_LDAP_DOMAIN}"
+  groupName: "ARKCASE_PORTAL_USER@${PORTAL_LDAP_DOMAIN_UPPER}"
   # authentication type, possible values (basic, external)
   authenticationType: "basic"
-  userId: "${PORTAL_ADMIN_USERNAME}@${PORTAL_LDAP_DOMAIN}"
+  userId: "${PORTAL_ADMIN_USERNAME}@${PORTAL_LDAP_DOMAIN_UPPER}"
   password: "${PORTAL_ADMIN_PASSWORD}"
   # portal configuration type
   externalConfiguration: false
