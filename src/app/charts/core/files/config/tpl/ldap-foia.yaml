@@ -4,7 +4,8 @@
 springConfigLdapProperties:
   ldapDirectoryConfig:
     portal:
-      ldapUrl: "${PORTAL_LDAP_URL}"
+      ldapUrl:
+        - "${PORTAL_LDAP_URL}"
       userDomain: "${PORTAL_LDAP_DOMAIN_LOWER}"
       authUserDn: "${PORTAL_LDAP_REALM}\\${PORTAL_LDAP_USERNAME}"
       authUserPassword: "${PORTAL_LDAP_PASSWORD}"

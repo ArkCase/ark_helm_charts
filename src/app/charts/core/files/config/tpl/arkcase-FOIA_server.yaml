@@ -3,7 +3,7 @@
   {{- $baseUrl := (include "arkcase.tools.parseUrl" (include "arkcase.tools.conf" (dict "ctx" $ "value" "baseUrl")) | fromYaml) -}}
 external.integration:
   enable: true
-  userId: "${PORTAL_ADMIN_USERNAME}@${PORTAL_LDAP_DOMAIN_UPPER}"
+  userId: "${PORTAL_ADMIN_USERNAME}@${PORTAL_LDAP_DOMAIN}"
 
 gov.foia.broker:
   file_upload_url: "file:///app/fsrv/"
