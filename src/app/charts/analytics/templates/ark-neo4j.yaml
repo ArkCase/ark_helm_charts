@@ -81,9 +81,6 @@ spec:
             {{- $.Values.env | toYaml | nindent 12 }}
             {{- end }}
           {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
-          {{- if $.Values.command }}
-          command: {{ toJson $.Values.command }}
-          {{- end }}
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "neo4j") | nindent 12 }}
           volumeMounts:
