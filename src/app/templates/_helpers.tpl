@@ -1,11 +1,21 @@
 {{- define "arkcase.app.image.artifacts" -}}
-  {{- $imageName := "artifacts" -}}
-  {{- $portal := (include "arkcase.portal" $.ctx | fromYaml) -}}
-  {{- if $portal -}}
-    {{- $imageName = (printf "%s-%s" $imageName $portal.containerSuffix) -}}
+  {{- $ctx := .ctx -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "The given 'ctx' parameter must be the root context (. or $)" -}}
   {{- end -}}
-  {{- $param := (merge (dict "name" $imageName) $) -}}
-  {{- include "arkcase.image" $param }}
+
+  {{- $global := $ctx.Values.global -}}
+  {{- if or (not $global) (not (kindIs "map" $global)) -}}
+    {{- $global = dict -}}
+  {{- else -}}
+    {{- $imageName := "artifacts" -}}
+    {{- $portal := (include "arkcase.portal" $.ctx | fromYaml) -}}
+    {{- if $portal -}}
+      {{- $imageName = (printf "%s-%s" $imageName $portal.containerSuffix) -}}
+    {{- end -}}
+    {{- $param := (merge (dict "name" $imageName) $) -}}
+    {{- include "arkcase.image" $param }}
+  {{- end -}}
 {{- end -}}
 
 {{- define "arkcase.artifacts.external" -}}
