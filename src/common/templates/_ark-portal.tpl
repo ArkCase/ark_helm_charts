@@ -9,7 +9,7 @@
   {{- $key := "" -}}
   {{- range $key = (list "portal" "foia") -}}
     {{- /* We only ignore a key if it's not set */ -}}
-    {{- if not (hasKey $ctx.Values.global $key) -}}
+    {{- if not (hasKey $global $key) -}}
       {{- continue -}}
     {{- end -}}
 
