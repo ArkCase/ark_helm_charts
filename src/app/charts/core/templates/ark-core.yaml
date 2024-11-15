@@ -230,6 +230,10 @@ spec:
               value: {{ $contentScript | quote }}
             # - name: WRAPPED_SCRIPT_ARGS
             #   value: "...."
+            # This will cause teh init script to be executed
+            # again if needed when doing in-place upgrades
+            - name: WRAPPED_SCRIPT_STATE_MARKER
+              value: "helm-charts-secrets-refactor-2024"
             - name: INIT_SEED_CONF
               value: {{ $contentData | quote }}
             - name: INIT_SEED_CONTENT
