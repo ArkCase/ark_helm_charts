@@ -58,8 +58,8 @@
 {{- end -}}
 
 {{- define "arkcase.labels.service" -}}
-  {{- include "arkcase.labels.standard" $ }}
-  {{- include "arkcase.labels.workload" $ }}
+{{ include "arkcase.labels.standard" $ }}
+{{ include "arkcase.labels.workload" $ }}
 app.kubernetes.io/service-support: "true"
 {{- end -}}
 
