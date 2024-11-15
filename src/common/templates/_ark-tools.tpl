@@ -1076,7 +1076,7 @@ return either the value if correct, or the empty string if not.
   {{- $enterprise = (kindIs "bool" $enterprise) | ternary $enterprise (eq "true" ($enterprise | toString | lower)) -}}
 
   {{- /* Output the result */ -}}
-  {{- $enterprise | ternary "true" "" -}}
+  {{- $enterprise | ternary (dict "enterprise" true) dict -}}
 {{- end -}}
 
 {{- define "arkcase.enterprise" -}}
@@ -1085,7 +1085,8 @@ return either the value if correct, or the empty string if not.
       "ctx" $
       "template" "__arkcase.enterprise.compute"
   -}}
-  {{- include "__arkcase.tools.getCachedValue" $args -}}
+  {{- $result := (include "__arkcase.tools.getCachedValue" $args | fromYaml) -}}
+  {{- (not (empty $result)) | ternary "true" "" -}}
 {{- end -}}
 
 {{- define "arkcase.xmlUnescape" -}}
