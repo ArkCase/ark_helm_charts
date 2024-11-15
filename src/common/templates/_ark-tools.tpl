@@ -1046,6 +1046,7 @@ return either the value if correct, or the empty string if not.
   {{- $global := ($ctx.Values.global | default dict) -}}
   {{- $globalSet := hasKey $global "enterprise" -}}
 
+  {{- $license := "" -}}
   {{- if $globalSet -}}
     {{- $enterprise = $global.enterprise -}}
   {{- else -}}
@@ -1062,11 +1063,11 @@ return either the value if correct, or the empty string if not.
         {{- $licenseNames = (keys $licenseNames | sortAlpha) -}}
       {{- end -}}
       {{- range $l := $licenseNames -}}
-        {{- if not $enterprise -}}
-          {{- $l = ($l | toString) -}}
-          {{- if and $l (hasKey $licenseValues $l) (get $licenseValues $l) -}}
-            {{- $enterprise = true -}}
-          {{- end -}}
+        {{- $l = ($l | toString) -}}
+        {{- if and $l (hasKey $licenseValues $l) (get $licenseValues $l) -}}
+          {{- $enterprise = true -}}
+          {{- $license = $l -}}
+          {{- break -}}
         {{- end -}}
       {{- end -}}
     {{- end -}}
@@ -1076,7 +1077,7 @@ return either the value if correct, or the empty string if not.
   {{- $enterprise = (kindIs "bool" $enterprise) | ternary $enterprise (eq "true" ($enterprise | toString | lower)) -}}
 
   {{- /* Output the result */ -}}
-  {{- $enterprise | ternary (dict "enterprise" true) dict -}}
+  {{- $enterprise | ternary (dict "enterprise" true "license" $license) dict | toYaml -}}
 {{- end -}}
 
 {{- define "arkcase.enterprise" -}}
