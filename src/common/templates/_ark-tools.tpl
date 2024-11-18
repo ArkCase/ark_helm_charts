@@ -1009,18 +1009,7 @@ return either the value if correct, or the empty string if not.
       {{- end -}}
       {{- $result = set $result "debug" $debug -}}
 
-      {{- $logs := $dev.logs -}}
-      {{- if and $logs (kindIs "map" $logs) -}}
-        {{- $enabled := or (not (hasKey $logs "enabled")) (not (empty (include "arkcase.toBoolean" $logs.enabled))) -}}
-        {{- if $enabled -}}
-          {{- $logs = (include "arkcase.sanitizeLoggers" (omit $logs "enabled") | fromYaml) -}}
-        {{- else -}}
-          {{- $logs = dict -}}
-        {{- end -}}
-      {{- else -}}
-        {{- $logs = dict -}}
-      {{- end -}}
-      {{- $result = set $result "logs" $logs -}}
+      {{- $result = set $result "logs" (include "arkcase.sanitizeLoggers" $dev.logs | fromYaml) -}}
 
       {{- /* Copy all the other keys verbatim */ -}}
       {{- $result = merge $result (omit $dev "enabled" "war" "conf" "debug" "uid" "gid" "resources") -}}
