@@ -439,14 +439,27 @@
     {{- fail "Must send the root context as the 'ctx' parameter" -}}
   {{- end -}}
 
-  {{- $dev := (include "arkcase.dev" $ctx | fromYaml) -}}
-
+  {{- /* These are the default loggers */ -}}
   {{- $loggers := $.loggers -}}
   {{- if or (not $loggers) (not (kindIs "map" $loggers)) -}}
     {{- $loggers = dict -}}
   {{- end -}}
   {{- $loggers = (include "arkcase.sanitizeLoggers" $loggers | fromYaml) -}}
 
+  {{- /* Find the globally-configured loggers */ -}}
+  {{- $globalLogs := (dig "conf" "core" "logs" dict ($ctx.Values.global | default dict)) -}}
+  {{- if not (kindIs "map" $globalLogs) -}}
+    {{- $globalLogs = dict -}}
+  {{- end -}}
+  {{- $globalLogs = (include "arkcase.sanitizeLoggers" $globalLogs | fromYaml) -}}
+
+  {{- /* Loggers from the global configuration override the defaults */ -}}
+  {{- if $globalLogs -}}
+    {{- $loggers = merge $globalLogs $loggers -}}
+  {{- end -}}
+
+  {{- /* Loggers from dev mode override both the defaults and the global logs */ -}}
+  {{- $dev := (include "arkcase.dev" $ctx | fromYaml) -}}
   {{- if $dev.logs -}}
     {{- $loggers = merge $dev.logs $loggers -}}
   {{- end -}}
