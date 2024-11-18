@@ -435,7 +435,7 @@
 
   {{- /* Find the configured extra loggers */ -}}
   {{- $settings := (include "arkcase.subsystem.settings" $ctx | fromYaml) -}}
-  {{- $extraLogs = (include "arkcase.sanitizeLoggers" $settings.logs | fromYaml) -}}
+  {{- $extraLogs := (include "arkcase.sanitizeLoggers" $settings.logs | fromYaml) -}}
 
   {{- /* The configured extra loggers override the defaults */ -}}
   {{- if $extraLogs -}}
