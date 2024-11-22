@@ -18,7 +18,13 @@ portal:
   arkcaseUrl: "https://localhost:8443/arkcase"
   groupName: "ARKCASE_PORTAL_USER@${PORTAL_LDAP_DOMAIN_UPPER}"
   # authentication type, possible values (basic, external)
+  {{- $saml := (include "arkcase.core.sso.saml" $ | fromYaml) }}
+  {{- $oidc := (include "arkcase.core.sso.oidc" $ | fromYaml) -}}
+  {{- if or $saml $oidc }}
+  authenticationType: "external"
+  {{- else }}
   authenticationType: "basic"
+  {{- end }}
   userId: "${PORTAL_ADMIN_USERNAME}@${PORTAL_LDAP_DOMAIN}"
   password: "${PORTAL_ADMIN_PASSWORD}"
   # portal configuration type
