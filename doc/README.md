@@ -6,6 +6,7 @@ Welcome to the [ArkCase](https://www.arkcase.com/) Helm Chart Library!
 <a name="toc"></a>Here's a table of contents so you can quickly reach the documentation section you're most interested in:
 
  - [Overview](#overview)
+ - [Upgrade from 0.7.0 series to 0.8.0 series Helm charts](docs/Upgrade-0.8.md)
  - [Preparation for Deployment](#preparation)
  - [Deployment](#deployment)
  - [Security](#security)
