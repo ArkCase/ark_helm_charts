@@ -764,7 +764,7 @@
           {{- fail (printf "The global.env.value.%s value may not be of type %s" $k (kindOf $v)) -}}
         {{- end -}}
         {{- /* Render the valueFrom map that will go into the the container's env.XXX */ -}}
-        {{- $envVar := (printf "ENV_%s" (regexReplaceAllLiteral "[^A-Z0-9_]" ($k | snakecase | upper) "_")) -}}
+        {{- $envVar := (printf "EXTRA_ENV_%s" (regexReplaceAllLiteral "[^A-Z0-9_]" ($k | snakecase | upper) "_")) -}}
         {{- $env = set $env $envVar (dict (printf "%sKeyRef" $type) (dict "key" $key "name" $name "optional" $optional)) -}}
       {{- end -}}
 
