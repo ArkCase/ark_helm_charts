@@ -192,7 +192,8 @@
   {{- end -}}
 
   {{- /* With this trick we can get an actual null value */ -}}
-  {{- $null := $.Eeshae3bo6oosh3ahngiengoifah5qui5aeteitiemuRaeng1iexoom0ThooTh9yeiph3taVahj3iB7am3Tohse1eim2okaiJiemiebi6uoWeeM0aethahv2haex0OoR -}}
+  {{- $nullMap := dict -}}
+  {{- $null := $nullMap.null -}}
 
   {{- $sendProtocols := dict
     "plaintext" (list "off" 25)
@@ -655,4 +656,160 @@
     {{- $result = set $result (printf "enable%s" $key) (not (empty $v)) -}}
   {{- end -}}
   {{- $result | toYaml -}}
+{{- end -}}
+
+{{- define "arkcase.core.extra-env.secret" -}}
+  {{- $ctx := $ -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "Must send the root context as the only parameter" -}}
+  {{- end -}}
+  {{- (printf "%s-%s-env" $ctx.Release.Name (include "arkcase.subsystem.name" $ctx)) -}}
+{{- end -}}
+
+{{- define "arkcase.core.extra-env.parseKey" -}}
+  {{- $key := ($ | toString) -}}
+  {{- /* The raw key is top-level absolute path with only one component */ -}}
+  {{- if (regexMatch "^/+[^/]+$" $key) -}}
+    {{- regexReplaceAll "^/+([^/]+)$" $key "${1}" -}}
+  {{- end -}}
+{{- end -}}
+
+{{- define "__arkcase.core.extra-env.compute" -}}
+  {{- $ctx := $ -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "Must send the root context as the only parameter" -}}
+  {{- end -}}
+
+  {{- $global := ($ctx.Values.global | default dict) -}}
+  {{- $global = ((kindIs "map" $global) | ternary $global dict) -}}
+  {{- $envConf := $global.env -}}
+  {{- $envConf = ((kindIs "map" $envConf) | ternary $global.env dict) -}}
+
+  {{- $envSecretName := (include "arkcase.core.extra-env.secret" $ctx) -}}
+
+  {{- $stringData := dict -}}
+  {{- $env := dict -}}
+  {{- $secret := dict -}}
+  {{- $configMap := dict -}}
+  {{- if $envConf -}}
+    {{- $value := $envConf.value -}}
+    {{- if and $value (kindIs "map" $value) -}}
+      {{- range $k := (keys $value | sortAlpha) -}}
+        {{- /* Do a first quick validation */ -}}
+        {{- if not (regexMatch "^[a-zA-Z0-9._-]+$" $k) -}}
+          {{- fail (printf "The key [%s] (from global.env.value.%s) is not a valid secret or configMap key" $k $k) -}}
+        {{- end -}}
+
+        {{- /* Set the defaults */ -}}
+        {{- $type := "secret" -}}
+        {{- $name := $envSecretName -}}
+        {{- $key := $k -}}
+        {{- $optional := false -}}
+
+        {{- /* Now, analyze the value */ -}}
+        {{- $v := (get $value $k) -}}
+        {{- if (kindIs "string" $v) -}}
+          {{- /* If it's a secret:// or configMap:// element, parse and validate */ -}}
+          {{- if or (hasPrefix "secret://" $v) (hasPrefix "configMap://" $v) -}}
+            {{- /* Parse the shorthand */ -}}
+            {{- $data := (urlParse $v) -}}
+            {{- $type = $data.scheme -}}
+            {{- $name = (include "arkcase.tools.hostnamePart" $data.host) | required (printf "The %s name is required in the shorthand syntax: %s" $type $v) -}}
+            {{- /* If the key is not present, we use the original value */ -}}
+            {{- $key = (include "arkcase.core.extra-env.parseKey" $data.path) | default $key -}}
+            {{- if not (regexMatch "^[a-zA-Z0-9._-]+$" $key) -}}
+              {{- fail (printf "The key [%s] (from global.env.value.%s = %s) is not a valid secret or configMap key" $key $k $v) -}}
+            {{- end -}}
+          {{- else -}}
+            {{- /* Add the literal value to the target secret's data */ -}}
+            {{- $stringData = set $stringData $k $v -}}
+          {{- end -}}
+        {{- else if (kindIs "map" $v) -}}
+          {{- /* validate the map's structure */ -}}
+          {{- $enabled := (or (not (hasKey $v "enabled")) (not (empty (include "arkcase.toBoolean" $v.enabled)))) -}}
+          {{- $optional = (not (empty (include "arkcase.toBoolean" $v.optional))) -}}
+          {{- $d := dict -}}
+          {{- if and (hasKey $v "configMap") (hasKey $v "secret") -}}
+            {{- fail (printf "The map at global.env.value.%s must contain either a configMap or a secret, not both: %s" $k ($v | toYaml | nindent 0)) -}}
+          {{- else if (hasKey $v "configMap") -}}
+            {{- $type = "configMap" -}}
+            {{- $d = $v.configMap -}}
+          {{- else if (hasKey $v "secret") -}}
+            {{- $type = "secret" -}}
+            {{- $d = $v.secret -}}
+          {{- else -}}
+            {{- fail (printf "The map at global.env.value.%s must contain either a configMap or secret entry describing where to pull the secret from: %s" $k ($v | toYaml | nindent 0)) -}}
+          {{- end -}}
+
+          {{- if (not (kindIs "map" $d)) -}}
+            {{- fail (printf "The value at global.env.value.%s.%s must be a map describing where to pull the secret from" $k $type ($v | toYaml | nindent 0)) -}}
+          {{- end -}}
+
+          {{- if (not (hasKey $d "name")) -}}
+            {{- fail (printf "The value at global.env.value.%s.%s must contain the name of the %s to get the value from: %s" $k $type $type ($v | toYaml | nindent 0)) -}}
+          {{- end -}}
+          {{- $name = (include "arkcase.tools.hostnamePart" (get $d "name")) | required (printf "The name [%s] (from global.env.value.%s.%s.name) is not a valid %s name" $name $k $type $type) -}}
+
+          {{- $key = (hasKey $d "key" | ternary (get $d "key") $key) -}}
+          {{- if not (regexMatch "^[a-zA-Z0-9._-]+$" $key) -}}
+            {{- fail (printf "The key [%s] (from global.env.value.%s.%s.key) is not a valid %s key" $key $k $type $type) -}}
+          {{- end -}}
+
+
+          {{- if not $enabled -}}
+            {{- /* Map is disabled, ignore it */ -}}
+            {{- continue -}}
+          {{- end -}}
+        {{- else -}}
+          {{- fail (printf "The global.env.value.%s value may not be of type %s" $k (kindOf $v)) -}}
+        {{- end -}}
+        {{- /* Render the valueFrom map that will go into the the container's env.XXX */ -}}
+        {{- $envVar := (printf "ENV_%s" (regexReplaceAllLiteral "[^A-Z0-9_]" ($k | snakecase | upper) "_")) -}}
+        {{- $env = set $env $envVar (dict (printf "%sKeyRef" $type) (dict "key" $key "name" $name "optional" $optional)) -}}
+      {{- end -}}
+
+      {{- /* Convert it into a list of environment variables */ -}}
+      {{- $envList := list -}}
+      {{- range $name := (keys $env | sortAlpha) -}}
+        {{- $valueFrom := (get $env $name) -}}
+        {{- $envList = append $envList (dict "name" $name "valueFrom" $valueFrom) -}}
+      {{- end -}}
+      {{- $env = $envList -}}
+    {{- end -}}
+
+    {{- $secret := $envConf.secret -}}
+    {{- if and $secret (kindIs "map" $secret) -}}
+      {{- /* TODO: render the volumeMount */ -}}
+      {{- /* TODO: render the volume */ -}}
+    {{- end -}}
+
+    {{- $configMap := $envConf.configMap -}}
+    {{- if and $configMap (kindIs "map" $configMap) -}}
+      {{- /* TODO: render the volumeMount */ -}}
+      {{- /* TODO: render the volume */ -}}
+    {{- end -}}
+  {{- end -}}
+
+  {{- (dict "env" $env "stringData" $stringData "secret" $secret "configMap" $configMap | toYaml) -}}
+{{- end -}}
+
+{{- define "arkcase.core.extra-env" -}}
+  {{- $ctx := $ -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "The parameter must be the root context ($ or .)" -}}
+  {{- end -}} 
+
+  {{- $args :=
+    dict
+      "ctx" $ctx
+      "template" "__arkcase.core.extra-env.compute"
+  -}}
+  {{- include "__arkcase.tools.getCachedValue" $args -}}
+{{- end -}}
+
+{{- define "arkcase.core.extra-env.env" -}}
+  {{- $extraEnv := (include "arkcase.core.extra-env" $ | fromYaml) -}}
+  {{- if $extraEnv.env -}}
+    {{- $extraEnv.env | toYaml -}}
+  {{- end -}}
 {{- end -}}
