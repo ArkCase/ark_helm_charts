@@ -5,15 +5,15 @@
   {{- end -}}
 {{- end -}}
 
-{{- define "arkcase.analytics.compute" -}}
-  {{- $ctx := . -}}
+{{- define "__arkcase.analytics.compute" -}}
+  {{- $ctx := $ -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "The parameter given must be the root context (. or $)" -}}
   {{- end -}}
 
   {{- $local := (($ctx.Values.configuration).analytics | default dict) -}}
 
-  {{- $global := (($ctx.Values.global).conf).analytics -}}
+  {{- $global := ((($ctx.Values.global).subsys).analytics | default dict) -}}
   {{- if not $global -}}
     {{- $global = $ctx.Values -}}
 
@@ -22,10 +22,10 @@
     {{- end -}}
     {{- $global = $ctx.Values.global -}}
 
-    {{- if or (not (hasKey $global "conf")) (not (kindIs "map" $global.conf)) -}}
-      {{- $global = set $global "conf" dict -}}
+    {{- if or (not (hasKey $global "subsys")) (not (kindIs "map" $global.subsys)) -}}
+      {{- $global = set $global "subsys" dict -}}
     {{- end -}}
-    {{- $global = $global.conf -}}
+    {{- $global = $global.subsys -}}
 
     {{- if or (not (hasKey $global "analytics")) (not (kindIs "map" $global.analytics)) -}}
       {{- $global = set $global "analytics" dict -}}
@@ -199,45 +199,10 @@
 {{- end -}}
 
 {{- define "arkcase.analytics" -}}
-  {{- $ctx := . -}}
-  {{- if not (include "arkcase.isRootContext" $ctx) -}}
-    {{- fail "The parameter given must be the root context (. or $)" -}}
-  {{- end -}}
-
-  {{- /* First things first: do we have any global overrides? */ -}}
-  {{- $global := $ctx.Values.global -}}
-  {{- if or (not $global) (not (kindIs "map" $global)) -}}
-    {{- $global = dict -}}
-  {{- end -}}
-
-  {{- /* Now get the local values */ -}}
-  {{- $local := $ctx.Values.configuration -}}
-  {{- if or (not $local) (not (kindIs "map" $local)) -}}
-    {{- $local = dict -}}
-  {{- end -}}
-
-  {{- /* The keys on this map are the images in the local repository */ -}}
-  {{- $chart := $ctx.Chart.Name -}}
-  {{- $data := dict "local" $local "global" $global -}}
-
-  {{- $cacheKey := "ArkCase-AnalyticsInfo" -}}
-  {{- $masterCache := dict -}}
-  {{- if (hasKey $ctx $cacheKey) -}}
-    {{- $masterCache = get $ctx $cacheKey -}}
-    {{- if and $masterCache (not (kindIs "map" $masterCache)) -}}
-      {{- $masterCache = dict -}}
-    {{- end -}}
-  {{- end -}}
-  {{- $ctx = set $ctx $cacheKey $masterCache -}}
-
-  {{- /* We do not use arkcase.fullname b/c we don't want to deal with partnames */ -}}
-  {{- $chartName := (include "common.fullname" $ctx) -}}
-  {{- $yamlResult := dict -}}
-  {{- if not (hasKey $masterCache $chartName) -}}
-    {{- $yamlResult = (include "arkcase.analytics.compute" $ctx) -}}
-    {{- $masterCache = set $masterCache $chartName ($yamlResult | fromYaml) -}}
-  {{- else -}}
-    {{- $yamlResult = get $masterCache $chartName | toYaml -}}
-  {{- end -}}
-  {{- $yamlResult -}}
+  {{- $args :=
+    dict
+      "ctx" $
+      "template" "__arkcase.analytics.compute"
+  -}}
+  {{- include "__arkcase.tools.getCachedValue" $args -}}
 {{- end -}}

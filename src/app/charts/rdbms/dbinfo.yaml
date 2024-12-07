@@ -5,11 +5,13 @@ mysql:
     - mysql5
     - mysql8
   starttls: mysql
+  admin: "root"
 
 oracle:
   port: 1521
   aliases:
     - orcl
+  admin: "system"
 
 postgresql:
   port: 5432
@@ -17,8 +19,10 @@ postgresql:
     - psql
     - postgres
   starttls: postgres
+  admin: "postgres"
 
 sqlserver:
   port: 1433
   aliases:
     - mssql
+  admin: "sa"
