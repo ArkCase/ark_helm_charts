@@ -107,7 +107,7 @@ idp.xml
   {{- if not (kindIs "map" $clients) -}}
     {{- fail (printf "The OIDC configuration must be given as a map, not a %s: %s" (kindOf $clients) $clients) -}}
   {{- end -}}
-  {{- $usersDirectory := $.usersDirectory -}}
+  {{- $defaultUsersDirectory := $.usersDirectory -}}
   {{- $baseUrl := (printf "%s/login/oauth2/code" $.baseUrl) -}}
 
   {{- $results := dict -}}
@@ -164,11 +164,12 @@ idp.xml
       {{- /* The client is valid! Clean the map a little */ -}}
       {{- $client = (omit $client "enabled") -}}
 
-      {{- /* Set the usersDirectory to the specified value */ -}}
-      {{- $client = set $client "usersDirectory" $usersDirectory -}}
-
       {{- /* Set the redirectUri to the specified value */ -}}
       {{- $client = set $client "redirectUri" (printf "%s/%s" $baseUrl $client.registrationId) -}}
+
+      {{- $usersDirectory := ((hasKey $client "usersDirectory" ) | ternary $client.usersDirectory "" | toString | default $defaultUsersDirectory) -}}
+      {{- $client = set $client "usersDirectory" $usersDirectory -}}
+      
 
       {{- /* Store the result */ -}}
       {{- $results = set $results $id $client -}}
@@ -179,6 +180,7 @@ idp.xml
 
 {{- define "__arkcase.core.sso.compute.oidc" -}}
   {{- $ctx := $.ctx -}}
+  {{- $baseUrl := $.baseUrl -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "The 'ctx' parameter must be the root context ($ or .)" -}}
   {{- end -}}
@@ -188,15 +190,10 @@ idp.xml
     {{- fail (printf "The OIDC configuration must be given as a map, not a %s: %s" (kindOf $oidc) $oidc) -}}
   {{- end -}}
 
-  {{- /* Set the usersDirectory for all clients to the default one ... */ -}}
-  {{- $baseUrl := (include "arkcase.tools.conf" (dict "ctx" $ctx "value" "baseUrl")) -}}
-  {{- /* Remove any potential trailing slashes */ -}}
-  {{- $baseUrl = (regexReplaceAll "/*$" $baseUrl "") -}}
-
   {{- /* The enabled flag is on by default, unless explicitly turned off */ -}}
   {{- $clients := (include "__arkcase.core.sso.oidc.parse-clients" (dict "oidc" $oidc "usersDirectory" "arkcase" "baseUrl" $baseUrl) | fromYaml) -}}
 
-  {{- /* We also condition the configuation on whether there are client configurations */ -}}
+  {{- /* We also condition the configuration on whether there are client configurations */ -}}
   {{- if not $clients -}}
     {{- fail "OIDC seems to be enabled, but no clients are enabled" -}}
   {{- end -}}
@@ -218,6 +215,7 @@ idp.xml
 {{- define "__arkcase.core.sso.compute" -}}
   {{- $ctx := $ -}}
   {{- $sso := ($ctx.Values.global).sso | default dict -}}
+  {{- $settings := ($ctx.Values.global).settings | default dict -}}
   {{- $result := dict -}}
   {{- if $sso -}}
     {{- $enabled := or (not (hasKey $sso "enabled")) (include "arkcase.toBoolean" $sso.enabled) -}}
@@ -268,7 +266,7 @@ idp.xml
       {{- end -}}
 
       {{- /* This is the actual configuration for the chosen SSO mode */ -}}
-      {{- $conf := (include (printf "__arkcase.core.sso.compute.%s" $protocol) (dict "ctx" $ctx "conf" (get $sso $protocol)) | fromYaml) -}}
+      {{- $conf := (include (printf "__arkcase.core.sso.compute.%s" $protocol) (dict "ctx" $ctx "conf" (get $sso $protocol) "baseUrl" (get $settings "baseUrl")) | fromYaml) -}}
       {{- if $conf -}}
         {{- $result = dict "protocol" $protocol "conf" $conf -}}
       {{- end -}}
