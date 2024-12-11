@@ -1,5 +1,14 @@
 {{- $proxyName := (((.Values.configuration).tomcat).proxy).name -}}
+{{- if $proxyName -}}
+  {{- $proxyName = (include "arkcase.tools.mustSingleHostname" $proxyName) -}}
+{{- end -}}
 {{- $proxyPort := (((.Values.configuration).tomcat).proxy).port -}}
+{{- if $proxyPort -}}
+  {{- $proxyPort = ($proxyPort | toString | int) -}}
+  {{- if or (lt $proxyPort 1) (gt $proxyPort 65535) -}}
+    {{- fail (printf "The port number %d is invalid - must be within [1..65535]" $proxyPort) -}}
+  {{- end -}}
+{{- end -}}
 {{- $cluster := (include "arkcase.cluster" $ | fromYaml) -}}
 {{- $httpPort := $cluster.enabled | ternary 4040 8080 -}}
 {{- $httpsPort := $cluster.enabled | ternary 4443 8443 -}}
@@ -71,23 +80,17 @@
          APR (HTTP/AJP) Connector: /docs/apr.html
          Define a non-SSL/TLS HTTP/1.1 Connector on port {{ $httpPort }}
     -->
-    <Connector URIEncoding="UTF-8"
-       port="{{ $httpPort }}" protocol="HTTP/1.1"
+    <Connector port="{{ $httpPort }}" protocol="HTTP/1.1"
        connectionTimeout="20000"
-       redirectPort="{{ $httpsPort }}"
+       URIEncoding="UTF-8"
        relaxedPathChars="[]|"
        relaxedQueryChars="^{}[]|&amp;"
        maxHttpHeaderSize="65536"
        {{- if and $proxyName $proxyPort }}
-       {{- $proxyName = (include "arkcase.tools.mustSingleHostname" $proxyName) }}
        proxyName="{{ $proxyName }}"
-       {{- $proxyPort = ($proxyPort | toString | int) }}
-       {{- if or (lt $proxyPort 1) (gt $proxyPort 65535) }}
-         {{- fail (printf "The port number %d is invalid - must be within [1..65535]" $proxyPort) }}
-       {{- end }}
        proxyPort="{{ $proxyPort }}"
        {{- end }}
-    />
+       redirectPort="{{ $httpsPort }}" />
     <!-- A "Connector" using the shared thread pool-->
     <!--
     <Connector URIEncoding="UTF-8" executor="tomcatThreadPool"
@@ -121,12 +124,7 @@
                port="{{ $httpsPort }}"
                protocol="org.apache.coyote.http11.Http11AprProtocol"
                {{- if and $proxyName $proxyPort }}
-               {{- $proxyName = (include "arkcase.tools.mustSingleHostname" $proxyName) }}
                proxyName="{{ $proxyName }}"
-               {{- $proxyPort = ($proxyPort | toString | int) }}
-               {{- if or (lt $proxyPort 1) (gt $proxyPort 65535) }}
-                 {{- fail (printf "The port number %d is invalid - must be within [1..65535]" $proxyPort) }}
-               {{- end }}
                proxyPort="{{ $proxyPort }}"
                {{- end }}
                scheme="https"
