@@ -184,7 +184,7 @@ service:
 
     probes: &arkcaseProbes
       enabled: true
-      spec:
+      spec: &baseProbeThreshold
         initialDelaySeconds: 0
         periodSeconds: 10
         timeoutSeconds: 10
