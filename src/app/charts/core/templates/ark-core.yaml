@@ -471,7 +471,7 @@ spec:
       volumes:
         {{- include "arkcase.subsystem-access.volume" $ | nindent 8 }}
         {{- include "arkcase.trusts.volume" $ | nindent 8 }}
-        {{- include "arkcase.acme.volume" $ | nindent 8 }}
+        {{- include "arkcase.acme.volume-shared" $ | nindent 8 }}
         {{- include "arkcase.file-resource.volumes" $ | nindent 8 }}
         {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "temp") | nindent 8 }}
         {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "wars") | nindent 8 }}
