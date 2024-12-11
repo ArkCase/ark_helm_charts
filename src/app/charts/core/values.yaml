@@ -53,6 +53,10 @@ image:
     repository: "arkcase/cloudconfig"
     tag: "2.0.0"
 
+  haproxy:
+    repository: "arkcase/haproxy"
+    tag: "2.6"
+
   # setperm:
   #   registry: "alternate-registry"
   #   repository: "arkcase/setperm"
@@ -178,9 +182,9 @@ service:
 
   arkcase:
     ports:
-      - name: arkcase-https
+      - name: https
         protocol: TCP
-        port: &arkcasePort 8443
+        port: &https 8443
 
     probes: &arkcaseProbes
       enabled: true
@@ -206,11 +210,11 @@ service:
         httpGet:
           scheme: HTTPS
           path: "/arkcase/login"
-          port: *arkcasePort
+          port: *https
 
   clusteredArkcase:
     ports:
-      - name: clustered-arkcase-https
+      - name: clustered-https
         protocol: TCP
         port: &clustered 4443
 
