@@ -167,7 +167,7 @@ idp.xml
       {{- /* Set the redirectUri to the specified value */ -}}
       {{- $client = set $client "redirectUri" (printf "%s/%s" $baseUrl $client.registrationId) -}}
 
-      {{- $usersDirectory := ((hasKey $client "usersDirectory" ) | ternary $client.usersDirectory "" | toString | default $defaultUsersDirectory) -}}
+      {{- $usersDirectory := ((hasKey $client "usersDirectory") | ternary $client.usersDirectory $defaultUsersDirectory) -}}
       {{- $client = set $client "usersDirectory" $usersDirectory -}}
       
 
@@ -218,7 +218,6 @@ idp.xml
 {{- define "__arkcase.core.sso.compute" -}}
   {{- $ctx := $ -}}
   {{- $sso := ($ctx.Values.global).sso | default dict -}}
-  {{- $settings := ($ctx.Values.global).settings | default dict -}}
   {{- $result := dict -}}
   {{- if $sso -}}
     {{- $enabled := or (not (hasKey $sso "enabled")) (include "arkcase.toBoolean" $sso.enabled) -}}
@@ -268,8 +267,10 @@ idp.xml
         {{- $protocol = ($saml | ternary "saml" "oidc") -}}
       {{- end -}}
 
+      {{- $baseUrl := (include "arkcase.tools.conf" (dict "ctx" $ctx "value" "baseUrl")) -}}
+
       {{- /* This is the actual configuration for the chosen SSO mode */ -}}
-      {{- $conf := (include (printf "__arkcase.core.sso.compute.%s" $protocol) (dict "ctx" $ctx "conf" (get $sso $protocol) "baseUrl" (get $settings "baseUrl")) | fromYaml) -}}
+      {{- $conf := (include (printf "__arkcase.core.sso.compute.%s" $protocol) (dict "ctx" $ctx "conf" (get $sso $protocol) "baseUrl" $baseUrl) | fromYaml) -}}
       {{- if $conf -}}
         {{- $result = dict "protocol" $protocol "conf" $conf -}}
       {{- end -}}
