@@ -180,10 +180,13 @@ idp.xml
 
 {{- define "__arkcase.core.sso.compute.oidc" -}}
   {{- $ctx := $.ctx -}}
-  {{- $baseUrl := $.baseUrl -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "The 'ctx' parameter must be the root context ($ or .)" -}}
   {{- end -}}
+  
+  {{- $baseUrl := $.baseUrl -}}
+  {{- /* Remove any potential trailing slashes */ -}}
+  {{- $baseUrl = (regexReplaceAll "/*$" $baseUrl "") -}}
 
   {{- $oidc := $.conf -}}
   {{- if not (kindIs "map" $oidc) -}}
