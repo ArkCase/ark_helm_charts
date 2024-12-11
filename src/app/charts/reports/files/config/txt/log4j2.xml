@@ -17,7 +17,7 @@
         <!-- ================================= -->
 
         <!-- A time/date based rolling appender -->
-        <RollingFile name="PENTAHOFILE" fileName="${env:LOGS_DIR:-../logs}/pentaho.log" filePattern="${env:LOGS_DIR:-../logs}/pentaho.log.%d{yyyy-MM-dd}">
+        <RollingFile name="PENTAHOFILE" fileName="${env:LOGS_DIR:-../logs}/pentaho.log" filePattern="${env:LOGS_DIR:-../logs}/pentaho-%d{yyyyMMdd-HHmmss}.log.gz">
             <PatternLayout>
                 <!-- The default pattern: Date Priority [Category] Message\n -->
                 <Pattern>%d %-5p [%c] %m%n</Pattern>
@@ -26,19 +26,31 @@
                  -->
             </PatternLayout>
             <Policies>
+                <OnStartupTriggeringPolicy />
                 <TimeBasedTriggeringPolicy />
+                <SizeBasedTriggeringPolicy size="500MB" />
             </Policies>
-            <DefaultRolloverStrategy />
+            <DefaultRolloverStrategy>
+                <Delete>
+                    <IfAccumulatedFileCount exceeds="10" />
+                </Delete>
+            </DefaultRolloverStrategy>
         </RollingFile>
 
-        <RollingFile name="pdi-execution-appender" fileName="${env:LOGS_DIR:-../logs}/pdi.log" filePattern="${env:LOGS_DIR:-../logs}/pdi.%d{yyyy-MM-dd}.log">
+        <RollingFile name="pdi-execution-appender" fileName="${env:LOGS_DIR:-../logs}/pdi.log" filePattern="${env:LOGS_DIR:-../logs}/pdi-%d{yyyyMMdd-HHmmss}.log.gz">
             <PatternLayout>
                 <Pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5p &lt;%t&gt; %m%n</Pattern>
             </PatternLayout>
             <Policies>
+                <OnStartupTriggeringPolicy />
                 <TimeBasedTriggeringPolicy />
+                <SizeBasedTriggeringPolicy size="500MB" />
             </Policies>
-            <DefaultRolloverStrategy />
+            <DefaultRolloverStrategy>
+                <Delete>
+                    <IfAccumulatedFileCount exceeds="10" />
+                </Delete>
+            </DefaultRolloverStrategy>
         </RollingFile>
 
         <!-- ============================== -->
