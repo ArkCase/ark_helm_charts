@@ -222,15 +222,6 @@ if ${DEBUG} || is_file_executable "${REPORT_INSTALLER}" ; then
 	ERROR="false"
 	REPORTS_DIR="${INIT_DIR}/reports"
 	while read FILE ; do
-
-		MARKER="${REPORTS_DIR}/.${FILE}.deployed"
-
-		# Has this file been deployed?
-		is_file "${MARKER}" || continue
-
-		# Regardless what happens, clear out the marker
-		rm -f "${MARKER}" &>/dev/null || true
-
 		# TODO: What if we want to undeploy? How do we do that?
 
 		# Install the report

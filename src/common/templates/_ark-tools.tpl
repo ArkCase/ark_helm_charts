@@ -754,16 +754,15 @@ return either the value if correct, or the empty string if not.
   {{- $searched := list -}}
   {{- $subsys := (include "arkcase.subsystem.name" $ctx) -}}
   {{- range $base := (list (printf "global.subsys.%s.settings" $subsys) "global.settings" "configuration") -}}
-    {{- if not $result -}}
-      {{- /* Compose the correct value */ -}}
-      {{- $key := (empty $value) | ternary $base (printf "%s.%s" $base $value ) -}}
-      {{- if $debug -}}
-        {{- $searched = append $searched (printf "Values.%s" $key) -}}
-      {{- end -}}
-      {{- $r := (include "arkcase.tools.get" (dict "ctx" $ctx "name" (printf "Values.%s" $key)) | fromYaml) -}}
-      {{- if and $r $r.found -}}
-        {{- $result = set $r "global" (hasPrefix "global." $key) -}}
-      {{- end -}}
+    {{- /* Compose the correct value */ -}}
+    {{- $key := (empty $value) | ternary $base (printf "%s.%s" $base $value ) -}}
+    {{- if $debug -}}
+      {{- $searched = append $searched (printf "Values.%s" $key) -}}
+    {{- end -}}
+    {{- $r := (include "arkcase.tools.get" (dict "ctx" $ctx "name" (printf "Values.%s" $key)) | fromYaml) -}}
+    {{- if and $r $r.found -}}
+      {{- $result = set $r "global" (hasPrefix "global." $key) -}}
+      {{- break -}}
     {{- end -}}
   {{- end -}}
   {{- range (list "found" "global") -}}

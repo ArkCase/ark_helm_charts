@@ -12,8 +12,6 @@
 # This should group all application-specific configurations
 #
 configuration:
-  baseUrl: "https://server.dev.arkcase.com:8443/arkcase"
-
   proxy:
     reports: "https://reports:8443"
     weather: "https://api.openweathermap.org/data/2.5"
@@ -52,6 +50,10 @@ image:
   cloudconfig:
     repository: "arkcase/cloudconfig"
     tag: "2.0.0"
+
+  haproxy:
+    repository: "arkcase/haproxy"
+    tag: "2.6"
 
   # setperm:
   #   registry: "alternate-registry"
@@ -148,15 +150,6 @@ persistence:
 # properly declare volumes)
 
 service:
-  # This enables the main service to be rendered with
-  # publishNotReadyAddresses == true, which allows the
-  # main service to route connectivity to pods that are
-  # yet to come up (i.e. to debug the bootup process).
-  #
-  # This behavior will *only* be enabled if debug mode is
-  # also enabled as part of developer mode
-  canDebug: true
-
   cloudconfig:
     ports:
       - name: cloudconfig
@@ -187,13 +180,13 @@ service:
 
   arkcase:
     ports:
-      - name: arkcase-https
+      - name: https
         protocol: TCP
-        port: &arkcasePort 8443
+        port: &https 8443
 
-    probes:
+    probes: &arkcaseProbes
       enabled: true
-      spec:
+      spec: &baseProbeThreshold
         initialDelaySeconds: 0
         periodSeconds: 10
         timeoutSeconds: 10
@@ -215,4 +208,40 @@ service:
         httpGet:
           scheme: HTTPS
           path: "/arkcase/login"
-          port: *arkcasePort
+          port: *https
+
+  clusteredArkcase:
+    ports:
+      - name: clustered-https
+        protocol: TCP
+        port: &clustered 4443
+
+    probes:
+      <<: *arkcaseProbes
+      readiness:
+        httpGet:
+          scheme: HTTPS
+          path: "/arkcase/login"
+          port: *clustered
+
+  clusteredHaproxy:
+    ports:
+      - name: healthz
+        protocol: TCP
+        port: &healthz 18443
+    probes:
+      enabled: true
+      spec:
+        <<: *baseProbeThreshold
+      startup: &haproxyProbe
+        httpGet:
+          scheme: HTTPS
+          port: *healthz
+          path: "/healthz"
+        failureThreshold: 90
+      liveness:
+        <<: *haproxyProbe
+        failureThreshold: 3
+      readiness:
+        <<: *haproxyProbe
+        failureThreshold: 1
