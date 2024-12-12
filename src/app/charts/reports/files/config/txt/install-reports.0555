@@ -6,14 +6,10 @@ set_as_boolean DEBUG
 
 cleanup()
 {
-	if [ ${#WORKDIRS[@]} -gt 0 ] ; then
-		for n in "${WORKDIRS[@]}" ; do
-			rm -rf "${n}" &>/dev/null
-		done
-	fi
+	[ "${#WORKDIRS[@]}" -gt 0 ] && rm -rf "${WORKDIRS[@]}" &>/dev/null
 }
 
-WORKDIRS=()
+export WORKDIRS=()
 trap cleanup EXIT
 
 set_or_default BASE_DIR "/app"
@@ -34,12 +30,7 @@ extract_archive()
 {
 	local TYPE="${1}"
 	local SRC="${2}"
-
-	local WORK="$(mktemp -d)"
-	WORK="$(readlink -f "${WORK}")"
-
-	# Track it for cleanup
-	WORKDIRS+=("${WORK}")
+	local WORK="${3}"
 
 	local C=""
 	local ZIP="false"
@@ -123,11 +114,19 @@ install_report()
 	esac
 
 	local REPORTS=()
+	local WORK=""
 	if [ -n "${ARCHIVE_TYPE}" ] ; then
 		# Extract, then enumerate the contents into the SRC_FILE array
 		SRC_FILE="${REPORTS_DIR}/${SRC_FILE}"
 		say "Extracting the reports from [${SRC_FILE}]..."
-		readarray -t REPORTS < <(extract_archive "${ARCHIVE_TYPE}" "${SRC_FILE}")
+
+		# Create the work directory ... we do this here so we can track it
+		WORK="$(readlink -f "$(mktemp -td "tmp.reports.${SRC_FILE//\//_}.XXXXXX")")"
+
+		# Track it for cleanup
+		WORKDIRS+=("${WORK}")
+
+		readarray -t REPORTS < <(extract_archive "${ARCHIVE_TYPE}" "${SRC_FILE}" "${WORK}")
 	else
 		REPORTS=("$(dirname "${SRC_FILE}")${DIVIDER}${REPORTS_DIR}/${SRC_FILE}")
 	fi
