@@ -1,0 +1,13 @@
+server:
+  expirationDays: 0
+  domain: "@env:PORTAL_DOMAIN"
+  realm: "@env:PORTAL_REALM"
+  rootDn: "@env:PORTAL_ROOT_DN"
+  baseDn: "@env:PORTAL_BASE_DN"
+  userou: "@env:PORTAL_USER_BASE_DN"
+  groupou: "@env:PORTAL_GROUP_BASE_DN"
+
+users:
+  "@env:MANAGED_LDAP_PORTAL_USERNAME":
+    password: "@env:MANAGED_LDAP_PORTAL_PASSWORD"
+    administrator: true

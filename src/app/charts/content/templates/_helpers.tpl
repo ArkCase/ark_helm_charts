@@ -15,19 +15,24 @@
   {{- $secretKey -}}
 {{- end -}}
 
-{{- define "arkcase.alfresco.service" -}}
-  {{- $ctx := .ctx -}}
-  {{- $name := .name -}}
-  {{- printf "%s-%s" (include "common.name" $ctx) $name -}}
-{{- end -}}
-
-{{- define "arkcase.content.external" -}}
-  {{- if not (include "arkcase.isRootContext" $) -}}
+{{- define "arkcase.alfresco.service.env" -}}
+  {{- $ctx := $ -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "The parameter must be the root context" -}}
   {{- end -}}
-  {{- $content := (include "arkcase.cm.info" $ | fromYaml) -}}
-  {{- if $content.url.global -}}
-    {{- true -}}
+
+  {{- $result := list -}}
+  {{- $common := (include "common.name" $ctx) -}}
+  {{- range $part := (list "main" "share" "activemq" "search" "sfs" "xform-core-aio" "xform-router") -}}
+    {{- $result = append $result (
+        dict
+          "name" (printf "SERVICE_ALFRESCO_%s" ($part | replace "-" "_" | replace "." "_" | upper))
+          "value" (printf "%s-%s" $common $part)
+      )
+    -}}
+  {{- end -}}
+  {{- if $result -}}
+    {{- $result | toYaml -}}
   {{- end -}}
 {{- end -}}
 
@@ -43,9 +48,9 @@
   {{- if not (include "arkcase.isRootContext" $) -}}
     {{- fail "The parameter must be the root context" -}}
   {{- end -}}
-  {{- $content := (include "arkcase.cm.info" $ | fromYaml) -}}
 
-  {{- $nodes := ($content.settings.nodes | default 1 | toString | atoi) -}}
+  {{- $content := (include "arkcase.cm.info" $ | fromYaml) -}}
+  {{- $nodes := ($content.nodes | default 1 | toString | atoi) -}}
   {{- if (lt $nodes 1) -}}
     {{- $nodes = 1 -}}
   {{- else if (gt $nodes 1) -}}
@@ -63,9 +68,9 @@
   {{- if not (include "arkcase.isRootContext" $) -}}
     {{- fail "The parameter must be the root context" -}}
   {{- end -}}
-  {{- $content := (include "arkcase.cm.info" $ | fromYaml) -}}
 
-  {{- $nodes := ($content.settings.nodes | default 1 | toString) -}}
+  {{- $content := (include "arkcase.cm.info" $ | fromYaml) -}}
+  {{- $nodes := ($content.nodes | default 1 | toString) -}}
 
   {{- /* If it's not set at all, use the default of 1 node */ -}}
   {{- if not $nodes -}}
@@ -107,8 +112,9 @@
   {{- if not (include "arkcase.isRootContext" $) -}}
     {{- fail "The parameter must be the root context" -}}
   {{- end -}}
+
   {{- $content := (include "arkcase.cm.info" $ | fromYaml) -}}
-  {{- if or (not (hasKey $content.settings "indexing")) (include "arkcase.toBoolean" $content.settings.indexing) -}}
+  {{- if or (not (hasKey $content "indexing")) (include "arkcase.toBoolean" $content.indexing) -}}
     {{- true -}}
   {{- end -}}
 {{- end -}}

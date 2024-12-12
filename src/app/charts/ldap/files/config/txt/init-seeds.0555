@@ -1,0 +1,703 @@
+#!/usr/bin/python
+import argparse
+import hashlib
+import json
+import logging
+import os
+import random
+import re
+import string
+import subprocess
+import sys
+import yaml
+
+EXE_SAMBA_TOOL = "/usr/bin/samba-tool"
+EXE_NET = "/usr/bin/net"
+
+SID_RE = re.compile("^.* SID (S-\\S*)$", re.IGNORECASE)
+DN_SPLIT_RE = re.compile("(?<!\\\\),")
+
+#
+# Seedable values
+#
+KEY_DEBUG = "debug"
+KEY_SERVER_INFO = "server"
+KEY_DOMAIN = "domain"
+KEY_REALM = "realm"
+KEY_ROOT_DN = "rootDn"
+KEY_BASE_DN = "baseDn"
+KEY_USER_OU = "userou"
+KEY_USER_PREFIX = "userPrefix"
+KEY_GROUP_OU = "groupou"
+KEY_GROUP_PREFIX = "groupPrefix"
+KEY_ADMINISTRATOR = "administrator"
+KEY_DEFAULT_PASSWORD = "defaultPassword"
+KEY_RESET_PASSWORD = "resetPassword"
+KEY_USERNAME_AS_CN = "usernameAsCn"
+KEY_PASSWORD = "password"
+KEY_EXPIRATION_DAYS = "expirationDays"
+
+KEY_USERS = "users"
+USER_ATTRIBUTES = {
+	"firstName" : "given-name",
+	"lastName" : "surname",
+	"mail" : "mail-address",
+	"description" : None,
+}
+
+KEY_GROUPS = "groups"
+GROUP_ATTRIBUTES = {
+	"scope" : "group-scope",
+	"type" : "group-type",
+	"description" : None,
+	"notes" : None,
+}
+
+#
+# Default settings
+#
+DEFAULT_RESET_PASSWORD = False
+DEFAULT_USERNAME_AS_CN = True
+
+ENV_DEBUG = "DEBUG_SEED"
+
+ENV_LDAP_SEED_FILE = "LDAP_SEED_FILE"
+ENV_LDAP_URL = "LDAP_URL"
+ENV_LDAP_ADMIN_USER = "LDAP_ADMIN_USER"
+ENV_LDAP_ADMIN_PASS = "LDAP_ADMIN_PASS"
+ENV_LDAP_REALM = "LDAP_REALM"
+ENV_LDAP_ROOT_DN = "LDAP_ROOT_DN"
+ENV_LDAP_BASE_DN = "LDAP_BASE_DN"
+ENV_LDAP_USER_OU = "LDAP_USER_OU"
+ENV_LDAP_USER_PREFIX = "LDAP_USER_PREFIX"
+ENV_LDAP_GROUP_OU = "LDAP_GROUP_OU"
+ENV_LDAP_GROUP_PREFIX = "LDAP_GROUP_PREFIX"
+
+parser = argparse.ArgumentParser(description="LDAP User/Group Initializer Script")
+parser.add_argument("seedfile", action="store", help=f"The seed file to use (if not given, it will be read from the {ENV_LDAP_SEED_FILE} environment variable)", type=str, nargs="?")
+
+parser.add_argument("--ldap-url", action="store", help=f"The URL for the LDAP server to connect to (if not given, it will be read from the {ENV_LDAP_URL} environment variable)", type=str, nargs=1)
+parser.add_argument("--ldap-admin-user", action="store", help=f"The administrator username to authenticate with (if not given, it will be read from the {ENV_LDAP_ADMIN_USER} environment variable)", type=str, nargs=1)
+parser.add_argument("--ldap-admin-pass", action="store", help=f"The administrator password to authenticate with (if not given, it will be read from the {ENV_LDAP_ADMIN_PASS} environment variable)", type=str, nargs=1)
+parser.add_argument("--ldap-realm", action="store", help=f"The authentication realm's name for the LDAP tree (if not given, it will be read from the {ENV_LDAP_REALM} environment variable)", type=str, nargs=1)
+parser.add_argument("--ldap-root-dn", action="store", help=f"The root DN for the LDAP tree (if not given, it will be read from the {ENV_LDAP_ROOT_DN} environment variable)", type=str, nargs=1)
+parser.add_argument("--ldap-base-dn", action="store", help=f"The base DN (relative to the root DN) for where the users and groups are stored in (if not given, it will be read from the {ENV_LDAP_BASE_DN} environment variable)", type=str, nargs=1)
+parser.add_argument("--ldap-user-ou", action="store", help=f"The OU (relative to the base DN) where the users are to be created (if not given, it will be read from the {ENV_LDAP_USER_OU} environment variable)", type=str, nargs=1)
+parser.add_argument("--ldap-user-prefix", action="store", help=f"The prefix to apply to every user's name being created (if not given, it will be read from the {ENV_LDAP_USER_PREFIX} environment variable)", type=str, nargs=1)
+parser.add_argument("--ldap-group-ou", action="store", help=f"The OU (relative to the base DN) where the groups are to be created (if not given, it will be read from the {ENV_LDAP_GROUP_OU} environment variable)", type=str, nargs=1)
+parser.add_argument("--ldap-group-prefix", action="store", help=f"The prefix to apply to every group's name being created (if not given, it will be read from the {ENV_LDAP_GROUP_PREFIX} environment variable)", type=str, nargs=1)
+parser.add_argument("--debug", action="store_const", const=True, help=f"Enable debug mode (if not given, it will be read from the {ENV_DEBUG} environment variable)")
+
+args = parser.parse_args()
+
+logging.basicConfig(level=logging.INFO, format = '%(asctime)s - %(levelname)s - %(message)s')
+
+def fail(msg):
+	logging.error(msg)
+	exit(1)
+
+def to_boolean(v, d=False):
+	# If it's a boolean, return it
+	if type(v) == bool:
+		return v
+
+	# If there's no value given, return the default
+	if (v is None):
+		if type(d) == bool:
+			return d
+		return to_boolean(d)
+
+	# Empty values evaluate to false
+	if (not v):
+		return False
+
+	# Non-empty lists or dicts also evaluate to true
+	if (type(v) == dict) or (type(v) == list):
+		return True
+
+	# Numeric values that are non-0 are also true
+	if (type(v) == int) or (type(v) == float):
+		return (v != 0)
+
+	# Anything else gets stringed and compared with "true"
+	return (str(v).lower() == "true")
+
+
+def read_config_value(conf, confName, args, argName, envName, default = None):
+	if args and argName and hasattr(args, argName):
+		v = getattr(args, argName)
+
+		if v is not None:
+			if type(v) == list:
+				v = v[0]
+			return str(v)
+
+	if conf and confName and (confName in conf):
+		v = conf[confName]
+		if v is not None:
+			return str(v)
+
+	if envName and envName in os.environ:
+		v = os.environ[envName]
+		if v:
+			return str(v)
+
+	return default
+
+def resolve_value(v, default = None):
+	if v:
+		# If it's of the form @file:/..., then read the contents from that file
+		if v.startswith("@file:"):
+			# read the contents of the file, return the default if it can't be read
+			p = os.path.expandvars(v[6:])
+			try:
+				with open(p, "rt") as f:
+					v = f.read().strip()
+			except FileNotFoundError:
+				logging.error(f"The file [{p}] could not be found (from [{v}])")
+				v = None
+			except Exception as e:
+				fail(f"The file [{p}] could not be read (from [{v}]): {e}")
+
+		# If it's of the form @env:ENVVAR then read the contents from that envvar
+		elif v.startswith("@env:"):
+			# read the contents of the envvar, return the default if it doesn't exist
+			try:
+				v = os.environ[v[5:]]
+			except KeyError:
+				v = None
+
+	# Otherwise, use the value verbatim
+	if v is None:
+		return default
+
+	return v
+
+def get_config_value(conf, confName, args, argName, envName, default = None):
+	v = read_config_value(conf, confName, args, argName, envName, default = default)
+	return resolve_value(v, default)
+
+#
+# Locate the seeds file
+#
+if len(sys.argv) < 2:
+	# If no parameter is given, use an environment variable
+	if ENV_LDAP_SEED_FILE not in os.environ:
+		parser.print_help(sys.stderr)
+		sys.exit(1)
+
+	source_file = os.environ[ENV_LDAP_SEED_FILE]
+
+	# Check if this points to a file ...
+	source_file_is_file = (os.path.exists(source_file) and os.path.isfile(source_file))
+else:
+	# If the parameter is given, use it
+	source_file = args.seedfile
+	if source_file == "-":
+		source_file = sys.stdin
+		source_file_is_file = False
+	else:
+		source_file_is_file = True
+
+#
+# Parse the seeds file
+#
+show_data = True
+try:
+	if source_file_is_file:
+		logging.info(f"Loading the configuration from the file [{source_file}]...")
+		with open(source_file, "r") as f:
+			data = yaml.safe_load(f)
+	else:
+		if type(source_file) == str:
+			logging.info(f"Parsing the configuration from the string: [\n{source_file}\n]...")
+			show_data = False
+		else:
+			logging.info("Parsing the configuration from stdin...")
+		data = yaml.safe_load(source_file)
+	if data is None:
+		raise Exception("Data is not in YAML format")
+except Exception as e:
+	# Yaml parse failed ... try as JSON
+	logging.warning(f"File [{source_file}] was not in YAML format, trying JSON")
+	try:
+		with open(source_file, "r") as f:
+			data = json.load(f)
+	except Exception as e:
+		logging.error(e)
+		sys.exit(1)
+
+#
+# For debugging purposes
+#
+if show_data:
+	logging.debug(f"Loaded configuration: [{json.dumps(data, indent=4)}]")
+
+#
+# For easy, repeat rendering of the authentication details
+#
+def render_auth_info():
+	# TODO: Find the admin user and password
+	info = []
+	if LDAP_URL:
+		info += [ f"--URL={LDAP_URL}" ]
+	if LDAP_ADMIN_USER:
+		info += [ f"--username={LDAP_ADMIN_USER}", f"--password={LDAP_ADMIN_PASS}" ]
+	return info
+
+def run_command(command):
+	if DEBUG:
+		logging.info(f"\tCommand = {command}")
+		command = "true"
+	return subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
+def samba_tool(flags):
+	return run_command([ EXE_SAMBA_TOOL ] + flags + render_auth_info())
+
+def render_user_id(userId):
+	# Allow the use of @env: and @file:
+	userId = resolve_value(userId, userId)
+
+	return f"{USER_PREFIX}{userId}"
+
+def render_group_id(groupId):
+	# If the groupId starts with the plus sign, remove the plus sign and return
+	# it as-is, no prefix. If it doesn't start with a plus sign, apply the prefix
+	if groupId.startswith("+"):
+		return re.sub("^\+", "", groupId)
+
+	# Allow the use of @env: and @file:
+	groupId = resolve_value(groupId, groupId)
+
+	return f"{GROUP_PREFIX}{groupId}"
+
+# To track which OUs have been created via ensure_ou_exists()
+CREATED_OU = {}
+def ensure_ou_exists(ou):
+
+	# Super-shortcut... avoid processing if we already
+	# created the given OU
+	if ou in CREATED_OU:
+		return
+
+	logging.info(f"Ensuring that OU [{ou}] exists...")
+
+	# The OU is a list of elements, separated by commas. Escaped commas are
+	# preceded by backslashes. So we'll want to create the entire tree
+	# downward, as required
+	steps = DN_SPLIT_RE.split(ou)
+
+	currentOu = ""
+	while steps:
+
+		# If necessary, prepend a comma before adding the next element
+		# to the current OU
+		if currentOu:
+			currentOu = "," + currentOu
+		currentOu = steps.pop() + currentOu
+
+		# Shortcut! Avoid testing for, or creating the current OU
+		if currentOu in CREATED_OU:
+			continue
+
+		# Ok so we haven't played with the current OU before ... is this a valid component?
+		if not currentOu.lower().startswith("ou="):
+			fail(f"The OU path may only contain OU elements: {currentOu} (full OU => {ou})")
+
+		# The current OU is valid ... does it exist?
+		result = samba_tool([ "ou", "listobjects", currentOu ])
+		if result.returncode == 0:
+			CREATED_OU[currentOu] = True
+			continue
+
+		# The current OU is valid and does not exist... create it!
+		result = samba_tool([ "ou", "create", currentOu ])
+		if result.returncode == 0:
+			CREATED_OU[currentOu] = True
+			continue
+
+		# Ooops ... something went wrong
+		fail(f"Failed to create the OU [{currentOu}]: {result}")
+
+def random_password():
+	return "".join(random.SystemRandom().choice(string.ascii_uppercase + string.ascii_lowercase + string.digits) for _ in range(32))
+
+def set_user_password(userId, userData):
+	if KEY_PASSWORD in userData:
+		password = userData[KEY_PASSWORD]
+	else:
+		password = DEFAULT_PASSWORD
+
+	if password and (password == "${random}"):
+		password = random_password()
+	elif not password:
+		# Use this value if there's no default password set, and
+		# the user doesn't have a password configured, either
+		password = f"${userId}$"
+
+	# Support expanding environment variables ... this allows us
+	# to define admin passwords in the env, which means SECRETS SUPPORT!
+	password = os.path.expandvars(password)
+
+	sha256 = hashlib.sha256(password.encode("UTF-8")).hexdigest()
+	logging.info(f"\tSetting the password for '{userId}' (sha256:{sha256})...")
+	command = [ "user", "setpassword", userId, f"--newpassword={password}" ]
+
+	result = samba_tool(command)
+	if result.returncode != 0:
+		fail(f"Failed to set the password for '{userId}': {result}")
+
+	if KEY_EXPIRATION_DAYS in userData:
+		expiration = userData[KEY_EXPIRATION_DAYS]
+		if type(expiration) != int:
+			try:
+				expiration = int(str(expiration))
+			except:
+				# Not a valid value, so can't do anything
+				expiration = None
+	else:
+		expiration = EXPIRATION_DAYS
+
+	if expiration is None:
+		return
+
+	if expiration > 0:
+		expiration = f"--days={expiration}"
+		expirationDesc = f"expire after {expiration} day(s)"
+	else:
+		expiration = f"--noexpiry"
+		expirationDesc = "never expire"
+
+	logging.info(f"\tSetting the password for '{userId}' to {expirationDesc}")
+	command = [ "user", "setexpiry", userId, expiration ]
+
+	result = samba_tool(command)
+	if result.returncode != 0:
+		fail(f"Failed to set the password expiration for '{userId}': {result}")
+
+def create_user(userId, userData):
+	userId = render_user_id(userId)
+
+	command = [ "user", "show", userId ]
+
+	result = samba_tool(command)
+	if result.returncode == 0:
+		# The user exists ... so at worst reset the password...
+
+		if KEY_RESET_PASSWORD in userData:
+			resetPassword = to_boolean(userData[KEY_RESET_PASSWORD], RESET_PASSWORD)
+		else:
+			resetPassword = RESET_PASSWORD
+
+		if resetPassword:
+			set_user_password(userId, userData)
+
+		# Maybe also apply admin rights
+		grant_ldap_admin_rights(userId, userData)
+
+		return None
+
+	# Create the new user
+	logging.info(f"Creating user '{userId}' from [{userData}]")
+	command = [ "user", "add", userId, "--random-password" ]
+
+	if USER_OU:
+		command += [ f"--userou={USER_OU}" ]
+
+	for attName, attFlag in USER_ATTRIBUTES.items():
+		if attFlag is None:
+			attFlag = attName
+		if (attName in userData) and userData[attName]:
+			command += [ f"--{attFlag}={userData[attName]}" ]
+
+	usernameAsCn = USERNAME_AS_CN
+	if KEY_USERNAME_AS_CN in userData:
+		usernameAsCn = to_boolean(userData[KEY_USERNAME_AS_CN], USERNAME_AS_CN)
+
+	if usernameAsCn:
+		logging.info("\t...with the username as the CN value")
+		command += [ "--use-username-as-cn" ]
+
+	result = samba_tool(command)
+	if result.returncode != 0:
+		fail(f"Failed to create the user '{userId}': {result}")
+
+	set_user_password(userId, userData)
+
+	grant_ldap_admin_rights(userId, userData)
+	return userId
+
+def grant_ldap_admin_rights(principalId, principalData):
+
+	# If appropriate, apply the admin permissions
+	administrator = False
+	if KEY_ADMINISTRATOR in principalData:
+		administrator = to_boolean(principalData[KEY_ADMINISTRATOR])
+
+	if not administrator:
+		return False
+
+	branches = {}
+	for n in [ USER_OU_FULL, GROUP_OU_FULL ]:
+		if n:
+			branches[n] = True
+
+	# If there are no branches to grant permissions on, don't
+	# even bother with the rest of the work... just say you did
+	# something ... b/c you would have
+	if not branches:
+		return True
+
+	# Get the sid:
+	result = run_command([EXE_NET, "sam", "show", f"{DOMAIN_REALM}\\{principalId}"])
+	if result.returncode != 0:
+		fail(f"Failed to get the SID for LDAP administrator {principalId}")
+
+	output = result.stdout.decode("utf-8")
+	if DEBUG:
+		# Render a placeholder SID so we can view the command being rendered
+		sid = "S-X-X-XX-XXXXXXXXXX-XXXXXXXXXX-XXXXXXXXXX-XXXX"
+	else:
+		m = SID_RE.match(output)
+		if not m:
+			fail(f"Unrecognized net command output looking for {principalId}'s SID: [{output}]")
+
+		# The SID is the last string that contains no spaces
+		sid = m.group(1)
+
+	for dn in branches.keys():
+		result = samba_tool(["dsacl", "set", "--action=allow", f"--sddl=(A;OICI;GA;;;{sid})", f"--objectdn={dn}"])
+		if result.returncode != 0:
+			output = result.stdout.decode("utf-8")
+			fail(f"Failed to set LDAP administrative permissions for {principalId} on branch {dn}:\n{output}")
+		logging.info(f"\tGranted administrative priviliges to '{principalId}' on branch [{dn}]")
+
+	return True
+
+def split_csv_values(values):
+	if not values:
+		return []
+
+	if (type(values) != list) and (type(values) != set):
+		# Split values by comma, supporting escaped commas
+		values = DN_SPLIT_RE.split(str(values))
+
+	return set(filter(None, values))
+
+def compile_memberships(memberships, memberId, memberData):
+	# No group memberships given
+	if KEY_GROUPS not in memberData:
+		return
+
+	groups = split_csv_values(memberData[KEY_GROUPS])
+	if not groups:
+		return
+
+	for groupId in groups:
+		groupId = render_group_id(groupId)
+		if groupId not in memberships:
+			memberships[groupId] = set()
+		memberships[groupId].add(memberId)
+
+def create_group(groupId, groupData):
+	# Render the final group ID, applying prefixes and all that jazz
+	groupId = render_group_id(groupId)
+
+	if groupId.startswith("+"):
+		logging.info(f"The group ID [{groupId}] is not owned by ArkCase, skipping its creation")
+		return None
+
+	# First: check to see if the group exists...
+	command = [ "group", "show", groupId ]
+
+	result = samba_tool(command)
+	if result.returncode == 0:
+		return groupId
+
+	logging.info(f"Creating group '{groupId}' from [{groupData}]")
+	command = [ "group", "add", groupId ]
+
+	if GROUP_OU:
+		command += [ f"--groupou={GROUP_OU}" ]
+
+	for attName, attFlag in GROUP_ATTRIBUTES.items():
+		if attFlag is None:
+			attFlag = attName
+		if (attName in groupData) and groupData[attName]:
+			command += [ f"--{attFlag}={groupData[attName]}" ]
+
+	result = samba_tool(command)
+	if result.returncode != 0:
+		fail(f"Failed to create the group '{groupId}': {result}")
+
+	grant_ldap_admin_rights(groupId, groupData)
+	return groupId
+
+def apply_memberships(groupId, members):
+	if not members:
+		return
+
+	command = [ "group", "listmembers", groupId ]
+
+	result = samba_tool(command)
+	if result.returncode != 0:
+		fail(f"Failed to list the members for group {groupId}: {result}")
+
+	# We have the list of members in stdout, so turn it into a list
+	current_members = split_csv_values(result.stdout.decode("UTF-8").splitlines())
+	if current_members:
+		# Remove potentially duplicate members
+		members = members.difference(current_members)
+
+		# If there are no new members to add, ignore it
+		if not members:
+			return
+
+	logging.info(f"Applying group memberships for '{groupId}' = {members}")
+	command = [ "group", "addmembers", groupId, ",".join(sorted(members)) ]
+
+	result = samba_tool(command)
+	if result.returncode != 0:
+		fail(f"Failed to apply the memberships for group '{groupId}': {result}")
+
+serverInfo = {}
+if KEY_SERVER_INFO in data:
+	serverInfo = data[KEY_SERVER_INFO]
+	if type(serverInfo) != dict:
+		serverInfo = {}
+
+DEBUG = to_boolean(get_config_value(serverInfo, KEY_DEBUG, args, "debug", ENV_DEBUG), False)
+
+EXPIRATION_DAYS = get_config_value(serverInfo, KEY_EXPIRATION_DAYS, args, "expiration_days", None)
+if EXPIRATION_DAYS is not None:
+	try:
+		EXPIRATION_DAYS = int(EXPIRATION_DAYS)
+	except:
+		fail(f"The configuration value [{EXPIRATION_DAYS}] is not a valid integer - cannot proceeed")
+
+DEFAULT_PASSWORD = get_config_value(serverInfo, KEY_DEFAULT_PASSWORD, args, "default_password", None)
+if not DEFAULT_PASSWORD:
+	DEFAULT_PASSWORD = None
+
+LDAP_URL = get_config_value(None, None, args, "ldap_url", ENV_LDAP_URL)
+if not LDAP_URL:
+	LDAP_URL = None
+
+LDAP_ADMIN_USER = get_config_value(None, None, args, "ldap_admin_user", ENV_LDAP_ADMIN_USER)
+if LDAP_ADMIN_USER:
+	LDAP_ADMIN_PASS = get_config_value(None, None, args, "ldap_admin_password", ENV_LDAP_ADMIN_PASS)
+	if not LDAP_ADMIN_PASS:
+		fail(f"Must provide a password to authenticate the user {LDAP_ADMIN_USER} with")
+else:
+	LDAP_ADMIN_USER = None
+	LDAP_ADMIN_PASS = None
+
+# Deduce the actual base DN removing the root DN from the end
+DOMAIN_REALM = get_config_value(serverInfo, KEY_REALM, args, "ldap_realm", ENV_LDAP_REALM)
+
+DOMAIN_ROOT_DN = get_config_value(serverInfo, KEY_ROOT_DN, args, "ldap_root_dn", ENV_LDAP_ROOT_DN)
+if not DOMAIN_ROOT_DN:
+	fail(f"Must provide the root DN for the LDAP tree")
+
+DOMAIN_BASE_DN = get_config_value(serverInfo, KEY_BASE_DN, args, "ldap_base_dn", ENV_LDAP_BASE_DN)
+if DOMAIN_BASE_DN:
+	if DOMAIN_BASE_DN.endswith(DOMAIN_ROOT_DN):
+		if DOMAIN_BASE_DN == DOMAIN_ROOT_DN:
+			# If they're the same, then set it as empty ...
+			DOMAIN_BASE_DN = ""
+		else:
+			# Remove the root DN from the base DN
+			DOMAIN_BASE_DN = DOMAIN_BASE_DN.replace(f",{DOMAIN_ROOT_DN}", "")
+
+USER_OU = get_config_value(serverInfo, KEY_USER_OU, args, "ldap_user_ou", ENV_LDAP_USER_OU)
+if USER_OU:
+	if DOMAIN_BASE_DN:
+		USER_OU += f",{DOMAIN_BASE_DN}"
+	USER_OU_FULL = f"{USER_OU},{DOMAIN_ROOT_DN}"
+	logging.info(f"User OU: {USER_OU_FULL}")
+else:
+	USER_OU = None
+	USER_OU_FULL = None
+
+USER_PREFIX = ""
+v = get_config_value(serverInfo, KEY_USER_PREFIX, args, "ldap_user_prefix", ENV_LDAP_USER_PREFIX)
+if v and (not (v.endswith("."))):
+	USER_PREFIX = f"{v}."
+
+GROUP_OU = get_config_value(serverInfo, KEY_GROUP_OU, args, "ldap_group_ou", ENV_LDAP_GROUP_OU)
+if GROUP_OU:
+	if DOMAIN_BASE_DN:
+		GROUP_OU += f",{DOMAIN_BASE_DN}"
+	GROUP_OU_FULL = f"{GROUP_OU},{DOMAIN_ROOT_DN}"
+	logging.info(f"Group OU: {GROUP_OU_FULL}")
+else:
+	GROUP_OU = None
+	GROUP_OU_FULL = None
+
+GROUP_PREFIX = ""
+v = get_config_value(serverInfo, KEY_GROUP_PREFIX, args, "ldap_group_prefix", ENV_LDAP_GROUP_PREFIX)
+if v and (not (v.endswith("."))):
+	GROUP_PREFIX = f"{v}."
+
+try:
+	USERNAME_AS_CN = to_boolean(serverInfo[KEY_USERNAME_AS_CN], DEFAULT_USERNAME_AS_CN)
+except KeyError:
+	USERNAME_AS_CN = DEFAULT_USERNAME_AS_CN
+
+if USERNAME_AS_CN:
+	logging.info("Will use the username as the CN value, unless overridden by individual users")
+
+RESET_PASSWORD = DEFAULT_RESET_PASSWORD
+try:
+	RESET_PASSWORD = to_boolean(serverInfo[KEY_RESET_PASSWORD], DEFAULT_RESET_PASSWORD)
+except KeyError:
+	# Leave it on the default value
+	pass
+
+if RESET_PASSWORD:
+	logging.info("Will reset the user passwords, unless overridden by individual users")
+
+
+try:
+	memberships = {}
+
+	# 0) Ensure both OUs exist, since they may need to be used for granting
+	# admin access
+	if GROUP_OU:
+		ensure_ou_exists(GROUP_OU)
+
+	if USER_OU:
+		ensure_ou_exists(USER_OU)
+
+	# 1) create the groups
+	if KEY_GROUPS in data:
+		groups = data[KEY_GROUPS]
+		if type(groups) == dict:
+			for groupId, groupData in groups.items():
+				groupId = create_group(groupId, groupData)
+				if groupId is not None:
+					memberships[groupId] = set()
+					compile_memberships(memberships, groupId, groupData)
+		else:
+			logging.error(f"The '{KEY_GROUPS}' item in the configuration data is not a map, skipping its processing")
+
+	# 2) create users
+	if KEY_USERS in data:
+		users = data[KEY_USERS]
+		if type(users) == dict:
+			for userId, userData in users.items():
+				userId = create_user(userId, userData)
+				if userId is not None:
+					compile_memberships(memberships, userId, userData)
+		else:
+			logging.error(f"The '{KEY_USERS}' item in the configuration data is not a map, skipping its processing")
+
+	# 3) apply the memberships
+	for groupId, members in memberships.items():
+		apply_memberships(groupId, set(filter(None, members)))
+
+	# Done!
+	sys.exit(0)
+except KeyboardInterrupt:
+	logging.info("INTERRUPTED!")
+	os._exit(1)

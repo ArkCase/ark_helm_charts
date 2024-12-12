@@ -1,23 +1,16 @@
 server:
-  # url: ldaps://crapola
-  # adminUser: jsadfl;asdl;fuysa;ldfu
-  # adminPass: "$!@!@$!@$!@$"
   # userPrefix: 123
   # groupPrefix: 968
   # defaultPassword: "34"
   # usernameAsCn: true
   expirationDays: 0
 
-  # The Base DN within which all data for this seed will be rendered
-  baseDn: "ou=ArkCase"
-
-  # The OU within which to create the users. If not given, the default
-  # will be used (cn=Users)
-  userou: "ou=Users"
-
-  # The OU within which to create the users. If not given, the default
-  # will be used (cn=Users)
-  groupou: "ou=Groups"
+  domain: "@env:ARKCASE_DOMAIN"
+  realm: "@env:ARKCASE_REALM"
+  rootDn: "@env:ARKCASE_ROOT_DN"
+  baseDn: "@env:ARKCASE_BASE_DN"
+  userou: "@env:ARKCASE_USER_BASE_DN"
+  groupou: "@env:ARKCASE_GROUP_BASE_DN"
 
 # NOTE: for group memberships, groups prefixed with "+" reference
 # groups that already exist in AD, and thus won't have any prefixes
