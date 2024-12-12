@@ -121,7 +121,7 @@ install_report()
 		say "Extracting the reports from [${SRC_FILE}]..."
 
 		# Create the work directory ... we do this here so we can track it
-		WORK="$(readlink -f "$(mktemp -td "tmp.reports.${SRC_FILE//\//_}.XXXXXX")")"
+		WORK="$(readlink -f "$(mktemp -td "tmp.reports.${SRC_FILE//\//_}.XXXXXXXX")")"
 
 		# Track it for cleanup
 		WORKDIRS+=("${WORK}")
