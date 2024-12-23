@@ -1,4 +1,4 @@
-{{- define "arkcase.portal" -}}
+{{- define "__arkcase.portal.compute" -}}
   {{- $ctx := $ -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "The single parameter must be the root context ($ or .)" -}}
@@ -45,14 +45,6 @@
   {{- if $portal.enabled -}}
 
     {{- /* We want a portal, so enable it and figure out the rest of the configurations */ -}}
-
-    {{- /* LDAP configuration */ -}}
-    {{- /* constant value, no longer configurable */ -}}
-    {{- $ldapServer := "foia" -}}
-
-    {{- $ldapDomain := (include "arkcase.ldap" (dict "ctx" $ "server" $ldapServer "value" "domain")) -}}
-    {{- $ldapUserPrefix := (include "arkcase.ldap" (dict "ctx" $ "server" $ldapServer "value" "search.user.prefix") | default "") -}}
-    {{- $ldapGroupPrefix := (include "arkcase.ldap" (dict "ctx" $ "server" $ldapServer "value" "search.groups.prefix") | default "") -}}
 
     {{- $generateUsers := (not (empty (include "arkcase.toBoolean" $portal.generateUsers))) -}}
     {{- $disableAuth := (not (empty (include "arkcase.toBoolean" $portal.disableAuth))) -}}
@@ -118,15 +110,17 @@
         "disableAuth" $disableAuth
         "generateUsers" $generateUsers
         "portalId" $portalId
-        "ldap" (
-          dict
-            "server" $ldapServer
-            "userPrefix" $ldapUserPrefix
-            "groupPrefix" $ldapGroupPrefix
-            "domain" $ldapDomain
-          )
         "notificationGroups" $notificationGroups
     -}}
   {{- end -}}
   {{- $result | toYaml -}}
+{{- end -}}
+
+{{- define "arkcase.portal" -}}
+  {{- $args :=
+    dict
+      "ctx" $
+      "template" "__arkcase.portal.compute"
+  -}}
+  {{- include "__arkcase.tools.getCachedValue" $args -}}
 {{- end -}}

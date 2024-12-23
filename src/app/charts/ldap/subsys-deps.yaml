@@ -1,0 +1,74 @@
+network:
+  enabled: true
+  template:
+    mode: any
+    initialDelay: 10
+    delay: 10
+    timeout: 10
+    attempts: 60
+  mode: all
+  dependencies:
+    acme:
+      url: "@env:ACME_URL"
+
+settings:
+  # We specifically don't consume from ACME b/c those are handled directly
+  # by the ACME templates, and there's no need to address them beyond that
+  # acme: {}
+  $self:
+    admin:
+      username: MANAGED_DOMAIN_USERNAME
+      password: MANAGED_DOMAIN_PASSWORD
+    main:
+      username: MANAGED_LDAP_ARKCASE_USERNAME
+      password: MANAGED_LDAP_ARKCASE_PASSWORD
+      domain: ARKCASE_DOMAIN
+      realm: ARKCASE_REALM
+      rootDn: ARKCASE_ROOT_DN
+      baseDn: ARKCASE_BASE_DN
+      userBaseDn: ARKCASE_USER_BASE_DN
+      groupBaseDn: ARKCASE_GROUP_BASE_DN
+    portal:
+      username: MANAGED_LDAP_PORTAL_USERNAME
+      password: MANAGED_LDAP_PORTAL_PASSWORD
+      domain: PORTAL_DOMAIN
+      realm: PORTAL_REALM
+      rootDn: PORTAL_ROOT_DN
+      baseDn: PORTAL_BASE_DN
+      userBaseDn: PORTAL_USER_BASE_DN
+      groupBaseDn: PORTAL_GROUP_BASE_DN
+  reports:
+    main:
+      username: MANAGED_REPORTS_USERNAME
+      password: MANAGED_REPORTS_PASSWORD
+    admin:
+      username: MANAGED_REPORTS_ADMIN_USERNAME
+      password: MANAGED_REPORTS_ADMIN_PASSWORD
+      group:
+        env:
+          name: MANAGED_REPORTS_ADMIN_GROUPS
+          optional: true
+  content:
+    main:
+      username: MANAGED_CONTENT_USERNAME
+      password: MANAGED_CONTENT_PASSWORD
+    admin:
+      username: MANAGED_CONTENT_ADMIN_USERNAME
+      password: MANAGED_CONTENT_ADMIN_PASSWORD
+      group:
+        env:
+          name: MANAGED_CONTENT_ADMIN_GROUPS
+          optional: true
+  core:
+    main-admin:
+      username: MANAGED_ARKCASE_ADMIN_USERNAME
+      password: MANAGED_ARKCASE_ADMIN_PASSWORD
+      group: MANAGED_ARKCASE_ADMIN_GROUPS
+    portal-admin:
+      username: MANAGED_PORTAL_ADMIN_USERNAME
+      password: MANAGED_PORTAL_ADMIN_PASSWORD
+      group: MANAGED_PORTAL_ADMIN_GROUPS
+    reports:
+      username: MANAGED_ARKCASE_REPORTS_USERNAME
+      password: MANAGED_ARKCASE_REPORTS_PASSWORD
+      group: MANAGED_ARKCASE_REPORTS_GROUPS

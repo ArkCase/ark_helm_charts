@@ -2,6 +2,7 @@
 {{- $namespace := .Release.Namespace -}}
 {{- $pvcs := lookup "v1" "PersistentVolumeClaim" $namespace "" -}}
 {{- $scripts := (.Files.Glob "scripts/*") -}}
+{{- $hostNetwork := (not (empty (include "arkcase.toBoolean" .Values.hostNetwork))) -}}
 {{- $externalDnsName := (.Values.externalDns).name | default "" -}}
 {{- $externalDnsAnnotation := (.Values.externalDns).annotation | default "external-dns.alpha.kubernetes.io/hostname" -}}
 {{- $pvcs = ((empty $pvcs) | ternary list ($pvcs.items | default list) ) -}}
@@ -155,6 +156,7 @@ spec:
       labels: {{- include "arkcase.labels.service" $ | nindent 8 }}
     spec:
       {{- include "arkcase.image.pullSecrets" $ | nindent 6 }}
+      hostNetwork: {{ $hostNetwork }}
       containers:
         - name: {{ $clone | ternary "clone" "rsyncd" | quote }}
           {{- include "arkcase.image" $ | nindent 10 }}

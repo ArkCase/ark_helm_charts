@@ -1,0 +1,88 @@
+#!/bin/bash
+
+set -euo pipefail
+. /.functions
+
+is_http_success()
+{
+	local HTTP_CODE="${1}"
+	[ ${HTTP_CODE} -ge 200 ] && [ ${HTTP_CODE} -le 299 ] && return 0
+	return 1
+}
+
+run_curl()
+{
+	local ENDPOINT="${1}"
+	local METHOD="${2:-""}"
+	local POST_FILE="${3:-""}"
+	local CODE_ONLY="${4:-"true"}"
+
+	local HEADERS=()
+	if [ -n "${POST_FILE}" ] ; then
+		METHOD="POST"
+		POST_FILE=(--data-binary "@${POST_FILE}")
+		HEADERS=(--header "Content-Type: application/json")
+	else
+		POST_FILE=()
+	fi
+
+	if [ -n "${METHOD}" ] ; then
+		METHOD=(--request "${METHOD^^}")
+	else
+		METHOD=()
+	fi
+
+	OUTPUT=()
+	case "${CODE_ONLY,,}" in
+		true | t | 1 | yes | y | enabled | enable | en )
+			CODE_ONLY="true"
+			OUTPUT=(-o /dev/null -w "%{http_code}")
+			;;
+		* )
+			CODE_ONLY="false"
+			OUTPUT=(--fail)
+			;;
+	esac
+
+	local RC=0
+	local HTTP_CODE="$(curl -sSL \
+		--disallow-username-in-url \
+		--config <(echo -n "--user \"${ADMIN_USERNAME}:${ADMIN_PASSWORD}\"") \
+		"${OUTPUT[@]}" \
+		"${METHOD[@]}" \
+		"${HEADERS[@]}" \
+		"${POST_FILE[@]}" \
+		"${PENTAHO_URL}${ENDPOINT}")" || RC=${?}
+
+	if ${CODE_ONLY} ; then
+		# If it's a 200 code, then return 0
+		is_http_success "${HTTP_CODE}" && return 0
+
+		# Else, echo out the code, and return
+		echo -n "${HTTP_CODE}"
+		return 1
+	else
+		echo "${HTTP_CODE}"
+		return ${RC}
+	fi
+}
+
+usage()
+{
+	echo -e "usage: ${BASH_SOURCE:-${0}} dataSourceName"
+	exit 1
+}
+
+[ ${#} -eq 1 ] || usage
+
+DATASOURCE_NAME="${1}"
+
+set_or_default PENTAHO_URL "https://localhost:8443/pentaho"
+set_or_default ADMIN_USERNAME "admin"
+set_or_default ADMIN_PASSWORD "password"
+
+run_curl "/plugin/data-access/api/datasource/jdbc/connection" "" "" "false" | \
+	jq -r '.Item[]["$"]' | \
+	grep -q "^${DATASOURCE_NAME}$"
+
+exit ${?}

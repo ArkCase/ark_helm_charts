@@ -1,0 +1,34 @@
+network:
+  enabled: true
+  template:
+    mode: any
+    initialDelay: 10
+    delay: 10
+    timeout: 10
+    attempts: 60
+  mode: all
+  dependencies:
+    acme:
+      url: "@env:ACME_URL"
+    # TODO: This should be cleaner, but is good enough for now
+    zookeeper:
+      clusterOnly: true
+      port: 2181
+
+settings:
+  # We specifically don't consume from ACME b/c those are handled directly
+  # by the ACME templates, and there's no need to address them beyond that
+  # acme: {}
+  #
+  # We specifically don't consume from ZooKeeper b/c those are handled directly
+  # by the Clustering templates, and there's no need to address them beyond that
+  # zookeeper: {}
+
+  $self:
+    admin:
+      username: ARTEMIS_ADMIN_USERNAME
+      password: ARTEMIS_ADMIN_PASSWORD
+      roles: ARTEMIS_ADMIN_ROLES
+    cluster:
+      password: ARTEMIS_CLUSTER_PASSWORD
+      encryption: ARTEMIS_ENCRYPTION_PASSWORD
