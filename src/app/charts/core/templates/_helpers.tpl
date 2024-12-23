@@ -708,7 +708,7 @@
 
         {{- /* Now, analyze the value */ -}}
         {{- $v := (get $value $k) -}}
-        {{- else if (kindIs "map" $v) -}}
+        {{- if (kindIs "map" $v) -}}
           {{- /* validate the map's structure */ -}}
           {{- $enabled := (or (not (hasKey $v "enabled")) (not (empty (include "arkcase.toBoolean" $v.enabled)))) -}}
           {{- $optional = (not (empty (include "arkcase.toBoolean" $v.optional))) -}}
@@ -734,7 +734,7 @@
           {{- end -}}
           {{- $name = (include "arkcase.tools.hostnamePart" (get $d "name" | default "" | toString)) | required (printf "The name [%s] (from global.env.value.%s.%s.name) is not a valid %s name" $name $k $type $type) -}}
 
-          {{- $key = (hasKey $d "key" | ternary (get $d "key" | default "" | toString) $key) -}}
+          {{- $key = ((hasKey $d "key") | ternary (get $d "key" | default "" | toString) $key) -}}
           {{- if not (regexMatch "^[a-zA-Z0-9._-]+$" $key) -}}
             {{- fail (printf "The key [%s] (from global.env.value.%s.%s.key) is not a valid %s key" $key $k $type $type) -}}
           {{- end -}}
@@ -747,7 +747,7 @@
           {{- fail (printf "The global.env.value.%s value may not be of type %s" $k (kindOf $v)) -}}
         {{- else -}}
           {{- /* Make sure we ALWAYS have a string */ -}}
-          {{- v = ((eq $v nil) | ternary "" ($v | toString)) -}}
+          {{- $v = ((eq $v nil) | ternary "" ($v | toString)) -}}
 
           {{- /* If it's a secret:// or configMap:// element, parse and validate */ -}}
           {{- if or (hasPrefix "secret://" $v) (hasPrefix "configMap://" $v) -}}
