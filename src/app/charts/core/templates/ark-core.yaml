@@ -293,6 +293,12 @@ spec:
               value: "$(JAVA_KEYSTORE)"
             - name: JAVA_TRUSTSTORE_TYPE
               value: "$(JAVA_KEYSTORE_TYPE)"
+            {{- if $portal }}
+            - name: PORTAL_HOME_DIR
+              value: &portalHomeDir "/app/home"
+            - name: PORTAL_FILE_DIR
+              value: "files"
+            {{- end }}
             {{- if $dev }}
             - name: DEVELOPMENT
               value: "true"
@@ -350,7 +356,7 @@ spec:
             - name: *fsrvVol
               mountPath: *fsrvDir
             - name: *portalVol
-              mountPath: "/app/home/.external-portal-api"
+              mountPath: *portalHomeDir
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/acm/acm-config-server-repo/lookups/lookups-server.yaml") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/tomcat/webapps/arkcase#external-portal/WEB-INF/classes/bootstrap.yaml") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/acm/acm-config-server-repo/arkcase-portal-server.yaml") | nindent 12 }}
@@ -479,7 +485,7 @@ spec:
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "home") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "logs") | nindent 8 }}
         {{- if $portal }}
-          {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "prtl") | nindent 8 }}
+          {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "prtl") | nindent 8 }}
           {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "fsrv") | nindent 8 }}
         {{- end }}
         {{- include "arkcase.core.sso.saml.idpMetadata.volume" $ | nindent 8 }}
@@ -489,11 +495,17 @@ spec:
     {{- end }}
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "home") | nindent 4 }}
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "logs") | nindent 4 }}
+    {{- if $portal }}
+      {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "prtl") | nindent 4 }}
+    {{- end }}
 
   {{- if or (not $dev.conf) $dev.conf.file }}
   {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "conf") | nindent 0 }}
   {{- end }}
   {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "home") | nindent 0 }}
   {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "logs") | nindent 0 }}
+  {{- if $portal }}
+    {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "prtl") | nindent 0 }}
+  {{- end }}
 
 {{- end -}}
