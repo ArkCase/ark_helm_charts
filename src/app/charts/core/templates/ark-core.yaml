@@ -295,7 +295,7 @@ spec:
               value: "$(JAVA_KEYSTORE_TYPE)"
             {{- if $portal }}
             - name: PORTAL_HOME_DIR
-              value: &portalHomeDir "/app/portal"
+              value: *portalDir
             - name: PORTAL_FILE_DIR
               value: "files"
             {{- end }}
@@ -356,7 +356,7 @@ spec:
             - name: *fsrvVol
               mountPath: *fsrvDir
             - name: *portalVol
-              mountPath: *portalHomeDir
+              mountPath: *portalDir
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/acm/acm-config-server-repo/lookups/lookups-server.yaml") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/tomcat/webapps/arkcase#external-portal/WEB-INF/classes/bootstrap.yaml") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/acm/acm-config-server-repo/arkcase-portal-server.yaml") | nindent 12 }}
