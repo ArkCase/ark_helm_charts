@@ -295,7 +295,7 @@ spec:
               value: "$(JAVA_KEYSTORE_TYPE)"
             {{- if $portal }}
             - name: PORTAL_HOME_DIR
-              value: &portalHomeDir "/app/home"
+              value: &portalHomeDir "/app/portal"
             - name: PORTAL_FILE_DIR
               value: "files"
             {{- end }}
