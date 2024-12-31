@@ -1,0 +1,118 @@
+network:
+  enabled: true
+  template:
+    mode: any
+    initialDelay: 10
+    delay: 10
+    timeout: 10
+    attempts: 60
+  mode: all
+  dependencies:
+    acme:
+      url: "@env:ACME_URL"
+    app:
+      url: "@env:DEPL_URL"
+    db-arkcase:
+      host: "@env:REPORTS_JDBC_ARKCASE_HOST"
+      port: "@env:REPORTS_JDBC_ARKCASE_PORT"
+    db-hibernate:
+      host: "@env:REPORTS_JDBC_HIBERNATE_HOST"
+      port: "@env:REPORTS_JDBC_HIBERNATE_PORT"
+    db-jcr:
+      host: "@env:REPORTS_JDBC_JACKRABBIT_HOST"
+      port: "@env:REPORTS_JDBC_JACKRABBIT_PORT"
+    db-quartz:
+      host: "@env:REPORTS_JDBC_QUARTZ_HOST"
+      port: "@env:REPORTS_JDBC_QUARTZ_PORT"
+    ldap:
+      url: "@env:REPORTS_LDAP_URL"
+    zookeeper:
+      clusterOnly: true
+      port: 2181
+
+settings:
+  # We specifically don't consume from ACME b/c those are handled directly
+  # by the ACME templates, and there's no need to address them beyond that
+  # acme: {}
+  #
+  # We specifically don't consume from ZooKeeper b/c those are handled directly
+  # by the Clustering templates, and there's no need to address them beyond that
+  # zookeeper: {}
+  $self:
+    main:
+      url: PENTAHO_SERVER_URL
+      username: PENTAHO_USERNAME
+      password: PENTAHO_PASSWORD
+    admin:
+      url: PENTAHO_SERVER_ADMIN_URL
+      username: ADMIN_USERNAME
+      password: ADMIN_PASSWORD
+      group: PENTAHO_ADMIN_GROUP
+
+  app:
+    main:
+      url: DEPL_URL
+
+  core:
+    # TODO: Investigate if we can use a non-administrative user here
+    reports:
+      url: ARKCASE_SERVER_URL
+      username: ARKCASE_USERNAME
+      password: ARKCASE_PASSWORD
+
+  ldap:
+    main:
+      url: REPORTS_LDAP_URL
+      domain: REPORTS_LDAP_DOMAIN
+      realm: REPORTS_LDAP_REALM
+      username: REPORTS_LDAP_USERNAME
+      password: REPORTS_LDAP_PASSWORD
+      rootDn: REPORTS_LDAP_ROOT_DN
+      baseDn: REPORTS_LDAP_BASE_DN
+      userBaseDn: REPORTS_LDAP_USER_BASE_DN
+      userListFilter: REPORTS_LDAP_USER_LIST_FILTER
+      userSearchFilter: REPORTS_LDAP_USER_SEARCH_FILTER
+      userNameAttribute: REPORTS_LDAP_USER_NAME_ATTRIBUTE
+      groupBaseDn: REPORTS_LDAP_GROUP_BASE_DN
+      groupListFilter: REPORTS_LDAP_GROUP_LIST_FILTER
+      groupRecursiveMembershipFilter: REPORTS_LDAP_GROUP_SEARCH_FILTER
+      groupNameAttribute: REPORTS_LDAP_GROUP_NAME_ATTRIBUTE
+
+  rdbms:
+    arkcase:
+      endpoint: REPORTS_JDBC_ARKCASE_HOST
+      port: REPORTS_JDBC_ARKCASE_PORT
+      username: REPORTS_JDBC_ARKCASE_USERNAME
+      password: REPORTS_JDBC_ARKCASE_PASSWORD
+      database: REPORTS_JDBC_ARKCASE_DATABASE
+      # schema:   REPORTS_JDBC_ARKCASE_SCHEMA
+      # instance:   REPORTS_JDBC_ARKCASE_INSTANCE
+
+    pentaho:
+      endpoint: REPORTS_JDBC_HIBERNATE_HOST
+      port: REPORTS_JDBC_HIBERNATE_PORT
+      username: REPORTS_JDBC_HIBERNATE_USERNAME
+      password: REPORTS_JDBC_HIBERNATE_PASSWORD
+      database: REPORTS_JDBC_HIBERNATE_DATABASE
+      # schema:   REPORTS_JDBC_HIBERNATE_SCHEMA
+      # instance:   REPORTS_JDBC_HIBERNATE_INSTANCE
+
+    # Eventually this should be "pentaho-jcr"
+    jcr:
+      endpoint: REPORTS_JDBC_JACKRABBIT_HOST
+      port: REPORTS_JDBC_JACKRABBIT_PORT
+      username: REPORTS_JDBC_JACKRABBIT_USERNAME
+      password: REPORTS_JDBC_JACKRABBIT_PASSWORD
+      database: REPORTS_JDBC_JACKRABBIT_DATABASE
+      # schema:   REPORTS_JDBC_JACKRABBIT_SCHEMA
+      # instance:   REPORTS_JDBC_JACKRABBIT_INSTANCE
+
+    # Eventually this should be "pentaho-quartz"
+    quartz:
+      endpoint: REPORTS_JDBC_QUARTZ_HOST
+      port: REPORTS_JDBC_QUARTZ_PORT
+      username: REPORTS_JDBC_QUARTZ_USERNAME
+      password: REPORTS_JDBC_QUARTZ_PASSWORD
+      database: REPORTS_JDBC_QUARTZ_DATABASE
+      # schema:   REPORTS_JDBC_QUARTZ_SCHEMA
+      # instance:   REPORTS_JDBC_QUARTZ_INSTANCE

@@ -218,7 +218,7 @@
   {{ $result | toYaml -}}
 {{- end -}}
 
-{{- define "arkcase.resources.compute" -}}
+{{- define "__arkcase.resources.compute" -}}
   {{- $ctx := $ -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "The parameter given must be the root context (. or $)" -}}
@@ -309,31 +309,13 @@
   {{- $result | toYaml -}}
 {{- end -}}
 
-{{- define "arkcase.resources.cached" -}}
-  {{- $ctx := $ -}}
-  {{- if not (include "arkcase.isRootContext" $ctx) -}}
-    {{- fail "The parameter given must be the root context (. or $)" -}}
-  {{- end -}}
-
-  {{- $cacheKey := "ArkCase-Resources" -}}
-  {{- $masterCache := dict -}}
-  {{- if (hasKey $ctx $cacheKey) -}}
-    {{- $masterCache = get $ctx $cacheKey -}}
-    {{- if and $masterCache (not (kindIs "map" $masterCache)) -}}
-      {{- $masterCache = dict -}}
-    {{- end -}}
-  {{- end -}}
-  {{- $ctx = set $ctx $cacheKey $masterCache -}}
-
-  {{- $masterKey := $ctx.Release.Name -}}
-  {{- $yamlResult := dict -}}
-  {{- if not (hasKey $masterCache $masterKey) -}}
-    {{- $yamlResult = (include "arkcase.resources.compute" $ctx) -}}
-    {{- $masterCache = set $masterCache $masterKey ($yamlResult | fromYaml) -}}
-  {{- else -}}
-    {{- $yamlResult = get $masterCache $masterKey | toYaml -}}
-  {{- end -}}
-  {{- $yamlResult -}}
+{{- define "__arkcase.resources.cached" -}}
+  {{- $args :=
+    dict
+      "ctx" $
+      "template" "__arkcase.resources.compute"
+  -}}
+  {{- include "__arkcase.tools.getCachedValue" $args -}}
 {{- end -}}
 
 {{- define "arkcase.resources" -}}
@@ -351,7 +333,7 @@
     {{- $part = (include "arkcase.part.name" $ctx | default "common") -}}
   {{- end -}}
 
-  {{- $resources := (include "arkcase.resources.cached" $ctx | fromYaml) -}}
+  {{- $resources := (include "__arkcase.resources.cached" $ctx | fromYaml) -}}
   {{- if (not (hasKey $resources $part)) -}}
     {{- $part = "common" -}}
   {{- end -}}

@@ -50,25 +50,31 @@ spec:
         - name: artifacts
           {{- include "arkcase.app.image.artifacts" (dict "ctx" $ "name" "artifacts" "useChartTag" true) | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
-          {{- include "arkcase.acme.env" $ | nindent 12 }}
-          {{- if or $customConfFile $customWarFile }}
+            {{- include "arkcase.acme.env" $ | nindent 12 }}
+            {{- if or $customConfFile $customWarFile }}
             - name: FORCE_HASHES
               value: "true"
-          {{- end }}
+            {{- end }}
           volumeMounts:
-          {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
-          {{- if $customConfFile }}
+            {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
+            # These 3 are workarounds until we arrive at 2023.02.05, which includes
+            # the implementation for ADS-2378 ... when that becomes the norm, these
+            # mounts can be removed.
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/file/arkcase/exts/ads-2378-workaround.zip") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/file/arkcase/exts/ads-2378-workaround.zip.ver") | nindent 12 }}
+            {{- if $customConfFile }}
             - name: &confFileVolume "conf-file"
               mountPath: "/app/file/arkcase/conf/00-base.zip"
-          {{- end }}
-          {{- if $customWarFile }}
+            {{- end }}
+            {{- if $customWarFile }}
             - name: &warFileVolume "war-file"
               mountPath: "/app/file/arkcase/wars/arkcase.war"
-          {{- end }}
+            {{- end }}
           {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
       volumes:
         {{- include "arkcase.acme.volume" $ | nindent 8 }}
+        {{- include "arkcase.file-resource.volumes" $ | nindent 8 }}
         {{- if $customConfFile }}
         - name: *confFileVolume
           hostPath:

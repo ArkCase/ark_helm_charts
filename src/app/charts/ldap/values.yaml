@@ -8,30 +8,13 @@
 #
 # This should group all application-specific configurations
 #
-configuration:
-  # The LDAP DNs will be computed from this
-  domain: "dev.arkcase.com"
-  password: "RaL@a5eio:heC3"
+# configuration: {}
 
 resources:
   development:
     limits: "1268Mi,0.4"
 
 platform: ""
-
-initDependencies:
-  enabled: true
-  template:
-    mode: any
-    initialDelay: 10
-    delay: 10
-    timeout: 10
-    attempts: 60
-  mode: all
-  dependencies:
-    acme:
-      ports:
-        - 9000
 
 image:
   # pullPolicy: IfNotPresent
