@@ -27,6 +27,8 @@ portal:
   {{- end }}
   userId: "${PORTAL_ADMIN_USERNAME}@${PORTAL_LDAP_DOMAIN}"
   password: "${PORTAL_ADMIN_PASSWORD}"
+  homeDir: "${PORTAL_HOME_DIR}"
+  fileDir: "${PORTAL_FILE_DIR}"
   # portal configuration type
   externalConfiguration: false
   authenticatedMode: {{ not $portal.disableAuth }}

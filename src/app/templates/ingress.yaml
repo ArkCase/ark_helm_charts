@@ -42,13 +42,15 @@
         {{- $secretData = $secretName -}}
       {{- else -}}
         {{- /* Render temporary TLS certificates */ -}}
-        {{- $cert := genSelfSignedCert (first $hostnames) (list "127.0.0.1") $hostnames 365 -}}
-        {{- $secretData = dict "crt" $cert.Cert "key" $cert.Key -}}
+        {{- /* We don't have the APIs available to validate the existing cert, so just re-render it */ -}}
+        {{- $ca := genCA (printf "%s-%s-ingress-ca" $.Release.Namespace $.Release.Name) 365 -}}
+        {{- $cert := genSignedCert (first $hostnames) (list "127.0.0.1") $hostnames 365 $ca -}}
+        {{- $secretData = dict "crt" $cert.Cert "key" $cert.Key "ca" $ca.Cert -}}
       {{- end -}}
     {{- end -}}
 
-    {{- if (kindIs "string" $secretData) }}
-      {{- $secretName = $secretData }}
+    {{- if (kindIs "string" $secretData) -}}
+      {{- $secretName = $secretData -}}
     {{- else if (kindIs "map" $secretData) -}}
 ---
 apiVersion: v1
@@ -74,7 +76,7 @@ stringData:
         {{- end }}
       {{- end }}
     {{- else }}
-      {{- fail (printf "The ingress secret must either be a string or a map (is a %s)" (kindOf $secretData)) -}}
+      {{- fail (printf "The ingress secret must either be a string or a map (not a %s)" (kindOf $secretData)) -}}
     {{- end }}
 ---
 apiVersion: networking.k8s.io/v1
@@ -164,7 +166,7 @@ spec:
                 name: "content-main"
                 port:
                   number: 9000
-        {{- end -}}
+        {{- end }}
       {{- end }}
       {{- if or $dev $modules.entries.messaging }}
           - path: "/console"
@@ -197,5 +199,5 @@ spec:
   tls:
     - secretName: {{ $secretName | quote }}
       hosts: {{- $hostnames | toYaml | nindent 8 }}
-  {{- end }}
-{{- end }}
+  {{- end -}}
+{{- end -}}

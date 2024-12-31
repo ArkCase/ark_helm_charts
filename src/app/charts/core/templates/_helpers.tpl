@@ -708,23 +708,7 @@
 
         {{- /* Now, analyze the value */ -}}
         {{- $v := (get $value $k) -}}
-        {{- if (kindIs "string" $v) -}}
-          {{- /* If it's a secret:// or configMap:// element, parse and validate */ -}}
-          {{- if or (hasPrefix "secret://" $v) (hasPrefix "configMap://" $v) -}}
-            {{- /* Parse the shorthand */ -}}
-            {{- $data := (urlParse $v) -}}
-            {{- $type = $data.scheme -}}
-            {{- $name = (include "arkcase.tools.hostnamePart" $data.host) | required (printf "The %s name is required in the shorthand syntax: %s" $type $v) -}}
-            {{- /* If the key is not present, we use the original value */ -}}
-            {{- $key = (include "arkcase.core.extra-env.parseKey" $data.path) | default $key -}}
-            {{- if not (regexMatch "^[a-zA-Z0-9._-]+$" $key) -}}
-              {{- fail (printf "The key [%s] (from global.env.value.%s = %s) is not a valid secret or configMap key" $key $k $v) -}}
-            {{- end -}}
-          {{- else -}}
-            {{- /* Add the literal value to the target secret's data */ -}}
-            {{- $stringData = set $stringData $k $v -}}
-          {{- end -}}
-        {{- else if (kindIs "map" $v) -}}
+        {{- if (kindIs "map" $v) -}}
           {{- /* validate the map's structure */ -}}
           {{- $enabled := (or (not (hasKey $v "enabled")) (not (empty (include "arkcase.toBoolean" $v.enabled)))) -}}
           {{- $optional = (not (empty (include "arkcase.toBoolean" $v.optional))) -}}
@@ -748,20 +732,38 @@
           {{- if (not (hasKey $d "name")) -}}
             {{- fail (printf "The value at global.env.value.%s.%s must contain the name of the %s to get the value from: %s" $k $type $type ($v | toYaml | nindent 0)) -}}
           {{- end -}}
-          {{- $name = (include "arkcase.tools.hostnamePart" (get $d "name")) | required (printf "The name [%s] (from global.env.value.%s.%s.name) is not a valid %s name" $name $k $type $type) -}}
+          {{- $name = (include "arkcase.tools.hostnamePart" (get $d "name" | default "" | toString)) | required (printf "The name [%s] (from global.env.value.%s.%s.name) is not a valid %s name" $name $k $type $type) -}}
 
-          {{- $key = (hasKey $d "key" | ternary (get $d "key") $key) -}}
+          {{- $key = ((hasKey $d "key") | ternary (get $d "key" | default "" | toString) $key) -}}
           {{- if not (regexMatch "^[a-zA-Z0-9._-]+$" $key) -}}
             {{- fail (printf "The key [%s] (from global.env.value.%s.%s.key) is not a valid %s key" $key $k $type $type) -}}
           {{- end -}}
-
 
           {{- if not $enabled -}}
             {{- /* Map is disabled, ignore it */ -}}
             {{- continue -}}
           {{- end -}}
-        {{- else -}}
+        {{- else if (kindIs "slice" $v) -}}
           {{- fail (printf "The global.env.value.%s value may not be of type %s" $k (kindOf $v)) -}}
+        {{- else -}}
+          {{- /* Make sure we ALWAYS have a string */ -}}
+          {{- $v = ((eq $v nil) | ternary "" ($v | toString)) -}}
+
+          {{- /* If it's a secret:// or configMap:// element, parse and validate */ -}}
+          {{- if or (hasPrefix "secret://" $v) (hasPrefix "configMap://" $v) -}}
+            {{- /* Parse the shorthand */ -}}
+            {{- $data := (urlParse $v) -}}
+            {{- $type = $data.scheme -}}
+            {{- $name = (include "arkcase.tools.hostnamePart" $data.host) | required (printf "The %s name is required in the shorthand syntax: %s" $type $v) -}}
+            {{- /* If the key is not present, we use the original value */ -}}
+            {{- $key = (include "arkcase.core.extra-env.parseKey" $data.path) | default $key -}}
+            {{- if not (regexMatch "^[a-zA-Z0-9._-]+$" $key) -}}
+              {{- fail (printf "The key [%s] (from global.env.value.%s = %s) is not a valid secret or configMap key" $key $k $v) -}}
+            {{- end -}}
+          {{- else -}}
+            {{- /* Add the literal value to the target secret's data */ -}}
+            {{- $stringData = set $stringData $k $v -}}
+          {{- end -}}
         {{- end -}}
         {{- /* Render the valueFrom map that will go into the the container's env.XXX */ -}}
         {{- $envVar := (printf "ARK_ENV_%s" (regexReplaceAllLiteral "[^A-Z0-9_]" ($k | snakecase | upper) "_")) -}}
