@@ -31,8 +31,9 @@
                 <SizeBasedTriggeringPolicy size="500MB" />
             </Policies>
             <DefaultRolloverStrategy>
-                <Delete>
-                    <IfAccumulatedFileCount exceeds="10" />
+                <Delete basePath="${env:LOGS_DIR:-../logs}">
+                    <IfFileName glob="pentaho-*.log.gz" />
+                    <IfLastModified age="P90D" />
                 </Delete>
             </DefaultRolloverStrategy>
         </RollingFile>
@@ -47,8 +48,9 @@
                 <SizeBasedTriggeringPolicy size="500MB" />
             </Policies>
             <DefaultRolloverStrategy>
-                <Delete>
-                    <IfAccumulatedFileCount exceeds="10" />
+                <Delete basePath="${env:LOGS_DIR:-../logs}">
+                    <IfFileName glob="pdi-*.log.gz" />
+                    <IfLastModified age="P90D" />
                 </Delete>
             </DefaultRolloverStrategy>
         </RollingFile>
