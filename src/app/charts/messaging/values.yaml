@@ -18,11 +18,18 @@ configuration:
     roles: &adminRole "administrator"
 
   # This maps usernames to a (comma-separated) list of roles to be assigned to them,
-  # but no passwords - those are generated, ALWAYS...
+  # but no passwords - those are generated, ALWAYS... we also make note of which
+  # users should be long-lived, because they're consumed from external services
   users:
-    arkcase: *adminRole
-    cloudconfig: *adminRole
-    experimental: *adminRole
+    arkcase:
+      roles: *adminRole
+      persistent: false
+    cloudconfig:
+      roles: *adminRole
+      persistent: false
+    experimental:
+      roles: *adminRole
+      persistent: true
 
   # Limit, in GiB, of how big the KahaDB store can grow
   maxStoreUsageGb: 50
