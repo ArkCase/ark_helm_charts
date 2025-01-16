@@ -28,6 +28,7 @@ spec:
       name: *fullname
       namespace: {{ $.Release.Namespace | quote }}
       labels: {{- include "arkcase.labels.service" $ | nindent 8 }}
+        {{- include "arkcase.labels.deploys" "alfresco" | nindent 8 }}
         {{- with (include "arkcase.values" (dict "ctx" $ "base" "labels") | fromYaml) }}
           {{- toYaml .value | nindent 8 }}
         {{- end }}
