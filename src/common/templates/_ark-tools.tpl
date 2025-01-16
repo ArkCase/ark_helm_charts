@@ -139,7 +139,7 @@ arkcase.com/task: "work"
 arkcase.com/subsystem: {{ include "arkcase.subsystem.name" $ | quote }}
 {{- end -}}
 
-{{- define "arkcase.labels.deploys-artifacts" -}}
+{{- define "arkcase.labels.deploys" -}}
   {{- $artifacts := list -}}
   {{- if (kindIs "string" $) -}}
     {{- $artifacts = ($ | splitList ",") -}}
@@ -155,8 +155,11 @@ arkcase.com/subsystem: {{ include "arkcase.subsystem.name" $ | quote }}
       {{- $categories = append $categories ($a | replace "," "\\,") -}}
     {{- end -}}
   {{- end -}}
-  {{- range $category := ($categories | sortAlpha | uniq) }}
+  {{- with $c := ($categories | sortAlpha | uniq) }}
+arkcase.com/deploys: {{ $c | join "," | quote }}
+    {{- range $category := $c }}
 arkcase.com/deploys-{{ $category }}: "true"
+    {{- end }}
   {{- end }}
 {{- end -}}
 
