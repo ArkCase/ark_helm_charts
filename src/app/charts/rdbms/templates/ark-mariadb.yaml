@@ -24,6 +24,7 @@ spec:
       name: {{ include "arkcase.fullname" $ | quote }}
       namespace: {{ $.Release.Namespace | quote }}
       labels: {{- include "arkcase.labels.service" $ | nindent 8 }}
+        {{- include "arkcase.labels.deploys" "mariadb" | nindent 8 }}
         {{- with ($.Values.labels).common }}
         {{- toYaml . | nindent 8 }}
         {{- end }}

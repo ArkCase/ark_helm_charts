@@ -139,6 +139,30 @@ arkcase.com/task: "work"
 arkcase.com/subsystem: {{ include "arkcase.subsystem.name" $ | quote }}
 {{- end -}}
 
+{{- define "arkcase.labels.deploys" -}}
+  {{- $artifacts := list -}}
+  {{- if (kindIs "string" $) -}}
+    {{- $artifacts = ($ | splitList ",") -}}
+  {{- else if (kindIs "slice" $) -}}
+    {{- $artifacts = (toStrings $) -}}
+  {{- else -}}
+    {{- /* We only support a CSV string or a list of strings */ -}}
+  {{- end -}}
+  {{- $categories := list -}}
+  {{- range $a := ($artifacts | compact | sortAlpha | uniq) -}}
+    {{- $a = (trim $a | lower) -}}
+    {{- if (include "arkcase.tools.hostnamePart" $a) -}}
+      {{- $categories = append $categories ($a | replace "," "\\,") -}}
+    {{- end -}}
+  {{- end -}}
+  {{- with $c := ($categories | sortAlpha | uniq) }}
+arkcase.com/deploys: {{ $c | join "," | quote }}
+    {{- range $category := $c }}
+arkcase.com/deploys-{{ $category }}: "true"
+    {{- end }}
+  {{- end }}
+{{- end -}}
+
 {{- define "arkcase.labels.test" -}}
 arkcase.com/task: "test"
 arkcase.com/subsystem: {{ include "arkcase.subsystem.name" $ | quote }}

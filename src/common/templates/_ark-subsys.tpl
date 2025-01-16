@@ -13,12 +13,14 @@ Return a map which contains the subsystem data map as required by other API call
   {{- $value := "" -}}
   {{- if (include "arkcase.isRootContext" $ctx) -}}
     {{- /* we're fine, we're auto-detecting */ -}}
-  {{- else if and (hasKey $ "subsys") (hasKey $ "ctx") -}}
+  {{- else if (hasKey $ "ctx") -}}
     {{- $ctx = $.ctx -}}
     {{- if not (include "arkcase.isRootContext" $ctx) -}}
       {{- fail "Must provide the root context as the 'ctx' parameter" -}}
     {{- end -}}
-    {{- $subsysName = (get $ "subsys" | toString) -}}
+    {{- if (hasKey $ "subsys") -}}
+      {{- $subsysName = (get $ "subsys" | toString) -}}
+    {{- end -}}
     {{- /* Does it also have a value specification? */ -}}
     {{- if (hasKey $ "value") -}}
       {{- $value = (get $ "value" | toString | required "The 'value' parameter may not be the empty string") -}}
