@@ -309,9 +309,4 @@
   {{- $cluster := (include "arkcase.cluster" $ | fromYaml) -}}
   {{- $nodes := ($cluster.nodes | default 1 | int) -}}
 type: {{ $type | quote }}
-  {{- if and ($cluster.enabled) (eq $type "RollingUpdate") (gt $nodes 1) }}
-# We're allowed to lose up to half our nodes ({{ $nodes }}) in a rolling update
-rollingUpdate:
-  partition: {{ div $nodes 2 }}
-  {{- end }}
 {{- end -}}
