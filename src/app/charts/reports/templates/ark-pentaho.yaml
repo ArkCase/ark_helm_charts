@@ -80,6 +80,7 @@ spec:
       name: *fullName
       namespace: {{ $.Release.Namespace | quote }}
       labels: {{- include "arkcase.labels.service" $ | nindent 8 }}
+        {{- include "arkcase.labels.deploys" "pentaho" | nindent 8 }}
         {{- with ($.Values.labels).common }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
