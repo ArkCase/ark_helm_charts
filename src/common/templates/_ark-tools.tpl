@@ -156,7 +156,7 @@ arkcase.com/subsystem: {{ include "arkcase.subsystem.name" $ | quote }}
     {{- end -}}
   {{- end -}}
   {{- with $c := ($categories | sortAlpha | uniq) }}
-arkcase.com/deploys: {{ $c | join "," | quote }}
+arkcase.com/deploys: "true"
     {{- range $category := $c }}
 arkcase.com/deploys-{{ $category }}: "true"
     {{- end }}
