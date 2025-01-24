@@ -119,6 +119,8 @@ spec:
               value: "$(DATA_DIR)/solr"
             - name: SOLR_SERVER
               value: "$(SOLR_HOME)/server"
+            - name: SOLR_JAVA_MEM
+              value: "-XX:MinRAMPercentage=50.0 -XX:MaxRAMPercentage=80.0"
             - name: SOLR_CORES
               value: "acmAdvancedSearch=arkcase,acmQuickSearch=arkcase"
             {{- if $.Values.env }}
