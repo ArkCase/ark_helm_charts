@@ -64,6 +64,7 @@ spec:
               value: "alfresco"
             - name: CATALINA_OPTS
               value: >-
+                -Dcom.redhat.fips=false
                 -XX:MinRAMPercentage=50
                 -XX:MaxRAMPercentage=80
                 -Dalfresco.protocol=$(REPO_SCHEME)

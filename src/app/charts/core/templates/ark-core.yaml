@@ -320,6 +320,7 @@ spec:
               # For Java 8, these percentages must be given as doubles. The JVM may
               # choke if the ".0" isn't provided at the end
               value: >-
+                -Dcom.redhat.fips=false
                 -XX:MinRAMPercentage=50.0
                 -XX:MaxRAMPercentage=80.0
                 -Dk8s.rename.ldap.directories=true
@@ -416,6 +417,7 @@ spec:
               value: *confDir
             - name: JAVA_TOOL_OPTIONS
               value: >-
+                -Dcom.redhat.fips=false
                 -XX:MinRAMPercentage=50
                 -XX:MaxRAMPercentage=80
                 -Djava.keystore.key.alias=$(ACME_KEY_ALIAS)

@@ -108,10 +108,11 @@ spec:
             - name: NODES
               value: {{ $nodes | toString | quote }}
             - name: SOLR_OPTS
+              value: >-
+                -Dcom.redhat.fips=false
+                -Dsolr.autoSoftCommit.maxTime=1000
             {{- if $cluster.enabled }}
-              value: "-Dsolr.autoSoftCommit.maxTime=1000 -Dzookeeper.client.secure=true"
-            {{- else }}
-              value: "-Dsolr.autoSoftCommit.maxTime=1000"
+                -Dzookeeper.client.secure=true
             {{- end }}
             - name: DATA_DIR
               value: *dataDir
