@@ -120,6 +120,8 @@ spec:
               value: "$(SOLR_HOME)/server"
             - name: SOLR_CORES
               value: "acmAdvancedSearch=arkcase,acmQuickSearch=arkcase"
+            - name: SOLR_JAVA_MEM
+              value: "-XX:MinRAMPercentage=50.0 -XX:MaxRAMPercentage=80.0"
             {{- if $.Values.env }}
               {{- $.Values.env | toYaml | nindent 12 }}
             {{- end }}
