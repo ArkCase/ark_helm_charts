@@ -62,9 +62,11 @@ spec:
               value: "8443"
             - name: REPO_CONTEXT
               value: "alfresco"
-            - name: CATALINA_OPTS
+            - name: JAVA_TOOL_OPTIONS
               value: >-
                 -Dcom.redhat.fips=false
+            - name: CATALINA_OPTS
+              value: >-
                 -XX:MinRAMPercentage=50
                 -XX:MaxRAMPercentage=80
                 -Dalfresco.protocol=$(REPO_SCHEME)

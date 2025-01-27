@@ -107,9 +107,11 @@ spec:
             {{- include "arkcase.acme.env" $ | nindent 12 }}
             - name: NODES
               value: {{ $nodes | toString | quote }}
-            - name: SOLR_OPTS
+            - name: JAVA_TOOL_OPTIONS
               value: >-
                 -Dcom.redhat.fips=false
+            - name: SOLR_OPTS
+              value: >-
                 -Dsolr.autoSoftCommit.maxTime=1000
             {{- if $cluster.enabled }}
                 -Dzookeeper.client.secure=true
