@@ -109,6 +109,9 @@ spec:
             {{- include "arkcase.acme.env" $ | nindent 12 }}
             - name: ARTEMIS_NEW_USER_MODEL
               value: "true"
+            - name: JAVA_TOOL_OPTIONS
+              value: >-
+                -Dcom.redhat.fips=false
             #
             # Add the configured users
             #

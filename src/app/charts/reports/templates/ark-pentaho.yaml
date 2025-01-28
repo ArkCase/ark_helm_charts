@@ -194,6 +194,9 @@ spec:
               value: "$(DATA_DIR)/.installedLicenses.xml"
             - name: ARKCASE_ENTERPRISE
               value: {{ not (empty (include "arkcase.enterprise" $)) | toString | quote }}
+            - name: JAVA_TOOL_OPTIONS
+              value: >-
+                -Dcom.redhat.fips=false
           {{- include "arkcase.subsystem.ports" (dict "ctx" $ "name" ($cluster.enabled | ternary "clusteredPentaho" "pentaho")) | nindent 10 }}
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "pentaho") | nindent 12 }}

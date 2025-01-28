@@ -88,6 +88,7 @@ spec:
               value: *https
             - name: JAVA_TOOL_OPTIONS
               value: >-
+                -Dcom.redhat.fips=false
                 -Dalfresco.secureComms=$(ALFRESCO_SECURE_COMMS)
                 -Dalfresco.host=$(SOLR_ALFRESCO_HOST)
                 -Dalfresco.port.ssl=$(SOLR_ALFRESCO_PORT)

@@ -72,6 +72,7 @@ spec:
             {{- include "arkcase.acme.env" $ | nindent 12 }}
             - name: JAVA_TOOL_OPTIONS
               value: >-
+                -Dcom.redhat.fips=false
                 -XX:MinRAMPercentage=50
                 -XX:MaxRAMPercentage=80
             # Stuff expires after 6 hours, but gets cleaned up every hour

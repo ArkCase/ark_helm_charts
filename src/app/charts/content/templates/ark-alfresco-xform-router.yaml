@@ -63,6 +63,7 @@ spec:
                 https://$(SERVICE_ALFRESCO_SFS):8099/alfresco/api/-default-/private/sfs/versions/1/file
             - name: JAVA_TOOL_OPTIONS
               value: >-
+                -Dcom.redhat.fips=false
                 -XX:MinRAMPercentage=50
                 -XX:MaxRAMPercentage=80
           resources: {{- include "arkcase.resources" $ | nindent 12 }}

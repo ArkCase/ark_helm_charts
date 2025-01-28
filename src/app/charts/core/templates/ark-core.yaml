@@ -315,6 +315,9 @@ spec:
             {{- end }}
             - name: LD_LIBRARY_PATH
               value: "$(HOME_DIR)/.arkcase/libraries"
+            - name: JAVA_TOOL_OPTIONS
+              value: >-
+                -Dcom.redhat.fips=false
             - name: CATALINA_OPTS
               {{- $springProfiles := (include "arkcase.core.springProfiles" $ | fromYamlArray) }}
               # For Java 8, these percentages must be given as doubles. The JVM may
@@ -416,6 +419,7 @@ spec:
               value: *confDir
             - name: JAVA_TOOL_OPTIONS
               value: >-
+                -Dcom.redhat.fips=false
                 -XX:MinRAMPercentage=50
                 -XX:MaxRAMPercentage=80
                 -Djava.keystore.key.alias=$(ACME_KEY_ALIAS)

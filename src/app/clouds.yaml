@@ -95,7 +95,7 @@ aws:
     alb.ingress.kubernetes.io/listen-ports: >
       {{- list (dict ($.url.scheme | upper) $.url.port) | mustToJson -}}
     alb.ingress.kubernetes.io/scheme: "internet-facing"
-    alb.ingress.kubernetes.io/ssl-policy: "ELBSecurityPolicy-TLS13-1-2-2021-06"
+    alb.ingress.kubernetes.io/ssl-policy: "ELBSecurityPolicy-TLS13-1-2-FIPS-2023-04"
     alb.ingress.kubernetes.io/ssl-redirect: >
       {{- $.url.port -}}
     alb.ingress.kubernetes.io/target-type: "ip"

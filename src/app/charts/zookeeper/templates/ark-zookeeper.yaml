@@ -111,6 +111,9 @@ spec:
               value: *confDir
             - name: ZOO_LOG_DIR
               value: *logsDir
+            - name: JAVA_TOOL_OPTIONS
+              value: >-
+                -Dcom.redhat.fips=false
             {{- if $.Values.env }}
             {{- $.Values.env | toYaml | nindent 12 }}
             {{- end }}
