@@ -290,6 +290,7 @@ idp.xml
     dict
       "ctx" $ctx
       "template" "__arkcase.core.sso.compute"
+      "key" "arkcase"
       "params" (dict "ctx" $ctx "sso" (($ctx.Values.global).sso) "application" "arkcase")
   -}}
   {{- include "__arkcase.tools.getCachedValue" $args -}}
@@ -325,6 +326,7 @@ idp.xml
     dict
       "ctx" $ctx
       "template" "__arkcase.core.sso.compute"
+      "key" "portal"
       "params" (dict "ctx" $ctx "sso" $portal.sso "application" "portal")
   -}}
   {{- include "__arkcase.tools.getCachedValue" $args -}}
