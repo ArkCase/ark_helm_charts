@@ -182,9 +182,11 @@
   {{- end -}}
 
   {{- $config := (include "arkcase.cluster" $ctx | fromYaml) -}}
+  {{- $env := list (dict "name" "CLUSTER_ENABLED" "value" "true") -}}
   {{- if $config.enabled -}}
-    {{- include "arkcase.subsystem-access.env" (dict "ctx" $ "subsys" "zookeeper" "key" "zkHost" "name" "ZK_HOST") -}}
+    {{- $env = concat $env (include "arkcase.subsystem-access.env" (dict "ctx" $ "subsys" "zookeeper" "key" "zkHost" "name" "ZK_HOST") | fromYamlArray) -}}
   {{- end -}}
+  {{- $env | toYaml -}}
 {{- end -}}
 
 {{- define "arkcase.cluster.tomcat.nodeId" -}}
