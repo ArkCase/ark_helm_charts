@@ -186,8 +186,6 @@ spec:
               value: {{ $db.scripts | quote }}
             - name: PENTAHO_SERVICE
               value: {{ $serviceName | quote }}
-            - name: CLUSTER_ENABLED
-              value: {{ $cluster.enabled | toString | quote }}
             - name: ADMIN_PORT
               value: {{ $cluster.enabled | ternary 4443 8443 | toString | quote }}
             - name: PENTAHO_INSTALLED_LICENSE_PATH
