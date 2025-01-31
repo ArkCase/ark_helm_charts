@@ -188,26 +188,28 @@ idp.xml
     {{- fail (printf "The OIDC configuration must be given as a map, not a %s: %s" (kindOf $oidc) $oidc) -}}
   {{- end -}}
 
+  {{- $application := $.application -}}
+
   {{- /* Set the usersDirectory for all clients to the default one ... */ -}}
   {{- $baseUrl := (include "arkcase.tools.conf" (dict "ctx" $ctx "value" "baseUrl")) -}}
   {{- /* Remove any potential trailing slashes */ -}}
   {{- $baseUrl = (regexReplaceAll "/*$" $baseUrl "") -}}
 
   {{- /* The enabled flag is on by default, unless explicitly turned off */ -}}
-  {{- $clients := (include "__arkcase.core.sso.oidc.parse-clients" (dict "oidc" $oidc "usersDirectory" "arkcase" "baseUrl" $baseUrl) | fromYaml) -}}
+  {{- $clients := (include "__arkcase.core.sso.oidc.parse-clients" (dict "oidc" $oidc "usersDirectory" $application "baseUrl" $baseUrl) | fromYaml) -}}
 
   {{- /* We also condition the configuation on whether there are client configurations */ -}}
   {{- if not $clients -}}
     {{- fail "OIDC seems to be enabled, but no clients are enabled" -}}
   {{- end -}}
 
-  {{- /* Special consideration here: legacy mode will be enabled if we only have one client, and it's called "arkcase" */ -}}
+  {{- /* Special consideration here: legacy mode will be enabled if we only have one client, and it's called $application */ -}}
   {{- $profiles := list -}}
   {{- $legacy := false -}}
-  {{- if (and (eq 1 (len $clients)) (or (hasKey $clients "arkcase") (hasKey $clients "legacy"))) -}}
+  {{- if (and (eq 1 (len $clients)) (or (hasKey $clients $application) (hasKey $clients "legacy"))) -}}
     {{- $legacy = true -}}
-    {{- /* Ensure the single client is called "arkcase" */ -}}
-    {{- $clients = dict "arkcase" (($clients | values | first)) -}}
+    {{- /* Ensure the single client is called $application */ -}}
+    {{- $clients = dict $application (($clients | values | first)) -}}
     {{- $profiles = list "externalOidc" -}}
   {{- else -}}
     {{- $profiles = list "ldap" -}}
@@ -216,8 +218,9 @@ idp.xml
 {{- end -}}
 
 {{- define "__arkcase.core.sso.compute" -}}
-  {{- $ctx := $ -}}
-  {{- $sso := ($ctx.Values.global).sso | default dict -}}
+  {{- $ctx := $.ctx -}}
+  {{- $sso := ($.sso | default dict) -}}
+  {{- $application := $.application | required "Must provide the name of the application consuming the SSO configuration" -}}
   {{- $result := dict -}}
   {{- if $sso -}}
     {{- $enabled := or (not (hasKey $sso "enabled")) (include "arkcase.toBoolean" $sso.enabled) -}}
@@ -268,7 +271,7 @@ idp.xml
       {{- end -}}
 
       {{- /* This is the actual configuration for the chosen SSO mode */ -}}
-      {{- $conf := (include (printf "__arkcase.core.sso.compute.%s" $protocol) (dict "ctx" $ctx "conf" (get $sso $protocol)) | fromYaml) -}}
+      {{- $conf := (include (printf "__arkcase.core.sso.compute.%s" $protocol) (dict "ctx" $ctx "conf" (get $sso $protocol) "application" $application) | fromYaml) -}}
       {{- if $conf -}}
         {{- $result = dict "protocol" $protocol "conf" $conf -}}
       {{- end -}}
@@ -287,6 +290,7 @@ idp.xml
     dict
       "ctx" $ctx
       "template" "__arkcase.core.sso.compute"
+      "params" (dict "ctx" $ctx "sso" (($ctx.Values.global).sso) "application" "arkcase")
   -}}
   {{- include "__arkcase.tools.getCachedValue" $args -}}
 {{- end -}}
@@ -306,6 +310,41 @@ idp.xml
 
 {{- define "arkcase.core.sso.oidc" -}}
   {{- include "__arkcase.core.sso-protocol" (dict "ctx" $ "proto" "oidc") -}}
+{{- end -}}
+
+{{- define "arkcase.core.portal.sso" -}}
+  {{- $ctx := $ -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "The parameter must be the root context ($ or .)" -}}
+  {{- end -}}
+
+  {{- $global := ($ctx.Values.global | default dict) -}}
+  {{- $portal := (hasKey $global "portal" | ternary $global.portal $global.foia | default dict) -}}
+
+  {{- $args :=
+    dict
+      "ctx" $ctx
+      "template" "__arkcase.core.sso.compute"
+      "params" (dict "ctx" $ctx "sso" $portal.sso "application" "portal")
+  -}}
+  {{- include "__arkcase.tools.getCachedValue" $args -}}
+{{- end -}}
+
+{{- define "__arkcase.core.portal.sso-protocol" -}}
+  {{- $sso := (include "arkcase.core.portal.sso" $.ctx | fromYaml) -}}
+  {{- if $sso -}}
+    {{- if (eq $.proto $sso.protocol) -}}
+      {{- $sso.conf | toYaml -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+
+{{- define "arkcase.core.sso.portal.saml" -}}
+  {{- include "__arkcase.core.portal.sso-protocol" (dict "ctx" $ "proto" "saml") -}}
+{{- end -}}
+
+{{- define "arkcase.core.sso.portal.oidc" -}}
+  {{- include "__arkcase.core.portal.sso-protocol" (dict "ctx" $ "proto" "oidc") -}}
 {{- end -}}
 
 {{- define "arkcase.core.sso.saml.idpMetadata.volumeMount" -}}
