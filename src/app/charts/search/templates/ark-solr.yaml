@@ -76,6 +76,7 @@ spec:
       schedulerName: {{ $.Values.schedulerName | quote }}
       {{- end }}
       securityContext: {{- include "arkcase.securityContext" $ | nindent 8 }}
+      terminationGracePeriodSeconds: 15
       initContainers:
         - name: init-set-permissions
           {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
@@ -135,6 +136,9 @@ spec:
             postStart:
               exec:
                 command: [ "/config-post.sh" ]
+            preStop:
+              exec:
+                command: [ "/app/solr/bin/solr", "stop", "-p", "8983" ]
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "solr") | nindent 12 }}
           volumeMounts:

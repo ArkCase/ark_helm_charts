@@ -46,6 +46,7 @@ spec:
       {{- with ($.Values.securityContext).template }}
       securityContext: {{- toYaml . | nindent 8 }}
       {{- end }}
+      terminationGracePeriodSeconds: 0
       containers:
         - name: artifacts
           {{- include "arkcase.app.image.artifacts" (dict "ctx" $ "name" "artifacts" "useChartTag" true) | nindent 10 }}
