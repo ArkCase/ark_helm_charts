@@ -113,19 +113,16 @@ idp.xml
   {{- $results := dict -}}
   {{- if and $clients (kindIs "map" $clients) -}}
     {{-
-      $required :=
+      $requiredCommon :=
         list 
           "authorizationUri"
           "clientId"
-          "clientSecret"
           "jwkSetUri"
-          "registrationId"
           "scope"
           "tokenUri"
           "userInfoUri"
-          "usernameAttribute"
           "responseType"
-          "responseMode"
+          "redirectUri"
     -}}
     {{- range $id, $client := $clients -}}
 
@@ -141,6 +138,29 @@ idp.xml
       {{- /* Allow clients to be enabled/disabled individually */ -}}
       {{- if and (hasKey $client "enabled") (not (include "arkcase.toBoolean" $client.enabled)) -}}
         {{- continue -}}
+      {{- end -}}
+
+      {{- $required := $requiredCommon -}}
+
+      {{- if eq $id "portal" -}}
+        {{- $required = append $required "clientAuthentication" -}}
+        {{- $required = append $required "logOutRedirectUri" -}}
+        {{- $required = append $required "grantType" -}}
+        {{- if hasKey $client "clientAuthentication" -}}
+          {{- if eq $client.clientAuthentication "private_key_jwt" -}}
+            {{- $required = append $required "privateKeyFilePath" -}}
+            {{- $required = append $required "clientAssertionType" -}}
+          {{- else if eq $client.clientAuthentication "client_id_and_secret" -}}
+            {{- $required = append $required "clientSecret" -}}
+          {{- end -}}
+        {{- else -}}
+          {{- fail (printf "OIDC Configuration for client '%s' is missing 'clientAuthentication'" $id) -}}
+        {{- end -}}
+      {{- else if eq $id "arkcase" -}}
+        {{- $required = append $required "clientSecret" -}}
+        {{- $required = append $required "responseMode" -}}
+        {{- $required = append $required "usernameAttribute" -}}
+        {{- $required = append $required "registrationId" -}}
       {{- end -}}
 
       {{- /* TODO: Is this correct? Do we want to check ALL settings? */ -}}
@@ -166,9 +186,6 @@ idp.xml
 
       {{- /* Set the usersDirectory to the specified value */ -}}
       {{- $client = set $client "usersDirectory" $usersDirectory -}}
-
-      {{- /* Set the redirectUri to the specified value */ -}}
-      {{- $client = set $client "redirectUri" (printf "%s/%s" $baseUrl $client.registrationId) -}}
 
       {{- /* Store the result */ -}}
       {{- $results = set $results $id $client -}}

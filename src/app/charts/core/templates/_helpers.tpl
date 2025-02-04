@@ -620,6 +620,12 @@
     {{- end -}}
   {{- end -}}
 
+  {{- /* Add the portal OIDC profile */ -}}
+  {{- $portalSso := (include "arkcase.core.portal.sso" $ | fromYaml) -}}
+  {{- if $portalSso -}}
+    {{- $result = append $result "portalOidc" -}}
+  {{- end -}}
+
   {{- /* Add any profiles the integrations required */ -}}
   {{- range $key, $data := (include "arkcase.core.integrations" $ | fromYaml) -}}
     {{- $result = concat $result ($data.profiles | default list) -}}
