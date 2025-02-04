@@ -23,6 +23,7 @@ spring:
         initial-interval: 10000
 
   profiles:
+    active: "${SPRING_PROFILES_PORTAL}"
     include: {{ $profiles | compact | join "," | quote }}
 
   jms:

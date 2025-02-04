@@ -316,11 +316,14 @@ spec:
             {{- end }}
             - name: LD_LIBRARY_PATH
               value: "$(HOME_DIR)/.arkcase/libraries"
+            - name: SPRING_PROFILES_ARKCASE
+              value: {{ include "arkcase.core.springProfiles" $ | fromYamlArray | compact | join "," | quote }}
+            - name: SPRING_PROFILES_PORTAL
+              value: ""
             - name: JAVA_TOOL_OPTIONS
               value: >-
                 -Dcom.redhat.fips=false
             - name: CATALINA_OPTS
-              {{- $springProfiles := (include "arkcase.core.springProfiles" $ | fromYamlArray) }}
               # For Java 8, these percentages must be given as doubles. The JVM may
               # choke if the ".0" isn't provided at the end
               value: >-
@@ -331,13 +334,13 @@ spec:
                 -Dsaml.keystore.defaultKeyName=$(ACME_KEY_ALIAS)
                 -Dacm.configurationserver.propertyfile=$(HOME_DIR)/.arkcase/acm/conf.yml
                 -Dconfiguration.client.spring.path=spring
-                -Dspring.profiles.active={{ $springProfiles | join "," }}
                 -Duser.home=$(HOME_DIR)
+                -Dcom.sun.management.jmxremote.port=7091
+                -Dcom.sun.management.jmxremote.authenticate=false
+                -Dcom.sun.management.jmxremote.ssl=false
                 {{- with $debug.arkcase }}
                 -Xdebug
                 -agentlib:jdwp=transport=dt_socket,server=y,suspend={{ .suspend }},address=*:8888
-                -Dcom.sun.management.jmxremote.port=7091 -Dcom.sun.management.jmxremote.authenticate=false
-                -Dcom.sun.management.jmxremote.ssl=false
                 -XX:FlightRecorderOptions=stackdepth=512,samplethreads=true
                 {{- end }}
           {{- include "arkcase.subsystem.ports" (dict "ctx" $ "name" ($cluster.enabled | ternary "clusteredArkcase" "arkcase")) | nindent 10 }}
@@ -428,11 +431,12 @@ spec:
                 -XX:MinRAMPercentage=50
                 -XX:MaxRAMPercentage=80
                 -Djava.keystore.key.alias=$(ACME_KEY_ALIAS)
+                -Dcom.sun.management.jmxremote.port=7092
+                -Dcom.sun.management.jmxremote.authenticate=false
+                -Dcom.sun.management.jmxremote.ssl=false
                 {{- with $debug.cloudconfig }}
                 -Xdebug
                 -agentlib:jdwp=transport=dt_socket,server=y,suspend={{ .suspend }},address=*:8889
-                -Dcom.sun.management.jmxremote.port=7092 -Dcom.sun.management.jmxremote.authenticate=false
-                -Dcom.sun.management.jmxremote.ssl=false
                 -XX:FlightRecorderOptions=stackdepth=512,samplethreads=true
                 {{- end }}
             {{- if $dev }}
