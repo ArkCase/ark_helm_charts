@@ -108,7 +108,6 @@ idp.xml
     {{- fail (printf "The OIDC configuration must be given as a map, not a %s: %s" (kindOf $clients) $clients) -}}
   {{- end -}}
   {{- $usersDirectory := $.usersDirectory -}}
-  {{- $baseUrl := (printf "%s/login/oauth2/code" $.baseUrl) -}}
 
   {{- $results := dict -}}
   {{- if and $clients (kindIs "map" $clients) -}}
@@ -122,7 +121,6 @@ idp.xml
           "tokenUri"
           "userInfoUri"
           "responseType"
-          "redirectUri"
     -}}
     {{- range $id, $client := $clients -}}
 
@@ -146,6 +144,12 @@ idp.xml
         {{- $required = append $required "clientAuthentication" -}}
         {{- $required = append $required "logOutRedirectUri" -}}
         {{- $required = append $required "grantType" -}}
+
+        {{- /* Set the redirectUri to the specified value */ -}}
+        {{- $portal := (include "arkcase.portal" $.ctx | fromYaml) -}}
+        {{- $baseUrlPortal := (printf "%s://%s/%s/portal/login" $.baseUrl.scheme $.baseUrl.hostname $portal.context | quote ) -}}
+        {{- $client = set $client "redirectUri" $baseUrlPortal -}}
+
         {{- if hasKey $client "clientAuthentication" -}}
           {{- if eq $client.clientAuthentication "private_key_jwt" -}}
             {{- $required = append $required "privateKeyFilePath" -}}
@@ -156,11 +160,15 @@ idp.xml
         {{- else -}}
           {{- fail (printf "OIDC Configuration for client '%s' is missing 'clientAuthentication'" $id) -}}
         {{- end -}}
-      {{- else if eq $id "arkcase" -}}
+      {{- else -}}
         {{- $required = append $required "clientSecret" -}}
         {{- $required = append $required "responseMode" -}}
         {{- $required = append $required "usernameAttribute" -}}
         {{- $required = append $required "registrationId" -}}
+
+        {{- /* Set the redirectUri to the specified value */ -}}
+        {{- $baseUrlArkcase := (printf "%s/login/oauth2/code" $.baseUrl.baseUrl) -}}
+        {{- $client = set $client "redirectUri" (printf "%s/%s" $baseUrlArkcase $client.registrationId) -}}
       {{- end -}}
 
       {{- /* TODO: Is this correct? Do we want to check ALL settings? */ -}}
@@ -208,12 +216,11 @@ idp.xml
   {{- $application := $.application -}}
 
   {{- /* Set the usersDirectory for all clients to the default one ... */ -}}
-  {{- $baseUrl := (include "arkcase.tools.conf" (dict "ctx" $ctx "value" "baseUrl")) -}}
-  {{- /* Remove any potential trailing slashes */ -}}
-  {{- $baseUrl = (regexReplaceAll "/*$" $baseUrl "") -}}
+  {{- $baseUrl := (include "arkcase.tools.parseUrl" (include "arkcase.tools.conf" (dict "ctx" $ctx "value" "baseUrl")) | fromYaml) -}}
+
 
   {{- /* The enabled flag is on by default, unless explicitly turned off */ -}}
-  {{- $clients := (include "__arkcase.core.sso.oidc.parse-clients" (dict "oidc" $oidc "usersDirectory" $application "baseUrl" $baseUrl) | fromYaml) -}}
+  {{- $clients := (include "__arkcase.core.sso.oidc.parse-clients" (dict "oidc" $oidc "usersDirectory" $application "baseUrl" $baseUrl "ctx" $ctx) | fromYaml) -}}
 
   {{- /* We also condition the configuation on whether there are client configurations */ -}}
   {{- if not $clients -}}

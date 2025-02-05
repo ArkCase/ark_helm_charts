@@ -51,7 +51,7 @@ portal:
     header.parameter.name: foia-api-secret
     token:  {{ $portal.apiSecret | quote }}
 
-{{- if $portalSSO }}
+  {{- if $portalSSO }}
 oidc:
     {{- toYaml $portalSSO.conf.clients.portal | nindent 2 -}}
   {{- end }}

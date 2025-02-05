@@ -23,8 +23,7 @@ spring:
         initial-interval: 10000
 
   profiles:
-    # TODO: Replace this with the template to selectively enable the OIDC template
-    active: ""
+    active: {{ include "arkcase.portal.springProfiles" $ | fromYamlArray | compact | join "," | quote }}
     include: {{ $profiles | compact | join "," | quote }}
 
   jms:
