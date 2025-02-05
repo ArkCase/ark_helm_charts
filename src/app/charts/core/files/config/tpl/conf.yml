@@ -35,8 +35,6 @@ spring:
         trustStore: "file:${JAVA_TRUSTSTORE}"
         trustStoreType: "${JAVA_TRUSTSTORE_TYPE}"
         trustStorePassword: "${JAVA_TRUSTSTORE_PASS}"
-  profiles:
-    active: {{ include "arkcase.core.springProfiles" $ | fromYamlArray | compact | join "," | quote }}
 
 configuration:
   client:
