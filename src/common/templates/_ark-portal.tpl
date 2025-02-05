@@ -124,18 +124,3 @@
   -}}
   {{- include "__arkcase.tools.getCachedValue" $args -}}
 {{- end -}}
-
-{{- define "arkcase.portal.springProfiles" -}}
-  {{- $ctx := $ -}}
-  {{- if not (include "arkcase.isRootContext" $ctx) -}}
-    {{- fail "Must send the root context as the only parameter" -}}
-  {{- end -}}
-
-  {{- $portalSSO := (include "arkcase.core.portal.sso" $ | fromYaml) -}}
-  {{- $result := list -}}
-  {{- if $portalSSO }}
-    {{- $result = append $result "oidc" -}}
-  {{- end }}
-
-  {{- $result | uniq | toYaml -}}
-{{- end -}}
