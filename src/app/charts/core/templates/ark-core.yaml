@@ -295,6 +295,8 @@ spec:
               value: "$(JAVA_KEYSTORE)"
             - name: JAVA_TRUSTSTORE_TYPE
               value: "$(JAVA_KEYSTORE_TYPE)"
+            - name: LOOP_TERMINATION_FILE
+              value: &loopTerminationFile "/app/.terminate"
             {{- if $portal }}
             - name: PORTAL_HOME_DIR
               value: *portalDir
@@ -345,7 +347,7 @@ spec:
           lifecycle:
             preStop:
               exec:
-                command: [ "/app/tomcat/bin/catalina.sh", "stop", "-force" ]
+                command: [ "/usr/local/bin/terminate-run-loop", "/app/tomcat/bin/catalina.sh", "stop", "-force" ]
           volumeMounts:
             {{- include "arkcase.trusts.mount" $ | nindent 12 }}
             {{- include "arkcase.acme.volumeMount-shared" $ | nindent 12 }}
@@ -436,6 +438,8 @@ spec:
                 -agentlib:jdwp=transport=dt_socket,server=y,suspend={{ .suspend }},address=*:8889
                 -XX:FlightRecorderOptions=stackdepth=512,samplethreads=true
                 {{- end }}
+            - name: LOOP_TERMINATION_FILE
+              value: *loopTerminationFile
             {{- if $dev }}
             - name: DEVELOPMENT
               value: "true"
@@ -449,6 +453,10 @@ spec:
           {{- include "arkcase.subsystem.ports" (dict "ctx" $ "name" "cloudconfig") | nindent 10 }}
           resources: {{- include "arkcase.resources" (dict "ctx" $ "part" "cloudconfig") | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "cloudconfig") | nindent 12 }}
+          lifecycle:
+            preStop:
+              exec:
+                command: [ "/usr/local/bin/terminate-run-loop" ]
           volumeMounts:
             {{- include "arkcase.subsystem-access.volumeMount" $ | nindent 12 }}
             {{- include "arkcase.trusts.mount" $ | nindent 12 }}
