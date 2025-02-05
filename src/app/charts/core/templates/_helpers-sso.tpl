@@ -141,9 +141,7 @@ idp.xml
       {{- $required := $requiredCommon -}}
 
       {{- if eq $id "portal" -}}
-        {{- $required = append $required "clientAuthentication" -}}
-        {{- $required = append $required "logOutRedirectUri" -}}
-        {{- $required = append $required "grantType" -}}
+        {{- $required = concat $required (list "clientAuthentication" "logOutRedirectUri" "grantType") -}}
 
         {{- /* Set the redirectUri to the specified value */ -}}
         {{- $portal := (include "arkcase.portal" $.ctx | fromYaml) -}}
@@ -152,8 +150,7 @@ idp.xml
 
         {{- if hasKey $client "clientAuthentication" -}}
           {{- if eq $client.clientAuthentication "private_key_jwt" -}}
-            {{- $required = append $required "privateKeyFilePath" -}}
-            {{- $required = append $required "clientAssertionType" -}}
+            {{- $required = concat $required (list "privateKeyFilePath" "clientAssertionType") -}}
           {{- else if eq $client.clientAuthentication "client_id_and_secret" -}}
             {{- $required = append $required "clientSecret" -}}
           {{- end -}}
@@ -161,10 +158,7 @@ idp.xml
           {{- fail (printf "OIDC Configuration for client '%s' is missing 'clientAuthentication'" $id) -}}
         {{- end -}}
       {{- else -}}
-        {{- $required = append $required "clientSecret" -}}
-        {{- $required = append $required "responseMode" -}}
-        {{- $required = append $required "usernameAttribute" -}}
-        {{- $required = append $required "registrationId" -}}
+        {{- $required = concat $required (list "clientSecret" "responseMode" "usernameAttribute" "registrationId") -}}
 
         {{- /* Set the redirectUri to the specified value */ -}}
         {{- $baseUrlArkcase := (printf "%s/login/oauth2/code" $.baseUrl.baseUrl) -}}
