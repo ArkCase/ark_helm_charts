@@ -35,6 +35,8 @@ spring:
         trustStore: "file:${JAVA_TRUSTSTORE}"
         trustStoreType: "${JAVA_TRUSTSTORE_TYPE}"
         trustStorePassword: "${JAVA_TRUSTSTORE_PASS}"
+  profiles:
+    active: "${SPRING_PROFILES_ARKCASE}"
 
 configuration:
   client:
