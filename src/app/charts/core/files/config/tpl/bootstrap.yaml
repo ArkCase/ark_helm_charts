@@ -23,7 +23,8 @@ spring:
         initial-interval: 10000
 
   profiles:
-    active: "${SPRING_PROFILES_PORTAL}"
+    # TODO: Replace this with the template to selectively enable the OIDC template
+    active: ""
     include: {{ $profiles | compact | join "," | quote }}
 
   jms:

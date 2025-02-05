@@ -316,10 +316,6 @@ spec:
             {{- end }}
             - name: LD_LIBRARY_PATH
               value: "$(HOME_DIR)/.arkcase/libraries"
-            - name: SPRING_PROFILES_ARKCASE
-              value: {{ include "arkcase.core.springProfiles" $ | fromYamlArray | compact | join "," | quote }}
-            - name: SPRING_PROFILES_PORTAL
-              value: ""
             - name: JAVA_TOOL_OPTIONS
               value: >-
                 -Dcom.redhat.fips=false
