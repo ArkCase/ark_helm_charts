@@ -29,7 +29,7 @@ portal:
   {{- end }}
   {{- if $portalSSO }}
   loginGov: true
-  oidc: true
+  oidcAuthenticationEnabled: true
   {{- end }}
   userId: "${PORTAL_ADMIN_USERNAME}@${PORTAL_LDAP_DOMAIN}"
   password: "${PORTAL_ADMIN_PASSWORD}"
@@ -50,6 +50,7 @@ portal:
   security.authentication:
     header.parameter.name: foia-api-secret
     token:  {{ $portal.apiSecret | quote }}
-
-oidc: {{- if $portalSSO }} {{ toYaml $portalSSO.conf.clients.portal | nindent 2 }} {{- end }}
+  {{- with $portalSSO }}
+  oidc: {{- .conf.clients.portal | toYaml | nindent 4 }}
+  {{- end }}
 {{- end -}}
