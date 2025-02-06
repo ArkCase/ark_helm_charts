@@ -6,6 +6,7 @@ set_or_default BASE_DIR "/app"
 set_or_default DEPL_DIR "${BASE_DIR}/depl"
 set_or_default CONF_DIR "${DEPL_DIR}/conf"
 set_or_default WARS_DIR "${DEPL_DIR}/wars"
+set_or_default HOME_DIR "${DEPL_DIR}/home"
 
 get_portal_war()
 {
@@ -85,17 +86,6 @@ for war in "${WAR[@]}" ; do
 			say "The WAR file [${BASENAME}] is on the skip list, will ignore (matched /^${WAR_PAT}$/)"
 			continue
 		fi
-
-		# This war is not excluded, so let's first check to see if
-		# there's a development version of the WAR we should be
-		# deploying instead
-		if [ -s "${DEV_WARS_DIR}/${ARTIFACT_NAME}" ] ; then
-			# We have a custom WAR to deploy! Use it!
-			say "Found a development WAR at [${DEV_WARS_DIR}/${ARTIFACT_NAME}], will deploy it instead"
-			mkdir -p "${WAR_TGT}"
-			unzip -o -d "${WAR_TGT}" "${DEV_WARS_DIR}/${ARTIFACT_NAME}"
-			continue
-		fi
 	fi
 
 	mkdir -p "${WAR_TGT}" || fail "Failed to create the extraction target at [${WAR_TGT}]"
@@ -104,18 +94,6 @@ for war in "${WAR[@]}" ; do
 	# so let's go ahead and deploy it normally
 	deploy-artifact extract "${war}" "${WAR_TGT}" || fail "Failed to deploy the WAR from [${war}] into [${WAR_TGT}]"
 done
-
-if "${DEV}" ; then
-	ARTIFACT_NAME="01-conf.zip"
-	BASENAME="${ARTIFACT_NAME%.*}"
-
-	if [ -s "${DEV_CONF_DIR}/${ARTIFACT_NAME}" ] ; then
-		# We have a custom config to deploy! Use it!
-		say "Found a development configuration at [${DEV_CONF_DIR}/${ARTIFACT_NAME}], will deploy it instead"
-		unzip -o -d "${CONF_DIR}" "${DEV_CONF_DIR}/${ARTIFACT_NAME}"
-		SKIP_CONF="true"
-	fi
-fi
 
 if ! "${SKIP_CONF}" ; then
 	#
@@ -155,6 +133,13 @@ fi
 # This is the only fix we know must be applied FOR SURE each time
 #
 realm-fix || fail "Failed to fix the realms information in the rules files"
+
+#
+# Save the SHA-256 of the global artifacts
+#
+GLOBAL_SUMS="$(get-global-sums)" || fail "Failed to get the artifact global sums"
+SUMS_FILE="${HOME_DIR}/.artifacts.global.sums"
+echo -n "${GLOBAL_SUMS}" > "${SUMS_FILE}" || fail "Failed to store the artifact global sums into [${SUMS_FILE}]"
 
 ok "Configuration Initialization Complete"
 exit 0
