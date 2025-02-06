@@ -171,6 +171,8 @@ spec:
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/deploy") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/fixExcel") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/realm-fix") | nindent 12 }}
+            - name: &homeVol "home"
+              mountPath: "/app/depl/home"
         - name: init-permissions
           {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
@@ -205,7 +207,7 @@ spec:
             - name: &warsVol "wars"
               mountPath: *warsDir
             {{- include "arkcase.core.dev.permissionMounts" $ | nindent 12 }}
-            - name: &homeVol "home"
+            - name: *homeVol
               mountPath: *homeDir
             - name: &tempVol "temp"
               mountPath: *tempDir

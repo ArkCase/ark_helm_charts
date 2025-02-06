@@ -58,11 +58,6 @@ spec:
             {{- end }}
           volumeMounts:
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
-            # These 3 are workarounds until we arrive at 2023.02.05, which includes
-            # the implementation for ADS-2378 ... when that becomes the norm, these
-            # mounts can be removed.
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/file/arkcase/exts/ads-2378-workaround.zip") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/file/arkcase/exts/ads-2378-workaround.zip.ver") | nindent 12 }}
             {{- if $customConfFile }}
             - name: &confFileVolume "conf-file"
               mountPath: "/app/file/arkcase/conf/00-base.zip"

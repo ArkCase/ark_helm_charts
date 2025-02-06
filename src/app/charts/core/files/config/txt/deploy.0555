@@ -6,6 +6,7 @@ set_or_default BASE_DIR "/app"
 set_or_default DEPL_DIR "${BASE_DIR}/depl"
 set_or_default CONF_DIR "${DEPL_DIR}/conf"
 set_or_default WARS_DIR "${DEPL_DIR}/wars"
+set_or_default HOME_DIR "${DEPL_DIR}/home"
 
 get_portal_war()
 {
@@ -155,6 +156,13 @@ fi
 # This is the only fix we know must be applied FOR SURE each time
 #
 realm-fix || fail "Failed to fix the realms information in the rules files"
+
+#
+# Save the SHA-256 of the global artifacts
+#
+GLOBAL_SUMS="$(get-global-sums)" || fail "Failed to get the artifact global sums"
+SUMS_FILE="${HOME_DIR}/.artifacts.global.sums"
+echo -n "${GLOBAL_SUMS}" > "${SUMS_FILE}" || fail "Failed to store the artifact global sums into [${SUMS_FILE}]"
 
 ok "Configuration Initialization Complete"
 exit 0
