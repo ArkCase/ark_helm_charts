@@ -69,6 +69,11 @@ else
 	say "The configuration directory [${CONF_KJB}] was not found, will not set the KETTLE_HOME and PENTAHO_METASTORE_FOLDER variables"
 fi
 
+if [ -v SSL_DIR ] ; then
+	export KEYSTORE_PATH="${SSL_DIR}/keystore.pkcs12"
+	export KEYSTORE_PASSWORD="$(<"${SSL_DIR}/keystore.pass")"
+fi
+
 # Allow rendering to be disabled
 if "${NOTEMPLATES}" ; then
 	say "Template rendering was disabled"
