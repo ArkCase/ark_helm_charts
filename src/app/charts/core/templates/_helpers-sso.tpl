@@ -145,7 +145,7 @@ idp.xml
 
         {{- /* Set the redirectUri to the specified value */ -}}
         {{- $portal := (include "arkcase.portal" $.ctx | fromYaml) -}}
-        {{- $baseUrlPortal := (printf "%s://%s/%s/portal/login" $.baseUrl.scheme $.baseUrl.hostname $portal.context | quote ) -}}
+        {{- $baseUrlPortal := (printf "%s://%s/%s/portal/login" $.baseUrl.scheme $.baseUrl.hostname $portal.context) -}}
         {{- $client = set $client "redirectUri" $baseUrlPortal -}}
 
         {{- if hasKey $client "clientAuthentication" -}}
