@@ -22,7 +22,8 @@
                 <pattern>%highlight{%d{yyyy-MM-dd HH:mm:ss,SSS} [%-5p] [%t] %c - %confidential{%m}%n}</pattern>
             </PatternLayout>
             <Policies>
-                <TimeBasedTriggeringPolicy interval="1" modulate="true"/>
+                <OnStartupTriggeringPolicy />
+                <SizeBasedTriggeringPolicy size="500MB" />
             </Policies>
             <ThresholdFilter level="debug"/>
             <DefaultRolloverStrategy>
@@ -41,12 +42,13 @@
                 <includeStacktrace>false</includeStacktrace>
             </JsonLayout>
             <Policies>
-                <TimeBasedTriggeringPolicy interval="1" modulate="true"/>
+                <OnStartupTriggeringPolicy />
+                <SizeBasedTriggeringPolicy size="500MB" />
             </Policies>
             <ThresholdFilter level="error"/>
             <DefaultRolloverStrategy>
                 <Delete basePath="${env:LOGS_DIR}">
-                    <IfFileName glob="arkcase-*.log.gz" />
+                    <IfFileName glob="arkcase-errors-*.log.gz" />
                     <IfLastModified age="P90D" />
                 </Delete>
             </DefaultRolloverStrategy>
