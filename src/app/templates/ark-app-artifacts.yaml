@@ -56,6 +56,8 @@ spec:
             - name: FORCE_HASHES
               value: "true"
             {{- end }}
+            - name: NEW_HTTPD
+              value: "true"
           volumeMounts:
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
             {{- if $customConfFile }}
