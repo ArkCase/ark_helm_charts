@@ -179,5 +179,34 @@ fi
 #
 realm-fix || fail "Failed to fix the realms information in the rules files"
 
-say "Configuration Initialization Complete"
+[ -v OLD_URL ] || OLD_URL=""
+[ -n "${OLD_URL}" ] || OLD_URL="https://project.armedia.com/nexus/"
+
+[ -v NEW_URL ] || NEW_URL=""
+[ -n "${NEW_URL}" ] || NEW_URL="https://nexus.armedia.com/"
+
+# Do the YARNRC corrections
+if [ "${OLD_URL}" != "${NEW_URL}" ] ; then
+	FIRST="true"
+	while read YARNRC ; do
+		if "${FIRST}" ; then
+			say "🔍 Will try to fix the .yarnrc files extracted in the WAR files"
+			say "\tOld URL: [${OLD_URL}]"
+			say "\tNew URL: [${NEW_URL}]"
+			FIRST="false"
+		fi
+
+		[ -f "${YARNRC}" ] || continue
+		[ -r "${YARNRC}" ] || continue
+		[ -w "${YARNRC}" ] || continue
+		say "🛠️ Attempting to fix the YARNRC file at [${YARNRC}]..."
+		if sed -i -e "s|${OLD_URL}|${NEW_URL}|g" "${YARNRC}" ; then
+			say "\t✅ Fixed!"
+		else
+			say "\t❌ Failed!"
+		fi
+	done < <(find "${DEPL_DIR}/wars" -type f -name .yarnrc | sort)
+fi
+
+say "✅ Configuration Initialization Complete"
 exit 0
