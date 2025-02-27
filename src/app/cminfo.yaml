@@ -19,3 +19,16 @@ s3:
     bucket: arkcase
   aliases:
     - minio
+
+box:
+  url: https://arkcase-demo.account.box.com
+  ui: https://arkcase-demo.account.box.com/login
+  users:
+    admin: box.admin@armedia.com
+  groups:
+    admin:
+      - box-administrators # is it the correct group?
+  settings:
+    defaultBasePath: "/All Files"
+  privateKey:
+    path: "/etc/box/box-private-key.rsa"
