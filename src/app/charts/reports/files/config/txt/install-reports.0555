@@ -94,10 +94,10 @@ is_file_intalled()
 	[[ "${EXISTING,,}" =~ ^([0-9a-f]{64})=(.*)$ ]] || return 1
 
 	# Does the hash match our expected hash?
-	[ "${BASH_REMATCH[0],,}" != "${HASH,,}" ] || return 1
+	[ "${BASH_REMATCH[1],,}" == "${HASH,,}" ] || return 1
 
 	# Does the filename match exactly? (just for paranoia's sake)
-	[ "${BASH_REMATCH[1]}" != "${FILE}" ] || return 1
+	[ "${BASH_REMATCH[2]}" == "${FILE}" ] || return 1
 
 	# Everything matches, the report is already installed
 	return 0
