@@ -263,7 +263,7 @@ spec:
               mountPath: *homeDir
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" $contentScript) | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" $contentData) | nindent 12 }}
-            {{- end }}
+        {{- end }}
       containers:
         - name: arkcase
           {{- include "arkcase.image" $ | nindent 10 }}
@@ -355,7 +355,6 @@ spec:
           volumeMounts:
             {{- include "arkcase.trusts.mount" $ | nindent 12 }}
             {{- include "arkcase.acme.volumeMount-shared" $ | nindent 12 }}
-            {{- include "arkcase.core.box.license.volumeMount" . | nindent 12 }}
             {{- include "arkcase.subsystem-access.volumeMount" $ | nindent 12 }}
             - name: *homeVol
               mountPath: *homeDir
@@ -499,7 +498,6 @@ spec:
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/entrypoint" "subPath" "entrypoint-haproxy") | nindent 12 }}
         {{- end }}
       volumes:
-        {{- include "arkcase.core.box.license.volume" . | nindent 8 }}
         {{- include "arkcase.subsystem-access.volume" $ | nindent 8 }}
         {{- include "arkcase.trusts.volume" $ | nindent 8 }}
         {{- include "arkcase.acme.volume-shared" $ | nindent 8 }}
