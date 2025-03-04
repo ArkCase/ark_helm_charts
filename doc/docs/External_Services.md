@@ -219,7 +219,7 @@ ArkCase requires a place to store the documents that are uploaded to into it by 
 - Subsystem Name: `content`
 
 - Settings:
-    - `dialect`: the content store engine's dialect - must be one of `alfresco`, `cmis` (an alias for `alfresco`), `s3`, or `minio` (an alias for `s3`) or `box`. If this value is not provided, the default dialect is `s3`.
+    - `dialect`: the content store engine's dialect - must be one of `alfresco`, `cmis` (an alias for `alfresco`), `s3`, `minio` (an alias for `s3`), or `box`. If this value is not provided, the default dialect is `s3`.
 
 - Connections:
     - `main`, `admin`:
