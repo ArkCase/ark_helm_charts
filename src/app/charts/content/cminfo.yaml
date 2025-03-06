@@ -30,12 +30,15 @@ s3:
     - minio
 
 box:
-  url: https://arkcase-demo.account.box.com
-  ui: https://arkcase-demo.account.box.com/login
+  url: https://box.com
+  ui: https://box.com
   users:
     admin: box.admin@armedia.com
+    main: box.admin@armedia.com
   groups:
     admin:
-      - box-administrators # is it the correct group?
+      - box-administrators
   settings:
+    private-key:
+      path: "/app/home/.content-private-key"
     defaultBasePath: "/All Files"

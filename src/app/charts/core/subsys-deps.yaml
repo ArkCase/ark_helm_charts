@@ -75,6 +75,10 @@ settings:
         env:
           name: ARKCASE_CONTENT_RM
           optional: true
+      private-key:
+        path:
+          mountPath: /app/home/.content-private-key
+          optional: true
 
   ldap:
     main:
