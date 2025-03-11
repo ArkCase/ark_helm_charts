@@ -156,6 +156,7 @@ done < <(list_accounts)
 #
 if [ ${#GROUP_MEMBERSHIPS[@]} -gt 0 ] ; then
 	doing "Applying group memberships..."
+	EXISTS_STR="Attribute member already exists for target"
 	while read GROUP ; do
 		RC=0
 		OUT="$(samba_tool group show "${GROUP}" 2>&1)" || RC=${?}
@@ -170,8 +171,15 @@ if [ ${#GROUP_MEMBERSHIPS[@]} -gt 0 ] ; then
 		read -a MEMBERS < <(list_sorted "${MEMBERS[@]}")
 
 		doing "Adding these group members to the ${GROUP} group: [${MEMBERS}]"
-		samba_tool group addmembers "${GROUP}" "${MEMBERS}" || { warn "Failed to add the members to the group (rc=${?})!" ; continue ; }
-		ok "Members added!"
+		RC=0
+		OUT="$(samba_tool group addmembers "${GROUP}" "${MEMBERS}" 2>&1)" || RC=${?}
+		if [ ${RC} -eq 0 ] ; then
+			ok "Members added!"
+		elif [[ "${OUT}" =~ ^.*${EXISTS_STR}.*$ ]] ; then
+			warn "Some of the members are already in the group!"
+		else
+			err "Failed to add the members to the group (rc=${RC}): ${OUT}"
+		fi
 	done < <(list_sorted "${!GROUP_MEMBERSHIPS[@]}")
 fi
 
