@@ -830,5 +830,3 @@
 
   {{- $result | uniq | toYaml -}}
 {{- end -}}
-
-
