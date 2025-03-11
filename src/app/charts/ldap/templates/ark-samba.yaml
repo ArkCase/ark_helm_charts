@@ -46,6 +46,7 @@ spec:
       {{- end }}
       serviceAccountName: {{ include "arkcase.serviceAccountName" $ | quote }}
       securityContext: {{- include "arkcase.securityContext" $ | nindent 8 }}
+      terminationGracePeriodSeconds: 5
       initContainers:
         {{- include "arkcase.initDependencies.container" $ | nindent 8 }}
       containers:

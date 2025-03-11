@@ -2,6 +2,8 @@
 {{- if $portal -}}
   {{- $baseUrl := (include "arkcase.tools.parseUrl" (include "arkcase.tools.conf" (dict "ctx" $ "value" "baseUrl")) | fromYaml) -}}
   {{- $uiApplicationHost := (printf "%s://%s" $baseUrl.scheme $baseUrl.host) -}}
+  {{- $portalSSO := (include "arkcase.core.portal.sso" $ | fromYaml) -}}
+
 logging:
   level:
     com.arkcase.portal: debug
@@ -25,6 +27,10 @@ portal:
   {{- else }}
   authenticationType: "basic"
   {{- end }}
+  {{- if $portalSSO }}
+  loginGov: true
+  oidcAuthenticationEnabled: true
+  {{- end }}
   userId: "${PORTAL_ADMIN_USERNAME}@${PORTAL_LDAP_DOMAIN}"
   password: "${PORTAL_ADMIN_PASSWORD}"
   homeDir: "${PORTAL_HOME_DIR}"
@@ -44,4 +50,7 @@ portal:
   security.authentication:
     header.parameter.name: foia-api-secret
     token:  {{ $portal.apiSecret | quote }}
+  {{- with $portalSSO }}
+  oidc: {{- .conf.clients.portal | toYaml | nindent 4 }}
+  {{- end }}
 {{- end -}}

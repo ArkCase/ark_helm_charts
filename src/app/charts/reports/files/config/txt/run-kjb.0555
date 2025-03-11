@@ -4,7 +4,7 @@ set -euo pipefail
 
 usage()
 {
-	echo -e "usage: ${BASH_SOURCE:-${0}} file.kjb"
+	echo -e "usage: ${BASH_SOURCE:-${0}} [-p ... | --param ...] [-c ... | --custom ...] file.kjb"
 	exit 1
 }
 
@@ -19,10 +19,44 @@ cleanup_logs()
 	done < <(find "${LOGS_DIR}" -type f -name "${JOB_NAME}-*.log.gz" | sort -r | tail -n +$(( LOG_KEEP + 1 )) )
 }
 
+is_key_value_pair()
+{
+	local VAL="${1}"
+	[[ "${VAL}" =~ ^[a-zA-Z0-9_]+=.*$ ]] || return 1
+	return 0
+}
+
 cleanup()
 {
 	cleanup_logs
 }
+
+[ ${#} -ge 1 ] || usage
+
+ARGS="$(getopt -o "hp:c:" -l "help,param:,custom:" -n "${BASH_ARGV0:-${BASH_SOURCE:-${0}}}" -- "${@}" 2>/dev/null)" || usage
+eval set -- "${ARGS}"
+
+PARAM=()
+CUSTOM=()
+while true ; do
+	case "${1}" in
+		-c | --custom )
+			VAL="${2}"
+			is_key_value_pair "${VAL}" || fail "The custom value must be given as a KEY=VALUE pair: [${VAL}] is not valid syntax"
+			CUSTOM+=(-custom:"${VAL}")
+			shift 2
+			;;
+		-p | --param )
+			VAL="${2}"
+			is_key_value_pair "${VAL}" || fail "The parameter value must be given as a KEY=VALUE pair: [${VAL}] is not valid syntax"
+			PARAM+=(-param:"${VAL}")
+			shift 2
+			;;
+		-h | --help ) usage ;;
+
+		-- ) shift ; break ;;
+	esac
+done
 
 [ ${#} -eq 1 ] || usage
 
@@ -40,7 +74,8 @@ set_or_default BASE_DIR "/app"
 set_or_default CONF_KJB "config"
 set_or_default PENTAHO_PDI_HOME "${BASE_DIR}/pentaho-pdi"
 
-set_or_default LOGS_DIR "${JOB_DIR}/logs"
+# Ignore the prescribed log directory
+export LOGS_DIR="${JOB_DIR}/logs"
 ensure_dir "${LOGS_DIR}"
 
 LOG="${LOGS_DIR}/${JOB_NAME}-$(date -u +%Y%m%d-%H%M%S).log"
@@ -67,6 +102,11 @@ if is_dir_readable "${CONF_KJB}" ; then
 
 else
 	say "The configuration directory [${CONF_KJB}] was not found, will not set the KETTLE_HOME and PENTAHO_METASTORE_FOLDER variables"
+fi
+
+if [ -v SSL_DIR ] ; then
+	export KEYSTORE_PATH="${SSL_DIR}/keystore.pkcs12"
+	export KEYSTORE_PASSWORD="$(<"${SSL_DIR}/keystore.pass")"
 fi
 
 # Allow rendering to be disabled
@@ -156,6 +196,6 @@ fi
 running "Running the Kettle job from [${JOB}]"
 cd "${PENTAHO_PDI_HOME}/data-integration"
 RC=0
-( execute ./kitchen.sh -file:"${JOB}" "${LOG_FLAG[@]}" < /dev/null ) || RC=${?}
+( execute ./kitchen.sh "${PARAM[@]}" "${CUSTOM[@]}" -file:"${JOB}" "${LOG_FLAG[@]}" < /dev/null ) || RC=${?}
 say "Exit Status: [${RC}]"
 exit ${RC}

@@ -47,7 +47,7 @@ fi
 # No data source anywhere? Assume the default...
 [ -n "${DATA_SOURCE}" ] || DATA_SOURCE="${DEFAULT_DATA_SOURCE}"
 
-set_or_default PENTAHO_URL "https://localhost:8443/pentaho"
+set_or_default ADMIN_URL "https://localhost:${ADMIN_URL}/pentaho"
 set_or_default ADMIN_USERNAME "admin"
 set_or_default ADMIN_PASSWORD "password"
 
@@ -66,4 +66,4 @@ execute curl -fsSL \
 	-F xmlaEnabledFlag="false" \
 	-F parameters="Datasource=${DATA_SOURCE}" \
 	--config <(echo -n "--user \"${ADMIN_USERNAME}:${ADMIN_PASSWORD}\"") \
-	"${PENTAHO_URL}/plugin/data-access/api/datasource/analysis/catalog/${ENCODED}"
+	"${ADMIN_URL}/plugin/data-access/api/datasource/analysis/catalog/${ENCODED}"

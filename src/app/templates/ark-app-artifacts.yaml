@@ -46,6 +46,7 @@ spec:
       {{- with ($.Values.securityContext).template }}
       securityContext: {{- toYaml . | nindent 8 }}
       {{- end }}
+      terminationGracePeriodSeconds: 0
       containers:
         - name: artifacts
           {{- include "arkcase.app.image.artifacts" (dict "ctx" $ "name" "artifacts" "useChartTag" true) | nindent 10 }}
@@ -55,13 +56,10 @@ spec:
             - name: FORCE_HASHES
               value: "true"
             {{- end }}
+            - name: NEW_HTTPD
+              value: "true"
           volumeMounts:
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
-            # These 3 are workarounds until we arrive at 2023.02.05, which includes
-            # the implementation for ADS-2378 ... when that becomes the norm, these
-            # mounts can be removed.
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/file/arkcase/exts/ads-2378-workaround.zip") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/file/arkcase/exts/ads-2378-workaround.zip.ver") | nindent 12 }}
             {{- if $customConfFile }}
             - name: &confFileVolume "conf-file"
               mountPath: "/app/file/arkcase/conf/00-base.zip"

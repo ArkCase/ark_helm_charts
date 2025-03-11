@@ -63,7 +63,7 @@
     {{- $context = trimPrefix "/" $context -}}
 
     {{- /* New! Configurable container image suffix */ -}}
-    {{- $containerSuffix := $key -}}
+    {{- $containerSuffix := "foia" -}}
     {{- if (hasKey $portal "containerSuffix") -}}
       {{- $containerSuffix = ($portal.containerSuffix | default "" | toString | lower) -}}
       {{- $containerSuffixRegex := "^[a-z0-9]+$" -}}

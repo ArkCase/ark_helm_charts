@@ -19,7 +19,7 @@ set_or_default LOGS_DIR "${BASE_DIR}/logs"
 
 redirect_logs "${LOGS_DIR}/install-reports.log"
 
-set_or_default ADMIN_URL "https://localhost:8443/pentaho/"
+set_or_default ADMIN_URL "https://localhost:${ADMIN_PORT}/pentaho/"
 
 # We have to sanitize the Admin URL to remove any trailing slashes
 [[ "${ADMIN_URL}" =~ ^(.*[^/])/+$ ]] && ADMIN_URL="${BASH_REMATCH[1]}"
@@ -53,7 +53,35 @@ extract_archive()
 	return 0
 }
 
-is_report_installed()
+is_data_source()
+{
+	local FILE="${1}"
+
+	is_file_readable "${FILE}" || return ${?}
+
+	# Is this an XMI file?
+	case "${FILE,,}" in
+		*.xmi ) ;;
+		* ) return 1 ;;
+	esac
+
+	# We're good!
+	return 0
+}
+
+validate_data_source()
+{
+	local FILE="${1}"
+
+	# Is it clean XML? If not, return the error!
+	xmllint "${FILE}" &>/dev/null || return ${?}
+
+	# TODO: Stronger validations
+
+	return 0
+}
+
+is_file_intalled()
 {
 	local FILE="${1}"
 	local HASH="${2}"
@@ -66,16 +94,16 @@ is_report_installed()
 	[[ "${EXISTING,,}" =~ ^([0-9a-f]{64})=(.*)$ ]] || return 1
 
 	# Does the hash match our expected hash?
-	[ "${BASH_REMATCH[0],,}" != "${HASH,,}" ] || return 1
+	[ "${BASH_REMATCH[1],,}" == "${HASH,,}" ] || return 1
 
 	# Does the filename match exactly? (just for paranoia's sake)
-	[ "${BASH_REMATCH[1]}" != "${FILE}" ] || return 1
+	[ "${BASH_REMATCH[2]}" == "${FILE}" ] || return 1
 
 	# Everything matches, the report is already installed
 	return 0
 }
 
-mark_report_installed()
+mark_file_installed()
 {
 	local FILE="${1}"
 	local HASH="${2}"
@@ -147,11 +175,30 @@ install_report()
 		read HASH rest < <(sha256sum "${F}")
 		B="${F##*/}"
 
-		if is_report_installed "${P}/${B}" "${HASH}" ; then
-			say "The reports in [${P}/${B}]${ARCHIVE_INFO} are already installed."
+		if is_file_intalled "${P}/${B}" "${HASH}" ; then
+			say "The file [${P}/${B}]${ARCHIVE_INFO} is already installed."
 			continue
 		fi
 
+		#
+		# Is this an XMI file? If so, use a different approach
+		#
+
+		IMPORT_PARAMS=()
+		if is_data_source "${F}" ; then
+			if ! validate_data_source "${F}" ; then
+				err "The DataSource in [${F}] did not validate and will not be installed"
+				continue
+			fi
+			DS_NAME="${F}"
+			# Keep the basename
+			DS_NAME="${DS_NAME##*/}"
+			# Rip out the last bit of the extension
+			DS_NAME="${DS_NAME%.*}"
+			IMPORT_PARAMS=(--resource-type=DATASOURCE --datasource-type=METADATA --metadata-domain-id="${DS_NAME}")
+		else
+			IMPORT_PARAMS=(--path="/public${P}" --charset=UTF-8)
+		fi
 
 		#
 		# Alternative CURL:
@@ -161,7 +208,7 @@ install_report()
 		# TODO: check out what the other flags do (i.e. permission, overwrite, retainOwnership, etc.)
 		#
 
-		say "Installing the report from [${F}]${ARCHIVE_INFO}..."
+		say "Installing the file from [${F}]${ARCHIVE_INFO}..."
 		local UPLOAD_LOG_FILE="${LOGS_DIR}/uploads-$(date -u +%Y%m%d-%H%M%S)Z.log"
 		CMD=(
 			"${REPORT_INSTALLER}"
@@ -169,27 +216,26 @@ install_report()
 			--url="${ADMIN_URL}"
 			--username="${ADMIN_USERNAME}"
 			--password="${ADMIN_PASSWORD}"
-			--path="/public${P}"
 			--file-path="${F}"
+			"${IMPORT_PARAMS[@]}"
 			--logfile="${UPLOAD_LOG_FILE}"
-			--charset=UTF-8
 			--permission=true
 			--overwrite=true
 			--retainOwnership=true
 		)
 		${DEBUG} && say "\t${CMD[@]@Q}"
 		(
-			say "# Installing the report from [${F}]${ARCHIVE_INFO}..."
+			say "# Installing the file from [${F}]${ARCHIVE_INFO}..."
 			say "COMMAND: ${CMD[@]@Q}"
 			say "--------------------------------------------------------------------------------"
 			exec "${CMD[@]}"
 		) &> "${UPLOAD_LOG_FILE}"
 		if grep -iq "Import was successful" "${UPLOAD_LOG_FILE}" ; then
-			mark_report_installed "${P}/${B}" "${HASH}"
+			mark_file_installed "${P}/${B}" "${HASH}"
 			say "\tReport installed successfully"
 			rm -f "${UPLOAD_LOG_FILE}" &>/dev/null
 		else
-			err "\tFailed to install the report from [${F}]${ARCHIVE_INFO}\n$(cat "${UPLOAD_LOG_FILE}")"
+			err "\tFailed to install the file from [${F}]${ARCHIVE_INFO}\n$(cat "${UPLOAD_LOG_FILE}")"
 			return ${?}
 		fi
 	done
@@ -200,7 +246,7 @@ install_report()
 list_reports()
 {
 	local REPORTS_DIR="${1}"
-	[ -d "${REPORTS_DIR}" ] | return 0
+	[ -d "${REPORTS_DIR}" ] || return 0
 	find "${REPORTS_DIR}" -type f -not -name ".*" | \
 		sed -e "s;^${REPORTS_DIR}/;;g" | \
 		sort
@@ -225,7 +271,7 @@ if ${DEBUG} || is_file_executable "${REPORT_INSTALLER}" ; then
 
 		# Install the report
 		install_report "${FILE}" && continue
-		say "Failed to install the report from [${FILE}]"
+		say "Failed to install the file from [${FILE}]"
 		ERROR="true"
 	done < <(list_reports "${REPORTS_DIR}")
 

@@ -45,6 +45,7 @@ spec:
       {{- end }}
       serviceAccountName: {{ include "arkcase.serviceAccountName" $ | quote }}
       securityContext: {{- include "arkcase.securityContext" $ | nindent 8 }}
+      terminationGracePeriodSeconds: 15
       initContainers:
         - name: init-set-permissions
           {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
@@ -70,11 +71,17 @@ spec:
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
+            - name: PGDATA
+              value: "/var/lib/pgsql/data/userdata"
             - name: POSTGRESQL_ADMIN_PASSWORD
               value: "$(DB_ROOT_PASSWORD)"
           {{- include "arkcase.rdbms.ports" $ | nindent 10 }}
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "postgres") | nindent 12 }}
+          lifecycle:
+            preStop:
+              exec:
+                command: [ "/usr/bin/pg_ctl", "stop" ]
           volumeMounts:
             {{- include "arkcase.subsystem-access.volumeMount" $ | nindent 12 }}
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}

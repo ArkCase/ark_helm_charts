@@ -120,6 +120,7 @@ spec:
       serviceAccountName: {{ $serviceAccountName | quote }}
       {{- end }}
       securityContext: {{- include "arkcase.securityContext" $ | nindent 8 }}
+      terminationGracePeriodSeconds: 15
       initContainers:
         - name: init-deployer
           {{- include "arkcase.image" (dict "ctx" $ "name" "deployer" "repository" "arkcase/deployer") | nindent 10 }}
@@ -188,6 +189,8 @@ spec:
               value: {{ $serviceName | quote }}
             - name: ADMIN_PORT
               value: {{ $cluster.enabled | ternary 4443 8443 | toString | quote }}
+            - name: ADMIN_URL
+              value: "https://localhost:$(ADMIN_PORT)/pentaho"
             - name: PENTAHO_INSTALLED_LICENSE_PATH
               value: "$(DATA_DIR)/.installedLicenses.xml"
             - name: ARKCASE_ENTERPRISE
@@ -198,6 +201,10 @@ spec:
           {{- include "arkcase.subsystem.ports" (dict "ctx" $ "name" ($cluster.enabled | ternary "clusteredPentaho" "pentaho")) | nindent 10 }}
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "pentaho") | nindent 12 }}
+          lifecycle:
+            preStop:
+              exec:
+                command: [ "/app/pentaho/pentaho-server/tomcat/bin/catalina.sh", "stop", "-force" ]
           volumeMounts:
             {{- include "arkcase.trusts.mount" $ | nindent 12 }}
             {{- include "arkcase.acme.volumeMount-shared" $ | nindent 12 }}

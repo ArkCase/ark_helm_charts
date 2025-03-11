@@ -108,24 +108,19 @@ idp.xml
     {{- fail (printf "The OIDC configuration must be given as a map, not a %s: %s" (kindOf $clients) $clients) -}}
   {{- end -}}
   {{- $usersDirectory := $.usersDirectory -}}
-  {{- $baseUrl := (printf "%s/login/oauth2/code" $.baseUrl) -}}
 
   {{- $results := dict -}}
   {{- if and $clients (kindIs "map" $clients) -}}
     {{-
-      $required :=
+      $requiredCommon :=
         list 
           "authorizationUri"
           "clientId"
-          "clientSecret"
           "jwkSetUri"
-          "registrationId"
           "scope"
           "tokenUri"
           "userInfoUri"
-          "usernameAttribute"
           "responseType"
-          "responseMode"
     -}}
     {{- range $id, $client := $clients -}}
 
@@ -141,6 +136,33 @@ idp.xml
       {{- /* Allow clients to be enabled/disabled individually */ -}}
       {{- if and (hasKey $client "enabled") (not (include "arkcase.toBoolean" $client.enabled)) -}}
         {{- continue -}}
+      {{- end -}}
+
+      {{- $required := $requiredCommon -}}
+
+      {{- if eq $id "portal" -}}
+        {{- $required = concat $required (list "clientAuthentication" "logOutRedirectUri" "grantType") -}}
+
+        {{- /* Set the redirectUri to the specified value */ -}}
+        {{- $portal := (include "arkcase.portal" $.ctx | fromYaml) -}}
+        {{- $baseUrlPortal := (printf "%s://%s/%s/portal/login" $.baseUrl.scheme $.baseUrl.hostname $portal.context) -}}
+        {{- $client = set $client "redirectUri" $baseUrlPortal -}}
+
+        {{- if hasKey $client "clientAuthentication" -}}
+          {{- if eq $client.clientAuthentication "private_key_jwt" -}}
+            {{- $required = concat $required (list "privateKeyFilePath" "clientAssertionType") -}}
+          {{- else if eq $client.clientAuthentication "client_id_and_secret" -}}
+            {{- $required = append $required "clientSecret" -}}
+          {{- end -}}
+        {{- else -}}
+          {{- fail (printf "OIDC Configuration for client '%s' is missing 'clientAuthentication'" $id) -}}
+        {{- end -}}
+      {{- else -}}
+        {{- $required = concat $required (list "clientSecret" "responseMode" "usernameAttribute" "registrationId") -}}
+
+        {{- /* Set the redirectUri to the specified value */ -}}
+        {{- $baseUrlArkcase := (printf "%s/login/oauth2/code" $.baseUrl.baseUrl) -}}
+        {{- $client = set $client "redirectUri" (printf "%s/%s" $baseUrlArkcase $client.registrationId) -}}
       {{- end -}}
 
       {{- /* TODO: Is this correct? Do we want to check ALL settings? */ -}}
@@ -167,9 +189,6 @@ idp.xml
       {{- /* Set the usersDirectory to the specified value */ -}}
       {{- $client = set $client "usersDirectory" $usersDirectory -}}
 
-      {{- /* Set the redirectUri to the specified value */ -}}
-      {{- $client = set $client "redirectUri" (printf "%s/%s" $baseUrl $client.registrationId) -}}
-
       {{- /* Store the result */ -}}
       {{- $results = set $results $id $client -}}
     {{- end -}}
@@ -191,12 +210,11 @@ idp.xml
   {{- $application := $.application -}}
 
   {{- /* Set the usersDirectory for all clients to the default one ... */ -}}
-  {{- $baseUrl := (include "arkcase.tools.conf" (dict "ctx" $ctx "value" "baseUrl")) -}}
-  {{- /* Remove any potential trailing slashes */ -}}
-  {{- $baseUrl = (regexReplaceAll "/*$" $baseUrl "") -}}
+  {{- $baseUrl := (include "arkcase.tools.parseUrl" (include "arkcase.tools.conf" (dict "ctx" $ctx "value" "baseUrl")) | fromYaml) -}}
+
 
   {{- /* The enabled flag is on by default, unless explicitly turned off */ -}}
-  {{- $clients := (include "__arkcase.core.sso.oidc.parse-clients" (dict "oidc" $oidc "usersDirectory" $application "baseUrl" $baseUrl) | fromYaml) -}}
+  {{- $clients := (include "__arkcase.core.sso.oidc.parse-clients" (dict "oidc" $oidc "usersDirectory" $application "baseUrl" $baseUrl "ctx" $ctx) | fromYaml) -}}
 
   {{- /* We also condition the configuation on whether there are client configurations */ -}}
   {{- if not $clients -}}

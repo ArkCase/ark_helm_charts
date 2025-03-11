@@ -52,7 +52,7 @@ run_curl()
 		"${METHOD[@]}" \
 		"${HEADERS[@]}" \
 		"${POST_FILE[@]}" \
-		"${PENTAHO_URL}${ENDPOINT}")" || RC=${?}
+		"${ADMIN_URL}${ENDPOINT}")" || RC=${?}
 
 	if ${CODE_ONLY} ; then
 		# If it's a 200 code, then return 0
@@ -77,7 +77,7 @@ usage()
 
 DATASOURCE_NAME="${1}"
 
-set_or_default PENTAHO_URL "https://localhost:8443/pentaho"
+set_or_default ADMIN_URL "https://localhost:${ADMIN_PORT}/pentaho"
 set_or_default ADMIN_USERNAME "admin"
 set_or_default ADMIN_PASSWORD "password"
 

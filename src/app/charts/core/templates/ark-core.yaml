@@ -152,6 +152,7 @@ spec:
       serviceAccountName: {{ $serviceAccountName | quote }}
       {{- end }}
       securityContext: {{- include "arkcase.securityContext" $ | nindent 8 }}
+      terminationGracePeriodSeconds: 15
       initContainers:
         - name: init-deployer
           {{- include "arkcase.image" (dict "ctx" $ "name" "deployer" "repository" "arkcase/deployer") | nindent 10 }}
@@ -170,6 +171,8 @@ spec:
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/deploy") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/fixExcel") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/realm-fix") | nindent 12 }}
+            - name: &homeVol "home"
+              mountPath: "/app/depl/home"
         - name: init-permissions
           {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
@@ -204,7 +207,7 @@ spec:
             - name: &warsVol "wars"
               mountPath: *warsDir
             {{- include "arkcase.core.dev.permissionMounts" $ | nindent 12 }}
-            - name: &homeVol "home"
+            - name: *homeVol
               mountPath: *homeDir
             - name: &tempVol "temp"
               mountPath: *tempDir
@@ -217,6 +220,7 @@ spec:
               mountPath: *fsrvDir
             {{- end }}
         {{- include "arkcase.initDependencies.container" (dict "ctx" $ "name" "init-dependencies") | nindent 8 }}
+        {{- if not (eq $content.dialect "box") }}
         - name: init-seed-content
           {{- include "arkcase.image" (dict "ctx" $ "name" "seed-content" "repository" "arkcase/nettest") | nindent 10 }}
           {{- $contentScript := printf "/seed-content.%s" $content.dialect }}
@@ -259,6 +263,7 @@ spec:
               mountPath: *homeDir
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" $contentScript) | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" $contentData) | nindent 12 }}
+        {{- end }}
       containers:
         - name: arkcase
           {{- include "arkcase.image" $ | nindent 10 }}
@@ -294,6 +299,8 @@ spec:
               value: "$(JAVA_KEYSTORE)"
             - name: JAVA_TRUSTSTORE_TYPE
               value: "$(JAVA_KEYSTORE_TYPE)"
+            - name: LOOP_TERMINATION_FILE
+              value: &loopTerminationFile "/app/.terminate"
             {{- if $portal }}
             - name: PORTAL_HOME_DIR
               value: *portalDir
@@ -319,7 +326,6 @@ spec:
               value: >-
                 -Dcom.redhat.fips=false
             - name: CATALINA_OPTS
-              {{- $springProfiles := (include "arkcase.core.springProfiles" $ | fromYamlArray) }}
               # For Java 8, these percentages must be given as doubles. The JVM may
               # choke if the ".0" isn't provided at the end
               value: >-
@@ -330,18 +336,22 @@ spec:
                 -Dsaml.keystore.defaultKeyName=$(ACME_KEY_ALIAS)
                 -Dacm.configurationserver.propertyfile=$(HOME_DIR)/.arkcase/acm/conf.yml
                 -Dconfiguration.client.spring.path=spring
-                -Dspring.profiles.active={{ $springProfiles | join "," }}
                 -Duser.home=$(HOME_DIR)
+                -Dcom.sun.management.jmxremote.port=7091
+                -Dcom.sun.management.jmxremote.authenticate=false
+                -Dcom.sun.management.jmxremote.ssl=false
                 {{- with $debug.arkcase }}
                 -Xdebug
                 -agentlib:jdwp=transport=dt_socket,server=y,suspend={{ .suspend }},address=*:8888
-                -Dcom.sun.management.jmxremote.port=7091 -Dcom.sun.management.jmxremote.authenticate=false
-                -Dcom.sun.management.jmxremote.ssl=false
                 -XX:FlightRecorderOptions=stackdepth=512,samplethreads=true
                 {{- end }}
           {{- include "arkcase.subsystem.ports" (dict "ctx" $ "name" ($cluster.enabled | ternary "clusteredArkcase" "arkcase")) | nindent 10 }}
           resources: {{- include "arkcase.resources" (dict "ctx" $ "part" "arkcase") | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "arkcase") | nindent 12 }}
+          lifecycle:
+            preStop:
+              exec:
+                command: [ "/usr/local/bin/terminate-run-loop", "/app/tomcat/bin/catalina.sh", "stop", "-force" ]
           volumeMounts:
             {{- include "arkcase.trusts.mount" $ | nindent 12 }}
             {{- include "arkcase.acme.volumeMount-shared" $ | nindent 12 }}
@@ -362,6 +372,7 @@ spec:
             - name: *portalVol
               mountPath: *portalDir
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/acm/acm-config-server-repo/lookups/lookups-server.yaml") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/tomcat/webapps/arkcase/WEB-INF/tomcat-web.xml" "subPath" "arkcase-tomcat-web.xml" ) | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/tomcat/webapps/arkcase#external-portal/WEB-INF/classes/bootstrap.yaml") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/acm/acm-config-server-repo/arkcase-portal-server.yaml") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/acm/acm-config-server-repo/arkcase-FOIA_server.yaml") | nindent 12 }}
@@ -423,13 +434,16 @@ spec:
                 -XX:MinRAMPercentage=50
                 -XX:MaxRAMPercentage=80
                 -Djava.keystore.key.alias=$(ACME_KEY_ALIAS)
+                -Dcom.sun.management.jmxremote.port=7092
+                -Dcom.sun.management.jmxremote.authenticate=false
+                -Dcom.sun.management.jmxremote.ssl=false
                 {{- with $debug.cloudconfig }}
                 -Xdebug
                 -agentlib:jdwp=transport=dt_socket,server=y,suspend={{ .suspend }},address=*:8889
-                -Dcom.sun.management.jmxremote.port=7092 -Dcom.sun.management.jmxremote.authenticate=false
-                -Dcom.sun.management.jmxremote.ssl=false
                 -XX:FlightRecorderOptions=stackdepth=512,samplethreads=true
                 {{- end }}
+            - name: LOOP_TERMINATION_FILE
+              value: *loopTerminationFile
             {{- if $dev }}
             - name: DEVELOPMENT
               value: "true"
@@ -443,6 +457,10 @@ spec:
           {{- include "arkcase.subsystem.ports" (dict "ctx" $ "name" "cloudconfig") | nindent 10 }}
           resources: {{- include "arkcase.resources" (dict "ctx" $ "part" "cloudconfig") | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "cloudconfig") | nindent 12 }}
+          lifecycle:
+            preStop:
+              exec:
+                command: [ "/usr/local/bin/terminate-run-loop" ]
           volumeMounts:
             {{- include "arkcase.subsystem-access.volumeMount" $ | nindent 12 }}
             {{- include "arkcase.trusts.mount" $ | nindent 12 }}

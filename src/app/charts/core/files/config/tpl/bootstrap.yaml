@@ -23,6 +23,7 @@ spring:
         initial-interval: 10000
 
   profiles:
+    active: {{ include "arkcase.portal.springProfiles" $ | fromYamlArray | compact | join "," | quote }}
     include: {{ $profiles | compact | join "," | quote }}
 
   jms:
