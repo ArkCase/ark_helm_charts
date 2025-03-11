@@ -220,6 +220,7 @@ spec:
               mountPath: *fsrvDir
             {{- end }}
         {{- include "arkcase.initDependencies.container" (dict "ctx" $ "name" "init-dependencies") | nindent 8 }}
+        {{- if not (eq $content.dialect "box") }}
         - name: init-seed-content
           {{- include "arkcase.image" (dict "ctx" $ "name" "seed-content" "repository" "arkcase/nettest") | nindent 10 }}
           {{- $contentScript := printf "/seed-content.%s" $content.dialect }}
@@ -262,6 +263,7 @@ spec:
               mountPath: *homeDir
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" $contentScript) | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" $contentData) | nindent 12 }}
+        {{- end }}
       containers:
         - name: arkcase
           {{- include "arkcase.image" $ | nindent 10 }}

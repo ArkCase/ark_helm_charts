@@ -75,6 +75,39 @@ settings:
         env:
           name: ARKCASE_CONTENT_RM
           optional: true
+      private-key:
+        path:
+          mountPath: /app/home/.content-private-key
+          optional: true
+      client-id:
+        env: ARKCASE_BOX_CLIENT_ID
+        secretKeyRef:
+          name: arkcase-content-main
+          key: client-id
+
+      client-secret:
+        env: ARKCASE_BOX_CLIENT_SECRET
+        secretKeyRef:
+          name: arkcase-content-main
+          key: client-secret
+
+      enterprise-id:
+        env: ARKCASE_BOX_ENTERPRISE_ID
+        secretKeyRef:
+          name: arkcase-content-main
+          key: enterprise-id
+
+      public-key-id:
+        env: ARKCASE_BOX_PUBLIC_KEY_ID
+        secretKeyRef:
+          name: arkcase-content-main
+          key: public-key-id
+
+      private-key-password:
+        env: ARKCASE_BOX_PRIVATE_KEY_PASSWORD
+        secretKeyRef:
+          name: arkcase-content-main
+          key: private-key-password
 
   ldap:
     main:
