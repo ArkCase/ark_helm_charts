@@ -84,30 +84,31 @@ settings:
         secretKeyRef:
           name: arkcase-content-main
           key: client-id
-
+          optional: true
       client-secret:
         env: ARKCASE_BOX_CLIENT_SECRET
         secretKeyRef:
           name: arkcase-content-main
           key: client-secret
-
+          optional: true
       enterprise-id:
         env: ARKCASE_BOX_ENTERPRISE_ID
         secretKeyRef:
           name: arkcase-content-main
           key: enterprise-id
-
+          optional: true
       public-key-id:
         env: ARKCASE_BOX_PUBLIC_KEY_ID
         secretKeyRef:
           name: arkcase-content-main
           key: public-key-id
-
+          optional: true
       private-key-password:
         env: ARKCASE_BOX_PRIVATE_KEY_PASSWORD
         secretKeyRef:
           name: arkcase-content-main
           key: private-key-password
+          optional: true
 
   ldap:
     main:
