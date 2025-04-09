@@ -235,15 +235,6 @@
     {{- $port = (last $connect) -}}
   {{- end }}
 
-  {{- $receiverChannelEnabled := $null -}}
-  {{- $v = (include "arkcase.tools.conf" (dict "ctx" $ "value" "email.receive.receiver-channel-enabled" "detailed" true) | fromYaml) -}}
-  {{- if and $v $v.global $v.value -}}
-    {{- $receiverChannelEnabled = (include "arkcase.toBoolean" $v.value) -}}
-    {{- if not $receiverChannelEnabled -}}
-      {{- fail (printf "Invalid email.receive.receiver-channel-enabled [%s] - must be a valid boolean [true/false]" $v.value) -}}
-    {{- end -}}
-  {{- end }}
-
   {{- $username := $null -}}
   {{- $v = (include "arkcase.tools.conf" (dict "ctx" $ "value" "email.send.username" "detailed" true) | fromYaml) -}}
   {{- if and $v $v.global $v.value (eq $v.type "string") -}}
@@ -301,12 +292,11 @@
     {{- $result = set $result "port" $port -}}
   {{- end }}
 
-  {{- $receiverChannelEnabled = $null -}}
-  {{- $v = (include "arkcase.tools.conf" (dict "ctx" $ "value" "email.receive.receiver-channel-enabled" "detailed" true) | fromYaml) -}}
+  {{- $v = (include "arkcase.tools.conf" (dict "ctx" $ "value" "email.receive.channel-enabled" "detailed" true) | fromYaml) -}}
   {{- if and $v $v.global $v.value -}}
-    {{- $receiverChannelEnabled = (include "arkcase.toBoolean" $v.value) -}}
+    {{- $receiverChannelEnabled := (and (not (empty $v)) (not (empty (include "arkcase.toBoolean" $v.value)))) -}}
     {{- if not $receiverChannelEnabled -}}
-      {{- fail (printf "Invalid email.receive.receiver-channel-enabled [%s] - must be a valid boolean [true/false]" $v.value) -}}
+      {{- fail (printf "Invalid email.receive.channel-enabled [%s] - must be a valid boolean [true/false]" $v.value) -}}
     {{- end -}}
     {{- $result = set $result "receiver-channel-enabled" $receiverChannelEnabled -}}
   {{- end }}
