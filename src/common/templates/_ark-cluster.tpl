@@ -279,6 +279,10 @@
   value: {{ $.Release.Namespace | quote }}
 - name: KUBERNETES_LABELS
   value: {{ join "," $result | quote }}
+- name: KUBERNETES_SERVICE
+  value: {{ include "arkcase.service.name" $ | quote }}
+- name: KUBERNETES_SERVICE_HEADLESS
+  value: {{ include "arkcase.service.headless" $ | quote }}
   {{- end }}
 {{- end -}}
 
