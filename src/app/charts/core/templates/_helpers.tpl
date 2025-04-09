@@ -292,6 +292,10 @@
     {{- $result = set $result "port" $port -}}
   {{- end }}
 
+  {{- $v = (include "arkcase.tools.conf" (dict "ctx" $ "value" "email.receive.channel-enabled" "detailed" true) | fromYaml) -}}
+  {{- $receiverChannelEnabled := (and (not (empty $v)) (not (empty (include "arkcase.toBoolean" $v.value)))) -}}
+  {{- $result = set $result "receiver-channel-enabled" $receiverChannelEnabled -}}
+
   {{- dict "email" $result | toYaml -}}
 {{- end }}
 
