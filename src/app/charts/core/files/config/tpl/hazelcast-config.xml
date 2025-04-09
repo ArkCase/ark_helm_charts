@@ -1,5 +1,8 @@
 {{- $namespace := $.Release.Namespace -}}
+{{- /* We must use the headless service here, since that's what's supported */ -}}
 {{- $service := (include "arkcase.service.headless" $) -}}
+{{- /* This must be hardcoded since it must match the value in the headless service */ -}]
+{{- $port := 5710 -}}
 <beans xmlns="http://www.springframework.org/schema/beans"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xmlns:hz="http://www.hazelcast.com/schema/spring"
@@ -23,8 +26,8 @@
                     <hz:property name="hazelcast.diagnostics.max.rolled.file.count">10</hz:property>
                     <hz:property name="hazelcast.socket.bind.any">true</hz:property>
                 </hz:properties>
-                <!-- <hz:network port="${acm.hazelcast.network.port}" port-auto-increment="false"> -->
-                <hz:network port="${acm.hazelcast.network.port}" port-auto-increment="false">
+                <!-- We hardcode the port number here and below b/c it must match what's in the service resource -->
+                <hz:network port="{{ $port }}" port-auto-increment="false">
                     <!-- Only available in Hazelcast Enterprise :( -->
                     <!--
                     <hz:ssl enabled="true">
@@ -43,8 +46,8 @@
                     -->
                     <hz:join>
                         <hz:multicast enabled="false"/>
-                        <!-- We must use the headless service here, since that's what's supported -->
-                        <hz:kubernetes enabled="true" namespace="{{ $namespace }}" service-name="{{ $service }}" service-port="${acm.hazelcast.network.port}"/>
+                        <!-- For some reason envvars weren't being expanded here so we had to resort to in-place templates -->
+                        <hz:kubernetes enabled="true" namespace="{{ $namespace }}" service-name="{{ $service }}" service-port="{{ $port }}"/>
                     </hz:join>
                 </hz:network>
                 <hz:map name="default" backup-count="0" time-to-live-seconds="25">
