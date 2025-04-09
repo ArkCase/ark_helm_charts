@@ -62,6 +62,27 @@
                 <hz:map name="sessions-map" backup-count="2" time-to-live-seconds="1800">
                     <hz:eviction eviction-policy="NONE" size="0"/>
                 </hz:map>
+
+                <!--
+                    Caches migrated from EhCache ... should probably be actual hz:cache entries ...
+                -->
+                <hz:map name="acm-authentication-cache" backup-count="0" time-to-live-seconds="0" max-idle-seconds="3600">
+                    <hz:eviction eviction-policy="LFU" max-size-policy="PER_NODE" size="1000"/>
+                </hz:map>
+
+                <hz:map name="portal_info_cache" backup-count="0" time-to-live-seconds="0" max-idle-seconds="1800">
+                    <hz:eviction eviction-policy="LFU" max-size-policy="PER_NODE" size="1000"/>
+                </hz:map>
+
+                <!-- 40 days max-idle?!?!  REALLY?!?!? -->
+                <hz:map name="webdav_auth_token_cache" backup-count="0" time-to-live-seconds="0" max-idle-seconds="3456000">
+                    <hz:eviction eviction-policy="LFU" max-size-policy="PER_NODE" size="1000"/>
+                </hz:map>
+
+                <!-- 40 days max-idle?!?!  REALLY?!?!? -->
+                <hz:map name="webdav_container_id_cache" backup-count="0" time-to-live-seconds="0" max-idle-seconds="3456000">
+                    <hz:eviction eviction-policy="LFU" max-size-policy="PER_NODE" size="1000"/>
+                </hz:map>
             </hz:config>
         </hz:hazelcast>
     </beans>
