@@ -216,6 +216,9 @@ service:
       - name: clustered-https
         protocol: TCP
         port: &clustered 4443
+      - name: hazelcast
+        protocol: TCP
+        port: 5701
 
     probes:
       <<: *arkcaseProbes
