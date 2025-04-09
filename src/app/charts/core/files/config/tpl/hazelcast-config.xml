@@ -24,7 +24,7 @@
                     <hz:property name="hazelcast.socket.bind.any">true</hz:property>
                 </hz:properties>
                 <!-- <hz:network port="${acm.hazelcast.network.port}" port-auto-increment="false"> -->
-                <hz:network port="5701" port-auto-increment="false">
+                <hz:network port="${acm.hazelcast.network.port}" port-auto-increment="false">
                     <!-- Only available in Hazelcast Enterprise :( -->
                     <!--
                     <hz:ssl enabled="true">
@@ -44,7 +44,7 @@
                     <hz:join>
                         <hz:multicast enabled="false"/>
                         <!-- We must use the headless service here, since that's what's supported -->
-                        <hz:kubernetes enabled="true" namespace="{{ $namespace }}" service-name="{{ $service }}"/>
+                        <hz:kubernetes enabled="true" namespace="{{ $namespace }}" service-name="{{ $service }}" service-port="${acm.hazelcast.network.port}"/>
                     </hz:join>
                 </hz:network>
                 <hz:map name="default" backup-count="0" time-to-live-seconds="25">
