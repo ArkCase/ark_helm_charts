@@ -105,6 +105,11 @@
                     <hz:eviction eviction-policy="LFU" max-size-policy="PER_NODE" size="10000"/>
                 </hz:map>
 
+                <hz:map name="requestsCache" backup-count="0" time-to-live-seconds="345600">
+                    <!-- 4 days TTL, matching the original ehcache ttl -->
+                    <hz:eviction eviction-policy="LRU" max-size-policy="PER_NODE" size="1000"/>
+                </hz:map>
+
             </hz:config>
         </hz:hazelcast>
     </beans>
