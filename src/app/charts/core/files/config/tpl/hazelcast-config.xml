@@ -70,11 +70,6 @@
                     <hz:eviction eviction-policy="LFU" max-size-policy="PER_NODE" size="1000"/>
                 </hz:map>
 
-                <!-- Not sure its needed, need to check the portal code -->
-                <hz:map name="portal_info_cache" backup-count="0" time-to-live-seconds="0" max-idle-seconds="1800">
-                    <hz:eviction eviction-policy="LFU" max-size-policy="PER_NODE" size="1000"/>
-                </hz:map>
-
                 <!-- 40 days max-idle?!?!  REALLY?!?!? -->
                 <hz:map name="webdav_auth_token_cache" backup-count="0" time-to-live-seconds="0" max-idle-seconds="3456000">
                     <hz:eviction eviction-policy="LFU" max-size-policy="PER_NODE" size="1000"/>
