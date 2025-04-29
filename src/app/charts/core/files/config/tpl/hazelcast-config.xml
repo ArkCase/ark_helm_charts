@@ -56,6 +56,9 @@
                 <hz:map name="acm-authentication-token-cache" backup-count="0" time-to-live-seconds="3600">
                     <hz:eviction eviction-policy="LFU" size="0"/>
                 </hz:map>
+                <hz:map name="acm-session-token-ids" backup-count="0" time-to-live-seconds="3600">
+                    <hz:eviction eviction-policy="LFU" size="0"/>
+                </hz:map>
                 <hz:map name="quiet-user-cache" backup-count="0" time-to-live-seconds="7200">
                     <hz:eviction eviction-policy="LRU" size="0"/>
                 </hz:map>
