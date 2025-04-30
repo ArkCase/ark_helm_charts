@@ -1,7 +1,7 @@
 {{- $namespace := $.Release.Namespace -}}
 {{- /* We must use the headless service here, since that's what's supported */ -}}
 {{- $service := (include "arkcase.service.headless" $) -}}
-{{- /* This must be hardcoded since it must match the value in the headless service */ -}]
+{{- /* This must be hardcoded since it must match the value in the headless service */ -}}
 {{- $port := 5710 -}}
 <beans xmlns="http://www.springframework.org/schema/beans"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
