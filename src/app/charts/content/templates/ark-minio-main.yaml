@@ -122,6 +122,10 @@ spec:
               value: "$(CONTENT_USERNAME)"
             - name: MINIO_PASSWORD
               value: "$(CONTENT_PASSWORD)"
+            - name: MINIO_INTERNAL_USER
+              value: "$(CONTENT_INTERNAL_USERNAME)"
+            - name: MINIO_INTERNAL_PASSWORD
+              value: "$(CONTENT_INTERNAL_PASSWORD)"
           lifecycle:
             postStart:
               exec:

@@ -15,6 +15,8 @@ network:
       url: "@env:DEPL_URL"
     content:
       url: "@env:ARKCASE_CONTENT_URL"
+    internal-content:
+      url: "@env:ARKCASE_INTERNAL_CONTENT_URL"
     ldap:
       url: "@env:ARKCASE_LDAP_URL"
     messaging:
@@ -48,6 +50,13 @@ settings:
       instanceId: ARKCASE_INSTANCE_ID
 
   content:
+    internal:
+      url: ARKCASE_INTERNAL_CONTENT_URL
+      username: ARKCASE_INTERNAL_CONTENT_USERNAME
+      password: ARKCASE_INTERNAL_CONTENT_PASSWORD
+      bucket: ARKCASE_INTERNAL_CONTENT_BUCKET
+      region: ARKCASE_INTERNAL_CONTENT_REGION
+
     admin:
       url: ARKCASE_CONTENT_ADMIN_URL
       ui: ARKCASE_CONTENT_ADMIN_UI
@@ -99,7 +108,7 @@ settings:
         env: 
           name: ARKCASE_BOX_PRIVATE_KEY_PASSWORD
           optional: true
-          
+
   ldap:
     main:
       url: ARKCASE_LDAP_URL
