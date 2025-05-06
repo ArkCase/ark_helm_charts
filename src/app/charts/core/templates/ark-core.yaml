@@ -360,7 +360,6 @@ spec:
               exec:
                 command: [ "/usr/local/bin/terminate-run-loop", "/app/tomcat/bin/catalina.sh", "stop", "-force" ]
           volumeMounts:
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/spring/hazelcast-config.xml") | nindent 12 }}
             {{- include "arkcase.trusts.mount" $ | nindent 12 }}
             {{- include "arkcase.acme.volumeMount-shared" $ | nindent 12 }}
             {{- include "arkcase.subsystem-access.volumeMount" $ | nindent 12 }}
