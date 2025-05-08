@@ -46,12 +46,3 @@ configuration:
     rules.path: "rules"
     extraFields.path: "extra-fields"
     spring.path: "spring"
-  server:
-    # It's not pretty, but it's OK to hardcode this for now b/c we're going to get rid of
-    # a separate cloudconfig instance in the (hopefully) near future
-    url: "https://localhost:9999"
-    update.path: "/config/{applicationName}"
-    remove.path: "/config/remove/{applicationName}"
-    reset.path: "/reset"
-    update.file.path: "/file"
-    modules.path: "/config/modules"

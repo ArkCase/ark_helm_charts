@@ -1023,13 +1023,11 @@ return either the value if correct, or the empty string if not.
       {{- if and $dev.debug (kindIs "map" $dev.debug) -}}
         {{- $debugSrc := $dev.debug -}}
         {{- if or (not (hasKey $debugSrc "enabled")) (not (empty (include "arkcase.toBoolean" $debugSrc.enabled))) -}}
-          {{- range $part := (list "arkcase" "cloudconfig") -}}
-            {{- $partConf := (dict "enabled" true "suspend" "n") -}}
-            {{- if (hasKey $debugSrc $part) -}}
-              {{- $partConf = (include "__arkcase.dev.compute-debug" (get $debugSrc $part) | fromYaml) -}}
-            {{- end -}}
-            {{- $debug = set $debug $part $partConf -}}
+          {{- $partConf := (dict "enabled" true "suspend" "n") -}}
+          {{- if (hasKey $debugSrc "arkcase") -}}
+            {{- $partConf = (include "__arkcase.dev.compute-debug" (get $debugSrc "arkcase") | fromYaml) -}}
           {{- end -}}
+          {{- $debug = set $debug "arkcase" $partConf -}}
         {{- end -}}
       {{- end -}}
       {{- $result = set $result "debug" $debug -}}
