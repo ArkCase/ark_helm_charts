@@ -3,6 +3,7 @@
 {{- $objectName := (include "arkcase.caliente.objectName" $) -}}
 {{- $acmeInfo := (include "arkcase.caliente.acme" $ | fromYaml) -}}
 {{- $dataVol := "data" -}}
+{{- $tempVol := "temp" -}}
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -42,8 +43,10 @@ spec:
         - name: init-set-permissions
           {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
-            - name: DATA_DIR
+            - name: CALIENTE_DIR
               value: &dataDir "/caliente"
+            - name: TEMP_DIR
+              value: &tempDir "$(CALIENTE_DIR)/temp"
             - name: JOBS
               value: |-
                 jobs:
@@ -51,7 +54,7 @@ spec:
                   - ownership: "0:0"
                     permissions: "u=rwX,g=rX,o="
                     flags: [ "recurse", "noforced", "create", "changes" ]
-                    targets: [ "$(DATA_DIR)" ]
+                    targets: [ "$(CALIENTE_DIR)", "$(TEMP_DIR)" ]
           volumeMounts:
             - name: &dataVol {{ $dataVol | quote }}
               mountPath: *dataDir
@@ -98,10 +101,13 @@ spec:
                   timeout: 10
       containers:
         - name: caliente
-          {{- include "arkcase.image" (dict "ctx" $ "name" "nettest" "repository" "arkcase/nettest") | nindent 10 }}
-          command: [ "wait-forever" ]
+          {{- include "arkcase.image" (dict "ctx" $ "name" "caliente" "repository" "arkcase/caliente") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- $acmeInfo.env | toYaml | nindent 12 }}
+            - name: CALIENTE_DIR
+              value: *dataDir
+            - name: TEMP
+              value: *tempDir
             - name: CALIENTE_DB_HOST
               valueFrom:
                 <<: *calienteDbHost
@@ -165,7 +171,11 @@ spec:
               readOnly: true
             - name: *dataVol
               mountPath: *dataDir
+            - name: {{ $tempVol | quote }}
+              mountPath: *tempDir
       volumes:
+        {{- include "arkcase.file-resource.volumes" $ | nindent 8 }}
+        {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" $tempVol) | nindent 8 }}
         - name: arkcase-ssl-trusts
           secret:
             secretName: arkcase-ssl-trusts

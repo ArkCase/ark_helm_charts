@@ -15,7 +15,8 @@ image:
     repository: "arkcase/postgres"
     tag: "13"
 
-  repository: "arkcase/caliente"
+  caliente:
+    repository: "arkcase/caliente"
 
 persistence:
   # If set to `false`, an ephemeral volume will be used instead and all other `persistence.*` parameters
@@ -27,7 +28,8 @@ persistence:
   volumeSize:
     content-data: "100Gi"
     db-data: "32Gi"
-    data: "16Gi"
+    data: "32Gi"
+    temp: "16Gi"
 
 # You generally shouldn't mess with these. These exist to support some name-generation templates
 nameOverride: ""
