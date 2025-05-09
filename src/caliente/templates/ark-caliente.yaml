@@ -50,7 +50,7 @@ spec:
                   # We know the image uses user 26
                   - ownership: "0:0"
                     permissions: "u=rwX,g=rX,o="
-                    flags: [ "recurse", "forced", "create", "changes" ]
+                    flags: [ "recurse", "noforced", "create", "changes" ]
                     targets: [ "$(DATA_DIR)" ]
           volumeMounts:
             - name: &dataVol {{ $dataVol | quote }}
@@ -164,7 +164,7 @@ spec:
               mountPath: /.trusts
               readOnly: true
             - name: *dataVol
-              mountPath: "/caliente/data"
+              mountPath: *dataDir
       volumes:
         - name: arkcase-ssl-trusts
           secret:
