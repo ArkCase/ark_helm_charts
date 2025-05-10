@@ -5,6 +5,9 @@
 strategyType: Recreate
 
 image:
+  pullSecrets:
+    - name: aws-arkcase-pull
+
   registry: "public.ecr.aws"
 
   minio:
