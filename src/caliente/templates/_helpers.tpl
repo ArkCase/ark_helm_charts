@@ -110,3 +110,37 @@
 
   {{- dict "env" $env "volumeMount" $volumeMount "volume" $volume | toYaml -}}
 {{- end -}}
+
+{{- define "arkcase.caliente.alfresco-env" -}}
+  {{- $ctx := $ -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "You must supply the root context as the only parameter" -}}
+  {{- end -}}
+
+  {{- $arkcase := ($ctx.Values.arkcase | default "arkcase") -}}
+  {{- $namespace := $ctx.Release.Namespace -}}
+
+  {{- $keys := dict -}}
+  {{- $secretName := (printf "%s-content-admin" $arkcase) -}}
+  {{- if (lookup "v1" "Secret" $namespace $secretName) -}}
+    {{- /* Get all the values from the modern secret */ -}}
+    {{- $keys = dict "url" "" "username" "" "password" "" -}}
+  {{- else -}}
+    {{- $secretName = (printf "%s-core" $arkcase) -}}
+    {{- if (lookup "v1" "Secret" $namespace $secretName) -}}
+      {{- /* Only some values come from the legacy secret */ -}}
+      {{- $keys = dict "username" "contentUsername" "password" "contentPassword" -}}
+      {{- /* This URL is hardcoded in the legacy chart */ -}}
+- name: "ALFRESCO_URL"
+  value: "https://content-main:8080"
+    {{- end -}}
+  {{- end -}}
+  {{- range $k, $v := $keys }}
+- name: {{ printf "ALFRESCO_%s" $k | upper | quote }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ $secretName | quote }}
+      key: {{ $v | default $k | quote }}
+      optional: false
+  {{- end }}
+{{- end -}}
