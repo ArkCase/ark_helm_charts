@@ -111,7 +111,7 @@
   {{- dict "env" $env "volumeMount" $volumeMount "volume" $volume | toYaml -}}
 {{- end -}}
 
-{{- define "arkcase.caliente.alfresco-env" -}}
+{{- define "arkcase.caliente.content-env" -}}
   {{- $ctx := $ -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "You must supply the root context as the only parameter" -}}
@@ -122,21 +122,36 @@
 
   {{- $keys := dict -}}
   {{- $secretName := (printf "%s-content-admin" $arkcase) -}}
-  {{- if (lookup "v1" "Secret" $namespace $secretName) -}}
+  {{- $secret := (lookup "v1" "Secret" $namespace $secretName) -}}
+
+  {{- $contentType := "cmis" -}}
+  {{- if $secret -}}
     {{- /* Get all the values from the modern secret */ -}}
     {{- $keys = dict "url" "" "username" "" "password" "" -}}
+    {{- if (hasKey $secret.data "bucket") -}}
+      {{- $contentType = "s3" -}}
+      {{- $keys = set $keys "bucket" "" -}}
+    {{- end -}}
   {{- else -}}
     {{- $secretName = (printf "%s-core" $arkcase) -}}
-    {{- if (lookup "v1" "Secret" $namespace $secretName) -}}
+    {{- $secret = (lookup "v1" "Secret" $namespace $secretName) -}}
+    {{- if $secret -}}
+      {{- /* Make sure we're not using S3/Minio */ -}}
+      {{- $port := 8080 -}}
       {{- /* Only some values come from the legacy secret */ -}}
       {{- $keys = dict "username" "contentUsername" "password" "contentPassword" -}}
+      {{- if (hasKey $secret.data "contentBucket") -}}
+        {{- $contentType = "s3" -}}
+        {{- $port = 9000 -}}
+        {{- $keys = set $keys "bucket" "contentBucket" -}}
+      {{- end -}}
       {{- /* This URL is hardcoded in the legacy chart */ -}}
-- name: "ALFRESCO_URL"
-  value: "https://content-main:8080"
+- name: {{ printf "%s_%s_url" $arkcase $contentType | upper | quote }}
+  value: {{ printf "https://content-main:%d" $port }}
     {{- end -}}
   {{- end -}}
   {{- range $k, $v := $keys }}
-- name: {{ printf "ALFRESCO_%s" $k | upper | quote }}
+- name: {{ printf "%s_%s_%s" $arkcase $contentType $k | upper | quote }}
   valueFrom:
     secretKeyRef:
       name: {{ $secretName | quote }}

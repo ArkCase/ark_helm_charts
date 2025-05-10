@@ -104,7 +104,7 @@ spec:
           {{- include "arkcase.image" (dict "ctx" $ "name" "caliente" "repository" "arkcase/caliente") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- $acmeInfo.env | toYaml | nindent 12 }}
-            {{- include "arkcase.caliente.alfresco-env" $ | nindent 12 }}
+            {{- include "arkcase.caliente.content-env" $ | nindent 12 }}
             - name: CALIENTE_DIR
               value: *dataDir
             - name: TEMP
