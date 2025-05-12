@@ -137,7 +137,7 @@
     {{- $secret = (lookup "v1" "Secret" $namespace $secretName) -}}
     {{- if $secret -}}
       {{- /* Make sure we're not using S3/Minio */ -}}
-      {{- $port := 8080 -}}
+      {{- $port := 8443 -}}
       {{- /* Only some values come from the legacy secret */ -}}
       {{- $keys = dict "username" "contentUsername" "password" "contentPassword" -}}
       {{- if (hasKey $secret.data "contentBucket") -}}
