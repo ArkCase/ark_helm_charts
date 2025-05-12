@@ -834,3 +834,22 @@
 
   {{- $result | uniq | toYaml -}}
 {{- end -}}
+
+{{- define "arkcase.env.ARK_APPLICATION_ACTIVE.compute" -}}
+{{- $portal := (include "arkcase.portal" . | fromYaml) -}}
+{{- list "arkcase" "arkcase-activemq" "arkcase-oidc" "ldap" "lookups" ((empty $portal) | ternary "" "arkcase-portal") | compact | join "," -}}
+{{- end }}
+
+{{- define "arkcase.env.ARKCASE_APPLICATION_PROFILE.compute" -}}
+{{- $portal := (include "arkcase.portal" . | fromYaml) -}}
+{{- $custom := (include "arkcase.customization" .) -}}
+{{- $customBase := printf "%s_base" $custom -}}
+{{- (empty $portal) | ternary (list $customBase $custom "server" "runtime") (list $customBase "foia" $custom "server" "FOIA_server" "runtime") | compact | join "," -}}
+{{- end }}
+
+{{- define "arkcase.env.applicationVars" }}
+- name: ARK_APPLICATION_ACTIVE
+  value: "{{ include "arkcase.env.ARK_APPLICATION_ACTIVE.compute" . }}"
+- name: ARKCASE_APPLICATION_PROFILE
+  value: "{{ include "arkcase.env.ARKCASE_APPLICATION_PROFILE.compute" . }}"
+{{- end }}
