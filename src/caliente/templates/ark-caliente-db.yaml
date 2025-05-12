@@ -3,6 +3,16 @@
 {{- $objectName := (include "arkcase.caliente.objectName" $) -}}
 {{- $acmeInfo := (include "arkcase.caliente.acme" $ | fromYaml) -}}
 {{- $dataVol := "data" -}}
+
+{{- $secret := (lookup "v1" "Secret" $namespace $objectName) -}}
+{{- $password := "" -}}
+{{- if $secret -}}
+  {{- $secretData := (get $secret "data") -}}
+  {{- if $secretData -}}
+    {{- $password = (hasKey $secretData "password" | ternary ($secretData.password | b64dec) "") -}}
+  {{- end -}}
+{{- end -}}
+
 ---
 apiVersion: v1
 kind: Secret
@@ -21,7 +31,7 @@ stringData:
   port: "5432"
   database: *app
   username: *app
-  password: {{ randAlphaNum 64 | quote }}
+  password: {{ $password | default (randAlphaNum 64) | quote }}
   schema: ""
 ---
 apiVersion: v1
