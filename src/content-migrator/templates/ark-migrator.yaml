@@ -1,6 +1,7 @@
 {{- $namespace := $.Release.Namespace -}}
 {{- $app := $.Release.Name -}}
 {{- $objectName := (include "arkcase.migrator.objectName" $) -}}
+{{- $partName := "migrator" -}}
 {{- $acmeInfo := (include "arkcase.migrator.acme" $ | fromYaml) -}}
 {{- $dataVol := "data" -}}
 {{- $tempVol := "temp" -}}
@@ -12,7 +13,7 @@ metadata:
   labels: &labels
     app: &app {{ $app | quote }}
     app.kubernetes.io/instance: *app
-    app.kubernetes.io/name: *objectName
+    app.kubernetes.io/name: &partName {{ $partName | quote }}
 spec:
   replicas: 1
   selector:
@@ -64,9 +65,9 @@ spec:
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- $acmeInfo.env | toYaml | nindent 12 }}
             - name: MIGRATOR_S3_ENDPOINT
-              valueFrom: &content-endpoint
+              valueFrom: &minio-endpoint
                 secretKeyRef:
-                  name: &content-secret {{ printf "%s-content" $app | quote }}
+                  name: &minio-secret {{ printf "%s-minio" $app | quote }}
                   key: endpoint
                   optional: false
             - name: INIT_DEPENDENCIES
@@ -96,30 +97,30 @@ spec:
               value: *tempDir
             - name: MIGRATOR_S3_ENDPOINT
               valueFrom:
-                <<: *content-endpoint
+                <<: *minio-endpoint
             - name: MIGRATOR_S3_REGION
               valueFrom:
                 secretKeyRef:
                   key: region
-                  name: *content-secret
+                  name: *minio-secret
                   optional: false
             - name: MIGRATOR_S3_BUCKET
               valueFrom:
                 secretKeyRef:
                   key: bucket
-                  name: *content-secret
+                  name: *minio-secret
                   optional: false
             - name: MIGRATOR_S3_ACCESS_KEY_ID
               valueFrom:
                 secretKeyRef:
                   key: accessKeyId
-                  name: *content-secret
+                  name: *minio-secret
                   optional: false
             - name: MIGRATOR_S3_SECRET_ACCESS_KEY
               valueFrom:
                 secretKeyRef:
                   key: secretAccessKey
-                  name: *content-secret
+                  name: *minio-secret
                   optional: false
           volumeMounts:
             {{- include "arkcase.trusts.mount" $ | nindent 12 }}

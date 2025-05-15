@@ -1,6 +1,7 @@
 {{- $namespace := $.Release.Namespace -}}
 {{- $app := $.Release.Name -}}
 {{- $objectName := (include "arkcase.migrator.objectName" $) -}}
+{{- $partName := (include "arkcase.part.name" $) -}}
 {{- $acmeInfo := (include "arkcase.migrator.acme" $ | fromYaml) -}}
 {{- $dataVol := "data" -}}
 
@@ -22,7 +23,7 @@ metadata:
   labels:
     app: &app {{ $app | quote }}
     app.kubernetes.io/instance: *app
-    app.kubernetes.io/name: *objectName
+    app.kubernetes.io/name: &partName {{ $partName | quote }}
   annotations:
     helm.sh/resource-policy: keep
 type: Opaque
@@ -41,7 +42,7 @@ metadata:
   labels: &labels
     app: &app {{ $app | quote }}
     app.kubernetes.io/instance: *app
-    app.kubernetes.io/name: *objectName
+    app.kubernetes.io/name: &partName {{ $partName | quote }}
 spec:
   selector:
     <<: *labels
@@ -58,7 +59,7 @@ metadata:
   labels: &labels
     app: &app {{ $app | quote }}
     app.kubernetes.io/instance: *app
-    app.kubernetes.io/name: *objectName
+    app.kubernetes.io/name: &partName {{ $partName | quote }}
 spec:
   replicas: 1
   selector:
