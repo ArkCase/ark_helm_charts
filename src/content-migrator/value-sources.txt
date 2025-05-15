@@ -1,0 +1,54 @@
+Alfresco:
+    ARKCASE_ALFRESCO_URL
+	ARKCASE_ALFRESCO_USERNAME
+	ARKCASE_ALFRESCO_PASSWORD
+
+	Legacy:
+		secret=${arkcase}-core
+			contentApi - "/alfresco"
+			adminUsername
+			adminPassword
+
+	Modern:
+		secret=${arkcase}-content-main
+			url - "/alfresco"
+			username
+			password
+
+Database:
+    ARKCASE_JDBC_DRIVER
+    ARKCASE_JDBC_URL
+    ARKCASE_JDBC_USERNAME
+    ARKCASE_JDBC_PASSWORD
+
+	Legacy:
+		secret=${arkcase}-core
+			(YAML arkcase-server.yaml):
+				acm.driverClassName
+				acm.url
+				acm.username
+				acm.password
+
+	Modern:
+		secret=${arkcase}-rdbms-arkcase
+			username
+			password
+		secret=${arkcase}-core-files
+			(YAML arkcase-server.yaml)
+				acm.driverClassName
+				acm.url
+
+Solr:
+	ARKCASE_SOLR_URL
+	ARKCASE_SOLR_USERNAME
+	ARKCASE_SOLR_PASSWORD
+
+	Legacy:
+		secret=${arkcase}-core
+			(YAML arkcase-server.yaml):
+				solr.protocol + solr.host + solr.port + "/solr"
+	Modern:
+		secret=${arkcase}-search-main
+			url + "/solr"
+			username
+			password
