@@ -52,7 +52,7 @@ Solr:
 			ARKCASE_SOLR_HOST=$(key:solrHost)
 			ARKCASE_SOLR_PORT=$(key:solrPort)
 
-			ARKCASE_SOLR_URL="${ARKCASE_SOLR_SCHEME}://${ARKCASE_SOLR_HOST}:${ARKCASE_SOLR_PORT}/solr" # constant, no interpolation
+			ARKCASE_SOLR_URL="${ARKCASE_SOLR_SCHEME}://${ARKCASE_SOLR_HOST}:${ARKCASE_SOLR_PORT}/solr" # direct-value constant, no interpolation
 			ARKCASE_SOLR_USERNAME=""
 			ARKCASE_SOLR_PASSWORD=""
 
@@ -60,6 +60,6 @@ Solr:
 		secret: ${arkcase}-search-main
 			ARKCASE_SOLR_BASE_URL="$(key:url)/solr"
 
-			ARKCASE_SOLR_URL="${ARKCASE_SOLR_BASE_URL}/solr" # constant, no interpolation
+			ARKCASE_SOLR_URL="${ARKCASE_SOLR_BASE_URL}/solr" # direct-value constant, no interpolation
 			ARKCASE_SOLR_USERNAME="$(key:username)"
 			ARKCASE_SOLR_PASSWORD="$(key:password)"
