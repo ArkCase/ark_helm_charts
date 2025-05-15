@@ -848,7 +848,7 @@
 {{- end }}
 
 {{- define "arkcase.env.applicationVars" }}
-- name: ARK_APPLICATION_ACTIVE
+- name: ARKCASE_APPLICATION_ACTIVE
   value: "{{ include "__arkcase.env.applicationVars.compute.active" $ }}"
 - name: ARKCASE_APPLICATION_PROFILE
   value: "{{ include "__arkcase.env.applicationVars.compute.profile" $ }}"
