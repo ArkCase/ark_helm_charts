@@ -1,3 +1,5 @@
+NOTE: Legacy deployments must be running on 0.7.78 or newer, and Modern deployments must be on 0.8.0-104 or newer
+
 Alfresco:
     ARKCASE_ALFRESCO_URL
 	ARKCASE_ALFRESCO_USERNAME
@@ -5,12 +7,14 @@ Alfresco:
 
 	Legacy:
 		secret=${arkcase}-core
+			if (contentType != "alfresco") fail();
 			contentApi - "/alfresco"
 			adminUsername
 			adminPassword
 
 	Modern:
 		secret=${arkcase}-content-main
+			if (bucket != nil) fail();
 			url - "/alfresco"
 			username
 			password
@@ -23,20 +27,19 @@ Database:
 
 	Legacy:
 		secret=${arkcase}-core
-			(YAML arkcase-server.yaml):
-				acm.driverClassName
-				acm.url
-				acm.username
-				acm.password
+			dbDriver
+			dbUrl
+			dbUsername
+			dbPassword
 
 	Modern:
 		secret=${arkcase}-rdbms-arkcase
 			username
 			password
-		secret=${arkcase}-core-files
-			(YAML arkcase-server.yaml)
-				acm.driverClassName
-				acm.url
+
+		secret=${arkcase}-core-config
+			jdbcDriver
+			jdbcUrl
 
 Solr:
 	ARKCASE_SOLR_URL
@@ -45,10 +48,10 @@ Solr:
 
 	Legacy:
 		secret=${arkcase}-core
-			(YAML arkcase-server.yaml):
-				solr.protocol + solr.host + solr.port + "/solr"
+			solrScheme + solrHost + solrPort + "/solr"
+
 	Modern:
 		secret=${arkcase}-search-main
 			url + "/solr"
-			username
-			password
+			username (optional)
+			password (optional)
