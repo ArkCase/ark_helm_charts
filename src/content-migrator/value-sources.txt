@@ -1,45 +1,45 @@
 NOTE: Legacy deployments must be running on 0.7.78 or newer, and Modern deployments must be on 0.8.0-104 or newer
 
 Alfresco:
-    ARKCASE_ALFRESCO_URL
+	ARKCASE_ALFRESCO_URL
 	ARKCASE_ALFRESCO_USERNAME
 	ARKCASE_ALFRESCO_PASSWORD
 
 	Legacy:
-		secret=${arkcase}-core
-			if (contentType != "alfresco") fail();
-			contentApi - "/alfresco"
-			adminUsername
-			adminPassword
+		secret: ${arkcase}-core
+			if ($(key:contentType) != "alfresco") fail();
+			ARKCASE_ALFRESCO_URL=$(key:contentApi) - "/alfresco"
+			ARKCASE_ALFRESCO_USERNAME=$(key:adminUsername)
+			ARKCASE_ALFRESCO_PASSWORD=$(key:adminPassword)
 
 	Modern:
-		secret=${arkcase}-content-main
-			if (bucket != nil) fail();
-			url - "/alfresco"
-			username
-			password
+		secret: ${arkcase}-content-main
+			if ($(key:bucket) != nil) fail();
+			ARKCASE_ALFRESCO_URL=$(key:url) - "/alfresco"
+			ARKCASE_ALFRESCO_USERNAME=$(key:username)
+			ARKCASE_ALFRESCO_PASSWORD=$(key:password)
 
 Database:
-    ARKCASE_JDBC_DRIVER
-    ARKCASE_JDBC_URL
-    ARKCASE_JDBC_USERNAME
-    ARKCASE_JDBC_PASSWORD
+	ARKCASE_JDBC_DRIVER
+	ARKCASE_JDBC_URL
+	ARKCASE_JDBC_USERNAME
+	ARKCASE_JDBC_PASSWORD
 
 	Legacy:
-		secret=${arkcase}-core
-			dbDriver
-			dbUrl
-			dbUsername
-			dbPassword
+		secret: ${arkcase}-core
+			ARKCASE_JDBC_DRIVER=$(key:dbDriver)
+			ARKCASE_JDBC_URL=$(key:dbUrl)
+			ARKCASE_JDBC_USERNAME=$(key:dbUsername)
+			ARKCASE_JDBC_PASSWORD=$(key:dbPassword)
 
 	Modern:
-		secret=${arkcase}-rdbms-arkcase
-			username
-			password
+		secret: ${arkcase}-rdbms-arkcase
+			ARKCASE_JDBC_USERNAME=$(key:username)
+			ARKCASE_JDBC_PASSWORD=$(key:password)
 
-		secret=${arkcase}-core-config
-			jdbcDriver
-			jdbcUrl
+		secret: ${arkcase}-core-conf
+			ARKCASE_JDBC_DRIVER=$(key:jdbcDriver)
+			ARKCASE_JDBC_URL=$(key:jdbcUrl) # DANGER! Need to figure this one out...
 
 Solr:
 	ARKCASE_SOLR_URL
@@ -47,11 +47,19 @@ Solr:
 	ARKCASE_SOLR_PASSWORD
 
 	Legacy:
-		secret=${arkcase}-core
-			solrScheme + solrHost + solrPort + "/solr"
+		secret: ${arkcase}-core
+			ARKCASE_SOLR_SCHEME=$(key:solrScheme)
+			ARKCASE_SOLR_HOST=$(key:solrHost)
+			ARKCASE_SOLR_PORT=$(key:solrPort)
+
+			ARKCASE_SOLR_URL="${ARKCASE_SOLR_SCHEME}://${ARKCASE_SOLR_HOST}:${ARKCASE_SOLR_PORT}/solr" # constant string
+			ARKCASE_SOLR_USERNAME=""
+			ARKCASE_SOLR_PASSWORD=""
 
 	Modern:
-		secret=${arkcase}-search-main
-			url + "/solr"
-			username (optional)
-			password (optional)
+		secret: ${arkcase}-search-main
+			ARKCASE_SOLR_BASE_URL="$(key:url)/solr"
+
+			ARKCASE_SOLR_URL="${ARKCASE_SOLR_BASE_URL}/solr" # constant string
+			ARKCASE_SOLR_USERNAME="$(key:username)" # (optional)
+			ARKCASE_SOLR_PASSWORD="$(key:password)" # (optional)
