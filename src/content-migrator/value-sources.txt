@@ -8,14 +8,14 @@ Alfresco:
 	Legacy:
 		secret: ${arkcase}-core
 			if ($(key:contentType) != "alfresco") fail();
-			ARKCASE_ALFRESCO_URL=$(key:contentApi) - "/alfresco"
+			ARKCASE_ALFRESCO_URL=$(key:contentApi)
 			ARKCASE_ALFRESCO_USERNAME=$(key:adminUsername)
 			ARKCASE_ALFRESCO_PASSWORD=$(key:adminPassword)
 
 	Modern:
 		secret: ${arkcase}-content-main
 			if ($(key:bucket) != nil) fail();
-			ARKCASE_ALFRESCO_URL=$(key:url) - "/alfresco"
+			ARKCASE_ALFRESCO_URL=$(key:url)
 			ARKCASE_ALFRESCO_USERNAME=$(key:username)
 			ARKCASE_ALFRESCO_PASSWORD=$(key:password)
 
@@ -34,12 +34,15 @@ Database:
 
 	Modern:
 		secret: ${arkcase}-rdbms-arkcase
+			ARKCASE_JDBC_HOST=$(key:endpoint)
+			ARKCASE_JDBC_PORT=$(key:port)
+			ARKCASE_JDBC_DATABASE=$(key:database)
 			ARKCASE_JDBC_USERNAME=$(key:username)
 			ARKCASE_JDBC_PASSWORD=$(key:password)
 
 		secret: ${arkcase}-core-conf
 			ARKCASE_JDBC_DRIVER=$(key:jdbcDriver)
-			ARKCASE_JDBC_URL=$(key:jdbcUrl) # DANGER! Need to figure this one out...
+			ARKCASE_JDBC_URL=$(key:jdbcUrl) # exact value, no intepolation, copied from the secret
 
 Solr:
 	ARKCASE_SOLR_URL
@@ -52,14 +55,14 @@ Solr:
 			ARKCASE_SOLR_HOST=$(key:solrHost)
 			ARKCASE_SOLR_PORT=$(key:solrPort)
 
-			ARKCASE_SOLR_URL="${ARKCASE_SOLR_SCHEME}://${ARKCASE_SOLR_HOST}:${ARKCASE_SOLR_PORT}/solr" # direct-value constant, no interpolation
+			ARKCASE_SOLR_URL="$(ARKCASE_SOLR_SCHEME)://$(ARKCASE_SOLR_HOST):$(ARKCASE_SOLR_PORT)/solr" # exact value, no interpolation
 			ARKCASE_SOLR_USERNAME=""
 			ARKCASE_SOLR_PASSWORD=""
 
 	Modern:
 		secret: ${arkcase}-search-main
-			ARKCASE_SOLR_BASE_URL="$(key:url)/solr"
+			ARKCASE_SOLR_BASE_URL=$(key:url)
 
-			ARKCASE_SOLR_URL="${ARKCASE_SOLR_BASE_URL}/solr" # direct-value constant, no interpolation
-			ARKCASE_SOLR_USERNAME="$(key:username)"
-			ARKCASE_SOLR_PASSWORD="$(key:password)"
+			ARKCASE_SOLR_URL="$(ARKCASE_SOLR_BASE_URL)/solr" # exact value, no interpolation
+			ARKCASE_SOLR_USERNAME=$(key:username)
+			ARKCASE_SOLR_PASSWORD=$(key:password)
