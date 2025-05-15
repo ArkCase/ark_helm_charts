@@ -852,4 +852,6 @@
   value: "{{ include "__arkcase.env.applicationVars.compute.active" $ }}"
 - name: ARKCASE_APPLICATION_PROFILE
   value: "{{ include "__arkcase.env.applicationVars.compute.profile" $ }}"
+- name: ARKCASE_INTERNAL_CONFIG_SERVER_BUCKET
+  value: "arkcase-config"
 {{- end }}
