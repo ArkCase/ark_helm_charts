@@ -87,7 +87,7 @@ spec:
                   timeout: 10
       containers:
         - name: migrator
-          {{- include "arkcase.image" (dict "ctx" $ "name" "migrator" "repository" "arkcase/migrator") | nindent 10 }}
+          {{- include "arkcase.image" (dict "ctx" $ "name" "migrator" "repository" "arkcase/migrator" "useChartTag" true) | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- $acmeInfo.env | toYaml | nindent 12 }}
             {{- include "arkcase.migrator.content-env" $ | nindent 12 }}
