@@ -306,6 +306,66 @@ spec:
               value: "$(JAVA_KEYSTORE)"
             - name: JAVA_TRUSTSTORE_TYPE
               value: "$(JAVA_KEYSTORE_TYPE)"
+            - name: ARKCASE_JDBC_DRIVER
+              valueFrom:
+                secretKeyRef:
+                  name: *secretName
+                  key: "dbDriver"
+            - name: ARKCASE_JDBC_URL
+              valueFrom:
+                secretKeyRef:
+                  name: *secretName
+                  key: "dbUrl"
+            - name: ARKCASE_JDBC_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: *secretName
+                  key: "dbUsername"
+            - name: ARKCASE_JDBC_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: *secretName
+                  key: "dbPassword"
+            - name: ARKCASE_DB_PLATFORM
+              valueFrom:
+                secretKeyRef:
+                  name: *secretName
+                  key: "dbPlatform"
+            - name: ARKCASE_DB_ACTIVITI
+              valueFrom:
+                secretKeyRef:
+                  name: *secretName
+                  key: "dbActiviti"
+            - name: ARKCASE_SOLR_SCHEME
+              valueFrom:
+                secretKeyRef:
+                  name: *secretName
+                  key: "solrScheme"
+            - name: ARKCASE_SOLR_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: *secretName
+                  key: "solrHost"
+            - name: ARKCASE_SOLR_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: *secretName
+                  key: "solrPort"
+            - name: ARKCASE_CONTENT_API
+              valueFrom:
+                secretKeyRef:
+                  name: *secretName
+                  key: "contentApi"
+            - name: ARKCASE_CONTENT_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: *secretName
+                  key: "contentUsername"
+            - name: ARKCASE_CONTENT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: *secretName
+                  key: "contentPassword"
             {{- if $dev }}
             - name: DEVELOPMENT
               value: "true"
