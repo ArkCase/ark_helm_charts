@@ -42,6 +42,13 @@ Database:
 
 		secret: ${arkcase}-core-conf
 			ARKCASE_JDBC_DRIVER=$(key:jdbcDriver)
+
+			# This value has to be copied from the secret instead of mounted because
+			# mounted values don't get interpolated, so the $() references within will
+			# go unresolved. Thus, the actual envvar value that must be created on the
+			# pod's YAML *MUST* be the actual string with the $() values intact so the
+			# K8s runtime can do the interpolation, and the pod's process can see the
+			# actual, real, final value including host, port, etc. values fully resolved.
 			ARKCASE_JDBC_URL=$(key:jdbcUrl) # exact value, no intepolation, copied from the secret
 
 Solr:
