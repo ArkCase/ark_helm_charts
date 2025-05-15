@@ -1,0 +1,201 @@
+{{- $namespace := $.Release.Namespace -}}
+{{- $app := $.Release.Name -}}
+{{- $objectName := (include "arkcase.migrator.objectName" $) -}}
+{{- $acmeInfo := (include "arkcase.migrator.acme" $ | fromYaml) -}}
+{{- $dataVol := "data" -}}
+
+{{- $secret := (lookup "v1" "Secret" $namespace $objectName) -}}
+{{- $secretAccessKey := "" -}}
+{{- if $secret -}}
+  {{- $secretData := (get $secret "data") -}}
+  {{- if $secretData -}}
+    {{- $secretAccessKey = (hasKey $secretData "secretAccessKey" | ternary ($secretData.secretAccessKey | b64dec) "") -}}
+  {{- end -}}
+{{- end -}}
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: &objectName {{ $objectName | quote }}
+  namespace: {{ $namespace | quote }}
+  labels:
+    app: &app {{ $app | quote }}
+    app.kubernetes.io/instance: *app
+    app.kubernetes.io/name: *objectName
+  annotations:
+    helm.sh/resource-policy: keep
+type: Opaque
+stringData:
+  endpoint: {{ printf "https://%s:9000/" $objectName | quote }}
+  region: "us-east-1"
+  bucket: *app
+  accessKeyId: *app
+  secretAccessKey: {{ $secretAccessKey | default (randAlphaNum 64) | quote }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: &objectName {{ $objectName | quote }}
+  namespace: {{ $namespace | quote }}
+  labels: &labels
+    app: &app {{ $app | quote }}
+    app.kubernetes.io/instance: *app
+    app.kubernetes.io/name: *objectName
+spec:
+  selector:
+    <<: *labels
+  ports:
+    - name: minio
+      port: 9000
+      protocol: TCP
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: &objectName {{ $objectName | quote }}
+  namespace: {{ $namespace | quote }}
+  labels: &labels
+    app: &app {{ $app | quote }}
+    app.kubernetes.io/instance: *app
+    app.kubernetes.io/name: *objectName
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      <<: *labels
+  serviceName: *objectName
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        prometheus.io/port: "9100"
+        prometheus.io/scrape: "true"
+      labels:
+        <<: *labels
+      name: *objectName
+    spec:
+      {{- include "arkcase.image.pullSecrets" $ | nindent 6 }}
+      {{- with $.Values.hostAliases }}
+      hostAliases: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if $.Values.schedulerName }}
+      schedulerName: {{ $.Values.schedulerName | quote }}
+      {{- end }}
+      serviceAccountName: {{ include "arkcase.serviceAccountName" $ | quote }}
+      securityContext: {{- include "arkcase.securityContext" $ | nindent 8 }}
+      terminationGracePeriodSeconds: 15
+      initContainers:
+        - name: init-set-permissions
+          {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
+          env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            - name: DATA_DIR
+              value: &dataDir "/app/data"
+            - name: JOBS
+              value: |-
+                jobs:
+                  # We know the image uses user 33000:1000
+                  - ownership: "33000:1000"
+                    permissions: "u=rwX,g=rX,o="
+                    flags: [ "recurse", "noforced", "create", "changes" ]
+                    targets: [ "$(DATA_DIR)" ]
+          volumeMounts:
+            - name: &dataVol {{ $dataVol | quote }}
+              mountPath: *dataDir
+        - name: init-dependencies
+          {{- include "arkcase.image" (dict "ctx" $ "name" "nettest" "repository" "arkcase/nettest") | nindent 10 }}
+          command: [ "/usr/local/bin/wait-for-ports" ]
+          env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            {{- $acmeInfo.env | toYaml | nindent 12 }}
+            - name: INIT_DEPENDENCIES
+              value: |-
+                dependencies:
+                  acme:
+                    url: '@env:ACME_URL'
+                enabled: true
+                mode: all
+                template:
+                  attempts: 60
+                  delay: 10
+                  initialDelay: 10
+                  mode: any
+                  timeout: 10
+      containers:
+        - name: minio
+          {{- include "arkcase.image" (dict "ctx" $ "name" "minio" "repository" "arkcase/minio") | nindent 10 }}
+          env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            {{- $acmeInfo.env | toYaml | nindent 12 }}
+            - name: MINIO_ROOT_USER
+              valueFrom:
+                secretKeyRef:
+                  key: accessKeyId
+                  name: *objectName
+                  optional: false
+            - name: MINIO_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: secretAccessKey
+                  name: *objectName
+                  optional: false
+            - name: NODES
+              value: "1"
+            - name: DATA_DIR
+              value: *dataDir
+          lifecycle:
+            postStart:
+              exec:
+                command: [ "/usr/local/bin/config-post.sh" ]
+          resources: {{- include "arkcase.resources" (dict "ctx" $ "part" "minio") | nindent 12 }}
+          securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "minio") | nindent 12 }}
+          ports:
+            - containerPort: 9000
+              name: s3
+              protocol: TCP
+            - containerPort: 9001
+              name: s3console
+              protocol: TCP
+          livenessProbe: &probe
+            failureThreshold: 3
+            httpGet:
+              path: "/minio/health/live"
+              port: 9000
+              scheme: HTTPS
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 10
+          readinessProbe:
+            <<: *probe
+            failureThreshold: 1
+            httpGet:
+              path: "/minio/health/ready"
+              port: 9000
+              scheme: HTTPS
+          startupProbe:
+            <<: *probe
+            failureThreshold: 90
+          volumeMounts:
+            {{- $acmeInfo.volumeMount | toYaml | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/config-post.sh") | nindent 12 }}
+            {{- include "arkcase.trusts.mount" $ | nindent 12 }}
+            - mountPath: *dataDir
+              name: *dataVol
+      restartPolicy: Always
+      volumes:
+        {{- $acmeInfo.volume | toYaml | nindent 8 }}
+        {{- include "arkcase.file-resource.volumes" $ | nindent 8 }}
+        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" $dataVol) | nindent 8 }}
+        {{- include "arkcase.trusts.volume" $ | nindent 8 }}
+      {{- with $.Values.nodeSelector }}
+      nodeSelector: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $.Values.affinity }}
+      affinity: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $.Values.tolerations }}
+      tolerations: {{- toYaml . | nindent 8 }}
+      {{- end }}
+  volumeClaimTemplates:
+    {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" $dataVol) | nindent 4 }}
+
+{{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" $dataVol) | nindent 0 }}

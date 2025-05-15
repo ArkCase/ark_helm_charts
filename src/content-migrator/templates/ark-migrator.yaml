@@ -1,0 +1,137 @@
+{{- $namespace := $.Release.Namespace -}}
+{{- $app := $.Release.Name -}}
+{{- $objectName := (include "arkcase.migrator.objectName" $) -}}
+{{- $acmeInfo := (include "arkcase.migrator.acme" $ | fromYaml) -}}
+{{- $dataVol := "data" -}}
+{{- $tempVol := "temp" -}}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: &objectName {{ $objectName | quote }}
+  labels: &labels
+    app: &app {{ $app | quote }}
+    app.kubernetes.io/instance: *app
+    app.kubernetes.io/name: *objectName
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      <<: *labels
+  updateStrategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        prometheus.io/port: "9100"
+        prometheus.io/scrape: "true"
+      labels:
+        <<: *labels
+      name: *objectName
+    spec:
+      {{- include "arkcase.image.pullSecrets" $ | nindent 6 }}
+      {{- with $.Values.hostAliases }}
+      hostAliases: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if $.Values.schedulerName }}
+      schedulerName: {{ $.Values.schedulerName | quote }}
+      {{- end }}
+      serviceAccountName: {{ include "arkcase.serviceAccountName" $ | quote }}
+      securityContext: {{- include "arkcase.securityContext" $ | nindent 8 }}
+      terminationGracePeriodSeconds: 15
+      initContainers:
+        - name: init-set-permissions
+          {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
+          env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            - name: MIGRATOR_DIR
+              value: &dataDir "/migrator"
+            - name: TEMP_DIR
+              value: &tempDir "$(MIGRATOR_DIR)/temp"
+            - name: JOBS
+              value: |-
+                jobs:
+                  # We know the image uses user 26
+                  - ownership: "0:0"
+                    permissions: "u=rwX,g=rX,o="
+                    flags: [ "recurse", "noforced", "create", "changes" ]
+                    targets: [ "$(MIGRATOR_DIR)", "$(TEMP_DIR)" ]
+          volumeMounts:
+            - name: &dataVol {{ $dataVol | quote }}
+              mountPath: *dataDir
+        - name: init-dependencies
+          {{- include "arkcase.image" (dict "ctx" $ "name" "nettest" "repository" "arkcase/nettest") | nindent 10 }}
+          command: [ "/usr/local/bin/wait-for-ports" ]
+          env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            {{- $acmeInfo.env | toYaml | nindent 12 }}
+            - name: MIGRATOR_S3_ENDPOINT
+              valueFrom: &content-endpoint
+                secretKeyRef:
+                  name: &content-secret {{ printf "%s-content" $app | quote }}
+                  key: endpoint
+                  optional: false
+            - name: INIT_DEPENDENCIES
+              value: |-
+                dependencies:
+                  acme:
+                    url: '@env:ACME_URL'
+                  s3:
+                    url: '@env:MIGRATOR_S3_ENDPOINT'
+                enabled: true
+                mode: all
+                template:
+                  attempts: 60
+                  delay: 10
+                  initialDelay: 10
+                  mode: any
+                  timeout: 10
+      containers:
+        - name: migrator
+          {{- include "arkcase.image" (dict "ctx" $ "name" "migrator" "repository" "arkcase/migrator") | nindent 10 }}
+          env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            {{- $acmeInfo.env | toYaml | nindent 12 }}
+            {{- include "arkcase.migrator.content-env" $ | nindent 12 }}
+            - name: MIGRATOR_DIR
+              value: *dataDir
+            - name: TEMP
+              value: *tempDir
+            - name: MIGRATOR_S3_ENDPOINT
+              valueFrom:
+                <<: *content-endpoint
+            - name: MIGRATOR_S3_REGION
+              valueFrom:
+                secretKeyRef:
+                  key: region
+                  name: *content-secret
+                  optional: false
+            - name: MIGRATOR_S3_BUCKET
+              valueFrom:
+                secretKeyRef:
+                  key: bucket
+                  name: *content-secret
+                  optional: false
+            - name: MIGRATOR_S3_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  key: accessKeyId
+                  name: *content-secret
+                  optional: false
+            - name: MIGRATOR_S3_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  key: secretAccessKey
+                  name: *content-secret
+                  optional: false
+          volumeMounts:
+            {{- include "arkcase.trusts.mount" $ | nindent 12 }}
+            - name: *dataVol
+              mountPath: *dataDir
+            - name: {{ $tempVol | quote }}
+              mountPath: *tempDir
+      volumes:
+        {{- include "arkcase.file-resource.volumes" $ | nindent 8 }}
+        {{- include "arkcase.trusts.volume" $ | nindent 8 }}
+        {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" $tempVol) | nindent 8 }}
+  volumeClaimTemplates:
+    {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" $dataVol) | nindent 4 }}
+
+{{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" $dataVol) | nindent 0 }}
