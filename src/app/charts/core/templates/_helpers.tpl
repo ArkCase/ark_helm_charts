@@ -856,21 +856,23 @@
   value: "arkcase-config"
 {{- end }}
 
-{{- define "__arkcase.subsystem.settings.env" -}}
-  {{- $settings := .settings -}}
-  {{- $subsys := .subsys | upper -}}
-  {{- $prefix := .prefix | default "ARKCASE_" -}}
-  {{- range $key, $val := $settings }}
-    {{- $envKey := regexReplaceAllLiteral "[^A-Z0-9_]" ($key | snakecase | upper) "_" -}}
-    {{- $envName := printf "%s%s_%s" $prefix $subsys $envKey }}
-- name: {{ $envName | quote }}
-  value: {{ $val | toString | quote }}
+{{- define "__arkcase.core.settings.flattenToEnv" -}}
+  {{- $prefixPath := .prefix -}}
+  {{- $map := .map -}}
+  {{- range $k, $v := $map }}
+    {{- $newPath := printf "%s_%s" $prefixPath ($k | snakecase | upper) | trimPrefix "_" }}
+    {{- if kindIs "map" $v }}
+      {{- include "__arkcase.core.settings.flattenToEnv" (dict "prefix" $newPath "map" $v) }}
+    {{- else }}
+- name: {{ printf "ARKCASE_SETTINGS_%s" $newPath | quote }}
+  value: {{ $v | toString | quote }}
+    {{- end }}
   {{- end }}
 {{- end }}
 
-{{- define "arkcase.rdbms.env" -}}
-  {{- $subsys := "rdbms" -}}
-  {{- $settings := (include "arkcase.subsystem.settings" (dict "ctx" $ "subsys" $subsys) | fromYaml) }}
-  {{- include "__arkcase.subsystem.settings.env" (dict "settings" $settings "subsys" $subsys "prefix" "ARKCASE_") }}
+{{- define "arkcase.core.settings.env" -}}
+  {{- $coreSettings := .Values.global.subsys.core.settings }}
+  {{- include "__arkcase.core.settings.flattenToEnv" (dict "prefix" "" "map" $coreSettings) }}
 {{- end }}
+
 
