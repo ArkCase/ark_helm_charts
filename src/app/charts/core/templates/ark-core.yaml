@@ -277,6 +277,7 @@ spec:
             {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
             {{- include "arkcase.core.extra-env.env" $ | nindent 12 }}
             {{- include "arkcase.env.applicationVars" $ | nindent 12 }}
+            {{- include "arkcase.rdbms.env" $ | nindent 12 }}
             - name: POLL_CONFIG
               value: "true"
             - name: ARKCASE_JDBC_DRIVER

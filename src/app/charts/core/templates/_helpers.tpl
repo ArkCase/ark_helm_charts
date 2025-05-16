@@ -855,3 +855,22 @@
 - name: ARKCASE_INTERNAL_CONFIG_SERVER_BUCKET
   value: "arkcase-config"
 {{- end }}
+
+{{- define "__arkcase.subsystem.settings.env" -}}
+  {{- $settings := .settings -}}
+  {{- $subsys := .subsys | upper -}}
+  {{- $prefix := .prefix | default "ARKCASE_" -}}
+  {{- range $key, $val := $settings }}
+    {{- $envKey := regexReplaceAllLiteral "[^A-Z0-9_]" ($key | snakecase | upper) "_" -}}
+    {{- $envName := printf "%s%s_%s" $prefix $subsys $envKey }}
+- name: {{ $envName | quote }}
+  value: {{ $val | toString | quote }}
+  {{- end }}
+{{- end }}
+
+{{- define "arkcase.rdbms.env" -}}
+  {{- $subsys := "rdbms" -}}
+  {{- $settings := (include "arkcase.subsystem.settings" (dict "ctx" $ "subsys" $subsys) | fromYaml) }}
+  {{- include "__arkcase.subsystem.settings.env" (dict "settings" $settings "subsys" $subsys "prefix" "ARKCASE_") }}
+{{- end }}
+
