@@ -1,0 +1,72 @@
+global:
+  subsys:
+    my-subsys-name: # i.e. rdbms, search, reports, core, content, etc...
+
+      #
+      # Where applicable, which TYPE of service to render (i.e. Alfresco vs. S3,
+      # PostgreSQL vs. MariaDB, etc.)
+      #
+      dialect: "some-dialect-name"
+
+      #
+      # Abbreviated externalized service definition - the connection
+      # settings will be in a secret with the expected default name,
+      # and the keys will match the default expected keys. It will be
+      # someone else's responsibility to create and populate this
+      # secret with the right keys and values.
+      #
+      # external: true
+
+      #
+      # Long-form definition
+      #
+      external:
+
+        #
+        # Long-form definition
+        #
+        connection:
+
+          #
+          # Shorthand connection definition
+          #
+          # conn-x: secret-name
+
+          #
+          # Long-form connection definition
+          #
+          conn-1: # the connection's name
+
+            # The name of the secret that houses the connection details
+            source: secret-name
+
+            # Whether we want to re-use the "global" connection mappings
+            # for this subsystem (default is true)
+            # inherit-mappings: true
+
+            mappings:
+              # Mapped property names
+              # default-property-name: actual-property-name-in-the-target-secret
+              
+              # Example: the secret has the connection URL in the target-url key,
+              # but the name our Helm consumes is "endpoint", so we map this out.
+              #
+              # Other bits of code will do the translations and mappings for us
+              # in the mounts and valueFrom declarations
+              endpoint: "target-url"
+
+
+        #
+        # Shared mappings that can be re-used by all
+        # connection definitions, to avoid repetition
+        #
+        mappings:
+          # ...
+
+      settings:
+        # subsystem-specific configurations ... free-form YAML\
+        setting-1: value-1
+        setting-2: value-2
+        map-3:
+          key-1: entry-1
+          # ....

@@ -1,0 +1,75 @@
+NOTE: Legacy deployments must be running on 0.7.78 or newer, and Modern deployments must be on 0.8.0-104 or newer
+
+Alfresco:
+	ARKCASE_ALFRESCO_URL
+	ARKCASE_ALFRESCO_USERNAME
+	ARKCASE_ALFRESCO_PASSWORD
+
+	Legacy:
+		secret: ${arkcase}-core
+			if ($(key:contentType) != "alfresco") fail();
+			ARKCASE_ALFRESCO_URL=$(key:contentApi)
+			ARKCASE_ALFRESCO_USERNAME=$(key:adminUsername)
+			ARKCASE_ALFRESCO_PASSWORD=$(key:adminPassword)
+
+	Modern:
+		secret: ${arkcase}-content-main
+			if ($(key:bucket) != nil) fail();
+			ARKCASE_ALFRESCO_URL=$(key:url)
+			ARKCASE_ALFRESCO_USERNAME=$(key:username)
+			ARKCASE_ALFRESCO_PASSWORD=$(key:password)
+
+Database:
+	ARKCASE_JDBC_DRIVER
+	ARKCASE_JDBC_URL
+	ARKCASE_JDBC_USERNAME
+	ARKCASE_JDBC_PASSWORD
+
+	Legacy:
+		secret: ${arkcase}-core
+			ARKCASE_JDBC_DRIVER=$(key:dbDriver)
+			ARKCASE_JDBC_URL=$(key:dbUrl)
+			ARKCASE_JDBC_USERNAME=$(key:dbUsername)
+			ARKCASE_JDBC_PASSWORD=$(key:dbPassword)
+
+	Modern:
+		secret: ${arkcase}-rdbms-arkcase
+			ARKCASE_JDBC_HOST=$(key:endpoint)
+			ARKCASE_JDBC_PORT=$(key:port)
+			ARKCASE_JDBC_DATABASE=$(key:database)
+			ARKCASE_JDBC_USERNAME=$(key:username)
+			ARKCASE_JDBC_PASSWORD=$(key:password)
+
+		secret: ${arkcase}-core-conf
+			ARKCASE_JDBC_DRIVER=$(key:jdbcDriver)
+
+			# This value has to be copied from the secret instead of mounted because
+			# mounted values don't get interpolated, so the $() references within will
+			# go unresolved. Thus, the actual envvar value that must be created on the
+			# pod's YAML *MUST* be the actual string with the $() values intact so the
+			# K8s runtime can do the interpolation, and the pod's process can see the
+			# actual, real, final value including host, port, etc. values fully resolved.
+			ARKCASE_JDBC_URL=$(key:jdbcUrl) # exact value, no intepolation, copied from the secret
+
+Solr:
+	ARKCASE_SOLR_URL
+	ARKCASE_SOLR_USERNAME # (optional)
+	ARKCASE_SOLR_PASSWORD # (optional)
+
+	Legacy:
+		secret: ${arkcase}-core
+			ARKCASE_SOLR_SCHEME=$(key:solrScheme)
+			ARKCASE_SOLR_HOST=$(key:solrHost)
+			ARKCASE_SOLR_PORT=$(key:solrPort)
+
+			ARKCASE_SOLR_URL="$(ARKCASE_SOLR_SCHEME)://$(ARKCASE_SOLR_HOST):$(ARKCASE_SOLR_PORT)/solr" # exact value, no interpolation
+			ARKCASE_SOLR_USERNAME=""
+			ARKCASE_SOLR_PASSWORD=""
+
+	Modern:
+		secret: ${arkcase}-search-main
+			ARKCASE_SOLR_BASE_URL=$(key:url)
+
+			ARKCASE_SOLR_URL="$(ARKCASE_SOLR_BASE_URL)/solr" # exact value, no interpolation
+			ARKCASE_SOLR_USERNAME=$(key:username)
+			ARKCASE_SOLR_PASSWORD=$(key:password)
