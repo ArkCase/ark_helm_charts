@@ -2,22 +2,13 @@
   {{- if not (include "arkcase.isRootContext" $) -}}
     {{- fail "The parameter given must be the root context (. or $)" -}}
   {{- end -}}
-  {{- $url := (include "arkcase.tools.parseUrl" "https://acme:9000" | fromYaml) -}}
-  {{- $acme := (include "arkcase.dependency.target" (dict "ctx" $ "hostname" "acme") | fromYaml) -}}
-  {{- if $acme -}}
-    {{- if not (hasKey $acme "url") -}}
-      {{- fail "You must specify the acme endpoint using a URL, not a hostname-port combination" -}}
-    {{- end -}}
-    {{- $scheme := ($url.scheme | lower) -}}
-    {{- if (ne "https" $scheme) -}}
-      {{- fail (printf "The acme URL must be an HTTPS URL: %s" $url.url) -}}
-    {{- end -}}
-    {{- $url = $acme.url -}}
-  {{- end -}}
 - name: SSL_DIR
   value: "/.ssl"
-- name: ACME_URL
-  value: {{ $url.url | quote }}
+- name: &acmeUrlVar {{ include "arkcase.acme.urlVariable" $ | quote }}
+  valueFrom:
+    secretKeyRef:
+      name: &acmeSecret {{ include "arkcase.acme.sharedSecret" $ | quote }}
+      key: *acmeUrlVar
 - name: ACME_SERVICE_NAME
   value: {{ include "arkcase.service.name" $ | quote }}
 {{- end -}}
@@ -27,6 +18,10 @@
     {{- fail "The parameter given must be the root context (. or $)" -}}
   {{- end -}}
   {{- printf "%s-acme-shared" $.Release.Name -}}
+{{- end -}}
+
+{{- define "arkcase.acme.urlVariable" -}}
+ACME_URL
 {{- end -}}
 
 {{- define "arkcase.acme.passwordVariable" -}}
