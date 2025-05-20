@@ -6,7 +6,6 @@
   {{- $portal := (include "arkcase.portal" $ | fromYaml) -}}
   {{- $content := (include "arkcase.cm.info" $ | fromYaml) -}}
   {{- $cluster := (include "arkcase.cluster" $ | fromYaml) -}}
-  {{- $db := (include "arkcase.db.info" $ | fromYaml) -}}
   {{- $nodes := (min 4 ($cluster.nodes | int)) -}}
   {{- $serviceAccountName := (include "arkcase.serviceAccountName" $) }}
   {{- $saml := (include "arkcase.core.sso.saml" $ | fromYaml) -}}
@@ -271,15 +270,12 @@ spec:
         - name: arkcase
           {{- include "arkcase.image" $ | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            {{- include "arkcase.core.conf.env" $ | nindent 12 }}
             {{- include "arkcase.cluster.env" $ | nindent 12 }}
             {{- include "arkcase.cluster.tomcat.env" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
             {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
             {{- include "arkcase.core.extra-env.env" $ | nindent 12 }}
-            - name: ARKCASE_JDBC_DRIVER
-              value: {{ $db.jdbc.driver | quote }}
-            - name: ARKCASE_JDBC_URL
-              value: {{ $db.jdbc.url | quote }}
             - name: ALT_VARS
               value: "PORTAL_LDAP_DOMAIN PORTAL_LDAP_ROOT_DN ARKCASE_LDAP_DOMAIN ARKCASE_LDAP_ROOT_DN"
             - name: HOME_DIR
@@ -415,13 +411,10 @@ spec:
         - name: cloudconfig
           {{- include "arkcase.image" (dict "ctx" $ "name" "cloudconfig" "repository" "arkcase/cloudconfig") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            {{- include "arkcase.core.conf.env" $ | nindent 12 }}
             {{- include "arkcase.cluster.env" $ | nindent 12 }}
             {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
-            - name: ARKCASE_JDBC_DRIVER
-              value: {{ $db.jdbc.driver | quote }}
-            - name: ARKCASE_JDBC_URL
-              value: {{ $db.jdbc.url | quote }}
             - name: ALT_VARS
               value: "PORTAL_LDAP_DOMAIN PORTAL_LDAP_ROOT_DN ARKCASE_LDAP_DOMAIN ARKCASE_LDAP_ROOT_DN"
             - name: ACME_KEYSTORE_WITH_TRUSTS
