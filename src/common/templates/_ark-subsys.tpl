@@ -153,6 +153,15 @@ Parameter: either the root context (i.e. "." or "$"), or
   {{- $ctx := $.ctx -}}
   {{- $data := $.data -}}
   {{- $global := $.global -}}
+  {{- $partname := $.partname -}}
+  {{- $targetPart := $.targetPart -}}
+
+  {{- /* This is important for services that will target other parts */ -}}
+  {{- $selectorCtx := $ctx -}}
+  {{- if $targetPart -}}
+    {{- $selectorCtx = (dict "ctx" $ctx "partname" $targetPart) -}}
+  {{- end -}}
+
   {{- if (include "arkcase.subsystem.enabledOrExternal" $ctx) -}}
     {{- $external := (not (empty (include "arkcase.subsystem.external" $ctx ))) -}}
     {{- $ports := (coalesce $data.ports list) -}}
@@ -223,7 +232,7 @@ spec:
       targetPort: {{ int .targetPort }}
           {{- end }}
         {{- end }}
-  selector: {{- include "arkcase.labels.matchLabels.service" $ctx | nindent 4 }}
+  selector: {{- include "arkcase.labels.matchLabels.service" $selectorCtx | nindent 4 }}
       {{- end }}
     {{- end }}
 ---
@@ -287,7 +296,7 @@ spec:
           {{- end }}
         {{- end }}
       {{- end }}
-  selector: {{- include "arkcase.labels.matchLabels.service" $ctx | nindent 4 }}
+  selector: {{- include "arkcase.labels.matchLabels.service" $selectorCtx | nindent 4 }}
     {{- end }}
   {{- end -}}
 {{- end -}}
@@ -452,10 +461,12 @@ Parameter: the root context (i.e. "." or "$")
   {{- $ctx := $ }}
   {{- if hasKey $ "ctx" -}}
     {{- $ctx = $.ctx -}}
-    {{- if hasKey $ "subname" -}}
-      {{- $partname = (.subname | toString | lower) -}}
+    {{- if hasKey $ "partname" -}}
+      {{- $partname = ($.partname | toString | lower) -}}
     {{- end -}}
   {{- end -}}
+
+  {{- $targetPart := ($.targetPart | default "" | toString) -}}
 
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "Incorrect context given - either submit the root context as the only parameter, or a 'ctx' parameter pointing to it" -}}
@@ -480,7 +491,7 @@ Parameter: the root context (i.e. "." or "$")
       {{- /* Render a single part as the global service, as necessary */ -}}
       {{- if hasKey $parts $partname }}
         {{- /* The single-part option supplants the global service */ -}}
-        {{- $work = append $work (dict "ctx" $ctx "data" (get $parts $partname) "global" $service "subname" $partname) }}
+        {{- $work = append $work (dict "ctx" $ctx "data" (get $parts $partname) "global" $service "partname" $partname "targetPart" $targetPart) }}
       {{- end }}
     {{- else }}
       {{- /* Render a global service with all the ports */ -}}
@@ -490,7 +501,7 @@ Parameter: the root context (i.e. "." or "$")
       {{- end -}}
       {{- $data = set $data "ports" $ports }}
       {{- /* Add the work item */ -}}
-      {{- $work = append $work (dict "ctx" $ctx "data" $data "subname" $partname) }}
+      {{- $work = append $work (dict "ctx" $ctx "data" $data "partname" $partname "targetPart" $targetPart) }}
     {{- end }}
     {{- range $w := $work }}
       {{- include "arkcase.subsystem.service.render" $w }}
