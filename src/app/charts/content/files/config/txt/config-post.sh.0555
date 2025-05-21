@@ -104,14 +104,16 @@ ok "The URL [${PROBE_URL}] responded, continuing"
 
 INSTANCE="local"
 
-set_or_default CONTENT_BUCKET "arkcase"
-BUCKET="${INSTANCE}/${CONTENT_BUCKET}"
-
 # Add the configuration for MC control
 mcli config host add "${INSTANCE}" "${MINIO_ADMIN_URL}" "${MINIO_ROOT_USER}" "${MINIO_ROOT_PASSWORD}"
 
-# Make sure we create the bucket if it doesn't exist
-mcli ls "${BUCKET}" &>/dev/null || mcli mb "${BUCKET}" || fail "Failed to create the bucket [${CONTENT_BUCKET}]"
+for BUCKET in CONTENT_BUCKET CONTENT_INTERNAL_BUCKET ; do
+	set_or_default "${BUCKET}" "arkcase"
+	REAL_BUCKET="${INSTANCE}/${!BUCKET}"
+
+	# Make sure we create the bucket if it doesn't exist
+	mcli ls "${REAL_BUCKET}" &>/dev/null || mcli mb "${REAL_BUCKET}" || fail "Failed to create the bucket [${REAL_BUCKET}] specified by ${BUCKET}"
+done
 
 #
 # Create the user accounts
@@ -130,9 +132,9 @@ define_user "${MINIO_INTERNAL_USER}" "${MINIO_INTERNAL_PASSWORD}" "${MINIO_INTER
 # Configure the temporary content expiration rules
 #
 set_or_default TEMP_EXPIRE_DAYS "15"
-apply_expiration "${INSTANCE}" "${CONTENT_BUCKET}" "temporary" "${TEMP_EXPIRE_DAYS}"
+apply_expiration "${INSTANCE}" "${CONTENT_INTERNAL_BUCKET}" "temporary" "${TEMP_EXPIRE_DAYS}"
 
 set_or_default UPLOAD_EXPIRE_DAYS "7"
-apply_expiration "${INSTANCE}" "${CONTENT_BUCKET}" "uploads" "${UPLOAD_EXPIRE_DAYS}"
+apply_expiration "${INSTANCE}" "${CONTENT_INTERNAL_BUCKET}" "uploads" "${UPLOAD_EXPIRE_DAYS}"
 
 exit 0
