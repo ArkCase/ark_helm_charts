@@ -61,7 +61,7 @@
 
   {{- $args :=
     dict
-      "ctx" $
+      "ctx" $ctx
       "template" "__arkcase.cm.info.compute"
       "key" $dialect
       "params" (dict "ctx" $ctx "dialect" $dialect)
