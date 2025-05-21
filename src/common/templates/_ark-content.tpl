@@ -1,13 +1,30 @@
-{{- define "__arkcase.cm.info.compute" -}}
+{{- define "__arkcase.cm.dialect.compute" -}}
   {{- $ctx := $ -}}
+  {{- $dialect := "s3" -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
-    {{- fail "The parameter given must be the root context (. or $)" -}}
+    {{- $ctx = $.ctx -}}
+    {{- if not (include "arkcase.isRootContext" $ctx) -}}
+      {{- fail "The root context (. or $) must be given as the 'ctx' parameter, or the only parameter" -}}
+    {{- end -}}
+    {{- $dialect = ($.dialect | default $dialect | toString) -}}
   {{- end -}}
 
-  {{- $settings := (include "arkcase.subsystem.settings" (dict "ctx" $ctx "subsys" "content") | fromYaml) -}}
+  {{- if (not $dialect) -}}
+    {{- $settings := (include "arkcase.subsystem.settings" (dict "ctx" $ctx "subsys" "content") | fromYaml) -}}
+    {{- $dialect = (get $settings "dialect" | default $dialect | toString | lower) -}}
+  {{- end -}}
+  {{- $dialect -}}
+{{- end -}}
 
-  {{- /* Compute the dialect, falling back to the default if necessary */ -}}
-  {{- $dialect := (get $settings "dialect" | default "s3" | toString | lower) -}}
+{{- define "__arkcase.cm.info.compute" -}}
+  {{- $ctx = $.ctx -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "The root context (. or $) must be given as the 'ctx' parameter, or the only parameter" -}}
+  {{- end -}}
+
+  {{- $dialect := $.dialect -}}
+
+  {{- $settings := (include "arkcase.subsystem.settings" (dict "ctx" $ctx "subsys" "content") | fromYaml) -}}
 
   {{- /* Step one: load the common content engine configurations */ -}}
   {{- $cmInfo := (.Files.Get "cminfo.yaml" | fromYaml ) -}}
@@ -33,10 +50,21 @@
 {{- end -}}
 
 {{- define "arkcase.cm.info" -}}
+  {{- $dialect := (include "__arkcase.cm.dialect.compute" $) -}}
+  {{- $ctx := $ -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- $ctx = $.ctx -}}
+    {{- if not (include "arkcase.isRootContext" $ctx) -}}
+      {{- fail "The root context (. or $) must be given as the 'ctx' parameter, or the only parameter" -}}
+    {{- end -}}
+  {{- end -}}
+
   {{- $args :=
     dict
       "ctx" $
       "template" "__arkcase.cm.info.compute"
+      "key" $dialect
+      "params" (dict "ctx" $ctx "dialect" $dialect)
   -}}
   {{- include "__arkcase.tools.getCachedValue" $args -}}
 {{- end -}}
