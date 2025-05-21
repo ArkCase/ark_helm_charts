@@ -110,6 +110,8 @@ spec:
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
             {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
+            - name: ACME_SERVICE_EXTRA_NAMES
+              value: "$(SUBSYS_CURRENT)-internal"
             - name: NODES
               value: {{ $nodes | toString | quote }}
             - name: DATA_DIR
