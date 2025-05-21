@@ -1,6 +1,6 @@
 {{- define "__arkcase.cm.dialect.compute" -}}
   {{- $ctx := $ -}}
-  {{- $dialect := "s3" -}}
+  {{- $dialect := "" -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- $ctx = $.ctx -}}
     {{- if not (include "arkcase.isRootContext" $ctx) -}}
@@ -13,7 +13,9 @@
     {{- $settings := (include "arkcase.subsystem.settings" (dict "ctx" $ctx "subsys" "content") | fromYaml) -}}
     {{- $dialect = (get $settings "dialect" | default $dialect | toString | lower) -}}
   {{- end -}}
-  {{- $dialect -}}
+
+  {{- /* Make sure we always produce a default value */ -}}
+  {{- $dialect | default "s3" -}}
 {{- end -}}
 
 {{- define "__arkcase.cm.info.compute" -}}
