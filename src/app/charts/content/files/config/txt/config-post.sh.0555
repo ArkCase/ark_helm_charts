@@ -129,10 +129,10 @@ define_user "${MINIO_INTERNAL_USER}" "${MINIO_INTERNAL_PASSWORD}" "${MINIO_INTER
 #
 # Configure the temporary content expiration rules
 #
-set_or_default TEMP_EXPIRE_DAYS "7"
+set_or_default TEMP_EXPIRE_DAYS "15"
 apply_expiration "${INSTANCE}" "${CONTENT_BUCKET}" "temporary" "${TEMP_EXPIRE_DAYS}"
 
-set_or_default UPLOAD_EXPIRE_DAYS "1"
-apply_expiration "${INSTANCE}" "${CONTENT_BUCKET}" "uploads" "${TEMP_EXPIRE_DAYS}"
+set_or_default UPLOAD_EXPIRE_DAYS "7"
+apply_expiration "${INSTANCE}" "${CONTENT_BUCKET}" "uploads" "${UPLOAD_EXPIRE_DAYS}"
 
 exit 0
