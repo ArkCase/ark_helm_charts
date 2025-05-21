@@ -25,10 +25,15 @@ settings:
       username: CONTENT_INTERNAL_USERNAME
       password: CONTENT_INTERNAL_PASSWORD
       bucket: CONTENT_INTERNAL_BUCKET
+
     main:
       username: CONTENT_USERNAME
       password: CONTENT_PASSWORD
-      bucket: CONTENT_BUCKET
+      bucket:
+        env:
+          name: CONTENT_BUCKET
+          optional: true
+
     admin:
       username: CONTENT_ADMIN_USERNAME
       password: CONTENT_ADMIN_PASSWORD
