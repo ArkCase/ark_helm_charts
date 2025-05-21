@@ -17,7 +17,7 @@
 {{- end -}}
 
 {{- define "__arkcase.cm.info.compute" -}}
-  {{- $ctx = $.ctx -}}
+  {{- $ctx := $.ctx -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "The root context (. or $) must be given as the 'ctx' parameter, or the only parameter" -}}
   {{- end -}}
