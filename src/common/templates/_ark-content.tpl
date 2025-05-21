@@ -27,7 +27,7 @@
   {{- $settings := (include "arkcase.subsystem.settings" (dict "ctx" $ctx "subsys" "content") | fromYaml) -}}
 
   {{- /* Step one: load the common content engine configurations */ -}}
-  {{- $cmInfo := (.Files.Get "cminfo.yaml" | fromYaml ) -}}
+  {{- $cmInfo := ($ctx.Files.Get "cminfo.yaml" | fromYaml ) -}}
   {{- range $key, $cm := $cmInfo -}}
     {{- if hasKey $cm "aliases" -}}
       {{- $aliases := $cm.aliases -}}
