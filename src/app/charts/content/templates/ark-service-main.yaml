@@ -1,1 +1,3 @@
-{{- include "arkcase.subsystem.service" $ -}}
+{{- $dialect := (include "arkcase.content.info.dialect" $ | lower) -}}
+{{- $partname := ((hasKey ($.Values.service | default dict) $dialect) | ternary $dialect "minio") -}}
+{{- include "arkcase.subsystem.service" (dict "ctx" $ "partname" $partname) -}}
