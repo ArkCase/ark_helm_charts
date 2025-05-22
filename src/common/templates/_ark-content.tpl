@@ -1,4 +1,4 @@
-{{- define "__arkcase.cm.dialect.compute" -}}
+{{- define "arkcase.content.dialect" -}}
   {{- $ctx := $ -}}
   {{- $dialect := "" -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
@@ -18,7 +18,7 @@
   {{- $dialect | default "s3" -}}
 {{- end -}}
 
-{{- define "__arkcase.cm.info.compute" -}}
+{{- define "__arkcase.content.info.compute" -}}
   {{- $ctx := $.ctx -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "The root context (. or $) must be given as the 'ctx' parameter, or the only parameter" -}}
@@ -51,8 +51,8 @@
   {{- $cmConf | toYaml -}}
 {{- end -}}
 
-{{- define "arkcase.cm.info" -}}
-  {{- $dialect := (include "__arkcase.cm.dialect.compute" $) -}}
+{{- define "arkcase.content.info" -}}
+  {{- $dialect := (include "arkcase.content.dialect" $) -}}
   {{- $ctx := $ -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- $ctx = $.ctx -}}
@@ -64,7 +64,7 @@
   {{- $args :=
     dict
       "ctx" $ctx
-      "template" "__arkcase.cm.info.compute"
+      "template" "__arkcase.content.info.compute"
       "key" $dialect
       "params" (dict "ctx" $ctx "dialect" $dialect)
   -}}
