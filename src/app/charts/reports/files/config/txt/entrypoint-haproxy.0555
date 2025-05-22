@@ -17,5 +17,10 @@ while true ; do
 	sleep 1 || fail "Sleep interrupted, can't continue waiting for the certificate at [${CERT}]"
 done
 
+# Compute the cluster domain
+export CLUSTER_DOMAIN="$(get_cluster_domain)"
+[ -n "${CLUSTER_DOMAIN}" ] && eyes "The CLUSTER_DOMAIN value is [${CLUSTER_DOMAIN}]"
+export CLUSTER_DOMAIN
+
 CMD=("/usr/local/bin/docker-entrypoint.sh" "/usr/local/sbin/haproxy" "-f" "/usr/local/etc/haproxy/haproxy.cfg")
 execute "${CMD[@]}"
