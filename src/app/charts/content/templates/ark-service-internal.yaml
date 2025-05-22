@@ -1,5 +1,5 @@
 {{- $serviceParams := $ -}}
-{{- if and (include "arkcase.subsystem.enabled" $) (eq "s3" (include "arkcase.content.info.dialect" $)) -}}
+{{- if and (include "arkcase.subsystem.enabled" $) (eq "s3" (include "arkcase.content.dialect" $)) -}}
   {{- /*
     When using S3, we want the "content-internal" service to point to
     the "arkcase-content-main" pods so we don't have to boot up a 2nd
