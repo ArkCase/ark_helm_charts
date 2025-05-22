@@ -228,7 +228,7 @@ service:
           path: "/arkcase/login"
           port: *clustered
 
-  clusteredHaproxy:
+  haproxy:
     ports:
       - name: healthz
         protocol: TCP
