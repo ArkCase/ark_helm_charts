@@ -91,14 +91,14 @@
         {{- $m = pick $v "enabled" "onePerHost" "nodes" -}}
 
         {{- /* Sanitize the "enabled" flag */ -}}
-        {{- $m = set $m "enabled" (hasKey $m "enabled" | ternary (not (empty (include "arkcase.toBoolean" $m.enabled))) true) -}}
+        {{- $m = set $m "enabled" (or (not (hasKey $m "enabled")) (not (empty (include "arkcase.toBoolean" $m.enabled)))) -}}
       {{- else -}}
         {{- $v = $v | toString -}}
         {{- if (regexMatch "^[1-9][0-9]*$" $v) -}}
           {{- /* If it's a number, it's the node count we want (min == 1) */ -}}
           {{- $v = (atoi $v | int) -}}
           {{- $m = set $m "nodes" (max $v 1) -}}
-          {{- $m = set $m "enabled" (gt $m.nodes 1) -}}
+          {{- $m = set $m "enabled" true -}}
         {{- else -}}
           {{- /* If it's a non-number, fold it into a boolean using toBoolean and use it as the "enabled" flag */ -}}
           {{- $m = set $m "enabled" (not (empty (include "arkcase.toBoolean" $v))) -}}
