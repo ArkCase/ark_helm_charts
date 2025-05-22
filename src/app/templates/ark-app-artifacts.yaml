@@ -7,7 +7,7 @@
   {{- $customWarFile := and $customWar $dev.war.file }}
 ---
 apiVersion: apps/v1
-kind: StatefulSet
+kind: Deployment
 metadata:
   name: {{ $fullName | quote }}
   namespace: {{ $.Release.Namespace | quote }}
@@ -22,8 +22,8 @@ spec:
   replicas: 1
   selector:
     matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
-  serviceName: {{ include "arkcase.service.headless" $ | quote }}
-  updateStrategy: {{- include "arkcase.cluster.statefulUpdateStrategy" $ | nindent 4 }}
+  strategy:
+    type: "Recreate"
   template:
     metadata:
       name: {{ $fullName | quote }}
