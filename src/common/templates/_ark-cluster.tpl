@@ -91,7 +91,7 @@
         {{- $m = pick $v "enabled" "onePerHost" "nodes" -}}
 
         {{- /* Sanitize the "enabled" flag */ -}}
-        {{- $m = set $m "enabled" (hasKey $m "enabled" | ternary (not (empty (include "arkcase.toBoolean" $m.enabled))) true) -}}
+        {{- $m = set $m "enabled" (or (not (hasKey $m "enabled")) (not (empty (include "arkcase.toBoolean" $m.enabled)))) -}}
       {{- else -}}
         {{- $v = $v | toString -}}
         {{- if (regexMatch "^[1-9][0-9]*$" $v) -}}
@@ -187,83 +187,6 @@
     {{- $env = concat $env (include "arkcase.subsystem-access.env" (dict "ctx" $ "subsys" "zookeeper" "key" "zkHost" "name" "ZK_HOST") | fromYamlArray) -}}
   {{- end -}}
   {{- $env | toYaml -}}
-{{- end -}}
-
-{{- define "arkcase.cluster.tomcat.nodeId" -}}
-  {{- $result := list -}}
-  {{- range (until 15) -}}
-    {{- $result = append $result (randInt -128 127) -}}
-  {{- end -}}
-  {{- $result = append $result "${NODE_ID}" -}}
-  {{- printf "{%s}" (join "," $result) -}}
-{{- end -}}
-
-{{- define "arkcase.cluster.tomcat" -}}
-  {{- if not (kindIs "map" $) -}}
-    {{- fail "The parameter must either be the root context ($ or .), or a map with the 'ctx' value pointing to the root context" -}}
-  {{- end -}}
-  {{- $ctx := $ -}}
-  {{- if not (include "arkcase.isRootContext" $ctx) -}}
-    {{- if or (not (hasKey $ "ctx")) (not (include "arkcase.isRootContext" $.ctx)) -}}
-      {{- fail "The 'ctx' dictionary parameter value must be the root context" -}}
-    {{- end -}}
-    {{- $ctx = $.ctx -}}
-  {{- end -}}
-
-  {{- $cluster := (include "arkcase.cluster" $ctx | fromYaml) }}
-
-  {{- /* Allow the caller to specify the maximum number of nodes to render for */ -}}
-  {{- /* (if no value is given, use 255 as the upper limit */ -}}
-  {{- $max := ((hasKey $ "max") | ternary ($.max | toString | atoi | max 1) 255 | int) -}}
-
-  {{- /* Enforce the upper limit of $max nodes */ -}}
-  {{- $nodes := min $max ($cluster.nodes | toString | atoi | int) }}
-  {{- /* Enforce the lower limit of 1 node */ -}}
-  {{- $nodes = (max 1 $nodes | int) -}}
-  {{- if and $cluster.enabled (gt $nodes 1) }}
-<Cluster className="org.apache.catalina.ha.tcp.SimpleTcpCluster"
-         channelStartOptions="3"
-         channelSendOptions="8">
-  <Manager className="org.apache.catalina.ha.session.DeltaManager"
-           expireSessionsOnShutdown="false"
-           notifyListenersOnReplication="true"/>
-  <Channel className="org.apache.catalina.tribes.group.GroupChannel">
-    <Receiver className="org.apache.catalina.tribes.transport.nio.NioReceiver"
-              address="auto"
-              port="4000"
-              autoBind="100"
-              selectorTimeout="5000"
-              maxThreads="6" />
-    <Sender className="org.apache.catalina.tribes.transport.ReplicationTransmitter">
-      <Transport className="org.apache.catalina.tribes.transport.nio.PooledParallelSender" />
-    </Sender>
-    <Interceptor className="org.apache.catalina.tribes.group.interceptors.TcpFailureDetector" />
-    <Interceptor className="org.apache.catalina.tribes.group.interceptors.TcpPingInterceptor" />
-    <Interceptor className="org.apache.catalina.tribes.group.interceptors.MessageDispatchInterceptor" />
-    <Interceptor className="org.apache.catalina.tribes.group.interceptors.StaticMembershipInterceptor">
-      {{- $service := (include "arkcase.name" $) }}
-      {{- $pod := (include "arkcase.fullname" $) }}
-      {{- $nodeId := (include "arkcase.cluster.tomcat.nodeId" $) }}
-      <LocalMember className="org.apache.catalina.tribes.membership.StaticMember"
-                   domain="{{ $pod }}"
-                   uniqueId="{{ $nodeId }}" />
-
-      {{- range $n := (until $nodes) }}
-      <Member className="org.apache.catalina.tribes.membership.StaticMember"
-              port="4000"
-              securePort="-1"
-              host="{{ printf "%s-%d.%s" $pod $n $service }}"
-              domain="{{ $pod }}"
-              uniqueId="{{ $nodeId | replace "${NODE_ID}" ($n | toString) }}" />
-      {{- end }}
-    </Interceptor>
-  </Channel>
-  <Valve className="org.apache.catalina.ha.tcp.ReplicationValve"
-         filter="" />
-  <Valve className="org.apache.catalina.ha.session.JvmRouteBinderValve" />
-  <ClusterListener className="org.apache.catalina.ha.session.ClusterSessionListener" />
-</Cluster>
-  {{- end }}
 {{- end -}}
 
 {{- define "arkcase.cluster.tomcat.env" -}}

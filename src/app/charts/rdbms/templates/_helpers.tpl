@@ -22,7 +22,7 @@
   {{- $name := (include "arkcase.rdbms.type" $) -}}
   {{- $services := ($.Values.service | default dict) -}}
   {{- if hasKey $services $name -}}
-    {{- include "arkcase.subsystem.service" (dict "ctx" $ "subname" $name) -}}
+    {{- include "arkcase.subsystem.service" (dict "ctx" $ "partname" $name) -}}
   {{- end -}}
 {{- end -}}
 

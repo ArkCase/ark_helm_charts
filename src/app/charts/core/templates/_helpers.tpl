@@ -170,22 +170,6 @@
   {{- printf "%s://%s:%d" $scheme $host $port -}}
 {{- end -}}
 
-{{- define "arkcase.core.content.url" -}}
-  {{- if not (include "arkcase.isRootContext" $) -}}
-    {{- fail "Must send the root context as the only parameter" -}}
-  {{- end -}}
-  {{- $content := (include "arkcase.cm.info" $ | fromYaml) -}}
-  {{- $content.url.baseUrl -}}
-{{- end -}}
-
-{{- define "arkcase.core.content.ui" -}}
-  {{- if not (include "arkcase.isRootContext" $) -}}
-    {{- fail "Must send the root context as the only parameter" -}}
-  {{- end -}}
-  {{- $content := (include "arkcase.cm.info" $ | fromYaml) -}}
-  {{- $content.ui.baseUrl -}}
-{{- end -}}
-
 {{- define "arkcase.core.email" -}}
   {{- if not (include "arkcase.isRootContext" $) -}}
     {{- fail "Must send the root context as the only parameter" -}}

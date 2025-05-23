@@ -1,16 +1,35 @@
-{{- define "__arkcase.cm.info.compute" -}}
+{{- define "arkcase.content.dialect" -}}
   {{- $ctx := $ -}}
+  {{- $dialect := "" -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
-    {{- fail "The parameter given must be the root context (. or $)" -}}
+    {{- $ctx = $.ctx -}}
+    {{- if not (include "arkcase.isRootContext" $ctx) -}}
+      {{- fail "The root context (. or $) must be given as the 'ctx' parameter, or the only parameter" -}}
+    {{- end -}}
+    {{- $dialect = ($.dialect | default $dialect | toString) -}}
   {{- end -}}
+
+  {{- if (not $dialect) -}}
+    {{- $settings := (include "arkcase.subsystem.settings" (dict "ctx" $ctx "subsys" "content") | fromYaml) -}}
+    {{- $dialect = (get $settings "dialect" | default $dialect | toString | lower) -}}
+  {{- end -}}
+
+  {{- /* Make sure we always produce a default value */ -}}
+  {{- $dialect | default "s3" -}}
+{{- end -}}
+
+{{- define "__arkcase.content.info.compute" -}}
+  {{- $ctx := $.ctx -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "The root context (. or $) must be given as the 'ctx' parameter, or the only parameter" -}}
+  {{- end -}}
+
+  {{- $dialect := $.dialect -}}
 
   {{- $settings := (include "arkcase.subsystem.settings" (dict "ctx" $ctx "subsys" "content") | fromYaml) -}}
 
-  {{- /* Compute the dialect, falling back to the default if necessary */ -}}
-  {{- $dialect := (get $settings "dialect" | default "s3" | toString | lower) -}}
-
   {{- /* Step one: load the common content engine configurations */ -}}
-  {{- $cmInfo := (.Files.Get "cminfo.yaml" | fromYaml ) -}}
+  {{- $cmInfo := ($ctx.Files.Get "cminfo.yaml" | fromYaml ) -}}
   {{- range $key, $cm := $cmInfo -}}
     {{- if hasKey $cm "aliases" -}}
       {{- $aliases := $cm.aliases -}}
@@ -32,11 +51,22 @@
   {{- $cmConf | toYaml -}}
 {{- end -}}
 
-{{- define "arkcase.cm.info" -}}
+{{- define "arkcase.content.info" -}}
+  {{- $dialect := (include "arkcase.content.dialect" $) -}}
+  {{- $ctx := $ -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- $ctx = $.ctx -}}
+    {{- if not (include "arkcase.isRootContext" $ctx) -}}
+      {{- fail "The root context (. or $) must be given as the 'ctx' parameter, or the only parameter" -}}
+    {{- end -}}
+  {{- end -}}
+
   {{- $args :=
     dict
-      "ctx" $
-      "template" "__arkcase.cm.info.compute"
+      "ctx" $ctx
+      "template" "__arkcase.content.info.compute"
+      "key" $dialect
+      "params" (dict "ctx" $ctx "dialect" $dialect)
   -}}
   {{- include "__arkcase.tools.getCachedValue" $args -}}
 {{- end -}}
