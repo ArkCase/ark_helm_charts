@@ -1,0 +1,24 @@
+{{- $portal := (include "arkcase.portal" $ | fromYaml) -}}
+{{- $custom := (include "arkcase.customization" $) -}}
+{{- $customBase := (printf "%s_base" $custom) -}}
+{{- $profiles := (empty $portal) | ternary (list $customBase $custom "server" "runtime") (list $customBase "foia" $custom "server" "FOIA_server" "runtime") -}}
+{{- $appNames := list "arkcase" "arkcase-activemq" "arkcase-oidc" "ldap" "lookups" ((empty $portal) | ternary "" "arkcase-portal") -}}
+application:
+  name:
+    #
+    # This could be:
+    #   - Normal: arkcase,arkcase-activemq,arkcase-oidc,ldap,lookups
+    #   - FOIA: arkcase,arkcase-activemq,arkcase-oidc,ldap,lookups,arkcase-portal
+    #
+    active: {{ $appNames | compact | join "," | quote }}
+
+    #
+    # This should be "arkcase"
+    #
+    default: "arkcase"
+
+  #
+  # This could be:
+  #   - Normal: custom_base,custom,server,runtime
+  #   - FOIA: custom_base,foia,custom,server,FOIA_server,runtime
+  profile: {{ $profiles | compact | join "," | quote }}

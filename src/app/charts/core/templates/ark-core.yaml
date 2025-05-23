@@ -279,7 +279,7 @@ spec:
             {{- include "arkcase.env.applicationVars" $ | nindent 12 }}
             {{- include "arkcase.core.settings.env" $ | nindent 12 }}
             - name: POLL_CONFIG
-              value: "true"
+              value: "false"
             - name: ARKCASE_JDBC_DRIVER
               value: {{ $db.jdbc.driver | quote }}
             - name: ARKCASE_JDBC_URL
@@ -343,6 +343,7 @@ spec:
                 -Dk8s.rename.ldap.directories=true
                 -Djava.keystore.key.alias=$(ACME_KEY_ALIAS)
                 -Dsaml.keystore.defaultKeyName=$(ACME_KEY_ALIAS)
+                -Dacm.configurationserver.propertyfile=$(HOME_DIR)/.arkcase/custom/WEB-INF/classes/acm/conf.yml
                 -Dconfiguration.client.spring.path=spring
                 -Duser.home=$(HOME_DIR)
                 {{- if $cluster.enabled }}
@@ -398,6 +399,7 @@ spec:
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/acm/log4j2.xml") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/acm/spring/proxy-config/spring-config-proxy.xml") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/.env" "subPath" "envfile.arkcase") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/acm/conf.yml") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/acm/acm-config-server-repo/arkcase-activemq.yaml") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/acm/acm-config-server-repo/ldap/ldap.yaml") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/acm/acm-config-server-repo/arkcase-server.yaml") | nindent 12 }}
