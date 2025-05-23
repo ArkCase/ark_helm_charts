@@ -22,36 +22,3 @@ application:
   #   - Normal: custom_base,custom,server,runtime
   #   - FOIA: custom_base,foia,custom,server,FOIA_server,runtime
   profile: {{ $profiles | compact | join "," | quote }}
-
-spring:
-  cloud:
-    config:
-      tls:
-        enabled: true
-        keyStore: "file:${JAVA_KEYSTORE}"
-        keyStoreType: "${JAVA_KEYSTORE_TYPE}"
-        keyStorePassword: "${JAVA_KEYSTORE_PASS}"
-        keyPassword: "${JAVA_KEYSTORE_KEY_PASS}"
-        trustStore: "file:${JAVA_TRUSTSTORE}"
-        trustStoreType: "${JAVA_TRUSTSTORE_TYPE}"
-        trustStorePassword: "${JAVA_TRUSTSTORE_PASS}"
-
-configuration:
-  client:
-    branding.path: "branding"
-    labels.path: "labels"
-    ldap.path: "ldap"
-    lookups.path: "lookups"
-    stylesheets.path: "pdf-stylesheets"
-    rules.path: "rules"
-    extraFields.path: "extra-fields"
-    spring.path: "spring"
-  server:
-    # It's not pretty, but it's OK to hardcode this for now b/c we're going to get rid of
-    # a separate cloudconfig instance in the (hopefully) near future
-    url: "https://localhost:9999"
-    update.path: "/config/{applicationName}"
-    remove.path: "/config/remove/{applicationName}"
-    reset.path: "/reset"
-    update.file.path: "/file"
-    modules.path: "/config/modules"
