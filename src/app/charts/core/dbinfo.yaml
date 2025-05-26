@@ -1,7 +1,7 @@
 mariadb: &mariaDb
   platform: MySQL
-  quartz: StdJDBCDelegate
-  activiti: mysql
+  quartzDelegate: StdJDBCDelegate
+  workflowDbType: mysql
   port: 3306
   jdbc:
     driver: org.mariadb.jdbc.Driver
@@ -11,8 +11,8 @@ mariadb: &mariaDb
 
 # mysql:
 #   platform: MySQL
-#   quartz: StdJDBCDelegate
-#   activiti: mysql
+#   quartzDelegate: StdJDBCDelegate
+#   workflowDbType: mysql
 #   port: 3306
 #   jdbc:
 #     driver: com.mysql.cj.jdbc.Driver
@@ -20,9 +20,9 @@ mariadb: &mariaDb
 
 oracle:
   platform: Oracle
-  quartz: oracle.OracleDelegate
+  quartzDelegate: oracle.OracleDelegate
   # Is this correct?
-  activiti: oracle
+  workflowDbType: oracle
   port: 1521
   jdbc:
     driver: oracle.jdbc.driver.OracleDriver
@@ -35,8 +35,8 @@ oracle:
 
 postgresql:
   platform: PostgreSQL
-  quartz: PostgreSQLDelegate
-  activiti: postgres
+  quartzDelegate: PostgreSQLDelegate
+  workflowDbType: postgres
   port: 5432
   jdbc:
     driver: org.postgresql.Driver
@@ -47,9 +47,9 @@ postgresql:
 
 sqlserver:
   platform: SQLServer
-  quartz: MSSQLDelegate
+  quartzDelegate: MSSQLDelegate
   # Is this correct?
-  activiti: sqlserver
+  workflowDbType: sqlserver
   port: 1433
   jdbc:
     driver: com.microsoft.sqlserver.jdbc.SQLServerDriver
