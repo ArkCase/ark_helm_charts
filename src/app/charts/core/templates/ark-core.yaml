@@ -335,7 +335,6 @@ spec:
                 -Dk8s.rename.ldap.directories=true
                 -Djava.keystore.key.alias=$(ACME_KEY_ALIAS)
                 -Dsaml.keystore.defaultKeyName=$(ACME_KEY_ALIAS)
-                -Dacm.configurationserver.propertyfile=$(HOME_DIR)/.arkcase/custom/WEB-INF/classes/acm/conf.yml
                 -Dconfiguration.client.spring.path=spring
                 -Duser.home=$(HOME_DIR)
                 -Dhazelcast.shutdownhook.policy=GRACEFUL
@@ -389,19 +388,16 @@ spec:
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/acm/log4j2.xml") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/acm/spring/proxy-config/spring-config-proxy.xml") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/.env" "subPath" "envfile.arkcase") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/acm/conf.yml") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/acm/acm-config-server-repo/arkcase-activemq.yaml") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/acm/acm-config-server-repo/ldap/ldap.yaml") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/acm/acm-config-server-repo/arkcase-server.yaml") | nindent 12 }}
-            {{- if $cluster.enabled }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/acm/acm-config-server-repo/spring/hazelcast-config.xml") | nindent 12 }}
-            {{- end }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/acm/acm-config-server-repo/arkcase-oidc.yaml") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/acm/spring/spring-config-saml.properties") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/acm/spring-security/spring-security-config-external-saml.xml") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/acm/licenses/pdfnet_sdk_license.txt") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/custom/WEB-INF/classes/milton.license.properties") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/custom/WEB-INF/classes/milton.license.sig") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/milton.license.properties") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/milton.license.sig") | nindent 12 }}
             {{- include "arkcase.core.sso.saml.idpMetadata.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/acm/sso/idp.xml") | nindent 12 }}
         {{- if $cluster.enabled }}
         - name: haproxy
