@@ -129,6 +129,9 @@ service:
     - name: stomp
       protocol: TCP
       port: &stomp 61613
+    - name: jgroup
+      protocol: TCP
+      port: &jgroup 7800
 ##
 ## Configure extra options for containers' liveness and readiness probes
 ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/#configure-probes

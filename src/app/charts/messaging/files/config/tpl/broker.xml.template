@@ -1,3 +1,4 @@
+{{- $clusterId := (printf "%s-%s" $.Release.Namespace $.Release.Name) -}}
 <?xml version='1.0'?>
 <!--
 Licensed to the Apache Software Foundation (ASF) under one
@@ -117,20 +118,9 @@ under the License.
 		<!-- use this to customize the ping used for ipv6 addresses -->
 		<!-- <network-check-ping6-command>ping6 -c 1 %2$s</network-check-ping6-command> -->
 
-
-		{{- $cluster := (include "arkcase.cluster" $ | fromYaml) }}
-		{{- $nodes := ($cluster.nodes | int) }}
-		{{- $serviceName := (include "arkcase.service.headless" $) }}
-		{{- $podName := (include "arkcase.fullname" $) }}
 		<connectors>
 				<!-- Connector used to be announced through cluster connections and notifications -->
-				<connector name="local">tcp://${POD_HOSTNAME}.{{ $serviceName }}:61616?sslEnabled=true;enabledProtocols=TLSv1.2;</connector>
-
-				{{- if $cluster.enabled }}
-					{{- range (until $nodes) }}
-				<connector name="{{ printf "node-%d" . }}">tcp://{{ printf "%s-%d.%s" $podName . $serviceName }}:61616?sslEnabled=true;enabledProtocols=TLSv1.2;</connector>
-					{{- end }}
-				{{- end }}
+				<connector name="local">tcp://${POD_HOSTNAME}.{{ include "arkcase.service.headless" $ }}:61616?sslEnabled=true;enabledProtocols=TLSv1.2;</connector>
 		</connectors>
 
 
@@ -192,45 +182,34 @@ under the License.
 		<cluster-user>cluster-admin</cluster-user>
 		<cluster-password>this-value-is-substituted-at-startup</cluster-password>
 
-		{{- if not $cluster.enabled }}
 		<broadcast-groups>
-			<broadcast-group name="bg-group1">
-				<group-address>231.7.7.7</group-address>
-				<group-port>9876</group-port>
+			<broadcast-group name="bcast-{{ $clusterId }}">
 				<broadcast-period>5000</broadcast-period>
+				<jgroups-file>jgroups-artemis-k8s.xml</jgroups-file>
+				<jgroups-channel>{{ $clusterId }}</jgroups-channel>
 				<connector-ref>local</connector-ref>
 			</broadcast-group>
 		</broadcast-groups>
 
 		<discovery-groups>
-			<discovery-group name="dg-group1">
-				<group-address>231.7.7.7</group-address>
-				<group-port>9876</group-port>
+			<discovery-group name="disc-{{ $clusterId }}">
+				<jgroups-file>jgroups-artemis-k8s.xml</jgroups-file>
+				<jgroups-channel>{{ $clusterId }}</jgroups-channel>
 				<refresh-timeout>10000</refresh-timeout>
 			</discovery-group>
 		</discovery-groups>
-		{{- end }}
 
 		<cluster-connections>
-			<cluster-connection name="{{ $podName }}">
+			<cluster-connection name="conn-{{ $clusterId }}">
 				<connector-ref>local</connector-ref>
 				<message-load-balancing>ON_DEMAND</message-load-balancing>
 				<max-hops>0</max-hops>
-				{{- if $cluster.enabled }}
-				<static-connectors>
-					{{- range (until $nodes) }}
-					<connector-ref>{{ printf "node-%d" . }}</connector-ref>
-					{{- end }}
-				</static-connectors>
-				{{- else }}
-				<discovery-group-ref discovery-group-name="dg-group1"/>
-				{{- end }}
+				<discovery-group-ref discovery-group-name="disc-{{ $clusterId }}"/>
 			</cluster-connection>
 		</cluster-connections>
 
 		<ha-policy>
 			<replication>
-				{{- if $cluster.enabled }}
 				<primary>
 					<manager>
 						<properties>
@@ -242,13 +221,8 @@ under the License.
 							<property key="retries-ms" value="1000" />
 						</properties>
 					</manager>
-					<coordination-id>{{- $.Release.Namespace -}}-{{- $.Release.Name -}}</coordination-id>
+					<coordination-id>{{- $clusterId -}}</coordination-id>
 				</primary>
-				{{- else }}
-				<master>
-					<vote-on-replication-failure>true</vote-on-replication-failure>
-				</master>
-				{{- end }}
 			</replication>
 		</ha-policy>
 
