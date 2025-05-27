@@ -29,9 +29,7 @@ under the License.
 
 		<!--
 			The value for ${POD_HOSTNAME} must be substituted in at runtime (via sed?),
-			since it's impossible to know the value at deployment time. However, since
-			this is going to be deployed as part of a StatefulSet, we're able to generate
-			the nodeXX hostnames, below, as befits our desired deployment strategy.
+			since it's impossible to know the value at deployment time.
 		-->
 		<name>${POD_HOSTNAME}</name>
 
@@ -211,6 +209,8 @@ under the License.
 		<ha-policy>
 			<replication>
 				<primary>
+					<group-name>{{ $clusterId }}</group-name>
+					<cluster-name>conn-{{ $clusterId }}</cluster-name>
 					<manager>
 						<properties>
 							<!-- This should be populated with the ZooKeeper service's host:port combo -->
@@ -221,7 +221,7 @@ under the License.
 							<property key="retries-ms" value="1000" />
 						</properties>
 					</manager>
-					<coordination-id>{{- $clusterId -}}</coordination-id>
+					<coordination-id>{{ $clusterId }}</coordination-id>
 				</primary>
 			</replication>
 		</ha-policy>
