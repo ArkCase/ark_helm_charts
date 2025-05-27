@@ -2,7 +2,7 @@
 {{- $cluster := (include "arkcase.cluster" $ | fromYaml) }}
 {{- $nodes := ($cluster.nodes | int) -}}
 {{- $minAvailable := (include "arkcase.solr.minAvailable" ($nodes | int) | atoi) }}
-{{- if and $cluster.enabled (gt $nodes 1) }}
+{{- if (gt $nodes 1) }}
 ---
 apiVersion: policy/v1
 kind: PodDisruptionBudget
@@ -114,9 +114,7 @@ spec:
             - name: SOLR_OPTS
               value: >-
                 -Dsolr.autoSoftCommit.maxTime=1000
-            {{- if $cluster.enabled }}
                 -Dzookeeper.client.secure=true
-            {{- end }}
             - name: DATA_DIR
               value: *dataDir
             - name: SOLR_HOME
