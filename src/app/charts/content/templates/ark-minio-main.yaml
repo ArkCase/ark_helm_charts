@@ -2,7 +2,6 @@
 {{- $minAvailable := (include "arkcase.content.minio.minAvailable" $ | int) }}
 {{- $nodes := (include "arkcase.content.minio.nodeCount" $ | int) }}
 {{- $onePerHost := (include "arkcase.content.minio.onePerHost" $) }}
-{{- if (gt $nodes 1) }}
 ---
 apiVersion: policy/v1
 kind: PodDisruptionBudget
@@ -10,11 +9,9 @@ metadata:
   name: {{ include "arkcase.fullname" $ | quote }}
   namespace: {{ $.Release.Namespace | quote }}
 spec:
-  minAvailable: {{ $minAvailable }}
+  maxUnavailable: "25%"
   selector:
     matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
----
-{{- end }}
 ---
 apiVersion: apps/v1
 kind: StatefulSet

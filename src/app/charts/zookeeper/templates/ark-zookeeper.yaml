@@ -1,7 +1,5 @@
 {{- if and (include "arkcase.subsystem.enabled" $) -}}
-{{- $cluster := (include "arkcase.cluster" $ | fromYaml) -}}
-{{- $nodes := ($cluster.nodes | int) -}}
-{{- if (gt $nodes 1) }}
+  {{- $cluster := (include "arkcase.cluster" $ | fromYaml) -}}
 ---
 apiVersion: policy/v1
 kind: PodDisruptionBudget
@@ -9,11 +7,10 @@ metadata:
   name: {{ include "arkcase.fullname" $ | quote }}
   namespace: {{ $.Release.Namespace | quote }}
 spec:
-  minAvailable: {{ include "arkcase.zookeeper.minAvailable" $nodes | atoi }}
+  minAvailable: "51%"
   selector:
     matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
 ---
-{{- end }}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -27,7 +24,7 @@ metadata:
   annotations: {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  replicas: {{ include "arkcase.zookeeper.nodes" $nodes }}
+  replicas: {{ include "arkcase.zookeeper.replicas" $ }}
   selector: &labelSelector
     matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
   serviceName: {{ include "arkcase.service.headless" $ | quote }}
@@ -108,12 +105,7 @@ spec:
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
-            - name: DNS_NAMESPACE
-              value: {{ $.Release.Namespace | quote }}
-            - name: DNS_SERVICE
-              value: {{ include "arkcase.service.headless" $ | quote }}
-            - name: DNS_PORT
-              value: "clients"
+            {{- include "arkcase.cluster.discovery.env" (dict "ctx" $ "port" "clients") | nindent 12 }}
             - name: ZOOCFGDIR
               value: *confDir
             - name: ZOO_LOG_DIR
@@ -138,18 +130,19 @@ spec:
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/zoo.cfg") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/logback.xml") | nindent 12 }}
       volumes:
+        # Configuration is ephemeral, b/c it's re-rendered every time
+        - name: *confVol
+          emptyDir:
+            sizeLimit: 16Mi
         {{- include "arkcase.subsystem-access.volume" $ | nindent 8 }}
         {{- include "arkcase.acme.volume" $ | nindent 8 }}
-        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "conf") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "logs") | nindent 8 }}
         {{- include "arkcase.file-resource.volumes" $ | nindent 8 }}
   volumeClaimTemplates:
-    {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "conf") | nindent 4 }}
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "data") | nindent 4 }}
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "logs") | nindent 4 }}
 
-  {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "conf") | nindent 0 }}
   {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "data") | nindent 0 }}
   {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "logs") | nindent 0 }}
 {{- end }}
