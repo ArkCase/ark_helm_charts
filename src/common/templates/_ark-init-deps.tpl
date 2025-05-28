@@ -60,7 +60,6 @@ that checks the boot order
 {{- define "__arkcase.initDependencies" -}}
   {{- $ctx := $ -}}
   {{- $dependencies := ($ctx.Files.Get "subsys-deps.yaml" | fromYaml | default dict) -}}
-  {{- $cluster := (include "arkcase.cluster" $ctx | fromYaml) -}}
 
   {{- $network := ($dependencies.network | default dict) -}}
   {{- if (not (kindIs "map" $network)) -}}
@@ -75,11 +74,6 @@ that checks the boot order
 
   {{- $result := dict -}}
   {{- range $host, $settings := $dependencies -}}
-    {{- if and (not $cluster.enabled) $settings.clusterOnly -}}
-      {{- /* This dependency is only applicable when clustering is enabled */ -}}
-      {{- continue -}}
-    {{- end -}}
-
     {{- /* Normalize */ -}}
     {{- if (hasKey $settings "port") -}}
       {{- $settings = omit $settings "ports" -}}
