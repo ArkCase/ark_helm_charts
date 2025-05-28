@@ -104,7 +104,11 @@ spec:
             {{- include "arkcase.cluster.env" $ | nindent 12 }}
             {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
-            - name: NODES
+            # TODO: Set multishard to "true" when the use of Solr by
+            # ArkCase permits it (i.e. all joins are removed)
+            - name: ENABLE_MULTISHARD
+              value: "false"
+            - name: REPLICAS
               value: {{ $replicas | toString | quote }}
             - name: JAVA_TOOL_OPTIONS
               value: >-
