@@ -98,6 +98,7 @@
           {{- /* If it's a number, it's the node count we want (min == 1) */ -}}
           {{- $v = (atoi $v | int) -}}
           {{- $m = set $m "nodes" (max $v 1) -}}
+          {{- /* TODO: This needs review - we should ALWAYS be enabled ... */ -}}
           {{- $m = set $m "enabled" (gt $m.nodes 1) -}}
         {{- else -}}
           {{- /* If it's a non-number, fold it into a boolean using toBoolean and use it as the "enabled" flag */ -}}
@@ -217,4 +218,21 @@
   {{- $cluster := (include "arkcase.cluster" $ | fromYaml) -}}
   {{- $nodes := ($cluster.nodes | default 1 | int) -}}
 type: {{ $type | quote }}
+{{- end -}}
+
+{{- define "arkcase.cluster.discovery.env" -}}
+  {{- $ctx := $.ctx -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "The parameter 'ctx' must be the root context" -}}
+  {{- end -}}
+
+  {{- $dnsPort := ($.port | toString | required "Must provide the name of the DNS port to search for") -}}
+  {{- $dnsService := ($.service | default (include "arkcase.service.headless" $ctx)) -}}
+
+- name: DNS_NAMESPACE
+  value: {{ $ctx.Release.Namespace | quote }}
+- name: DNS_SERVICE
+  value: {{ $dnsService | quote }}
+- name: DNS_PORT
+  value: {{ $dnsPort | quote }}
 {{- end -}}

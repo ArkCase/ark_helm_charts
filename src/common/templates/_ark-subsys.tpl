@@ -144,9 +144,7 @@ Parameter: either the root context (i.e. "." or "$"), or
 {{- end -}}
 
 {{- define "arkcase.service.headless" }}
-  {{- $cluster := (include "arkcase.cluster" $ | fromYaml) -}}
-  {{- $name := (include "arkcase.service.name" $) -}}
-  {{- $cluster.enabled | ternary (printf "%s-dns" $name) $name -}}
+  {{- printf "%s-dns" (include "arkcase.service.name" $) -}}
 {{- end -}}
 
 {{- define "arkcase.subsystem.service.render" -}}
@@ -171,7 +169,6 @@ Parameter: either the root context (i.e. "." or "$"), or
       {{- $dev := (include "arkcase.dev" $ctx | fromYaml) -}}
       {{- $enableDebug = and (not (empty $dev)) (not (empty $dev.debug)) -}}
     {{- end -}}
-    {{- $cluster := (include "arkcase.cluster" $ctx | fromYaml) -}}
     {{- if and (empty $ports) (not $external) -}}
       {{- fail (printf "No ports are defined for chart %s, and no external server was given" (include "common.name" $ctx)) -}}
     {{- end -}}
@@ -188,8 +185,12 @@ Parameter: either the root context (i.e. "." or "$"), or
     {{- $serviceName := (include "arkcase.service.name" $ctx) -}}
     {{- $headlessName := (include "arkcase.service.headless" $ctx) -}}
     {{- if not $external -}}
-      {{- if ne $serviceName $headlessName }}
 ---
+#
+# This headless service exists solely so we can look up our pods
+# via DNS even when they're not yet ready, which is important in
+# some clustering-related scenarios for discovery, etc ...
+#
 apiVersion: v1
 kind: Service
 metadata:
@@ -233,7 +234,6 @@ spec:
           {{- end }}
         {{- end }}
   selector: {{- include "arkcase.labels.matchLabels.service" $selectorCtx | nindent 4 }}
-      {{- end }}
     {{- end }}
 ---
 apiVersion: v1
@@ -262,7 +262,7 @@ metadata:
       {{- toYaml . | nindent 4 }}
     {{- end }}
 spec:
-  publishNotReadyAddresses: {{ $enableDebug }}
+  publishNotReadyAddresses: false
     {{- if (not $external) }}
   # This is an internal service
   type: {{ coalesce $type "ClusterIP" }}
