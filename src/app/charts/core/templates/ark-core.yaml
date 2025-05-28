@@ -274,6 +274,12 @@ spec:
             {{- include "arkcase.acme.env" $ | nindent 12 }}
             {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
             {{- include "arkcase.core.extra-env.env" $ | nindent 12 }}
+            - name: DNS_NAMESPACE
+              value: {{ $.Release.Namespace | quote }}
+            - name: DNS_SERVICE
+              value: {{ include "arkcase.service.headless" $ | quote }}
+            - name: DNS_PORT
+              value: "healthz"
             - name: ALT_VARS
               value: "PORTAL_LDAP_DOMAIN PORTAL_LDAP_ROOT_DN ARKCASE_LDAP_DOMAIN ARKCASE_LDAP_ROOT_DN"
             - name: HOME_DIR
@@ -409,6 +415,12 @@ spec:
             {{- include "arkcase.cluster.env" $ | nindent 12 }}
             {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
+            - name: DNS_NAMESPACE
+              value: {{ $.Release.Namespace | quote }}
+            - name: DNS_SERVICE
+              value: {{ include "arkcase.service.headless" $ | quote }}
+            - name: DNS_PORT
+              value: "healthz"
             - name: ALT_VARS
               value: "PORTAL_LDAP_DOMAIN PORTAL_LDAP_ROOT_DN ARKCASE_LDAP_DOMAIN ARKCASE_LDAP_ROOT_DN"
             - name: ACME_KEYSTORE_WITH_TRUSTS
@@ -486,6 +498,12 @@ spec:
           {{- include "arkcase.image" (dict "ctx" $ "name" "haproxy" "repository" "haproxy") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
+            - name: DNS_NAMESPACE
+              value: {{ $.Release.Namespace | quote }}
+            - name: DNS_SERVICE
+              value: {{ include "arkcase.service.headless" $ | quote }}
+            - name: DNS_PORT
+              value: "healthz"
           command: [ "/entrypoint" ]
           {{- include "arkcase.subsystem.ports" (dict "ctx" $ "name" "haproxy") | nindent 10 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "haproxy") | nindent 12 }}
