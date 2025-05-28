@@ -1,6 +1,3 @@
-{{- $service := (include "arkcase.service.headless" $) -}}
-{{- $release := $.Release.Name -}}
-{{- $namespace := $.Release.Namespace -}}
 <config
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xmlns="urn:org:jgroups"
@@ -21,7 +18,7 @@
 
 	<!-- KISS it -->
 	<dns.DNS_PING
-		dns_query="_jgroup._tcp.{{ $service }}.{{ $namespace }}.svc.${CLUSTER_DOMAIN}"
+		dns_query="_${DNS_PORT}._tcp.${DNS_SERVICE}.${DNS_NAMESPACE}.svc.${CLUSTER_DOMAIN}"
 		dns_record_type="SRV"
 		probe_transport_ports="true"
 	/>
@@ -30,8 +27,8 @@
 	<!--
 	<org.jgroups.protocols.kubernetes.KUBE_PING
 		port_range="1"
-		namespace="{{ $namespace }}"
-		labels="app.kubernetes.io/instance={{ $release }},app.kubernetes.io/name=messaging,app.kubernetes.io/service-support=true"
+		namespace="${DNS_NAMESPACE}"
+		labels="app.kubernetes.io/instance=${RELEASE_NAME},app.kubernetes.io/name=${SUBSYS_CURRENT},app.kubernetes.io/service-support=true"
 	/>
 	-->
 

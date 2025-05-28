@@ -108,8 +108,12 @@ spec:
             {{- include "arkcase.cluster.env" $ | nindent 12 }}
             {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
-            - name: CLUSTER_DOMAIN
-              value: "cluster.local"
+            - name: DNS_NAMESPACE
+              value: {{ $.Release.Namespace | quote }}
+            - name: DNS_SERVICE
+              value: {{ include "arkcase.service.headless" $ | quote }}
+            - name: DNS_PORT
+              value: "jgroup"
             - name: ARTEMIS_NEW_USER_MODEL
               value: "true"
             - name: JAVA_TOOL_OPTIONS
