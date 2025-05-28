@@ -108,6 +108,12 @@ spec:
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
+            - name: DNS_NAMESPACE
+              value: {{ $.Release.Namespace | quote }}
+            - name: DNS_SERVICE
+              value: {{ include "arkcase.service.headless" $ | quote }}
+            - name: DNS_PORT
+              value: "clients"
             - name: ZOOCFGDIR
               value: *confDir
             - name: ZOO_LOG_DIR
