@@ -68,7 +68,7 @@
     -->
     <Connector port="4040" protocol="HTTP/1.1"
                connectionTimeout="20000"
-               redirectPort="4443" />
+               redirectPort="8443" />
 
     <!-- A "Connector" using the shared thread pool-->
     <!--
@@ -103,7 +103,7 @@
     <Connector connectionTimeout="20000"
                maxHttpHeaderSize="65536"
                maxThreads="150"
-               port="4443"
+               port="8443"
                protocol="HTTP/1.1"
                scheme="https"
                secure="true"

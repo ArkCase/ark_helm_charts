@@ -352,7 +352,7 @@ spec:
                 command: [ "/usr/local/bin/terminate-run-loop", "/app/tomcat/bin/catalina.sh", "stop", "-force" ]
           volumeMounts:
             {{- include "arkcase.trusts.mount" $ | nindent 12 }}
-            {{- include "arkcase.acme.volumeMount-shared" $ | nindent 12 }}
+            {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
             {{- include "arkcase.subsystem-access.volumeMount" $ | nindent 12 }}
             - name: *homeVol
               mountPath: *homeDir
@@ -481,23 +481,10 @@ spec:
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/arkcase-oidc.yaml") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/arkcase-server.yaml") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/spring/hazelcast-config.xml") | nindent 12 }}
-        - name: haproxy
-          {{- include "arkcase.image" (dict "ctx" $ "name" "haproxy" "repository" "haproxy") | nindent 10 }}
-          env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
-            {{- include "arkcase.acme.env" $ | nindent 12 }}
-            {{- include "arkcase.cluster.discovery.env" (dict "ctx" $ "port" "healthz") | nindent 12 }}
-          command: [ "/entrypoint" ]
-          {{- include "arkcase.subsystem.ports" (dict "ctx" $ "name" "haproxy") | nindent 10 }}
-          securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "haproxy") | nindent 12 }}
-          volumeMounts:
-            {{- include "arkcase.acme.volumeMount-shared" $ | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/etc/haproxy/haproxy.cfg") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/etc/haproxy/lua/responses.lua") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/entrypoint" "subPath" "entrypoint-haproxy") | nindent 12 }}
       volumes:
         {{- include "arkcase.subsystem-access.volume" $ | nindent 8 }}
         {{- include "arkcase.trusts.volume" $ | nindent 8 }}
-        {{- include "arkcase.acme.volume-shared" $ | nindent 8 }}
+        {{- include "arkcase.acme.volume" $ | nindent 8 }}
         {{- include "arkcase.file-resource.volumes" $ | nindent 8 }}
         {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "temp") | nindent 8 }}
         {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "wars") | nindent 8 }}

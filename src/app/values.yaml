@@ -21,22 +21,50 @@ service:
 ##
     probes:
       enabled: true
-      spec:
+      spec: &baseProbeThreshold
+        initialDelaySeconds: 0
+        periodSeconds: 10
+        timeoutSeconds: 10
+        successThreshold: 1
+        failureThreshold: 1
         httpGet:
           scheme: HTTPS
           port: *artifactsPort
           path: "/"
-        initialDelaySeconds: 0
-        periodSeconds: 10
-        timeoutSeconds: 10
-        failureThreshold: 1
-        successThreshold: 1
       startup:
         failureThreshold: 90
 
-# Please leave the `replicaCount` to 1 for the time being. Clustering is not
-# supported yet.
-replicaCount: 1
+  proxy:
+    ports:
+      - name: healthz
+        protocol: TCP
+        port: &healthz 18443
+    probes:
+      enabled: true
+      spec:
+        <<: *baseProbeThreshold
+        httpGet:
+          scheme: HTTPS
+          port: *healthz
+          path: "/healthz"
+      startup: &haproxyProbe
+        failureThreshold: 90
+      liveness:
+        failureThreshold: 3
+      readiness:
+        failureThreshold: 1
+
+  core:
+    ports:
+      - name: https
+        protocol: TCP
+        port: 8443
+
+  reports:
+    ports:
+      - name: https
+        protocol: TCP
+        port: 8443
 
 platform: ""
 
@@ -69,6 +97,10 @@ image:
   artifacts-portal:
     registry: *private-registry
     repository: "arkcase/artifacts-portal"
+
+  haproxy:
+    repository: "arkcase/haproxy"
+    tag: "2.6"
 
 # You generally shouldn't mess with these. These exist to support some name-generation templates
 nameOverride: ""

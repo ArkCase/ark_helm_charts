@@ -148,41 +148,6 @@ service:
           port: *https
           path: "/pentaho"
 
-  clusteredPentaho:
-    ports:
-      - name: clustered-https
-        protocol: TCP
-        port: &clustered 4443
-    probes:
-      <<: *pentahoProbes
-      readiness:
-        httpGet:
-          scheme: HTTPS
-          port: *clustered
-          path: "/pentaho"
-
-  clusteredHaproxy:
-    ports:
-      - name: healthz
-        protocol: TCP
-        port: &healthz 18443
-    probes:
-      enabled: true
-      spec:
-        <<: *baseProbeThreshold
-      startup: &haproxyProbe
-        httpGet:
-          scheme: HTTPS
-          port: *healthz
-          path: "/healthz"
-        failureThreshold: 90
-      liveness:
-        <<: *haproxyProbe
-        failureThreshold: 3
-      readiness:
-        <<: *haproxyProbe
-        failureThreshold: 1
-
 ##
 ## Configure extra options for containers' liveness and readiness probes
 ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/#configure-probes
