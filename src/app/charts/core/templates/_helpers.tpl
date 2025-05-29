@@ -818,3 +818,43 @@
 
   {{- $result | uniq | toYaml -}}
 {{- end -}}
+
+{{- define "__arkcase.env.applicationVars.compute.active" -}}
+{{- $portal := (include "arkcase.portal" . | fromYaml) -}}
+{{- list "arkcase" "arkcase-activemq" "arkcase-oidc" "ldap" "lookups" ((empty $portal) | ternary "" "arkcase-portal") | compact | join "," -}}
+{{- end }}
+
+{{- define "__arkcase.env.applicationVars.compute.profile" -}}
+{{- $portal := (include "arkcase.portal" . | fromYaml) -}}
+{{- $custom := (include "arkcase.customization" .) -}}
+{{- $customBase := printf "%s_base" $custom -}}
+{{- (empty $portal) | ternary (list $customBase $custom "server" "runtime") (list $customBase "foia" $custom "server" "FOIA_server" "runtime") | compact | join "," -}}
+{{- end }}
+
+{{- define "arkcase.env.applicationVars" }}
+- name: ARKCASE_APPLICATION_ACTIVE
+  value: "{{ include "__arkcase.env.applicationVars.compute.active" $ }}"
+- name: ARKCASE_APPLICATION_PROFILE
+  value: "{{ include "__arkcase.env.applicationVars.compute.profile" $ }}"
+{{- end }}
+
+{{- define "__arkcase.core.settings.flattenToEnv" -}}
+  {{- $prefixPath := .prefix -}}
+  {{- $map := .map -}}
+  {{- range $k, $v := $map }}
+    {{- $newPath := printf "%s_%s" $prefixPath ($k | snakecase | upper) | trimPrefix "_" }}
+    {{- if kindIs "map" $v }}
+      {{- include "__arkcase.core.settings.flattenToEnv" (dict "prefix" $newPath "map" $v) }}
+    {{- else }}
+- name: {{ printf "ARKCASE_SETTINGS_%s" $newPath | quote }}
+  value: {{ $v | toString | quote }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+
+{{- define "arkcase.core.settings.env" -}}
+  {{- $coreSettings := (include "arkcase.subsystem.settings" $ | fromYaml) -}}
+  {{- include "__arkcase.core.settings.flattenToEnv" (dict "prefix" "" "map" $coreSettings) }}
+{{- end }}
+
+
