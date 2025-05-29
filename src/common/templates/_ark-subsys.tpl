@@ -144,9 +144,7 @@ Parameter: either the root context (i.e. "." or "$"), or
 {{- end -}}
 
 {{- define "arkcase.service.headless" }}
-  {{- $cluster := (include "arkcase.cluster" $ | fromYaml) -}}
-  {{- $name := (include "arkcase.service.name" $) -}}
-  {{- $cluster.enabled | ternary (printf "%s-dns" $name) $name -}}
+  {{- printf "%s-dns" (include "arkcase.service.name" $) -}}
 {{- end -}}
 
 {{- define "arkcase.subsystem.service.render" -}}
@@ -155,6 +153,9 @@ Parameter: either the root context (i.e. "." or "$"), or
   {{- $global := $.global -}}
   {{- $partname := $.partname -}}
   {{- $targetPart := $.targetPart -}}
+  {{- $dnsOnly := $.dnsOnly -}}
+  {{- $noDns := $.noDns -}}
+  {{- $partNameOnly := $.partNameOnly -}}
 
   {{- /* This is important for services that will target other parts */ -}}
   {{- $selectorCtx := $ctx -}}
@@ -171,7 +172,6 @@ Parameter: either the root context (i.e. "." or "$"), or
       {{- $dev := (include "arkcase.dev" $ctx | fromYaml) -}}
       {{- $enableDebug = and (not (empty $dev)) (not (empty $dev.debug)) -}}
     {{- end -}}
-    {{- $cluster := (include "arkcase.cluster" $ctx | fromYaml) -}}
     {{- if and (empty $ports) (not $external) -}}
       {{- fail (printf "No ports are defined for chart %s, and no external server was given" (include "common.name" $ctx)) -}}
     {{- end -}}
@@ -185,11 +185,16 @@ Parameter: either the root context (i.e. "." or "$"), or
     {{- if and (hasKey $overrides "type") ($overrides.type) -}}
       {{- $type = $overrides.type -}}
     {{- end -}}
-    {{- $serviceName := (include "arkcase.service.name" $ctx) -}}
-    {{- $headlessName := (include "arkcase.service.headless" $ctx) -}}
+    {{- $serviceName := (include "arkcase.service.name" (dict "ctx" $ctx "partNameOnly" $partNameOnly)) -}}
+    {{- $headlessName := (include "arkcase.service.headless" (dict "ctx" $ctx "partNameOnly" $partNameOnly)) -}}
     {{- if not $external -}}
-      {{- if ne $serviceName $headlessName }}
+      {{- if not $noDns -}}
 ---
+#
+# This headless service exists solely so we can look up our pods
+# via DNS even when they're not yet ready, which is important in
+# some clustering-related scenarios for discovery, etc ...
+#
 apiVersion: v1
 kind: Service
 metadata:
@@ -235,6 +240,7 @@ spec:
   selector: {{- include "arkcase.labels.matchLabels.service" $selectorCtx | nindent 4 }}
       {{- end }}
     {{- end }}
+    {{- if not $dnsOnly }}
 ---
 apiVersion: v1
 kind: Service
@@ -242,62 +248,63 @@ metadata:
   name: {{ $serviceName | quote }}
   namespace: {{ $ctx.Release.Namespace | quote }}
   labels: {{- include "arkcase.labels" $ctx | nindent 4 }}
-    {{- with $ctx.Values.labels }}
-      {{- toYaml . | nindent 4 }}
-    {{- end }}
-    {{- with $data.labels }}
-      {{- toYaml . | nindent 4 }}
-    {{- end }}
-    {{- with $overrides.labels }}
-      {{- toYaml . | nindent 4 }}
-    {{- end }}
+      {{- with $ctx.Values.labels }}
+        {{- toYaml . | nindent 4 }}
+      {{- end }}
+      {{- with $data.labels }}
+        {{- toYaml . | nindent 4 }}
+      {{- end }}
+      {{- with $overrides.labels }}
+        {{- toYaml . | nindent 4 }}
+      {{- end }}
   annotations:
-    {{- with $ctx.Values.annotations }}
-      {{- toYaml . | nindent 4 }}
-    {{- end }}
-    {{- with $data.annotations }}
-      {{- toYaml . | nindent 4 }}
-    {{- end }}
-    {{- with $overrides.annotations }}
-      {{- toYaml . | nindent 4 }}
-    {{- end }}
+      {{- with $ctx.Values.annotations }}
+        {{- toYaml . | nindent 4 }}
+      {{- end }}
+      {{- with $data.annotations }}
+        {{- toYaml . | nindent 4 }}
+      {{- end }}
+      {{- with $overrides.annotations }}
+        {{- toYaml . | nindent 4 }}
+      {{- end }}
 spec:
-  publishNotReadyAddresses: {{ $enableDebug }}
-    {{- if (not $external) }}
+  publishNotReadyAddresses: false
+      {{- if (not $external) }}
   # This is an internal service
   type: {{ coalesce $type "ClusterIP" }}
-      {{- if (eq $type "LoadBalancer") }}
-        {{- with $overrides.loadBalancerClass }}
+        {{- if (eq $type "LoadBalancer") }}
+          {{- with $overrides.loadBalancerClass }}
   loadBalancerClass: {{ . | quote }}
-        {{- end }}
-        {{- with $overrides.loadBalancerIP }}
+          {{- end }}
+          {{- with $overrides.loadBalancerIP }}
   loadBalancerIP: {{ . | quote }}
-        {{- end }}
-        {{- if (hasKey $overrides "allocateNodePorts") }}
+          {{- end }}
+          {{- if (hasKey $overrides "allocateNodePorts") }}
   allocateLoadBalancerNodePorts: {{ $overrides.allocateNodePorts }}
+          {{- end }}
         {{- end }}
-      {{- end }}
   ports:
-      {{- if (empty $ports) }}
-        {{- fail (printf "There are no ports defined for the %s service" $serviceName) }}
-      {{- end }}
-      {{- $portOverrides := ($overrides.ports | default dict) -}}
-      {{- range $ports }}
+        {{- if (empty $ports) }}
+          {{- fail (printf "There are no ports defined for the %s service" $serviceName) }}
+        {{- end }}
+        {{- $portOverrides := ($overrides.ports | default dict) -}}
+        {{- range $ports }}
     - name: {{ (required "Port specifications must contain a name" .name) | quote }}
       protocol: {{ coalesce .protocol "TCP" }}
       port: {{ required (printf "Port [%s] doesn't have a port number" .name) .port }}
-        {{- if .targetPort }}
+          {{- if .targetPort }}
       targetPort: {{ int .targetPort }}
-        {{- end }}
-        {{- if (eq $type "NodePort") }}
-          {{- $nodePort := coalesce ((hasKey $portOverrides .name) | ternary (get $portOverrides .name) 0) (.nodePort | default 0) }}
-          {{- if $nodePort }}
+          {{- end }}
+          {{- if (eq $type "NodePort") }}
+            {{- $nodePort := coalesce ((hasKey $portOverrides .name) | ternary (get $portOverrides .name) 0) (.nodePort | default 0) }}
+            {{- if $nodePort }}
       nodePort: {{ int $nodePort }}
+            {{- end }}
           {{- end }}
         {{- end }}
-      {{- end }}
   selector: {{- include "arkcase.labels.matchLabels.service" $selectorCtx | nindent 4 }}
-    {{- end }}
+      {{- end }}
+    {{- end -}}
   {{- end -}}
 {{- end -}}
 
@@ -458,12 +465,22 @@ Parameter: the root context (i.e. "." or "$")
 */ -}}
 {{- define "arkcase.subsystem.service" }}
   {{- $partname := (include "arkcase.part.name" $) -}}
+  {{- $dnsOnly := false -}}
+  {{- $noDns := false -}}
+  {{- $partNameOnly := false -}}
   {{- $ctx := $ }}
   {{- if hasKey $ "ctx" -}}
     {{- $ctx = $.ctx -}}
     {{- if hasKey $ "partname" -}}
       {{- $partname = ($.partname | toString | lower) -}}
     {{- end -}}
+    {{- $partNameOnly = (not (empty (include "arkcase.toBoolean" $.partNameOnly))) -}}
+    {{- $dnsOnly = (not (empty (include "arkcase.toBoolean" $.dnsOnly))) -}}
+    {{- $noDns = (not (empty (include "arkcase.toBoolean" $.noDns))) -}}
+  {{- end -}}
+
+  {{- if and $dnsOnly $noDns -}}
+    {{- fail "The 'noDns' and 'dnsOnly' flags are mutually exclusive" -}}
   {{- end -}}
 
   {{- $targetPart := ($.targetPart | default "" | toString) -}}
@@ -491,7 +508,7 @@ Parameter: the root context (i.e. "." or "$")
       {{- /* Render a single part as the global service, as necessary */ -}}
       {{- if hasKey $parts $partname }}
         {{- /* The single-part option supplants the global service */ -}}
-        {{- $work = append $work (dict "ctx" $ctx "data" (get $parts $partname) "global" $service "partname" $partname "targetPart" $targetPart) }}
+        {{- $work = append $work (dict "ctx" $ctx "data" (get $parts $partname) "global" $service "partname" $partname "targetPart" $targetPart "partNameOnly" $partNameOnly "dnsOnly" $dnsOnly "noDns" $noDns) }}
       {{- end }}
     {{- else }}
       {{- /* Render a global service with all the ports */ -}}
@@ -501,7 +518,7 @@ Parameter: the root context (i.e. "." or "$")
       {{- end -}}
       {{- $data = set $data "ports" $ports }}
       {{- /* Add the work item */ -}}
-      {{- $work = append $work (dict "ctx" $ctx "data" $data "partname" $partname "targetPart" $targetPart) }}
+      {{- $work = append $work (dict "ctx" $ctx "data" $data "partname" $partname "targetPart" $targetPart "partNameOnly" $partNameOnly "dnsOnly" $dnsOnly "noDns" $noDns) }}
     {{- end }}
     {{- range $w := $work }}
       {{- include "arkcase.subsystem.service.render" $w }}

@@ -37,15 +37,24 @@
 {{- /* Output the short name, optionally supporting a subcomponent name for charts with mutliple components */ -}}
 {{- define "arkcase.name" -}}
   {{- $ctx := $ -}}
+  {{- $partNameOnly := false -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
-    {{- fail "Incorrect context given - submit the root context as the only parameter" -}}
+    {{- $ctx = $.ctx -}}
+    {{- if not (include "arkcase.isRootContext" $ctx) -}}
+      {{- fail "Must provide the root context ($ or .) as the 'ctx' parameter, or the only parameter" -}}
+    {{- end -}}
+    {{- $partNameOnly = (not (empty (include "arkcase.toBoolean" $.partNameOnly))) -}}
   {{- end -}}
 
   {{- $name := (include "common.name" $ctx) -}}
-
   {{- $partname := (include "arkcase.part.name" $ctx) -}}
+
   {{- if $partname -}}
-    {{- $name = (printf "%s-%s" $name $partname) -}}
+    {{- if $partNameOnly -}}
+      {{- $name = $partname -}}
+    {{- else -}}
+      {{- $name = (printf "%s-%s" $name $partname) -}}
+    {{- end -}}
   {{- end -}}
   {{- $name | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
@@ -84,25 +93,25 @@ version: {{ $ctx.Chart.AppVersion | quote }}
 {{- end -}}
 
 {{- define "arkcase.selectorLabels" -}}
-  {{- include "arkcase.labels.matchLabels" . -}}
+  {{- include "arkcase.labels.matchLabels" $ -}}
 {{- end -}}
 
 {{/*
 Kubernetes standard labels
 */}}
 {{- define "arkcase.labels.standard" -}}
-  {{- $partname := (include "arkcase.part.name" .) -}}
-  {{- $ctx := . -}}
+  {{- $partname := (include "arkcase.part.name" $) -}}
+  {{- $ctx := $ -}}
 
   {{- if (hasKey $ctx "ctx") -}}
-    {{- $ctx = .ctx -}}
+    {{- $ctx = $.ctx -}}
   {{- end -}}
 
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "Incorrect context given - either submit the root context as the only parameter, or a 'ctx' parameter pointing to it" -}}
   {{- end -}}
 
-  {{- include "arkcase.selectorLabels" . }}
+  {{- include "arkcase.selectorLabels" $ }}
 app.kubernetes.io/managed-by: {{ $ctx.Release.Service | quote }}
 helm.sh/chart: {{ include "common.names.chart" $ctx | quote }}
 {{- end -}}
@@ -111,11 +120,11 @@ helm.sh/chart: {{ include "common.names.chart" $ctx | quote }}
 Labels to use on deploy.spec.selector.matchLabels and svc.spec.selector
 */}}
 {{- define "arkcase.labels.matchLabels" -}}
-  {{- $partname := (include "arkcase.part.name" .) -}}
-  {{- $ctx := . -}}
+  {{- $partname := (include "arkcase.part.name" $) -}}
+  {{- $ctx := $ -}}
 
   {{- if (hasKey $ctx "ctx") -}}
-    {{- $ctx = .ctx -}}
+    {{- $ctx = $.ctx -}}
   {{- end -}}
 
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
@@ -130,7 +139,7 @@ app.kubernetes.io/part: {{ $partname | quote }}
 {{- end -}}
 
 {{- define "arkcase.labels.matchLabels.service" -}}
-  {{- include "arkcase.labels.matchLabels" . }}
+  {{- include "arkcase.labels.matchLabels" $ }}
 app.kubernetes.io/service-support: "true"
 {{- end -}}
 

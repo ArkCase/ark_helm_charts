@@ -1,17 +1,3 @@
-{{- $proxyName := (((.Values.configuration).tomcat).proxy).name -}}
-{{- if $proxyName -}}
-  {{- $proxyName = (include "arkcase.tools.mustSingleHostname" $proxyName) -}}
-{{- end -}}
-{{- $proxyPort := (((.Values.configuration).tomcat).proxy).port -}}
-{{- if $proxyPort -}}
-  {{- $proxyPort = ($proxyPort | toString | int) -}}
-  {{- if or (lt $proxyPort 1) (gt $proxyPort 65535) -}}
-    {{- fail (printf "The port number %d is invalid - must be within [1..65535]" $proxyPort) -}}
-  {{- end -}}
-{{- end -}}
-{{- $cluster := (include "arkcase.cluster" $ | fromYaml) -}}
-{{- $httpPort := $cluster.enabled | ternary 4040 8080 -}}
-{{- $httpsPort := $cluster.enabled | ternary 4443 8443 -}}
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
   Licensed to the Apache Software Foundation (ASF) under one or more
@@ -80,13 +66,9 @@
          APR (HTTP/AJP) Connector: /docs/apr.html
          Define a non-SSL/TLS HTTP/1.1 Connector on port 8080
     -->
-    <Connector port="{{ $httpPort }}" protocol="HTTP/1.1"
+    <Connector port="4040" protocol="HTTP/1.1"
                connectionTimeout="20000"
-               {{- if and $proxyName $proxyPort }}
-               proxyName="{{ $proxyName }}"
-               proxyPort="{{ $proxyPort }}"
-               {{- end }}
-               redirectPort="{{ $httpsPort }}" />
+               redirectPort="8443" />
 
     <!-- A "Connector" using the shared thread pool-->
     <!--
@@ -121,12 +103,8 @@
     <Connector connectionTimeout="20000"
                maxHttpHeaderSize="65536"
                maxThreads="150"
-               port="{{ $httpsPort }}"
+               port="8443"
                protocol="HTTP/1.1"
-               {{- if and $proxyName $proxyPort }}
-               proxyName="{{ $proxyName }}"
-               proxyPort="{{ $proxyPort }}"
-               {{- end }}
                scheme="https"
                secure="true"
                SSLEnabled="true"
@@ -162,13 +140,11 @@
       <!--For clustering, please take a look at documentation at:
           /docs/cluster-howto.html  (simple how to)
           /docs/config/cluster.html (reference documentation) -->
-      {{- if $cluster.enabled }}
       <Cluster className="org.apache.catalina.ha.tcp.SimpleTcpCluster">
         <Channel className="org.apache.catalina.tribes.group.GroupChannel">
           <Membership className="org.apache.catalina.tribes.membership.cloud.CloudMembershipService"/>
         </Channel>
       </Cluster>
-      {{- end }}
 
       <!-- Use the LockOutRealm to prevent attempts to guess user passwords
            via a brute-force attack -->

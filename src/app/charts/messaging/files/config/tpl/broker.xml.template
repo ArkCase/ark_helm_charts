@@ -211,6 +211,8 @@ under the License.
 				<primary>
 					<group-name>{{ $clusterId }}</group-name>
 					<cluster-name>conn-{{ $clusterId }}</cluster-name>
+					<check-for-active-server>true</check-for-active-server>
+					<vote-on-replication-failure>true</vote-on-replication-failure>
 					<manager>
 						<properties>
 							<!-- This should be populated with the ZooKeeper service's host:port combo -->

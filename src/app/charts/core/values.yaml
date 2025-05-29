@@ -45,10 +45,6 @@ image:
     repository: "arkcase/deployer"
     # tag: 1.1.1-01
 
-  haproxy:
-    repository: "arkcase/haproxy"
-    tag: "2.6"
-
   # setperm:
   #   registry: "alternate-registry"
   #   repository: "arkcase/setperm"
@@ -143,6 +139,9 @@ service:
       - name: https
         protocol: TCP
         port: &https 8443
+      - name: hazelcast
+        protocol: TCP
+        port: 5710
 
     probes: &arkcaseProbes
       enabled: true
@@ -169,42 +168,3 @@ service:
           scheme: HTTPS
           path: "/arkcase/login"
           port: *https
-
-  clusteredArkcase:
-    ports:
-      - name: clustered-https
-        protocol: TCP
-        port: &clustered 4443
-      - name: hazelcast
-        protocol: TCP
-        port: 5710
-
-    probes:
-      <<: *arkcaseProbes
-      readiness:
-        httpGet:
-          scheme: HTTPS
-          path: "/arkcase/login"
-          port: *clustered
-
-  haproxy:
-    ports:
-      - name: healthz
-        protocol: TCP
-        port: &healthz 18443
-    probes:
-      enabled: true
-      spec:
-        <<: *baseProbeThreshold
-      startup: &haproxyProbe
-        httpGet:
-          scheme: HTTPS
-          port: *healthz
-          path: "/healthz"
-        failureThreshold: 90
-      liveness:
-        <<: *haproxyProbe
-        failureThreshold: 3
-      readiness:
-        <<: *haproxyProbe
-        failureThreshold: 1

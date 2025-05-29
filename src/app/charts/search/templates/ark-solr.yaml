@@ -1,8 +1,7 @@
 {{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.subsystem.external" $)) }}
 {{- $cluster := (include "arkcase.cluster" $ | fromYaml) }}
-{{- $nodes := ($cluster.nodes | int) -}}
-{{- $minAvailable := (include "arkcase.solr.minAvailable" ($nodes | int) | atoi) }}
-{{- if (gt $nodes 1) }}
+{{- $replicas := ($cluster.replicas | int) -}}
+{{- $minAvailable := (include "arkcase.solr.minAvailable" ($replicas | int) | atoi) }}
 ---
 apiVersion: policy/v1
 kind: PodDisruptionBudget
@@ -14,7 +13,6 @@ spec:
   selector:
     matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
 ---
-{{- end }}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -28,7 +26,7 @@ metadata:
   annotations: {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  replicas: {{ $nodes }}
+  replicas: {{ $replicas }}
   selector: &labelSelector
     matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
   serviceName: {{ include "arkcase.service.headless" $ | quote }}
@@ -106,8 +104,12 @@ spec:
             {{- include "arkcase.cluster.env" $ | nindent 12 }}
             {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
-            - name: NODES
-              value: {{ $nodes | toString | quote }}
+            # TODO: Set multishard to "true" when the use of Solr by
+            # ArkCase permits it (i.e. all joins are removed)
+            - name: ENABLE_MULTISHARD
+              value: "false"
+            - name: REPLICAS
+              value: {{ $replicas | toString | quote }}
             - name: JAVA_TOOL_OPTIONS
               value: >-
                 -Dcom.redhat.fips=false
