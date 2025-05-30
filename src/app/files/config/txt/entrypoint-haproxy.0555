@@ -35,22 +35,6 @@ for SERVER in "${SERVERS[@]}" ; do
 	echo -e "\tpeer\t${BASENAME} ${TARGET}:10000" >> "${PEERS_FILE}"
 done
 
-if [ -v SUPPORTED_SERVICES ] ; then
-	#
-	# Get the IP addresses for the forwarded services
-	#
-	eyes "Examining the supported services: [${SUPPORTED_SERVICES}]"
-	while read SERVICE ; do
-		IP_VAR="$(echo -n "SERVICE_${SERVICE^^}_IP" | tr -c '[A-Z0-9_]' '_')"
-		FQSN="${SERVICE}.${DNS_NAMESPACE}.svc."
-		[ -n "${CLUSTER_DOMAIN}" ] && FQSN+="${CLUSTER_DOMAIN}."
-		SERVICE_IP="$(dig +short "${FQSN}")"
-		is_valid_ipv4 "${SERVICE_IP}" || continue
-		eval export "${IP_VAR}=${SERVICE_IP@Q}"
-		say "Set ${IP_VAR}=[${!IP_VAR}]"
-	done < <(csv_to_list <<< "${SUPPORTED_SERVICES}")
-fi
-
 [ -v INGRESS_HOST ] && ok "Found Ingress Hostname: [${INGRESS_HOST}]"
 
 CMD=("/usr/local/bin/docker-entrypoint.sh" "/usr/local/sbin/haproxy" "-f" "${CONF_FILE}" "-f" "${PEERS_FILE}")

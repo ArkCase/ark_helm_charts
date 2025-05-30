@@ -87,10 +87,8 @@ spec:
           {{- include "arkcase.image" (dict "ctx" $ "name" "init-ssl" "repository" "arkcase/base") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
-            - name: SUPPORTED_SERVICES
-              value: "core,reports"
             - name: SSL_SERVICE_EXTRA_NAMES
-              value: "$(SUPPORTED_SERVICES)"
+              value: "core,reports"
           command: [ "/usr/local/bin/acme-init" ]
           volumeMounts:
             {{- include "arkcase.acme.volumeMount-shared" $ | nindent 12 }}
@@ -112,8 +110,6 @@ spec:
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
             {{- include "arkcase.cluster.discovery.env" (dict "ctx" $ "port" "healthz") | nindent 12 }}
-            - name: SUPPORTED_SERVICES
-              value: "core,reports"
             - name: INGRESS_HOST
               value: {{ $ingressHost | quote }}
           command: [ "/entrypoint" ]
