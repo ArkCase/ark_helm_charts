@@ -112,6 +112,12 @@ spec:
             {{- include "arkcase.cluster.discovery.env" (dict "ctx" $ "port" "healthz") | nindent 12 }}
             - name: INGRESS_HOST
               value: {{ $ingressHost | quote }}
+            - name: ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "arkcase.subsystem-access.name" (dict "ctx" $ "conn" "proxy") | quote }}
+                  key: "password"
+                  optional: false
           command: [ "/entrypoint" ]
           {{- include "arkcase.subsystem.ports" (dict "ctx" $ "name" "proxy") | nindent 10 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "haproxy") | nindent 12 }}
