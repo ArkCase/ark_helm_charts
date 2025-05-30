@@ -61,8 +61,8 @@
     {{- if (kindIs "map" $c) -}}
       {{- $cluster = $c -}}
     {{- else -}}
-      {{- /* If "global.cluster" isn't a map, it must be a boolean value */ -}}
-      {{- $cluster = dict "enabled" true -}}
+      {{- /* If "global.cluster" isn't a map, it may only be the word "single" */ -}}
+      {{- $cluster = dict "enabled" true "single" (eq "single" ($cluster | toString | lower)) -}}
     {{- end -}}
   {{- end -}}
 
@@ -72,8 +72,11 @@
   {{- /* Set/sanitize the general "onePerHost" value */ -}}
   {{- $cluster = set $cluster "onePerHost" ((hasKey $cluster "onePerHost") | ternary (not (empty (include "arkcase.toBoolean" $cluster.onePerHost))) false) -}}
 
-  {{- $subsystems := omit $cluster "enabled" "onePerHost" -}}
-  {{- $cluster = pick $cluster "enabled" "onePerHost" -}}
+  {{- /* Set/sanitize the general "single" value */ -}}
+  {{- $cluster = set $cluster "single" ((hasKey $cluster "single") | ternary (not (empty (include "arkcase.toBoolean" $cluster.single))) false) -}}
+
+  {{- $subsystems := omit $cluster "enabled" "onePerHost" "single" -}}
+  {{- $cluster = pick $cluster "enabled" "onePerHost" "single" -}}
 
   {{- /* Sanitize the maps for each subsystem */ -}}
   {{- range $k, $v := $subsystems -}}
@@ -87,27 +90,38 @@
 
     {{- /* Support both map format, and a scalar value */ -}}
     {{- if (kindIs "map" $v) -}}
-      {{- $m = pick $v "onePerHost" "replicas" -}}
+      {{- $m = pick $v "onePerHost" "single" "replicas" -}}
     {{- else -}}
       {{- $v = $v | toString -}}
-      {{- if (regexMatch "^[1-9][0-9]*$" $v) -}}
+      {{- if (eq "single" ($v | lower)) -}}
+        {{- $m = set $m "replicas" 1 -}}
+      {{- else if (regexMatch "^[1-9][0-9]*$" $v) -}}
         {{- /* If it's a number, it's the replica count we want (min == 1) */ -}}
         {{- $v = (atoi $v | int) -}}
         {{- $m = set $m "replicas" (max $v 1) -}}
+        {{- $m = set $m "single" false -}}
       {{- end -}}
     {{- end -}}
 
     {{- /* Sanitize the "onePerHost" flag */ -}}
     {{- $m = set $m "onePerHost" ((hasKey $m "onePerHost") | ternary (not (empty (include "arkcase.toBoolean" $m.onePerHost))) $cluster.onePerHost) -}}
 
+    {{- /* Sanitize the "single" flag */ -}}
+    {{- $m = set $m "single" ((hasKey $m "single") | ternary (not (empty (include "arkcase.toBoolean" $m.single))) $cluster.single) -}}
+
     {{- /* Sanitize the "replicas" count */ -}}
     {{- $replicas := 2 -}}
-    {{- if hasKey $m "replicas" -}}
-      {{- $replicas = ($m.replicas | toString) -}}
-      {{- if not (regexMatch "^[1-9][0-9]*$" $replicas) -}}
-        {{- fail (printf "The replica count for global.cluster.%s is not valid: [%s] is not a valid number" $k $replicas) -}}
+    {{- if $m.single -}}
+      {{- /* If in single mode, we will only deploy one replica */ -}}
+      {{- $replicas = 1 -}}
+    {{- else -}}
+      {{- if hasKey $m "replicas" -}}
+        {{- $replicas = ($m.replicas | toString) -}}
+        {{- if not (regexMatch "^[1-9][0-9]*$" $replicas) -}}
+          {{- fail (printf "The replica count for global.cluster.%s is not valid: [%s] is not a valid number" $k $replicas) -}}
+        {{- end -}}
+        {{- $replicas = (atoi $replicas | int) -}}
       {{- end -}}
-      {{- $replicas = (atoi $replicas | int) -}}
     {{- end -}}
     {{- $m = set $m "replicas" $replicas -}}
 
@@ -133,19 +147,22 @@
 
   {{- $subsys := (include "arkcase.name" $) -}}
   {{- $rules := (include "arkcase.cluster.info.rules" $ | fromYaml) -}}
-  {{- $cluster := dict "enabled" true "onePerHost" false "replicas" 1 -}}
+  {{- $cluster := dict "enabled" true "onePerHost" false "replicas" 1 "single" false -}}
   {{- if $rules.supported -}}
     {{- $info := (include "arkcase.cluster.info" $ | fromYaml) -}}
     {{- if and $info (hasKey $info $subsys) -}}
       {{- $info = get $info $subsys -}}
     {{- else -}}
       {{- $replicas := ($rules.replicas.def | int) -}}
-      {{- $info = dict "enabled" true "onePerHost" false "replicas" $replicas -}}
+      {{- $info = dict "enabled" true "onePerHost" false "replicas" $replicas "single" $info.single -}}
     {{- end -}}
 
     {{- /* apply the rules */ -}}
-    {{- $replicas := (max ($info.replicas | int) ($rules.replicas.min | int)) -}}
-    {{- $replicas = (le ($rules.replicas.max | int) 0 | ternary $replicas (min ($rules.replicas.max | int) $replicas)) -}}
+    {{- $replicas := 1 -}}
+    {{- if not $info.single -}}
+      {{- $replicas = (max ($info.replicas | int) ($rules.replicas.min | int)) -}}
+      {{- $replicas = (le ($rules.replicas.max | int) 0 | ternary $replicas (min ($rules.replicas.max | int) $replicas)) -}}
+    {{- end -}}
     {{- $cluster = set $info "replicas" $replicas -}}
   {{- end -}}
   {{- $cluster | toYaml -}}
@@ -190,8 +207,6 @@
     {{- fail "The parameter value must be the root context" -}}
   {{- end -}}
   {{- $type := ($.Values.updateStrategy | default "" | toString | default "RollingUpdate") -}}
-  {{- $cluster := (include "arkcase.cluster" $ | fromYaml) -}}
-  {{- $replicas := ($cluster.replicas | default 1 | int) -}}
 type: {{ $type | quote }}
 {{- end -}}
 
