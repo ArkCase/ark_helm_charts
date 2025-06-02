@@ -61,27 +61,22 @@
     {{- if (kindIs "map" $c) -}}
       {{- $cluster = $c -}}
     {{- else -}}
-      {{- /* If "global.cluster" isn't a map, it may only be the word "single" */ -}}
-      {{- $cluster = dict "enabled" true "single" (eq "single" ($cluster | toString | lower)) -}}
+      {{- /* If "global.cluster" isn't a map, it may only be the word "true" or "false" */ -}}
+      {{- $cluster = dict "enabled" $c -}}
     {{- end -}}
   {{- end -}}
 
   {{- /* Set/sanitize the general "enabled" value */ -}}
-  {{- $cluster = set $cluster "enabled" true -}}
+  {{- $cluster = set $cluster "enabled" (hasKey $cluster "enabled" | ternary (not (empty (include "arkcase.toBoolean" $cluster.enabled))) false) -}}
 
   {{- /* Set/sanitize the general "onePerHost" value */ -}}
   {{- $cluster = set $cluster "onePerHost" ((hasKey $cluster "onePerHost") | ternary (not (empty (include "arkcase.toBoolean" $cluster.onePerHost))) false) -}}
 
-  {{- /* Set/sanitize the general "single" value */ -}}
-  {{- $cluster = set $cluster "single" ((hasKey $cluster "single") | ternary (not (empty (include "arkcase.toBoolean" $cluster.single))) false) -}}
-
-  {{- $subsystems := omit $cluster "enabled" "onePerHost" "single" -}}
-  {{- $cluster = pick $cluster "enabled" "onePerHost" "single" -}}
+  {{- $subsystems := omit $cluster "enabled" "onePerHost" -}}
+  {{- $cluster = pick $cluster "enabled" "onePerHost" -}}
 
   {{- /* Sanitize the maps for each subsystem */ -}}
   {{- range $k, $v := $subsystems -}}
-    {{- /* if it's a short syntax, turn it into a single map with the "enabled" flag */ -}}
-    {{- $m := dict "enabled" true -}}
 
     {{- /* Can't use a list here */ -}}
     {{- if (kindIs "slice" $v) -}}
@@ -89,32 +84,32 @@
     {{- end -}}
 
     {{- /* Support both map format, and a scalar value */ -}}
+    {{- $m := dict -}}
     {{- if (kindIs "map" $v) -}}
-      {{- $m = pick $v "onePerHost" "single" "replicas" -}}
+      {{- $m = pick $v "enabled" "onePerHost" "replicas" -}}
     {{- else -}}
+      {{- /* if it's a short syntax, then it can either be "true", "false", or the replica count */ -}}
       {{- $v = $v | toString -}}
-      {{- if (eq "single" ($v | lower)) -}}
-        {{- $m = set $m "replicas" 1 -}}
-      {{- else if (regexMatch "^[1-9][0-9]*$" $v) -}}
+      {{- if (regexMatch "^[1-9][0-9]*$" $v) -}}
         {{- /* If it's a number, it's the replica count we want (min == 1) */ -}}
         {{- $v = (atoi $v | int) -}}
         {{- $m = set $m "replicas" (max $v 1) -}}
-        {{- $m = set $m "single" false -}}
+        {{- $m = set $m "enabled" true -}}
+      {{- else -}}
+        {{- /* If it's not a number, it's parsed as a boolean value and used as "enabled" */ -}}
+        {{- $m = set $m "enabled" (not (empty (include "arkcase.toBoolean" $v))) -}}
       {{- end -}}
     {{- end -}}
 
     {{- /* Sanitize the "onePerHost" flag */ -}}
     {{- $m = set $m "onePerHost" ((hasKey $m "onePerHost") | ternary (not (empty (include "arkcase.toBoolean" $m.onePerHost))) $cluster.onePerHost) -}}
 
-    {{- /* Sanitize the "single" flag */ -}}
-    {{- $m = set $m "single" ((hasKey $m "single") | ternary (not (empty (include "arkcase.toBoolean" $m.single))) $cluster.single) -}}
+    {{- /* Sanitize the "enabled" flag */ -}}
+    {{- $m = set $m "enabled" ((hasKey $m "enabled") | ternary (not (empty (include "arkcase.toBoolean" $m.enabled))) $cluster.enabled) -}}
 
     {{- /* Sanitize the "replicas" count */ -}}
     {{- $replicas := 2 -}}
-    {{- if $m.single -}}
-      {{- /* If in single mode, we will only deploy one replica */ -}}
-      {{- $replicas = 1 -}}
-    {{- else -}}
+    {{- if $m.enabled -}}
       {{- if hasKey $m "replicas" -}}
         {{- $replicas = ($m.replicas | toString) -}}
         {{- if not (regexMatch "^[1-9][0-9]*$" $replicas) -}}
@@ -122,6 +117,9 @@
         {{- end -}}
         {{- $replicas = (atoi $replicas | int) -}}
       {{- end -}}
+    {{- else -}}
+      {{- /* If not enabled mode, we will only deploy one replica */ -}}
+      {{- $replicas = 1 -}}
     {{- end -}}
     {{- $m = set $m "replicas" $replicas -}}
 
@@ -147,19 +145,18 @@
 
   {{- $subsys := (include "arkcase.name" $) -}}
   {{- $rules := (include "arkcase.cluster.info.rules" $ | fromYaml) -}}
-  {{- $cluster := dict "enabled" true "onePerHost" false "replicas" 1 "single" false -}}
+  {{- $cluster := dict "enabled" false "onePerHost" false "replicas" 1 -}}
   {{- if $rules.supported -}}
     {{- $info := (include "arkcase.cluster.info" $ | fromYaml) -}}
     {{- if and $info (hasKey $info $subsys) -}}
       {{- $info = get $info $subsys -}}
     {{- else -}}
-      {{- $replicas := ($rules.replicas.def | int) -}}
-      {{- $info = dict "enabled" true "onePerHost" false "replicas" $replicas "single" $info.single -}}
+      {{- $info = merge (dict "replicas" ($rules.replicas.def | int)) (pick $info "enabled" "onePerHost") -}}
     {{- end -}}
 
     {{- /* apply the rules */ -}}
     {{- $replicas := 1 -}}
-    {{- if not $info.single -}}
+    {{- if $info.enabled -}}
       {{- $replicas = (max ($info.replicas | int) ($rules.replicas.min | int)) -}}
       {{- $replicas = (le ($rules.replicas.max | int) 0 | ternary $replicas (min ($rules.replicas.max | int) $replicas)) -}}
     {{- end -}}
@@ -176,9 +173,7 @@
 
   {{- $config := (include "arkcase.cluster" $ctx | fromYaml) -}}
   {{- $env := list (dict "name" "CLUSTER_ENABLED" "value" "true") -}}
-  {{- if $config.enabled -}}
-    {{- $env = concat $env (include "arkcase.subsystem-access.env" (dict "ctx" $ "subsys" "zookeeper" "key" "zkHost" "name" "ZK_HOST") | fromYamlArray) -}}
-  {{- end -}}
+  {{- $env = concat $env (include "arkcase.subsystem-access.env" (dict "ctx" $ "subsys" "zookeeper" "key" "zkHost" "name" "ZK_HOST") | fromYamlArray) -}}
   {{- $env | toYaml -}}
 {{- end -}}
 
