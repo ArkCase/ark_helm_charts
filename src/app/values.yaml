@@ -39,6 +39,12 @@ service:
       - name: healthz
         protocol: TCP
         port: &healthz 18443
+      - name: admin
+        protocol: TCP
+        port: 8181
+      - name: stats
+        protocol: TCP
+        port: 9600
     probes:
       enabled: true
       spec:
@@ -59,6 +65,9 @@ service:
       - name: https
         protocol: TCP
         port: 8443
+      - name: cloudconfig
+        protocol: TCP
+        port: 9999
 
   reports:
     ports:
