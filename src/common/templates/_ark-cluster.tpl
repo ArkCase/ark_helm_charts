@@ -62,12 +62,12 @@
       {{- $cluster = $c -}}
     {{- else -}}
       {{- /* If "global.cluster" isn't a map, it may only be the word "true" or "false" */ -}}
-      {{- $cluster = dict "enabled" $cluster -}}
+      {{- $cluster = dict "enabled" $c -}}
     {{- end -}}
   {{- end -}}
 
   {{- /* Set/sanitize the general "enabled" value */ -}}
-  {{- $cluster = set $cluster "enabled" (hasKey $cluster "enabled" | ternary (not (empty (include "arkcase.toBoolean" $cluster.enabled))) true) -}}
+  {{- $cluster = set $cluster "enabled" (hasKey $cluster "enabled" | ternary (not (empty (include "arkcase.toBoolean" $cluster.enabled))) false) -}}
 
   {{- /* Set/sanitize the general "onePerHost" value */ -}}
   {{- $cluster = set $cluster "onePerHost" ((hasKey $cluster "onePerHost") | ternary (not (empty (include "arkcase.toBoolean" $cluster.onePerHost))) false) -}}
@@ -151,7 +151,7 @@
     {{- if and $info (hasKey $info $subsys) -}}
       {{- $info = get $info $subsys -}}
     {{- else -}}
-      {{- $info = dict "enabled" false "onePerHost" false "replicas" ($rules.replicas.def | int) -}}
+      {{- $info = merge (dict "replicas" ($rules.replicas.def | int)) (pick $info "enabled" "onePerHost") -}}
     {{- end -}}
 
     {{- /* apply the rules */ -}}
@@ -173,9 +173,7 @@
 
   {{- $config := (include "arkcase.cluster" $ctx | fromYaml) -}}
   {{- $env := list (dict "name" "CLUSTER_ENABLED" "value" "true") -}}
-  {{- if $config.enabled -}}
-    {{- $env = concat $env (include "arkcase.subsystem-access.env" (dict "ctx" $ "subsys" "zookeeper" "key" "zkHost" "name" "ZK_HOST") | fromYamlArray) -}}
-  {{- end -}}
+  {{- $env = concat $env (include "arkcase.subsystem-access.env" (dict "ctx" $ "subsys" "zookeeper" "key" "zkHost" "name" "ZK_HOST") | fromYamlArray) -}}
   {{- $env | toYaml -}}
 {{- end -}}
 
