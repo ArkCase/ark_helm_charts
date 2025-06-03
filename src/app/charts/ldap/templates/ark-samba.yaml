@@ -94,10 +94,6 @@ spec:
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/init/init.d/000-init-seeds-wrapper" "subPath" "init-seeds-wrapper") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/boot/000-init-managed" "subPath" "init-managed") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/init-seeds") | nindent 12 }}
-            - name: "init"
-              mountPath: "/app/init"
-            - name: "conf"
-              mountPath: "/app/conf"
             - name: "data"
               mountPath: "/var/lib/samba"
             - name: "logs"
@@ -108,8 +104,6 @@ spec:
       volumes:
         {{- include "arkcase.subsystem-access.volume" $ | nindent 8 }}
         {{- include "arkcase.acme.volume" $ | nindent 8 }}
-        {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "init") | nindent 8 }}
-        {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "conf") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "logs") | nindent 8 }}
         {{- include "arkcase.file-resource.volumes" $ | nindent 8 }}

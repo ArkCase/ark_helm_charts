@@ -249,8 +249,12 @@ spec:
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/lock-initializer") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/etc/curator-wrapper.yaml") | nindent 12 }}
       volumes:
-        {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "init") | nindent 8 }}
-        {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "temp") | nindent 8 }}
+        - name: *initVol
+          emptyDir:
+            sizeLimit: 1Gi
+        - name: *tempVol
+          emptyDir:
+            sizeLimit: 2Gi
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "logs") | nindent 8 }}
         {{- include "arkcase.trusts.volume" $ | nindent 8 }}
