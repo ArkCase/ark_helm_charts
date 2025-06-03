@@ -8,8 +8,6 @@ set_or_default PENTAHO_PDI_HOME "${BASE_DIR}/pentaho"
 set_or_default PENTAHO_PDI_PLUGINS "${PENTAHO_PDI_HOME}/data-integration/plugins"
 set_or_default PENTAHO_SERVER "${PENTAHO_HOME}/pentaho-server"
 
-set_as_boolean CLUSTER_ENABLED
-
 require_dir_readable "${PENTAHO_SERVER}"
 
 PENTAHO_SOLUTIONS="${PENTAHO_SERVER}/pentaho-solutions"
@@ -66,10 +64,6 @@ set_or_default INIT_DIR "${BASE_DIR}/init"
 # UPDATE CA CERTIFICATES                                          #
 ###################################################################
 init_ssl
-
-# Enable reading the cert that HAProxy will need
-set_as_boolean CLUSTER_ENABLED "false"
-"${CLUSTER_ENABLED}" && chmod a+r "${SSL_DIR}/haproxy-cert.pem"
 
 ###################################################################
 # INSTALL ANY LICENSES                                            #
@@ -143,50 +137,43 @@ ok "Generated the JCR cluster node ID file"
 
 INITIALIZER_PROCESS="/config-post.sh"
 INITIALIZER_MODE="false"
-if as_boolean "${CLUSTER_ENABLED}" ; then
-	MARKER="$(dd if=/dev/urandom bs=3 count=16 2>/dev/null | base64 --wrap=0)"
-	say "Acquiring the initializer lock"
-	coproc "/lock-initializer" "${MARKER}" "${INITIALIZER_PROCESS}"
-	LOCK_OUT="${COPROC[0]}"
-	LOCK_PID="${COPROC_PID}"
-	say "Co-process started (pid=${LOCK_PID}, fd=${LOCK_OUT})"
+MARKER="$(dd if=/dev/urandom bs=3 count=16 2>/dev/null | base64 --wrap=0)"
+say "Acquiring the initializer lock"
+coproc "/lock-initializer" "${MARKER}" "${INITIALIZER_PROCESS}"
+LOCK_OUT="${COPROC[0]}"
+LOCK_PID="${COPROC_PID}"
+say "Co-process started (pid=${LOCK_PID}, fd=${LOCK_OUT})"
 
-	LOCK_START="$(date +%s)"
-	while true ; do
-		# Has the marker been output?
-		if read -u ${LOCK_OUT} LINE &>/dev/null ; then
-			# A successful read ...
+LOCK_START="$(date +%s)"
+while true ; do
+	# Has the marker been output?
+	if read -u ${LOCK_OUT} LINE &>/dev/null ; then
+		# A successful read ...
 
-			# If it's not our marker, keep reading!
-			[ "${LINE}" != "${MARKER}" ] && continue
+		# If it's not our marker, keep reading!
+		[ "${LINE}" != "${MARKER}" ] && continue
 
-			# If it was our marker, end the loop!
-			ok "Initialization lock acquired"
-			# Don't use exec to launch Pentaho
-			INITIALIZER_MODE="true"
-			break
-		fi
-
-		# The read failed ... is the coproc still running?
-		kill -0 ${LOCK_PID} &>/dev/null && continue
-
-		# It's not running... did it exit successfully?
-		RC=0
-		wait ${LOCK_PID} &>/dev/null || RC=${?}
-
-		# If it's not running and its exit status is not 0, then there was
-		[ ${RC} -eq 0 ] || fail "Initializer lock failed - cannot continue (rc=${RC})"
-
-		ok "Another process executed the initialization"
+		# If it was our marker, end the loop!
+		ok "Initialization lock acquired"
+		# Don't use exec to launch Pentaho
+		INITIALIZER_MODE="true"
 		break
-	done
-	LOCK_END="$(date +%s)"
-else
-	# If clustering is not enabled, then we simply mark ourselvs as the
-	# initializers, and fire off the config-post initializer process
-	INITIALIZER_MODE="true"
-	coproc "${INITIALIZER_PROCESS}"
-fi
+	fi
+
+	# The read failed ... is the coproc still running?
+	kill -0 ${LOCK_PID} &>/dev/null && continue
+
+	# It's not running... did it exit successfully?
+	RC=0
+	wait ${LOCK_PID} &>/dev/null || RC=${?}
+
+	# If it's not running and its exit status is not 0, then there was
+	[ ${RC} -eq 0 ] || fail "Initializer lock failed - cannot continue (rc=${RC})"
+
+	ok "Another process executed the initialization"
+	break
+done
+LOCK_END="$(date +%s)"
 
 # If we're not the initializer, then we have to jump through
 # an extra hoop or two in order to boot up cleanly...

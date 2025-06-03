@@ -171,10 +171,7 @@
     {{- fail "The only parameter value must be the root context" -}}
   {{- end -}}
 
-  {{- $config := (include "arkcase.cluster" $ctx | fromYaml) -}}
-  {{- $env := list (dict "name" "CLUSTER_ENABLED" "value" "true") -}}
-  {{- $env = concat $env (include "arkcase.subsystem-access.env" (dict "ctx" $ "subsys" "zookeeper" "key" "zkHost" "name" "ZK_HOST") | fromYamlArray) -}}
-  {{- $env | toYaml -}}
+  {{- include "arkcase.subsystem-access.env" (dict "ctx" $ "subsys" "zookeeper" "key" "zkHost" "name" "ZK_HOST") -}}
 {{- end -}}
 
 {{- define "arkcase.cluster.tomcat.env" -}}
