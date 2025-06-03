@@ -295,3 +295,20 @@
   {{- $nodes := ($cluster.nodes | default 1 | int) -}}
 type: {{ $type | quote }}
 {{- end -}}
+
+{{- define "arkcase.cluster.discovery.env" -}}
+  {{- $ctx := $.ctx -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "The parameter 'ctx' must be the root context" -}}
+  {{- end -}}
+
+  {{- $dnsPort := ($.port | toString | required "Must provide the name of the DNS port to search for") -}}
+  {{- $dnsService := ($.service | default (include "arkcase.service.headless" $ctx)) -}}
+
+- name: DNS_NAMESPACE
+  value: {{ $ctx.Release.Namespace | quote }}
+- name: DNS_SERVICE
+  value: {{ $dnsService | quote }}
+- name: DNS_PORT
+  value: {{ $dnsPort | quote }}
+{{- end -}}
