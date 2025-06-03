@@ -20,8 +20,6 @@ resources:
   development:
     arkcase:
       limits: "3Gi,2"
-    cloudconfig:
-      limits: "2Gi,1"
 
 # Please leave the `replicaCount` to 1 for the time being. Clustering is not
 # supported yet.
@@ -46,10 +44,6 @@ image:
   deployer:
     repository: "arkcase/deployer"
     # tag: 1.1.1-01
-
-  cloudconfig:
-    repository: "arkcase/cloudconfig"
-    tag: "2.0.0"
 
   # setperm:
   #   registry: "alternate-registry"
@@ -93,14 +87,6 @@ securityContext:
   # fsGroup: &fsGroup 1997
   # fsGroupChangePolicy: OnRootMismatch
 
-  cloudconfig:
-    # capabilities:
-    #   drop:
-    #   - ALL
-    # readOnlyRootFilesystem: true
-    # runAsNonRoot: true
-    # runAsUser: &runAsUser 1997
-    # runAsGroup: *fsGroup
   arkcase:
     # capabilities:
     #   drop:
@@ -147,33 +133,6 @@ persistence:
 
 service:
   canDebug: true
-  cloudconfig:
-    ports:
-      - name: cloudconfig
-        protocol: TCP
-        port: &cloudconfigPort 9999
-##
-## Configure extra options for containers' liveness and readiness probes
-## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/#configure-probes
-## @param service.probes.enabled Enable liveness and readiness probes
-## @param service.probes.spec.initialDelaySeconds Initial delay seconds for liveness and readiness probes
-## @param service.probes.spec.periodSeconds Period seconds for liveness and readiness probes
-## @param service.probes.spec.timeoutSeconds Timeout seconds for liveness and readiness probes
-## @param service.probes.spec.failureThreshold Failure threshold for liveness and readiness probes
-## @param service.probes.spec.successThreshold Success threshold for liveness and readiness probes
-##
-    probes:
-      enabled: true
-      spec:
-        exec:
-          command: [ "/usr/local/bin/cloudconfig-live" ]
-        initialDelaySeconds: 0
-        periodSeconds: 10
-        timeoutSeconds: 10
-        failureThreshold: 1
-        successThreshold: 1
-      startup:
-        failureThreshold: 90
 
   arkcase:
     ports:

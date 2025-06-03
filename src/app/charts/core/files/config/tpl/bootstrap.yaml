@@ -15,13 +15,12 @@ spring:
         trustStoreType: "${JAVA_TRUSTSTORE_TYPE}"
         trustStorePassword: "${JAVA_TRUSTSTORE_PASS}"
       name: arkcase-portal,external-portal-en,lookups,core-en
-      uri: "https://localhost:9999"
+      uri: "https://localhost:8443/arkcase/api/v1/service/cloudconfig"
       fail-fast: true
       retry:
         max-attempts: 20
         max-interval: 15000
         initial-interval: 10000
-
   profiles:
     active: {{ include "arkcase.portal.springProfiles" $ | fromYamlArray | compact | join "," | quote }}
     include: {{ $profiles | compact | join "," | quote }}

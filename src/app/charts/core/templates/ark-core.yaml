@@ -273,6 +273,10 @@ spec:
             {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
             {{- include "arkcase.core.extra-env.env" $ | nindent 12 }}
             {{- include "arkcase.cluster.discovery.env" (dict "ctx" $ "port" "healthz") | nindent 12 }}
+            {{- include "arkcase.env.applicationVars" $ | nindent 12 }}
+            {{- include "arkcase.core.settings.env" $ | nindent 12 }}
+            - name: POLL_CONFIG
+              value: "false"
             - name: ALT_VARS
               value: "PORTAL_LDAP_DOMAIN PORTAL_LDAP_ROOT_DN ARKCASE_LDAP_DOMAIN ARKCASE_LDAP_ROOT_DN"
             - name: HOME_DIR
@@ -330,7 +334,6 @@ spec:
                 -Dk8s.rename.ldap.directories=true
                 -Djava.keystore.key.alias=$(ACME_KEY_ALIAS)
                 -Dsaml.keystore.defaultKeyName=$(ACME_KEY_ALIAS)
-                -Dacm.configurationserver.propertyfile=$(HOME_DIR)/.arkcase/acm/conf.yml
                 -Dconfiguration.client.spring.path=spring
                 -Duser.home=$(HOME_DIR)
                 -Dhazelcast.shutdownhook.policy=GRACEFUL
@@ -369,118 +372,32 @@ spec:
               mountPath: *fsrvDir
             - name: *portalVol
               mountPath: *portalDir
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/acm/acm-config-server-repo/lookups/lookups-server.yaml") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/acm/acm-config-server-repo/lookups/lookups-server.yaml") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/tomcat/webapps/arkcase/WEB-INF/tomcat-web.xml" "subPath" "arkcase-tomcat-web.xml" ) | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/tomcat/webapps/arkcase#external-portal/WEB-INF/classes/bootstrap.yaml") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/acm/acm-config-server-repo/arkcase-portal-server.yaml") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/acm/acm-config-server-repo/arkcase-FOIA_server.yaml") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/acm/acm-config-server-repo/ldap/ldap-foia.yaml") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/acm/acm-config-server-repo/arkcase-portal-server.yaml") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/acm/acm-config-server-repo/arkcase-FOIA_server.yaml") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/acm/acm-config-server-repo/ldap/ldap-foia.yaml") | nindent 12 }}
             {{- end }}
             {{- include "arkcase.core.dev.runMounts" $ | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/tomcat-live") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/render-altcase-vars") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/tomcat/conf/server.xml.tpl") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/acm/acm-config-server-repo/spring/quartz.properties") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/acm/log4j2.xml") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/acm/spring/proxy-config/spring-config-proxy.xml") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/acm/acm-config-server-repo/spring/quartz.properties") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/acm/log4j2.xml") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/acm/spring/proxy-config/spring-config-proxy.xml") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/.env" "subPath" "envfile.arkcase") | nindent 12 }}
-            {{- if (eq "alfresco" $contentDialect) }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/acm/cmis/camel-config-alfresco-cmis.properties") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/acm/cmis/camel-config-opencmis-cmis.properties") | nindent 12 }}
-            {{- end }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/acm/conf.yml") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/acm/acm-config-server-repo/application.yaml") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/acm/acm-config-server-repo/arkcase-activemq.yaml") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/acm/acm-config-server-repo/ldap/ldap.yaml") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/acm/acm-config-server-repo/arkcase-server.yaml") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/acm/acm-config-server-repo/spring/hazelcast-config.xml") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/acm/acm-config-server-repo/arkcase-oidc.yaml") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/acm/spring/spring-config-saml.properties") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/acm/spring-security/spring-security-config-external-saml.xml") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/acm/licenses/pdfnet_sdk_license.txt") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/acm/acm-config-server-repo/arkcase-activemq.yaml") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/acm/acm-config-server-repo/ldap/ldap.yaml") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/acm/acm-config-server-repo/arkcase-server.yaml") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/acm/acm-config-server-repo/spring/hazelcast-config.xml") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/acm/acm-config-server-repo/arkcase-oidc.yaml") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/acm/spring/spring-config-saml.properties") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/acm/spring-security/spring-security-config-external-saml.xml") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/acm/licenses/pdfnet_sdk_license.txt") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/milton.license.properties") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/milton.license.sig") | nindent 12 }}
-            {{- include "arkcase.core.sso.saml.idpMetadata.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/acm/sso/idp.xml") | nindent 12 }}
-        - name: cloudconfig
-          {{- include "arkcase.image" (dict "ctx" $ "name" "cloudconfig" "repository" "arkcase/cloudconfig") | nindent 10 }}
-          env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
-            {{- include "arkcase.core.conf.env" $ | nindent 12 }}
-            {{- include "arkcase.cluster.env" $ | nindent 12 }}
-            {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
-            {{- include "arkcase.acme.env" $ | nindent 12 }}
-            {{- include "arkcase.cluster.discovery.env" (dict "ctx" $ "port" "healthz") | nindent 12 }}
-            - name: ALT_VARS
-              value: "PORTAL_LDAP_DOMAIN PORTAL_LDAP_ROOT_DN ARKCASE_LDAP_DOMAIN ARKCASE_LDAP_ROOT_DN"
-            - name: ACME_KEYSTORE_WITH_TRUSTS
-              value: "true"
-            - name: ACME_KEY_ALIAS
-              value: "arkcase-private-key-$(POD_NAME)"
-            - name: JAVA_KEYSTORE
-              value: "$(SSL_DIR)/keystore.pkcs12"
-            - name: JAVA_KEYSTORE_TYPE
-              value: "PKCS12"
-            - name: JAVA_TRUSTSTORE
-              value: "$(JAVA_KEYSTORE)"
-            - name: JAVA_TRUSTSTORE_TYPE
-              value: "$(JAVA_KEYSTORE_TYPE)"
-            - name: DATA_DIR
-              value: *confDir
-            - name: JAVA_TOOL_OPTIONS
-              value: >-
-                -Dcom.redhat.fips=false
-                -XX:MinRAMPercentage=50
-                -XX:MaxRAMPercentage=80
-                -Djava.keystore.key.alias=$(ACME_KEY_ALIAS)
-                -Dcom.sun.management.jmxremote.port=7092
-                -Dcom.sun.management.jmxremote.authenticate=false
-                -Dcom.sun.management.jmxremote.ssl=false
-                {{- with $debug.cloudconfig }}
-                -Xdebug
-                -agentlib:jdwp=transport=dt_socket,server=y,suspend={{ .suspend }},address=*:8889
-                -XX:FlightRecorderOptions=stackdepth=512,samplethreads=true
-                {{- end }}
-            - name: LOOP_TERMINATION_FILE
-              value: *loopTerminationFile
-            {{- if $dev }}
-            - name: DEVELOPMENT
-              value: "true"
-            - name: DEBUG
-              value: {{ not (empty $debug.cloudconfig) | toString | quote }}
-            - name: DEV_UID
-              value: {{ $devUid | toString | quote }}
-            - name: DEV_GID
-              value: {{ $devGid | toString | quote }}
-            {{- end }}
-          {{- include "arkcase.subsystem.ports" (dict "ctx" $ "name" "cloudconfig") | nindent 10 }}
-          resources: {{- include "arkcase.resources" (dict "ctx" $ "part" "cloudconfig") | nindent 12 }}
-          securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "cloudconfig") | nindent 12 }}
-          lifecycle:
-            preStop:
-              exec:
-                command: [ "/usr/local/bin/terminate-run-loop" ]
-          volumeMounts:
-            {{- include "arkcase.subsystem-access.volumeMount" $ | nindent 12 }}
-            {{- include "arkcase.trusts.mount" $ | nindent 12 }}
-            {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
-            - name: *confVol
-              mountPath: *confDir
-              subPath: "acm/acm-config-server-repo"
-            {{- if $portal }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/lookups/lookups-server.yaml") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/arkcase-portal-server.yaml") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/arkcase-FOIA_server.yaml") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/ldap/ldap-foia.yaml") | nindent 12 }}
-            {{- end }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/.env" "subPath" "envfile.cloudconfig") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/render-altcase-vars") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/cloudconfig-live") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/spring/quartz.properties") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/application.yaml") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/arkcase-activemq.yaml") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/ldap/ldap.yaml") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/arkcase-oidc.yaml") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/arkcase-server.yaml") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/spring/hazelcast-config.xml") | nindent 12 }}
+            {{- include "arkcase.core.sso.saml.idpMetadata.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/acm/sso/idp.xml") | nindent 12 }}
       volumes:
         {{- include "arkcase.subsystem-access.volume" $ | nindent 8 }}
         {{- include "arkcase.trusts.volume" $ | nindent 8 }}
