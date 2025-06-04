@@ -96,6 +96,7 @@ spec:
             {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
             {{- include "arkcase.cluster.discovery.env" (dict "ctx" $ "port" "jgroup") | nindent 12 }}
+            {{- include "arkcase.alt-java" $ | nindent 12 }}
             - name: ARTEMIS_NEW_USER_MODEL
               value: "true"
             - name: JAVA_TOOL_OPTIONS

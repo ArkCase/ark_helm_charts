@@ -106,6 +106,7 @@ spec:
             {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
             {{- include "arkcase.cluster.discovery.env" (dict "ctx" $ "port" "clients") | nindent 12 }}
+            {{- include "arkcase.alt-java" $ | nindent 12 }}
             - name: ZOOCFGDIR
               value: *confDir
             - name: ZOO_LOG_DIR

@@ -10,6 +10,9 @@ set_or_default PENTAHO_SERVER "${PENTAHO_HOME}/pentaho-server"
 
 require_dir_readable "${PENTAHO_SERVER}"
 
+# Set the Java version, just in case
+set-java
+
 PENTAHO_SOLUTIONS="${PENTAHO_SERVER}/pentaho-solutions"
 
 ###################################################################

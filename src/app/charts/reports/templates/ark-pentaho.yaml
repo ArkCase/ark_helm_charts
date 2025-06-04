@@ -172,6 +172,7 @@ spec:
             {{- include "arkcase.pentaho.jdbc-urls" $ | nindent 12 }}
             {{- include "arkcase.pentaho.extraDataSources.env" $ | nindent 12 }}
             {{- include "arkcase.cluster.discovery.env" (dict "ctx" $ "port" "healthz") | nindent 12 }}
+            {{- include "arkcase.alt-java" $ | nindent 12 }}
             - name: DATA_DIR
               value: *dataDir
             - name: INIT_DIR

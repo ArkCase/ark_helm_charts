@@ -275,6 +275,7 @@ spec:
             {{- include "arkcase.cluster.discovery.env" (dict "ctx" $ "port" "healthz") | nindent 12 }}
             {{- include "arkcase.env.applicationVars" $ | nindent 12 }}
             {{- include "arkcase.core.settings.env" $ | nindent 12 }}
+            {{- include "arkcase.alt-java" $ | nindent 12 }}
             - name: POLL_CONFIG
               value: "false"
             - name: ALT_VARS

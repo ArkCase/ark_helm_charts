@@ -856,5 +856,3 @@
   {{- $coreSettings := (include "arkcase.subsystem.settings" $ | fromYaml) -}}
   {{- include "__arkcase.core.settings.flattenToEnv" (dict "prefix" "" "map" $coreSettings) }}
 {{- end }}
-
-
