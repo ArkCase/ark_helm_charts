@@ -1230,3 +1230,14 @@ return either the value if correct, or the empty string if not.
   {{- end -}}
   {{- $yamlResult -}}
 {{- end -}}
+
+{{- define "arkcase.alt-java" -}}
+  {{- $settings := (include "arkcase.subsystem.settings" $ | fromYaml) -}}
+  {{- if and $settings (kindIs "map" $settings) -}}
+    {{- $altJava := (get $settings "alt-java" | default "" | toString) -}}
+    {{- if $altJava -}}
+- name: ALT_JAVA
+  value: {{ $altJava | quote }}
+    {{- end -}}
+  {{- end -}}
+{{- end }}
