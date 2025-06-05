@@ -15,6 +15,12 @@
       {{- $result = set $result (printf "pentaho_license_%d.lic" $pos) $license -}}
     {{- end -}}
   {{- end -}}
+
+  {{- /* Always make sure that if portal/FOIA mode is active, we have EE licenses */ -}}
+  {{- $portal := (include "arkcase.portal" $ | fromYaml) -}}
+  {{- if and $portal (not $result) -}}
+    {{- fail "Portal mode requires Pentaho Enterprise licenses, please add this information" -}}
+  {{- end -}}
   {{- $result | toYaml -}}
 {{- end -}}
 
