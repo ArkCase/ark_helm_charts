@@ -237,7 +237,7 @@ install_report()
 			say "\tThe ${FILE_TYPE} installed successfully"
 			rm -f "${UPLOAD_LOG_FILE}" &>/dev/null
 		else
-			err "\tFailed to install the The ${FILE_TYPE} from [${F}]${ARCHIVE_INFO}\n$(cat "${UPLOAD_LOG_FILE}")"
+			err "\tFailed to install the ${FILE_TYPE} from [${F}]${ARCHIVE_INFO}\n$(cat "${UPLOAD_LOG_FILE}")"
 			return ${?}
 		fi
 	done
