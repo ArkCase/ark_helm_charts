@@ -8,7 +8,7 @@ mysql: &mysql
   jdbc:
     driver: com.mysql.cj.jdbc.Driver
     type: mysql
-    url: "jdbc:mysql://$(PREFIX_HOST):$(PREFIX_PORT)/$(PREFIX_DATABASE)?sslMode=VERIFY_IDENTITY"
+    url: "jdbc:mysql://$(PREFIX_HOST):$(PREFIX_PORT)/$(PREFIX_DATABASE)?sslMode=VERIFY_IDENTITY&treatMysqlDatetimeAsTimestamp=true"
   validationQuery: "SELECT 1"
   aliases:
     - mariadb
