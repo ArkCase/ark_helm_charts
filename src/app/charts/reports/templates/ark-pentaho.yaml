@@ -1,6 +1,5 @@
 {{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.subsystem.external" $)) }}
 {{- $db := (include "arkcase.db.info" $ | fromYaml) -}}
-{{- $portal := (include "arkcase.portal" $ | fromYaml) -}}
 {{- $fullName := (include "arkcase.fullname" $) -}}
 {{- $serviceName := (include "arkcase.service.name" $) -}}
 {{- $cluster := (include "arkcase.cluster" $ | fromYaml) -}}
@@ -239,10 +238,6 @@ spec:
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/pentaho-solutions/system/hibernate/hibernate-settings.xml") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/tomcat/conf/server.xml") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/tomcat/webapps/pentaho/WEB-INF/classes/log4j2.xml") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/init/reports/000-base-reports.zip" "subPath" (printf "base-reports.%s.zip" $db.reports)) | nindent 12 }}
-            {{- if $portal }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/init/reports/001-foia-base-reports.zip" "subPath" (printf "foia-base-reports.%s.zip" $db.reports)) | nindent 12 }}
-            {{- end }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/render-template") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/encrypt-passwords") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/run-kjb") | nindent 12 }}
