@@ -34,7 +34,13 @@
     {{- end -}}
     {{- $masterCache = set $masterCache $chartName $result -}}
   {{- end -}}
-  {{- get $masterCache $chartName | toYaml -}}
+
+  {{- $licenses := (get $masterCache $chartName) -}}
+  {{- $portal := (include "arkcase.portal" $ | fromYaml) -}}
+  {{- if and $portal (not $licenses) -}}
+    {{- fail "Portal mode requires Pentaho Enterprise licenses, please add this information" -}}
+  {{- end -}}
+  {{- ($licenses | toYaml) -}}
 {{- end -}}
 
 {{- define "arkcase.pentaho.license.secrets" -}}
