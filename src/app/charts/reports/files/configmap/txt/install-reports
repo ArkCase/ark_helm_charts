@@ -153,7 +153,7 @@ install_report()
 		*.zip )
 			# Special case: if the zip file has a file named ${EXPORT_MANIFEST} in
 			# the root of the archive, we install the zip file directly
-			unzip -t "${SRC_FILE}" "${EXPORT_MANIFEST}" &>/dev/null && ARCHIVE_TYPE="zip"
+			unzip -t "${SRC_FILE}" "${EXPORT_MANIFEST}" &>/dev/null || ARCHIVE_TYPE="zip"
 			;;
 		* ) ;;
 	esac
