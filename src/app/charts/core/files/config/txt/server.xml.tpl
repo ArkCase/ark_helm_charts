@@ -157,8 +157,9 @@
                resourceName="UserDatabase"/>
       </Realm>
 
+      <!-- We turn off autoDeploy for security -->
       <Host name="localhost"  appBase="webapps"
-            unpackWARs="true" autoDeploy="true" workDir="${WORK_DIR}">
+            unpackWARs="true" autoDeploy="false" workDir="${WORK_DIR}">
 
         <!-- SingleSignOn valve, share authentication between web applications
              Documentation at: /docs/config/valve.html -->
