@@ -317,10 +317,6 @@ spec:
               subPath: &log4j2Xml "log4j2.xml"
               readOnly: true
             - name: *configMap
-              mountPath: "/app/init/reports/000-base-reports.zip"
-              subPath: &baseReportsZip {{ printf "base-reports.%s.zip" $db.reports | quote }}
-              readOnly: true
-            - name: *configMap
               mountPath: "/usr/local/bin/render-template"
               subPath: &renderTemplate "render-template"
               readOnly: true
@@ -336,13 +332,6 @@ spec:
               mountPath: "/usr/local/bin/install-mondrian-schema"
               subPath: &installMondrianSchema "install-mondrian-schema"
               readOnly: true
-            {{- if $portal }}
-            # We can't safely rename this from *-foia-* to *-portal-* yet...
-            - name: *configMap
-              mountPath: "/app/init/reports/001-foia-base-reports.zip"
-              subPath: &portalBaseReportsZip {{ printf "foia-base-reports.%s.zip" $db.reports | quote }}
-              readOnly: true
-            {{- end }}
             - name: *configMap
               mountPath: "/lock-initializer"
               subPath: &lockInitializer "lock-initializer"
