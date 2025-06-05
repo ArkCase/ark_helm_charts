@@ -81,7 +81,7 @@ validate_data_source()
 	return 0
 }
 
-is_file_intalled()
+is_file_installed()
 {
 	local FILE="${1}"
 	local HASH="${2}"
@@ -175,7 +175,7 @@ install_report()
 		read HASH rest < <(sha256sum "${F}")
 		B="${F##*/}"
 
-		if is_file_intalled "${P}/${B}" "${HASH}" ; then
+		if is_file_installed "${P}/${B}" "${HASH}" ; then
 			say "The file [${P}/${B}]${ARCHIVE_INFO} is already installed."
 			continue
 		fi
@@ -185,6 +185,7 @@ install_report()
 		#
 
 		IMPORT_PARAMS=()
+		FILE_TYPE="report(s)"
 		if is_data_source "${F}" ; then
 			if ! validate_data_source "${F}" ; then
 				err "The DataSource in [${F}] did not validate and will not be installed"
@@ -196,6 +197,7 @@ install_report()
 			# Rip out the last bit of the extension
 			DS_NAME="${DS_NAME%.*}"
 			IMPORT_PARAMS=(--resource-type=DATASOURCE --datasource-type=METADATA --metadata-domain-id="${DS_NAME}")
+			FILE_TYPE="data source"
 		else
 			IMPORT_PARAMS=(--path="/public${P}" --charset=UTF-8)
 		fi
@@ -208,7 +210,7 @@ install_report()
 		# TODO: check out what the other flags do (i.e. permission, overwrite, retainOwnership, etc.)
 		#
 
-		say "Installing the file from [${F}]${ARCHIVE_INFO}..."
+		say "Installing the ${FILE_TYPE} from [${F}]${ARCHIVE_INFO}..."
 		local UPLOAD_LOG_FILE="${LOGS_DIR}/uploads-$(date -u +%Y%m%d-%H%M%S)Z.log"
 		CMD=(
 			"${REPORT_INSTALLER}"
@@ -232,10 +234,10 @@ install_report()
 		) &> "${UPLOAD_LOG_FILE}"
 		if grep -iq "Import was successful" "${UPLOAD_LOG_FILE}" ; then
 			mark_file_installed "${P}/${B}" "${HASH}"
-			say "\tReport installed successfully"
+			say "\tThe ${FILE_TYPE} installed successfully"
 			rm -f "${UPLOAD_LOG_FILE}" &>/dev/null
 		else
-			err "\tFailed to install the file from [${F}]${ARCHIVE_INFO}\n$(cat "${UPLOAD_LOG_FILE}")"
+			err "\tFailed to install the ${FILE_TYPE} from [${F}]${ARCHIVE_INFO}\n$(cat "${UPLOAD_LOG_FILE}")"
 			return ${?}
 		fi
 	done
