@@ -164,6 +164,8 @@ install_report()
 	[ -z "${ARCHIVE_TYPE}" ] || ARCHIVE_INFO=" extracted from the archive [${SRC_FILE}]"
 	local CMD=()
 	local HASH=""
+	local COUNT_OK=0
+	local COUNT_FAIL=0
 	for F in "${REPORTS[@]}" ; do
 		[[ "${F}" =~ ^(.*)${DIVIDER}(.*)$ ]]
 		local P="${BASH_REMATCH[1]}"
@@ -236,13 +238,21 @@ install_report()
 			mark_file_installed "${P}/${B}" "${HASH}"
 			say "\tThe ${FILE_TYPE} installed successfully"
 			rm -f "${UPLOAD_LOG_FILE}" &>/dev/null
+			(( ++COUNT_OK ))
 		else
 			err "\tFailed to install the ${FILE_TYPE} from [${F}]${ARCHIVE_INFO}\n$(cat "${UPLOAD_LOG_FILE}")"
-			return ${?}
+			# Track the failure result so we can return it properly
+			RC=1
+			(( ++COUNT_FAIL ))
 		fi
 	done
-	[ -z "${ARCHIVE_TYPE}" ] || say "Finished processing the reports contained in [${SRC_FILE}]"
-	return 0
+
+	if [ -n "${ARCHIVE_TYPE}" ] ; then
+		say "Finished processing the $(( COUNT_OK + COUNT_FAIL )) items contained in [${SRC_FILE}]"
+		[ ${COUNT_OK} -gt 0 ] && ok "\tInstalled ${COUNT_OK}"
+		[ ${COUNT_FAIL} -gt 0 ] && err "\tFailed ${COUNT_FAIL}"
+	fi
+	return ${RC}
 }
 
 list_reports()
