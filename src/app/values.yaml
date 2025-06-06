@@ -1,6 +1,9 @@
 global:
   settings:
     baseUrl: "https://server.dev.arkcase.com:8443/arkcase"
+  image:
+    pullSecrets:
+      - name: aws-arkcase-pull
 
 service:
   artifacts:
@@ -42,9 +45,6 @@ platform: ""
 
 image:
   # pullPolicy: IfNotPresent
-
-  pullSecrets:
-    - name: aws-arkcase-pull
 
   registry: "public.ecr.aws"
 
