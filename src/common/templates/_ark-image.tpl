@@ -301,6 +301,8 @@
 {{- define "__arkcase.image.pullSecrets.cached" -}}
   {{- $ctx := $ -}}
 
+  {{- $name := (include "arkcase.part.name" $ctx) -}}
+
   {{- /* First things first: do we have any global overrides? */ -}}
   {{- $global := $ctx.Values.global -}}
   {{- if or (not $global) (not (kindIs "map" $global)) -}}
@@ -323,6 +325,7 @@
     dict
       "ctx" $
       "template" "__arkcase.image.pullSecrets.compute"
+      "key" (printf "%s-%s" (include "common.fullname" $ctx) $name)
       "params" (dict "chart" $chart "edition" $edition "data" $data)
   -}}
   {{- include "__arkcase.tools.getCachedValue" $args -}}
