@@ -319,7 +319,7 @@ spec:
             {{- with (($.Values.configuration).arkcase).env }}
               {{- toYaml . | nindent 12 }}
             {{- end }}
-            - name: LD_LIBRARY_PATH
+            - name: ARKCASE_LIBRARY_DIR
               value: "$(HOME_DIR)/.arkcase/libraries"
             - name: JAVA_TOOL_OPTIONS
               value: >-
