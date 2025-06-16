@@ -5,32 +5,60 @@ set -euo pipefail
 set_or_default BASE_DIR "/app"
 set_or_default INIT_DIR "${BASE_DIR}/init"
 set_or_default REPS_DIR "${INIT_DIR}/reports"
+set_or_default BUND_DIR "${INIT_DIR}/resource-bundles"
 set_or_default DATA_DIR "${BASE_DIR}/data"
 set_or_default DWHS_DIR "${DATA_DIR}/dw"
 
 export DEPLOY_UPDATE_MARK="true"
 
 #
+# Deploy all resource bundles
+#
+BUNDLE="$(list-artifacts /pentaho/resource-bundles)" || fail "Failed to list the resource bundles for deployment"
+readarray -t BUNDLE < <(echo -n "${BUNDLE}")
+if [ ${#BUNDLE[@]} -gt 0 ] ; then
+	doing "Deploying ${#BUNDLE[@]} resource bundles for automated installation: [${BUNDLE[@]}]"
+	BUND_DIR_TMP="${BUND_DIR}/tmp"
+	mkdir -p "${BUND_DIR_TMP}"
+	for bundle in "${BUNDLE[@]}" ; do
+		deploy-artifact extract "${bundle}" "${BUND_DIR_TMP}"
+	done
+	cd "${BUND_DIR_TMP}" || fail "Failed to CD into the bundle temporary directory at [${BUND_DIR_TMP}]"
+	doing "Clearing out any stowaway .class files"
+	find "${BUND_DIR_TMP}" -type f -iname '*.class' -delete || true
+	if [ $(find "${BUND_DIR_TMP}" -type f | wc -l) -gt 0 ] ; then
+		( cd "${BUND_DIR_TMP}" && exec zip -r "${BUND_DIR}/arkcase-resource-bundles.zip" . ) || fail "Failed to re-package the resource bundles"
+	else
+		warn "No resource bundles found to actually deploy!"
+	fi
+	rm -rf "${BUND_DIR_TMP}"
+fi
+
+#
 # Deploy all reports
 #
 REPORT="$(list-artifacts /pentaho/reports)" || fail "Failed to list the reports for deployment"
 readarray -t REPORT < <(echo -n "${REPORT}")
-doing "Deploying ${#REPORT[@]} reports for automated installation: [${REPORT[@]}]"
-mkdir -p "${REPS_DIR}"
-for report in "${REPORT[@]}" ; do
-	deploy-artifact copy "${report}" "${REPS_DIR}"
-done
+if [ ${#REPORT[@]} -gt 0 ] ; then
+	doing "Deploying ${#REPORT[@]} reports for automated installation: [${REPORT[@]}]"
+	mkdir -p "${REPS_DIR}"
+	for report in "${REPORT[@]}" ; do
+		deploy-artifact copy "${report}" "${REPS_DIR}"
+	done
+fi
 
 #
 # Extract all the Data Warehousing stuff
 #
 DWHS="$(list-artifacts /pentaho/analytical)" || fail "Failed to list the analytical transformations for deployment"
 readarray -t DWHS < <(echo -n "${DWHS}")
-doing "Deploying ${#DWHS[@]} Analytical Transformations: [${DWHS[@]}]"
-mkdir -p "${DWHS_DIR}"
-for dwhs in "${DWHS[@]}" ; do
-	deploy-artifact extract-dir "${dwhs}" "${DWHS_DIR}"
-done
+if [ ${#DWHS[@]} -gt 0 ] ; then
+	doing "Deploying ${#DWHS[@]} Analytical Transformations: [${DWHS[@]}]"
+	mkdir -p "${DWHS_DIR}"
+	for dwhs in "${DWHS[@]}" ; do
+		deploy-artifact extract-dir "${dwhs}" "${DWHS_DIR}"
+	done
+fi
 
 ok "Artifact deployment complete"
 exit 0
