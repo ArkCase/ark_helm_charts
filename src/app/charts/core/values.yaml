@@ -35,8 +35,12 @@ image:
   registry: "public.ecr.aws"
 
   # Overrides the image tag whose default is the chart appVersion.
-  repository: "arkcase/core"
-  # tag: "3.0.0"
+  arkcase: &arkcase
+    repository: "arkcase/core"
+    # tag: "3.0.0"
+
+  portal:
+    <<: *arkcase
 
   deployer:
     repository: "arkcase/deployer"
@@ -85,6 +89,15 @@ securityContext:
   # fsGroupChangePolicy: OnRootMismatch
 
   arkcase:
+    # capabilities:
+    #   drop:
+    #   - ALL
+    # readOnlyRootFilesystem: true
+    # runAsNonRoot: true
+    # runAsUser: &runAsUser 1997
+    # runAsGroup: *fsGroup
+
+  portal:
     # capabilities:
     #   drop:
     #   - ALL
@@ -164,4 +177,18 @@ service:
         httpGet:
           scheme: HTTPS
           path: "/arkcase/login"
+          port: *https
+
+  portal:
+    ports:
+      - name: https
+        protocol: TCP
+        port: &https 8443
+
+    probes:
+      <<: *arkcaseProbes
+      readiness:
+        httpGet:
+          scheme: HTTPS
+          path: "/arkcase/external-portal/rest/request/authenticatedMode"
           port: *https

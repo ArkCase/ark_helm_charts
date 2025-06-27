@@ -158,17 +158,9 @@ spec:
             {{- include "arkcase.deployment.env" $ | nindent 12 }}
             {{- include "arkcase.core.dev.deployEnv" $ | nindent 12 }}
             {{- include "arkcase.subsystem-access.env" (dict "ctx" $ "subsys" "ldap" "conn" "main" "key" "domain" "name" "LDAP_DOMAIN") | nindent 12 }}
-            - name: REALM_FIX
-              value: "arkcase.org=$(LDAP_DOMAIN)"
-            {{- if $portal }}
-            - name: PORTAL_CONTEXT
-              value: {{ $portal.context | quote }}
-            {{- end }}
           volumeMounts:
             {{- include "arkcase.core.dev.deployMounts" $ | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/deploy") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/fixExcel") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/realm-fix") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/deploy-arkcase") | nindent 12 }}
             - name: &homeVol "home"
               mountPath: "/app/depl/home"
         - name: init-permissions
@@ -184,10 +176,6 @@ spec:
               value: &tempDir "/app/home/temp"
             - name: LOGS_DIR
               value: &logsDir "/app/logs"
-            - name: PORTAL_DIR
-              value: &portalDir "/app/portal"
-            - name: FSRV_DIR
-              value: &fsrvDir "/app/fsrv"
             - name: JOBS
               value: |-
                 jobs:
@@ -196,7 +184,7 @@ spec:
                   - ownership: {{ printf "%d:%d" $devUid $devGid | quote }}
                     permissions: "u=rwX,g=rwX,o="
                     flags: [ "recurse", "forced", "create", "changes" ]
-                    targets: [ "$(HOME_DIR)", "$(TEMP_DIR)", "$(CONF_DIR)", "$(WARS_DIR)", "$(LOGS_DIR)", "$(FSRV_DIR)", "$(PORTAL_DIR)" ]
+                    targets: [ "$(HOME_DIR)", "$(TEMP_DIR)", "$(CONF_DIR)", "$(WARS_DIR)", "$(LOGS_DIR)" ]
                   - ownership:
                     permissions: "u=rwx,g=rwx,o="
                     flags: [ "verbose", "forced", "glob" ]
@@ -211,12 +199,6 @@ spec:
               mountPath: *tempDir
             - name: &logsVol "logs"
               mountPath: *logsDir
-            {{- if $portal }}
-            - name: &portalVol "prtl"
-              mountPath: *portalDir
-            - name: &fsrvVol "fsrv"
-              mountPath: *fsrvDir
-            {{- end }}
         {{- include "arkcase.initDependencies.container" (dict "ctx" $ "name" "init-dependencies") | nindent 8 }}
         {{- if not (eq $contentDialect "box") }}
         - name: init-seed-content
@@ -279,7 +261,7 @@ spec:
             - name: POLL_CONFIG
               value: "false"
             - name: ALT_VARS
-              value: "PORTAL_LDAP_DOMAIN PORTAL_LDAP_ROOT_DN ARKCASE_LDAP_DOMAIN ARKCASE_LDAP_ROOT_DN"
+              value: "ARKCASE_LDAP_DOMAIN ARKCASE_LDAP_ROOT_DN"
             - name: HOME_DIR
               value: *homeDir
             - name: CONF_DIR
@@ -302,12 +284,6 @@ spec:
               value: "$(JAVA_KEYSTORE_TYPE)"
             - name: LOOP_TERMINATION_FILE
               value: &loopTerminationFile "/app/.terminate"
-            {{- if $portal }}
-            - name: PORTAL_HOME_DIR
-              value: *portalDir
-            - name: PORTAL_FILE_DIR
-              value: "files"
-            {{- end }}
             {{- if $dev }}
             - name: DEVELOPMENT
               value: "true"
@@ -369,10 +345,6 @@ spec:
             - name: *logsVol
               mountPath: *logsDir
             {{- if $portal }}
-            - name: *fsrvVol
-              mountPath: *fsrvDir
-            - name: *portalVol
-              mountPath: *portalDir
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/tomcat/webapps/arkcase/WEB-INF/tomcat-web.xml" "subPath" "arkcase-tomcat-web.xml" ) | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/tomcat/webapps/arkcase#external-portal/WEB-INF/classes/bootstrap.yaml") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/acm/acm-config-server-repo/lookups/lookups-server.yaml") | nindent 12 }}
@@ -380,6 +352,7 @@ spec:
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/acm/acm-config-server-repo/arkcase-FOIA_server.yaml") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/acm/acm-config-server-repo/ldap/ldap-foia.yaml") | nindent 12 }}
             {{- end }}
+
             {{- include "arkcase.core.dev.runMounts" $ | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/tomcat-live") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/render-altcase-vars") | nindent 12 }}
@@ -408,10 +381,6 @@ spec:
         {{- include "arkcase.core.dev.volumes" $ | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "home") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "logs") | nindent 8 }}
-        {{- if $portal }}
-          {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "prtl") | nindent 8 }}
-          {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "fsrv") | nindent 8 }}
-        {{- end }}
         {{- include "arkcase.core.sso.saml.idpMetadata.volume" $ | nindent 8 }}
   volumeClaimTemplates:
     {{- if or (not $dev.conf) $dev.conf.file }}
@@ -419,17 +388,11 @@ spec:
     {{- end }}
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "home") | nindent 4 }}
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "logs") | nindent 4 }}
-    {{- if $portal }}
-      {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "prtl") | nindent 4 }}
-    {{- end }}
 
   {{- if or (not $dev.conf) $dev.conf.file }}
   {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "conf") | nindent 0 }}
   {{- end }}
   {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "home") | nindent 0 }}
   {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "logs") | nindent 0 }}
-  {{- if $portal }}
-    {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "prtl") | nindent 0 }}
-  {{- end }}
 
 {{- end -}}

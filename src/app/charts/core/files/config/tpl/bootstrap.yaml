@@ -15,7 +15,9 @@ spring:
         trustStoreType: "${JAVA_TRUSTSTORE_TYPE}"
         trustStorePassword: "${JAVA_TRUSTSTORE_PASS}"
       name: arkcase-portal,external-portal-en,lookups,core-en
-      uri: "https://localhost:8443/arkcase/api/v1/service/cloudconfig"
+      uri: "https://core:8443/arkcase/api/v1/service/cloudconfig"
+      username: "${PORTAL_ADMIN_USERNAME}@${PORTAL_LDAP_DOMAIN}"
+      password: "${PORTAL_ADMIN_PASSWORD}"
       fail-fast: true
       retry:
         max-attempts: 20

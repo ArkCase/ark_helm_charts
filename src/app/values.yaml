@@ -68,9 +68,12 @@ service:
       - name: https
         protocol: TCP
         port: 8443
-      - name: cloudconfig
+
+  portal:
+    ports:
+      - name: https
         protocol: TCP
-        port: 9999
+        port: 8443
 
   reports:
     ports:

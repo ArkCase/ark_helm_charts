@@ -1,5 +1,6 @@
 {{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.artifacts.external" $)) -}}
   {{- $cluster := (include "arkcase.cluster" $ | fromYaml) -}}
+  {{- $portal := (include "arkcase.portal" $ | fromYaml) -}}
   {{- $replicas := $cluster.replicas -}}
   {{- $fullName := (include "arkcase.fullname" $) -}}
   {{- $ingressHost := "localhost.localdomain" -}}
@@ -112,6 +113,8 @@ spec:
             {{- include "arkcase.cluster.discovery.env" (dict "ctx" $ "port" "healthz") | nindent 12 }}
             - name: INGRESS_HOST
               value: {{ $ingressHost | quote }}
+            - name: PORTAL_CONTEXT
+              value: {{ $portal.context | default "foia" | quote }}
             - name: ADMIN_PASSWORD
               valueFrom:
                 secretKeyRef:
