@@ -1,4 +1,4 @@
-network:
+network/arkcase:
   enabled: true
   mode: all
   template:
@@ -27,6 +27,24 @@ network:
     search:
       url: "@env:ARKCASE_SOLR_URL"
 
+network/portal:
+  enabled: true
+  mode: all
+  template:
+    # Any of the required ports are enough to succeed
+    mode: any
+    initialDelay: 10
+    delay: 10
+    timeout: 10
+    attempts: 120
+  dependencies:
+    acme:
+      url: "@env:ACME_URL"
+    messaging:
+      url: "@env:ARKCASE_MQ_AMQP_URL"
+    arkcase:
+      url: "@env:ARKCASE_ADMIN_URL"
+
 settings:
   # We specifically don't consume from ACME b/c those are handled directly
   # by the ACME templates, and there's no need to address them beyond that
@@ -40,9 +58,11 @@ settings:
     main-admin:
       username: ARKCASE_ADMIN_USERNAME
       password: ARKCASE_ADMIN_PASSWORD
+      url: ARKCASE_ADMIN_URL
     portal-admin:
       username: PORTAL_ADMIN_USERNAME
       password: PORTAL_ADMIN_PASSWORD
+      url: PORTAL_ADMIN_URL
 
   app:
     main:

@@ -199,7 +199,7 @@ spec:
               mountPath: *tempDir
             - name: &logsVol "logs"
               mountPath: *logsDir
-        {{- include "arkcase.initDependencies.container" (dict "ctx" $ "name" "init-dependencies") | nindent 8 }}
+        {{- include "arkcase.initDependencies.container" (dict "ctx" $ "name" "init-dependencies" "network" "arkcase") | nindent 8 }}
         {{- if not (eq $contentDialect "box") }}
         - name: init-seed-content
           {{- include "arkcase.image" (dict "ctx" $ "name" "seed-content" "repository" "arkcase/nettest") | nindent 10 }}

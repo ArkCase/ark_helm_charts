@@ -195,7 +195,7 @@ spec:
               mountPath: *portalDir
             - name: &fsrvVol "fsrv"
               mountPath: *fsrvDir
-        {{- include "arkcase.initDependencies.container" (dict "ctx" $ "name" "init-dependencies") | nindent 8 }}
+        {{- include "arkcase.initDependencies.container" (dict "ctx" $ "name" "init-dependencies" "network" "portal") | nindent 8 }}
       containers:
         - name: arkcase
           {{- include "arkcase.image" $ | nindent 10 }}
