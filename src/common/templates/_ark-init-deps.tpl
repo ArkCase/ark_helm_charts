@@ -83,7 +83,7 @@ that checks the boot order
     {{- $candidates = list (include "__arkcase.initDependencies.networkName" $dependencySet) -}}
   {{- else -}}
     {{- /* If the choice isn't explicit, allow fallback to the "common" section */ -}}
-    {{- range $suffix := (list ((include "arkcase.part.name" $ctx) "" | mustUniq)) -}}
+    {{- range $suffix := (list (include "arkcase.part.name" $ctx) "" | mustUniq) -}}
       {{- $candidates = append $candidates (include "__arkcase.initDependencies.networkName" $suffix) -}}
     {{- end -}}
   {{- end -}}
