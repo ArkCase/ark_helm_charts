@@ -54,7 +54,8 @@
 {{- end -}}
 
 {{- define "__arkcase.initDependencies.networkName" -}}
-  {{- printf "network.%s" $ | trimSuffix "." -}}
+  {{- $sep := "/" -}}
+  {{- printf "network%s%s" $sep $ | trimSuffix $sep -}}
 {{- end -}}
 
 {{- /*
