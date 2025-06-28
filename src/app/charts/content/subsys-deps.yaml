@@ -1,4 +1,4 @@
-network:
+network/alfresco:
   enabled: true
   mode: all
   template:
@@ -18,6 +18,20 @@ network:
     rdbms:
       host: "@env:ALFRESCO_JDBC_HOST"
       port: "@env:ALFRESCO_JDBC_PORT"
+
+network/minio:
+  enabled: true
+  mode: all
+  template:
+    # Any of the required ports are enough to succeed
+    mode: any
+    initialDelay: 10
+    delay: 10
+    timeout: 10
+    attempts: 60
+  dependencies:
+    acme:
+      url: "@env:ACME_URL"
 
 settings:
   $self:

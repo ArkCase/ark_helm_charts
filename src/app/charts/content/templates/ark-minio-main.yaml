@@ -98,7 +98,7 @@ spec:
               mountPath: *initDir
             - name: &dataVolume "data"
               mountPath: *dataDir
-        {{- include "arkcase.initDependencies.container" $ | nindent 8 }}
+        {{- include "arkcase.initDependencies.container" (dict "ctx" $ "network" "minio") | nindent 8 }}
       containers:
         {{- $partName := (include "arkcase.part.name" $) }}
         - name: {{ $partName | quote }}
