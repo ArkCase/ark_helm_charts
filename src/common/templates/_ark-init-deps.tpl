@@ -53,25 +53,61 @@
   {{- $result | toYaml -}}
 {{- end -}}
 
+{{- define "__arkcase.initDependencies.networkName" -}}
+  {{- $sep := "/" -}}
+  {{- printf "network%s%s" $sep $ | trimSuffix $sep -}}
+{{- end -}}
+
 {{- /*
 Render the boot order configuration file to be consumed by the init container
 that checks the boot order
 */ -}}
 {{- define "__arkcase.initDependencies" -}}
-  {{- $ctx := $ -}}
-  {{- $dependencies := ($ctx.Files.Get "subsys-deps.yaml" | fromYaml | default dict) -}}
+  {{- $ctx := $.ctx -}}
+  {{- $dependencySet := $.dependencySet -}}
+  {{- $explicit := $.explicit -}}
+  {{- $subsysDeps := ($ctx.Files.Get "subsys-deps.yaml" | fromYaml | default dict) -}}
   {{- $cluster := (include "arkcase.cluster" $ctx | fromYaml) -}}
 
-  {{- $network := ($dependencies.network | default dict) -}}
+  {{- /*
+    Allow for "network:", "network.something:", "network.other:", etc.
+
+    We also allow for automatic selection of the right part-based set, as well as
+    explicit selection of a specific set.
+
+    If the selection is explicit, we seek only that one. Otherwise, we try using
+    the part name and if that fails, use the default "network:" section
+  */ -}}
+
+  {{- $candidates := list -}}
+  {{- if $explicit -}}
+    {{- $candidates = list (include "__arkcase.initDependencies.networkName" $dependencySet) -}}
+  {{- else -}}
+    {{- /* If the choice isn't explicit, allow fallback to the "common" section */ -}}
+    {{- range $suffix := (list (include "arkcase.part.name" $ctx) "" | mustUniq) -}}
+      {{- $candidates = append $candidates (include "__arkcase.initDependencies.networkName" $suffix) -}}
+    {{- end -}}
+  {{- end -}}
+
+  {{- /* Find the best option! */ -}}
+  {{- $network := dict -}}
+  {{- range $candidate := $candidates -}}
+    {{- $network = get $subsysDeps $candidate -}}
+    {{- if (kindIs "map" $network) -}}
+      {{- break -}}
+    {{- end -}}
+  {{- end -}}
+
+  {{- /* Safety net */ -}}
   {{- if (not (kindIs "map" $network)) -}}
     {{- $network = dict -}}
   {{- end -}}
 
-  {{- $dependencies = ($network.dependencies | default dict) -}}
+  {{- $dependencies := ($network.dependencies | default dict) -}}
   {{- if (not (kindIs "map" $dependencies)) -}}
     {{- $dependencies = dict -}}
-    {{- $network = dict -}}
   {{- end -}}
+  {{- $network = omit $network "dependencies" -}}
 
   {{- $result := dict -}}
   {{- range $host, $settings := $dependencies -}}
@@ -101,35 +137,30 @@ that checks the boot order
   {{- end -}}
 
   {{- if $result -}}
-    {{- merge (dict "dependencies" $result) (omit $network "dependencies") | toYaml -}}
+    {{- merge (dict "dependencies" $result) $network | toYaml -}}
   {{- end -}}
 {{- end -}}
 
 {{- define "arkcase.initDependencies.container" -}}
-  {{- if not (kindIs "map" .) -}}
+  {{- if not (kindIs "map" $) -}}
     {{- fail "The parameter object must be a dict with a 'ctx' and a 'name' values" -}}
   {{- end -}}
-  {{- /* If we're given a parameter map, analyze it */ -}}
-  {{- $containerName := "" -}}
-  {{- if hasKey . "name" -}}
-    {{- $containerName := (.name | toString) -}}
-  {{- end -}}
-  {{- if not $containerName -}}
-    {{- $containerName = "init-dependencies" -}}
-  {{- end -}}
-  {{- $ctx := . -}}
-  {{- if hasKey . "ctx" -}}
-    {{- $ctx = .ctx -}}
-  {{- else -}}
-    {{- $ctx = $ -}}
-  {{- end -}}
 
+  {{- $ctx := $ -}}
+  {{- $containerName := "init-dependencies" -}}
+  {{- $dependencySet := "" -}}
+  {{- $explicit := false -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
-    {{- fail "You must supply the 'ctx' parameter, pointing to the root context that contains 'Values' et al." -}}
+    {{- $ctx = $.ctx -}}
+    {{- if not (include "arkcase.isRootContext" $ctx) -}}
+      {{- fail "You must supply the root context as either the 'ctx' parameter or the only parameter" -}}
+    {{- end -}}
+    {{- $containerName = (hasKey $ "containerName" | ternary ($.name | toString) "" | default $containerName) -}}
+    {{- $explicit = (hasKey $ "dependencies") -}}
+    {{- $dependencySet = ($explicit | ternary ($.dependencySet | toString) "" | default $dependencySet) -}}
   {{- end -}}
 
-  {{- $yaml := (include "__arkcase.initDependencies" $ctx | fromYaml) -}}
-
+  {{- $yaml := (include "__arkcase.initDependencies" (dict "ctx" $ctx "explicit" $explicit "dependencySet" $dependencySet) | fromYaml) -}}
   {{- if $yaml -}}
 - name: {{ $containerName | quote }}
   {{- include "arkcase.image" (dict "ctx" $ctx "name" "nettest" "repository" "arkcase/nettest") | nindent 2 }}
