@@ -64,7 +64,7 @@ that checks the boot order
 */ -}}
 {{- define "__arkcase.initDependencies" -}}
   {{- $ctx := $.ctx -}}
-  {{- $dependencySet := $.dependencySet -}}
+  {{- $networkSet := $.networkSet -}}
   {{- $explicit := $.explicit -}}
   {{- $subsysDeps := ($ctx.Files.Get "subsys-deps.yaml" | fromYaml | default dict) -}}
   {{- $cluster := (include "arkcase.cluster" $ctx | fromYaml) -}}
@@ -81,7 +81,7 @@ that checks the boot order
 
   {{- $candidates := list -}}
   {{- if $explicit -}}
-    {{- $candidates = list (include "__arkcase.initDependencies.networkName" $dependencySet) -}}
+    {{- $candidates = list (include "__arkcase.initDependencies.networkName" $networkSet) -}}
   {{- else -}}
     {{- /* If the choice isn't explicit, allow fallback to the "common" section */ -}}
     {{- range $suffix := (list (include "arkcase.part.name" $ctx) "" | mustUniq) -}}
@@ -148,7 +148,7 @@ that checks the boot order
 
   {{- $ctx := $ -}}
   {{- $containerName := "init-dependencies" -}}
-  {{- $dependencySet := "" -}}
+  {{- $network := "" -}}
   {{- $explicit := false -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- $ctx = $.ctx -}}
@@ -156,11 +156,11 @@ that checks the boot order
       {{- fail "You must supply the root context as either the 'ctx' parameter or the only parameter" -}}
     {{- end -}}
     {{- $containerName = (hasKey $ "containerName" | ternary ($.name | toString) "" | default $containerName) -}}
-    {{- $explicit = (hasKey $ "dependencies") -}}
-    {{- $dependencySet = ($explicit | ternary ($.dependencySet | toString) "" | default $dependencySet) -}}
+    {{- $explicit = (hasKey $ "network") -}}
+    {{- $network = ($explicit | ternary ($.network | toString) "" | default $network) -}}
   {{- end -}}
 
-  {{- $yaml := (include "__arkcase.initDependencies" (dict "ctx" $ctx "explicit" $explicit "dependencySet" $dependencySet) | fromYaml) -}}
+  {{- $yaml := (include "__arkcase.initDependencies" (dict "ctx" $ctx "explicit" $explicit "networkSet" $network) | fromYaml) -}}
   {{- if $yaml -}}
 - name: {{ $containerName | quote }}
   {{- include "arkcase.image" (dict "ctx" $ctx "name" "nettest" "repository" "arkcase/nettest") | nindent 2 }}
