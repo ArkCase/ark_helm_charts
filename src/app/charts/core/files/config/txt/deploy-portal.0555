@@ -5,8 +5,7 @@ set -euo pipefail
 set_or_default COMPONENT "portal"
 set_or_default BASE_DIR "/app"
 set_or_default DEPL_DIR "${BASE_DIR}/depl"
-set_or_default WARS_DIR "${DEPL_DIR}/${COMPONENT}"
-set_or_default HOME_DIR "${DEPL_DIR}/home"
+set_or_default WARS_DIR "${DEPL_DIR}/wars"
 
 get_portal_war()
 {
@@ -38,7 +37,7 @@ if "${DEV}" ; then
 	SKIP_WARS="$(echo "${SKIP_WARS}" | tr '/' '\n' | sort -u | sed -e '/^\s*$/d')"
 
 	set_or_default DEV_DIR "${BASE_DIR}/dev"
-	DEV_WARS_DIR="${DEV_DIR}/${COMPONENT}"
+	DEV_WARS_DIR="${DEV_DIR}/wars"
 fi
 
 #
@@ -105,7 +104,7 @@ done
 # Save the SHA-256 of the global artifacts
 #
 GLOBAL_SUMS="$(get-global-sums)" || fail "Failed to get the artifact global sums"
-SUMS_FILE="${HOME_DIR}/.artifacts.global.sums"
+SUMS_FILE="${WARS_DIR}/.artifacts.global.sums"
 echo -n "${GLOBAL_SUMS}" > "${SUMS_FILE}" || fail "Failed to store the artifact global sums into [${SUMS_FILE}]"
 
 ok "Configuration Initialization Complete"

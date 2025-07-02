@@ -1,5 +1,5 @@
 {{- if (include "arkcase.subsystem.enabled" $) -}}
-  {{- $dev := (include "arkcase.dev" $ | fromYaml) -}}
+  {{- $dev := get (include "arkcase.core.dev" $ | fromYaml) "dev" -}}
   {{- $debug := $dev.debug | default dict -}}
   {{- $devUid := (empty $dev) | ternary 1997 $dev.uid | int64 -}}
   {{- $devGid := (empty $dev) | ternary 1997 $dev.gid | int64 -}}
@@ -160,7 +160,7 @@ spec:
             {{- include "arkcase.subsystem-access.env" (dict "ctx" $ "subsys" "ldap" "conn" "main" "key" "domain" "name" "LDAP_DOMAIN") | nindent 12 }}
           volumeMounts:
             {{- include "arkcase.core.dev.deployMounts" $ | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/deploy-arkcase") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/deploy" "subPath" "deploy-arkcase") | nindent 12 }}
             - name: &homeVol "home"
               mountPath: "/app/depl/home"
         - name: init-permissions

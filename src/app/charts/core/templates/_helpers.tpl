@@ -1,12 +1,27 @@
-{{- define "arkcase.core.dev.deployEnv" -}}
-  {{- $ctx := . -}}
+{{- define "arkcase.core.dev" -}}
+  {{- $ctx := $ -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "Must send the root context as the only parameter" -}}
   {{- end -}}
+  {{- $part := (include "arkcase.part.name" $ctx) -}}
+  {{- $dev := (include "arkcase.dev" $ctx | fromYaml) -}}
+  {{- if $part -}}
+    {{- $dev = get $dev $part | default dict -}}
+    {{- if not (kindIs "map" $dev) -}}
+      {{- $dev = dict -}}
+    {{- end -}}
+  {{- end -}}
+  {{- dict "part" $part "dev" ($dev | default dict) "conf" (ne $part "portal") | toYaml -}}
+{{- end -}}
+
+{{- define "arkcase.core.dev.deployEnv" -}}
+  {{- $dev := (include "arkcase.core.dev" $ | fromYaml) -}}
+  {{- $part := $dev.part -}}
+  {{- $useConf := $dev.conf -}}
+  {{- $dev = $dev.dev -}}
 
   {{- $wars := list -}}
   {{- $conf := "" -}}
-  {{- $dev := (include "arkcase.dev" $ctx | fromYaml) -}}
   {{- if $dev.wars -}}
     {{- range $name := (keys $dev.wars | sortAlpha) -}}
       {{- $war := get $dev.wars $name -}}
@@ -15,7 +30,7 @@
       {{- end -}}
     {{- end -}}
   {{- end -}}
-  {{- if and $dev.conf (not ($dev.conf).file) -}}
+  {{- if and $useConf $dev.conf (not ($dev.conf).file) -}}
     {{- $conf = "true" -}}
   {{- end -}}
 
@@ -23,7 +38,7 @@
 - name: SKIP_WARS
   value: {{ $wars | join "/" | quote }}
   {{- end }}
-  {{- if $conf }}
+  {{- if and $useConf $conf }}
 - name: SKIP_CONF
   value: {{ $conf | quote }}
   {{- end }}
@@ -32,14 +47,13 @@
 {{- end -}}
 
 {{- define "arkcase.core.dev.deployMounts" -}}
-  {{- $ctx := . -}}
-  {{- if not (include "arkcase.isRootContext" $ctx) -}}
-    {{- fail "Must send the root context as the only parameter" -}}
-  {{- end -}}
+  {{- $dev := (include "arkcase.core.dev" $ | fromYaml) -}}
+  {{- $part := $dev.part -}}
+  {{- $useConf := $dev.conf -}}
+  {{- $dev = $dev.dev -}}
 
 - name: "wars"
   mountPath: "/app/depl/wars"
-  {{- $dev := (include "arkcase.dev" $ctx | fromYaml) -}}
   {{- if $dev.wars }}
     {{- $num := 0 -}}
     {{- range $name := (keys $dev.wars | sortAlpha) }}
@@ -51,31 +65,34 @@
       {{- $num = add 1 $num }}
     {{- end }}
   {{- end }}
-  {{- if or (not $dev.conf) ($dev.conf).file }}
+  {{- if $useConf }}
+    {{- if or (not $dev.conf) ($dev.conf).file }}
 - name: "conf"
   mountPath: "/app/depl/conf"
-  {{- end }}
-  {{- if $dev.conf }}
+    {{- end }}
+    {{- if $dev.conf }}
 - name: "dev-conf"
   mountPath: {{ $dev.conf.file | ternary "/app/dev/conf/01-conf.zip" "/app/depl/conf" | quote }}
+    {{- end }}
   {{- end }}
 {{- end -}}
 
 {{- define "arkcase.core.dev.permissionMounts" -}}
-  {{- $ctx := . -}}
-  {{- if not (include "arkcase.isRootContext" $ctx) -}}
-    {{- fail "Must send the root context as the only parameter" -}}
-  {{- end -}}
+  {{- $dev := (include "arkcase.core.dev" $ | fromYaml) -}}
+  {{- $part := $dev.part -}}
+  {{- $useConf := $dev.conf -}}
+  {{- $dev = $dev.dev -}}
 
-  {{- $dev := (include "arkcase.dev" $ctx | fromYaml) -}}
-  {{- $num := 0 -}}
-  {{- $confVolumeName := "conf" -}}
-  {{- if and $dev.conf (not ($dev.conf).file) -}}
-    {{- $confVolumeName = "dev-conf" -}}
-  {{- end -}}
+  {{- if $useConf -}}
+    {{- $confVolumeName := "conf" -}}
+    {{- if and $dev.conf (not ($dev.conf).file) -}}
+      {{- $confVolumeName = "dev-conf" -}}
+    {{- end -}}
 - name: &confVol {{ $confVolumeName | quote }}
   mountPath: &confDir "/app/conf"
+  {{- end }}
   {{- if $dev.wars }}
+    {{- $num := 0 -}}
     {{- range $name := (keys $dev.wars | sortAlpha) }}
       {{- $war := get $dev.wars $name }}
       {{- if not $war.file }}
@@ -88,12 +105,11 @@
 {{- end -}}
 
 {{- define "arkcase.core.dev.runMounts" -}}
-  {{- $ctx := . -}}
-  {{- if not (include "arkcase.isRootContext" $ctx) -}}
-    {{- fail "Must send the root context as the only parameter" -}}
-  {{- end -}}
+  {{- $dev := (include "arkcase.core.dev" $ | fromYaml) -}}
+  {{- $part := $dev.part -}}
+  {{- $useConf := $dev.conf -}}
+  {{- $dev = $dev.dev -}}
 
-  {{- $dev := (include "arkcase.dev" $ctx | fromYaml) -}}
   {{- if $dev.wars -}}
     {{- $num := 0 -}}
     {{- range $name := (keys $dev.wars | sortAlpha) }}
@@ -108,20 +124,22 @@
 {{- end -}}
 
 {{- define "arkcase.core.dev.volumes" -}}
-  {{- $ctx := . -}}
-  {{- if not (include "arkcase.isRootContext" $ctx) -}}
-    {{- fail "Must send the root context as the only parameter" -}}
-  {{- end -}}
+  {{- $ctx := $ -}}
+  {{- $dev := (include "arkcase.core.dev" $ | fromYaml) -}}
+  {{- $part := $dev.part -}}
+  {{- $useConf := $dev.conf -}}
+  {{- $dev = $dev.dev -}}
 
-  {{- $dev := (include "arkcase.dev" $ctx | fromYaml) -}}
-  {{- if or (not $dev.conf) $dev.conf.file }}
-    {{- include "arkcase.persistence.volume" (dict "ctx" $ctx "name" "conf") }}
-  {{- end }}
-  {{- if $dev.conf }}
+  {{- if $useConf }}
+    {{- if or (not $dev.conf) $dev.conf.file }}
+      {{- include "arkcase.persistence.volume" (dict "ctx" $ctx "name" "conf") }}
+    {{- end }}
+    {{- if $dev.conf }}
 - name: "dev-conf"
   hostPath:
     path: {{ $dev.conf.path | quote }}
     type: {{ $dev.conf.file | ternary "File" "Directory" | quote }}
+    {{- end }}
   {{- end }}
   {{- if $dev.wars }}
     {{- $num := 0 -}}
@@ -432,7 +450,9 @@
   {{- end -}}
 
   {{- /* Loggers from dev mode override both the defaults and the configured extra loggers */ -}}
-  {{- $dev := (include "arkcase.dev" $ctx | fromYaml) -}}
+  {{- $dev := (include "arkcase.core.dev" $ctx | fromYaml) -}}
+  {{- $part := $dev.part -}}
+  {{- $dev = $dev.dev -}}
   {{- if $dev.logs -}}
     {{- $loggers = merge $dev.logs $loggers -}}
   {{- end -}}
