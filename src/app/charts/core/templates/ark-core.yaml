@@ -288,7 +288,7 @@ spec:
             - name: DEVELOPMENT
               value: "true"
             - name: DEBUG
-              value: {{ not (empty $debug.arkcase) | toString | quote }}
+              value: {{ not (empty $debug) | toString | quote }}
             - name: DEV_UID
               value: {{ $devUid | toString | quote }}
             - name: DEV_GID
@@ -318,7 +318,7 @@ spec:
                 -Dcom.sun.management.jmxremote.port=7091
                 -Dcom.sun.management.jmxremote.authenticate=false
                 -Dcom.sun.management.jmxremote.ssl=false
-                {{- with $debug.arkcase }}
+                {{- with $debug }}
                 -Xdebug
                 -agentlib:jdwp=transport=dt_socket,server=y,suspend={{ .suspend }},address=*:8888
                 -XX:FlightRecorderOptions=stackdepth=512,samplethreads=true
