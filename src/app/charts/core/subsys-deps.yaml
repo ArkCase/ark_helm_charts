@@ -43,7 +43,7 @@ network/portal:
     messaging:
       url: "@env:ARKCASE_MQ_AMQP_URL"
     arkcase:
-      url: "@env:ARKCASE_ADMIN_URL"
+      http: "@env:ARKCASE_ADMIN_URL"
 
 settings:
   # We specifically don't consume from ACME b/c those are handled directly
