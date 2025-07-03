@@ -3,7 +3,7 @@
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "Must send the root context as the only parameter" -}}
   {{- end -}}
-  {{- $part := (include "arkcase.part.name" $ctx) -}}
+  {{- $part := (include "arkcase.part.name" $ctx | default "arkcase") -}}
   {{- $dev := (include "arkcase.dev" $ctx | fromYaml) -}}
   {{- if $part -}}
     {{- $dev = get $dev $part | default dict -}}

@@ -246,7 +246,7 @@ spec:
         {{- end }}
       containers:
         - name: arkcase
-          {{- include "arkcase.image" $ | nindent 10 }}
+          {{- include "arkcase.image" (dict "ctx" $ "name" "arkcase" "repository" "arkcase/core") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.core.conf.env" $ | nindent 12 }}
             {{- include "arkcase.cluster.env" $ | nindent 12 }}
