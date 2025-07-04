@@ -207,6 +207,8 @@ spec:
             {{- include "arkcase.env.applicationVars" $ | nindent 12 }}
             {{- include "arkcase.core.settings.env" $ | nindent 12 }}
             {{- include "arkcase.alt-java" $ | nindent 12 }}
+            - name: COMPONENT
+              value: "portal"
             - name: POLL_CONFIG
               value: "false"
             - name: ALT_VARS
