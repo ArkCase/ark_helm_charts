@@ -4,12 +4,10 @@
     {{- fail "Must send the root context as the only parameter" -}}
   {{- end -}}
   {{- $part := (include "arkcase.part.name" $ctx | default "arkcase") -}}
-  {{- $dev := (include "arkcase.dev" $ctx | fromYaml) -}}
-  {{- if $part -}}
-    {{- $dev = get $dev $part | default dict -}}
-    {{- if not (kindIs "map" $dev) -}}
-      {{- $dev = dict -}}
-    {{- end -}}
+  {{- $devRoot := (include "arkcase.dev" $ctx | fromYaml) -}}
+  {{- $dev := get $devRoot $part | default dict -}}
+  {{- if not (kindIs "map" $dev) -}}
+    {{- $dev = dict -}}
   {{- end -}}
   {{- dict "part" $part "dev" ($dev | default dict) "conf" (ne $part "portal") | toYaml -}}
 {{- end -}}
