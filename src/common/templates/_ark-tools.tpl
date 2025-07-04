@@ -939,6 +939,30 @@ return either the value if correct, or the empty string if not.
   {{- $result | toYaml -}}
 {{- end -}}
 
+{{- define "__arkcase.dev.compute-shared" -}}
+  {{- $dev := $ -}}
+
+  {{- $uid := 1000 -}}
+  {{- if hasKey $dev "uid" -}}
+    {{- $uid = ($dev.uid | toString) -}}
+    {{- if (not (regexMatch "^[1-9][0-9]*$" $uid)) -}}
+      {{- fail (printf "The value for global.dev.uid must be a positive number (%s)" $uid) -}}
+    {{- end -}}
+    {{- $uid = atoi $uid -}}
+  {{- end -}}
+
+  {{- $gid := 1000 -}}
+  {{- if hasKey $dev "gid" -}}
+    {{- $gid = ($dev.gid | toString) -}}
+    {{- if (not (regexMatch "^[1-9][0-9]*$" $gid)) -}}
+      {{- fail (printf "The value for global.dev.gid must be a positive number (%s)" $gid) -}}
+    {{- end -}}
+    {{- $gid = atoi $gid -}}
+  {{- end -}}
+
+  {{- dict "uid" $uid "gid" $gid | toYaml -}}
+{{- end -}}
+
 {{- define "__arkcase.dev.compute-component" -}}
   {{- $dev := $ -}}
   {{- $result := dict "enabled" true -}}
@@ -985,26 +1009,6 @@ return either the value if correct, or the empty string if not.
     {{- fail (printf "The value for global.dev.conf must be a string (%s)" (kindOf $dev.conf)) -}}
   {{- end -}}
 
-  {{- $uid := 1000 -}}
-  {{- if hasKey $dev "uid" -}}
-    {{- $uid := ($dev.uid | toString) -}}
-    {{- if (not (regexMatch "^[1-9][0-9]*$" $uid)) -}}
-      {{- fail (printf "The value for global.dev.uid must be a positive number (%s)" $uid) -}}
-    {{- end -}}
-    {{- $uid = atoi $uid -}}
-  {{- end -}}
-  {{- $result = set $result "uid" $uid -}}
-
-  {{- $gid := 1000 -}}
-  {{- if hasKey $dev "gid" -}}
-    {{- $gid = ($dev.gid | toString) -}}
-    {{- if (not (regexMatch "^[1-9][0-9]*$" $gid)) -}}
-      {{- fail (printf "The value for global.dev.gid must be a positive number (%s)" $gid) -}}
-    {{- end -}}
-    {{- $gid = atoi $gid -}}
-  {{- end -}}
-  {{- $result = set $result "gid" $gid -}}
-
   {{- $result = set $result "debug" (include "__arkcase.dev.compute-debug" $dev.debug | fromYaml) -}}
 
   {{- $result = set $result "logs" (include "arkcase.sanitizeLoggers" $dev.logs | fromYaml) -}}
@@ -1033,10 +1037,12 @@ return either the value if correct, or the empty string if not.
     {{- if $enabled -}}
 
       {{- /* Go for each part! */ -}}
-      {{- range $part := (keys (omit $dev "enabled" "resources") | sortAlpha) -}}
+      {{- $shared := (include "__arkcase.dev.compute-shared" $dev | fromYaml) -}}
+      {{- range $part := (keys (omit $dev "enabled" "resources" "uid" "gid") | sortAlpha) -}}
         {{- $data := get $dev $part -}}
         {{- if and $data (kindIs "map" $data) -}}
-          {{- $result = set $result $part (include "__arkcase.dev.compute-component" $data | fromYaml) -}}
+          {{- $data = (include "__arkcase.dev.compute-component" $data | fromYaml) -}}
+          {{- $result = set $result $part (merge $data $shared) -}}
         {{- end -}}
       {{- end -}}
 
