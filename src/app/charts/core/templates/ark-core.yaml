@@ -319,8 +319,10 @@ spec:
             {{- with (($.Values.configuration).arkcase).env }}
               {{- toYaml . | nindent 12 }}
             {{- end }}
-            - name: ARKCASE_LIBRARY_DIR
+            - name: EXTRA_LIBRARY_DIR
               value: "$(HOME_DIR)/.arkcase/libraries"
+            - name: ARKCASE_LIBRARY_DIR
+              value: "$(EXTRA_LIBRARY_DIR)"
             - name: JAVA_TOOL_OPTIONS
               value: >-
                 -Dcom.redhat.fips=false
