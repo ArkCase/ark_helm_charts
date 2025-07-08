@@ -17,7 +17,7 @@ portal:
   uiApplicationHost: {{ printf "https://%s" $baseUrl.hostname | quote }}
   id: {{ $portal.portalId | quote }}
   url: *url
-  arkcaseUrl: "https://localhost:8443/arkcase"
+  arkcaseUrl: "https://core:8443/arkcase"
   groupName: "ARKCASE_PORTAL_USER@${PORTAL_LDAP_DOMAIN_UPPER}"
   # authentication type, possible values (basic, external)
   {{- $saml := (include "arkcase.core.sso.saml" $ | fromYaml) }}
