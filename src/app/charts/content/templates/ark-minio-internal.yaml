@@ -119,6 +119,11 @@ spec:
               value: "$(CONTENT_INTERNAL_USERNAME)"
             - name: MINIO_INTERNAL_PASSWORD
               value: "$(CONTENT_INTERNAL_PASSWORD)"
+            # These two make sure things run in the correct ports
+            - name: MINIO_ADDRESS
+              value: ":9000"
+            - name: MINIO_CONSOLE_ADDRESS
+              value: ":9001"
           lifecycle:
             postStart:
               exec:
