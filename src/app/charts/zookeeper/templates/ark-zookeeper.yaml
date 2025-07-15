@@ -7,7 +7,7 @@ metadata:
   name: {{ include "arkcase.fullname" $ | quote }}
   namespace: {{ $.Release.Namespace | quote }}
 spec:
-  minAvailable: "51%"
+  maxUnavailable: "49%"
   selector:
     matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
 ---
