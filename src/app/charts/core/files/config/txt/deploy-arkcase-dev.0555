@@ -7,6 +7,19 @@ set_or_default BASE_DIR "/app"
 set_or_default DEPL_DIR "${BASE_DIR}/depl"
 set_or_default WARS_DIR "${DEPL_DIR}/wars"
 
+set_or_default SKIP_WARS ""
+SKIP_CONF="$(to_boolean "${SKIP_CONF:-false}")"
+
+DEV="$(to_boolean "${DEV:-false}")"
+FORCE_DEPLOY="$(to_boolean "${FORCE_DEPLOY:-false}")"
+
+if "${DEV}" ; then
+	SKIP_WARS="$(echo "${SKIP_WARS}" | tr '/' '\n' | sort -u | sed -e '/^\s*$/d')"
+
+	set_or_default DEV_DIR "${BASE_DIR}/dev"
+	DEV_WARS_DIR="${DEV_DIR}/wars"
+fi
+
 #
 # Deploy all WAR files
 #
@@ -26,6 +39,26 @@ for war in "${WAR[@]}" ; do
 
 	# Pre-pend the actual target's parent directory
 	WAR_TGT="${WARS_DIR}/${WAR_TGT}"
+
+	if ${DEV} ; then
+		WAR_PAT="${BASENAME}"
+
+		if egrep -q "^${WAR_PAT}$" <<< "${SKIP_WARS}" ; then
+			say "The WAR file [${BASENAME}] is on the skip list, will ignore (matched /^${WAR_PAT}$/)"
+			continue
+		fi
+
+		# This war is not excluded, so let's first check to see if
+		# there's a development version of the WAR we should be
+		# deploying instead
+		if [ -s "${DEV_WARS_DIR}/${ARTIFACT_NAME}" ] ; then
+			# We have a custom WAR to deploy! Use it!
+			say "Found a development WAR at [${DEV_WARS_DIR}/${ARTIFACT_NAME}], will deploy it instead"
+			mkdir -p "${WAR_TGT}"
+			unzip -o -d "${WAR_TGT}" "${DEV_WARS_DIR}/${ARTIFACT_NAME}"
+			continue
+		fi
+	fi
 
 	mkdir -p "${WAR_TGT}" || fail "Failed to create the extraction target at [${WAR_TGT}]"
 

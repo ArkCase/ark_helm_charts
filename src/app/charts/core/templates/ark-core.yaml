@@ -160,7 +160,8 @@ spec:
             {{- include "arkcase.subsystem-access.env" (dict "ctx" $ "subsys" "ldap" "conn" "main" "key" "domain" "name" "LDAP_DOMAIN") | nindent 12 }}
           volumeMounts:
             {{- include "arkcase.core.dev.deployMounts" $ | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/deploy" "subPath" "deploy-arkcase") | nindent 12 }}
+            {{- $deployScript := (printf "deploy-arkcase%s" (empty $dev | ternary "" "-dev")) }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/deploy" "subPath" $deployScript) | nindent 12 }}
             - name: &homeVol "home"
               mountPath: "/app/depl/home"
         - name: init-permissions
@@ -306,6 +307,7 @@ spec:
             - name: JAVA_TOOL_OPTIONS
               value: >-
                 -Dcom.redhat.fips=false
+            {{- include "arkcase.core.tomcatNative.env" $debug | nindent 12 }}
             - name: CATALINA_OPTS
               # For Java 8, these percentages must be given as doubles. The JVM may
               # choke if the ".0" isn't provided at the end

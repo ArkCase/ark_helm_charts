@@ -874,3 +874,13 @@
   {{- $coreSettings := (include "arkcase.subsystem.settings" $ | fromYaml) -}}
   {{- include "__arkcase.core.settings.flattenToEnv" (dict "prefix" "" "map" $coreSettings) }}
 {{- end }}
+
+{{- define "arkcase.core.tomcatNative.env" -}}
+  {{- $debug := $ -}}
+  {{- $tomcatNative := true -}}
+  {{- if (hasKey $debug "tomcatNative") -}}
+    {{- $tomcatNative = (not (empty (include "arkcase.toBoolean" $debug.tomcatNative))) -}}
+  {{- end -}}
+- name: TOMCAT_NATIVE_ENABLE
+  value: {{ $tomcatNative | toString | quote }}
+{{- end -}}
