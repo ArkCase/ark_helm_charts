@@ -932,8 +932,24 @@ return either the value if correct, or the empty string if not.
   {{- $debug := $ -}}
   {{- $result := dict -}}
   {{- if and $debug (kindIs "map" $debug) -}}
-    {{- if or (not (hasKey $debug "enabled")) (not (empty (include "arkcase.toBoolean" $debug.enabled))) -}}
-      {{- $result = dict "enabled" true "suspend" (and (hasKey $debug "suspend") (not (empty (include "arkcase.toBoolean" $debug.suspend))) | ternary "y" "n") -}}
+    {{- /* Grab any extra stuff */ -}}
+    {{- $extras := omit $debug "enabled" "suspend" "tomcatNative" -}}
+
+    {{- /* Pick the values we're interested in */ -}}
+    {{- $debug = pick $debug "enabled" "suspend" "tomcatNative" -}}
+
+    {{- /* Debug must expressly be enabled */ -}}
+    {{- if (not (empty (include "arkcase.toBoolean" $debug.enabled))) -}}
+      {{- $result = dict "enabled" true -}}
+
+      {{- /* Suspend gets sanitized to "y" or "n" */ -}}
+      {{- $result = set $result "suspend" (and (hasKey $debug "suspend") (not (empty (include "arkcase.toBoolean" $debug.suspend))) | ternary "y" "n") -}}
+
+      {{- /* TomcatNative gets sanitized to a boolean */ -}}
+      {{- $result = set $result "tomcatNative" (or (not (hasKey $debug "tomcatNative")) (not (empty (include "arkcase.toBoolean" $debug.tomcatNative)))) -}}
+
+      {{- /* Add the extra stuff verbatim */ -}}
+      {{- $result = merge $result $extras -}}
     {{- end -}}
   {{- end -}}
   {{- $result | toYaml -}}
