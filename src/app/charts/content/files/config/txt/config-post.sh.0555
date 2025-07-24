@@ -105,7 +105,8 @@ ok "The URL [${PROBE_URL}] responded, continuing"
 INSTANCE="local"
 
 # Add the configuration for MC control
-mcli config host add "${INSTANCE}" "${MINIO_ADMIN_URL}" "${MINIO_ROOT_USER}" "${MINIO_ROOT_PASSWORD}"
+ALIAS_ARGS=("${INSTANCE}" "${MINIO_ADMIN_URL}" "${MINIO_ROOT_USER}" "${MINIO_ROOT_PASSWORD}")
+mcli config host add "${ALIAS_ARGS[@]}" || mcli alias set "${ALIAS_ARGS[@]}" || fail "Failed to define the alias [${INTANCE}] for ${MINIO_ADMIN_URL} using either 'mcli config' or 'mcli alias'"
 
 for BUCKET in CONTENT_BUCKET CONTENT_INTERNAL_BUCKET ; do
 	set_or_default "${BUCKET}" "arkcase"
