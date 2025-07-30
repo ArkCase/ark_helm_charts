@@ -39,19 +39,5 @@ spring:
       max-file-size: -1
       max-request-size: -1
 
-logging:
-  file:
-    max-history: 10
-    max-size: 10MB
-    name: "/app/logs/externalPortal.log"
-  level:
-    com.arkcase.portal: debug
-    org:
-      springframework: warn
-      apache: warn
-    springfox: warn
-  pattern:
-    file: "%d{yyyy-MM-dd HH:mm:ss,SSS} [%thread] %-5level %logger.%M - %msg%n"
-
 management.endpoints.web.exposure.include: "*"
 {{- end -}}
