@@ -4,15 +4,11 @@
   {{- $uiApplicationHost := (printf "%s://%s" $baseUrl.scheme $baseUrl.host) -}}
   {{- $portalSSO := (include "arkcase.core.portal.sso" $ | fromYaml) -}}
 
-logging:
-  level:
-    com.arkcase.portal: debug
-    org:
-      springframework: warn
-      apache: warn
-    springfox: warn
+  # Log4j2 configuration
+logging.config: classpath:log4j2-spring.xml
 
 portal:
+  allowedOriginPatterns: {{ printf "https://%s" $baseUrl.hostname | quote }}
   uiApplicationUrl: &url {{ printf "%s/%s" $uiApplicationHost $portal.context | quote }}
   uiApplicationHost: {{ printf "https://%s" $baseUrl.hostname | quote }}
   id: {{ $portal.portalId | quote }}
