@@ -319,6 +319,7 @@ spec:
                 -Dsaml.keystore.defaultKeyName=$(ACME_KEY_ALIAS)
                 -Dconfiguration.client.spring.path=spring
                 -Duser.home=$(HOME_DIR)
+                -Dliquibase.allowDuplicatedChangesetIdentifiers=true
                 -Dhazelcast.shutdownhook.policy=GRACEFUL
                 -Dhazelcast.cluster.version.auto.upgrade.enabled=true
                 -Dcom.sun.management.jmxremote.port=7091
