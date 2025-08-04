@@ -96,9 +96,9 @@ spec:
                     flags: [ "recurse", "noforced", "create", "changes" ]
                     targets: [ "$(DATA_DIR)", "$(INIT_DIR)" ]
           volumeMounts:
-            - name: &initVolume "init"
+            - name: &initVol "init"
               mountPath: *initDir
-            - name: &dataVolume "data"
+            - name: &dataVol "data"
               mountPath: *dataDir
         {{- include "arkcase.initDependencies.container" $ | nindent 8 }}
       containers:
@@ -183,9 +183,9 @@ spec:
           volumeMounts:
             {{- include "arkcase.trusts.mount" $ | nindent 12 }}
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
-            - name: *dataVolume
+            - name: *dataVol
               mountPath: *dataDir
-            - name: *initVolume
+            - name: *initVol
               mountPath: *initDir
             - name: &configMap "config-map"
               mountPath: "/config-post.sh"
@@ -194,7 +194,9 @@ spec:
       volumes:
         {{- include "arkcase.trusts.volume" $ | nindent 8 }}
         {{- include "arkcase.acme.volume" $ | nindent 8 }}
-        {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "init") | nindent 8 }}
+        - name: *initVol
+          emptyDir:
+            sizeLimit: 1Gi
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
         - name: *configMap
           configMap:

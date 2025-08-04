@@ -181,6 +181,9 @@ spec:
       volumes:
         {{- include "arkcase.trusts.volume" $ | nindent 8 }}
         {{- include "arkcase.acme.volume" $ | nindent 8 }}
+        - name: *initVol
+          emptyDir:
+            sizeLimit: 1Gi
         - name: *secrets
           secret:
             optional: false
@@ -203,7 +206,6 @@ spec:
               - key: *alfrescoAuditArkcaseExtractorsXml
                 path: *alfrescoAuditArkcaseExtractorsXml
             {{- end }}
-        {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "init") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
       {{- with (include "arkcase.values" (dict "ctx" $ "base" "nodeSelector") | fromYaml) }}
       nodeSelector: {{- toYaml .value | nindent 8 }}

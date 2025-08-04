@@ -93,9 +93,9 @@ spec:
                     flags: [ "recurse", "forced", "create", "changes" ]
                     targets: [ "$(DATA_DIR)", "$(INIT_DIR)" ]
           volumeMounts:
-            - name: &dataVolume "data"
+            - name: &dataVol "data"
               mountPath: *dataDir
-            - name: &initVolume "init"
+            - name: &initVol "init"
               mountPath: *initDir
         {{- include "arkcase.initDependencies.container" $ | nindent 8 }}
       containers:
@@ -139,9 +139,9 @@ spec:
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "solr") | nindent 12 }}
           volumeMounts:
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
-            - name: *dataVolume
+            - name: *dataVol
               mountPath: *dataDir
-            - name: *initVolume
+            - name: *initVol
               mountPath: *initDir
             - name: &configMap "configmap"
               mountPath: "/app/solr/bin/solr.in.sh"
@@ -173,7 +173,9 @@ spec:
               readOnly: true
       volumes:
         {{- include "arkcase.acme.volume" $ | nindent 8 }}
-        {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "init") | nindent 8 }}
+        - name: *initVol
+          emptyDir:
+            sizeLimit: 1Gi
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
         - name: *configMap
           configMap:

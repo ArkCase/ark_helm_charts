@@ -91,10 +91,8 @@ spec:
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
             {{- include "arkcase.accounts.volumeMount" (dict "ctx" $ "type" "admin") | nindent 12 }}
             {{- include "arkcase.accounts.volumeMount" (dict "ctx" $ "type" "shared") | nindent 12 }}
-            - name: "init"
+            - name: &initVol "init"
               mountPath: "/app/init"
-            - name: "conf"
-              mountPath: "/app/conf"
             - name: "data"
               mountPath: "/var/lib/samba"
             - name: "logs"
@@ -114,8 +112,9 @@ spec:
         {{- include "arkcase.acme.volume" $ | nindent 8 }}
         {{- include "arkcase.accounts.volume" (dict "ctx" $ "type" "admin") | nindent 8 }}
         {{- include "arkcase.accounts.volume" (dict "ctx" $ "type" "shared") | nindent 8 }}
-        {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "init") | nindent 8 }}
-        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "conf") | nindent 8 }}
+        - name: *initVol
+          emptyDir:
+            sizeLimit: 1Gi
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "logs") | nindent 8 }}
         - name: *secrets
@@ -145,11 +144,9 @@ spec:
       tolerations: {{- toYaml . | nindent 8 }}
       {{- end }}
   volumeClaimTemplates:
-    {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "conf") | nindent 4 }}
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "data") | nindent 4 }}
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "logs") | nindent 4 }}
 
-  {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "conf") | nindent 0 }}
   {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "data") | nindent 0 }}
   {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "logs") | nindent 0 }}
 
