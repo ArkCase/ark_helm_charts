@@ -727,9 +727,7 @@ spec:
         - name: *homeVol
           emptyDir:
             sizeLimit: 8Gi
-        - name: *tempVol
-          emptyDir:
-            sizeLimit: 32Gi
+        {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "temp") | nindent 8 }}
         {{- include "arkcase.core.dev.volumes" $ | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "logs") | nindent 8 }}
         {{- if $portal }}
