@@ -1,3 +1,4 @@
+{{- $content := (include "arkcase.cm.info" $ | fromYaml) }}
 defaults:
   acl: "private"
 
@@ -9,7 +10,7 @@ defaults:
 buckets:
 
   # Key = bucket name, value = bucket configuration
-  arkcase:
+  {{ $content.bucketName | quote }}:
     # If acl is not given, the default value will be "private"
     # Must be one of private, public-read, public-read-write, authenticated-read
     acl: "private"
