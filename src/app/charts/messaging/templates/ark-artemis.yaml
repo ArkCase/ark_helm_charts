@@ -4,16 +4,6 @@
 {{- /* For this component, we'll either have one node, or two */ -}}
 {{- $replicas := ((max 1 (min 2 ($cluster.replicas | default 2))) | int) -}}
 ---
-apiVersion: policy/v1
-kind: PodDisruptionBudget
-metadata:
-  name: {{ include "arkcase.fullname" $ | quote }}
-  namespace: {{ $.Release.Namespace | quote }}
-spec:
-  maxUnavailable: "50%"
-  selector:
-    matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
----
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
