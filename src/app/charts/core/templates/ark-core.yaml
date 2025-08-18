@@ -13,16 +13,6 @@
   {{- $serviceAccountName = (or (empty $serviceAccountName) (eq "default" $serviceAccountName)) | ternary (include "arkcase.fullname" $) $serviceAccountName }}
   {{- $roleName := (printf "%s-config-access" $serviceAccountName) }}
 ---
-apiVersion: policy/v1
-kind: PodDisruptionBudget
-metadata:
-  name: {{ include "arkcase.fullname" $ | quote }}
-  namespace: {{ $.Release.Namespace | quote }}
-spec:
-  maxUnavailable: "50%"
-  selector:
-    matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
----
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -352,7 +342,6 @@ spec:
             - name: *logsVol
               mountPath: *logsDir
             {{- if $portal }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/tomcat/webapps/arkcase/WEB-INF/tomcat-web.xml" "subPath" "arkcase-tomcat-web.xml" ) | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/acm/acm-config-server-repo/lookups/lookups-server.yaml") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/acm/acm-config-server-repo/arkcase-portal-server.yaml") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/acm/acm-config-server-repo/arkcase-FOIA_server.yaml") | nindent 12 }}
@@ -363,6 +352,7 @@ spec:
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/tomcat-live") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/render-altcase-vars") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/tomcat/conf/server.xml.tpl") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/tomcat/webapps/arkcase/WEB-INF/tomcat-web.xml" "subPath" "arkcase-tomcat-web.xml" ) | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/acm/acm-config-server-repo/spring/quartz.properties") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/acm/log4j2.xml") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/acm/spring/proxy-config/spring-config-proxy.xml") | nindent 12 }}
@@ -382,23 +372,25 @@ spec:
         {{- include "arkcase.trusts.volume" $ | nindent 8 }}
         {{- include "arkcase.acme.volume" $ | nindent 8 }}
         {{- include "arkcase.file-resource.volumes" $ | nindent 8 }}
+        - name: *warsVol
+          emptyDir:
+            sizeLimit: 2Gi
+        - name: *homeVol
+          emptyDir:
+            sizeLimit: 8Gi
         {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "temp") | nindent 8 }}
-        {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "wars") | nindent 8 }}
         {{- include "arkcase.core.dev.volumes" $ | nindent 8 }}
-        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "home") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "logs") | nindent 8 }}
         {{- include "arkcase.core.sso.saml.idpMetadata.volume" $ | nindent 8 }}
   volumeClaimTemplates:
     {{- if or (not $dev.conf) $dev.conf.file }}
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "conf") | nindent 4 }}
     {{- end }}
-    {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "home") | nindent 4 }}
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "logs") | nindent 4 }}
 
   {{- if or (not $dev.conf) $dev.conf.file }}
   {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "conf") | nindent 0 }}
   {{- end }}
-  {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "home") | nindent 0 }}
   {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "logs") | nindent 0 }}
 
 {{- end -}}

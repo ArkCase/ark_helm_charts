@@ -10,16 +10,6 @@
   {{- $serviceAccountName = (or (empty $serviceAccountName) (eq "default" $serviceAccountName)) | ternary (include "arkcase.fullname" $) $serviceAccountName }}
   {{- $roleName := (printf "%s-config-access" $serviceAccountName) }}
 ---
-apiVersion: policy/v1
-kind: PodDisruptionBudget
-metadata:
-  name: {{ include "arkcase.fullname" $ | quote }}
-  namespace: {{ $.Release.Namespace | quote }}
-spec:
-  maxUnavailable: "50%"
-  selector:
-    matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
----
 apiVersion: v1
 kind: ServiceAccount
 metadata:

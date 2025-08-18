@@ -1,17 +1,6 @@
 {{- if and (include "arkcase.subsystem.enabled" $) (eq "s3" (include "arkcase.content.dialect" $)) -}}
-{{- $minAvailable := (include "arkcase.content.minio.minAvailable" $ | int) }}
 {{- $nodes := (include "arkcase.content.minio.nodeCount" $ | int) }}
 {{- $onePerHost := (include "arkcase.content.minio.onePerHost" $) }}
----
-apiVersion: policy/v1
-kind: PodDisruptionBudget
-metadata:
-  name: {{ include "arkcase.fullname" $ | quote }}
-  namespace: {{ $.Release.Namespace | quote }}
-spec:
-  maxUnavailable: "25%"
-  selector:
-    matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -94,9 +83,9 @@ spec:
                     flags: [ "recurse", "noforced", "create", "changes" ]
                     targets: [ "$(DATA_DIR)", "$(INIT_DIR)" ]
           volumeMounts:
-            - name: &initVolume "init"
+            - name: &initVol "init"
               mountPath: *initDir
-            - name: &dataVolume "data"
+            - name: &dataVol "data"
               mountPath: *dataDir
         {{- include "arkcase.initDependencies.container" (dict "ctx" $ "network" "minio") | nindent 8 }}
       containers:
@@ -137,9 +126,9 @@ spec:
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" $partName) | nindent 12 }}
           volumeMounts:
-            - name: *dataVolume
+            - name: *dataVol
               mountPath: *dataDir
-            - name: *initVolume
+            - name: *initVol
               mountPath: *initDir
             {{- include "arkcase.subsystem-access.volumeMount" $ | nindent 12 }}
             {{- include "arkcase.trusts.mount" $ | nindent 12 }}
@@ -147,7 +136,9 @@ spec:
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/config-post.sh") | nindent 12 }}
       volumes:
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
-        {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "init") | nindent 8 }}
+        - name: *initVol
+          emptyDir:
+            sizeLimit: 1Gi
         {{- include "arkcase.subsystem-access.volume" $ | nindent 8 }}
         {{- include "arkcase.trusts.volume" $ | nindent 8 }}
         {{- include "arkcase.acme.volume" $ | nindent 8 }}

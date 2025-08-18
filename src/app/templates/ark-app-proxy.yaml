@@ -10,16 +10,6 @@
     {{- $ingressHost = $baseUrl.hostname -}}
   {{- end -}}
 ---
-apiVersion: policy/v1
-kind: PodDisruptionBudget
-metadata:
-  name: {{ $fullName | quote }}
-  namespace: {{ $.Release.Namespace | quote }}
-spec:
-  maxUnavailable: "90%"
-  selector:
-    matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
----
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:

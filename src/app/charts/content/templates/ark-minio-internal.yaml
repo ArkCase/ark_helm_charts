@@ -1,17 +1,6 @@
 {{- if and (include "arkcase.subsystem.enabled" $) (ne "s3" (include "arkcase.content.dialect" $)) -}}
-{{- $minAvailable := (include "arkcase.content.minio.minAvailable" $ | int) }}
 {{- $nodes := (include "arkcase.content.minio.nodeCount" $ | int) }}
 {{- $onePerHost := (include "arkcase.content.minio.onePerHost" $) }}
----
-apiVersion: policy/v1
-kind: PodDisruptionBudget
-metadata:
-  name: {{ include "arkcase.fullname" $ | quote }}
-  namespace: {{ $.Release.Namespace | quote }}
-spec:
-  maxUnavailable: "25%"
-  selector:
-    matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
 ---
 apiVersion: apps/v1
 kind: StatefulSet
