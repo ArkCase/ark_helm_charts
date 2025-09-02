@@ -16,21 +16,11 @@
 		thread_pool.keep_alive_time="30000"
 	/>
 
-	<!-- KISS it -->
-	<dns.DNS_PING
-		dns_query="_${DNS_PORT}._tcp.${DNS_SERVICE}.${DNS_NAMESPACE}.svc.${CLUSTER_DOMAIN}"
-		dns_record_type="SRV"
-		probe_transport_ports="true"
-	/>
-
-	<!-- Eventually... -->
-	<!--
 	<org.jgroups.protocols.kubernetes.KUBE_PING
 		port_range="1"
 		namespace="${DNS_NAMESPACE}"
 		labels="app.kubernetes.io/instance=${RELEASE_NAME},app.kubernetes.io/name=${SUBSYS_CURRENT},app.kubernetes.io/service-support=true"
 	/>
-	-->
 
 	<MERGE3
 		max_interval="30000"
@@ -88,7 +78,7 @@
 
 	<pbcast.STATE_TRANSFER />
 
-	<CENTRAL_LOCK />
+	<CENTRAL_LOCK2 />
 
 	<COUNTER />
 
