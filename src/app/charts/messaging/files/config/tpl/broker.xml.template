@@ -253,6 +253,8 @@ under the License.
 				<redelivery-delay>0</redelivery-delay>
 				<!-- with -1 only the global-max-size is in use for limiting -->
 				<max-size-bytes>-1</max-size-bytes>
+				<!-- Allow viewing the first 64K of a message via browse queue -->
+				<management-message-attribute-size-limit>65536</management-message-attribute-size-limit>
 				<message-counter-history-day-limit>10</message-counter-history-day-limit>
 				<address-full-policy>PAGE</address-full-policy>
 				<auto-create-queues>true</auto-create-queues>
@@ -270,6 +272,9 @@ under the License.
 				-->
 				<!-- limit for the address in bytes, -1 means unlimited -->
 				<max-size-bytes>-1</max-size-bytes>
+
+				<!-- Allow viewing the first 64K of a message via browse queue -->
+				<management-message-attribute-size-limit>65536</management-message-attribute-size-limit>
 
 				<!-- limit for the address in messages, -1 means unlimited -->
 				<max-size-messages>-1</max-size-messages>
