@@ -80,5 +80,8 @@ set_or_default CORE_URL "https://core:8443/arkcase/"
 doing "Waiting for ArkCase to become available before starting the Cron process..."
 poll_url "${CORE_URL}" "${INIT_MAX_WAIT}" "${INIT_POLL_SLEEP}" || fail "ArkCase did not come up in time"
 
+eyes "Storing the runtime environment to a temporary file"
+declare -px > "${PENTAHO_HOME:-}/.cron-env"
+
 doing "Starting the Cron process..."
 execute /usr/sbin/crond -n -P
