@@ -3,13 +3,13 @@ set -euo pipefail
 . /.functions
 
 #
-# We use ADMIN_PASSWORD as our canary ... if it's not set,
+# We use PENTAHO_HOME as our canary ... if it's not set,
 # it's a good indication that we need to try to load the
 # runtime environment from the stored file
 #
-if [ ! -v ADMIN_PASSWORD ] ; then
+if [ ! -v PENTAHO_HOME ] ; then
 	# Make sure we test for and read the same file!
-	CRON_ENV="${PENTAHO_HOME:-}/.cron-env"
+	CRON_ENV="${HOME}/.cron-env"
 	if is_file_readable "${CRON_ENV}" ; then
 		source "${CRON_ENV}"
 	fi
