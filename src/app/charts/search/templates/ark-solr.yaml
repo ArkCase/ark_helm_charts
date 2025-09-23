@@ -94,10 +94,8 @@ spec:
             {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
             {{- include "arkcase.alt-java" $ | nindent 12 }}
-            # TODO: Set multishard to "true" when the use of Solr by
-            # ArkCase permits it (i.e. all joins are removed)
             - name: ENABLE_MULTISHARD
-              value: "false"
+              value: {{ (not (empty (include "arkcase.solr.sharding" $))) | toString | quote }}
             - name: REPLICAS
               value: {{ $replicas | toString | quote }}
             - name: JAVA_TOOL_OPTIONS

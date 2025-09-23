@@ -9,3 +9,12 @@
   {{- end -}}
   {{- $maxUnavailable -}}
 {{- end -}}
+
+{{- define "arkcase.solr.sharding" -}}
+  {{- $ctx := $ -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "Must send the root context as the only parameter" -}}
+  {{- end -}}
+  {{- $settings := (include "arkcase.subsystem.settings" $ctx | fromYaml) -}}
+  {{- include "arkcase.toBoolean" $settings.enableSharding -}}
+{{- end -}}
