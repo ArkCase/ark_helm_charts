@@ -277,6 +277,8 @@ spec:
               value: "$(JAVA_KEYSTORE_TYPE)"
             - name: LOOP_TERMINATION_FILE
               value: &loopTerminationFile "/app/.terminate"
+            - name: SESSION_COOKIE_NAME
+              value: "ARKCASE_SESSIONID"
             {{- if $dev }}
             - name: DEVELOPMENT
               value: "true"

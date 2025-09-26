@@ -182,6 +182,8 @@ spec:
               value: "$(DATA_DIR)/.installedLicenses.xml"
             - name: ARKCASE_ENTERPRISE
               value: {{ not (empty (include "arkcase.enterprise" $)) | toString | quote }}
+            - name: SESSION_COOKIE_NAME
+              value: "PENTAHO_SESSIONID"
             - name: JAVA_TOOL_OPTIONS
               value: >-
                 -Dcom.redhat.fips=false

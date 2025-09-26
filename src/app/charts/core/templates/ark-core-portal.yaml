@@ -228,6 +228,8 @@ spec:
               value: *portalDir
             - name: PORTAL_FILE_DIR
               value: "files"
+            - name: SESSION_COOKIE_NAME
+              value: "PORTAL_SESSIONID"
             {{- if $dev }}
             - name: DEVELOPMENT
               value: "true"

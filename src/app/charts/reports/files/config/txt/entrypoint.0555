@@ -31,29 +31,10 @@ fi
 # Remove al leading zeros, just in case...
 export NODE_ID="$(( 10#${NODE_ID} ))"
 
-#
-# Apply the changes to the server.xml template
-#
-SERVER_XML="${PENTAHO_SERVER}/tomcat/conf/server.xml.tpl"
-if is_file "${SERVER_XML}" ; then
-	TARGET="${SERVER_XML%*.tpl}"
-	doing "Editing [${TARGET}] to remove the redundant cluster member"
-	XPATH="//Cluster/Channel/Interceptor/Member[@className = 'org.apache.catalina.tribes.membership.StaticMember' and starts-with(@host, '$(hostname).')]"
-	xmlstarlet ed -P -d "${XPATH}" "${SERVER_XML}" > "${TARGET}"
-	unset TARGET XPATH
-fi
-
-REPOSITORY_XML="${PENTAHO_SOLUTIONS}/system/jackrabbit/repository.xml.tpl"
-if is_file "${REPOSITORY_XML}" ; then
-	TARGET="${REPOSITORY_XML%*.tpl}"
-	VALUE="$(hostname)"
-	doing "Editing [${TARGET}] to set the cluster ID"
-	xmlstarlet ed -P --insert "/Repository/Cluster[not(@id)]" \
-		--type attr --name "id" --value "${VALUE}" < "${REPOSITORY_XML}" | \
-		xmlstarlet ed -P --update "/Repository/Cluster/@id" \
-			--value "${VALUE}" > "${TARGET}"
-	unset TARGET VALUE
-fi
+###################################################################
+# CONFIGURE THE SESSION COOKIE NAME                               #
+###################################################################
+set-session-cookie-name "${PENTAHO_TOMCAT}/conf/context.xml"
 
 ###################################################################
 # CONFIGURE FILESYSTEM PERSISTENCE                                #
