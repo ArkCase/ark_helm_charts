@@ -1,0 +1,10 @@
+#!/bin/bash
+
+set -euo pipefail
+. /.functions
+
+set_or_default API_SOCKET_TYPE "unix-connect"
+set_or_default API_SOCKET_ADDX "/var/lib/haproxy/haproxy-stats"
+set_or_default API_SOCKET "${API_SOCKET_TYPE}:${API_SOCKET_ADDX}"
+
+exec socat stdio "${API_SOCKET}"
