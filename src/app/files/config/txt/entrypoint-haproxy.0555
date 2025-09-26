@@ -26,14 +26,23 @@ readarray -t SERVERS < <(dig +short -t SRV "${FQSN}" | sort -k 4)
 	echo -e "peers cluster"
 	echo -e "\t# It's important we use the pod name as the peer ID here, as that's"
 	echo -e "\t# how the local peer will be identified via localpeer (this one is ${POD_NAME})"
-} > "${PEERS_FILE}"
 
+	LOCAL="$(hostname -f)"
+	LOCAL="${LOCAL%%.*}"
+	[ -n "${LOCAL}" ] && echo -e "\tserver\t${LOCAL}\n"
+} >> "${PEERS_FILE}"
+
+PEERS=""
 for SERVER in "${SERVERS[@]}" ; do
 	read PRIORITY WEIGHT PORT TARGET <<< "${SERVER}"
-	IFS="." read BASENAME REST <<< "${TARGET}"
-	ok "Found peer server [${TARGET}]"
-	echo -e "\tpeer\t${BASENAME} ${TARGET}:10000" >> "${PEERS_FILE}"
+	IFS="." read PEER REST <<< "${TARGET}"
+	[ "${PEER}" == "${LOCAL}" ] && continue
+	eyes "Found peer server [${TARGET}]"
+	PEERS+="\tpeer\t${PEER}\t${TARGET}:10000\n"
 done
+echo -e "${PEERS}" | sort >> "${PEERS_FILE}"
+
+eyes "Peers file:\n$(<"${PEERS_FILE}")"
 
 [ -v INGRESS_HOST ] && ok "Found Ingress Hostname: [${INGRESS_HOST}]"
 
