@@ -115,8 +115,10 @@ service:
   probes:
     enabled: true
     spec:
-      exec:
-        command: [ "step", "ca", "health" ]
+      httpGet:
+        scheme: HTTPS
+        path: "/health"
+        port: *port
       initialDelaySeconds: 0
       periodSeconds: 10
       timeoutSeconds: 10
@@ -124,6 +126,3 @@ service:
       successThreshold: 1
     startup:
       failureThreshold: 90
-    readiness:
-      exec:
-        command: [ "/check-ready" ]
