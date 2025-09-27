@@ -313,6 +313,7 @@ spec:
                 -Duser.home=$(HOME_DIR)
                 -Dhazelcast.shutdownhook.policy=GRACEFUL
                 -Dhazelcast.cluster.version.auto.upgrade.enabled=true
+                -Dhazelcast.spring.webfilter.cookie-name=$(SESSION_COOKIE_NAME)
                 -Dcom.sun.management.jmxremote.port=7091
                 -Dcom.sun.management.jmxremote.authenticate=false
                 -Dcom.sun.management.jmxremote.ssl=false
