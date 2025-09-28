@@ -318,8 +318,7 @@ spec:
                 -Dcom.sun.management.jmxremote.authenticate=false
                 -Dcom.sun.management.jmxremote.ssl=false
                 {{- with $debug }}
-                -Xdebug
-                -agentlib:jdwp=transport=dt_socket,server=y,suspend={{ .suspend }},address=*:8888
+                -agentlib:jdwp=transport=dt_socket,server=y,suspend={{ .suspend }},address=$(POD_IP):8888
                 -XX:FlightRecorderOptions=stackdepth=512,samplethreads=true
                 {{- end }}
           {{- include "arkcase.subsystem.ports" (dict "ctx" $ "name" "arkcase") | nindent 10 }}
