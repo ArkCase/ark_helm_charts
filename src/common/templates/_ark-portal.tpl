@@ -112,6 +112,7 @@
       $result = dict
         "context" $context
         "containerSuffix" $containerSuffix
+        "reportsTimezone" $reportsTimezone
         "apiSecret" $apiSecret
         "disableAuth" $disableAuth
         "generateUsers" $generateUsers
