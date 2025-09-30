@@ -1,4 +1,5 @@
 {{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.subsystem.external" $)) }}
+  {{- $portal := (include "arkcase.portal" $ | fromYaml) -}}
   {{- $db := (include "arkcase.db.info" $ | fromYaml) -}}
   {{- $fullName := (include "arkcase.fullname" $) -}}
   {{- $serviceName := (include "arkcase.service.name" $) -}}
@@ -180,6 +181,8 @@ spec:
               value: "https://localhost:$(ADMIN_PORT)/pentaho"
             - name: PENTAHO_INSTALLED_LICENSE_PATH
               value: "$(DATA_DIR)/.installedLicenses.xml"
+            - name: FOIA_TIME_ZONE
+              value: {{ $portal.reportsTimezone | quote }}
             - name: ARKCASE_ENTERPRISE
               value: {{ not (empty (include "arkcase.enterprise" $)) | toString | quote }}
             - name: SESSION_COOKIE_NAME

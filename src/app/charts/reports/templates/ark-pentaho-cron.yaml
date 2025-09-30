@@ -1,8 +1,9 @@
 {{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.subsystem.external" $)) -}}
-{{- $fullName := (include "arkcase.fullname" $) -}}
-{{- $mainName := (include "common.fullname" $) -}}
-{{- $pentahoService := (include "arkcase.service.name" $) -}}
-{{- $serviceAccountName := (include "arkcase.serviceAccountName" $) -}}
+  {{- $portal := (include "arkcase.portal" $ | fromYaml) -}}
+  {{- $fullName := (include "arkcase.fullname" $) -}}
+  {{- $mainName := (include "common.fullname" $) -}}
+  {{- $pentahoService := (include "arkcase.service.name" $) -}}
+  {{- $serviceAccountName := (include "arkcase.serviceAccountName" $) -}}
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -101,6 +102,8 @@ spec:
               value: {{ $pentahoService | quote }}
             - name: PENTAHO_INSTALLED_LICENSE_PATH
               value: "$(DATA_DIR)/.installedLicenses.xml"
+            - name: FOIA_TIME_ZONE
+              value: {{ $portal.reportsTimezone | quote }}
             - name: JAVA_TOOL_OPTIONS
               value: >-
                 -Dcom.redhat.fips=false
