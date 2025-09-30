@@ -181,8 +181,10 @@ spec:
               value: "https://localhost:$(ADMIN_PORT)/pentaho"
             - name: PENTAHO_INSTALLED_LICENSE_PATH
               value: "$(DATA_DIR)/.installedLicenses.xml"
+            {{- if $portal.reportsTimezone }}
             - name: FOIA_TIME_ZONE
               value: {{ $portal.reportsTimezone | quote }}
+            {{- end }}
             - name: ARKCASE_ENTERPRISE
               value: {{ not (empty (include "arkcase.enterprise" $)) | toString | quote }}
             - name: SESSION_COOKIE_NAME
