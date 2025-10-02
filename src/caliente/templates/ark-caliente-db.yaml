@@ -181,9 +181,9 @@ spec:
             - name: {{ $dataVol | quote }}
               mountPath: "/var/lib/pgsql/data"
             - name: &initVol "init"
-              mountPath: "/opt/app-root/src/postgresql-init"
+              mountPath: "/opt/app/src/postgresql-init"
             - name: &bootVol "boot"
-              mountPath: "/opt/app-root/src/postgresql-start"
+              mountPath: "/opt/app/src/postgresql-start"
       restartPolicy: Always
       volumes:
         {{- $acmeInfo.volume | toYaml | nindent 8 }}
