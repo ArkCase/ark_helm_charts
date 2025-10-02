@@ -79,10 +79,10 @@ spec:
           volumeMounts:
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
             - name: &initVol "init"
-              mountPath: "/opt/app-root/src/postgresql-init"
+              mountPath: "/opt/app/src/postgresql-init"
               subPath: "init.d"
             - name: *initVol
-              mountPath: "/opt/app-root/src/postgresql-start"
+              mountPath: "/opt/app/src/postgresql-start"
               subPath: "boot.d"
             - name: *dataVol
               mountPath: "/var/lib/pgsql/data"
