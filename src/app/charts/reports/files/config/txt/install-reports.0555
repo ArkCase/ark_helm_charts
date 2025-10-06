@@ -159,7 +159,7 @@ install_report()
 		# really care about those names - we only care that they're the same
 		# stuff, and thus we don't repeat-deploy it
 		if is_file_installed "${ARCHIVE_MARKER}" "${ARCHIVE_HASH}" ; then
-			say "The reports archive at [${SRC_FILE}] is already installed"
+			say "The reports archive at [${SRC_FILE}], or one exactly identical to it, has already been installed"
 			return 0
 		fi
 
