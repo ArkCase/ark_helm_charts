@@ -121,6 +121,8 @@ install_report()
 {
 	local SRC_FILE="${1}"
 
+	local REST=""
+
 	# If the file is an archive of some kind, then we make note of its name sans exception,
 	# extract it flattened into a temporary directory, and deploy the files within
 	# (we support zip, tar, and tar.gz archives)
@@ -144,9 +146,25 @@ install_report()
 	local REPORTS=()
 	local WORK=""
 	if [ -n "${ARCHIVE_TYPE}" ] ; then
+		local ARCHIVE_DIR="$(dirname "${SRC_FILE}")"
+		local ARCHIVE_FILE="${REPORTS_DIR}/${SRC_FILE}"
+
+		local ARCHIVE_HASH=""
+		read ARCHIVE_HASH REST < <(sha256sum "${ARCHIVE_FILE}")
+
+		local ARCHIVE_MARKER="${ARCHIVE_DIR}/${HASH}"
+
+		# We only use the report's relative directory because if we have the
+		# exact same archive bundle, but with many different names, we don't
+		# really care about those names - we only care that they're the same
+		# stuff, and thus we don't repeat-deploy it
+		if is_file_installed "${ARCHIVE_MARKER}" "${ARCHIVE_HASH}" ; then
+			say "The reports archive at [${SRC_FILE}] is already installed"
+			return 0
+		fi
+
 		# Extract, then enumerate the contents into the SRC_FILE array
-		SRC_FILE="${REPORTS_DIR}/${SRC_FILE}"
-		say "Extracting the reports from [${SRC_FILE}]..."
+		say "Extracting the reports from [${ARCHIVE_FILE}]..."
 
 		# Create the work directory ... we do this here so we can track it
 		WORK="$(readlink -f "$(mktemp -td "tmp.reports.${SRC_FILE//\//_}.XXXXXXXX")")"
@@ -154,7 +172,8 @@ install_report()
 		# Track it for cleanup
 		WORKDIRS+=("${WORK}")
 
-		readarray -t REPORTS < <(extract_archive "${ARCHIVE_TYPE}" "${SRC_FILE}" "${WORK}")
+		readarray -t REPORTS < <(extract_archive "${ARCHIVE_TYPE}" "${ARCHIVE_FILE}" "${WORK}")
+		SRC_FILE="${ARCHIVE_FILE}"
 	else
 		REPORTS=("$(dirname "${SRC_FILE}")${DIVIDER}${REPORTS_DIR}/${SRC_FILE}")
 	fi
@@ -174,7 +193,7 @@ install_report()
 		[[ "${P}" =~ ^/ ]] || P="/${P}"
 		[ "${P}" == "/." ] && P=""
 
-		read HASH rest < <(sha256sum "${F}")
+		read HASH REST < <(sha256sum "${F}")
 		B="${F##*/}"
 
 		if is_file_installed "${P}/${B}" "${HASH}" ; then
@@ -248,6 +267,7 @@ install_report()
 	done
 
 	if [ -n "${ARCHIVE_TYPE}" ] ; then
+		mark_file_installed "${ARCHIVE_MARKER}" "${ARCHIVE_HASH}"
 		say "Finished processing the $(( COUNT_OK + COUNT_FAIL )) items contained in [${SRC_FILE}]"
 		[ ${COUNT_OK} -gt 0 ] && ok "\tInstalled ${COUNT_OK}"
 		[ ${COUNT_FAIL} -gt 0 ] && err "\tFailed ${COUNT_FAIL}"
