@@ -86,6 +86,10 @@ spec:
               value: &https "https"
             - name: SOLR_ALFRESCO_SECURE_COMMS
               value: *https
+            - name: SOLR_JAVA_MEM
+              value: >-
+                -XX:MinRAMPercentage=50
+                -XX:MaxRAMPercentage=80
             - name: JAVA_TOOL_OPTIONS
               value: >-
                 -Dcom.redhat.fips=false
@@ -94,8 +98,6 @@ spec:
                 -Dalfresco.port.ssl=$(SOLR_ALFRESCO_PORT)
                 -Dalfresco.baseurl=/alfresco
                 -Dsolr.alfresco.secureComms=$(SOLR_ALFRESCO_SECURE_COMMS)
-                -XX:MinRAMPercentage=50
-                -XX:MaxRAMPercentage=80
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" $partName) | nindent 12 }}
           volumeMounts:
