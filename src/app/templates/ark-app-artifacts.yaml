@@ -63,8 +63,6 @@ spec:
       securityContext: {{- toYaml . | nindent 8 }}
       {{- end }}
       terminationGracePeriodSeconds: 0
-      setHostnameAsFQDN: true
-      hostname: "pod"
       subdomain: {{ include "arkcase.service.name" $ | quote }}
       containers:
         - name: artifacts

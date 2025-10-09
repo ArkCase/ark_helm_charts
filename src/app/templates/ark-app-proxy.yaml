@@ -70,8 +70,6 @@ spec:
       securityContext: {{- toYaml . | nindent 8 }}
       {{- end }}
       terminationGracePeriodSeconds: 15
-      setHostnameAsFQDN: true
-      hostname: "pod"
       subdomain: {{ include "arkcase.service.name" $ | quote }}
       initContainers:
         - name: init-ssl
