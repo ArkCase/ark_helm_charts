@@ -108,7 +108,9 @@ is_file_installed()
 
 	# Is it listed in the reports database file? (only consider the last entry)
 	[ -f "${REPORTS_DB}" ] || return 1
-	local EXISTING="$(egrep "^([0-9a-fA-F]{64})=${FILE}$" "${REPORTS_DB}" | tail -1)" || return 1
+	local EXISTING=""
+	EXISTING="$(egrep "^([0-9a-fA-F]{64})=${FILE}$" "${REPORTS_DB}")" || return 1
+	EXISTING="$(echo -n "${EXISTING}" | tail -1)"
 
 	# Does the record in the database file match our expected pattern?
 	[[ "${EXISTING}" =~ ^([0-9a-fA-F]{64})=(.*)$ ]] || return 1
