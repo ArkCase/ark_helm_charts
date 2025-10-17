@@ -1,4 +1,5 @@
 #!/bin/bash
+
 set -euo pipefail
 . /.functions
 
@@ -119,7 +120,7 @@ ok "Generated the JCR cluster node ID file"
 # LOCK FOR FIRST INITIALIZATION TO AVOID PROBLEMS IN CLUSTERING   #
 ###################################################################
 
-INITIALIZER_PROCESS="/config-post.sh"
+set_or_default INITIALIZER_PROCESS "/config-post.sh"
 INITIALIZER_MODE="false"
 MARKER="$(dd if=/dev/urandom bs=3 count=16 2>/dev/null | base64 --wrap=0)"
 say "Acquiring the initializer lock"
@@ -205,10 +206,19 @@ fi
 # resource bundles are picked up correctly
 PENTAHO_LIB="${PENTAHO_WEBAPP}/WEB-INF/lib"
 BUND_DIR="${INIT_DIR}/resource-bundles"
-BUND_SRC="${BUND_DIR}/arkcase-resource-bundles.zip"
 
-if is_file_exists "${BUND_SRC}" ; then
-	cp -vf "${BUND_SRC}" "${PENTAHO_LIB}" || fail "Failed to deploy the resource bundle from [${BUND_SRC}]"
+if is_dir_readable "${BUND_DIR}" ; then
+	doing "Deploying any included resource bundles..."
+	COUNT=0
+	while read BUNDLE ; do
+		BASENAME="${BUNDLE##*/}"
+		cp -vf "${BUNDLE}" "${PENTAHO_LIB}/arkcase-resources.${BASENAME}" || fail "Failed to deploy the resource bundle [${BUNDLE}] (rc=${?})"
+		ok "\tDeployed the resource bundle from [${BUNDLE}]"
+		(( ++COUNT ))
+	done < <( find "${BUND_DIR}" -type f -mindepth 1 -maxdepth 1 -type f | sort )
+	MSG="No resource bundles found to deploy"
+	[ ${COUNT} -gt 0 ] && MSG="Deployed ${COUNT} resource bundles!"
+	ok "${MSG}"
 fi
 
 ###################################################################
