@@ -173,21 +173,6 @@ if ! as_boolean "${INITIALIZER_MODE}" ; then
 		say "Applying a delay of ${BOOT_DELAY} seconds (don't ask... thank Hitachi)"
 		sleep "${BOOT_DELAY}" || fail "Initial delay interrupted, can't continue"
 	fi
-
-	#
-	# We didn't own the initialization lock, either because we lost
-	# the leadership race, or because this isn't our first boot.
-	#
-	# In either case, we're not supposed to mess with JCR installation,
-	# so we're going to nuke the zip files that would be added as default
-	# content
-	#
-	# This should eliminate all the cluster bootup problems
-	#
-	say "Avoiding re-installation of JCR default content"
-	while read zip ; do
-		mv -vf "${zip}" "${zip}.installed"
-	done < <(find "${PENTAHO_SOLUTIONS}/system/default-content" -type f -name '*.zip')
 fi
 
 ###################################################################
