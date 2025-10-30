@@ -152,6 +152,10 @@ spec:
           {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "artemis") | nindent 12 }}
+          lifecycle:
+            preStop:
+              exec:
+                command: [ "/app/artemis/bin/broker", "stop" ]
           volumeMounts:
             {{- include "arkcase.subsystem-access.volumeMount" $ | nindent 12 }}
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
