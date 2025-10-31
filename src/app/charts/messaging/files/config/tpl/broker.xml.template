@@ -213,6 +213,8 @@ under the License.
 					<cluster-name>conn-{{ $clusterId }}</cluster-name>
 					<check-for-active-server>true</check-for-active-server>
 					<vote-on-replication-failure>true</vote-on-replication-failure>
+					<failover-on-shutdown>true</failover-on-shutdown>
+					<wait-for-activation>true</wait-for-activation>
 					<manager>
 						<properties>
 							<!-- This should be populated with the ZooKeeper service's host:port combo -->
@@ -225,6 +227,25 @@ under the License.
 					</manager>
 					<coordination-id>{{ $clusterId }}</coordination-id>
 				</primary>
+				<backup>
+					<group-name>{{ $clusterId }}</group-name>
+					<cluster-name>conn-{{ $clusterId }}</cluster-name>
+					<check-for-active-server>true</check-for-active-server>
+					<vote-on-replication-failure>true</vote-on-replication-failure>
+					<failover-on-shutdown>true</failover-on-shutdown>
+					<allow-failback>true</allow-failback>
+					<manager>
+						<properties>
+							<!-- This should be populated with the ZooKeeper service's host:port combo -->
+							<property key="connect-string" value="${ZK_HOST}" />
+							<property key="session-ms" value="2000" />
+							<property key="connection-ms" value="1000" />
+							<property key="retries" value="0" />
+							<property key="retries-ms" value="1000" />
+						</properties>
+					</manager>
+					<coordination-id>{{ $clusterId }}</coordination-id>
+				</backup>
 			</replication>
 		</ha-policy>
 
