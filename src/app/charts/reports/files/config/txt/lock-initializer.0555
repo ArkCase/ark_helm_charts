@@ -54,7 +54,7 @@ if [ -n "${NEW_HASH}" ] && [ "${FINAL_HASH}" != "${NEW_HASH}" ] ; then
 	FINAL_HASH="${NEW_HASH}"
 fi
 
-INIT_VERSION+="${FINAL_TS:+-}${FINAL_TS}"
+[ -n "${FINAL_TS}" ] && INIT_VERSION+="-${FINAL_TS}"
 
 say "Version info: ${INIT_VERSION}"
 say "Process info: ${INIT_PROCESS}"
