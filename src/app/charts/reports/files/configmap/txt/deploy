@@ -6,6 +6,7 @@ set -euo pipefail
 [ -v REPS_DIR ] || REPS_DIR="${INIT_DIR}/reports"
 [ -v DATA_DIR ] || DATA_DIR="${BASE_DIR}/data"
 [ -v DWHS_DIR ] || DWHS_DIR="${DATA_DIR}/dw"
+[ -v SUMS_FILE ] || SUMS_FILE="${INIT_DIR}/.artifact-sums"
 
 say() {
 	echo -e "$(date -u -Ins): ${@}"
@@ -15,6 +16,14 @@ fail() {
 	say "${@}" 1>&2
 	exit ${EXIT_CODE:-1}
 }
+
+if OUT="$(get-global-sums 2>&1)" ; then
+	ARTIFACTS_SUM="$(jq -r '.pentaho // ""' <<< "${OUT}")"
+	rm -f "${SUMS_FILE}" &>/dev/null
+	[ -z "${ARTIFACTS_SUM}" ] || echo -n "${ARTIFACTS_SUM}" > "${SUMS_FILE}" || fail "Failed to render the artifacts sum file at [${SUMS_FILE}] with the value [${ARTIFACTS_SUM}]"
+else
+	warn "Failed to fetch the global artifact checksums (rc=${?}): ${OUT}"
+fi
 
 #
 # Deploy all reports
