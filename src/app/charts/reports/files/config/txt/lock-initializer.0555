@@ -33,6 +33,14 @@ export INIT_PROCESS="${2}"
 
 export INIT_VERSION="${PENTAHO_VERSION}"
 
+# We have the init version include the hash for the artifacts so we don't deploy
+# the new artifacts unless we absolutely have to. This also has a side effect that
+# it avoids duplicate installation for the artifacts
+set_or_default INIT_DIR "${BASE_DIR}/init"
+set_or_default SUMS_FILE "${INIT_DIR}/.artifact-sums"
+is_file_readable "${SUMS_FILE}" && ARTIFACTS_HASH="$(<"${SUMS_FILE}")" || ARTIFACTS_HASH=""
+[ -n "${ARTIFACTS_HASH}" ] && INIT_VERSION+="-${ARTIFACTS_HASH}"
+
 say "Version info: ${INIT_VERSION}"
 say "Process info: ${INIT_PROCESS}"
 say "Marker info:  ${#INIT_MARKER}:[${MARKER_SUM}]"
