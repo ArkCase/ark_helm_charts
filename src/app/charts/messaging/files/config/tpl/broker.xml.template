@@ -213,8 +213,6 @@ under the License.
 					<cluster-name>conn-{{ $clusterId }}</cluster-name>
 					<check-for-active-server>true</check-for-active-server>
 					<vote-on-replication-failure>true</vote-on-replication-failure>
-					<failover-on-shutdown>true</failover-on-shutdown>
-					<wait-for-activation>true</wait-for-activation>
 					<manager>
 						<properties>
 							<!-- This should be populated with the ZooKeeper service's host:port combo -->
@@ -232,7 +230,6 @@ under the License.
 					<cluster-name>conn-{{ $clusterId }}</cluster-name>
 					<check-for-active-server>true</check-for-active-server>
 					<vote-on-replication-failure>true</vote-on-replication-failure>
-					<failover-on-shutdown>true</failover-on-shutdown>
 					<allow-failback>true</allow-failback>
 					<manager>
 						<properties>
