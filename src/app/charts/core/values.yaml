@@ -37,7 +37,7 @@ image:
   # Overrides the image tag whose default is the chart appVersion.
   arkcase: &arkcase
     repository: "arkcase/core"
-    # tag: "3.0.0"
+    tag: "3.0.0"
 
   portal:
     <<: *arkcase
@@ -53,6 +53,11 @@ image:
   seed-content:
     repository: "arkcase/nettest"
   #   tag: "latest"
+
+  smoke-test:
+    repository: "arkcase/nettest"
+  #   tag: "latest"
+
 
 
 # You generally shouldn't mess with these. These exist to support some name-generation templates
