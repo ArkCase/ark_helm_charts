@@ -254,11 +254,6 @@ spec:
               value: "$(ARKCASE_CONTENT_ADMIN_PASSWORD)"
             - name: INIT_SEED_IGNORE_DUPES
               value: "true"
-            {{- if (eq $content.dialect "s3") }}
-            # This is required so the AWS CLI stuff uses our local SSL trusts
-            - name: AWS_CA_BUNDLE
-              value: "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem"
-            {{- end }}
           volumeMounts:
             {{- include "arkcase.subsystem-access.volumeMount" $ | nindent 12 }}
             - name: *homeVol
