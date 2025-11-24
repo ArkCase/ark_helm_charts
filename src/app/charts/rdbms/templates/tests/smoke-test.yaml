@@ -1,4 +1,4 @@
-{{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.rdbms.external" $)) }}
+{{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.rdbms.external" $)) -}}
 {{- $db := (include "arkcase.db.info" $ | fromYaml) -}}
 {{- $startTls := "" -}}
 {{- if and (hasKey $db "starttls") $db.starttls -}}
@@ -34,12 +34,13 @@ spec:
       command: [ "/usr/local/bin/run-from-env" ]
       args: [ "SCRIPT" ]
       env:
-        - name: SERVICE_NAME
-          value: {{ include "arkcase.service.name" $ | quote }}
+        {{- include "arkcase.subsystem-access.env" (dict "ctx" $ "conn" "admin" "key" "endpoint" "name" "SERVICE_HOST") | nindent 8 }}
+        {{- include "arkcase.subsystem-access.env" (dict "ctx" $ "conn" "admin" "key" "port" "name" "SERVICE_PORT") | nindent 8 }}
         - name: SCRIPT
           value: |-
             set -xeuo pipefail
-            /usr/local/bin/acme-init
-            /usr/bin/timeout 3 /usr/bin/openssl s_client -connect "$(SERVICE_NAME):{{ $db.port }}" -verify_quiet -verify_return_error -showcerts {{ $startTls }} < /dev/null
+            . /.functions
+            init_ssl
+            timeout 3 openssl s_client -connect "$(SERVICE_HOST):$(SERVICE_PORT)" -verify_quiet -verify_return_error -showcerts {{ $startTls }} < /dev/null
   restartPolicy: Never
-{{- end }}
+{{- end -}}

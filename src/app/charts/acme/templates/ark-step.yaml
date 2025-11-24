@@ -1,5 +1,4 @@
-{{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.acme.external" $)) -}}
-{{- $secretsPath := "/.secrets" -}}
+{{- if (include "arkcase.subsystem.enabled" $) -}}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -43,6 +42,7 @@ spec:
       {{- end }}
       serviceAccountName: {{ include "arkcase.serviceAccountName" $ | quote }}
       securityContext: {{- include "arkcase.securityContext" $ | nindent 8 }}
+      terminationGracePeriodSeconds: 5
       initContainers:
         - name: init-set-permissions
           {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
@@ -64,32 +64,28 @@ spec:
         - name: step
           {{- include "arkcase.image" $ | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
             - name: DOCKER_STEPCA_INIT_NAME
               value: "ArkCase on Kubernetes"
             - name: DOCKER_STEPCA_INIT_SERVICE_NAME
               value: {{ include "arkcase.service.name" $ | quote }}
+            - name: DOCKER_STEPCA_INIT_PASSWORD_FILE
+              value: "/.secrets/password"
             # Not yet ... but soon!
             # - name: DOCKER_STEPCA_INIT_ACME
             #   value: "true"
-            - name: DOCKER_STEPCA_INIT_PASSWORD_FILE
-              value: {{ printf "%s/%s" $secretsPath (include "arkcase.acme.passwordVariable" $) | quote }}
             - name: STEPPATH
               value: *dataDir
           {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "step") | nindent 12 }}
           volumeMounts:
+            {{- include "arkcase.subsystem-access.volumeMount" $ | nindent 12 }}
             - name: *dataVolume
               mountPath: *dataDir
-            - name: &secretsVol "secrets"
-              mountPath: {{ $secretsPath | quote }}
       volumes:
+        {{- include "arkcase.subsystem-access.volume" $ | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
-        - name: *secretsVol
-          secret:
-            optional: false
-            secretName: {{ include "arkcase.acme.sharedSecret" $ | quote }}
-            defaultMode: 0444
       {{- with $.Values.nodeSelector }}
       nodeSelector: {{- toYaml . | nindent 8 }}
       {{- end }}

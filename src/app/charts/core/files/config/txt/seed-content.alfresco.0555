@@ -1,0 +1,562 @@
+#!/usr/bin/python3
+
+import argparse
+from datetime import datetime
+from datetime import timezone
+import json
+import logging
+import os
+import re
+import requests
+import shutil
+import sys
+import traceback
+import urllib
+import urllib3
+import yaml
+
+ENV_INIT_SEED_CONF         = "INIT_SEED_CONF"
+ENV_INIT_SEED_CONTENT      = "INIT_SEED_CONTENT"
+ENV_INIT_SEED_UI           = "INIT_SEED_UI"
+ENV_INIT_SEED_USERNAME     = "INIT_SEED_USERNAME"
+ENV_INIT_SEED_PASSWORD     = "INIT_SEED_PASSWORD"
+ENV_INIT_SEED_IGNORE_DUPES = "INIT_SEED_IGNORE_DUPES"
+
+parser = argparse.ArgumentParser(description="Alfresco Content Seeder")
+parser.add_argument("config", metavar="config", action="store", help=f"The configuration to use (if not given, it will be read from the {ENV_INIT_SEED_CONF} environment variable)", type=str, nargs="?")
+parser.add_argument("--content", metavar="content", action="store", help=f"The Alfresco content URL (if not given, it will be read from the {ENV_INIT_SEED_CONTENT} environment variable)", type=str, nargs=1)
+parser.add_argument("--ui", metavar="ui", action="store", help=f"The Alfresco Share UI URL (if not given, it will be read from the {ENV_INIT_SEED_UI} environment variable)", type=str, nargs=1)
+parser.add_argument("--username", metavar="username", action="store", help=f"The username to authenticate with (if not given, it will be read from the {ENV_INIT_SEED_USERNAME} environment variable)", type=str, nargs=1)
+parser.add_argument("--password", metavar="password", action="store", help=f"The password to authenticate with (if not given, it will be read from the {ENV_INIT_SEED_PASSWORD} environment variable)", type=str, nargs=1)
+parser.add_argument("--ignore-dupes", action="store_true", help=f"A flag to indicate whether to continue processing even if duplicate sites are encountered (if not given, it will be read from the {ENV_INIT_SEED_IGNORE_DUPES} environment variable)", default=False)
+
+args = parser.parse_args()
+
+logging.basicConfig(level=logging.INFO, format = '%(asctime)s - %(levelname)s - %(message)s')
+
+def fail(msg):
+	logging.error(msg)
+	exit(1)
+
+def to_boolean(v):
+	t = type(v)
+	if t == bool:
+		return t
+	if t == str:
+		return ("true" == v.lower())
+	return True if v else False
+
+def resolve_value(v, default = None):
+	if v:
+		# If it's of the form @file:/..., then read the contents from that file
+		if v.startswith("@file:"):
+			# read the contents of the file, return the default if it can't be read
+			p = os.path.expandvars(v[6:])
+			try:
+				with open(p, "rt") as f:
+					v = f.read().strip()
+			except FileNotFoundError:
+				logging.error(f"The file [{p}] could not be found (from [{v}])")
+				v = None
+			except Exception as e:
+				fail(f"The file [{p}] could not be read (from [{v}]): {e}")
+
+		# If it's of the form @env:ENVVAR then read the contents from that envvar
+		elif v.startswith("@env:"):
+			# read the contents of the envvar, return the default if it doesn't exist
+			try:
+				v = os.environ[v[5:]]
+			except KeyError:
+				v = None
+
+	# Otherwise, use the value verbatim
+	if v is None:
+		return default
+
+	return v
+
+if args.config:
+	# If the parameter is given, use it
+	source_file = args.config
+	if source_file == "-":
+		source_file = sys.stdin
+		source_file_is_file = False
+	else:
+		source_file_is_file = True
+elif ENV_INIT_SEED_CONF in os.environ:
+	source_file = os.environ[ENV_INIT_SEED_CONF]
+	# Check if this points to a file ...
+	source_file_is_file = (os.path.exists(source_file) and os.path.isfile(source_file))
+else:
+	logging.error("Failed to get the configuration from parameters or the environment")
+	parser.print_help()
+	exit(1)
+
+IGNORE_DUPES = False
+if args.ignore_dupes:
+	IGNORE_DUPES = args.ignore_dupes
+elif ENV_INIT_SEED_IGNORE_DUPES in os.environ:
+	IGNORE_DUPES = to_boolean(os.environ[ENV_INIT_SEED_IGNORE_DUPES])
+
+show_data = True
+if source_file_is_file:
+	logging.info(f"Loading the configuration from the file [{source_file}]...")
+	with open(source_file, "r") as f:
+		data = yaml.safe_load(f)
+else:
+	if type(source_file) == str:
+		logging.info(f"Parsing the configuration from the string: [\n{source_file}\n]...")
+		show_data = False
+	else:
+		logging.info("Parsing the configuration from stdin...")
+	data = yaml.safe_load(source_file)
+
+if data is None:
+	fail("Data is not in YAML format")
+
+CONTENT = None
+if args.content:
+	CONTENT = args.content[0]
+elif ENV_INIT_SEED_CONTENT in os.environ:
+	CONTENT = os.environ[ENV_INIT_SEED_CONTENT]
+if not CONTENT:
+	fail("Must provide a CONTENT URL to connect to")
+logging.info(f"Using CONTENT URL [{CONTENT}]")
+
+UI = None
+if args.ui:
+	UI = args.ui[0]
+elif ENV_INIT_SEED_UI in os.environ:
+	UI = os.environ[ENV_INIT_SEED_UI]
+if not UI:
+	fail("Must provide a UI URL to connect to")
+logging.info(f"Using UI URL [{UI}]")
+
+USERNAME = None
+if args.username:
+	USERNAME = args.username[0]
+elif ENV_INIT_SEED_USERNAME in os.environ:
+	USERNAME = os.environ[ENV_INIT_SEED_USERNAME]
+if not USERNAME:
+	USERNAME = "admin"
+logging.info(f"Using username [{USERNAME}]")
+
+PASSWORD = None
+if args.password:
+	PASSWORD = args.password[0]
+elif ENV_INIT_SEED_PASSWORD in os.environ:
+	PASSWORD = os.environ[ENV_INIT_SEED_PASSWORD]
+if not PASSWORD:
+	fail("Must provide a password to authenticate with")
+
+def login():
+	session = requests.Session()
+
+	# Retry up to 30 times, sleeping 10 seconds between attempts (up to 5 minutes)
+	retry_strategy = urllib3.Retry(total = 30, backoff_factor=10)
+	retry_strategy.BACKOFF_MAX = 10
+	adapter = requests.adapters.HTTPAdapter(max_retries=retry_strategy)
+	session.mount("https://", adapter)
+	session.mount("http://", adapter)
+
+	try:
+		session.auth = ( USERNAME, PASSWORD )
+		headers = { "Content-Type" : "application/x-www-form-urlencoded" }
+
+		# Base login
+		logging.info(f"Logging into {UI} ...")
+		rsp = session.post(f"{UI}/page/dologin", headers = headers, data = {
+			"success": "/share/page/",
+			"failure": "/share/page/?error=true",
+			"username": USERNAME,
+			"password": PASSWORD
+		})
+		if rsp.status_code > 400:
+			fail(f"Failed to log into share at {UI} - rc: {rsp.status_code}")
+		else:
+			logging.info(f"\tLogged in! (rc: {rsp.status_code})")
+
+		cookies = requests.utils.dict_from_cookiejar(session.cookies)
+		if "alfLogin" not in cookies:
+			fail(f"Login failed - unable to authenticate to {UI} using the given credentials (user = {USERNAME})")
+
+		if "Alfresco-CSRFToken" not in cookies:
+			# If we didn't get it the first time around, execute a request to get it
+			logging.info("CSRF Token not found in the login response, fetching it explicitly")
+			rsp = session.get("{UI}/service/modules/authenticated?a=user")
+			if rsp.status_code > 400:
+				fail(f"Failed to fetch the CSRF token from {UI} - rc: {rsp.status_code}")
+			else:
+				logging.info(f"\tRequest complete! (rc: {rsp.status_code})")
+
+			cookies = requests.utils.dict_from_cookiejar(session.cookies)
+			if "Alfresco-CSRFToken" not in cookies:
+				fail(f"Failed to fetch the CSRF token from {UI} - the token was not returned as a cookie")
+
+		session.headers["Alfresco-CSRFToken"] = urllib.parse.unquote(cookies["Alfresco-CSRFToken"])
+	except Exception as e:
+		fail(f"Failed to login and obtain the CSRF token from {UI}\n{traceback.format_exc()}")
+
+	logging.info("Logged in, and CSRF token retrieved.")
+	return session
+
+def add_administrator(session, name, group, required):
+
+	name = resolve_value(name)
+
+	required = to_boolean(required)
+
+	entity_type = "GROUP" if group else "PERSON"
+	logging.info(f"\tAdding the {entity_type} named [{name}] to the ALFRESCO_ADMINISTRATORS group...")
+
+	name = urllib.parse.quote(name, safe='')
+	if group:
+		name = f"GROUP_{name}"
+
+	rsp = session.post(f"{CONTENT}/api/-default-/public/alfresco/versions/1/groups/GROUP_ALFRESCO_ADMINISTRATORS/members", json = {
+		"id" : name,
+		"memberType" : entity_type
+	})
+
+	if rsp.status_code >= 400:
+		# See if it's the special case of a duplicate member...
+		if rsp.status_code == 409:
+			try:
+				briefSummary = rsp.json()["error"]["briefSummary"]
+				if briefSummary.upper().startswith("DUPLICATE "):
+					# We're OK ... it's just a duplicate member, so return True
+					logging.info(f"\t\tDuplicate entry!")
+					return True
+			except KeyError:
+				# We're fine... just keep processing the error
+				pass
+
+		# If the entity wasn't found, but was also not required, skip it!
+		if (rsp.status_code == 404) and (not required):
+			try:
+				briefSummary = rsp.json()["error"]["briefSummary"]
+				if briefSummary.index(f"The entity with id: {name} was not found") >= 0:
+					logging.warning(f"\t\tThe {entity_type} named [{name}] was not found, but wasn't required - skipping!")
+					return True
+			except KeyError:
+				# We're fine... just keep processing the error
+				pass
+
+		# Not a duplicate member ... explode!
+		fail(f"\t\tFailed (sc: {rsp.status_code}): {rsp.text}")
+
+	return True
+
+def create_content_folders(session, site, root, contents):
+	if not root:
+		root = "documentLibrary"
+	logging.info(f"\tFetching the contents of site [{site}] (root = {root})...")
+
+	rsp = session.get(f"{CONTENT}/s/slingshot/doclib/treenode/site/{site}/{root}?perms=false&children=false&max=1000")
+	if rsp.status_code >= 400:
+		fail(f"\t\tFailed (sc: {rsp.status_code}): {rsp.text}")
+
+	items = rsp.json()["items"]
+	elements = set()
+	if items:
+		logging.info(f"\tFound {len(items)} items in the root folder [{root}]")
+		for i in items:
+			elements.add(i["name"])
+
+	for item in contents.keys():
+		if item in elements:
+			logging.info(f"\tDuplicate object: [{item}] ... skipping!")
+			continue
+
+		logging.info(f"\tCreating the content folder [{item}]...")
+		rsp = session.post(f"{CONTENT}/s/api/site/folder/{site}/{root}", json = {
+			"name" : item,
+			"title" : item
+		})
+		if rsp.status_code >= 400:
+			fail(f"\t\tFailed (sc: {rsp.status_code}): {rsp.text}")
+
+		try:
+			nodeRef = rsp.json()["nodeRef"]
+		except json.decoder.JSONDecodeError as e:
+			# FIX A BUG WITH THE JSON ... thanks, Alfresco!
+			nodeRef = json.loads(rsp.text.replace("}", '"a":"b"}'))["nodeRef"]
+
+		logging.info(f"\t\tCreated as [{nodeRef}]")
+
+	logging.info("\tContent folders created!")
+
+def create_category(session, site, parent, name):
+	now = datetime.now().replace(tzinfo=timezone.utc)
+
+	logging.info(f"\tCreating the records management category [{name}] under [{parent}]...")
+	rsp = session.post(f"{CONTENT}/s/api/type/rma:recordCategory/formprocessor", json = {
+		"alf_destination": parent,
+		"prop_cm_description": "",
+		"prop_cm_name": name,
+		"prop_cm_title": name,
+		# We pad the time with 0's at the end to match a nanosecond marker,
+		# which matches what the installer does. We don't have nano-time
+		# in python
+		"prop_rma_identifier": now.strftime("%Y-%m%d%H%M%S%f000"),
+		"prop_rma_reviewPeriod": "none|0",
+		"prop_rma_vitalRecordIndicator": "false"
+	})
+	data = rsp.json()
+	if rsp.status_code > 400:
+		if data["message"].find("DuplicateChildNodeNameException") < 0:
+			fail(f"\tFailed to create the records management category [{name}] (parent = {parent}) (sc: {rsp.status_code}): {rsp.text}")
+		else:
+			# If it didn't fail, it's b/c it was a duplicate and we're OK with that ... we just have to find it
+			logging.info(f"\t\t... duplicate!")
+			return None
+
+	nodeRef = data["persistedObject"]
+	logging.info(f"\t\tCreated as [{nodeRef}]")
+	return nodeRef
+
+def create_categories(session, site, root, contents):
+	rsp = session.get(f"{CONTENT}/s/slingshot/doclib/containers/{site}")
+	if rsp.status_code >= 400:
+		fail(f"\tFailed to obtain the nodeRef for the root folder [{root}] for records management site [{site}] (sc: {rsp.status_code}): {rsp.text}")
+
+	containers = rsp.json()["containers"]
+	if not containers:
+		fail(f"\tFailed to fetch the containers for the records management site [{site}]: {rsp.text}")
+
+	# Find the documentLibrary item
+	docLib = None
+	for c in containers:
+		if c["name"] == "documentLibrary":
+			docLib = c
+			break
+
+	if not docLib:
+		fail(f"\tFailed to find the documentLibrary container in records management site [{site}]: {rsp.text}")
+
+	docLib = docLib["nodeRef"]
+
+	if not root:
+		root = "ACM"
+
+	# Create the root node, being tolerant of duplicates
+	rootNodeRef = create_category(session, site, docLib, root)
+	if not rootNodeRef:
+		rsp = session.get(f"{CONTENT}/s/slingshot/doclib/treenode/site/rm/documentLibrary?perms=false&children=false&max=1000")
+		if rsp.status_code >= 400:
+			fail(f"\tFailed to fetch the contents of the documentLibrary in records management site [{site}] (sc: {rsp.status_code}): {rsp.text}")
+
+		items = rsp.json()["items"]
+		rootNodeRef = None
+		if items:
+			logging.info(f"\tFound {len(items)} items in the documentLibrary")
+			for i in items:
+				if i["name"] == root:
+					rootNodeRef = i["nodeRef"]
+					break
+
+		if not rootNodeRef:
+			fail(f"\tFailed to find or create the root category [{root}] in records management site [{site}]")
+
+	rsp = session.get(f"{CONTENT}/s/slingshot/doclib/treenode/site/rm/documentLibrary/{root}?perms=false&children=false&max=1000")
+	if rsp.status_code >= 400:
+		fail(f"\tFailed to fetch the contents of the root category [{root}] in records management site [{site}] (sc: {rsp.status_code}): {rsp.text}")
+
+	items = rsp.json()["items"]
+	elements = set()
+	if items:
+		logging.info(f"\tFound {len(items)} items in the root element [{root}]")
+		for i in items:
+			elements.add(i["name"])
+
+	for item in contents.keys():
+		if item in elements:
+			logging.info(f"\tDuplicate object: [{item}] ... skipping!")
+			continue
+
+		create_category(session, site, rootNodeRef, item)
+
+	logging.info("\tRecord management categories created!")
+
+def grant_group_access(session, site, admin_role, groups):
+	logging.info(f"\tGranting access to site [{site}]")
+	for group, role in groups.items():
+		group = resolve_value(group)
+		full_group_name = f"GROUP_{urllib.parse.quote(group, safe='')}"
+		rsp = session.get(f"{CONTENT}/api/-default-/public/alfresco/versions/1/groups/{full_group_name}")
+		if rsp.status_code >= 400:
+			if rsp.status_code == 404:
+				logging.error(f"\t\t\tGroup [{group}] was not found, skipping!")
+				continue
+			fail(f"\t\t\tFailed to check for the existence of group [{group}] (sc: {rsp.status_code}): {rsp.text}")
+
+		# Group exists ... keep going!
+
+		# This only applies to RM ...
+		if (site == rmSite) and admin_role:
+			logging.info(f"\t\tAdding groups to the records management role [{admin_role}]")
+			rsp = session.post(f"{CONTENT}/s/api/rm/roles/{admin_role}/authorities/{full_group_name}?return_content=yes")
+			if rsp.status_code >= 400:
+				fail(f"\t\t\tFailed (sc: {rsp.status_code}): {rsp.text}")
+
+		if group and role:
+			logging.info(f"\t\tGranting role [{role}] to group [{group}]")
+			rsp = session.post(f"{CONTENT}/s/api/sites/{site}/memberships?return_content=yes", json = {
+				"group" : {
+					"fullName": full_group_name
+				},
+				"role": role
+			})
+			if rsp.status_code >= 400:
+				fail(f"\t\t\tFailed (sc: {rsp.status_code}): {rsp.text}")
+
+rmSite = ""
+rmEnabled = False
+
+if "recordsManagement" in data:
+	rmConf = data["recordsManagement"]
+	if type(rmConf) != dict:
+		fail("The configuration data is malformed - the 'recordsManagement' value must be a map")
+
+	if "site" in rmConf:
+		rmSite = resolve_value(str(rmConf["site"]))
+
+	if "enabled" in rmConf:
+		rmEnabled = to_boolean(rmConf["enabled"])
+	else:
+		rmEnabled = True
+
+	if not rmSite or not rmEnabled:
+		rmSite = ""
+		rmEnabled = False
+
+site_atts = [ "title", "description", "sitePreset", "visibility", "type", "compliance" ]
+
+if "sites" not in data:
+	logging.info("No sites to seed.")
+	exit(0)
+
+try:
+	session = login()
+
+	if "admins" in data:
+		admins = data["admins"]
+		if admins and (type(admins) != dict):
+			fail("The configuration data is malformed - the 'admins' value must be a map")
+
+		admin_users = {}
+		if "users" in admins:
+			admin_users = admins["users"]
+		if admin_users and (type(admin_users) != dict):
+			fail("The configuration data is malformed - the 'admins.users' value must be a map")
+
+		admins_added = False
+
+		for user, required in admin_users.items():
+			add_administrator(session, user, False, required)
+			admins_added = True
+
+		admin_groups = {}
+		if "groups" in admins:
+			admin_groups = admins["groups"]
+		if admin_groups and (type(admin_users) != dict):
+			fail("The configuration data is malformed - the 'admins.groups' value must be a map")
+
+		for group, required in admin_groups.items():
+			add_administrator(session, group, True, required)
+			admins_added = True
+
+		if admins_added:
+			logging.info("Administrators configured.")
+
+	sites = data["sites"]
+	if type(sites) != dict:
+		fail("The configuration data is malformed - the 'sites' value must be a map")
+
+	session.headers["Content-Type"] = "application/json"
+	session.headers["Accept"] = "*/*"
+
+	for name, site in sites.items():
+		name = resolve_value(name.strip())
+		if not name:
+			fail("The configuration data is malformed - there is a site with an empty name")
+
+		if type(site) != dict:
+			fail(f"The configuration data is malformed - the value 'sites.{name}' must be a map")
+
+		# Gather the site's attributes
+		site_info = {}
+		site_info["shortName"] = name
+		for att in site_atts:
+			if att not in site:
+				fail(f"The configuration data is malformed - the value 'sites.{name}.{att}' is missing")
+
+			v = site[att]
+			if type(v) != str:
+				fail(f"The configuration data is malformed - the value 'sites.{name}.{att}' must be a string")
+			site_info[att] = site[att]
+
+		# We have everything we want, prep for execution
+		site_info["id"] = name
+
+		if name != rmSite:
+			desc = "content"
+			creator = create_content_folders
+		else:
+			desc = "records management"
+			creator = create_categories
+
+		logging.info(f"Creating the {desc} site [{name}]...")
+		rsp = session.post(f"{UI}/service/modules/create-site", json=site_info)
+
+		if rsp.status_code >= 400:
+			result = rsp.json()
+			if ("message" in result) and (result["message"] == "error.duplicateShortName"):
+				if IGNORE_DUPES:
+					logging.info(f"\tThe site {desc} [{name}] already exists.")
+				else:
+					logging.info(f"\tThe site {desc} [{name}] already exists, skipping")
+					continue
+			else:
+				fail(f"\tFailed to create the {desc} site [{name}] (rc: {rsp.status_code}): {result}")
+
+		if "root" in site:
+			root = site["root"]
+		else:
+			root = None
+
+		if "contents" in site:
+			contents = site["contents"]
+			if type(contents) != dict:
+				fail(f"The configuration data is malformed - the value 'sites.{name}.contents' must be a map")
+
+			try:
+				creator(session, name, root, contents)
+			except Exception as e:
+				fail(f"Failed to create the contents for site {name} (rm={name == rmSite})\n{traceback.format_exc()}")
+		else:
+			logging.info(f"\tNo contents specified for site [{name}]")
+
+		if "groups" in site:
+			groups = site["groups"]
+			if type(groups) != dict:
+				fail(f"The configuration data is malformed - the value 'sites.{name}.groups' must be a map")
+
+			admin_role = None
+			if "adminRole" in site:
+				admin_role = site["adminRole"]
+				if type(admin_role) != str:
+					fail(f"The configuration data is malformed - the value 'sites.{name}.adminRole' must be a string")
+
+			try:
+				grant_group_access(session, name, admin_role, groups)
+			except Exception as e:
+				fail(f"Failed to grant access for site {name} (rm={name == rmSite})\n{traceback.format_exc()}")
+
+	logging.info("Seeding completed.")
+	exit(0)
+except KeyboardInterrupt:
+	logging.error("Execution interrupted, exiting.")
+	sys.exit(1)
+except Exception as e:
+	fail(f"Seeding procedure failed\n{traceback.format_exc()}")

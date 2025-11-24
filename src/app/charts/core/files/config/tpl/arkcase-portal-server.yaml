@@ -1,0 +1,56 @@
+{{- $portal := (include "arkcase.portal" $ | fromYaml) -}}
+{{- if $portal -}}
+  {{- $baseUrl := (include "arkcase.tools.parseUrl" (include "arkcase.tools.conf" (dict "ctx" $ "value" "baseUrl")) | fromYaml) -}}
+  {{- $uiApplicationHost := (printf "%s://%s" $baseUrl.scheme $baseUrl.host) -}}
+  {{- $portalSSO := (include "arkcase.core.portal.sso" $ | fromYaml) -}}
+
+logging:
+  level:
+    com.arkcase.portal: debug
+    org:
+      springframework: warn
+      apache: warn
+    springfox: warn
+
+portal:
+  uiApplicationUrl: &url {{ printf "%s/%s" $uiApplicationHost $portal.context | quote }}
+  uiApplicationHost: {{ printf "https://%s" $baseUrl.hostname | quote }}
+  id: {{ $portal.portalId | quote }}
+  url: *url
+  arkcaseUrl: "https://localhost:8443/arkcase"
+  groupName: "ARKCASE_PORTAL_USER@${PORTAL_LDAP_DOMAIN_UPPER}"
+  # authentication type, possible values (basic, external)
+  {{- $saml := (include "arkcase.core.sso.saml" $ | fromYaml) }}
+  {{- $oidc := (include "arkcase.core.sso.oidc" $ | fromYaml) -}}
+  {{- if or $saml $oidc }}
+  authenticationType: "external"
+  {{- else }}
+  authenticationType: "basic"
+  {{- end }}
+  {{- if $portalSSO }}
+  loginGov: true
+  oidcAuthenticationEnabled: true
+  {{- end }}
+  userId: "${PORTAL_ADMIN_USERNAME}@${PORTAL_LDAP_DOMAIN}"
+  password: "${PORTAL_ADMIN_PASSWORD}"
+  homeDir: "${PORTAL_HOME_DIR}"
+  fileDir: "${PORTAL_FILE_DIR}"
+  # portal configuration type
+  externalConfiguration: false
+  authenticatedMode: {{ not $portal.disableAuth }}
+  activemqUrl: "${ARKCASE_MQ_AMQP_URL}"
+  activemqUsername: "${ARKCASE_MQ_USERNAME}"
+  activemqPassword: "${ARKCASE_MQ_PASSWORD}"
+  serviceProvider:
+    directory.name: "portal"
+  keystoreFilename: "${JAVA_KEYSTORE}"
+  keystorePassword: "${JAVA_KEYSTORE_PASS}"
+  truststoreFilename: "${JAVA_TRUSTSTORE}"
+  truststorePassword: "${JAVA_TRUSTSTORE_PASS}"
+  security.authentication:
+    header.parameter.name: foia-api-secret
+    token:  {{ $portal.apiSecret | quote }}
+  {{- with $portalSSO }}
+  oidc: {{- .conf.clients.portal | toYaml | nindent 4 }}
+  {{- end }}
+{{- end -}}

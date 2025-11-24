@@ -1,0 +1,82 @@
+#!/bin/bash
+set -euo pipefail
+. /.functions
+
+###################################################################
+# CONFIGURE FILESYSTEM PERSISTENCE                                #
+###################################################################
+set_or_default BASE_DIR "/app"
+set_or_default DATA_DIR "${BASE_DIR}/data"
+set_or_default INIT_DIR "${BASE_DIR}/init"
+
+ensure_dir "${DATA_DIR}"
+export DATA_DIR
+
+###################################################################
+# UPDATE CA CERTIFICATES                                          #
+###################################################################
+init_ssl
+
+###################################################################
+# INSTALL ANY LICENSES                                            #
+###################################################################
+
+#
+# Configure license location
+#
+set_or_default PENTAHO_INSTALLED_LICENSE_PATH "${DATA_DIR}/.installedLicenses.xml"
+ensure_dir "$(dirname "${PENTAHO_INSTALLED_LICENSE_PATH}")"
+export PENTAHO_INSTALLED_LICENSE_PATH
+
+#
+# Install the licenses
+#
+set_or_default LICENSE_DIR "${INIT_DIR}/licenses"
+
+if is_dir_readable "${LICENSE_DIR}" ; then
+	LICENSE_INSTALLER="${PENTAHO_HOME}/license-installer/install_license.sh"
+	doing "Installing all available license files from [${LICENSE_DIR}]"
+	while read LICENSE ; do
+		if /bin/sh "${LICENSE_INSTALLER}" install -q "${LICENSE}" ; then
+			ok "Installed the license from [${LICENSE}], removing the original file"
+			rm -fv "${LICENSE}" &>/dev/null || true
+		else
+			err "❌ Failed to install the license from [${LICENSE}]"
+		fi
+	done < <(find "${LICENSE_DIR}" -type f -name '*.lic' | sort)
+fi
+
+###################################################################
+# Render the correct server.properties file                       #
+###################################################################
+set_or_default PENTAHO_HOME "${BASE_DIR}/pentaho"
+set_or_default PENTAHO_PDI_HOME "${BASE_DIR}/pentaho"
+set_or_default PENTAHO_PDI_PLUGINS "${PENTAHO_PDI_HOME}/data-integration/plugins"
+set_or_default PENTAHO_SERVER "${PENTAHO_HOME}/pentaho-server"
+
+require_dir_readable "${PENTAHO_SERVER}"
+
+###################################################################
+# DEPLOY, AS NEEDED, THE CRON SCHEDULES THAT WE'LL BE RUNNING     #
+###################################################################
+deploy-job-schedules
+
+###################################################################
+# ARKCASE MUST BE UP BEFORE WE START RUNNING JOBS                 #
+###################################################################
+set_or_default INIT_POLL_SLEEP
+[[ "${INIT_POLL_SLEEP}" =~ ^[1-9][0-9]*$ ]] || INIT_POLL_SLEEP=2
+
+set_or_default INIT_MAX_WAIT
+[[ "${INIT_MAX_WAIT}" =~ ^[1-9][0-9]*$ ]] || INIT_MAX_WAIT=900
+
+set_or_default CORE_URL "https://core:8443/arkcase/"
+
+doing "Waiting for ArkCase to become available before starting the Cron process..."
+poll_url "${CORE_URL}" "${INIT_MAX_WAIT}" "${INIT_POLL_SLEEP}" || fail "ArkCase did not come up in time"
+
+eyes "Storing the runtime environment to a temporary file"
+declare -px > "${HOME}/.cron-env"
+
+doing "Starting the Cron process..."
+execute /usr/sbin/crond -n -P

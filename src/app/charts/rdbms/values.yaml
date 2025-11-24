@@ -9,40 +9,15 @@
 # This should group all application-specific configurations
 #
 configuration:
-  # Console username and password: Please set a secure password
-  rootPassword: admin
-
   # Limit, in GiB, of how big the KahaDB store can grow
   maxStoreUsageGb: 50
 
   # Limit, in GiB, of how much temporary storage MariaDB can use
   maxTempUsageGb: 10
 
-  db:
-    dialect: "postgresql"
-    hostname: "localhost"
-
-dbinit:
-  admin: "password"
-
 resources:
   development:
     limits: "100Mi,0.1"
-
-initDependencies:
-  enabled: true
-  mode: all
-  template:
-    # Any of the required ports are enough to succeed
-    mode: any
-    initialDelay: 10
-    delay: 10
-    timeout: 10
-    attempts: 60
-  dependencies:
-    acme:
-      ports:
-        - 9000
 
 # Please leave the `replicaCount` to 1 for the time being. Clustering is not
 # supported yet.

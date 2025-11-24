@@ -1,0 +1,347 @@
+#!/bin/bash
+set -euo pipefail
+. /.functions
+
+set_as_boolean DEBUG
+
+is_debug()
+{
+	as_boolean "${DEBUG}" || return 1
+	return 0
+}
+
+is_check()
+{
+	as_boolean "${CHECK_MODE}" || return 1
+	return 0
+}
+
+cleanup()
+{
+	[ "${#WORKDIRS[@]}" -gt 0 ] && rm -rf "${WORKDIRS[@]}" &>/dev/null
+}
+
+export WORKDIRS=()
+trap cleanup EXIT
+
+CHECK_MODE="false"
+[ "${#}" -ge 1 ] && [ "${1,,}" == "--check" ] && CHECK_MODE="true"
+
+set_or_default BASE_DIR "/app"
+set_or_default INIT_DIR "${BASE_DIR}/init"
+set_or_default DATA_DIR "${BASE_DIR}/data"
+set_or_default LOGS_DIR "${BASE_DIR}/logs"
+
+is_check && LOG_NAME="check" || LOG_NAME="install"
+redirect_logs "${LOGS_DIR}/${LOG_NAME}-reports.log"
+
+set_or_default ADMIN_URL "https://localhost:${ADMIN_PORT}/pentaho/"
+
+# We have to sanitize the Admin URL to remove any trailing slashes
+[[ "${ADMIN_URL}" =~ ^(.*[^/])/+$ ]] && ADMIN_URL="${BASH_REMATCH[1]}"
+
+DIVIDER=":///:"
+
+extract_archive()
+{
+	local TYPE="${1}"
+	local SRC="${2}"
+	local WORK="${3}"
+
+	local C=""
+	local ZIP="false"
+	case "${TYPE,,}" in
+		zip )
+			unzip -uod "${WORK}" "${SRC}" 1>&2 || return ${?}
+			ZIP="true"
+			;;
+		tgz ) C="z" ;;
+		tbz ) C="j" ;;
+		txz ) C="J" ;;
+	esac
+	"${ZIP}" || tar -C "${WORK}" -x${C}f "${SRC}" 1>&2 || return ${?}
+	local L="${#WORK}"
+	find "${WORK}" -type f | sort | while read f ; do
+		local D="${f:${L}}"
+		D="${D%/*}"
+		echo "${D}${DIVIDER}${f}"
+	done
+	return 0
+}
+
+is_data_source()
+{
+	local FILE="${1}"
+
+	is_file_readable "${FILE}" || return ${?}
+
+	# Is this an XMI file?
+	case "${FILE,,}" in
+		*.xmi ) ;;
+		* ) return 1 ;;
+	esac
+
+	# We're good!
+	return 0
+}
+
+validate_data_source()
+{
+	local FILE="${1}"
+
+	# Is it clean XML? If not, return the error!
+	xmllint "${FILE}" &>/dev/null || return ${?}
+
+	# TODO: Stronger validations
+
+	return 0
+}
+
+is_file_installed()
+{
+	local FILE="${1}"
+	local HASH="${2}"
+
+	# Is it listed in the reports database file? (only consider the last entry)
+	[ -f "${REPORTS_DB}" ] || return 1
+	local EXISTING="$(egrep "^([0-9a-f]{64})=${FILE}$" "${REPORTS_DB}" | tail -1)" || return 1
+
+	# Does the record in the database file match our expected pattern?
+	[[ "${EXISTING,,}" =~ ^([0-9a-f]{64})=(.*)$ ]] || return 1
+
+	# Does the hash match our expected hash?
+	[ "${BASH_REMATCH[1],,}" == "${HASH,,}" ] || return 1
+
+	# Does the filename match exactly? (just for paranoia's sake)
+	[ "${BASH_REMATCH[2]}" == "${FILE}" ] || return 1
+
+	# Everything matches, the report is already installed
+	return 0
+}
+
+mark_file_installed()
+{
+	local FILE="${1}"
+	local HASH="${2}"
+	echo "${HASH}=${FILE}" >> "${REPORTS_DB}"
+}
+
+has_export_manifest()
+{
+	local SRC="${REPORTS_DIR}/${1}"
+	unzip -t "${SRC}" "${EXPORT_MANIFEST}" &>/dev/null || return 1
+	return 0
+}
+
+install_report()
+{
+	local SRC_FILE="${1}"
+
+	local REST=""
+
+	# If the file is an archive of some kind, then we make note of its name sans exception,
+	# extract it flattened into a temporary directory, and deploy the files within
+	# (we support zip, tar, and tar.gz archives)
+	local ARCHIVE_TYPE=""
+	case "${SRC_FILE,,}" in
+		*.tar ) ARCHIVE_TYPE="tar" ;;
+		*.tar.gz | *.tgz ) ARCHIVE_TYPE="tgz" ;;
+		*.tar.bz2 | *.tbz2 ) ARCHIVE_TYPE="tbz" ;;
+		*.tar.xz | *.txz ) ARCHIVE_TYPE="txz" ;;
+		*.jar ) ARCHIVE_TYPE="zip" ;;
+
+		# Special case: if the zip file has a file named ${EXPORT_MANIFEST} in
+		# the root of the archive, we install the zip file directly, so we leave
+		# the ARCHIVE_TYPE empty so the file won't be extracted
+		*.zip ) has_export_manifest "${SRC_FILE}" || ARCHIVE_TYPE="zip" ;;
+
+		# ?!?! ... upload it directly
+		* ) ;;
+	esac
+
+	local REPORTS=()
+	local WORK=""
+	if [ -n "${ARCHIVE_TYPE}" ] ; then
+		local ARCHIVE_DIR="$(dirname "${SRC_FILE}")"
+		local ARCHIVE_FILE="${REPORTS_DIR}/${SRC_FILE}"
+
+		local ARCHIVE_HASH=""
+		read ARCHIVE_HASH REST < <(sha256sum "${ARCHIVE_FILE}")
+
+		local ARCHIVE_MARKER="${ARCHIVE_DIR}/${ARCHIVE_HASH}"
+
+		# We only use the report's relative directory because if we have the
+		# exact same archive bundle, but with many different names, we don't
+		# really care about those names - we only care that they're the same
+		# stuff, and thus we don't repeat-deploy it
+		if is_file_installed "${ARCHIVE_MARKER}" "${ARCHIVE_HASH}" ; then
+			say "The reports archive at [${SRC_FILE}], or one exactly identical to it, has already been installed"
+			return 0
+		fi
+
+		is_check && return 1
+
+		# Extract, then enumerate the contents into the SRC_FILE array
+		say "Extracting the reports from [${ARCHIVE_FILE}]..."
+
+		# Create the work directory ... we do this here so we can track it
+		WORK="$(readlink -f "$(mktemp -td "tmp.reports.${SRC_FILE//\//_}.XXXXXXXX")")"
+
+		# Track it for cleanup
+		WORKDIRS+=("${WORK}")
+
+		readarray -t REPORTS < <(extract_archive "${ARCHIVE_TYPE}" "${ARCHIVE_FILE}" "${WORK}")
+		SRC_FILE="${ARCHIVE_FILE}"
+	else
+		REPORTS=("$(dirname "${SRC_FILE}")${DIVIDER}${REPORTS_DIR}/${SRC_FILE}")
+	fi
+
+	local RC=0
+	local ARCHIVE_INFO=""
+	[ -z "${ARCHIVE_TYPE}" ] || ARCHIVE_INFO=" extracted from the archive [${SRC_FILE}]"
+	local CMD=()
+	local HASH=""
+	local COUNT_OK=0
+	local COUNT_FAIL=0
+	for F in "${REPORTS[@]}" ; do
+		[[ "${F}" =~ ^(.*)${DIVIDER}(.*)$ ]]
+		local P="${BASH_REMATCH[1]}"
+		local F="${BASH_REMATCH[2]}"
+
+		[[ "${P}" =~ ^/ ]] || P="/${P}"
+		[ "${P}" == "/." ] && P=""
+
+		read HASH REST < <(sha256sum "${F}")
+		B="${F##*/}"
+
+		if is_file_installed "${P}/${B}" "${HASH}" ; then
+			say "The file [${P}/${B}]${ARCHIVE_INFO} is already installed."
+			continue
+		fi
+
+		is_check && return 1
+
+		#
+		# Is this an XMI file? If so, use a different approach
+		#
+
+		IMPORT_PARAMS=()
+		FILE_TYPE="report(s)"
+		if is_data_source "${F}" ; then
+			if ! validate_data_source "${F}" ; then
+				err "The DataSource in [${F}] did not validate and will not be installed"
+				continue
+			fi
+			DS_NAME="${F}"
+			# Keep the basename
+			DS_NAME="${DS_NAME##*/}"
+			# Rip out the last bit of the extension
+			DS_NAME="${DS_NAME%.*}"
+			IMPORT_PARAMS=(--resource-type=DATASOURCE --datasource-type=METADATA --metadata-domain-id="${DS_NAME}")
+			FILE_TYPE="data source"
+		else
+			IMPORT_PARAMS=(--path="/public${P}" --charset=UTF-8)
+		fi
+
+		#
+		# Alternative CURL:
+		#
+		# curl -fsSL -X PUT -u "${authInfo}" -H "Accept: application/json" --upload-file "${reportFile}" "${ADMIN_URL}/api/repo/files/${reportPathWithColons}:${reportFileWithoutExtension}"
+		#
+		# TODO: check out what the other flags do (i.e. permission, overwrite, retainOwnership, etc.)
+		#
+
+		say "Installing the ${FILE_TYPE} from [${F}]${ARCHIVE_INFO}..."
+		local UPLOAD_LOG_FILE="${LOGS_DIR}/uploads-$(date -u +%Y%m%d-%H%M%S)Z.log"
+		CMD=(
+			"${REPORT_INSTALLER}"
+			--import
+			--url="${ADMIN_URL}"
+			--username="${ADMIN_USERNAME}"
+			--password="${ADMIN_PASSWORD}"
+			--file-path="${F}"
+			"${IMPORT_PARAMS[@]}"
+			--logfile="${UPLOAD_LOG_FILE}"
+			--permission=true
+			--overwrite=true
+			--retainOwnership=true
+		)
+		is_debug && say "\t${CMD[@]@Q}"
+		(
+			say "# Installing the file from [${F}]${ARCHIVE_INFO}..."
+			say "COMMAND: ${CMD[@]@Q}"
+			say "--------------------------------------------------------------------------------"
+			exec "${CMD[@]}"
+		) &> "${UPLOAD_LOG_FILE}"
+		if grep -iq "Import was successful" "${UPLOAD_LOG_FILE}" ; then
+			mark_file_installed "${P}/${B}" "${HASH}"
+			say "\tThe ${FILE_TYPE} installed successfully"
+			rm -f "${UPLOAD_LOG_FILE}" &>/dev/null
+			(( ++COUNT_OK ))
+		else
+			err "\tFailed to install the ${FILE_TYPE} from [${F}]${ARCHIVE_INFO}\n$(cat "${UPLOAD_LOG_FILE}")"
+			# Track the failure result so we can return it properly
+			RC=1
+			(( ++COUNT_FAIL ))
+		fi
+	done
+
+	is_check && return 0
+
+	if [ -n "${ARCHIVE_TYPE}" ] ; then
+		mark_file_installed "${ARCHIVE_MARKER}" "${ARCHIVE_HASH}"
+		say "Finished processing the $(( COUNT_OK + COUNT_FAIL )) items contained in [${SRC_FILE}]"
+		[ ${COUNT_OK} -gt 0 ] && ok "\tInstalled ${COUNT_OK}"
+		[ ${COUNT_FAIL} -gt 0 ] && err "\tFailed ${COUNT_FAIL}"
+	fi
+	return ${RC}
+}
+
+list_reports()
+{
+	local REPORTS_DIR="${1}"
+	[ -d "${REPORTS_DIR}" ] || return 0
+	find "${REPORTS_DIR}" -type f -not -name ".*" | \
+		sed -e "s;^${REPORTS_DIR}/;;g" | \
+		sort
+}
+
+set_or_default ADMIN_USERNAME "admin"
+set_or_default ADMIN_PASSWORD "password"
+set_or_default PENTAHO_HOME "${BASE_DIR}/pentaho"
+set_or_default REPORT_INSTALLER "${PENTAHO_HOME}/pentaho-server/import-export.sh"
+set_or_default EXPORT_MANIFEST "exportManifest.xml"
+
+REPORTS_DB="${DATA_DIR}/.installedReports"
+
+if is_debug || is_check || is_file_executable "${REPORT_INSTALLER}" ; then
+	#
+	# Install reports
+	#
+	ERROR="false"
+	REPORTS_DIR="${INIT_DIR}/reports"
+	while read FILE ; do
+		# TODO: What if we want to undeploy? How do we do that?
+
+		# Install the report
+		install_report "${FILE}" && continue
+
+		# In check mode we don't need to check all the files - we only care
+		# about the first "failure"
+		is_check && fail "The data from [${FILE}] needs to be installed"
+
+		say "Failed to install the file from [${FILE}]"
+		ERROR="true"
+	done < <(list_reports "${REPORTS_DIR}")
+
+	if ! as_boolean "${ERROR}" ; then
+		is_check && ok "No files found requiring installation"
+		exit 0
+	fi
+
+	say "Some items did not install correctly."
+	exit 1
+fi
+
+say "The reports installer executable could not be found at [${REPORT_INSTALLER}]"
+exit 0

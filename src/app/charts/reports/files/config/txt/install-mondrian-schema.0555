@@ -1,0 +1,69 @@
+#!/bin/bash
+set -euo pipefail
+. /.functions
+
+DS_FILE="datasource.txt"
+
+usage()
+{
+	echo -e "usage: ${BASH_SOURCE:-${0}} schema.xml [dataSource]"
+	exit 1
+}
+
+[ ${#} -ge 1 ] || usage
+[ ${#} -le 2 ] || usage
+
+SCHEMA_FILE="${1}"
+require_file_readable "${SCHEMA_FILE}"
+case "${SCHEMA_FILE,,}" in
+	*.xml ) ;;
+	* ) fail "The schema file must have an extension of .xml (case-insensitive)" ;;
+esac
+SCHEMA_FILE="$(readlink -f "${SCHEMA_FILE}")"
+
+DATA_SOURCE=""
+[ ${#} -eq 2 ] && DATA_SOURCE="${2}"
+
+xmllint --noout "${SCHEMA_FILE}" &>/dev/null || fail "The schema file at [${SCHEMA_FILE}] is not valid XML, can't install"
+
+NAME="$(xmlstarlet sel -t -v "/Schema/@name" "${SCHEMA_FILE}")" || fail "Failed to parse the name out of the schema at [${SCHEMA_FILE}]"
+[ -n "${NAME}" ] || fail "The Mondrian schema at [${SCHEMA_FILE}] lacks a name, can't install"
+ENCODED="$(urlencode "${NAME}")"
+
+# The DataSource name to use in the event one isn't found
+set_or_default DEFAULT_DATA_SOURCE "acm3DataSource"
+
+# If there's no DataSource name given, we try to find a file called ${DS_FILE}
+# living right next to the schema file, and use the first non-blank, non-comment line
+# as its name
+if [ -z "${DATA_SOURCE}" ] ; then
+	DS_FILE="$(dirname "${SCHEMA_FILE}")/${DS_FILE}"
+	if is_file_readable "${DS_FILE}" ; then
+		DATA_SOURCE="$(cat "${DS_FILE}" | sed -e '/^\s*#/d' -e '/^\s*$/d' | head -1 | tr -d '[[:space:]\n]')"
+		[ -n "${DATA_SOURCE}" ] || fail "The DataSource file at [${DS_FILE}] did not contain a DataSource name"
+	fi
+fi
+
+# No data source anywhere? Assume the default...
+[ -n "${DATA_SOURCE}" ] || DATA_SOURCE="${DEFAULT_DATA_SOURCE}"
+
+set_or_default ADMIN_URL "https://localhost:${ADMIN_URL}/pentaho"
+set_or_default ADMIN_USERNAME "admin"
+set_or_default ADMIN_PASSWORD "password"
+
+# TODO: This can't be activated until we figure out a clean
+# way to validate datasources defined in Tomcat's context.xml,
+# because this service endpoint doesn't take those into account
+# eyes "Validating the existence of the DataSource [${DATA_SOURCE}]..."
+# check-datasource "${DATA_SOURCE}" || fail "The DataSource [${DATA_SOURCE}] was not found in Pentaho"
+
+say "Installing the Mondrian schema [${NAME}] from [${SCHEMA_FILE}]..."
+execute curl -fsSL \
+	-H "Content-Type: multipart/form-data" \
+	-X PUT \
+	-F uploadInput="@${SCHEMA_FILE}" \
+	-F overwrite="true" \
+	-F xmlaEnabledFlag="false" \
+	-F parameters="Datasource=${DATA_SOURCE}" \
+	--config <(echo -n "--user \"${ADMIN_USERNAME}:${ADMIN_PASSWORD}\"") \
+	"${ADMIN_URL}/plugin/data-access/api/datasource/analysis/catalog/${ENCODED}"

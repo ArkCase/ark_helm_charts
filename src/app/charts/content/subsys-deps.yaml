@@ -1,0 +1,77 @@
+network/alfresco:
+  enabled: true
+  mode: all
+  template:
+    # Any of the required ports are enough to succeed
+    mode: any
+    initialDelay: 10
+    delay: 10
+    timeout: 10
+    attempts: 60
+  dependencies:
+    app:
+      url: "@env:DEPL_URL"
+    acme:
+      url: "@env:ACME_URL"
+    ldap:
+      url: "@env:CONTENT_LDAP_URL"
+    rdbms:
+      host: "@env:ALFRESCO_JDBC_HOST"
+      port: "@env:ALFRESCO_JDBC_PORT"
+
+network/minio:
+  enabled: true
+  mode: all
+  template:
+    # Any of the required ports are enough to succeed
+    mode: any
+    initialDelay: 10
+    delay: 10
+    timeout: 10
+    attempts: 60
+  dependencies:
+    acme:
+      url: "@env:ACME_URL"
+
+settings:
+  $self:
+    main:
+      url: CONTENT_URL
+      ui: CONTENT_UI
+      username: CONTENT_USERNAME
+      password: CONTENT_PASSWORD
+    admin:
+      url: CONTENT_ADMIN_URL
+      ui: CONTENT_ADMIN_UI
+      username: CONTENT_ADMIN_USERNAME
+      password: CONTENT_ADMIN_PASSWORD
+      group: CONTENT_ADMIN_GROUP
+
+  app:
+    main:
+      url: DEPL_URL
+
+  # We specifically don't consume from ACME b/c those are handled directly
+  # by the ACME templates, and there's no need to address them beyond that
+  # acme: {}
+  ldap:
+    main:
+      url: CONTENT_LDAP_URL
+      domain: CONTENT_LDAP_DOMAIN
+      realm: CONTENT_LDAP_REALM
+      username: CONTENT_LDAP_USERNAME
+      password: CONTENT_LDAP_PASSWORD
+      rootDn: CONTENT_LDAP_ROOT_DN
+      baseDn: CONTENT_LDAP_BASE_DN
+      userBaseDn: CONTENT_LDAP_USER_BASE_DN
+      groupBaseDn: CONTENT_LDAP_GROUP_BASE_DN
+
+  rdbms:
+    content:
+      endpoint: ALFRESCO_JDBC_HOST
+      port: ALFRESCO_JDBC_PORT
+      username: ALFRESCO_JDBC_USERNAME
+      password: ALFRESCO_JDBC_PASSWORD
+      database: ALFRESCO_JDBC_DATABASE
+      # schema: ALFRESCO_JDBC_SCHEMA
+      # instance: ALFRESCO_JDBC_INSTANCE

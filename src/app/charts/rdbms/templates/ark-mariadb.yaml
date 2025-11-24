@@ -71,16 +71,17 @@ spec:
           {{- end }}
           {{- include "arkcase.image" (dict "ctx" $ "name" "mysql" "repository" "arkcase/mysql") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
-            {{- include "arkcase.initDatabase.adminPassEnv" (dict "ctx" $ "var" "MYSQL_ROOT_PASSWORD") | nindent 12 }}
+            {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
+            - name: MYSQL_ROOT_PASSWORD
+              value: "$(DB_ROOT_PASSWORD)"
           {{- include "arkcase.rdbms.ports" $ | nindent 10 }}
-          {{- if $.Values.command }}
-          command: {{- $.Values.command | toYaml | nindent 12 }}
-          {{- end }}
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "mysql") | nindent 12 }}
           volumeMounts:
+            {{- include "arkcase.subsystem-access.volumeMount" $ | nindent 12 }}
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/mysql-shutdown") | nindent 12 }}
             - name: &initVol "init"
               mountPath: "/opt/app/src/mysql-init"
               subPath: "init.d"
@@ -89,16 +90,14 @@ spec:
               subPath: "boot.d"
             - name: *dataVol
               mountPath: "/var/lib/mysql/data"
-            - name: {{ include "arkcase.initDatabase.secretVolume.name" $ | quote }}
-              mountPath: "/app/secrets"
-              readOnly: true
       volumes:
+        {{- include "arkcase.subsystem-access.volume" $ | nindent 8 }}
         {{- include "arkcase.acme.volume" $ | nindent 8 }}
-        {{- include "arkcase.initDatabase.secretVolume" $ | nindent 8 }}
         - name: *initVol
           emptyDir:
             sizeLimit: 1Gi
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
+        {{- include "arkcase.file-resource.volumes" $ | nindent 8 }}
       {{- with $.Values.nodeSelector }}
       nodeSelector: {{- toYaml . | nindent 8 }}
       {{- end }}

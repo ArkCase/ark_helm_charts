@@ -1,7 +1,7 @@
 {{- define "arkcase.cluster.info.rules" -}}
   {{- /* Find the chart's own clustering rules */ -}}
 
-  {{- $rules := (.Files.Get "cluster.yaml" | fromYaml) -}}
+  {{- $rules := (.Files.Get "clustering.yaml" | fromYaml) -}}
   {{- if (not (kindIs "map" $rules)) -}}
     {{- $rules = dict -}}
   {{- end -}}
@@ -43,7 +43,7 @@
   {{- $result | toYaml -}}
 {{- end -}}
 
-{{- define "arkcase.cluster.info.render" -}}
+{{- define "__arkcase.cluster.info.compute" -}}
   {{- $global := dict -}}
 
   {{- /* First, find the "global" values */ -}}
@@ -133,29 +133,12 @@
 {{- end -}}
 
 {{- define "arkcase.cluster.info" -}}
-  {{- if not (include "arkcase.isRootContext" $) -}}
-    {{- fail "The parameter value must be the root context" -}}
-  {{- end -}}
-
-  {{- $cacheKey := "ArkCase-Clustering" -}}
-  {{- $masterCache := dict -}}
-  {{- if (hasKey $ $cacheKey) -}}
-    {{- $masterCache = get $ $cacheKey -}}
-    {{- if and $masterCache (not (kindIs "map" $masterCache)) -}}
-      {{- $masterCache = dict -}}
-    {{- end -}}
-  {{- end -}}
-  {{- $crap := set $ $cacheKey $masterCache -}}
-
-  {{- $chartName := (include "arkcase.fullname" $) -}}
-  {{- if not (hasKey $masterCache $chartName) -}}
-    {{- $obj := (include "arkcase.cluster.info.render" $ | fromYaml) -}}
-    {{- if not $obj -}}
-      {{- $obj = dict -}}
-    {{- end -}}
-    {{- $masterCache = set $masterCache $chartName $obj -}}
-  {{- end -}}
-  {{- get $masterCache $chartName | toYaml -}}
+  {{- $args :=
+    dict
+      "ctx" $
+      "template" "__arkcase.cluster.info.compute"
+  -}}
+  {{- include "__arkcase.tools.getCachedValue" $args -}}
 {{- end -}}
 
 {{- define "arkcase.cluster" -}}
@@ -192,20 +175,18 @@
   {{- $cluster | toYaml -}}
 {{- end -}}
 
-{{- define "arkcase.cluster.zookeeper" -}}
+{{- define "arkcase.cluster.env" -}}
   {{- $ctx := $ -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "The only parameter value must be the root context" -}}
   {{- end -}}
 
   {{- $config := (include "arkcase.cluster" $ctx | fromYaml) -}}
+  {{- $env := list (dict "name" "CLUSTER_ENABLED" "value" "true") -}}
   {{- if $config.enabled -}}
-- name: ZK_HOST
-  valueFrom:
-    configMapKeyRef:
-      name: {{ printf "%s-zookeeper" $ctx.Release.Name | quote }}
-      key: ZK_HOST
+    {{- $env = concat $env (include "arkcase.subsystem-access.env" (dict "ctx" $ "subsys" "zookeeper" "key" "zkHost" "name" "ZK_HOST") | fromYamlArray) -}}
   {{- end -}}
+  {{- $env | toYaml -}}
 {{- end -}}
 
 {{- define "arkcase.cluster.tomcat.nodeId" -}}
@@ -298,6 +279,10 @@
   value: {{ $.Release.Namespace | quote }}
 - name: KUBERNETES_LABELS
   value: {{ join "," $result | quote }}
+- name: KUBERNETES_SERVICE
+  value: {{ include "arkcase.service.name" $ | quote }}
+- name: KUBERNETES_SERVICE_HEADLESS
+  value: {{ include "arkcase.service.headless" $ | quote }}
   {{- end }}
 {{- end -}}
 
@@ -309,4 +294,21 @@
   {{- $cluster := (include "arkcase.cluster" $ | fromYaml) -}}
   {{- $nodes := ($cluster.nodes | default 1 | int) -}}
 type: {{ $type | quote }}
+{{- end -}}
+
+{{- define "arkcase.cluster.discovery.env" -}}
+  {{- $ctx := $.ctx -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "The parameter 'ctx' must be the root context" -}}
+  {{- end -}}
+
+  {{- $dnsPort := ($.port | toString | required "Must provide the name of the DNS port to search for") -}}
+  {{- $dnsService := ($.service | default (include "arkcase.service.headless" $ctx)) -}}
+
+- name: DNS_NAMESPACE
+  value: {{ $ctx.Release.Namespace | quote }}
+- name: DNS_SERVICE
+  value: {{ $dnsService | quote }}
+- name: DNS_PORT
+  value: {{ $dnsPort | quote }}
 {{- end -}}

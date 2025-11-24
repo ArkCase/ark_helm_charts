@@ -3,13 +3,12 @@ mysql: &mysql
   filesDialect: *dialect
   reports: mysql
   databaseType: MySQL
-  port: 3306
   scripts: mysql
   quartz: StdJDBCDelegate
   jdbc:
     driver: com.mysql.cj.jdbc.Driver
     type: mysql
-    format: "jdbc:mysql://${HOSTNAME}:${PORT}/${DATABASE}?sslMode=VERIFY_IDENTITY&treatMysqlDatetimeAsTimestamp=true"
+    url: "jdbc:mysql://$(PREFIX_HOST):$(PREFIX_PORT)/$(PREFIX_DATABASE)?sslMode=VERIFY_IDENTITY&treatMysqlDatetimeAsTimestamp=true"
   validationQuery: "SELECT 1"
   aliases:
     - mariadb
@@ -21,14 +20,14 @@ oracle10g: &oracle10g
   filesDialect: *dialect
   reports: oracle
   databaseType: Oracle
-  port: 1521
   quartz: oracle.OracleDelegate
   jdbc:
     driver: oracle.jdbc.driver.OracleDriver
     type: oracle
-    format: "jdbc:oracle:thin:@${HOSTNAME}:${PORT}${INSTANCE}"
-    instance:
-      format: "/${INSTANCE}"
+    url: "jdbc:oracle:thin:@$(PREFIX_HOST):$(PREFIX_PORT)"
+    # url: "jdbc:oracle:thin:@$(PREFIX_HOST):$(PREFIX_PORT)${INSTANCE}"
+    # instance:
+    #   format: "/$(PREFIX_INSTANCE)"
   validationQuery: "SELECT 1 FROM DUAL"
   aliases:
     - orcl
@@ -50,12 +49,11 @@ postgresql:
   filesDialect: *dialect
   reports: *dialect
   databaseType: PostgreSQL
-  port: 5432
   quartz: PostgreSQLDelegate
   jdbc:
     driver: org.postgresql.Driver
     type: postgresql
-    format: "jdbc:postgresql://${HOSTNAME}:${PORT}/${DATABASE}?ssl=true&sslrootcert=/etc/pki/tls/cert.pem"
+    url: "jdbc:postgresql://$(PREFIX_HOST):$(PREFIX_PORT)/$(PREFIX_DATABASE)?ssl=true&sslrootcert=/etc/pki/tls/cert.pem"
   validationQuery: "SELECT 1"
   aliases:
     - psql
@@ -66,15 +64,15 @@ sqlserver:
   filesDialect: *dialect
   reports: &mssql mssql
   databaseType: MS SQL Server
-  port: 1433
   quartz: MSSQLDelegate
   jcr: *mssql
   jdbc:
     driver: com.microsoft.sqlserver.jdbc.SQLServerDriver
     type: sqlserver
-    format: "jdbc:sqlserver://${HOSTNAME}${INSTANCE}:${PORT};DatabaseName=${DATABASE};encrypt=true;trustServerCertificate=false;"
-    instance:
-      format: "\\${INSTANCE}"
+    url: "jdbc:sqlserver://$(PREFIX_HOST)$(PREFIX_INSTANCE):$(PREFIX_PORT);DatabaseName=$(PREFIX_DATABASE);encrypt=true;trustServerCertificate=false;"
+    # url: "jdbc:sqlserver://$(PREFIX_HOST)${INSTANCE}:$(PREFIX_PORT);DatabaseName=$(PREFIX_DATABASE);encrypt=true;trustServerCertificate=false;"
+    # instance:
+    #   format: "\\$(PREFIX_INSTANCE)"
   validationQuery: "SELECT 1"
   aliases:
     - *mssql

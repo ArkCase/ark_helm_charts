@@ -1,0 +1,11 @@
+#!/bin/bash
+set -euo pipefail
+. /.functions
+
+set_or_default BASE_DIR "/app"
+set_or_default PENTAHO_HOME "${BASE_DIR}/pentaho"
+set_or_default RUN_MARKER "${PENTAHO_HOME}/.initRan"
+
+[ -e "${RUN_MARKER}" ] || touch "${RUN_MARKER}"
+
+execute /config-post.sh "${@}"

@@ -5,7 +5,7 @@ mariadb: &mariaDb
   port: 3306
   jdbc:
     driver: org.mariadb.jdbc.Driver
-    format: "jdbc:mariadb://${HOSTNAME}:${PORT}/${DATABASE}?useSSL=true&requireSsl=true&enabledSslProtocolSuites=TLSv1.2"
+    url: "jdbc:mariadb://${ARKCASE_JDBC_HOST}:${ARKCASE_JDBC_PORT}/${ARKCASE_JDBC_DATABASE}?useSSL=true&requireSsl=true&enabledSslProtocolSuites=TLSv1.2"
   aliases:
     - mysql
 
@@ -16,7 +16,7 @@ mariadb: &mariaDb
 #   port: 3306
 #   jdbc:
 #     driver: com.mysql.cj.jdbc.Driver
-#     format: "jdbc:mysql://${HOSTNAME}:${PORT}/${DATABASE}?sslMode=VERIFY_IDENTITY"
+#     url: "jdbc:mysql://${ARKCASE_JDBC_HOST}:${ARKCASE_JDBC_PORT}/${ARKCASE_JDBC_DATABASE}?sslMode=VERIFY_IDENTITY"
 
 oracle:
   platform: Oracle
@@ -26,9 +26,10 @@ oracle:
   port: 1521
   jdbc:
     driver: oracle.jdbc.driver.OracleDriver
-    format: "jdbc:oracle:thin:@${HOSTNAME}:${PORT}${INSTANCE}"
-    instance:
-      format: "/${INSTANCE}"
+    url: "jdbc:oracle:thin:@${ARKCASE_JDBC_HOST}:${ARKCASE_JDBC_PORT}"
+    # url: "jdbc:oracle:thin:@${ARKCASE_JDBC_HOST}:${ARKCASE_JDBC_PORT}${INSTANCE}"
+    # instance:
+    #   format: "/${ARKCASE_JDBC_INSTANCE}"
   aliases:
     - orcl
 
@@ -39,7 +40,7 @@ postgresql:
   port: 5432
   jdbc:
     driver: org.postgresql.Driver
-    format: "jdbc:postgresql://${HOSTNAME}:${PORT}/${DATABASE}?ssl=true&sslrootcert=/etc/pki/tls/cert.pem"
+    url: "jdbc:postgresql://${ARKCASE_JDBC_HOST}:${ARKCASE_JDBC_PORT}/${ARKCASE_JDBC_DATABASE}?ssl=true&sslrootcert=/etc/pki/tls/cert.pem"
   aliases:
     - psql
     - postgres
@@ -52,8 +53,9 @@ sqlserver:
   port: 1433
   jdbc:
     driver: com.microsoft.sqlserver.jdbc.SQLServerDriver
-    format: "jdbc:sqlserver://${HOSTNAME}${INSTANCE}:${PORT};DatabaseName=${DATABASE};encrypt=true;trustServerCertificate=false;"
-    instance:
-      format: "\\${INSTANCE}"
+    url: "jdbc:sqlserver://${ARKCASE_JDBC_HOST}:${ARKCASE_JDBC_PORT};DatabaseName=${ARKCASE_JDBC_DATABASE};encrypt=true;trustServerCertificate=false;"
+    # url: "jdbc:sqlserver://${ARKCASE_JDBC_HOST}${INSTANCE}:${ARKCASE_JDBC_PORT};DatabaseName=${ARKCASE_JDBC_DATABASE};encrypt=true;trustServerCertificate=false;"
+    # instance:
+    #   format: "\\${ARKCASE_JDBC_INSTANCE}"
   aliases:
     - mssql

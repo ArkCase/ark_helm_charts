@@ -1,0 +1,163 @@
+network:
+  enabled: true
+  mode: all
+  template:
+    # Any of the required ports are enough to succeed
+    mode: any
+    initialDelay: 10
+    delay: 10
+    timeout: 10
+    attempts: 120
+  dependencies:
+    acme:
+      url: "@env:ACME_URL"
+    app:
+      url: "@env:DEPL_URL"
+    content:
+      url: "@env:ARKCASE_CONTENT_URL"
+    ldap:
+      url: "@env:ARKCASE_LDAP_URL"
+    messaging:
+      url: "@env:ARKCASE_MQ_AMQP_URL"
+    rdbms:
+      host: "@env:ARKCASE_JDBC_HOST"
+      port: "@env:ARKCASE_JDBC_PORT"
+    search:
+      url: "@env:ARKCASE_SOLR_URL"
+
+settings:
+  # We specifically don't consume from ACME b/c those are handled directly
+  # by the ACME templates, and there's no need to address them beyond that
+  # acme: {}
+  #
+  # We specifically don't consume from ZooKeeper b/c those are handled directly
+  # by the Clustering templates, and there's no need to address them beyond that
+  # zookeeper: {}
+
+  $self:
+    main-admin:
+      username: ARKCASE_ADMIN_USERNAME
+      password: ARKCASE_ADMIN_PASSWORD
+    portal-admin:
+      username: PORTAL_ADMIN_USERNAME
+      password: PORTAL_ADMIN_PASSWORD
+
+  app:
+    main:
+      url: DEPL_URL
+      instanceId: ARKCASE_INSTANCE_ID
+
+  content:
+    admin:
+      url: ARKCASE_CONTENT_ADMIN_URL
+      ui: ARKCASE_CONTENT_ADMIN_UI
+      username: ARKCASE_CONTENT_ADMIN_USERNAME
+      password: ARKCASE_CONTENT_ADMIN_PASSWORD
+
+    main:
+      url: ARKCASE_CONTENT_URL
+      ui: ARKCASE_CONTENT_UI
+      username: ARKCASE_CONTENT_USERNAME
+      password: ARKCASE_CONTENT_PASSWORD
+      bucket:
+        env:
+          name: ARKCASE_CONTENT_BUCKET
+          optional: true
+      region:
+        env:
+          name: ARKCASE_CONTENT_REGION
+          optional: true
+      site:
+        env:
+          name: ARKCASE_CONTENT_SITE
+          optional: true
+      rm:
+        env:
+          name: ARKCASE_CONTENT_RM
+          optional: true
+      private-key:
+        path:
+          mountPath: /app/home/.content-private-key
+          optional: true
+      client-id:
+        env: 
+          name: ARKCASE_BOX_CLIENT_ID
+          optional: true
+      client-secret:
+        env: 
+          name: ARKCASE_BOX_CLIENT_SECRET
+          optional: true
+      enterprise-id:
+        env: 
+          name: ARKCASE_BOX_ENTERPRISE_ID
+          optional: true
+      public-key-id:
+        env: 
+          name: ARKCASE_BOX_PUBLIC_KEY_ID
+          optional: true
+      private-key-password:
+        env: 
+          name: ARKCASE_BOX_PRIVATE_KEY_PASSWORD
+          optional: true
+          
+  ldap:
+    main:
+      url: ARKCASE_LDAP_URL
+      domain: ARKCASE_LDAP_DOMAIN
+      realm: ARKCASE_LDAP_REALM
+      username: ARKCASE_LDAP_USERNAME
+      password: ARKCASE_LDAP_PASSWORD
+      rootDn: ARKCASE_LDAP_ROOT_DN
+      baseDn: ARKCASE_LDAP_BASE_DN
+      userBaseDn: ARKCASE_LDAP_USER_BASE_DN
+      userPrefix: ARKCASE_LDAP_USER_PREFIX
+      groupBaseDn: ARKCASE_LDAP_GROUP_BASE_DN
+      groupPrefix: ARKCASE_LDAP_GROUP_PREFIX
+
+    portal:
+      url: PORTAL_LDAP_URL
+      domain: PORTAL_LDAP_DOMAIN
+      realm: PORTAL_LDAP_REALM
+      username: PORTAL_LDAP_USERNAME
+      password: PORTAL_LDAP_PASSWORD
+      rootDn: PORTAL_LDAP_ROOT_DN
+      baseDn: PORTAL_LDAP_BASE_DN
+      userBaseDn: PORTAL_LDAP_USER_BASE_DN
+      userPrefix: PORTAL_LDAP_USER_PREFIX
+      groupBaseDn: PORTAL_LDAP_GROUP_BASE_DN
+      groupPrefix: PORTAL_LDAP_GROUP_PREFIX
+
+  rdbms:
+    arkcase:
+      endpoint: ARKCASE_JDBC_HOST
+      port: ARKCASE_JDBC_PORT
+      username: ARKCASE_JDBC_USERNAME
+      password: ARKCASE_JDBC_PASSWORD
+      database: ARKCASE_JDBC_DATABASE
+      # schema: ARKCASE_JDBC_SCHEMA
+      # instance: ARKCASE_JDBC_INSTANCE
+
+  reports:
+    admin:
+      url: ARKCASE_REPORTS_ADMIN_URL
+      username: ARKCASE_REPORTS_ADMIN_USERNAME
+      password: ARKCASE_REPORTS_ADMIN_PASSWORD
+
+    main:
+      url: ARKCASE_REPORTS_URL
+      username: ARKCASE_REPORTS_USERNAME
+      password: ARKCASE_REPORTS_PASSWORD
+
+  messaging:
+    arkcase:
+      username: ARKCASE_MQ_USERNAME
+      password: ARKCASE_MQ_PASSWORD
+      amqpUrl: ARKCASE_MQ_AMQP_URL
+      stompUrl: ARKCASE_MQ_STOMP_URL
+
+  search:
+    main:
+      url: ARKCASE_SOLR_URL
+      # We don't do Solr authentication just yet, but be ready
+      # username: ARKCASE_SOLR_USERNAME
+      # password: ARKCASE_SOLR_PASSWORD

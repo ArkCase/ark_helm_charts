@@ -1,8 +1,9 @@
 {{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.samba.external" $)) }}
+  {{- $fullname := (include "arkcase.fullname" $) -}}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ include "arkcase.fullname" $ | quote }}
+  name: {{ $fullname | quote }}
   namespace: {{ $.Release.Namespace | quote }}
   labels: {{- include "arkcase.labels.service" $ | nindent 4 }}
     {{- with ($.Values.labels).common }}
@@ -45,6 +46,7 @@ spec:
       {{- end }}
       serviceAccountName: {{ include "arkcase.serviceAccountName" $ | quote }}
       securityContext: {{- include "arkcase.securityContext" $ | nindent 8 }}
+      terminationGracePeriodSeconds: 5
       initContainers:
         {{- include "arkcase.initDependencies.container" $ | nindent 8 }}
       containers:
@@ -52,88 +54,64 @@ spec:
           {{- include "arkcase.image" $ | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
+            {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
             - name: DOMAIN
-              valueFrom:
-                secretKeyRef:
-                  name: &secretName {{ include "arkcase.fullname" $ | quote }}
-                  key: DOMAIN_NAME
-            - name: DOMAINPASS
-              valueFrom:
-                secretKeyRef:
-                  name: *secretName
-                  key: DOMAIN_PASSWORD
+              value: "$(ARKCASE_DOMAIN)"
             - name: DOMAIN_REALM
-              valueFrom:
-                secretKeyRef:
-                  name: *secretName
-                  key: DOMAIN_REALM
-            - name: JOIN
-              value: "false"
-            #- name: JOINSITE
-            #  value: ""
+              value: "$(ARKCASE_REALM)"
+            - name: DOMAIN_ROOT_DN
+              value: "$(ARKCASE_ROOT_DN)"
+            - name: DOMAIN_USERNAME
+              value: "$(MANAGED_DOMAIN_USERNAME)"
+            - name: DOMAIN_PASSWORD
+              value: "$(MANAGED_DOMAIN_PASSWORD)"
+            - name: DOMAINPASS
+              value: "$(DOMAIN_PASSWORD)"
+            - name: MANAGED_ROOT_DN
+              value: "$(ARKCASE_ROOT_DN)"
+            - name: MANAGED_BASE_DN
+              value: "$(ARKCASE_BASE_DN)"
+            - name: MANAGED_USERS_OU
+              value: "$(ARKCASE_USER_BASE_DN)"
+            - name: MANAGED_GROUPS_OU
+              value: "$(ARKCASE_GROUP_BASE_DN)"
             - name: INSECURELDAP
-              value: "false"
-            - name: MULTISITE
               value: "false"
             - name: NOCOMPLEXITY
               value: "true"
             - name: SERVICE_NAME
               value: {{ include "arkcase.name" $ | quote }}
+            - name: SECRETS_DIR
+              value: "/run/secrets"
             - name: SEED_DIR
-              value: &seedDir "/app/secrets"
+              value: &seedDir "/seeds"
           {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
-          {{- if $.Values.command }}
-          command: {{- $.Values.command | toYaml | nindent 12 }}
-          {{- end }}
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "samba") | nindent 12 }}
           volumeMounts:
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
-            {{- include "arkcase.accounts.volumeMount" (dict "ctx" $ "type" "admin") | nindent 12 }}
-            {{- include "arkcase.accounts.volumeMount" (dict "ctx" $ "type" "shared") | nindent 12 }}
-            - name: &initVol "init"
-              mountPath: "/app/init"
+            {{- include "arkcase.subsystem-access.volumeMount" $ | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/init/init.d/000-init-seeds-wrapper" "subPath" "init-seeds-wrapper") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/boot/000-init-managed" "subPath" "init-managed") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/init-seeds") | nindent 12 }}
             - name: "data"
               mountPath: "/var/lib/samba"
             - name: "logs"
               mountPath: "/var/log/samba"
-            - name: &secrets "secrets"
+            - name: &seedFiles "seed-files"
               mountPath: *seedDir
               readOnly: true
-            - name: &configMap "configmap"
-              mountPath: "/app/init/init.d/000-init-seeds-wrapper"
-              subPath: &initSeedsWrapper "init-seeds-wrapper"
-              readOnly: true
-            - name: *configMap
-              mountPath: "/usr/local/bin/init-seeds"
-              subPath: &initSeeds "init-seeds"
-              readOnly: true
       volumes:
+        {{- include "arkcase.subsystem-access.volume" $ | nindent 8 }}
         {{- include "arkcase.acme.volume" $ | nindent 8 }}
-        {{- include "arkcase.accounts.volume" (dict "ctx" $ "type" "admin") | nindent 8 }}
-        {{- include "arkcase.accounts.volume" (dict "ctx" $ "type" "shared") | nindent 8 }}
-        - name: *initVol
-          emptyDir:
-            sizeLimit: 1Gi
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "logs") | nindent 8 }}
-        - name: *secrets
+        {{- include "arkcase.file-resource.volumes" $ | nindent 8 }}
+        - name: *seedFiles
           secret:
             optional: false
-            secretName: *secretName
+            secretName: {{ printf "%s-seed" $fullname | quote }}
             defaultMode: 0444
-        - name: *configMap
-          configMap:
-            optional: false
-            name: {{ include "arkcase.fullname" $ | quote }}
-            defaultMode: 0444
-            items:
-              - key: *initSeedsWrapper
-                path: *initSeedsWrapper
-                mode: 0555
-              - key: *initSeeds
-                path: *initSeeds
-                mode: 0555
       {{- with $.Values.nodeSelector }}
       nodeSelector: {{- toYaml . | nindent 8 }}
       {{- end }}

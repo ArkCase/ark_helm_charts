@@ -1,4 +1,4 @@
-{{- if and (include "arkcase.subsystem.enabled" $) (include "arkcase.enterprise" $) (not (include "arkcase.content.external" $)) (eq "alfresco" (include "arkcase.content.info.dialect" $)) -}}
+{{- if and (include "arkcase.subsystem.enabled" $) (include "arkcase.enterprise" $) (eq "alfresco" (include "arkcase.content.info.dialect" $)) -}}
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -72,6 +72,7 @@ spec:
             {{- include "arkcase.acme.env" $ | nindent 12 }}
             - name: JAVA_TOOL_OPTIONS
               value: >-
+                -Dcom.redhat.fips=false
                 -XX:MinRAMPercentage=50
                 -XX:MaxRAMPercentage=80
             # Stuff expires after 6 hours, but gets cleaned up every hour
@@ -81,9 +82,6 @@ spec:
               value: "3600000"
             - name: fileStorePath
               value: *dataDir
-          {{- with (include "arkcase.values" (dict "ctx" $ "base" "command") | fromYaml) }}
-          command: {{ toJson .value }}
-          {{- end }}
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" $partName) | nindent 12 }}
           volumeMounts:

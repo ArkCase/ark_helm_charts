@@ -1,4 +1,4 @@
-{{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.content.external" $)) (eq "alfresco" (include "arkcase.content.info.dialect" $)) -}}
+{{- if and (include "arkcase.subsystem.enabled" $) (eq "alfresco" (include "arkcase.content.info.dialect" $)) -}}
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -71,12 +71,10 @@ spec:
             {{- include "arkcase.acme.env" $ | nindent 12 }}
             - name: JAVA_TOOL_OPTIONS
               value: >-
+                -Dcom.redhat.fips=false
                 -XX:MinRAMPercentage=50
                 -XX:MaxRAMPercentage=80
           {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
-          {{- with (include "arkcase.values" (dict "ctx" $ "base" "command") | fromYaml) }}
-          command: {{ toJson .value }}
-          {{- end }}
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" $partName) | nindent 12 }}
           volumeMounts:

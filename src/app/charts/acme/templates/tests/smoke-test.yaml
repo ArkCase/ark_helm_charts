@@ -1,4 +1,4 @@
-{{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.acme.external" $)) }}
+{{- if (include "arkcase.subsystem.enabled" $) -}}
 apiVersion: v1
 kind: Pod
 metadata:
@@ -29,12 +29,12 @@ spec:
       command: [ "/usr/local/bin/run-from-env" ]
       args: [ "SCRIPT" ]
       env:
-        - name: SERVICE_NAME
-          value: {{ include "arkcase.service.name" $ | quote }}
+        {{- include "arkcase.subsystem-access.env" $ | nindent 8 }}
         - name: SCRIPT
           value: |-
             set -xeuo pipefail
-            /usr/local/bin/acme-init
-            /usr/bin/curl -fsSL -m 3 -o /dev/null "https://$(SERVICE_NAME):9000/health"
+            . /.functions
+            init_ssl
+            curl -fsSL -m 3 -o /dev/null "$(SERVICE_URL)/health"
   restartPolicy: Never
-{{- end }}
+{{- end -}}

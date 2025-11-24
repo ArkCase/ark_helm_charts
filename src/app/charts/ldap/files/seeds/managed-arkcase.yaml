@@ -1,0 +1,17 @@
+server:
+  expirationDays: 0
+  domain: "@env:ARKCASE_DOMAIN"
+  realm: "@env:ARKCASE_REALM"
+  rootDn: "@env:ARKCASE_ROOT_DN"
+  baseDn: "@env:ARKCASE_BASE_DN"
+  userou: "@env:ARKCASE_USER_BASE_DN"
+  groupou: "@env:ARKCASE_GROUP_BASE_DN"
+
+users:
+  "@env:MANAGED_LDAP_ARKCASE_USERNAME":
+    password: "@env:MANAGED_LDAP_ARKCASE_PASSWORD"
+    administrator: true
+
+groups:
+  ARKCASE_ADMINISTRATOR:
+    groups: "@env:MANAGED_REPORTS_ADMIN_GROUPS"

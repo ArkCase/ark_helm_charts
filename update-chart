@@ -29,7 +29,7 @@ while true ; do
 		CHART="src/${CHART_NAME}"
 
 		say "Packaging ${CHART_NAME}"
-		OUT="$(helm package -d "${BASEDIR}/repo" "${CHART}")"
+		OUT="$(helm package -d "." "${CHART}")"
 
 		SRC="$(echo -n "${OUT}" | sed -e 's;^.*and saved it to: ;;g')"
 		NEW_DEPS=()
@@ -44,6 +44,7 @@ while true ; do
 			) |& sed -e 's;^;\t\t;g'
 			NEW_DEPS+=("${DEPENDENCY}")
 		done < <(find src -type f -name "${CHART_NAME}-*.tgz" | sort)
+		rm -f "${SRC}" &>/dev/null
 
 		# If there are no new dependencies, ditch!
 		[ ${#NEW_DEPS[@]} -gt 0 ] || continue
@@ -62,5 +63,3 @@ while true ; do
 	set -- "${NI[@]}"
     [ "${#}" -lt 1 ] && break
 done
-git clean -fq repo
-git restore repo

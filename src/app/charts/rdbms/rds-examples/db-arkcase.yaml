@@ -1,0 +1,34 @@
+apiVersion: mysql.sql.crossplane.io/v1alpha1
+kind: Database
+metadata:
+  name: arkcase-rdbms-arkcase
+spec:
+  forProvider: {}
+  providerConfigRef:
+    name: arkcase-rdbms
+---
+apiVersion: mysql.sql.crossplane.io/v1alpha1
+kind: User
+metadata:
+  name: arkcase-rdbms-arkcase
+spec:
+  forProvider: {}
+  providerConfigRef:
+    name: arkcase-rdbms
+  writeConnectionSecretToRef:
+    name: arkcase-rdbms-cred-schema-arkcase
+---
+apiVersion: mysql.sql.crossplane.io/v1alpha1
+kind: Grant
+metadata:
+  name: arkcase-rdbms-arkcase
+spec:
+  forProvider:
+    privileges:
+      - ALL
+    userRef:
+      name: arkcase-rdbms-arkcase
+    databaseRef:
+      name: arkcase-rdbms-arkcase
+  providerConfigRef:
+    name: arkcase-rdbms

@@ -11,17 +11,22 @@ Return a map which contains the subsystem data map as required by other API call
   {{- $ctx := $ -}}
   {{- $subsysName := "" -}}
   {{- $value := "" -}}
-  {{- if hasKey $ctx "Values" -}}
+  {{- if (include "arkcase.isRootContext" $ctx) -}}
     {{- /* we're fine, we're auto-detecting */ -}}
-  {{- else if and (hasKey $ctx "subsystem") (hasKey $ctx "ctx") -}}
-    {{- $subsysName = (toString $ctx.subsystem) -}}
-    {{- /* Does it also have a value specification? */ -}}
-    {{- if (hasKey $ctx "value") -}}
-      {{- $value = (toString $ctx.value | required "The 'value' parameter may not be the empty string") -}}
+  {{- else if (hasKey $ "ctx") -}}
+    {{- $ctx = $.ctx -}}
+    {{- if not (include "arkcase.isRootContext" $ctx) -}}
+      {{- fail "Must provide the root context as the 'ctx' parameter" -}}
     {{- end -}}
-    {{- $ctx = $ctx.ctx -}}
+    {{- if (hasKey $ "subsys") -}}
+      {{- $subsysName = (get $ "subsys" | toString) -}}
+    {{- end -}}
+    {{- /* Does it also have a value specification? */ -}}
+    {{- if (hasKey $ "value") -}}
+      {{- $value = (get $ "value" | toString | required "The 'value' parameter may not be the empty string") -}}
+    {{- end -}}
   {{- else -}}
-    {{- fail "The provided dictionary must either have 'Values', or both 'subsys' and 'ctx' parameters" -}}
+    {{- fail "The provided dictionary must either be the root context, or contain both 'subsys' and 'ctx' parameters" -}}
   {{- end -}}
 
   {{- /* If we've not been given a subsystem name, we detect it */ -}}
@@ -30,12 +35,12 @@ Return a map which contains the subsystem data map as required by other API call
       {{- $subsysName = get $ctx "arkcase-subsystem" -}}
     {{- else -}}
       {{- $subsysName = .Chart.Name -}}
-      {{- $marker := set $ctx "arkcase-subsystem" $subsysName -}}
+      {{- $ctx = set $ctx "arkcase-subsystem" $subsysName -}}
     {{- end -}}
   {{- end -}}
 
   {{- /* Start structuring our return value */ -}}
-  {{- $map := (dict "ctx" $ctx "name" $subsysName) -}}
+  {{- $map := (dict "name" $subsysName) -}}
 
   {{- /* Cache the information */ -}}
   {{- $subsys := dict -}}
@@ -53,18 +58,27 @@ Return a map which contains the subsystem data map as required by other API call
   {{- else -}}
     {{- /* Set the "enabled" flag, which defaults to TRUE if it's not set */ -}}
     {{- $enabled := true -}}
-    {{- if (hasKey $ctx.Values "enabled") -}}
-      {{- $enabled = $ctx.Values.enabled -}}
+    {{- $local := $ctx.Values -}}
+    {{- $global := dig "subsys" $subsysName dict ($ctx.Values.global | default dict) -}}
+
+    {{- range $m := (list $global $local) -}}
+      {{- if or (not $m) (not (kindIs "map" $m)) -}}
+        {{- continue -}}
+      {{- end -}}
+
+      {{- if not (hasKey $m "enabled") -}}
+        {{- continue -}}
+      {{- end -}}
+
+      {{- $enabled = (not (empty (include "arkcase.toBoolean" $m.enabled))) -}}
+      {{- break -}}
     {{- end -}}
-    {{- if not (kindIs "bool" $enabled) -}}
-      {{- $enabled = (eq "true" (toString $enabled | lower)) -}}
-    {{- end -}}
-    {{- $crap := set $data "enabled" $enabled -}}
+    {{- $data = set $data "enabled" $enabled -}}
 
     {{- /* Cache the computed data */ -}}
-    {{- $crap = set $subsys $subsysName $data -}}
+    {{- $subsys = set $subsys $subsysName $data -}}
   {{- end -}}
-  {{- $crap := set $map "data" $data -}}
+  {{- $map = set $map "data" $data -}}
 
   {{- $map | toYaml -}}
 {{- end -}}
@@ -75,7 +89,7 @@ Identify the subsystem being used
 Parameter: "optional" (not used)
 */ -}}
 {{- define "arkcase.subsystem.name" -}}
-  {{- get (include "arkcase.subsystem" . | fromYaml) "name" -}}
+  {{- get (include "arkcase.subsystem" $ | fromYaml) "name" -}}
 {{- end -}}
 
 {{- /*
@@ -87,8 +101,9 @@ Parameter: either the root context (i.e. "." or "$"), or
              - subsystem = a string with the name of the subsystem to query
 */ -}}
 {{- define "arkcase.subsystem.enabled" -}}
-  {{- $map := (include "arkcase.subsystem" . | fromYaml) -}}
-  {{- if (and ($map.data.enabled) (not (($map.ctx.Values.service).external))) -}}
+  {{- $map := (include "arkcase.subsystem" $ | fromYaml) -}}
+  {{- $external := (not (empty (include "arkcase.subsystem.external" $))) -}}
+  {{- if and $map.data.enabled (not $external) -}}
     {{- true -}}
   {{- end -}}
 {{- end -}}
@@ -102,18 +117,24 @@ Parameter: either the root context (i.e. "." or "$"), or
              - subsystem = a string with the name of the subsystem to query
 */ -}}
 {{- define "arkcase.subsystem.enabledOrExternal" }}
-  {{- $map := (include "arkcase.subsystem" $ | fromYaml) }}
-  {{- $data := ($map.ctx.Values.service | default dict) }}
-  {{- $external := (include "arkcase.subsystem.external" $) -}}
-  {{- if or ($map.data.enabled) $external }}
-    {{- true }}
-  {{- end }}
+  {{- $map := (include "arkcase.subsystem" $ | fromYaml) -}}
+  {{- $external := (not (empty (include "arkcase.subsystem.external" $))) -}}
+  {{- if or ($map.data.enabled) $external -}}
+    {{- true -}}
+  {{- end -}}
 {{- end }}
 
 {{- define "arkcase.subsystem.external" -}}
-  {{- $property := (printf "%s.url" (include "arkcase.name" $)) -}}
-  {{- $url := (include "arkcase.tools.conf" (dict "ctx" $ "value" $property "detailed" true) | fromYaml) -}}
-  {{- if and $url $url.global -}}
+  {{- $ctx := $ -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- $ctx = $.ctx -}}
+    {{- if not (include "arkcase.isRootContext" $ctx) -}}
+      {{- fail "Must provide the root context ($ or .) as the 'ctx' parameter, or the only parameter" -}}
+    {{- end -}}
+  {{- end -}}
+
+  {{- $conf := (include "arkcase.subsystem.conf" $ | fromYaml) -}}
+  {{- if and $conf.external ($conf.external).enabled -}}
     {{- true -}}
   {{- end -}}
 {{- end -}}
@@ -133,7 +154,7 @@ Parameter: either the root context (i.e. "." or "$"), or
   {{- $data := $.data -}}
   {{- $global := $.global -}}
   {{- if (include "arkcase.subsystem.enabledOrExternal" $ctx) -}}
-    {{- $external := (coalesce $data.external $ctx.Values.service.external "") -}}
+    {{- $external := (not (empty (include "arkcase.subsystem.external" $ctx ))) -}}
     {{- $ports := (coalesce $data.ports list) -}}
     {{- $type := (coalesce $data.type "ClusterIP") -}}
     {{- $enableDebug := false -}}
@@ -166,45 +187,45 @@ metadata:
   name: {{ $headlessName | quote }}
   namespace: {{ $ctx.Release.Namespace | quote }}
   labels: {{- include "arkcase.labels" $ctx | nindent 4 }}
-    {{- with $ctx.Values.labels }}
-      {{- toYaml . | nindent 4 }}
-    {{- end }}
-    {{- with $data.labels }}
-      {{- toYaml . | nindent 4 }}
-    {{- end }}
-    {{- with $overrides.labels }}
-      {{- toYaml . | nindent 4 }}
-    {{- end }}
+        {{- with $ctx.Values.labels }}
+          {{- toYaml . | nindent 4 }}
+        {{- end }}
+        {{- with $data.labels }}
+          {{- toYaml . | nindent 4 }}
+        {{- end }}
+        {{- with $overrides.labels }}
+          {{- toYaml . | nindent 4 }}
+        {{- end }}
   annotations:
-    {{- with $ctx.Values.annotations }}
-      {{- toYaml . | nindent 4 }}
-    {{- end }}
-    {{- with $data.annotations }}
-      {{- toYaml . | nindent 4 }}
-    {{- end }}
-    {{- with $overrides.annotations }}
-      {{- toYaml . | nindent 4 }}
-    {{- end }}
+        {{- with $ctx.Values.annotations }}
+          {{- toYaml . | nindent 4 }}
+        {{- end }}
+        {{- with $data.annotations }}
+          {{- toYaml . | nindent 4 }}
+        {{- end }}
+        {{- with $overrides.annotations }}
+          {{- toYaml . | nindent 4 }}
+        {{- end }}
 spec:
   publishNotReadyAddresses: true
   type: "ClusterIP"
   clusterIP: "None"
   ports:
-          {{- if (empty $ports) }}
-            {{- fail (printf "There are no ports defined for the %s service" $serviceName) }}
-          {{- end }}
-          {{- $portOverrides := ($overrides.ports | default dict) -}}
-          {{- range $ports }}
+        {{- if (empty $ports) }}
+          {{- fail (printf "There are no ports defined for the %s service" $serviceName) }}
+        {{- end }}
+        {{- $portOverrides := ($overrides.ports | default dict) -}}
+        {{- range $ports }}
     - name: {{ (required "Port specifications must contain a name" .name) | quote }}
       protocol: {{ coalesce .protocol "TCP" }}
       port: {{ required (printf "Port [%s] doesn't have a port number" .name) .port }}
-            {{- if .targetPort }}
+          {{- if .targetPort }}
       targetPort: {{ int .targetPort }}
-            {{- end }}
           {{- end }}
-  selector: {{- include "arkcase.labels.matchLabels.service" $ctx | nindent 4 }}
         {{- end }}
+  selector: {{- include "arkcase.labels.matchLabels.service" $ctx | nindent 4 }}
       {{- end }}
+    {{- end }}
 ---
 apiVersion: v1
 kind: Service
@@ -233,20 +254,20 @@ metadata:
     {{- end }}
 spec:
   publishNotReadyAddresses: {{ $enableDebug }}
-    {{- if or (not $external) (include "arkcase.tools.isIp" $external) }}
-  # This is either an internal service, or an external service using an IP address
+    {{- if (not $external) }}
+  # This is an internal service
   type: {{ coalesce $type "ClusterIP" }}
-  {{- if (eq $type "LoadBalancer") }}
-    {{- with $overrides.loadBalancerClass }}
+      {{- if (eq $type "LoadBalancer") }}
+        {{- with $overrides.loadBalancerClass }}
   loadBalancerClass: {{ . | quote }}
-    {{- end }}
-    {{- with $overrides.loadBalancerIP }}
+        {{- end }}
+        {{- with $overrides.loadBalancerIP }}
   loadBalancerIP: {{ . | quote }}
-    {{- end }}
-    {{- if (hasKey $overrides "allocateNodePorts") }}
+        {{- end }}
+        {{- if (hasKey $overrides "allocateNodePorts") }}
   allocateLoadBalancerNodePorts: {{ $overrides.allocateNodePorts }}
-    {{- end }}
-  {{- end }}
+        {{- end }}
+      {{- end }}
   ports:
       {{- if (empty $ports) }}
         {{- fail (printf "There are no ports defined for the %s service" $serviceName) }}
@@ -267,57 +288,12 @@ spec:
         {{- end }}
       {{- end }}
   selector: {{- include "arkcase.labels.matchLabels.service" $ctx | nindent 4 }}
-    {{- else }}
-  # This is an external service, but using a hostname. This will cause a CNAME to
-  # be created to route service requests to the external hostname
-  type: ExternalName
-  externalName: {{ include "arkcase.tools.mustSingleHostname" $external | quote }}
     {{- end }}
-
-    {{- if and ($external) (include "arkcase.tools.isIp" $external) }}
----
-# This is an external service to an IP address. We MUST create an endpoint
-# with the same name as the service, and this will cause the Kubernetes mesh
-# to proxy connections to the given IP+ports
-apiVersion: v1
-kind: Endpoints
-metadata:
-  name: {{ include "arkcase.name" $ctx | quote }}
-  namespace: {{ $ctx.Release.Namespace | quote }}
-  labels: {{- include "arkcase.labels" $ctx | nindent 4 }}
-      {{- with $ctx.Values.labels }}
-        {{- toYaml . | nindent 4 }}
-      {{- end }}
-      {{- with $data.labels }}
-        {{- toYaml . | nindent 4 }}
-      {{- end }}
-  annotations:
-      {{- with $ctx.Values.annotations }}
-        {{- toYaml . | nindent 4 }}
-      {{- end }}
-      {{- with $data.annotations }}
-        {{- toYaml . | nindent 4 }}
-      {{- end }}
-subsets:
-  - addresses:
-      {{- if (kindIs "string" $external) }}
-        {{- $external = (splitList "," $external) }}
-      {{- end }}
-      {{- range (sortAlpha $external | uniq | compact) }}
-      - ip: {{ . }}
-      {{- end }}
-    ports:
-      {{- range $ports }}
-      - name: {{ (required "Port specifications must contain a name" .name) | quote }}
-        protocol: {{ coalesce .protocol "TCP" }}
-        port: {{ required (printf "Port [%s] doesn't have a port number" .name) .port }}
-      {{- end -}}
-    {{- end -}}
   {{- end -}}
 {{- end -}}
 
 {{- define "arkcase.subsystem.service.parseType" -}}
-  {{- $type := (kindIs "string" .) | ternary . (. | toString) | default "ClusterIP" | lower -}}
+  {{- $type := (kindIs "string" $) | ternary $ ($ | toString) | default "ClusterIP" | lower -}}
   {{- if or (eq "np" $type) (eq "nodeport" $type) -}}
     {{- $type = "NodePort" -}}
   {{- else if or (eq "lb" $type) (eq "loadbalancer" $type) -}}
@@ -325,15 +301,15 @@ subsets:
   {{- else if or (eq "def" $type) (eq "default" $type) (eq "clusterip" $type) -}}
     {{- $type = "ClusterIP" -}}
   {{- else -}}
-    {{- fail (printf "Unrecognized service type: [%s]" .) -}}
+    {{- fail (printf "Unrecognized service type: [%s]" $) -}}
   {{- end -}}
   {{- $type -}}
 {{- end -}}
 
-{{- define "arkcase.subsystem.service.global.compute" -}}
-  {{- $ctx := . }}
-  {{- if hasKey . "ctx" -}}
-    {{- $ctx = .ctx -}}
+{{- define "__arkcase.subsystem.service.global.compute" -}}
+  {{- $ctx := $ }}
+  {{- if hasKey $ "ctx" -}}
+    {{- $ctx = $.ctx -}}
   {{- end -}}
 
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
@@ -457,30 +433,13 @@ subsets:
 {{- end -}}
 
 {{- define "arkcase.subsystem.service.global" -}}
-  {{- $ctx := . -}}
-  {{- if not (include "arkcase.isRootContext" $ctx) -}}
-    {{- fail "The parameter given must be the root context (. or $)" -}}
-  {{- end -}}
-
-  {{- $cacheKey := "ArkCase-GlobalServiceOverrides" -}}
-  {{- $masterCache := dict -}}
-  {{- if (hasKey $ctx $cacheKey) -}}
-    {{- $masterCache = get $ctx $cacheKey -}}
-    {{- if and $masterCache (not (kindIs "map" $masterCache)) -}}
-      {{- $masterCache = dict -}}
-    {{- end -}}
-  {{- end -}}
-  {{- $ctx = set $ctx $cacheKey $masterCache -}}
-
-  {{- $masterKey := $ctx.Release.Name -}}
-  {{- $yamlResult := dict -}}
-  {{- if not (hasKey $masterCache $masterKey) -}}
-    {{- $yamlResult = (include "arkcase.subsystem.service.global.compute" $ctx) -}}
-    {{- $masterCache = set $masterCache $masterKey ($yamlResult | fromYaml) -}}
-  {{- else -}}
-    {{- $yamlResult = get $masterCache $masterKey | toYaml -}}
-  {{- end -}}
-  {{- $yamlResult -}}
+  {{- $ctx := $ -}}
+  {{- $args :=
+    dict
+      "ctx" $
+      "template" "__arkcase.subsystem.service.global.compute"
+  -}}
+  {{- include "__arkcase.tools.getCachedValue" $args -}}
 {{- end -}}
 
 {{- /*
@@ -502,9 +461,9 @@ Parameter: the root context (i.e. "." or "$")
     {{- fail "Incorrect context given - either submit the root context as the only parameter, or a 'ctx' parameter pointing to it" -}}
   {{- end -}}
 
-  {{- if (include "arkcase.subsystem.enabledOrExternal" $ctx) }}
+  {{- if (include "arkcase.subsystem.enabled" $ctx) }}
     {{- /* Gather the global ports */ -}}
-    {{- $service := pick $ctx.Values.service "ports" "type" "probes" "external" "canDebug" }}
+    {{- $service := pick $ctx.Values.service "ports" "type" "probes" "canDebug" }}
     {{- $ports := list }}
     {{- if $service.ports }}
       {{- if not (kindIs "slice" $service.ports) }}
@@ -513,8 +472,7 @@ Parameter: the root context (i.e. "." or "$")
       {{- $ports = $service.ports }}
     {{- end }}
 
-    {{- $parts := omit $ctx.Values.service "ports" "type" "probes" "external" "canDebug" }}
-    {{- $external := ($service.external | default "") -}}
+    {{- $parts := omit $ctx.Values.service "ports" "type" "probes" "canDebug" }}
 
     {{- /* Render the work to be performed */ -}}
     {{- $work := list }}
@@ -526,7 +484,7 @@ Parameter: the root context (i.e. "." or "$")
       {{- end }}
     {{- else }}
       {{- /* Render a global service with all the ports */ -}}
-      {{- $data := pick $service "type" "external" "canDebug" }}
+      {{- $data := pick $service "type" "canDebug" }}
       {{- range $pn, $p := $parts -}}
         {{- $ports = concat $ports $p.ports -}}
       {{- end -}}
@@ -663,16 +621,46 @@ Parameter: a dict with two keys:
              - port = the port number that the ingress will be pointed to
 */ -}}
 {{- define "arkcase.subsystem.ingressPath" -}}
-  {{- $ctx := (required "Must provide a 'ctx' parameter with the root context" .ctx) -}}
-  {{- $subsystem := (required "Must provide a 'subsystem' parameter with the name of the subsystem to render" .subsystem) -}}
-  {{- $port := (required "Must provide a 'port' parameter with the port number for the service" (int .port)) -}}
-  {{- if (include "arkcase.subsystem.enabledOrExternal" (dict "ctx" $ctx "subsystem" $subsystem)) -}}
+  {{- $ctx := ($.ctx | required "Must provide a 'ctx' parameter with the root context") -}}
+  {{- $subsys := ($.subsys | required "Must provide a 'subsystem' parameter with the name of the subsystem to render") -}}
+  {{- $port := ((int $.port) | required "Must provide a 'port' parameter with the port number for the service") -}}
+  {{- if (include "arkcase.subsystem.enabledOrExternal" (dict "ctx" $ctx "subsys" $subsys)) -}}
 - pathType: Prefix
-  path: {{ printf "/%s" $subsystem | quote }}
+  path: {{ printf "/%s" $subsys | quote }}
   backend:
     service:
-      name: {{ $subsystem | quote }}
+      name: {{ $subsys | quote }}
       port:
         number: {{ $port }}
   {{- end }}
+{{- end -}}
+
+{{- define "arkcase.subsystem.settings" -}}
+  {{- $ctx := $ -}}
+  {{- $subsys := "" -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- $ctx = $.ctx -}}
+    {{- if not (include "arkcase.isRootContext" $ctx) -}}
+      {{- fail "The root context (. or $) must be provied as either the only parameter, or the 'ctx' parameter" -}}
+    {{- end -}}
+    {{- $subsys = ($.subsys | toString | default "") -}}
+  {{- end -}}
+
+  {{- $this := (include "arkcase.subsystem.name" $ctx) -}}
+  {{- $subsys = ($subsys | default $this) -}}
+
+  {{- $global := (dig "subsys" $subsys "settings" "" ($ctx.Values.global | default dict) | default dict) -}}
+  {{- if not (kindIs "map" $global) -}}
+    {{- $global = dict -}}
+  {{- end -}}
+
+  {{- $local := dict -}}
+  {{- if (eq $this $subsys) -}}
+    {{- $local = $ctx.Values.configuration -}}
+    {{- if not (kindIs "map" $local) -}}
+      {{- $local = dict -}}
+    {{- end -}}
+  {{- end -}}
+
+  {{- merge $global $local | toYaml -}}
 {{- end -}}

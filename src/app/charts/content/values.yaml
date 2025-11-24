@@ -9,109 +9,20 @@
 # This should group all application-specific configurations
 #
 configuration:
+  # We swap the default out to "s3"
+  dialect: "s3"
 
-  # Turn indexing on or off
-  indexing: true
-
-  content:
-    dialect: "alfresco"
-
-  ingress:
-    enabled: false
-    className: haproxy
-    # hostName: my.host.name
-    # tls: my-secret-name
-
-  db:
-    dialect: "postgres"
-    hostname: "rdbms"
-    # port: ...
-    # adminUsername
-    # adminPassword
-
-    schema:
-      content:
-        database: "content"
-        # schema: "public"
-        # instance: "..."
-        username: "content"
-        password: "content"
-
-  ldap:
-    default: "arkcase"
-    arkcase: &ldapArkcase
-      domain: "dev.arkcase.com"
-      url: "ldaps://ldap:636"
-      # Base DN will be taken as relative from the root DN
-      baseDn: "ou=ArkCase"
-      bind:
-        dn: "cn=arkcase-admin,ou=Users,${baseDn}"
-        password: "$arkcase-admin$"
-      admin:
-        dn: "cn=arkcase-admin"
-        role: "cn=ARKCASE_ADMINISTRATOR"
-      search:
-        users:
-          base: "ou=Users"
-          attribute: "sAMAccountName"
-          filter: "(&(objectClass=user)(sAMAccountName={0}))"
-          allFilter: "(objectClass=user)"
-          prefix: ""
-        groups:
-          base: "ou=Groups"
-          attribute: "cn"
-          filter: "(&(objectClass=group)(cn={0}))"
-          allFilter: "(objectClass=group)"
-          membership: "(&(objectClass=group)(member={0}))"
-          ignoreCase: "false"
-          subtree: "true"
-          rolePrefix: ""
-          prefix: ""
-    foia:
-      <<: *ldapArkcase
-      baseDn: "ou=ArkCase Portal"
-      bind:
-        dn: "cn=portal-admin,ou=Users,${baseDn}"
-        password: "$portal-admin$"
-
-initDependencies:
-  enabled: true
-  mode: all
-  template:
-    # Any of the required ports are enough to succeed
-    mode: any
-    initialDelay: 10
-    delay: 10
-    timeout: 10
-    attempts: 60
-  dependencies:
-    app-artifacts:
-      ports:
-        - 443
-    acme:
-      ports:
-        - 9000
-    ldap:
-      ports:
-        - 636
-    rdbms:
-      ports:
-        # In case of SQLServer
-        - 1433
-        # In case of Oracle
-        - 1521
-        # In case of MySQL/MariaDB
-        - 3306
-        # In case of PostgreSQL
-        - 5432
+  alfresco:
+    # Turn indexing off by default
+    indexing: false
 
 resources:
   default:
     activemq: "1Gi"
-    main: "4Gi,*-2"
-    search: "2Gi,*-1"
+    main: "4Gi"
+    search: "2Gi"
     sfs: "512Mi"
-    share: "2Gi,*-2"
+    share: "2Gi"
     xform-core-aio: "1536Mi"
     xform-router: "1Gi"
 
@@ -132,7 +43,7 @@ image:
 
   minio:
     repository: "arkcase/minio"
-    tag: "20250723155402.0.0"
+    tag: "20250907161309.0.0"
 
   activemq:
     repository: "arkcase/alfresco-activemq"
@@ -160,9 +71,6 @@ image:
       tag: *alfrescoCeVersion
 
   enterprise: 
-
-    pullSecrets:
-      - name: aws-arkcase-pull
 
     registry: "207428623785.dkr.ecr.us-east-1.amazonaws.com"
 

@@ -1,4 +1,4 @@
-{{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.content.external" $)) (eq "alfresco" (include "arkcase.content.info.dialect" $)) -}}
+{{- if and (include "arkcase.subsystem.enabled" $) (eq "alfresco" (include "arkcase.content.info.dialect" $)) -}}
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -71,12 +71,13 @@ spec:
           {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
           env:
             {{- include "arkcase.acme.env" $ | nindent 12 }}
+            {{- include "arkcase.alfresco.service.env" $ | nindent 12 }}
             - name: SOLR_ALFRESCO_HOST
-              value: {{ include "arkcase.alfresco.service" (dict "ctx" $ "name" "main") | quote }}
+              value: $(SERVICE_ALFRESCO_MAIN)
             - name: SOLR_ALFRESCO_PORT
               value: "8999"
             - name: SOLR_SOLR_HOST
-              value: {{ include "arkcase.alfresco.service" (dict "ctx" $ "name" "search") | quote }}
+              value: $(SERVICE_ALFRESCO_SEARCH)
             - name: SOLR_SOLR_PORT
               value: "8983"
             - name: SOLR_CREATE_ALFRESCO_DEFAULTS
@@ -85,18 +86,18 @@ spec:
               value: &https "https"
             - name: SOLR_ALFRESCO_SECURE_COMMS
               value: *https
+            - name: SOLR_JAVA_MEM
+              value: >-
+                -XX:MinRAMPercentage=50
+                -XX:MaxRAMPercentage=80
             - name: JAVA_TOOL_OPTIONS
               value: >-
+                -Dcom.redhat.fips=false
                 -Dalfresco.secureComms=$(ALFRESCO_SECURE_COMMS)
-                -Dalfresco.host={{ include "arkcase.alfresco.service" (dict "ctx" $ "name" "main") }}
+                -Dalfresco.host=$(SOLR_ALFRESCO_HOST)
                 -Dalfresco.port.ssl=$(SOLR_ALFRESCO_PORT)
                 -Dalfresco.baseurl=/alfresco
                 -Dsolr.alfresco.secureComms=$(SOLR_ALFRESCO_SECURE_COMMS)
-                -XX:MinRAMPercentage=50
-                -XX:MaxRAMPercentage=80
-          {{- with (include "arkcase.values" (dict "ctx" $ "base" "command") | fromYaml) }}
-          command: {{ toJson .value }}
-          {{- end }}
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" $partName) | nindent 12 }}
           volumeMounts:

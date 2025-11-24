@@ -108,24 +108,19 @@ idp.xml
     {{- fail (printf "The OIDC configuration must be given as a map, not a %s: %s" (kindOf $clients) $clients) -}}
   {{- end -}}
   {{- $usersDirectory := $.usersDirectory -}}
-  {{- $baseUrl := (printf "%s/login/oauth2/code" $.baseUrl) -}}
 
   {{- $results := dict -}}
   {{- if and $clients (kindIs "map" $clients) -}}
     {{-
-      $required :=
+      $requiredCommon :=
         list 
           "authorizationUri"
           "clientId"
-          "clientSecret"
           "jwkSetUri"
-          "registrationId"
           "scope"
           "tokenUri"
           "userInfoUri"
-          "usernameAttribute"
           "responseType"
-          "responseMode"
     -}}
     {{- range $id, $client := $clients -}}
 
@@ -141,6 +136,33 @@ idp.xml
       {{- /* Allow clients to be enabled/disabled individually */ -}}
       {{- if and (hasKey $client "enabled") (not (include "arkcase.toBoolean" $client.enabled)) -}}
         {{- continue -}}
+      {{- end -}}
+
+      {{- $required := $requiredCommon -}}
+
+      {{- if eq $id "portal" -}}
+        {{- $required = concat $required (list "clientAuthentication" "logOutRedirectUri" "grantType") -}}
+
+        {{- /* Set the redirectUri to the specified value */ -}}
+        {{- $portal := (include "arkcase.portal" $.ctx | fromYaml) -}}
+        {{- $baseUrlPortal := (printf "%s://%s/%s/portal/login" $.baseUrl.scheme $.baseUrl.hostname $portal.context) -}}
+        {{- $client = set $client "redirectUri" $baseUrlPortal -}}
+
+        {{- if hasKey $client "clientAuthentication" -}}
+          {{- if eq $client.clientAuthentication "private_key_jwt" -}}
+            {{- $required = concat $required (list "privateKeyFilePath" "clientAssertionType") -}}
+          {{- else if eq $client.clientAuthentication "client_id_and_secret" -}}
+            {{- $required = append $required "clientSecret" -}}
+          {{- end -}}
+        {{- else -}}
+          {{- fail (printf "OIDC Configuration for client '%s' is missing 'clientAuthentication'" $id) -}}
+        {{- end -}}
+      {{- else -}}
+        {{- $required = concat $required (list "clientSecret" "responseMode" "usernameAttribute" "registrationId") -}}
+
+        {{- /* Set the redirectUri to the specified value */ -}}
+        {{- $baseUrlArkcase := (printf "%s/login/oauth2/code" $.baseUrl.baseUrl) -}}
+        {{- $client = set $client "redirectUri" (printf "%s/%s" $baseUrlArkcase $client.registrationId) -}}
       {{- end -}}
 
       {{- /* TODO: Is this correct? Do we want to check ALL settings? */ -}}
@@ -167,9 +189,6 @@ idp.xml
       {{- /* Set the usersDirectory to the specified value */ -}}
       {{- $client = set $client "usersDirectory" $usersDirectory -}}
 
-      {{- /* Set the redirectUri to the specified value */ -}}
-      {{- $client = set $client "redirectUri" (printf "%s/%s" $baseUrl $client.registrationId) -}}
-
       {{- /* Store the result */ -}}
       {{- $results = set $results $id $client -}}
     {{- end -}}
@@ -188,27 +207,27 @@ idp.xml
     {{- fail (printf "The OIDC configuration must be given as a map, not a %s: %s" (kindOf $oidc) $oidc) -}}
   {{- end -}}
 
+  {{- $application := $.application -}}
+
   {{- /* Set the usersDirectory for all clients to the default one ... */ -}}
-  {{- $usersDirectory := (include "arkcase.ldap" (dict "ctx" $ctx "server" "arkcase" "value" "domain") | replace "." "_") -}}
-  {{- $baseUrl := (include "arkcase.tools.conf" (dict "ctx" $ctx "value" "baseUrl")) -}}
-  {{- /* Remove any potential trailing slashes */ -}}
-  {{- $baseUrl = (regexReplaceAll "/*$" $baseUrl "") -}}
+  {{- $baseUrl := (include "arkcase.tools.parseUrl" (include "arkcase.tools.conf" (dict "ctx" $ctx "value" "baseUrl")) | fromYaml) -}}
+
 
   {{- /* The enabled flag is on by default, unless explicitly turned off */ -}}
-  {{- $clients := (include "__arkcase.core.sso.oidc.parse-clients" (dict "oidc" $oidc "usersDirectory" $usersDirectory "baseUrl" $baseUrl) | fromYaml) -}}
+  {{- $clients := (include "__arkcase.core.sso.oidc.parse-clients" (dict "oidc" $oidc "usersDirectory" $application "baseUrl" $baseUrl "ctx" $ctx) | fromYaml) -}}
 
   {{- /* We also condition the configuation on whether there are client configurations */ -}}
   {{- if not $clients -}}
     {{- fail "OIDC seems to be enabled, but no clients are enabled" -}}
   {{- end -}}
 
-  {{- /* Special consideration here: legacy mode will be enabled if we only have one client, and it's called "arkcase" */ -}}
+  {{- /* Special consideration here: legacy mode will be enabled if we only have one client, and it's called $application */ -}}
   {{- $profiles := list -}}
   {{- $legacy := false -}}
-  {{- if (and (eq 1 (len $clients)) (or (hasKey $clients "arkcase") (hasKey $clients "legacy"))) -}}
+  {{- if (and (eq 1 (len $clients)) (or (hasKey $clients $application) (hasKey $clients "legacy"))) -}}
     {{- $legacy = true -}}
-    {{- /* Ensure the single client is called "arkcase" */ -}}
-    {{- $clients = dict "arkcase" (($clients | values | first)) -}}
+    {{- /* Ensure the single client is called $application */ -}}
+    {{- $clients = dict $application (($clients | values | first)) -}}
     {{- $profiles = list "externalOidc" -}}
   {{- else -}}
     {{- $profiles = list "ldap" -}}
@@ -217,8 +236,9 @@ idp.xml
 {{- end -}}
 
 {{- define "__arkcase.core.sso.compute" -}}
-  {{- $ctx := $ -}}
-  {{- $sso := ($ctx.Values.global).sso | default dict -}}
+  {{- $ctx := $.ctx -}}
+  {{- $sso := ($.sso | default dict) -}}
+  {{- $application := $.application | required "Must provide the name of the application consuming the SSO configuration" -}}
   {{- $result := dict -}}
   {{- if $sso -}}
     {{- $enabled := or (not (hasKey $sso "enabled")) (include "arkcase.toBoolean" $sso.enabled) -}}
@@ -269,7 +289,7 @@ idp.xml
       {{- end -}}
 
       {{- /* This is the actual configuration for the chosen SSO mode */ -}}
-      {{- $conf := (include (printf "__arkcase.core.sso.compute.%s" $protocol) (dict "ctx" $ctx "conf" (get $sso $protocol)) | fromYaml) -}}
+      {{- $conf := (include (printf "__arkcase.core.sso.compute.%s" $protocol) (dict "ctx" $ctx "conf" (get $sso $protocol) "application" $application) | fromYaml) -}}
       {{- if $conf -}}
         {{- $result = dict "protocol" $protocol "conf" $conf -}}
       {{- end -}}
@@ -281,45 +301,17 @@ idp.xml
 {{- define "arkcase.core.sso" -}}
   {{- $ctx := $ -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
-    {{- fail "The parameter given must be the root context (. or $)" -}}
-  {{- end -}}
+    {{- fail "The parameter must be the root context ($ or .)" -}}
+  {{- end -}} 
 
-  {{- /* First things first: do we have any global overrides? */ -}}
-  {{- $global := $ctx.Values.global -}}
-  {{- if or (not $global) (not (kindIs "map" $global)) -}}
-    {{- $global = dict -}}
-  {{- end -}}
-
-  {{- /* Now get the local values */ -}}
-  {{- $local := $ctx.Values.configuration -}}
-  {{- if or (not $local) (not (kindIs "map" $local)) -}}
-    {{- $local = dict -}}
-  {{- end -}}
-
-  {{- /* The keys on this map are the images in the local repository */ -}}
-  {{- $chart := $ctx.Chart.Name -}}
-  {{- $data := dict "local" $local "global" $global -}}
-
-  {{- $cacheKey := "ArkCase-SSO" -}}
-  {{- $masterCache := dict -}}
-  {{- if (hasKey $ctx $cacheKey) -}}
-    {{- $masterCache = get $ctx $cacheKey -}}
-    {{- if and $masterCache (not (kindIs "map" $masterCache)) -}}
-      {{- $masterCache = dict -}}
-    {{- end -}}
-  {{- end -}}
-  {{- $ctx = set $ctx $cacheKey $masterCache -}}
-
-  {{- /* We do not use arkcase.fullname b/c we don't want to deal with partnames */ -}}
-  {{- $chartName := (include "common.fullname" $ctx) -}}
-  {{- $yamlResult := dict -}}
-  {{- if not (hasKey $masterCache $chartName) -}}
-    {{- $yamlResult = (include "__arkcase.core.sso.compute" $ctx) | fromYaml -}}
-    {{- $masterCache = set $masterCache $chartName $yamlResult -}}
-  {{- else -}}
-    {{- $yamlResult = get $masterCache $chartName -}}
-  {{- end -}}
-  {{- $yamlResult | toYaml -}}
+  {{- $args :=
+    dict
+      "ctx" $ctx
+      "template" "__arkcase.core.sso.compute"
+      "key" "arkcase"
+      "params" (dict "ctx" $ctx "sso" (($ctx.Values.global).sso) "application" "arkcase")
+  -}}
+  {{- include "__arkcase.tools.getCachedValue" $args -}}
 {{- end -}}
 
 {{- define "__arkcase.core.sso-protocol" -}}
@@ -337,4 +329,73 @@ idp.xml
 
 {{- define "arkcase.core.sso.oidc" -}}
   {{- include "__arkcase.core.sso-protocol" (dict "ctx" $ "proto" "oidc") -}}
+{{- end -}}
+
+{{- define "arkcase.core.portal.sso" -}}
+  {{- $ctx := $ -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "The parameter must be the root context ($ or .)" -}}
+  {{- end -}}
+
+  {{- $global := ($ctx.Values.global | default dict) -}}
+  {{- $portal := (hasKey $global "portal" | ternary $global.portal $global.foia | default dict) -}}
+
+  {{- $args :=
+    dict
+      "ctx" $ctx
+      "template" "__arkcase.core.sso.compute"
+      "key" "portal"
+      "params" (dict "ctx" $ctx "sso" $portal.sso "application" "portal")
+  -}}
+  {{- include "__arkcase.tools.getCachedValue" $args -}}
+{{- end -}}
+
+{{- define "__arkcase.core.portal.sso-protocol" -}}
+  {{- $sso := (include "arkcase.core.portal.sso" $.ctx | fromYaml) -}}
+  {{- if $sso -}}
+    {{- if (eq $.proto $sso.protocol) -}}
+      {{- $sso.conf | toYaml -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+
+{{- define "arkcase.core.sso.portal.saml" -}}
+  {{- include "__arkcase.core.portal.sso-protocol" (dict "ctx" $ "proto" "saml") -}}
+{{- end -}}
+
+{{- define "arkcase.core.sso.portal.oidc" -}}
+  {{- include "__arkcase.core.portal.sso-protocol" (dict "ctx" $ "proto" "oidc") -}}
+{{- end -}}
+
+{{- define "arkcase.core.sso.saml.idpMetadata.volumeMount" -}}
+  {{- $ctx := $.ctx -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "The 'ctx' parameter must be the root context ($ or .)" -}}
+  {{- end -}} 
+  {{- $mountPath := (required "Must provide a non-empty mountPath value" $.mountPath) -}}
+  {{- $saml := (include "arkcase.core.sso.saml" $ctx | fromYaml) -}}
+  {{- if ($saml).identityProviderMetadata }}
+- name: &idpMetadataSecret "saml-idp-metadata"
+  mountPath: {{ $mountPath | toString | quote }}
+  subPath: &idpMetadataKey {{ $saml.identityProviderMetadata.key | quote }}
+  readOnly: true
+  {{- end }}
+{{- end -}}
+
+{{- define "arkcase.core.sso.saml.idpMetadata.volume" -}}
+  {{- $ctx := $ -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "The parameter must be the root context ($ or .)" -}}
+  {{- end -}} 
+  {{- $saml := (include "arkcase.core.sso.saml" $ | fromYaml) -}}
+  {{- if ($saml).identityProviderMetadata }}
+- name: *idpMetadataSecret
+  secret:
+    optional: false
+    secretName: {{ $saml.identityProviderMetadata.secret | quote }}
+    defaultMode: 0444
+    items:
+      - key: *idpMetadataKey
+        path: *idpMetadataKey
+  {{- end }}
 {{- end -}}

@@ -1,0 +1,73 @@
+#!/bin/bash
+set -euo pipefail
+. /.functions
+
+#
+# First things first: enable SSL
+#
+init_ssl
+
+#
+# Now, continue with the boot
+#
+
+set_or_default BASE_DIR "/app"
+set_or_default DATA_DIR "/app/data"
+set_or_default INIT_MARKER "${DATA_DIR}/.initialized"
+
+# This is important: ${HOME_DIR} must be *ephemeral* - this flag is only meant to
+# inform when the init script ran, so we can run the post-init script in the helm chart
+set_or_default RUN_MARKER "${HOME_DIR}/.initRan"
+
+if [ -e "${INIT_MARKER}" ] ; then
+	say "Persistence is already initialized, proceeding with the normal boot"
+else
+	say "Persistence has not been initialized, proceeding with the first-time initialization"
+
+	/config-pre.sh || fail "Pre-configuration failed - the Solr initialization may not be complete"
+
+	touch "${INIT_MARKER}"
+	touch "${RUN_MARKER}"
+fi
+
+set_or_default SOLR_LOGS_DIR "${DATA_DIR}/logs"
+[ -v SOLR_LOGS_DIR ] || export SOLR_LOGS_DIR="${DATA_DIR}/logs"
+
+ensure_dir "${SOLR_LOGS_DIR}"
+
+if [ -v ZK_HOST ] ; then
+	# Validate the hostnames
+	readarray -d , -t FLAGS < <(echo -n "${ZK_HOST}")
+	say "Validating the Zookeeper settings"
+	ZK=()
+	for H in "${FLAGS[@]}" ; do
+		# Each host must be in the form hostname:port
+		[ -n "${H}" ] || continue
+		[[ "${H}" =~ ^([^:]+)(:([1-9][0-9]*))?$ ]] || fail "\tIgnoring the Zookeeper spec [${H}]: must be in the form \${hostname}:\${port}"
+
+		HOST="${BASH_REMATCH[1]}"
+		PORT="${BASH_REMATCH[3]}"
+
+		[[ "${HOST}" =~ ^([a-z0-9][-a-z0-9]*)?[a-z0-9]([.]([a-z0-9][-a-z0-9]*)?[a-z0-9])*$ ]] || fail "\tInvalid Zookeeper spec [${H}]: invalid host name [${HOST}]"
+		[ -z "${PORT}" ] && PORT="2181"
+		[ ${PORT} -le 65535 ] || fail "\tInvalid Zookeeper spec [${H}]: invalid port number ${PORT}"
+
+		say "\tAdding Zookeeper at ${HOST}:${PORT}"
+		ZK+=("${HOST}:${PORT}")
+	done
+
+	say "Setting the ZK_HOST value [${ZK_HOST}]"
+	export ZK_HOST="$(echo -n "${ZK[@]}" | tr ' ' ',')"
+
+	# Enable HTTPS on the cluster
+	say "Enabling SSL on the cluster"
+	(
+		set -euo pipefail
+		cd "${BASE_DIR}/solr"
+		exec server/scripts/cloud-scripts/zkcli.sh -zkhost "${ZK_HOST}" -cmd clusterprop -name urlScheme -val https
+	)
+	say "SSL Enabled!"
+fi
+
+set -- "${HOME_DIR}/bin/solr" start -f -cloud
+execute "${@}"

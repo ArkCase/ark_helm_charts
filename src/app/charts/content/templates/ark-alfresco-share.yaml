@@ -1,9 +1,9 @@
-{{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.content.external" $)) (eq "alfresco" (include "arkcase.content.info.dialect" $)) -}}
+{{- if and (include "arkcase.subsystem.enabled" $) (eq "alfresco" (include "arkcase.content.info.dialect" $)) -}}
 ---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ include "arkcase.fullname" $ | quote }}
+  name: &fullname {{ include "arkcase.fullname" $ | quote }}
   namespace: {{ $.Release.Namespace | quote }}
   labels: {{- include "arkcase.labels.service" $ | nindent 4 }}
     {{- with (include "arkcase.values" (dict "ctx" $ "base" "labels") | fromYaml) }}
@@ -23,7 +23,7 @@ spec:
   updateStrategy: {{- include "arkcase.cluster.statefulUpdateStrategy" $ | nindent 4 }}
   template:
     metadata:
-      name: {{ include "arkcase.fullname" $ | quote }}
+      name: *fullname
       namespace: {{ $.Release.Namespace | quote }}
       labels: {{- include "arkcase.labels.service" $ | nindent 8 }}
         {{- with (include "arkcase.values" (dict "ctx" $ "base" "labels") | fromYaml) }}
@@ -46,6 +46,7 @@ spec:
       {{- end }}
       serviceAccountName: {{ include "arkcase.serviceAccountName" $ | quote }}
       securityContext: {{- include "arkcase.securityContext" $ | nindent 8 }}
+      terminationGracePeriodSeconds: 15
       containers:
         {{- $partName := (include "arkcase.part.name" $) }}
         - name: {{ $partName | quote }}
@@ -53,14 +54,18 @@ spec:
           {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
           env:
             {{- include "arkcase.acme.env" $ | nindent 12 }}
+            {{- include "arkcase.alfresco.service.env" $ | nindent 12 }}
             - name: REPO_SCHEME
               value: "https"
             - name: REPO_HOST
-              value: {{ include "arkcase.alfresco.service" (dict "ctx" $ "name" "main") | quote }}
+              value: $(SERVICE_ALFRESCO_MAIN)
             - name: REPO_PORT
               value: "8443"
             - name: REPO_CONTEXT
               value: "alfresco"
+            - name: JAVA_TOOL_OPTIONS
+              value: >-
+                -Dcom.redhat.fips=false
             - name: CATALINA_OPTS
               value: >-
                 -XX:MinRAMPercentage=50
@@ -69,28 +74,18 @@ spec:
                 -Dalfresco.host=$(REPO_HOST)
                 -Dalfresco.port=$(REPO_PORT)
                 -Dalfresco.context=$(REPO_CONTEXT)
-          {{- with (include "arkcase.values" (dict "ctx" $ "base" "command") | fromYaml) }}
-          command: {{ toJson .value }}
-          {{- end }}
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" $partName) | nindent 12 }}
+          lifecycle:
+            preStop:
+              exec:
+                command: [ "/usr/local/tomcat/bin/catalina.sh", "stop", "-force" ]
           volumeMounts:
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
-            - name: &configMap "config-map"
-              mountPath: "/usr/local/bin/tomcat-live"
-              subPath: &tomcatLive "tomcat-live"
-              readOnly: true
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/tomcat-live") | nindent 12 }}
       volumes:
         {{- include "arkcase.acme.volume" $ | nindent 8 }}
-        - name: *configMap
-          configMap:
-            optional: false
-            name: {{ include "arkcase.fullname" $ | quote }}
-            defaultMode: 0444
-            items:
-              - key: *tomcatLive
-                path: *tomcatLive
-                mode: 0555
+        {{- include "arkcase.file-resource.volumes" $ | nindent 8 }}
       {{- with (include "arkcase.values" (dict "ctx" $ "base" "nodeSelector") | fromYaml) }}
       nodeSelector: {{- toYaml .value | nindent 8 }}
       {{- end }}

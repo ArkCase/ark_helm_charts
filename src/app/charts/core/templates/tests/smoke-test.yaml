@@ -1,5 +1,5 @@
 {{- if (include "arkcase.subsystem.enabled" $) }}
-{{- $portal := (include "arkcase.portal" $ | fromYaml) -}}
+  {{- $portal := (include "arkcase.portal" $ | fromYaml) -}}
 apiVersion: v1
 kind: Pod
 metadata:
@@ -39,10 +39,13 @@ spec:
         - name: SCRIPT
           value: |-
             set -xeuo pipefail
-            /usr/local/bin/acme-init
-            /usr/bin/curl -fsSL -m 3 -o /dev/null "https://$(SERVICE_NAME):9999/actuator/health"
-            /usr/bin/curl -fsSL -m 3 -o /dev/null "https://$(SERVICE_NAME):8443/arkcase/login"
+            . /.functions
+            init_ssl
+            curl -fsSL -m 3 -o /dev/null "https://$(SERVICE_NAME):9999/actuator/health"
+            curl -fsSL -m 3 -o /dev/null "https://$(SERVICE_NAME):8443/arkcase/login"
             {{- if $portal }}
+            curl -fsSL -m 3 -o /dev/null "https://$(SERVICE_NAME):8443/arkcase/external-portal/rest/request/authenticatedMode"
+            curl -fsSL -m 3 -o /dev/null "https://$(SERVICE_NAME):8443/$(PORTAL_CONTEXT)/"
             /usr/bin/curl -fsSL -m 3 -o /dev/null "https://$(SERVICE_NAME):8443/arkcase/external-portal/rest/request/authenticatedMode"
             /usr/bin/curl -fsSL -m 3 -o /dev/null "https://$(SERVICE_NAME):8443/$(PORTAL_CONTEXT)/"
             {{- end }}

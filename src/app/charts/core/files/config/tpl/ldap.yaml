@@ -1,0 +1,84 @@
+{{- $ldap := (include "arkcase.core.ldap" (dict "ctx" $ "server" "arkcase") | fromYaml) -}}
+springConfigLdapProperties:
+  ldapDirectoryConfig:
+    arkcase:
+      ldapUrl:
+        - "${ARKCASE_LDAP_URL}"
+      userDomain: "${ARKCASE_LDAP_DOMAIN_LOWER}"
+      authUserDn: "${ARKCASE_LDAP_REALM}\\${ARKCASE_LDAP_USERNAME}"
+      authUserPassword: "${ARKCASE_LDAP_PASSWORD}"
+      base: "${ARKCASE_LDAP_BASE_DN},${ARKCASE_LDAP_ROOT_DN_LOWER}"
+      userSearchBase: "${ARKCASE_LDAP_USER_BASE_DN}"
+      groupSearchBase: "${ARKCASE_LDAP_GROUP_BASE_DN}"
+      userPrefix: "${ARKCASE_LDAP_USER_PREFIX}"
+      groupPrefix: "${ARKCASE_LDAP_GROUP_PREFIX}"
+      userAttributes: cn,userAccountControl,sn,givenName,dn,distinguishedname,memberOf,sAMAccountName,userPrincipalName,uid,uidNumber,c,co,company,department,title,shadowMax,shadowLastChange,msDS-UserPasswordExpiryTimeComputed,modifyTimestamp,description,member
+      syncPageSize: 500
+      enableEditingLdapUsers: {{ $ldap.enableEdit }}
+      enableCreatingLdapUsers: {{ $ldap.enableCreate }}
+      directoryType: activedirectory
+      userSearchFilter: (&(objectClass=user)(sAMAccountName=%s))
+      allUsersFilter: (&(objectCategory=person)(objectClass=user)(!(userAccountControl:1.2.840.113556.1.4.803:=2)))
+      allChangedUsersFilter: (&(objectCategory=person)(objectClass=user)(!(userAccountControl:1.2.840.113556.1.4.803:=2))(modifyTimestamp>=%s))
+      allUsersPageFilter: (&(objectCategory=person)(objectClass=user)(!(userAccountControl:1.2.840.113556.1.4.803:=2))(sAMAccountName>=%s))
+      allChangedUsersPageFilter: (&(objectCategory=person)(objectClass=user)(!(userAccountControl:1.2.840.113556.1.4.803:=2))(sAMAccountName>=%s)(modifyTimestamp>=%s))
+      allUsersSortingAttribute: sAMAccountName
+      groupSearchFilterForUser: (&(objectClass=group)(member=%s))
+      userIdAttributeName: sAMAccountName
+      groupSearchFilter: (objectclass=group)
+      changedGroupSearchFilter: (&(objectclass=group)(modifyTimestamp>=%s))
+      groupSearchPageFilter: (&(objectclass=group)(cn>=%s))
+      changedGroupSearchPageFilter: (&(objectclass=group)(cn>=%s)(modifyTimestamp>=%s))
+      groupsSortingAttribute: cn
+      userControlGroup:
+      groupControlGroup:
+      syncEnabled: {{ $ldap.enableSync }}
+      autoGenerateUserId: false
+      partialSyncCron: 0 0/30 * 1/1 * ? *
+      fullSyncCron: 0 5 0 1/1 * ? *
+      ldapAddUserConfig:
+        homeDirectory: homeDirectory
+        mail: mail
+        sAMAccountName: sAMAccountName
+        unicodePwd: unicodePwd
+        givenName: givenName
+        objectClass: top,person,user,organizationalPerson
+        cn: cn
+        sn: sn
+        userPrincipalName: userPrincipalName
+        userAccountControl: 512
+      ldapAddGroupConfig:
+        sAMAccountName: sAMAccountName
+        objectClass: top,group
+        cn: cn
+  # Other common configurations
+  ldapEditUserValuesTransformation:
+    givenName: firstName
+    sn: lastName
+    mail: mail
+  ldapAddUserValuesTransformations:
+    cn: userId
+    givenName: firstName
+    sn: lastName
+    uid: userId
+    mail: mail
+    memberOf: memberOf
+    userAccountControl: userAccountControl
+    userPassword: password
+    unicodePwd: unicodePassword
+    uidNumber: uidNumber
+    gidNumber: gidNumber
+    homeDirectory: homeDirectory
+    objectClass: objectClass
+    shadowWarning: shadowWarning
+    shadowLastChange: shadowLastChange
+    shadowMax: shadowMax
+    sAMAccountName: userId
+    userPrincipalName: userPrincipalName
+  ldapAddGroupValuesTransformations:
+    cn: fullName
+    member: member
+    gidNumber: gidNumber
+    objectClass: objectClass
+    sAMAccountName: fullName
+    memberOf: memberOf

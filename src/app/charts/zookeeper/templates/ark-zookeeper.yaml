@@ -75,6 +75,7 @@ spec:
       schedulerName: {{ $.Values.schedulerName | quote }}
       {{- end }}
       securityContext: {{- include "arkcase.securityContext" $ | nindent 8 }}
+      terminationGracePeriodSeconds: 15
       initContainers:
         - name: init-set-permissions
           {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
@@ -105,57 +106,45 @@ spec:
         - name: zookeeper
           {{- include "arkcase.image" $ | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
+            {{- include "arkcase.cluster.discovery.env" (dict "ctx" $ "port" "clients") | nindent 12 }}
             - name: ZOOCFGDIR
               value: *confDir
             - name: ZOO_LOG_DIR
               value: *logsDir
+            - name: JAVA_TOOL_OPTIONS
+              value: >-
+                -Dcom.redhat.fips=false
             {{- if $.Values.env }}
             {{- $.Values.env | toYaml | nindent 12 }}
             {{- end }}
           {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
-          {{- if $.Values.command }}
-          command: {{ toJson $.Values.command }}
-          {{- else }}
           command: [ "/entrypoint" ]
-          {{- end }}
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "zookeeper") | nindent 12 }}
           volumeMounts:
-            {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
             - name: *confVol
               mountPath: *confDir
             - name: *dataVol
               mountPath: *dataDir
-            - name: &configMap "configmap"
-              mountPath: "/app/conf/zoo.cfg"
-              subPath: &zooCfg "zoo.cfg"
-              readOnly: true
-            - name: *configMap
-              mountPath: "/app/conf/logback.xml"
-              subPath: &logbackXml "logback.xml"
-              readOnly: true
+            {{- include "arkcase.subsystem-access.volumeMount" $ | nindent 12 }}
+            {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/zoo.cfg") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/logback.xml") | nindent 12 }}
       volumes:
+        - name: *confVol
+          emptyDir:
+            sizeLimit: 1Gi
+        {{- include "arkcase.subsystem-access.volume" $ | nindent 8 }}
         {{- include "arkcase.acme.volume" $ | nindent 8 }}
-        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "conf") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "logs") | nindent 8 }}
-        - name: *configMap
-          configMap:
-            name: {{ include "arkcase.fullname" $ | quote }}
-            optional: false
-            defaultMode: 0444
-            items:
-              - key: *zooCfg
-                path: *zooCfg
-              - key: *logbackXml
-                path: *logbackXml
+        {{- include "arkcase.file-resource.volumes" $ | nindent 8 }}
   volumeClaimTemplates:
-    {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "conf") | nindent 4 }}
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "data") | nindent 4 }}
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "logs") | nindent 4 }}
 
-  {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "conf") | nindent 0 }}
   {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "data") | nindent 0 }}
   {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "logs") | nindent 0 }}
 {{- end }}

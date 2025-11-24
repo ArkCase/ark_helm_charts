@@ -192,7 +192,8 @@
   {{- end -}}
 
   {{- /* With this trick we can get an actual null value */ -}}
-  {{- $null := $.Eeshae3bo6oosh3ahngiengoifah5qui5aeteitiemuRaeng1iexoom0ThooTh9yeiph3taVahj3iB7am3Tohse1eim2okaiJiemiebi6uoWeeM0aethahv2haex0OoR -}}
+  {{- $nullMap := dict -}}
+  {{- $null := $nullMap.null -}}
 
   {{- $sendProtocols := dict
     "plaintext" (list "off" 25)
@@ -290,6 +291,10 @@
     {{- end -}}
     {{- $result = set $result "port" $port -}}
   {{- end }}
+
+  {{- $v = (include "arkcase.tools.conf" (dict "ctx" $ "value" "email.receive.channel-enabled" "detailed" true) | fromYaml) -}}
+  {{- $receiverChannelEnabled := (and (not (empty $v)) (not (empty (include "arkcase.toBoolean" $v.value)))) -}}
+  {{- $result = set $result "receiver-channel-enabled" $receiverChannelEnabled -}}
 
   {{- dict "email" $result | toYaml -}}
 {{- end }}
@@ -399,28 +404,15 @@
 {{- define "arkcase.core.integrations" -}}
   {{- $ctx := $ -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
-    {{- fail "The parameter given must be the root context (. or $)" -}}
-  {{- end -}}
+    {{- fail "The parameter must be the root context ($ or .)" -}}
+  {{- end -}} 
 
-  {{- $cacheKey := "ArkCase-Core-Integrations" -}}
-  {{- $masterCache := dict -}}
-  {{- if (hasKey $ctx $cacheKey) -}}
-    {{- $masterCache = get $ctx $cacheKey -}}
-    {{- if and $masterCache (not (kindIs "map" $masterCache)) -}}
-      {{- $masterCache = dict -}}
-    {{- end -}}
-  {{- end -}}
-  {{- $ctx = set $ctx $cacheKey $masterCache -}}
-
-  {{- $masterKey := $ctx.Release.Name -}}
-  {{- $yamlResult := dict -}}
-  {{- if not (hasKey $masterCache $masterKey) -}}
-    {{- $yamlResult = (include "__arkcase.core.integrations.compute" $ctx) -}}
-    {{- $masterCache = set $masterCache $masterKey ($yamlResult | fromYaml) -}}
-  {{- else -}}
-    {{- $yamlResult = get $masterCache $masterKey | toYaml -}}
-  {{- end -}}
-  {{- $yamlResult -}}
+  {{- $args :=
+    dict
+      "ctx" $ctx
+      "template" "__arkcase.core.integrations.compute"
+  -}}
+  {{- include "__arkcase.tools.getCachedValue" $args -}}
 {{- end -}}
 
 {{- define "arkcase.core.integrations.config" -}}
@@ -447,8 +439,8 @@
   {{- $loggers = (include "arkcase.sanitizeLoggers" $loggers | fromYaml) -}}
 
   {{- /* Find the configured extra loggers */ -}}
-  {{- $extraLogs := (dig "conf" "core" "logs" dict ($ctx.Values.global | default dict)) -}}
-  {{- $extraLogs = (include "arkcase.sanitizeLoggers" $extraLogs | fromYaml) -}}
+  {{- $settings := (include "arkcase.subsystem.settings" $ctx | fromYaml) -}}
+  {{- $extraLogs := (include "arkcase.sanitizeLoggers" $settings.logs | fromYaml) -}}
 
   {{- /* The configured extra loggers override the defaults */ -}}
   {{- if $extraLogs -}}
@@ -471,45 +463,11 @@
   {{- end }}
 {{- end -}}
 
-{{- define "arkcase.core.fixGroupDomain" -}}
-  {{- $domains := $.domains -}}
-  {{- $role := $.role -}}
-  {{- $group := $.group -}}
-
-  {{- $defaultDomain := "default" -}}
-
-  {{- /* Find the domain, if any */ -}}
-  {{- $groupSpec := ($group | lower | trim) -}}
-  {{- $groupName := (regexReplaceAll "^([^@]*)(@.*)?$" $groupSpec "$1") -}}
-  {{- if not $groupName -}}
-    {{- fail (printf "Illegal group spec [%s] for role mapping [%s]" $groupSpec $role) -}}
-  {{- end -}}
-
-  {{- /* Parse out the domain. If no domain is found, use the default domain */ -}}
-  {{- $domain := (regexReplaceAll "^[^@]*(@(.*))?$" $groupSpec "$2" | default $defaultDomain) -}}
-
-  {{- /* See if it's a domain that needs replacing, and do so */ -}}
-  {{- if (hasKey $domains $domain) -}}
-    {{- $domain = get $domains $domain -}}
-  {{- else -}}
-    {{- /* It's not a known/replaceable domain ... it must be a valid RFC-1123 domain name */ -}}
-    {{- if or (not (include "arkcase.tools.isHostname" ($domain | lower))) (not (contains "." $domain)) -}}
-      {{- /* Not a valid domain and not replaceable? Use the default domain */ -}}
-      {{- $domain = get $domains $defaultDomain -}}
-    {{- end -}}
-  {{- end -}}
-
-  {{- /* This is the final group to be added to the list */ -}}
-  {{- (printf "%s@%s" $groupName $domain | upper) -}}
-{{- end -}}
-
 {{- define "arkcase.core.mergeRoles" -}}
   {{- $ctx := $.ctx -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "Must send the root context as the 'ctx' parameter" -}}
   {{- end -}}
-
-  {{- $domains := $.domains -}}
 
   {{- $finalMappings := $.base -}}
   {{- $overlay := $.overlay -}}
@@ -571,8 +529,6 @@
           {{- fail (printf "Invalid group name [%s] for role mapping [%s]" $ovlGroup $ovlRole) -}}
         {{- end -}}
 
-        {{- $g = (include "arkcase.core.fixGroupDomain" (dict "domains" $domains "role" $ovlRole "group" $g)) -}}
-
         {{- $finalGroups = ($remove | ternary (without $finalGroups $g) (append $finalGroups $g)) -}}
       {{- end -}}
 
@@ -583,25 +539,13 @@
   {{- $finalMappings | toYaml -}}
 {{- end -}}
 
-{{- define "arkcase.core.rolesToGroups.render" -}}
+{{- define "__arkcase.core.rolesToGroups.compute" -}}
   {{- $ctx := $ -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "Must send the root context as the only parameter" -}}
   {{- end -}}
 
-  {{- /* First, find the "Values.global" values */ -}}
-  {{- $global := $.Values.global -}}
-  {{- if (not (kindIs "map" $global)) -}}
-    {{- $global = dict -}}
-    {{- $crap := set $.Values "global" $global -}}
-  {{- end -}}
-
-  {{- /* Next, find the "global.conf" value */ -}}
-  {{- $conf := $global.conf -}}
-  {{- if (not (kindIs "map" $conf)) -}}
-    {{- $conf = dict -}}
-    {{- $global = set $global "conf" $conf -}}
-  {{- end -}}
+  {{- $settings := (include "arkcase.subsystem.settings" $ctx | fromYaml) -}}
 
   {{- /* Ok ... now load the role-mappings.yaml file */ -}}
   {{- $defaultMappings := (.Files.Get "role-mappings.yaml" | fromYaml) -}}
@@ -609,9 +553,7 @@
     {{- $defaultMappings = dict -}}
   {{- end -}}
 
-  {{- /* Compute the LDAP domains once */ -}}
-  {{- $domains := (include "arkcase.ldap.domains" $ctx | fromYaml) -}}
-  {{- $param := (dict "ctx" $ctx "domains" $domains) -}}
+  {{- $param := (dict "ctx" $ctx) -}}
 
   {{- /* This will be the final result map, which output as YAML can be used for the final mappings */ -}}
   {{- $result := dict -}}
@@ -636,10 +578,9 @@
 
   {{- /* Finally, find the conf.roles-to-groups entry */ -}}
   {{- $mappingsKey := "roles-to-groups" -}}
-  {{- $mappings := get $conf $mappingsKey -}}
+  {{- $mappings := get $settings $mappingsKey -}}
   {{- if (not (kindIs "map" $mappings)) -}}
     {{- $mappings = dict -}}
-    {{- $conf = set $conf $mappingsKey $mappings -}}
   {{- end -}}
 
   {{- /* If there are mappings to be applied, apply them */ -}}
@@ -655,32 +596,19 @@
 {{- define "arkcase.core.rolesToGroups" -}}
   {{- $ctx := $ -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
-    {{- fail "Must send the root context as the only parameter" -}}
-  {{- end -}}
+    {{- fail "The parameter must be the root context ($ or .)" -}}
+  {{- end -}} 
 
-  {{- $cacheKey := "ArkCase-Roles-To-Groups" -}}
-  {{- $masterCache := dict -}}
-  {{- if (hasKey $ $cacheKey) -}}
-    {{- $masterCache = get $ $cacheKey -}}
-    {{- if and $masterCache (not (kindIs "map" $masterCache)) -}}
-      {{- $masterCache = dict -}}
-    {{- end -}}
-  {{- end -}}
-  {{- $crap := set $ $cacheKey $masterCache -}}
-
-  {{- $chartName := (include "arkcase.fullname" $ctx) -}}
-  {{- if not (hasKey $masterCache $chartName) -}}
-    {{- $obj := (include "arkcase.core.rolesToGroups.render" $ctx | fromYaml) -}}
-    {{- if not $obj -}}
-      {{- $obj = dict -}}
-    {{- end -}}
-    {{- $masterCache = set $masterCache $chartName $obj -}}
-  {{- end -}}
-  {{- get $masterCache $chartName | toYaml -}}
+  {{- $args :=
+    dict
+      "ctx" $ctx
+      "template" "__arkcase.core.rolesToGroups.compute"
+  -}}
+  {{- include "__arkcase.tools.getCachedValue" $args -}}
 {{- end -}}
 
 {{- define "arkcase.core.springProfiles" -}}
-  {{- $ctx := . -}}
+  {{- $ctx := $ -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "Must send the root context as the only parameter" -}}
   {{- end -}}
@@ -705,6 +633,204 @@
   {{- if (include "arkcase.portal" $ | fromYaml) -}}
     {{- $result = prepend $result "extension-foia" -}}
   {{- end -}}
+
+  {{- $result | uniq | toYaml -}}
+{{- end -}}
+
+{{- define "arkcase.core.ldap" -}}
+  {{- $ctx := $ -}}
+  {{- $server := "default" -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- $ctx = $.ctx -}}
+    {{- if not (include "arkcase.isRootContext" $ctx) -}}
+      {{- fail "Must send the root context as the only parameter" -}}
+    {{- end -}}
+    {{- $server = ((hasKey $ "server") | ternary $.server "" | default $server) -}}
+  {{- end -}}
+
+  {{- $settings := (include "arkcase.subsystem.settings" (dict "ctx" $ctx "subsys" "ldap") | fromYaml) -}}
+  {{- $server = (dig $server "" ($settings | default dict)) -}}
+  {{- if not (kindIs "map" $server) -}}
+    {{- $server = dict -}}
+  {{- end -}}
+
+  {{- $result := dict -}}
+  {{- range $key := (list "Edit" "Create" "Sync") -}}
+    {{- $v := (include "arkcase.toBoolean" (get $server ($key | lower)) | default "true") -}}
+    {{- $result = set $result (printf "enable%s" $key) (not (empty $v)) -}}
+  {{- end -}}
+  {{- $result | toYaml -}}
+{{- end -}}
+
+{{- define "arkcase.core.extra-env.secret" -}}
+  {{- $ctx := $ -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "Must send the root context as the only parameter" -}}
+  {{- end -}}
+  {{- (printf "%s-%s-env" $ctx.Release.Name (include "arkcase.subsystem.name" $ctx)) -}}
+{{- end -}}
+
+{{- define "arkcase.core.extra-env.parseKey" -}}
+  {{- $key := ($ | toString) -}}
+  {{- /* The raw key is top-level absolute path with only one component */ -}}
+  {{- if (regexMatch "^/+[^/]+$" $key) -}}
+    {{- regexReplaceAll "^/+([^/]+)$" $key "${1}" -}}
+  {{- end -}}
+{{- end -}}
+
+{{- define "__arkcase.core.extra-env.compute" -}}
+  {{- $ctx := $ -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "Must send the root context as the only parameter" -}}
+  {{- end -}}
+
+  {{- $global := ($ctx.Values.global | default dict) -}}
+  {{- $global = ((kindIs "map" $global) | ternary $global dict) -}}
+  {{- $envConf := $global.env -}}
+  {{- $envConf = ((kindIs "map" $envConf) | ternary $global.env dict) -}}
+
+  {{- $envSecretName := (include "arkcase.core.extra-env.secret" $ctx) -}}
+
+  {{- $stringData := dict -}}
+  {{- $env := dict -}}
+  {{- $secret := dict -}}
+  {{- $configMap := dict -}}
+  {{- if $envConf -}}
+    {{- $value := $envConf.value -}}
+    {{- if and $value (kindIs "map" $value) -}}
+      {{- range $k := (keys $value | sortAlpha) -}}
+        {{- /* Do a first quick validation */ -}}
+        {{- if not (regexMatch "^[a-zA-Z0-9._-]+$" $k) -}}
+          {{- fail (printf "The key [%s] (from global.env.value.%s) is not a valid secret or configMap key" $k $k) -}}
+        {{- end -}}
+
+        {{- /* Set the defaults */ -}}
+        {{- $type := "secret" -}}
+        {{- $name := $envSecretName -}}
+        {{- $key := $k -}}
+        {{- $optional := false -}}
+
+        {{- /* Now, analyze the value */ -}}
+        {{- $v := (get $value $k) -}}
+        {{- if (kindIs "map" $v) -}}
+          {{- /* validate the map's structure */ -}}
+          {{- $enabled := (or (not (hasKey $v "enabled")) (not (empty (include "arkcase.toBoolean" $v.enabled)))) -}}
+          {{- $optional = (not (empty (include "arkcase.toBoolean" $v.optional))) -}}
+          {{- $d := dict -}}
+          {{- if and (hasKey $v "configMap") (hasKey $v "secret") -}}
+            {{- fail (printf "The map at global.env.value.%s must contain either a configMap or a secret, not both: %s" $k ($v | toYaml | nindent 0)) -}}
+          {{- else if (hasKey $v "configMap") -}}
+            {{- $type = "configMap" -}}
+            {{- $d = $v.configMap -}}
+          {{- else if (hasKey $v "secret") -}}
+            {{- $type = "secret" -}}
+            {{- $d = $v.secret -}}
+          {{- else -}}
+            {{- fail (printf "The map at global.env.value.%s must contain either a configMap or secret entry describing where to pull the secret from: %s" $k ($v | toYaml | nindent 0)) -}}
+          {{- end -}}
+
+          {{- if (not (kindIs "map" $d)) -}}
+            {{- fail (printf "The value at global.env.value.%s.%s must be a map describing where to pull the secret from" $k $type ($v | toYaml | nindent 0)) -}}
+          {{- end -}}
+
+          {{- if (not (hasKey $d "name")) -}}
+            {{- fail (printf "The value at global.env.value.%s.%s must contain the name of the %s to get the value from: %s" $k $type $type ($v | toYaml | nindent 0)) -}}
+          {{- end -}}
+          {{- $name = (include "arkcase.tools.hostnamePart" (get $d "name" | default "" | toString)) | required (printf "The name [%s] (from global.env.value.%s.%s.name) is not a valid %s name" $name $k $type $type) -}}
+
+          {{- $key = ((hasKey $d "key") | ternary (get $d "key" | default "" | toString) $key) -}}
+          {{- if not (regexMatch "^[a-zA-Z0-9._-]+$" $key) -}}
+            {{- fail (printf "The key [%s] (from global.env.value.%s.%s.key) is not a valid %s key" $key $k $type $type) -}}
+          {{- end -}}
+
+          {{- if not $enabled -}}
+            {{- /* Map is disabled, ignore it */ -}}
+            {{- continue -}}
+          {{- end -}}
+        {{- else if (kindIs "slice" $v) -}}
+          {{- fail (printf "The global.env.value.%s value may not be of type %s" $k (kindOf $v)) -}}
+        {{- else -}}
+          {{- /* Make sure we ALWAYS have a string */ -}}
+          {{- $v = ((eq $v nil) | ternary "" ($v | toString)) -}}
+
+          {{- /* If it's a secret:// or configMap:// element, parse and validate */ -}}
+          {{- if or (hasPrefix "secret://" $v) (hasPrefix "configMap://" $v) -}}
+            {{- /* Parse the shorthand */ -}}
+            {{- $data := (urlParse $v) -}}
+            {{- $type = $data.scheme -}}
+            {{- $name = (include "arkcase.tools.hostnamePart" $data.host) | required (printf "The %s name is required in the shorthand syntax: %s" $type $v) -}}
+            {{- /* If the key is not present, we use the original value */ -}}
+            {{- $key = (include "arkcase.core.extra-env.parseKey" $data.path) | default $key -}}
+            {{- if not (regexMatch "^[a-zA-Z0-9._-]+$" $key) -}}
+              {{- fail (printf "The key [%s] (from global.env.value.%s = %s) is not a valid secret or configMap key" $key $k $v) -}}
+            {{- end -}}
+          {{- else -}}
+            {{- /* Add the literal value to the target secret's data */ -}}
+            {{- $stringData = set $stringData $k $v -}}
+          {{- end -}}
+        {{- end -}}
+        {{- /* Render the valueFrom map that will go into the the container's env.XXX */ -}}
+        {{- $envVar := (printf "ARK_ENV_%s" (regexReplaceAllLiteral "[^A-Z0-9_]" ($k | snakecase | upper) "_")) -}}
+        {{- $env = set $env $envVar (dict (printf "%sKeyRef" $type) (dict "key" $key "name" $name "optional" $optional)) -}}
+      {{- end -}}
+
+      {{- /* Convert it into a list of environment variables */ -}}
+      {{- $envList := list -}}
+      {{- range $name := (keys $env | sortAlpha) -}}
+        {{- $valueFrom := (get $env $name) -}}
+        {{- $envList = append $envList (dict "name" $name "valueFrom" $valueFrom) -}}
+      {{- end -}}
+      {{- $env = $envList -}}
+    {{- end -}}
+
+    {{- $secret := $envConf.secret -}}
+    {{- if and $secret (kindIs "map" $secret) -}}
+      {{- /* TODO: render the volumeMount */ -}}
+      {{- /* TODO: render the volume */ -}}
+    {{- end -}}
+
+    {{- $configMap := $envConf.configMap -}}
+    {{- if and $configMap (kindIs "map" $configMap) -}}
+      {{- /* TODO: render the volumeMount */ -}}
+      {{- /* TODO: render the volume */ -}}
+    {{- end -}}
+  {{- end -}}
+
+  {{- (dict "env" $env "stringData" $stringData "secret" $secret "configMap" $configMap | toYaml) -}}
+{{- end -}}
+
+{{- define "arkcase.core.extra-env" -}}
+  {{- $ctx := $ -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "The parameter must be the root context ($ or .)" -}}
+  {{- end -}} 
+
+  {{- $args :=
+    dict
+      "ctx" $ctx
+      "template" "__arkcase.core.extra-env.compute"
+  -}}
+  {{- include "__arkcase.tools.getCachedValue" $args -}}
+{{- end -}}
+
+{{- define "arkcase.core.extra-env.env" -}}
+  {{- $extraEnv := (include "arkcase.core.extra-env" $ | fromYaml) -}}
+  {{- if $extraEnv.env -}}
+    {{- $extraEnv.env | toYaml -}}
+  {{- end -}}
+{{- end -}}
+
+{{- define "arkcase.portal.springProfiles" -}}
+  {{- $ctx := $ -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "Must send the root context as the only parameter" -}}
+  {{- end -}}
+
+  {{- $portalSSO := (include "arkcase.core.portal.sso" $ | fromYaml) -}}
+  {{- $result := list -}}
+  {{- if $portalSSO }}
+    {{- $result = append $result "oidc" -}}
+  {{- end }}
 
   {{- $result | uniq | toYaml -}}
 {{- end -}}

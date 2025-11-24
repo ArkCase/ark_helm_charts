@@ -1,0 +1,43 @@
+#!/bin/bash
+set -euo pipefail
+. /.functions
+
+[ -v VARS ] || VARS=""
+
+if [[ "$(declare -p VARS)" =~ "declare -a VARS" ]] ; then
+	# If it's already an array, pass it on verbatim
+	FILES=("${VARS[@]}")
+else
+	# Not an array, support splitting by commas for multiple files
+	IFS="," read -a FILES < <(echo "${VARS}") || true
+fi
+
+VARS=()
+for F in "${FILES[@]}" ; do
+	[ -n "${F}" ] || continue
+	require_file_readable "${F}"
+	case "${F,,}" in
+		*.json | *.yaml | *.yml ) ;;
+		* ) fail "Template variable files must have a .yaml/.yml or .json extension: [${F}]" ;;
+	esac
+	VARS+=(--vars-file "${F}")
+done
+
+# Ensure we have a valid value for the missing key spec
+set_or_default MISSING_KEY "zero"
+
+# Fold to lowercase
+MISSING_KEY="${MISSING_KEY,,}"
+
+# Check validity ... use default if invalid
+
+# other values for missingkey:
+#  default/invalid = Do nothing and continue execution, print "<no value>" if necessary
+#  zero = Return the "zero value" for the element
+#  error (default) = Stop execution with an error
+case "${MISSING_KEY}" in
+	default | invalid | zero | error ) ;;
+	* ) MISSING_KEY="zero" ;;
+esac
+
+exec gucci -o missingkey="${MISSING_KEY}" "${VARS[@]}"

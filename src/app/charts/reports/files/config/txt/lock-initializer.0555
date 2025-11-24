@@ -1,0 +1,80 @@
+#!/bin/bash
+set -euo pipefail
+. /.functions
+
+set_as_boolean DEBUG
+
+cleanup()
+{
+	[ -v RUN_MARKER ] || RUN_MARKER=""
+	[ -z "${RUN_MARKER}" ] || rm -rf "${RUN_MARKER}" &>/dev/null
+}
+
+usage()
+{
+	say "usage: ${BASH_SOURCE:-${0}} lock-marker initializer-process"
+}
+
+[ ${#} -ne 2 ] && usage
+
+set_or_default BASE_DIR "/app"
+set_or_default LOGS_DIR "${BASE_DIR}/logs"
+
+redirect_logs "${LOGS_DIR}/lock-initializer.log"
+
+[ -v PENTAHO_VERSION ] || fail "The PENTAHO_VERSION variable isn't set, please update your Pentaho container image"
+
+export INIT_MARKER="${1}"
+[[ "${INIT_MARKER}" =~ ^[^[:space:]]{32,}$ ]] || fail "The lock-marker parameter must not be empty, may not contain any spaces, and must be at least 32 characters long"
+read MARKER_SUM REST < <(echo -n "${INIT_MARKER}" | sha256sum)
+
+export INIT_PROCESS="${2}"
+[ -n "${INIT_PROCESS}" ] || fail "The initializer-process parameter may not be the empty string"
+
+export INIT_VERSION="${PENTAHO_VERSION}"
+
+# We have the init version include the hash for the artifacts so we don't deploy
+# the new artifacts unless we absolutely have to. This also has a side effect that
+# it avoids duplicate installation for the artifacts
+set_or_default INIT_DIR "${BASE_DIR}/init"
+set_or_default DATA_DIR "${BASE_DIR}/data"
+
+set_or_default INIT_INFO_FILE "${INIT_DIR}/.artifact-info.json"
+is_file_readable "${INIT_INFO_FILE}" && INIT_INFO="$(<"${INIT_INFO_FILE}")" || INIT_INFO=""
+[ -n "${INIT_INFO}" ] || INIT_INFO="{}"
+
+FINAL_TS="$(jq -r '.timestamp // ""' <<< "${INIT_INFO}")"
+FINAL_HASH="$(jq -r '.checksum // ""' <<< "${INIT_INFO}")"
+
+set_or_default NEW_HASH_FILE "${INIT_DIR}/.artifact-sums"
+is_file_readable "${NEW_HASH_FILE}" && NEW_HASH="$(<"${NEW_HASH_FILE}")" || NEW_HASH=""
+
+if [ -n "${NEW_HASH}" ] && [ "${FINAL_HASH}" != "${NEW_HASH}" ] ; then
+	FINAL_TS="$(date -u "+%Y%m%d%H%M%S%NZ")"
+	FINAL_HASH="${NEW_HASH}"
+fi
+
+[ -n "${FINAL_TS}" ] && INIT_VERSION+="-${FINAL_TS}"
+
+say "Version info: ${INIT_VERSION}"
+say "Process info: ${INIT_PROCESS}"
+say "Marker info:  ${#INIT_MARKER}:[${MARKER_SUM}]"
+
+export CURATOR_WRAPPER_JAR="/usr/local/bin/curator-wrapper.jar"
+export CURATOR_WRAPPER_CONF="/usr/local/etc/curator-wrapper.yaml"
+
+RC=0
+(
+	execute java -Dzookeeper.client.secure=true -jar "${CURATOR_WRAPPER_JAR}" -c "${CURATOR_WRAPPER_CONF}"
+) || RC=${?}
+
+if [ ${RC} -eq 0 ] && [ -n "${FINAL_HASH}" ] ; then
+	cat <<-EOF > "${INIT_INFO_FILE}"
+	{
+		"timestamp" : "${FINAL_TS}",
+		"checksum" : "${FINAL_HASH}"
+	}
+	EOF
+fi
+
+exit ${RC}

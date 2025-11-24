@@ -7,40 +7,43 @@
   {{- end -}}
 {{- end -}}
 
+{{- /* Output the base name, without the subcomponent name for charts with mutliple components */ -}}
+{{- define "arkcase.basename" -}}
+  {{- $ctx := $ -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "Incorrect context given - submit the root context as the only parameter" -}}
+  {{- end -}}
+
+  {{- include "common.fullname" $ctx | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
 {{- /* Output the full name, optionally supporting a subcomponent name for charts with mutliple components */ -}}
 {{- define "arkcase.fullname" -}}
-  {{- $partname := (include "arkcase.part.name" .) -}}
-  {{- $ctx := . -}}
-
-  {{- if (hasKey $ctx "ctx") -}}
-    {{- $ctx = .ctx -}}
-  {{- end -}}
-
+  {{- $ctx := (hasKey $ "ctx" | ternary $.ctx $) -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
-    {{- fail "Incorrect context given - either submit the root context as the only parameter, or a 'ctx' parameter pointing to it" -}}
+    {{- fail "Incorrect context given - submit the root context as either the only parameter, or the 'ctx' parameter" -}}
   {{- end -}}
 
-  {{- $fullname := (include "common.fullname" $ctx) -}}
+  {{- $fullname := (include "arkcase.basename" $ctx) -}}
+
+  {{- $partname := (include "arkcase.part.name" $ctx) -}}
   {{- if $partname -}}
     {{- $fullname = (printf "%s-%s" $fullname $partname) -}}
   {{- end -}}
+
   {{- $fullname | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 
 {{- /* Output the short name, optionally supporting a subcomponent name for charts with mutliple components */ -}}
 {{- define "arkcase.name" -}}
-  {{- $partname := (include "arkcase.part.name" .) -}}
-  {{- $ctx := . -}}
-
-  {{- if (hasKey $ctx "ctx") -}}
-    {{- $ctx = .ctx -}}
-  {{- end -}}
-
+  {{- $ctx := $ -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
-    {{- fail "Incorrect context given - either submit the root context as the only parameter, or a 'ctx' parameter pointing to it" -}}
+    {{- fail "Incorrect context given - submit the root context as the only parameter" -}}
   {{- end -}}
 
   {{- $name := (include "common.name" $ctx) -}}
+
+  {{- $partname := (include "arkcase.part.name" $ctx) -}}
   {{- if $partname -}}
     {{- $name = (printf "%s-%s" $name $partname) -}}
   {{- end -}}
@@ -55,8 +58,8 @@
 {{- end -}}
 
 {{- define "arkcase.labels.service" -}}
-{{ include "arkcase.labels.workload" $ }}
 {{ include "arkcase.labels.standard" $ }}
+{{ include "arkcase.labels.workload" $ }}
 app.kubernetes.io/service-support: "true"
 {{- end -}}
 
@@ -640,6 +643,8 @@ Check to see if the "enabled" value is set to "true", or is not set (which cause
 Create the environment variables to facilitate detecting the Pod's IP, name, namespace, and host IP
 */ -}}
 {{- define "arkcase.tools.baseEnv" -}}
+- name: RELEASE_NAME
+  value: {{ $.Release.Name | quote }}
 - name: POD_NAME
   valueFrom:
     fieldRef:
@@ -656,6 +661,8 @@ Create the environment variables to facilitate detecting the Pod's IP, name, nam
   valueFrom:
     fieldRef:
       fieldPath: status.hostIP
+- name: SUBSYS_CURRENT
+  value: {{ include "arkcase.subsystem.name" $ | quote }}
 {{- end -}}
 
 {{- /*
@@ -705,26 +712,6 @@ return either the value if correct, or the empty string if not.
   {{- $result -}}
 {{- end -}}
 
-{{- define "arkcase.tools.conf.isGlobal" -}}
-  {{- $var := . -}}
-  {{- if and $var (not (kindIs "string" $var)) -}}
-    {{- $var = (toString $var) -}}
-  {{- else if not $var -}}
-    {{- $var = "" -}}
-  {{- end -}}
-  {{- (hasPrefix "Values.global.conf." (include "arkcase.tools.normalizeDots" $var)) | ternary "true" "" -}}
-{{- end -}}
-
-{{- define "arkcase.tools.conf.isLocal" -}}
-  {{- $var := . -}}
-  {{- if and $var (not (kindIs "string" $var)) -}}
-    {{- $var = (toString $var) -}}
-  {{- else if not $var -}}
-    {{- $var = "" -}}
-  {{- end -}}
-  {{- (hasPrefix "Values.configuration." (include "arkcase.tools.normalizeDots" $var)) | ternary "true" "" -}}
-{{- end -}}
-
 {{- define "arkcase.tools.global" -}}
   {{- $ctx := .ctx -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
@@ -751,7 +738,7 @@ return either the value if correct, or the empty string if not.
 
   {{- $result := (include "arkcase.tools.get" (dict "ctx" $ctx "name" (printf "Values.global.%s" $value)) | fromYaml) -}}
   {{- if $debug -}}
-    {{- fail (dict "result" $result "global" (dict "conf" ($ctx.Values.global | default dict)) | toYaml | nindent 0) -}}
+    {{- fail (dict "result" $result "global" ($ctx.Values.global | default dict) | toYaml | nindent 0) -}}
   {{- end -}}
   {{- if .detailed -}}
     {{- $result | toYaml -}}
@@ -777,6 +764,7 @@ return either the value if correct, or the empty string if not.
   {{- else if not $value -}}
     {{- $value = "" -}}
   {{- end -}}
+  {{- $value = (include "arkcase.tools.normalizeDots" $value) -}}
 
   {{- $prefix := (.prefix | default "") -}}
   {{- if and $prefix (kindIs "string" $prefix) -}}
@@ -790,16 +778,17 @@ return either the value if correct, or the empty string if not.
 
   {{- $result := dict -}}
   {{- $searched := list -}}
-  {{- range (list (printf "global.conf.%s" $ctx.Chart.Name) "global.conf" "configuration") -}}
-    {{- if not $result -}}
-      {{- $key := (empty $value) | ternary . (printf "%s.%s" . $value ) -}}
-      {{- if $debug -}}
-        {{- $searched = append $searched (printf "Values.%s" $key) -}}
-      {{- end -}}
-      {{- $r := (include "arkcase.tools.get" (dict "ctx" $ctx "name" (printf "Values.%s" $key)) | fromYaml) -}}
-      {{- if and $r $r.found -}}
-        {{- $result = set $r "global" (hasPrefix "global.conf" $key) -}}
-      {{- end -}}
+  {{- $subsys := (include "arkcase.subsystem.name" $ctx) -}}
+  {{- range $base := (list (printf "global.subsys.%s.settings" $subsys) "global.settings" "configuration") -}}
+    {{- /* Compose the correct value */ -}}
+    {{- $key := (empty $value) | ternary $base (printf "%s.%s" $base $value ) -}}
+    {{- if $debug -}}
+      {{- $searched = append $searched (printf "Values.%s" $key) -}}
+    {{- end -}}
+    {{- $r := (include "arkcase.tools.get" (dict "ctx" $ctx "name" (printf "Values.%s" $key)) | fromYaml) -}}
+    {{- if and $r $r.found -}}
+      {{- $result = set $r "global" (hasPrefix "global." $key) -}}
+      {{- break -}}
     {{- end -}}
   {{- end -}}
   {{- range (list "found" "global") -}}
@@ -808,7 +797,7 @@ return either the value if correct, or the empty string if not.
     {{- end -}}
   {{- end -}}
   {{- if $debug -}}
-    {{- fail (dict "result" $result "searched" $searched "global" (dict "conf" (($ctx.Values.global).conf | default dict)) "configuration" ($ctx.Values.configuration | default dict) | toYaml | nindent 0) -}}
+    {{- fail (dict "result" $result "searched" $searched "global" ($ctx.Values.global | default dict) "configuration" ($ctx.Values.configuration | default dict) | toYaml | nindent 0) -}}
   {{- end -}}
   {{- if .detailed -}}
     {{- $result | toYaml -}}
@@ -930,7 +919,7 @@ return either the value if correct, or the empty string if not.
   {{- $finalLogs | toYaml -}}
 {{- end -}}
 
-{{- define "arkcase.dev.compute-debug" -}}
+{{- define "__arkcase.dev.compute-debug" -}}
   {{- $debug := $ -}}
   {{- $result := dict -}}
   {{- if and $debug (kindIs "map" $debug) -}}
@@ -941,7 +930,7 @@ return either the value if correct, or the empty string if not.
   {{- $result | toYaml -}}
 {{- end -}}
 
-{{- define "arkcase.dev.compute" -}}
+{{- define "__arkcase.dev.compute" -}}
   {{- $ctx := . -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "The parameter must be the root context (. or $)" -}}
@@ -1037,7 +1026,7 @@ return either the value if correct, or the empty string if not.
           {{- range $part := (list "arkcase" "cloudconfig") -}}
             {{- $partConf := (dict "enabled" true "suspend" "n") -}}
             {{- if (hasKey $debugSrc $part) -}}
-              {{- $partConf = (include "arkcase.dev.compute-debug" (get $debugSrc $part) | fromYaml) -}}
+              {{- $partConf = (include "__arkcase.dev.compute-debug" (get $debugSrc $part) | fromYaml) -}}
             {{- end -}}
             {{- $debug = set $debug $part $partConf -}}
           {{- end -}}
@@ -1055,25 +1044,16 @@ return either the value if correct, or the empty string if not.
 {{- end -}}
 
 {{- define "arkcase.dev" -}}
-  {{- $ctx := . -}}
-  {{- if not (include "arkcase.isRootContext" $ctx) -}}
-    {{- fail "The parameter must be the root context (. or $)" -}}
-  {{- end -}}
-
-  {{- $cacheKey := "ArkCase-DevelopmentMode" -}}
-  {{- $masterCache := dict -}}
-  {{- $result := dict -}}
-  {{- if (hasKey $ctx $cacheKey) -}}
-    {{- $result = (get $ctx $cacheKey | toYaml) -}}
-  {{- else -}}
-    {{- $result = (include "arkcase.dev.compute" $ctx) -}}
-    {{- $ctx = set $ctx $cacheKey ($result | fromYaml) -}}
-  {{- end -}}
-  {{- $result -}}
+  {{- $args :=
+    dict
+      "ctx" $
+      "template" "__arkcase.dev.compute"
+  -}}
+  {{- include "__arkcase.tools.getCachedValue" $args -}}
 {{- end -}}
 
-{{- define "arkcase.enterprise.compute" -}}
-  {{- $ctx := . -}}
+{{- define "__arkcase.enterprise.compute" -}}
+  {{- $ctx := $ -}}
 
   {{- /* For now, default to the community edition */ -}}
   {{- $enterprise := false -}}
@@ -1081,6 +1061,7 @@ return either the value if correct, or the empty string if not.
   {{- $global := ($ctx.Values.global | default dict) -}}
   {{- $globalSet := hasKey $global "enterprise" -}}
 
+  {{- $license := "" -}}
   {{- if $globalSet -}}
     {{- $enterprise = $global.enterprise -}}
   {{- else -}}
@@ -1097,11 +1078,11 @@ return either the value if correct, or the empty string if not.
         {{- $licenseNames = (keys $licenseNames | sortAlpha) -}}
       {{- end -}}
       {{- range $l := $licenseNames -}}
-        {{- if not $enterprise -}}
-          {{- $l = ($l | toString) -}}
-          {{- if and $l (hasKey $licenseValues $l) (get $licenseValues $l) -}}
-            {{- $enterprise = true -}}
-          {{- end -}}
+        {{- $l = ($l | toString) -}}
+        {{- if and $l (hasKey $licenseValues $l) (get $licenseValues $l) -}}
+          {{- $enterprise = true -}}
+          {{- $license = $l -}}
+          {{- break -}}
         {{- end -}}
       {{- end -}}
     {{- end -}}
@@ -1111,34 +1092,17 @@ return either the value if correct, or the empty string if not.
   {{- $enterprise = (kindIs "bool" $enterprise) | ternary $enterprise (eq "true" ($enterprise | toString | lower)) -}}
 
   {{- /* Output the result */ -}}
-  {{- $enterprise | ternary "true" "" -}}
+  {{- $enterprise | ternary (dict "enterprise" true "license" $license) dict | toYaml -}}
 {{- end -}}
 
 {{- define "arkcase.enterprise" -}}
-  {{- $ctx := . -}}
-  {{- if not (include "arkcase.isRootContext" $ctx) -}}
-    {{- fail "The parameter must be the root context (. or $)" -}}
-  {{- end -}}
-
-  {{- $cacheKey := "ArkCase-EnterpriseMode" -}}
-  {{- $masterCache := dict -}}
-  {{- if (hasKey $ctx $cacheKey) -}}
-    {{- $masterCache = get $ctx $cacheKey -}}
-    {{- if and $masterCache (not (kindIs "map" $masterCache)) -}}
-      {{- $masterCache = dict -}}
-    {{- end -}}
-  {{- end -}}
-  {{- $ctx = set $ctx $cacheKey $masterCache -}}
-
-  {{- $cacheKey = (include "common.fullname" $ctx) -}}
-  {{- $result := "" -}}
-  {{- if not (hasKey $masterCache $cacheKey) -}}
-    {{- $result = (include "arkcase.enterprise.compute" $ctx) -}}
-    {{- $masterCache = set $masterCache $cacheKey $result -}}
-  {{- else -}}
-    {{- $result = get $masterCache $cacheKey -}}
-  {{- end -}}
-  {{- $result -}}
+  {{- $args :=
+    dict
+      "ctx" $
+      "template" "__arkcase.enterprise.compute"
+  -}}
+  {{- $result := (include "__arkcase.tools.getCachedValue" $args | fromYaml) -}}
+  {{- (not (empty $result)) | ternary "true" "" -}}
 {{- end -}}
 
 {{- define "arkcase.xmlUnescape" -}}
@@ -1165,6 +1129,49 @@ return either the value if correct, or the empty string if not.
   -}}
 {{- end -}}
 
+{{- define "__arkcase.get-existing" -}}
+  {{- $ctx := $.ctx -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "Must provide the root context as the 'ctx' parameter" -}}
+  {{- end -}}
+
+  {{- $resource := ($.secret | ternary "Secret" "ConfigMap") -}}
+
+  {{- $name := $.name -}}
+  {{- if not (include "arkcase.tools.hostnamePart" $name) -}}
+    {{- fail (printf "The %s name [%s] is not valid" $resource $name) -}}
+  {{- end -}}
+
+  {{- $result := dict -}}
+  {{- if or $ctx.Release.IsUpgrade (not (empty (include "arkcase.toBoolean" $.always))) -}}
+    {{- $obj := (lookup "v1" "Secret" $ctx.Release.Namespace $name) -}}
+    {{- if $obj -}}
+      {{- /* It's OK to pick "binaryData" here ... Secrets don't have it */ -}}
+      {{- $result = (merge dict (pick $obj "data" "binaryData")) -}}
+      {{- if not $result.data -}}
+        {{- $result = omit $result "data" -}}
+      {{- end -}}
+      {{- if not $result.binaryData -}}
+        {{- $result = omit $result "binaryData" -}}
+      {{- end -}}
+
+      {{- /* Decode the secret values */ -}}
+      {{- if and $.secret $result.data -}}
+        {{- $result = set $result "data" (include "arkcase.secret.decode" $result.data | fromYaml) -}}
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
+  {{- $result | toYaml -}}
+{{- end -}}
+
+{{- define "arkcase.get-existing.secret" -}}
+  {{- include "__arkcase.get-existing" (merge (dict "secret" true) $) -}}
+{{- end -}}
+
+{{- define "arkcase.get-existing.config" -}}
+  {{- include "__arkcase.get-existing" (merge (dict "secret" false) $) -}}
+{{- end -}}
+
 {{- define "arkcase.license" -}}
   {{- $ctx := $.ctx -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
@@ -1183,6 +1190,55 @@ return either the value if correct, or the empty string if not.
   {{- end -}}
   {{- if hasKey $licenses $name -}}
     {{- $result = dict "data" (get $licenses $name) -}}
+  {{- end -}}
+  {{- $result | toYaml -}}
+{{- end -}}
+
+{{- define "__arkcase.tools.getCachedValue" -}}
+  {{- $ctx := $.ctx -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "The root context (. or $) must be given as the 'ctx' parameter" -}}
+  {{- end -}}
+
+  {{- $template := $.template -}}
+  {{- $params := $.params | default $ctx -}}
+
+  {{- $masterCache := dict -}}
+  {{- if (hasKey $ctx $template) -}}
+    {{- $masterCache = get $ctx $template -}}
+    {{- if and $masterCache (not (kindIs "map" $masterCache)) -}}
+      {{- $masterCache = dict -}}
+    {{- end -}}
+  {{- end -}}
+  {{- $ctx = set $ctx $template $masterCache -}}
+
+  {{- /* We do not use arkcase.fullname b/c we don't want to deal with partnames */ -}}
+  {{- $key := ($.key | default (include "common.fullname" $ctx)) -}}
+  {{- $yamlResult := dict -}}
+  {{- if not (hasKey $masterCache $key) -}}
+    {{- $yamlResult = (include $template $params) -}}
+    {{- $masterCache = set $masterCache $key ($yamlResult | fromYaml | default dict) -}}
+  {{- else -}}
+    {{- $yamlResult = get $masterCache $key | toYaml -}}
+  {{- end -}}
+  {{- if $.debug -}}
+    {{- fail (dict "$" (omit $ "ctx") "$key" $key "result" ($yamlResult | fromYaml) "masterCache" $masterCache | toYaml | nindent 0) -}}
+  {{- end -}}
+  {{- $yamlResult -}}
+{{- end -}}
+
+{{- define "arkcase.secret.encode" -}}
+  {{- $result := dict -}}
+  {{- range $k, $v := $ -}}
+    {{- $result = set $result $k ($v | toString | b64enc) -}}
+  {{- end -}}
+  {{- $result | toYaml -}}
+{{- end -}}
+
+{{- define "arkcase.secret.decode" -}}
+  {{- $result := dict -}}
+  {{- range $k, $v := $ -}}
+    {{- $result = set $result $k ($v | toString | b64dec) -}}
   {{- end -}}
   {{- $result | toYaml -}}
 {{- end -}}

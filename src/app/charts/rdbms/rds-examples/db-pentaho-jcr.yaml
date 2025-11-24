@@ -1,0 +1,34 @@
+apiVersion: mysql.sql.crossplane.io/v1alpha1
+kind: Database
+metadata:
+  name: arkcase-rdbms-pentaho-jcr
+spec:
+  forProvider: {}
+  providerConfigRef:
+    name: arkcase-rdbms
+---
+apiVersion: mysql.sql.crossplane.io/v1alpha1
+kind: User
+metadata:
+  name: arkcase-rdbms-pentaho-jcr
+spec:
+  forProvider: {}
+  providerConfigRef:
+    name: arkcase-rdbms
+  writeConnectionSecretToRef:
+    name: arkcase-rdbms-cred-schema-pentaho-jcr
+---
+apiVersion: mysql.sql.crossplane.io/v1alpha1
+kind: Grant
+metadata:
+  name: arkcase-rdbms-pentaho-jcr
+spec:
+  forProvider:
+    privileges:
+      - ALL
+    userRef:
+      name: arkcase-rdbms-pentaho-jcr
+    databaseRef:
+      name: arkcase-rdbms-pentaho-jcr
+  providerConfigRef:
+    name: arkcase-rdbms

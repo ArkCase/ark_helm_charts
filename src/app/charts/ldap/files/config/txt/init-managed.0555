@@ -1,0 +1,206 @@
+#!/bin/bash
+
+set -euo pipefail
+. /.functions
+
+set_as_boolean DEBUG_MANAGED
+
+execute()
+{
+	#
+	# Show the command about to be executed
+	#
+	if "${DEBUG_MANAGED}" ; then
+		say "👀 ${@@Q}"
+		return 0
+	fi
+
+	#
+	# Proceed with the execution
+	#
+	# say "🚀 ${@}"
+	( exec "${@}" )
+	return ${?}
+}
+
+sort_results()
+{
+	sort -u | sed -e '/^\s*$/d'
+}
+
+list_sorted()
+{
+	for n in "${@}" ; do
+		echo "${n}"
+	done | sort_results
+}
+
+list_accounts()
+{
+	for VAR in "${!MANAGED_@}" ; do
+		[[ "${VAR}" =~ ^MANAGED_([A-Z0-9_]+)_USERNAME$ ]] || continue
+		echo "${BASH_REMATCH[1]}"
+	done | sort_results
+}
+
+list_groups()
+{
+	local ACCOUNT="${1}"
+	local GROUPS_VAR="MANAGED_${ACCOUNT}_GROUPS"
+	[ -v "${GROUPS_VAR}" ] || return 0
+	echo -n "${!GROUPS_VAR}" | tr ',' '\n' | sort_results
+}
+
+samba_tool()
+{
+	execute samba-tool "${@}"
+}
+
+# Used all over
+RC=0
+
+[ -v MANAGED_ROOT_DN ] || fail "Must provide the root DN to use for the LDAP tree"
+[ -n "${MANAGED_ROOT_DN}" ] || fail "The value for MANAGED_ROOT_DN may not be the empty string"
+
+[ -v MANAGED_BASE_DN ] || MANAGED_BASE_DN=""
+
+USER_OU_FLAGS=()
+[ -v MANAGED_USERS_OU ] || MANAGED_USERS_OU=""
+if [ -n "${MANAGED_USERS_OU}" ] ; then
+	[ -n "${MANAGED_BASE_DN}" ] && MANAGED_USERS_OU+=",${MANAGED_BASE_DN}"
+else
+	MANAGED_USERS_OU="${MANAGED_BASE_DN}"
+fi
+
+if [ -n "${MANAGED_USERS_OU}" ] ; then
+	FULL_OU="${MANAGED_USERS_OU},${MANAGED_ROOT_DN}"
+	OUT="$(samba_tool ou listobjects "${FULL_OU}" 2>&1)" || warn "The managed users' OU [${FULL_OU}] was not found. This may cause problems if there's a need to create users"
+
+	ok "Any missing users will be created at [${FULL_OU}]"
+	USER_OU_FLAGS+=(--userou="${MANAGED_USERS_OU}")
+fi
+
+GROUP_OU_FLAGS=()
+[ -v MANAGED_GROUPS_OU ] || MANAGED_GROUPS_OU=""
+if [ -n "${MANAGED_GROUPS_OU}" ] ; then
+	[ -n "${MANAGED_BASE_DN}" ] && MANAGED_GROUPS_OU+=",${MANAGED_BASE_DN}"
+else
+	MANAGED_GROUPS_OU="${MANAGED_BASE_DN}"
+fi
+
+if [ -n "${MANAGED_GROUPS_OU}" ] ; then
+	FULL_OU="${MANAGED_GROUPS_OU},${MANAGED_ROOT_DN}"
+	OUT="$(samba_tool ou listobjects "${FULL_OU}" 2>&1)" || warn "The managed groups' OU [${FULL_OU}] was not found. This may cause problems if there's a need to create groups"
+
+	ok "Any missing groups will be created at [${FULL_OU}]"
+	GROUP_OU_FLAGS+=(--groupou="${MANAGED_GROUPS_OU}")
+fi
+
+declare -A GROUP_MEMBERSHIPS=()
+
+doing "Setting up the managed accounts..."
+while read ACCOUNT ; do
+	USERNAME_VAR="MANAGED_${ACCOUNT}_USERNAME"
+	PASSWORD_VAR="MANAGED_${ACCOUNT}_PASSWORD"
+
+	USERNAME="${!USERNAME_VAR}"
+	[ -n "${USERNAME}" ] || { warn "The username for the managed account ${ACCOUNT} was empty, skipping it" ; continue ; }
+
+	PASSWORD="${!PASSWORD_VAR}"
+	[ -n "${PASSWORD}" ] || { warn "The password for the managed account ${ACCOUNT} was empty, skipping it" ; continue ; }
+	read PASSWORD_SUM REST < <(echo -n "${PASSWORD}" | sha256sum)
+
+	#
+	# Does the user exist? If not, create them!
+	#
+	RC=0
+	OUT="$(samba_tool user show "${USERNAME}" 2>&1)" || RC=${?}
+	if [ ${RC} -ne 0 ] ; then
+		warn "The user account [${USERNAME}] does not exist (${OUT}), will try to create it"
+		ACC="${ACCOUNT//_/ }"
+		samba_tool user add "${USERNAME}" \
+			--random-password \
+			"${USER_OU_FLAGS[@]}" \
+			--given-name="${ACC}" \
+			--surname="Service Account" \
+			--description="Service account for ${ACC}" \
+			--use-username-as-cn || fail "Failed to create the user account [${USERNAME}]"
+		ok "User account created!"
+	fi
+
+	#
+	# The user now exists, set the account password
+	#
+	doing "Enabling the ${ACCOUNT} account"
+	samba_tool user enable "${USERNAME}" || fail "Failed to enable the account ${ACCOUNT}"
+	ok "Account enabled!"
+
+	doing "Setting the password for the ${ACCOUNT} account"
+	samba_tool user setpassword "${USERNAME}" --newpassword="${PASSWORD}" || fail "Failed to set the new password for the account ${ACCOUNT}: [${USERNAME}]/[sha256:${PASSWORD_SUM}]"
+	ok "Password set for ${USERNAME} (sha256:${PASSWORD_SUM})!"
+
+	doing "Removing the password expiration for the ${ACCOUNT} account"
+	samba_tool user setexpiry "${USERNAME}" --noexpiry || fail "Failed to remove the password expiration for the account ${ACCOUNT}"
+	ok "Expiration removed!"
+
+	#
+	# Track the group memberships
+	#
+	while read GROUP ; do
+		[ -v GROUP_MEMBERSHIPS[${GROUP}] ] || GROUP_MEMBERSHIPS[${GROUP}]=""
+		CURRENT="${GROUP_MEMBERSHIPS[${GROUP}]}"
+		[ -z "${CURRENT}" ] || CURRENT+=","
+		CURRENT+="${USERNAME}"
+		GROUP_MEMBERSHIPS[${GROUP}]="${CURRENT}"
+	done < <(list_groups "${ACCOUNT}")
+done < <(list_accounts)
+
+#
+# Apply group memberships, if applicable
+#
+if [ ${#GROUP_MEMBERSHIPS[@]} -gt 0 ] ; then
+	doing "Applying group memberships..."
+	EXISTS_STR="Attribute member already exists for target"
+	while read GROUP ; do
+		RC=0
+		OUT="$(samba_tool group show "${GROUP}" 2>&1)" || RC=${?}
+		if [ ${RC} -ne 0 ] ; then
+			warn "The group [${GROUP}] does not exist (${OUT}), will try to create it"
+			samba_tool group add "${GROUP}" \
+				"${GROUP_OU_FLAGS[@]}" || fail "Failed to create the group [${GROUP}]"
+			ok "Group created!"
+		fi
+
+		IFS="," read -a MEMBERS <<< "${GROUP_MEMBERSHIPS[${GROUP}]}" || true
+		read -a MEMBERS < <(list_sorted "${MEMBERS[@]}")
+
+		doing "Adding these group members to the ${GROUP} group: [${MEMBERS}]"
+		RC=0
+		OUT="$(samba_tool group addmembers "${GROUP}" "${MEMBERS}" 2>&1)" || RC=${?}
+		if [ ${RC} -eq 0 ] ; then
+			ok "Members added!"
+		elif [[ "${OUT}" =~ ^.*${EXISTS_STR}.*$ ]] ; then
+			warn "Some of the members are already in the group!"
+		else
+			err "Failed to add the members to the group (rc=${RC}): ${OUT}"
+		fi
+	done < <(list_sorted "${!GROUP_MEMBERSHIPS[@]}")
+fi
+
+#
+# Finally, apply admin permissions as needed, based on the
+# managed seeds files
+#
+
+set_or_default BASE_DIR "/app"
+set_or_default SEED_DIR "${BASE_DIR}/seeds"
+
+is_dir_readable "${SEED_DIR}" || fail "The seed file directory [${SEED_DIR}] was not found"
+SEED_DIR="$(readlink -f "${SEED_DIR}")" || fail "Failed to resolve the real path for the seed dir (rc=${?})"
+
+doing "Applying managed seeds..."
+while read FILE ; do
+    doing "Applying managed seeds based on the data from [${FILE}]..."
+    init-seeds "${FILE}" || fail "Failed to apply the managed seeds from [${FILE}]"
+done < <(find "${SEED_DIR}" -type f -name 'managed-*.yaml' | sort -u)
+ok "Managed seeds applied!"

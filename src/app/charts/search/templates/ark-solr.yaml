@@ -76,6 +76,7 @@ spec:
       schedulerName: {{ $.Values.schedulerName | quote }}
       {{- end }}
       securityContext: {{- include "arkcase.securityContext" $ | nindent 8 }}
+      terminationGracePeriodSeconds: 15
       initContainers:
         - name: init-set-permissions
           {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
@@ -102,15 +103,19 @@ spec:
         - name: solr
           {{- include "arkcase.image" $ | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            {{- include "arkcase.cluster.env" $ | nindent 12 }}
+            {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
-            {{- include "arkcase.cluster.zookeeper" $ | nindent 12 }}
             - name: NODES
               value: {{ $nodes | toString | quote }}
+            - name: JAVA_TOOL_OPTIONS
+              value: >-
+                -Dcom.redhat.fips=false
             - name: SOLR_OPTS
+              value: >-
+                -Dsolr.autoSoftCommit.maxTime=1000
             {{- if $cluster.enabled }}
-              value: "-Dsolr.autoSoftCommit.maxTime=1000 -Dzookeeper.client.secure=true"
-            {{- else }}
-              value: "-Dsolr.autoSoftCommit.maxTime=1000"
+                -Dzookeeper.client.secure=true
             {{- end }}
             - name: DATA_DIR
               value: *dataDir
@@ -118,6 +123,8 @@ spec:
               value: "$(DATA_DIR)/solr"
             - name: SOLR_SERVER
               value: "$(SOLR_HOME)/server"
+            - name: SOLR_JAVA_MEM
+              value: "-XX:MinRAMPercentage=50.0 -XX:MaxRAMPercentage=80.0"
             - name: SOLR_CORES
               value: "acmAdvancedSearch=arkcase,acmQuickSearch=arkcase"
             - name: SOLR_JAVA_MEM
@@ -126,78 +133,38 @@ spec:
               {{- $.Values.env | toYaml | nindent 12 }}
             {{- end }}
           {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
-          {{- if $.Values.command }}
-          command: {{ toJson $.Values.command }}
-          {{- else }}
           command: [ "/entrypoint" ]
-          {{- end }}
           lifecycle:
             postStart:
               exec:
                 command: [ "/config-post.sh" ]
+            preStop:
+              exec:
+                command: [ "/app/solr/bin/solr", "stop", "-p", "8983" ]
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "solr") | nindent 12 }}
           volumeMounts:
-            {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
             - name: *dataVol
               mountPath: *dataDir
             - name: *initVol
               mountPath: *initDir
-            - name: &configMap "configmap"
-              mountPath: "/app/solr/bin/solr.in.sh"
-              subPath: &solrInSh "solr.in.sh"
-              readOnly: true
-            - name: *configMap
-              mountPath: "/entrypoint"
-              subPath: &entrypoint "entrypoint"
-              readOnly: true
-            - name: *configMap
-              mountPath: "/config-pre.sh"
-              subPath: &configPreSh "config-pre.sh"
-              readOnly: true
-            - name: *configMap
-              mountPath: "/config-post.sh"
-              subPath: &configPostSh "config-post.sh"
-              readOnly: true
-            - name: *configMap
-              mountPath: "/app/init/pre/00-deploy-config.sh"
-              subPath: &deployConfigsSh "deploy-configs.sh"
-              readOnly: true
-            - name: *configMap
-              mountPath: "/app/init/pre/arkcase-conf.tar.gz"
-              subPath: &arkcaseConfTarGz "arkcase-conf.tar.gz"
-              readOnly: true
-            - name: *configMap
-              mountPath: "/app/init/post/00-create-cores.sh"
-              subPath: &createCoresSh "create-cores.sh"
-              readOnly: true
+            {{- include "arkcase.subsystem-access.volumeMount" $ | nindent 12 }}
+            {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/solr/bin/solr.in.sh") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/entrypoint") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/config-pre.sh") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/config-post.sh") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/init/pre/00-deploy-config.sh" "subPath" "deploy-configs.sh") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/init/pre/arkcase-conf.tar.gz") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/init/post/00-create-cores.sh" "subPath" "create-cores.sh") | nindent 12 }}
       volumes:
-        {{- include "arkcase.acme.volume" $ | nindent 8 }}
         - name: *initVol
           emptyDir:
             sizeLimit: 1Gi
+        {{- include "arkcase.subsystem-access.volume" $ | nindent 8 }}
+        {{- include "arkcase.acme.volume" $ | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
-        - name: *configMap
-          configMap:
-            name: {{ include "arkcase.fullname" $ | quote }}
-            optional: false
-            defaultMode: 0555
-            items:
-              - key: *entrypoint
-                path: *entrypoint
-              - key: *solrInSh
-                path: *solrInSh
-              - key: *configPreSh
-                path: *configPreSh
-              - key: *configPostSh
-                path: *configPostSh
-              - key: *deployConfigsSh
-                path: *deployConfigsSh
-              - key: *arkcaseConfTarGz
-                path: *arkcaseConfTarGz
-                mode: 0444
-              - key: *createCoresSh
-                path: *createCoresSh
+        {{- include "arkcase.file-resource.volumes" $ | nindent 8 }}
   volumeClaimTemplates:
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "data") | nindent 4 }}
 

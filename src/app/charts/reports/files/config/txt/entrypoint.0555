@@ -1,0 +1,249 @@
+#!/bin/bash
+set -euo pipefail
+. /.functions
+
+set_or_default BASE_DIR "/app"
+set_or_default PENTAHO_HOME "${BASE_DIR}/pentaho"
+set_or_default PENTAHO_PDI_HOME "${BASE_DIR}/pentaho"
+set_or_default PENTAHO_PDI_PLUGINS "${PENTAHO_PDI_HOME}/data-integration/plugins"
+set_or_default PENTAHO_SERVER "${PENTAHO_HOME}/pentaho-server"
+
+set_as_boolean CLUSTER_ENABLED
+
+require_dir_readable "${PENTAHO_SERVER}"
+
+PENTAHO_SOLUTIONS="${PENTAHO_SERVER}/pentaho-solutions"
+
+###################################################################
+# IDENTIFY VALUES FOR CLUSTERING SUPPORT                          #
+###################################################################
+if [ ! -v NODE_ID ] ; then
+	set_or_default POD_NAME "$(hostname)"
+	POD_NAME="${POD_NAME%%.*}"
+	[[ "${POD_NAME}" =~ ^.*-([0-9]+)$ ]] || fail "The pod name [${POD_NAME}] doesn't match the pattern for a stateful pod (must end with a number)"
+	NODE_ID="${BASH_REMATCH[1]}"
+else
+	[[ "${NODE_ID}" =~ ^[1-9][0-9]*$ ]] || fail "The NODE_ID value [${NODE_ID}] is not a valid number"
+	[ ${NODE_ID} -gt 0 ] && [ ${NODE_ID} -lt 256 ] || fail "The NODE_ID value must be in the range [1..255]"
+fi
+
+# Remove al leading zeros, just in case...
+export NODE_ID="$(( 10#${NODE_ID} ))"
+
+#
+# Apply the changes to the server.xml template
+#
+SERVER_XML="${PENTAHO_SERVER}/tomcat/conf/server.xml.tpl"
+if is_file "${SERVER_XML}" ; then
+	TARGET="${SERVER_XML%*.tpl}"
+	doing "Editing [${TARGET}] to remove the redundant cluster member"
+	XPATH="//Cluster/Channel/Interceptor/Member[@className = 'org.apache.catalina.tribes.membership.StaticMember' and starts-with(@host, '$(hostname).')]"
+	xmlstarlet ed -P -d "${XPATH}" "${SERVER_XML}" > "${TARGET}"
+	unset TARGET XPATH
+fi
+
+REPOSITORY_XML="${PENTAHO_SOLUTIONS}/system/jackrabbit/repository.xml.tpl"
+if is_file "${REPOSITORY_XML}" ; then
+	TARGET="${REPOSITORY_XML%*.tpl}"
+	VALUE="$(hostname)"
+	doing "Editing [${TARGET}] to set the cluster ID"
+	xmlstarlet ed -P --insert "/Repository/Cluster[not(@id)]" \
+		--type attr --name "id" --value "${VALUE}" < "${REPOSITORY_XML}" | \
+		xmlstarlet ed -P --update "/Repository/Cluster/@id" \
+			--value "${VALUE}" > "${TARGET}"
+	unset TARGET VALUE
+fi
+
+###################################################################
+# CONFIGURE FILESYSTEM PERSISTENCE                                #
+###################################################################
+set_or_default DATA_DIR "${BASE_DIR}/data"
+export DATA_DIR
+
+set_or_default INIT_DIR "${BASE_DIR}/init"
+
+###################################################################
+# UPDATE CA CERTIFICATES                                          #
+###################################################################
+init_ssl
+
+# Enable reading the cert that HAProxy will need
+set_as_boolean CLUSTER_ENABLED "false"
+"${CLUSTER_ENABLED}" && chmod a+r "${SSL_DIR}/haproxy-cert.pem"
+
+###################################################################
+# INSTALL ANY LICENSES                                            #
+###################################################################
+
+#
+# Configure license location
+#
+set_or_default PENTAHO_INSTALLED_LICENSE_PATH "${DATA_DIR}/.installedLicenses.xml"
+ensure_dir "$(dirname "${PENTAHO_INSTALLED_LICENSE_PATH}")"
+export PENTAHO_INSTALLED_LICENSE_PATH
+
+#
+# Install the licenses
+#
+set_or_default LICENSE_DIR "${INIT_DIR}/licenses"
+if is_dir_readable "${LICENSE_DIR}" ; then
+	LICENSE_INSTALLER="${PENTAHO_HOME}/license-installer/install_license.sh"
+	say "Installing all available license files from [${LICENSE_DIR}]"
+	while read LICENSE ; do
+		if /bin/sh "${LICENSE_INSTALLER}" install -q "${LICENSE}" ; then
+			ok "Installed the license from [${LICENSE}], removing the original file"
+			rm -fv "${LICENSE}" &>/dev/null || true
+		else
+			err "Failed to install the license from [${LICENSE}]"
+		fi
+	done < <(find "${LICENSE_DIR}" -type f -name '*.lic' | sort)
+fi
+
+###################################################################
+# CONFIGURE LOGGING                                               #
+###################################################################
+set_or_default LOGS_DIR "${BASE_DIR}/logs"
+export LOGS_DIR
+
+#
+# This is for debugging - if the log4j2 configuration isn't set already,
+# we copy it from the base file
+#
+LOG4J2_XML="${PENTAHO_SERVER}/tomcat/webapps/pentaho/WEB-INF/classes/log4j2.xml"
+[ -f "${LOG4J2_XML}" ] || cp -vf "${LOG$J2_XML}.base" "${LOG4J2_XML}" || fail "Failed to create the Log4J2 configuration"
+
+#
+# Tomcat Logging
+#
+set_or_default TOMCAT_LOGS_DIR "${LOGS_DIR}/tomcat"
+export TOMCAT_LOGS_DIR
+
+###################################################################
+# INITIALIZE PERSISTENT DATA AND CONFIGURATIONS                   #
+###################################################################
+doing "Proceeding with the boot initialization"
+/config-pre.sh || fail "Pre-configuration failed - the Pentaho initialization may not be complete"
+ok "Pre-initialization succeeded!"
+
+###################################################################
+# CLEAN OUT JACKRABBIT TEMPORARY FILES                            #
+###################################################################
+doing "Clearing out the Jackrabbit temporary files"
+set_or_default JCR_DIR "${DATA_DIR}/jackrabbit/repository"
+is_dir "${JCR_DIR}" && rm -rf "${JCR_DIR}" &>/dev/null
+mkdir -p "${JCR_DIR}"
+
+# Just in case... for clustering
+hostname > "${JCR_DIR}/cluster_node.id"
+ok "Generated the JCR cluster node ID file"
+
+###################################################################
+# LOCK FOR FIRST INITIALIZATION TO AVOID PROBLEMS IN CLUSTERING   #
+###################################################################
+
+INITIALIZER_PROCESS="/config-post.sh"
+INITIALIZER_MODE="false"
+if as_boolean "${CLUSTER_ENABLED}" ; then
+	MARKER="$(dd if=/dev/urandom bs=3 count=16 2>/dev/null | base64 --wrap=0)"
+	say "Acquiring the initializer lock"
+	coproc "/lock-initializer" "${MARKER}" "${INITIALIZER_PROCESS}"
+	LOCK_OUT="${COPROC[0]}"
+	LOCK_PID="${COPROC_PID}"
+	say "Co-process started (pid=${LOCK_PID}, fd=${LOCK_OUT})"
+
+	LOCK_START="$(date +%s)"
+	while true ; do
+		# Has the marker been output?
+		if read -u ${LOCK_OUT} LINE &>/dev/null ; then
+			# A successful read ...
+
+			# If it's not our marker, keep reading!
+			[ "${LINE}" != "${MARKER}" ] && continue
+
+			# If it was our marker, end the loop!
+			ok "Initialization lock acquired"
+			# Don't use exec to launch Pentaho
+			INITIALIZER_MODE="true"
+			break
+		fi
+
+		# The read failed ... is the coproc still running?
+		kill -0 ${LOCK_PID} &>/dev/null && continue
+
+		# It's not running... did it exit successfully?
+		RC=0
+		wait ${LOCK_PID} &>/dev/null || RC=${?}
+
+		# If it's not running and its exit status is not 0, then there was
+		[ ${RC} -eq 0 ] || fail "Initializer lock failed - cannot continue (rc=${RC})"
+
+		ok "Another process executed the initialization"
+		break
+	done
+	LOCK_END="$(date +%s)"
+else
+	# If clustering is not enabled, then we simply mark ourselvs as the
+	# initializers, and fire off the config-post initializer process
+	INITIALIZER_MODE="true"
+	coproc "${INITIALIZER_PROCESS}"
+fi
+
+# If we're not the initializer, then we have to jump through
+# an extra hoop or two in order to boot up cleanly...
+if ! as_boolean "${INITIALIZER_MODE}" ; then
+
+	# If we had to wait more than 10 seconds for the initialization lock
+	# then it means this is the first boot, so we do stupid things to
+	# deal with stupid issues with Pentaho... otherwise, no wait, just go!
+	if [ $(( LOCK_END - LOCK_START )) -ge 10 ] ; then
+		[ -v BOOT_DELAY ] || BOOT_DELAY="30"
+		[[ "${BOOT_DELAY}" =~ ^[1-9][0-9]*$ ]] || BOOT_DELAY="30"
+		say "Applying a delay of ${BOOT_DELAY} seconds (don't ask... thank Hitachi)"
+		sleep "${BOOT_DELAY}" || fail "Initial delay interrupted, can't continue"
+	fi
+
+	#
+	# We didn't own the initialization lock, either because we lost
+	# the leadership race, or because this isn't our first boot.
+	#
+	# In either case, we're not supposed to mess with JCR installation,
+	# so we're going to nuke the zip files that would be added as default
+	# content
+	#
+	# This should eliminate all the cluster bootup problems
+	#
+	say "Avoiding re-installation of JCR default content"
+	while read zip ; do
+		mv -vf "${zip}" "${zip}.installed"
+	done < <(find "${PENTAHO_SOLUTIONS}/system/default-content" -type f -name '*.zip')
+fi
+
+###################################################################
+# ENABLE THE ARKCASE SHARED KEY                                   #
+###################################################################
+
+# Don't enable this yet, until ACS-1502 is merged
+# read ARKCASE_SHARED_KEY rest < <(sha256sum "${SSL_DIR}/ca-chain.pem")
+# export ARKCASE_SHARED_KEY
+
+###################################################################
+# DEPLOY ANY RESOURCE BUNDLES MADE AVAILABLE                      #
+###################################################################
+
+# This *MUST* happen before pentaho bootup, to ensure that the
+# resource bundles are picked up correctly
+PENTAHO_LIB="${PENTAHO_WEBAPP}/WEB-INF/lib"
+BUND_DIR="${INIT_DIR}/resource-bundles"
+BUND_SRC="${BUND_DIR}/arkcase-resource-bundles.zip"
+
+if is_file_exists "${BUND_SRC}" ; then
+	cp -vf "${BUND_SRC}" "${PENTAHO_LIB}" || fail "Failed to deploy the resource bundle from [${BUND_SRC}]"
+fi
+
+###################################################################
+# LAUNCH THE SERVER PROCESS                                       #
+###################################################################
+
+CMD=("${PENTAHO_SERVER}/start-pentaho.sh" "${@}")
+running "${CMD[@]@Q}"
+"${CMD[@]}"

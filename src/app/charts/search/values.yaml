@@ -11,27 +11,6 @@
 configuration:
   # add your configurations here
 
-initDependencies:
-  enabled: true
-  template:
-    mode: any
-    initialDelay: 10
-    delay: 10
-    timeout: 10
-    attempts: 60
-  mode: all
-  dependencies:
-    app-artifacts:
-      ports:
-        - 443
-    acme:
-      ports:
-        - 9000
-    zookeeper:
-      clusterOnly: true
-      ports:
-        - 2181
-
 # Resource allocations for development mode
 resources:
   development:

@@ -1,0 +1,87 @@
+{{- $namespace := $.Release.Namespace -}}
+{{- /* We must use the headless service here, since that's what's supported */ -}}
+{{- $service := (include "arkcase.service.headless" $) -}}
+{{- /* This must be hardcoded since it must match the value in the headless service */ -}}
+{{- $port := 5710 -}}
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:hz="http://www.hazelcast.com/schema/spring"
+    xmlns:cache="http://www.springframework.org/schema/cache"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans https://www.springframework.org/schema/beans/spring-beans.xsd
+                http://www.hazelcast.com/schema/spring https://www.hazelcast.com/schema/spring/hazelcast-spring.xsd
+                http://www.springframework.org/schema/cache https://www.springframework.org/schema/cache/spring-cache.xsd">
+    <hz:hazelcast id="acmHazelcastInstance">
+        <hz:config>
+            <hz:instance-name>${acm.hazelcast.instance.name}</hz:instance-name>
+            <hz:cluster-name>${acm.hazelcast.group.name}</hz:cluster-name>
+            <hz:management-center scripting-enabled="false"/>
+            <hz:properties>
+                <hz:property name="hazelcast.logging.type">${acm.hazelcast.logging.type}</hz:property>
+                <hz:property name="hazelcast.log.state">true</hz:property>
+                <hz:property name="hazelcast.diagnostics.enabled">${acm.hazelcast.diagnostics.enabled}</hz:property>
+                <hz:property name="hazelcast.diagnostics.directory">${LOGS_DIR}</hz:property>
+                <hz:property name="hazelcast.diagnostics.filename.prefix">hazelcast</hz:property>
+                <hz:property name="hazelcast.diagnostics.max.rolled.file.size.mb">100</hz:property>
+                <hz:property name="hazelcast.diagnostics.max.rolled.file.count">10</hz:property>
+                <hz:property name="hazelcast.socket.bind.any">true</hz:property>
+            </hz:properties>
+            <!-- We hardcode the port number here and below b/c it must match what's in the service resource -->
+            <hz:network port="{{ $port }}" port-auto-increment="false">
+                <!-- Only available in Hazelcast Enterprise :( -->
+                <!--
+                <hz:ssl enabled="true">
+                    <hz:factory-class-name>com.hazelcast.nio.ssl.BasicSSLContextFactory</hz:factory-class-name>
+                    <hz:properties>
+                        <hz:property name="protocol">TLSv1.3</hz:property>
+                        <hz:property name="mutualAuthentication">REQUIRED</hz:property>
+                        <hz:property name="keyStore">${JAVA_KEYSTORE}</hz:property>
+                        <hz:property name="keyStoreType">${JAVA_KEYSTORE_TYPE}</hz:property>
+                        <hz:property name="keyStorePassword">${JAVA_KEYSTORE_PASS}</hz:property>
+                        <hz:property name="trustStore">${JAVA_TRUSTSTORE}</hz:property>
+                        <hz:property name="trustStoreType">${JAVA_TRUSTSTORE_TYPE}</hz:property>
+                        <hz:property name="trustStorePassword">${JAVA_TRUSTSTORE_PASS}</hz:property>
+                    </hz:properties>
+                </hz:ssl>
+                -->
+                <hz:join>
+                    <hz:multicast enabled="false"/>
+                    <!-- For some reason envvars weren't being expanded here so we had to resort to in-place templates -->
+                    <hz:kubernetes enabled="true" namespace="{{ $namespace }}" service-name="{{ $service }}" service-port="{{ $port }}"/>
+                </hz:join>
+            </hz:network>
+            <hz:map name="default" backup-count="0" time-to-live-seconds="25">
+                <hz:eviction eviction-policy="LRU" size="0"/>
+            </hz:map>
+            <hz:map name="acm-authentication-token-cache" backup-count="0" time-to-live-seconds="3600">
+                <hz:eviction eviction-policy="LFU" size="0"/>
+            </hz:map>
+            <hz:map name="quiet-user-cache" backup-count="0" time-to-live-seconds="7200">
+                <hz:eviction eviction-policy="LRU" size="0"/>
+            </hz:map>
+            <hz:map name="sessions-map" backup-count="2" time-to-live-seconds="1800">
+                <hz:eviction eviction-policy="NONE" size="0"/>
+            </hz:map>
+
+            <!--
+                Caches migrated from EhCache ... should probably be actual hz:cache entries ...
+            -->
+            <hz:map name="acm-authentication-cache" backup-count="0" time-to-live-seconds="0" max-idle-seconds="3600">
+                <hz:eviction eviction-policy="LFU" max-size-policy="PER_NODE" size="1000"/>
+            </hz:map>
+
+            <hz:map name="portal_info_cache" backup-count="0" time-to-live-seconds="0" max-idle-seconds="1800">
+                <hz:eviction eviction-policy="LFU" max-size-policy="PER_NODE" size="1000"/>
+            </hz:map>
+
+            <!-- 40 days max-idle?!?!  REALLY?!?!? -->
+            <hz:map name="webdav_auth_token_cache" backup-count="0" time-to-live-seconds="0" max-idle-seconds="3456000">
+                <hz:eviction eviction-policy="LFU" max-size-policy="PER_NODE" size="1000"/>
+            </hz:map>
+
+            <!-- 40 days max-idle?!?!  REALLY?!?!? -->
+            <hz:map name="webdav_container_id_cache" backup-count="0" time-to-live-seconds="0" max-idle-seconds="3456000">
+                <hz:eviction eviction-policy="LFU" max-size-policy="PER_NODE" size="1000"/>
+            </hz:map>
+        </hz:config>
+    </hz:hazelcast>
+</beans>

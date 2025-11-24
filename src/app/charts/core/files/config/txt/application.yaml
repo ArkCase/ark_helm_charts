@@ -1,0 +1,64 @@
+server:
+  port: 9999
+  ssl:
+    enabled: true
+    key-alias: "${ACME_KEY_ALIAS}"
+    key-password: "${JAVA_KEYSTORE_KEY_PASS}"
+    key-store: "${JAVA_KEYSTORE}"
+    key-store-password: "${JAVA_KEYSTORE_PASS}"
+    key-store-type: "${JAVA_KEYSTORE_TYPE}"
+    trust-store: "${JAVA_TRUSTSTORE}"
+    trust-store-password: "${JAVA_TRUSTSTORE_PASS}"
+    trust-store-type: "${JAVA_TRUSTSTORE_TYPE}"
+
+spring:
+#   datasource:
+#     driver-class-name: "${ARKCASE_JDBC_DRIVER}"
+#     url: "${ARKCASE_JDBC_URL}"
+#     username: "${ARKCASE_JDBC_USERNAME}"
+#     password: "${ARKCASE_JDBC_PASSWORD}"
+#     hikari:
+#       connection-timeout: 5000
+#       maximum-pool-size: 10
+#   jpa:
+#     show-sql: true
+  profiles:
+    active: "jdbc,native"
+  cloud:
+    config:
+      server:
+#         jdbc:
+#           sql: "SELECT NAME, VALUE from ACM_CLOUDCONFIG where APPLICATION = ? and PROFILE = ? and LABEL = ?"
+#           # Order 0 gives this the highest priority
+#           order: 0
+        native:
+          searchLocations: "file:///app/conf,file:///app/conf/labels,file:///app/conf/ldap,file:///app/conf/lookups,file:///app/conf/rules"
+          order: 1
+  jms:
+    pub-sub-domain: true
+  activemq: &openwire-connection
+    broker-url: "${ARKCASE_MQ_AMQP_URL}"
+    user: "${ARKCASE_MQ_USERNAME}"
+    password: "${ARKCASE_MQ_PASSWORD}"
+properties.folder.path: "/app/conf"
+branding.files.folder.path: "/app/conf/branding"
+logging:
+  file: "/dev/stdout"
+  level:
+    com.armedia.acm.configserver: "debug"
+    org.springframework.cloud.config: "debug"
+  pattern:
+    file: "%d{yyyy-MM-dd HH:mm:ss,SSS} [%thread] %-5level %logger.%M - %msg%n"
+jms.message.buffer.window: 1
+acm:
+  activemq:
+    <<: *openwire-connection
+    default-destination: "configuration.changed"
+    labels-destination: "labels.changed"
+    ldap-destination: "ldap.changed"
+    lookups-destination: "lookups.changed"
+    rules-destination: "rules.changed"
+    permissions-destination: "permissions.changed"
+    timeout: 10
+arkcase.languages: "-de,-en,-en-in,-es,-fr,-hi,-ja,-pt,-ru,-zh-cn,-zh-tw"
+java.io.tmpdir: "/app/temp"

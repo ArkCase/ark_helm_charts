@@ -1,0 +1,294 @@
+#!/usr/bin/python3
+
+import argparse
+from datetime import datetime
+from datetime import timezone
+import json
+import logging
+import os
+import re
+import shutil
+import subprocess
+import sys
+import traceback
+import urllib
+import yaml
+
+ENV_INIT_SEED_CONF         = "INIT_SEED_CONF"
+ENV_INIT_SEED_CONTENT      = "INIT_SEED_CONTENT"
+ENV_INIT_SEED_USERNAME     = "INIT_SEED_USERNAME"
+ENV_INIT_SEED_PASSWORD     = "INIT_SEED_PASSWORD"
+ENV_INIT_SEED_TOKEN        = "INIT_SEED_TOKEN"
+ENV_INIT_SEED_REGION       = "INIT_SEED_REGION"
+ENV_INIT_SEED_IGNORE_DUPES = "INIT_SEED_IGNORE_DUPES"
+ENV_INIT_SEED_DEBUG        = "INIT_SEED_DEBUG"
+
+parser = argparse.ArgumentParser(description="Alfresco Content Seeder")
+parser.add_argument("config", metavar="config", action="store", help=f"The configuration to use (if not given, it will be read from the {ENV_INIT_SEED_CONF} environment variable)", type=str, nargs="?")
+parser.add_argument("--content", metavar="content", action="store", help=f"The S3 content URL (if not given, it will be read from the {ENV_INIT_SEED_CONTENT} environment variable)", type=str, nargs=1)
+parser.add_argument("--username", metavar="username", action="store", help=f"The username to authenticate with (if not given, it will be read from the {ENV_INIT_SEED_USERNAME} environment variable)", type=str, nargs=1)
+parser.add_argument("--password", metavar="password", action="store", help=f"The password to authenticate with (if not given, it will be read from the {ENV_INIT_SEED_PASSWORD} environment variable)", type=str, nargs=1)
+parser.add_argument("--token", metavar="token", action="store", help=f"The session token to authenticate with (if not given, it will be read from the {ENV_INIT_SEED_TOKEN} environment variable)", type=str, nargs=1)
+parser.add_argument("--region", metavar="region", action="store", help=f"The region to work in (if not given, it will be read from the {ENV_INIT_SEED_REGION} environment variable)", type=str, nargs=1)
+parser.add_argument("--ignore-dupes", action="store_true", help=f"A flag to indicate whether to continue processing even if duplicate buckets are encountered (if not given, it will be read from the {ENV_INIT_SEED_IGNORE_DUPES} environment variable)", default=False)
+parser.add_argument("--debug", action="store_true", help=f"A flag to enable debug mode and only print out commands, but not execute them (if not given, it will be read from the {ENV_INIT_SEED_DEBUG} environment variable)", default=False)
+
+
+args = parser.parse_args()
+
+logging.basicConfig(level=logging.INFO, format = '%(asctime)s - %(levelname)s - %(message)s')
+
+def fail(msg):
+	logging.error(msg)
+	exit(1)
+
+def to_boolean(v):
+	t = type(v)
+	if t == bool:
+		return t
+	if t == str:
+		return ("true" == v.lower())
+	return True if v else False
+
+def resolve_value(v, default = None):
+	if v:
+		# If it's of the form @file:/..., then read the contents from that file
+		if v.startswith("@file:"):
+			# read the contents of the file, return the default if it can't be read
+			p = os.path.expandvars(v[6:])
+			try:
+				with open(p, "rt") as f:
+					v = f.read().strip()
+			except FileNotFoundError:
+				logging.error(f"The file [{p}] could not be found (from [{v}])")
+				v = None
+			except Exception as e:
+				fail(f"The file [{p}] could not be read (from [{v}]): {e}")
+
+		# If it's of the form @env:ENVVAR then read the contents from that envvar
+		elif v.startswith("@env:"):
+			# read the contents of the envvar, return the default if it doesn't exist
+			try:
+				v = os.environ[v[5:]]
+			except KeyError:
+				v = None
+
+	# Otherwise, use the value verbatim
+	if v is None:
+		return default
+
+	return v
+
+def aws(*args):
+	cmd = [ "aws" ] + list(args) + ["--endpoint-url", CONTENT]
+	if DEBUG:
+		logging.info(f"\tRUN: [{' '.join(cmd)}]")
+	result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+	if DEBUG:
+		stdout = result.stdout.decode("UTF-8")
+		logging.info(f"Command results:\nRC={result.returncode}\nSTDOUT:\n{stdout}")
+	return result
+
+def s3(*args):
+	return aws("s3", *args)
+
+def s3api(*args):
+	return aws("s3api", *args)
+
+def build_bucket_config(config):
+	if type(config) != dict:
+		config = {}
+
+	ret = {}
+	if "acl" in config:
+		ret["acl"] = config["acl"]
+
+	if "version" in config:
+		version = config["version"]
+		enable = True
+		mfaDel = False
+
+		if type(version) != dict:
+			enable = to_boolean(version)
+		else:
+			if "enable" in version:
+				enable = to_boolean(version["enable"])
+
+			if "mfaDel" in version:
+				mfaDel = to_boolean(version["mfaDel"])
+
+		enable = "Enabled" if enable else "Suspended"
+		mfaDel = "Enabled" if mfaDel else "Disabled"
+
+		ret["version"] = json.dumps({ "MFADelete" : mfaDel, "Status" : enable })
+	return ret
+
+if args.config:
+	# If the parameter is given, use it
+	source_file = args.config
+	if source_file == "-":
+		source_file = sys.stdin
+		source_file_is_file = False
+	else:
+		source_file_is_file = True
+elif ENV_INIT_SEED_CONF in os.environ:
+	source_file = os.environ[ENV_INIT_SEED_CONF]
+	# Check if this points to a file ...
+	source_file_is_file = (os.path.exists(source_file) and os.path.isfile(source_file))
+else:
+	logging.error("Failed to get the configuration from parameters or the environment")
+	parser.print_help()
+	exit(1)
+
+IGNORE_DUPES = False
+if args.ignore_dupes:
+	IGNORE_DUPES = args.ignore_dupes
+elif ENV_INIT_SEED_IGNORE_DUPES in os.environ:
+	IGNORE_DUPES = to_boolean(os.environ[ENV_INIT_SEED_IGNORE_DUPES])
+
+DEBUG = False
+if args.debug:
+	DEBUG = args.debug
+elif ENV_INIT_SEED_DEBUG in os.environ:
+	DEBUG = to_boolean(os.environ[ENV_INIT_SEED_DEBUG])
+
+
+show_data = True
+if source_file_is_file:
+	logging.info(f"Loading the configuration from the file [{source_file}]...")
+	with open(source_file, "r") as f:
+		data = yaml.safe_load(f)
+else:
+	if type(source_file) == str:
+		logging.info(f"Parsing the configuration from the string: [\n{source_file}\n]...")
+		show_data = False
+	else:
+		logging.info("Parsing the configuration from stdin...")
+	data = yaml.safe_load(source_file)
+
+if data is None:
+	fail("Data is not in YAML format")
+
+# Use --endpoint-url parameter to set this value
+CONTENT = None
+if args.content:
+	CONTENT = args.content[0]
+elif ENV_INIT_SEED_CONTENT in os.environ:
+	CONTENT = os.environ[ENV_INIT_SEED_CONTENT]
+if not CONTENT:
+	fail("Must provide a CONTENT URL to connect to")
+logging.info(f"Using CONTENT URL [{CONTENT}]")
+
+USERNAME = None
+if args.username:
+	USERNAME = args.username[0]
+elif ENV_INIT_SEED_USERNAME in os.environ:
+	USERNAME = os.environ[ENV_INIT_SEED_USERNAME]
+if not USERNAME:
+	USERNAME = "admin"
+logging.info(f"Using username [{USERNAME}]")
+
+PASSWORD = None
+if args.password:
+	PASSWORD = args.password[0]
+elif ENV_INIT_SEED_PASSWORD in os.environ:
+	PASSWORD = os.environ[ENV_INIT_SEED_PASSWORD]
+if not PASSWORD:
+	fail("Must provide a password to authenticate with")
+
+REGION = "us-east-1"
+if args.region:
+	REGION = args.region[0]
+elif ENV_INIT_SEED_REGION in os.environ:
+	REGION = os.environ[ENV_INIT_SEED_REGION]
+
+TOKEN = None
+if args.token:
+	TOKEN = args.token[0]
+elif ENV_INIT_SEED_TOKEN in os.environ:
+	TOKEN = os.environ[ENV_INIT_SEED_TOKEN]
+
+if "buckets" not in data:
+	logging.info("No buckets to seed.")
+	exit(0)
+
+buckets = data["buckets"]
+if not buckets:
+	logging.info("No buckets to seed.")
+	exit(0)
+
+DEFAULTS = {}
+if "defaults" in data:
+	DEFAULTS = build_bucket_config(data["defaults"])
+
+DEFAULT_VERSION = json.dumps({
+	"Status"	: "Enabled"
+})
+
+try:
+	os.environ["AWS_ACCESS_KEY_ID"] =  USERNAME
+	os.environ["AWS_SECRET_ACCESS_KEY"] = PASSWORD
+	os.environ["AWS_REGION"] = REGION
+	if TOKEN:
+		os.environ["AWS_SESSION_TOKEN"] = TOKEN
+
+	processed = {}
+	for name_template, config in buckets.items():
+
+		if type(config) != dict:
+			fail(f"The configuration data is malformed - the value 'buckets[{name_template}]' must be a dict")
+
+		name = resolve_value(name.strip())
+		if not name:
+			fail(f"The configuration data is malformed - the bucket with the name template [{name_template}] resolved to an empty bucket name")
+
+		if name in processed:
+			fail(f"Duplicate bucket name [{name}] detected: the name templates [{processed[name]}] and [{name_template}] were resolved to the same bucket name")
+
+		processed[name] = name_template
+
+		# Check to see if the bucket exists ...
+		result = s3api("head-bucket", "--bucket", name)
+		if result.returncode == 0:
+			if not IGNORE_DUPES:
+				fail(f"The bucket [{name}] already exists, and IGNORE_DUPES is not set - cannot continue.")
+			logging.info(f"The bucket [{name}] already exists, skipping!")
+			continue
+		elif result.returncode != 254:
+			fail(f"Error detected checking for the existence of the [{name}] bucket (rc={result.returncode}):\n{result.stdout.decode('UTF-8')}")
+
+		# The bucket does not exist, so create it (always add locking support)
+		config = build_bucket_config(config)
+
+		acl = "private"
+		if "acl" in config:
+			acl = config["acl"]
+		elif "acl" in DEFAULTS:
+			acl = DEFAULTS["acl"]
+
+		logging.info(f"Creating the bucket [{name}] with acl '{acl}'...")
+		result = s3api("create-bucket", "--bucket", name, "--object-lock-enabled-for-bucket", "--acl", acl)
+		if result.returncode != 0:
+			fail(f"Failed to create the bucket [{name}] (rc={result.returncode}):\n{result.stdout.decode('UTF-8')}")
+
+		version = DEFAULT_VERSION
+		if "version" in config:
+			version = config["version"]
+		elif "version" in DEFAULTS:
+			version = DEFAULTS["version"]
+
+		# Enable versioning on the bucket
+		logging.info(f"Setting the versioning configuration for the bucket [{name}] to {version}...")
+		result = s3api("put-bucket-versioning", "--bucket", name, "--versioning-configuration", version)
+		if result.returncode != 0:
+			fail(f"Failed to set the versioning configuration for the bucket [{name}] (rc={result.returncode}):\n{result.stdout}")
+
+		# TODO: Enable retention policy description per bucket? How to describe them?
+
+	logging.info("Seeding completed.")
+	exit(0)
+except KeyboardInterrupt:
+	logging.error("Execution interrupted, exiting.")
+	sys.exit(1)
+except Exception as e:
+	fail(f"Seeding procedure failed\n{traceback.format_exc()}")

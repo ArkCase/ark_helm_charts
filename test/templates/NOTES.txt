@@ -1,24 +1,64 @@
-{{- include "arkcase.accounts.secrets" $ | nindent 0 }}
-{{- include "arkcase.accounts.secrets" $ | nindent 0 }}
-{{- include "arkcase.accounts.secrets" $ | nindent 0 }}
-{{- include "arkcase.accounts.secrets" $ | nindent 0 }}
-{{- include "arkcase.accounts.secrets" $ | nindent 0 }}
+---
 
-{{- $types := (list "admin" "user" "db" | sortAlpha) -}}
-{{- $ctx := $ -}}
+ENABLED  : {{ not (empty (include "arkcase.subsystem.enabled" $)) }}
+EXTERNAL : {{ not (empty (include "arkcase.subsystem.external" $)) }}
+ENABLED_OR_EXTERNAL : {{ not (empty (include "arkcase.subsystem.enabledOrExternal" $)) }}
+SUBSYSTEM_NAME: {{ (include "arkcase.subsystem.name" $) | quote }}
+SUBSYSTEM_INFO: {{ (include "arkcase.subsystem" $ | nindent 2) }}
 
-accounts:
-{{- range $type := $types }}
-  {{ $type }}: {{- include (printf "arkcase.accounts.%s" $type) $ | nindent 4 -}}
+---
+CONFIGURATION: {{- include "arkcase.subsystem-access.conf" $ | nindent 2 }}
+
+---
+BASE  =[{{ include "arkcase.subsystem-access.name" $ }}]
+ADMIN =[{{ include "arkcase.subsystem-access.name" (dict "ctx" $ "conn" "admin") }}]
+OTHER =[{{ include "arkcase.subsystem-access.name" (dict "ctx" $ "subsys" "othersubsys") }}]
+TEST  =[{{ include "arkcase.subsystem-access.name" (dict "ctx" $ "subsys" "someother" "conn" "connection") }}]
+
+---
+{{- $ctx := $ }}
+{{- range $subsys := (list ($.Chart.Name) "subsys-one" "subsystwo" "sub3") }}
+  {{- range $conn := (list "main" "admin" "extra") }}
+    {{- range $key := (list "" "firstKey" "anotherValue") }}
+      {{- range $name := (list "" "ONE_VAR" "OTHER_VAR" "${subsys}-CRAP-${key}-${conn}") }}
+        {{- range $mountPath := (list "" "/one/mount/point" "/another/mount") }}
+          {{- range $optional := (list "" "false" "true") }}
+            {{-
+              $p := dict
+                "ctx" $ctx
+                "subsys" $subsys
+                "conn" $conn
+                "key" $key
+                "name" $name
+                "mountPath" $mountPath
+                "optional" $optional
+            }}
+---
+PARAMS: {{- (omit $p "ctx") | toYaml | nindent 2 }}
+RESULT: {{- include "__arkcase.subsystem-access.extract-params-mapped" $p | nindent 2 }}
+          {{- end }}
+        {{- end }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
 {{- end }}
+---
+{{- include "__arkcase.subsystem-access.deps" $ | nindent 0 }}
+---
+env: {{- include "arkcase.subsystem-access.env" $ | nindent 2 }}
+volumeMounts: {{- include "arkcase.subsystem-access.volumeMount" $ | nindent 2 }}
+volumes: {{- include "arkcase.subsystem-access.volume" $ | nindent 2 }}
+---
+{{- $params := (dict "ctx" $ "subsys" "some-other-subsys" "conn" "main-connection" "key" "someKeyThatDoesNotExist") -}}
+env: {{- include "arkcase.subsystem-access.env" $params | nindent 2 }}
+volumeMounts: {{- include "arkcase.subsystem-access.volumeMount" $params | nindent 2 }}
+volumes: {{- include "arkcase.subsystem-access.volume" $params | nindent 2 }}
+---
+{{- include "arkcase.subsystem-access.env" (dict "ctx" $ "subsys" "zookeeper" "key" "zkHost" "name" "ZK_HOST" "optional" "false") | nindent 0 }}
+{{- include "arkcase.subsystem-access.volumeMount" (dict "ctx" $ "subsys" "zookeeper" "key" "zkHost" "optional" "true") | nindent 0 }}
+{{- include "arkcase.subsystem-access.volume" (dict "ctx" $ "subsys" "zookeeper" "key" "zkHost" "mountPath" "/kaka/seka" "optional" "true") | nindent 0 }}
+---
+env: {{- include "arkcase.acme.env" $ | nindent 2 }}
+volumeMounts: {{- include "arkcase.acme.volumeMount" $ | nindent 2 }}
+volumes: {{- include "arkcase.acme.volume" $ | nindent 2 }}
 
-
-volumesMounts:
-{{- range $type := $types }}
-  {{- include "arkcase.accounts.volumeMount" (dict "ctx" $ctx "type" $type) | nindent 2 }}
-{{- end }}
-
-volumes:
-{{- range $type := $types }}
-  {{- include "arkcase.accounts.volume" (dict "ctx" $ctx "type" $type) | nindent 2 }}
-{{- end }}
