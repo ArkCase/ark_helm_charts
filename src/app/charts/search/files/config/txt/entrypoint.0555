@@ -49,7 +49,7 @@ if [ -v ZK_HOST ] ; then
 	# looks like. Thus, we actually have to query ZooKeeper to get that
 	# info, and apply it during bootup so we get "green" status on the
 	# admin page.
-	CONFIG="$(server/scripts/cloud-scripts/zkcli.sh -zkhost "${ZK_HOST}" -cmd get /zookeeper/config)" || fail "Failed to fetch the ZooKeeper configuration using ZK_HOST=${ZK_HOST@Q}"
+	CONFIG="$(server/scripts/cloud-scripts/zkcli.sh --zk-host "${ZK_HOST}" -cmd get /zookeeper/config)" || fail "Failed to fetch the ZooKeeper configuration using ZK_HOST=${ZK_HOST@Q}"
 
 	NEW_ZK_HOST=""
 	while read LINE ; do
@@ -90,10 +90,10 @@ if [ -v ZK_HOST ] ; then
 	(
 		set -euo pipefail
 		cd "${BASE_DIR}/solr"
-		exec server/scripts/cloud-scripts/zkcli.sh -zkhost "${ZK_HOST}" -cmd clusterprop -name urlScheme -val https
+		exec server/scripts/cloud-scripts/zkcli.sh --zk-host "${ZK_HOST}" -cmd clusterprop -name urlScheme -val https
 	)
 	say "SSL Enabled!"
 fi
 
-set -- "${HOME_DIR}/bin/solr" start -f -cloud
+set -- "${HOME_DIR}/bin/solr" start -f --cloud
 execute "${@}"
