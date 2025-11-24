@@ -11,7 +11,7 @@ The new `0.8.0` series Helm charts are a significant improvement over the `0.7.0
 
 Finally, there are no default passwords used anywhere anymore, which significantly bolsters security overall.
 
-- [Password Storage](#passwords)
+## <a name="passwords"></a>Password Storage
 
 In the `0.7.0` series Helm charts, passwords for both internal services provisioned by the chart, as well as provided externally, were supplied to Helm as part of the values configurations. This meant that those passwords had to be exposed in plaintext in order to be consumed by the chart during rendering.
 

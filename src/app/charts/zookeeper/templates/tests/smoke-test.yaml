@@ -36,7 +36,7 @@ spec:
             set -xeuo pipefail
             . /.functions
             init_ssl
-            OUT="$(timeout 3 nc "$(SERVICE_NAME)" 2181 <<< "ruok" 2>&1)"
+            OUT="$(timeout 3 nc "${SERVICE_NAME}" 2181 <<< "ruok" 2>&1)"
             [ "${OUT}" == "imok" ] && exit 0
             echo "Check failed:"
             echo "${OUT}"

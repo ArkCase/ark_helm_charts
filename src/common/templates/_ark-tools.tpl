@@ -1154,6 +1154,11 @@ return either the value if correct, or the empty string if not.
       {{- if not $result.binaryData -}}
         {{- $result = omit $result "binaryData" -}}
       {{- end -}}
+
+      {{- /* Decode the secret values */ -}}
+      {{- if and $.secret $result.data -}}
+        {{- $result = set $result "data" (include "arkcase.secret.decode" $result.data | fromYaml) -}}
+      {{- end -}}
     {{- end -}}
   {{- end -}}
   {{- $result | toYaml -}}
@@ -1220,4 +1225,20 @@ return either the value if correct, or the empty string if not.
     {{- fail (dict "$" (omit $ "ctx") "$key" $key "result" ($yamlResult | fromYaml) "masterCache" $masterCache | toYaml | nindent 0) -}}
   {{- end -}}
   {{- $yamlResult -}}
+{{- end -}}
+
+{{- define "arkcase.secret.encode" -}}
+  {{- $result := dict -}}
+  {{- range $k, $v := $ -}}
+    {{- $result = set $result $k ($v | toString | b64enc) -}}
+  {{- end -}}
+  {{- $result | toYaml -}}
+{{- end -}}
+
+{{- define "arkcase.secret.decode" -}}
+  {{- $result := dict -}}
+  {{- range $k, $v := $ -}}
+    {{- $result = set $result $k ($v | toString | b64dec) -}}
+  {{- end -}}
+  {{- $result | toYaml -}}
 {{- end -}}

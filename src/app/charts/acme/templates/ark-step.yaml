@@ -76,10 +76,7 @@ spec:
             #   value: "true"
             - name: STEPPATH
               value: *dataDir
-          ports:
-            - name: ca
-              protocol: TCP
-              containerPort: 9000
+          {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "step") | nindent 12 }}
           volumeMounts:

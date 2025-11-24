@@ -2,6 +2,19 @@
 set -euo pipefail
 . /.functions
 
+#
+# We use PENTAHO_HOME as our canary ... if it's not set,
+# it's a good indication that we need to try to load the
+# runtime environment from the stored file
+#
+if [ ! -v PENTAHO_HOME ] ; then
+	# Make sure we test for and read the same file!
+	CRON_ENV="${HOME}/.cron-env"
+	if is_file_readable "${CRON_ENV}" ; then
+		source "${CRON_ENV}"
+	fi
+fi
+
 usage()
 {
 	echo -e "usage: ${BASH_SOURCE:-${0}} [-p ... | --param ...] [-c ... | --custom ...] file.kjb"

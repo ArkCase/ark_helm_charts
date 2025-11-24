@@ -227,6 +227,20 @@ fi
 # export ARKCASE_SHARED_KEY
 
 ###################################################################
+# DEPLOY ANY RESOURCE BUNDLES MADE AVAILABLE                      #
+###################################################################
+
+# This *MUST* happen before pentaho bootup, to ensure that the
+# resource bundles are picked up correctly
+PENTAHO_LIB="${PENTAHO_WEBAPP}/WEB-INF/lib"
+BUND_DIR="${INIT_DIR}/resource-bundles"
+BUND_SRC="${BUND_DIR}/arkcase-resource-bundles.zip"
+
+if is_file_exists "${BUND_SRC}" ; then
+	cp -vf "${BUND_SRC}" "${PENTAHO_LIB}" || fail "Failed to deploy the resource bundle from [${BUND_SRC}]"
+fi
+
+###################################################################
 # LAUNCH THE SERVER PROCESS                                       #
 ###################################################################
 

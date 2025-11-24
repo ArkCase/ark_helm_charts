@@ -15,6 +15,14 @@
   {{- $v -}}
 {{- end -}}
 
+{{- define "__arkcase.image.info.list-to-map" -}}
+    {{- $m := dict -}}
+    {{- range $v := $ -}}
+      {{- $m = set $m ($v | toString) $v -}}
+    {{- end -}}
+    {{- $m | toYaml -}}
+{{- end -}}
+
 {{- define "arkcase.image.info.definition" -}}
   {{- $ctx := .ctx -}}
   {{- $chart := .chart -}}
@@ -26,45 +34,35 @@
   {{- $imageAttributes := list "repository" "tag" -}}
   {{- $commonAttributes := list "registry" "cachePrefix" "pullPolicy" "tagPrefix" -}}
 
-  {{- $search := list -}}
-
-  {{-
-    $search = ( list
-        ((not (empty $image)) | ternary (printf "local.%s.%s" $edition $image) "")
-        (printf "local.%s" $edition)
-        ((not (empty $image)) | ternary (printf "local.%s" $image) "")
-        "local"
-    ) | compact
-  -}}
-
-  {{- $candidates := list -}}
   {{- $allAttributes := (concat $imageAttributes $commonAttributes) -}}
 
-  {{- if $commonAttributes -}}
-    {{- $m := dict -}}
-    {{- range $commonAttributes -}}
-      {{- $m = set $m . . -}}
-    {{- end -}}
-    {{- $commonAttributes = $m -}}
-  {{- end -}}
-  {{- if $imageAttributes -}}
-    {{- $m := dict -}}
-    {{- range $imageAttributes -}}
-      {{- $m = set $m . . -}}
-    {{- end -}}
-    {{- $imageAttributes = $m -}}
-  {{- end -}}
+  {{- $imageAttributes = (include "__arkcase.image.info.list-to-map" $imageAttributes | fromYaml) -}}
+  {{- $commonAttributes = (include "__arkcase.image.info.list-to-map" $commonAttributes | fromYaml) -}}
 
-
-  {{- $pending := dict -}}
-  {{- range $allAttributes -}}
-     {{- $pending = set $pending . . -}}
-  {{- end -}}
+  {{- $pending := merge (merge dict $imageAttributes) $commonAttributes -}}
 
   {{- $result := dict -}}
   {{- $imageSuffix := ((not (empty $image)) | ternary (printf ".%s" $image) "") -}}
 
-  {{- $found := false -}}
+  {{-
+    $search := compact (
+      list
+
+        ((not (empty $image)) | ternary (printf "global.image.%s.%s.%s" $chart $edition $image) "")
+        (printf "global.image.%s.%s" $chart $edition)
+        ((not (empty $image)) | ternary (printf "global.image.%s.%s" $chart $image) "")
+        ((not (empty $image)) | ternary (printf "global.image.%s.%s" $edition $image) "")
+        (printf "global.image.%s" $chart)
+        (printf "global.image.%s" $edition)
+        "global.image"
+
+        ((not (empty $image)) | ternary (printf "local.%s.%s" $edition $image) "")
+        ((not (empty $image)) | ternary (printf "local.%s" $image) "")
+        (printf "local.%s" $edition)
+        "local"
+    )
+  -}}
+
   {{- range $s := $search -}}
     {{- /* Small optimization - don't search if there's nothing missing */ -}}
     {{- if not $pending -}}
@@ -84,12 +82,7 @@
     {{- if or (not $image) (hasSuffix $imageSuffix $s) -}}
       {{- range $att := $imageAttributes -}}
         {{- /* Never override values we've already found */ -}}
-        {{- if (hasKey $result $att) -}}
-          {{- continue -}}
-        {{- end -}}
-
-        {{- $found = (or $found (hasKey $r.value $att)) -}}
-        {{- if not $found -}}
+        {{- if or (hasKey $result $att) (not (hasKey $r.value $att)) -}}
           {{- continue -}}
         {{- end -}}
 
@@ -99,13 +92,11 @@
           {{- $result = set $result $att $v -}}
           {{- /* Mark the found attribute as ... well ... found! */ -}}
           {{- $pending = omit $pending $att -}}
+          {{- if not $pending -}}
+            {{- break -}}
+          {{- end -}}
         {{- end -}}
       {{- end -}}
-    {{- end -}}
-
-    {{- /* Only proceed if we've found the image "declaration" */ -}}
-    {{- if not $found -}}
-      {{- continue -}}
     {{- end -}}
 
     {{- range $att := $commonAttributes -}}
@@ -118,6 +109,9 @@
       {{- $result = set $result $att (empty $v | ternary "" $v) -}}
       {{- /* Mark the found attribute as ... well ... found! */ -}}
       {{- $pending = omit $pending $att -}}
+      {{- if not $pending -}}
+        {{- break -}}
+      {{- end -}}
     {{- end -}}
   {{- end -}}
 
@@ -131,7 +125,7 @@
       {{- $scope := get $data.local $repository -}}
       {{- if and $scope (kindIs "map" $scope) -}}
         {{- /* Try to get the image attributes from the specifically-named branch */ -}}
-        {{- range $att := $allAttributes -}}
+        {{- range $att := $imageAttributes -}}
           {{- /* Never override values we've already found */ -}}
           {{- if (hasKey $result $att) -}}
             {{- continue -}}
@@ -182,50 +176,7 @@
     {{- $pending = omit $pending "tag" -}}
   {{- end -}}
 
-  {{- /* Now we have the map with the explicitly set data. */ -}}
-  {{- /* We must now found any pending overrides, and apply them */ -}}
-  {{- /* using the correct order of precedence. */ -}}
-
-  {{-
-    $search = (
-      list
-        "global.image"
-        (printf "global.image.%s" $chart)
-        ((not (empty $image)) | ternary (printf "global.image.%s.%s" $chart $image) "")
-        (printf "global.image.%s.%s" $chart $edition)
-        ((not (empty $image)) | ternary (printf "global.image.%s.%s.%s" $chart $edition $image) "")
-    ) | compact
-  -}}
-  {{- $pending = dict -}}
-  {{- range $allAttributes -}}
-     {{- $pending = set $pending . . -}}
-  {{- end -}}
-  {{- $override := dict -}}
-  {{- range $s := $search -}}
-    {{- /* Small optimization - don't search if there's nothing missing */ -}}
-    {{- if not $pending -}}
-      {{- break -}}
-    {{- end -}}
-
-    {{- $r := (include "arkcase.tools.get" (dict "ctx" $data "name" $s) | fromYaml) -}}
-    {{- if or (not $r.value) (not (kindIs "map" $r.value)) -}}
-      {{- continue -}}
-    {{- end -}}
-    {{- /* Find the remaining attributes */ -}}
-    {{- range $att := $allAttributes -}}
-      {{- if and (not (hasKey $override $att)) (hasKey $r.value $att) -}}
-        {{- /* Only accept non-empty strings */ -}}
-        {{- $v := get $r.value $att -}}
-        {{- if and $v (kindIs "string" $v) -}}
-          {{- $override = set $override $att $v -}}
-          {{- /* Mark the found attribute as ... well ... found! */ -}}
-          {{- $pending = omit $pending $att -}}
-        {{- end -}}
-      {{- end -}}
-    {{- end -}}
-  {{- end -}}
-
-  {{- merge $override $result | toYaml -}}
+  {{- $result | toYaml -}}
 {{- end -}}
 
 {{- define "__arkcase.image.pullSecrets.compute" -}}
@@ -238,9 +189,10 @@
   {{-
     $candidates = concat $candidates (
       list
-        "global.image.pullSecrets"
+        (printf "global.image.%s.%s.pullSecrets" $chart $edition)
+        (printf "global.image.%s.pullSecrets" $chart)
         (printf "global.image.%s.pullSecrets" $edition)
-        (printf "global.%s.image.%s.pullSecrets" $chart $edition)
+        "global.image.pullSecrets"
         (printf "local.%s.pullSecrets" $edition)
         "local.pullSecrets"
     )
@@ -301,6 +253,8 @@
 {{- define "__arkcase.image.pullSecrets.cached" -}}
   {{- $ctx := $ -}}
 
+  {{- $name := (include "arkcase.part.name" $ctx) -}}
+
   {{- /* First things first: do we have any global overrides? */ -}}
   {{- $global := $ctx.Values.global -}}
   {{- if or (not $global) (not (kindIs "map" $global)) -}}
@@ -323,6 +277,7 @@
     dict
       "ctx" $
       "template" "__arkcase.image.pullSecrets.compute"
+      "key" (printf "%s-%s" (include "common.fullname" $ctx) $name)
       "params" (dict "chart" $chart "edition" $edition "data" $data)
   -}}
   {{- include "__arkcase.tools.getCachedValue" $args -}}

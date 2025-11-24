@@ -86,31 +86,47 @@
 {{- end -}}
 
 {{- /* Get the storageClassName value that should be used for everything */ -}}
-{{- define "arkcase.persistence.storageClassName" -}}
-  {{- if not (include "arkcase.isRootContext" $) -}}
-    {{- fail "The parameter must be the root context (. or $)" -}}
+{{- define "__arkcase.persistence.storageClassName.get" -}}
+  {{- $ctx := $.ctx -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "The parameter 'ctx' must be the root context (. or $)" -}}
   {{- end -}}
-  {{- $values := (include "arkcase.persistence.getDefaultSetting" (dict "ctx" $ "name" "storageClassName") | fromYaml) -}}
+
+  {{- $key := $.key -}}
+
   {{- $storageClassName := "" -}}
   {{- $storageClassSet := false -}}
-  {{- if and (not $storageClassSet) (hasKey $values "global") -}}
-    {{- $storageClassName = $values.global -}}
-    {{- if and $storageClassName (not (regexMatch "^([a-z0-9][-a-z0-9]*)?[a-z0-9]$" ($storageClassName | lower))) -}}
-      {{- fail (printf "The value global.persistence.storageClassName must be a valid storage class name: [%s]" $storageClassName) -}}
+  {{- if $key -}}
+    {{- $values := (include "arkcase.persistence.getDefaultSetting" (dict "ctx" $ctx "name" $key) | fromYaml) -}}
+    {{- if and (not $storageClassSet) (hasKey $values "global") -}}
+      {{- $storageClassName = $values.global -}}
+      {{- if and $storageClassName (not (regexMatch "^([a-z0-9][-a-z0-9]*)?[a-z0-9]$" ($storageClassName | lower))) -}}
+        {{- fail (printf "The value global.persistence.%s must be a valid storage class name: [%s]" $key $storageClassName) -}}
+      {{- end -}}
+      {{- $storageClassSet = true -}}
     {{- end -}}
-    {{- $storageClassSet = true -}}
-  {{- end -}}
-  {{- if and (not $storageClassSet) (hasKey $values "local") -}}
-    {{- $storageClassName = $values.local -}}
-    {{- if and $storageClassName (not (regexMatch "^([a-z0-9][-a-z0-9]*)?[a-z0-9]$" ($storageClassName | lower))) -}}
-      {{- fail (printf "The value persistence.storageClassName must be a valid storage class name: [%s]" $storageClassName) -}}
+    {{- if and (not $storageClassSet) (hasKey $values "local") -}}
+      {{- $storageClassName = $values.local -}}
+      {{- if and $storageClassName (not (regexMatch "^([a-z0-9][-a-z0-9]*)?[a-z0-9]$" ($storageClassName | lower))) -}}
+        {{- fail (printf "The value persistence.%s must be a valid storage class name: [%s]" $key $storageClassName) -}}
+      {{- end -}}
+      {{- $storageClassSet = true -}}
     {{- end -}}
-    {{- $storageClassSet = true -}}
   {{- end -}}
   {{- /* Only output a value if one is set */ -}}
   {{- if $storageClassName -}}
     {{- $storageClassName -}}
   {{- end -}}
+{{- end -}}
+
+{{- /* Get the storageClassName value that should be used for everything */ -}}
+{{- define "arkcase.persistence.storageClassName" -}}
+  {{- include "__arkcase.persistence.storageClassName.get" (dict "ctx" $ "key" "storageClassName") -}}
+{{- end -}}
+
+{{- /* Get the ephemeralStorageClassName value that should be used for everything */ -}}
+{{- define "arkcase.persistence.ephemeralStorageClassName" -}}
+  {{- include "__arkcase.persistence.storageClassName.get" (dict "ctx" $ "key" "ephemeralStorageClassName") -}}
 {{- end -}}
 
 {{- define "arkcase.persistence.persistentVolumeReclaimPolicy" -}}
@@ -233,6 +249,8 @@
     {{- $result = set $result "enabled" true -}}
 
     {{- $result = set $result "storageClassName" (include "arkcase.persistence.storageClassName" $ctx) -}}
+
+    {{- $result = set $result "ephemeralStorageClassName" (include "arkcase.persistence.ephemeralStorageClassName" $ctx) -}}
 
     {{- $result = set $result "persistentVolumeReclaimPolicy" (include "arkcase.persistence.persistentVolumeReclaimPolicy" $ctx | default "Retain") -}}
 
@@ -700,7 +718,7 @@ Render the entries for volumes:, per configurations
   {{- if $settings.enabled -}}
     {{- $volume := (include "arkcase.persistence.buildVolume" (pick . "ctx" "name") | fromYaml) -}}
     {{- $subsystem := (include "arkcase.subsystem.name" $ctx) -}}
-    {{- $claimName := (printf "%s-%s-%s-%s" $ctx.Release.Namespace $ctx.Release.Name $subsystem $volumeFullName) -}}
+    {{- $claimName := (printf "%s.%s-%s-%s" $ctx.Release.Namespace $ctx.Release.Name $subsystem $volumeFullName) -}}
     {{- $hostPath := (printf "%s/%s/%s/%s/${pvcId}" $ctx.Release.Namespace $ctx.Release.Name $subsystem $volumeFullName) -}}
     {{- $labels := dict "arkcase-persistence/volume-claim-name" $claimName "arkcase-persistence/version" "1.0" -}}
     {{- $annotations := dict
@@ -739,7 +757,7 @@ Render the entries for volumes:, per configurations
     {{- $annotations := ($metadata.annotations | default dict) -}}
     {{- $annotations = set $annotations "hostpath/pvcId-pattern" (printf "^%s(?:-(.*))?-%s$" (include "arkcase.fullname" $ctx) $volumeName) -}}
     {{- $metadata = set $metadata "annotations" $annotations -}}
-    {{- $storageClassName := ($volume.storageClassName | default $settings.storageClassName) -}}
+    {{- $storageClassName := ($volume.storageClassName | default $settings.ephemeralStorageClassName | default $settings.storageClassName) -}}
     {{- $accessModes := ($volume.accessModes | default $settings.accessModes) -}}
     {{- $resources := ($volume.resources | default (dict "requests" (dict "storage" $settings.capacity))) -}}
     {{- $spec := dict "resources" $resources "accessModes" $accessModes -}}

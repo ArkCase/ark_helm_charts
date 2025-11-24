@@ -83,17 +83,19 @@ spec:
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/mysql-shutdown") | nindent 12 }}
             - name: &initVol "init"
-              mountPath: "/opt/app-root/src/mysql-init"
+              mountPath: "/opt/app/src/mysql-init"
               subPath: "init.d"
             - name: *initVol
-              mountPath: "/opt/app-root/src/mysql-start"
+              mountPath: "/opt/app/src/mysql-start"
               subPath: "boot.d"
             - name: *dataVol
               mountPath: "/var/lib/mysql/data"
       volumes:
         {{- include "arkcase.subsystem-access.volume" $ | nindent 8 }}
         {{- include "arkcase.acme.volume" $ | nindent 8 }}
-        {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "init") | nindent 8 }}
+        - name: *initVol
+          emptyDir:
+            sizeLimit: 1Gi
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
         {{- include "arkcase.file-resource.volumes" $ | nindent 8 }}
       {{- with $.Values.nodeSelector }}
