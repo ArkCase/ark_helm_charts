@@ -1,0 +1,153 @@
+{{- if and (include "arkcase.subsystem.enabled" $) (ne "s3" (include "arkcase.content.dialect" $)) -}}
+{{- $nodes := (include "arkcase.content.minio.nodeCount" $ | int) }}
+{{- $onePerHost := (include "arkcase.content.minio.onePerHost" $) }}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "arkcase.fullname" $ | quote }}
+  namespace: {{ $.Release.Namespace | quote }}
+  labels: {{- include "arkcase.labels.service" $ | nindent 4 }}
+    {{- with (include "arkcase.values" (dict "ctx" $ "base" "labels") | fromYaml) }}
+      {{- toYaml .value | nindent 4 }}
+    {{- end }}
+  annotations:
+    {{- with (include "arkcase.values" (dict "ctx" $ "base" "annotations") | fromYaml) }}
+      {{- toYaml .value | nindent 4 }}
+    {{- end }}
+spec:
+  replicas: {{ $nodes }}
+  selector: &labelSelector
+    matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
+  serviceName: {{ include "arkcase.service.headless" $ | quote }}
+  updateStrategy: {{- include "arkcase.cluster.statefulUpdateStrategy" $ | nindent 4 }}
+  podManagementPolicy: Parallel
+  template:
+    metadata:
+      name: {{ include "arkcase.fullname" $ | quote }}
+      namespace: {{ $.Release.Namespace | quote }}
+      labels: {{- include "arkcase.labels.service" $ | nindent 8 }}
+        {{- include "arkcase.labels.deploys" "minio" | nindent 8 }}
+        {{- with (include "arkcase.values" (dict "ctx" $ "base" "labels") | fromYaml) }}
+          {{- toYaml .value | nindent 8 }}
+        {{- end }}
+      annotations:
+        # NB: Both these annotation values must be of type "string"
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9100"
+        {{- with (include "arkcase.values" (dict "ctx" $ "base" "annotations") | fromYaml) }}
+          {{- toYaml .value | nindent 8 }}
+        {{- end }}
+    spec:
+      affinity:
+        podAntiAffinity:
+        {{- if $onePerHost }}
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - topologyKey: "kubernetes.io/hostname"
+              namespaces: [ {{ $.Release.Namespace | quote }} ]
+              labelSelector:
+                <<: *labelSelector
+        {{- else }}
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 1
+              podAffinityTerm:
+                topologyKey: "kubernetes.io/hostname"
+                namespaces: [ {{ $.Release.Namespace | quote }} ]
+                labelSelector:
+                  <<: *labelSelector
+        {{- end }}
+      {{- include "arkcase.image.pullSecrets" $ | nindent 6 }}
+      {{- with (include "arkcase.values" (dict "ctx" $ "base" "hostAliases") | fromYaml) }}
+      hostAliases: {{- toYaml .value | nindent 8 }}
+      {{- end }}
+      {{- with (include "arkcase.values" (dict "ctx" $ "base" "schedulerName") | fromYaml) }}
+      schedulerName: {{ .value | quote }}
+      {{- end }}
+      serviceAccountName: {{ include "arkcase.serviceAccountName" $ | quote }}
+      securityContext: {{- include "arkcase.securityContext" $ | nindent 8 }}
+      terminationGracePeriodSeconds: 15
+      initContainers:
+        - name: init-set-permissions
+          {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
+          env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            - name: DATA_DIR
+              value: &dataDir "/app/data"
+            - name: INIT_DIR
+              value: &initDir "/app/init"
+            - name: JOBS
+              value: |-
+                jobs:
+                  # We know the image uses user 33000:1000
+                  - ownership: {{ coalesce ($.Values.persistence).ownership "33000:1000" | quote }}
+                    permissions: "u=rwX,g=rX,o="
+                    flags: [ "recurse", "noforced", "create", "changes" ]
+                    targets: [ "$(DATA_DIR)", "$(INIT_DIR)" ]
+          volumeMounts:
+            - name: &initVol "init"
+              mountPath: *initDir
+            - name: &dataVol "data"
+              mountPath: *dataDir
+        {{- include "arkcase.initDependencies.container" $ | nindent 8 }}
+      containers:
+        {{- $partName := (include "arkcase.part.name" $) }}
+        - name: {{ $partName | quote }}
+          {{- include "arkcase.image" (dict "ctx" $ "name" "minio" "repository" "arkcase/minio") | nindent 10 }}
+          {{- include "arkcase.subsystem.ports" (dict "ctx" $ "name" "minio") | nindent 10 }}
+          env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            {{- include "arkcase.acme.env" $ | nindent 12 }}
+            {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
+            - name: NODES
+              value: {{ $nodes | toString | quote }}
+            - name: DATA_DIR
+              value: *dataDir
+            - name: MINIO_ROOT_USER
+              value: "$(CONTENT_ADMIN_USERNAME)"
+            - name: MINIO_ROOT_PASSWORD
+              value: "$(CONTENT_ADMIN_PASSWORD)"
+            - name: MINIO_INTERNAL_USER
+              value: "$(CONTENT_INTERNAL_USERNAME)"
+            - name: MINIO_INTERNAL_PASSWORD
+              value: "$(CONTENT_INTERNAL_PASSWORD)"
+            # These two make sure things run in the correct ports
+            - name: MINIO_ADDRESS
+              value: ":9000"
+            - name: MINIO_CONSOLE_ADDRESS
+              value: ":9001"
+          lifecycle:
+            postStart:
+              exec:
+                command: [ "/config-post.sh" ]
+          resources: {{- include "arkcase.resources" $ | nindent 12 }}
+          securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" $partName) | nindent 12 }}
+          volumeMounts:
+            - name: *dataVol
+              mountPath: *dataDir
+            - name: *initVol
+              mountPath: *initDir
+            {{- include "arkcase.subsystem-access.volumeMount" $ | nindent 12 }}
+            {{- include "arkcase.trusts.mount" $ | nindent 12 }}
+            {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/config-post.sh") | nindent 12 }}
+      volumes:
+        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
+        - name: *initVol
+          emptyDir:
+            sizeLimit: 1Gi
+        {{- include "arkcase.subsystem-access.volume" $ | nindent 8 }}
+        {{- include "arkcase.trusts.volume" $ | nindent 8 }}
+        {{- include "arkcase.acme.volume" $ | nindent 8 }}
+        {{- include "arkcase.file-resource.volumes" $ | nindent 8 }}
+      {{- with (include "arkcase.values" (dict "ctx" $ "base" "nodeSelector") | fromYaml) }}
+      nodeSelector: {{- toYaml .value | nindent 8 }}
+      {{- end }}
+      {{- with (include "arkcase.values" (dict "ctx" $ "base" "affinity") | fromYaml) }}
+      affinity: {{- toYaml .value | nindent 8 }}
+      {{- end }}
+      {{- with (include "arkcase.values" (dict "ctx" $ "base" "tolerations") | fromYaml) }}
+      tolerations: {{- toYaml .value | nindent 8 }}
+      {{- end }}
+  volumeClaimTemplates:
+    {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "data") | nindent 4 }}
+
+  {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "data") | nindent 0 }}
+{{- end }}

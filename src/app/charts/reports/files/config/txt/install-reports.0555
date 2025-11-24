@@ -32,6 +32,10 @@ set_or_default INIT_DIR "${BASE_DIR}/init"
 set_or_default DATA_DIR "${BASE_DIR}/data"
 set_or_default LOGS_DIR "${BASE_DIR}/logs"
 
+# Doing it like this allows for overriding
+# the location, which will come in handy
+set_or_default REPORTS_DB "${DATA_DIR}/.installedReports"
+
 is_check && LOG_NAME="check" || LOG_NAME="install"
 redirect_logs "${LOGS_DIR}/${LOG_NAME}-reports.log"
 
@@ -104,10 +108,12 @@ is_file_installed()
 
 	# Is it listed in the reports database file? (only consider the last entry)
 	[ -f "${REPORTS_DB}" ] || return 1
-	local EXISTING="$(egrep "^([0-9a-f]{64})=${FILE}$" "${REPORTS_DB}" | tail -1)" || return 1
+	local EXISTING=""
+	EXISTING="$(egrep "^([0-9a-fA-F]{64})=${FILE}$" "${REPORTS_DB}")" || return 1
+	EXISTING="$(echo -n "${EXISTING}" | tail -1)"
 
 	# Does the record in the database file match our expected pattern?
-	[[ "${EXISTING,,}" =~ ^([0-9a-f]{64})=(.*)$ ]] || return 1
+	[[ "${EXISTING}" =~ ^([0-9a-fA-F]{64})=(.*)$ ]] || return 1
 
 	# Does the hash match our expected hash?
 	[ "${BASH_REMATCH[1],,}" == "${HASH,,}" ] || return 1
@@ -311,8 +317,6 @@ set_or_default ADMIN_PASSWORD "password"
 set_or_default PENTAHO_HOME "${BASE_DIR}/pentaho"
 set_or_default REPORT_INSTALLER "${PENTAHO_HOME}/pentaho-server/import-export.sh"
 set_or_default EXPORT_MANIFEST "exportManifest.xml"
-
-REPORTS_DB="${DATA_DIR}/.installedReports"
 
 if is_debug || is_check || is_file_executable "${REPORT_INSTALLER}" ; then
 	#

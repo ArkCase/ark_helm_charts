@@ -56,7 +56,14 @@ Database:
 
 		secret: ${arkcase}-core-conf
 			ARKCASE_JDBC_DRIVER=$(key:jdbcDriver)
-			ARKCASE_JDBC_URL=$(key:jdbcUrl)
+
+			# This value has to be copied from the secret instead of mounted because
+			# mounted values don't get interpolated, so the $() references within will
+			# go unresolved. Thus, the actual envvar value that must be created on the
+			# pod's YAML *MUST* be the actual string with the $() values intact so the
+			# K8s runtime can do the interpolation, and the pod's process can see the
+			# actual, real, final value including host, port, etc. values fully resolved.
+			ARKCASE_JDBC_URL=$(key:jdbcUrl) # exact value, no intepolation, copied from the secret
 
 Solr:
 	ARKCASE_SOLR_URL
@@ -69,7 +76,13 @@ Solr:
 			ARKCASE_SOLR_HOST=$(key:solrHost)
 			ARKCASE_SOLR_PORT=$(key:solrPort)
 
-			ARKCASE_SOLR_URL="${ARKCASE_SOLR_SCHEME}://${ARKCASE_SOLR_HOST}:${ARKCASE_SOLR_PORT}/solr"
+			# This value has to be copied from the secret instead of mounted because
+			# mounted values don't get interpolated, so the $() references within will
+			# go unresolved. Thus, the actual envvar value that must be created on the
+			# pod's YAML *MUST* be the actual string with the $() values intact so the
+			# K8s runtime can do the interpolation, and the pod's process can see the
+			# actual, real, final value including host, port, etc. values fully resolved.
+			ARKCASE_SOLR_URL="$(ARKCASE_SOLR_SCHEME)://$(ARKCASE_SOLR_HOST):$(ARKCASE_SOLR_PORT)/solr" # exact value, no interpolation
 			ARKCASE_SOLR_USERNAME=""
 			ARKCASE_SOLR_PASSWORD=""
 
@@ -77,6 +90,6 @@ Solr:
 		secret: ${arkcase}-search-main
 			ARKCASE_SOLR_BASE_URL=$(key:url)
 
-			ARKCASE_SOLR_URL="${ARKCASE_SOLR_BASE_URL}/solr"
+			ARKCASE_SOLR_URL="$(ARKCASE_SOLR_BASE_URL)/solr" # exact value, no interpolation
 			ARKCASE_SOLR_USERNAME=$(key:username)
 			ARKCASE_SOLR_PASSWORD=$(key:password)

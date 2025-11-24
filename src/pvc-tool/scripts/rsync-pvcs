@@ -51,7 +51,7 @@ rsync_with_retry()
 		pull ) MAKE_DIRECTORY="true"  ; TARGET="${LOCAL}" ; SOURCE="${REMOTE}" ; COPY_ARGS=("${REMOTE}" .) ;;
 	esac
 
-	local CMD=("${RSYNC}" "${RSYNC_RSH_FLAGS[@]}" --progress --exclude="lost+found" -RavzhH --delete-delay "${COPY_ARGS[@]}")
+	local CMD=("${RSYNC}" "${RSYNC_RSH_FLAGS[@]}" --progress --exclude="lost+found" -RavzhHS --delete-delay "${COPY_ARGS[@]}")
 	say "👀 Will use the command: ${CMD[@]@Q}"
 
 	say "👉 Copying from [${SOURCE}] into [${TARGET}]..."
@@ -166,7 +166,6 @@ PVC_LIST_FILE="-"
 [ -n "${PVC_LIST_FILE}" ] || fail "The input file [${PVC_LIST_FILE}] may not be the empty string"
 if [ "${PVC_LIST_FILE}" != "-" ] ; then
 	[ -e "${PVC_LIST_FILE}" ] || fail "The input file [${PVC_LIST_FILE}] does not exist"
-	[ -f "${PVC_LIST_FILE}" ] || fail "The path [${PVC_LIST_FILE}] is not a regular file"
 	[ -r "${PVC_LIST_FILE}" ] || fail "The input file [${PVC_LIST_FILE}] is not readable"
 fi
 

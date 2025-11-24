@@ -41,11 +41,8 @@ spec:
             set -xeuo pipefail
             . /.functions
             init_ssl
-            curl -fsSL -m 3 -o /dev/null "https://$(SERVICE_NAME):9999/actuator/health"
             curl -fsSL -m 3 -o /dev/null "https://$(SERVICE_NAME):8443/arkcase/login"
             {{- if $portal }}
-            curl -fsSL -m 3 -o /dev/null "https://$(SERVICE_NAME):8443/arkcase/external-portal/rest/request/authenticatedMode"
-            curl -fsSL -m 3 -o /dev/null "https://$(SERVICE_NAME):8443/$(PORTAL_CONTEXT)/"
             /usr/bin/curl -fsSL -m 3 -o /dev/null "https://$(SERVICE_NAME):8443/arkcase/external-portal/rest/request/authenticatedMode"
             /usr/bin/curl -fsSL -m 3 -o /dev/null "https://$(SERVICE_NAME):8443/$(PORTAL_CONTEXT)/"
             {{- end }}

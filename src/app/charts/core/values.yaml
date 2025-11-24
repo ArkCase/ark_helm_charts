@@ -20,8 +20,6 @@ resources:
   development:
     arkcase:
       limits: "3Gi,2"
-    cloudconfig:
-      limits: "2Gi,1"
 
 # Please leave the `replicaCount` to 1 for the time being. Clustering is not
 # supported yet.
@@ -37,30 +35,29 @@ image:
   registry: "public.ecr.aws"
 
   # Overrides the image tag whose default is the chart appVersion.
-  repository: "arkcase/core"
-  # tag: "3.0.0"
+  arkcase: &arkcase
+    repository: "arkcase/core"
+    tag: "3.0.0"
+
+  portal:
+    <<: *arkcase
 
   deployer:
     repository: "arkcase/deployer"
     # tag: 1.1.1-01
 
-  cloudconfig:
-    repository: "arkcase/cloudconfig"
-    tag: "2.0.0"
-
-  haproxy:
-    repository: "arkcase/haproxy"
-    tag: "2.6"
-
-  # setperm:
-  #   registry: "alternate-registry"
-  #   repository: "arkcase/setperm"
+  setperm:
+    repository: "arkcase/setperm"
   #   tag: "latest"
 
-  # seed-content:
-  #   registry: "alternate-registry"
-  #   repository: "arkcase/nettest"
+  seed-content:
+    repository: "arkcase/nettest"
   #   tag: "latest"
+
+  smoke-test:
+    repository: "arkcase/nettest"
+  #   tag: "latest"
+
 
 
 # You generally shouldn't mess with these. These exist to support some name-generation templates
@@ -94,7 +91,7 @@ securityContext:
   # fsGroup: &fsGroup 1997
   # fsGroupChangePolicy: OnRootMismatch
 
-  cloudconfig:
+  arkcase:
     # capabilities:
     #   drop:
     #   - ALL
@@ -102,7 +99,8 @@ securityContext:
     # runAsNonRoot: true
     # runAsUser: &runAsUser 1997
     # runAsGroup: *fsGroup
-  arkcase:
+
+  portal:
     # capabilities:
     #   drop:
     #   - ALL
@@ -148,39 +146,15 @@ persistence:
 
 service:
   canDebug: true
-  cloudconfig:
-    ports:
-      - name: cloudconfig
-        protocol: TCP
-        port: &cloudconfigPort 9999
-##
-## Configure extra options for containers' liveness and readiness probes
-## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/#configure-probes
-## @param service.probes.enabled Enable liveness and readiness probes
-## @param service.probes.spec.initialDelaySeconds Initial delay seconds for liveness and readiness probes
-## @param service.probes.spec.periodSeconds Period seconds for liveness and readiness probes
-## @param service.probes.spec.timeoutSeconds Timeout seconds for liveness and readiness probes
-## @param service.probes.spec.failureThreshold Failure threshold for liveness and readiness probes
-## @param service.probes.spec.successThreshold Success threshold for liveness and readiness probes
-##
-    probes:
-      enabled: true
-      spec:
-        exec:
-          command: [ "/usr/local/bin/cloudconfig-live" ]
-        initialDelaySeconds: 0
-        periodSeconds: 10
-        timeoutSeconds: 10
-        failureThreshold: 1
-        successThreshold: 1
-      startup:
-        failureThreshold: 90
 
   arkcase:
     ports:
       - name: https
         protocol: TCP
         port: &https 8443
+      - name: hazelcast
+        protocol: TCP
+        port: 5710
 
     probes: &arkcaseProbes
       enabled: true
@@ -208,41 +182,16 @@ service:
           path: "/arkcase/login"
           port: *https
 
-  clusteredArkcase:
+  portal:
     ports:
-      - name: clustered-https
+      - name: https
         protocol: TCP
-        port: &clustered 4443
-      - name: hazelcast
-        protocol: TCP
-        port: 5710
+        port: &https 8443
 
     probes:
       <<: *arkcaseProbes
       readiness:
         httpGet:
           scheme: HTTPS
-          path: "/arkcase/login"
-          port: *clustered
-
-  clusteredHaproxy:
-    ports:
-      - name: healthz
-        protocol: TCP
-        port: &healthz 18443
-    probes:
-      enabled: true
-      spec:
-        <<: *baseProbeThreshold
-      startup: &haproxyProbe
-        httpGet:
-          scheme: HTTPS
-          port: *healthz
-          path: "/healthz"
-        failureThreshold: 90
-      liveness:
-        <<: *haproxyProbe
-        failureThreshold: 3
-      readiness:
-        <<: *haproxyProbe
-        failureThreshold: 1
+          path: "/arkcase/external-portal/rest/request/authenticatedMode"
+          port: *https

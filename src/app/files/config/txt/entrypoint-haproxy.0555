@@ -1,0 +1,45 @@
+#!/bin/bash
+set -euo pipefail
+. /.functions
+
+set_or_default SSL_DIR
+CERT="${SSL_DIR}/haproxy-cert.pem"
+
+# Compute the cluster domain
+CLUSTER_DOMAIN="$(get_cluster_domain)"
+[ -n "${CLUSTER_DOMAIN}" ] && eyes "The CLUSTER_DOMAIN value is [${CLUSTER_DOMAIN}]"
+export CLUSTER_DOMAIN
+
+# Generate the peers file
+set_or_default CONF_DIR "/usr/local/etc/haproxy"
+set_or_default CONF_FILE "${CONF_DIR}/haproxy.cfg"
+set_or_default PEERS_FILE "/tmp/haproxy-peers.cfg"
+
+FQSN="_${DNS_PORT}._tcp.${DNS_SERVICE}.${DNS_NAMESPACE}.svc."
+[ -n "${CLUSTER_DOMAIN}" ] && FQSN+="${CLUSTER_DOMAIN}."
+
+eyes "Fetching the server peer list from the DNS SRV record at [${FQSN}]"
+readarray -t SERVERS < <(dig +short -t SRV "${FQSN}" | sort -k 4)
+
+:> "${PEERS_FILE}" || fail "Failed to initialize the peer listings file at [${PEERS_FILE}]"
+{
+	echo -e "peers cluster"
+	echo -e "\t# It's important we use the pod name as the peer ID here, as that's"
+	echo -e "\t# how the local peer will be identified via localpeer (this one is ${POD_NAME})"
+} >> "${PEERS_FILE}"
+
+PEERS=""
+for SERVER in "${SERVERS[@]}" ; do
+	read PRIORITY WEIGHT PORT TARGET <<< "${SERVER}"
+	IFS="." read PEER REST <<< "${TARGET}"
+	eyes "Found peer server [${TARGET}]"
+	PEERS+="\tpeer\t${PEER}\t${TARGET}:10000\n"
+done
+echo -e "${PEERS}" | sort >> "${PEERS_FILE}"
+
+eyes "Peers file:\n$(<"${PEERS_FILE}")"
+
+[ -v INGRESS_HOST ] && ok "Found Ingress Hostname: [${INGRESS_HOST}]"
+
+CMD=("/usr/local/bin/docker-entrypoint.sh" "/usr/local/sbin/haproxy" "-f" "${CONF_FILE}" "-f" "${PEERS_FILE}")
+execute "${CMD[@]}"

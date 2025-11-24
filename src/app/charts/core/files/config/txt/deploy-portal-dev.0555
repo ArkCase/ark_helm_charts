@@ -1,0 +1,111 @@
+#!/bin/bash
+set -euo pipefail
+. /.functions
+
+set_or_default COMPONENT "portal"
+set_or_default BASE_DIR "/app"
+set_or_default DEPL_DIR "${BASE_DIR}/depl"
+set_or_default WARS_DIR "${DEPL_DIR}/wars"
+
+get_portal_war()
+{
+	local P=""
+	local F=""
+	for w in "${@}" ; do
+		case "${w}" in
+			*/portal.war ) P="${w}" ;;
+			*/foia.war ) F="${w}" ;;
+		esac
+	done
+
+	# If both are non-empty, we return an error
+	[ -n "${P}" ] && [ -n "${F}" ] && return 1
+
+	# This will result in the "winner" ... so spit out its name
+	local W="${P}${F}"
+	[ -n "${W}" ] && echo -n "${W}"
+	return 0
+}
+
+set_or_default SKIP_WARS ""
+SKIP_CONF="$(to_boolean "${SKIP_CONF:-false}")"
+
+DEV="$(to_boolean "${DEV:-false}")"
+FORCE_DEPLOY="$(to_boolean "${FORCE_DEPLOY:-false}")"
+
+if "${DEV}" ; then
+	SKIP_WARS="$(echo "${SKIP_WARS}" | tr '/' '\n' | sort -u | sed -e '/^\s*$/d')"
+
+	set_or_default DEV_DIR "${BASE_DIR}/dev"
+	DEV_WARS_DIR="${DEV_DIR}/wars"
+fi
+
+#
+# Deploy all WAR files
+#
+WAR="$(list-artifacts "/${COMPONENT}/wars")" || fail "Failed to list the WAR files to be deployed"
+
+readarray -t WAR < <(echo -n "${WAR}")
+
+# Special case: sanitize the WAR list, make sure we have at most
+# one of "portal.war" and "foia.war", because having both is a problem
+PORTAL_WAR="$(get_portal_war "${WAR[@]}")" || fail "Cannot include multiple portal WAR files in the deployment - at most one is allowed!"
+
+say "Found ${#WAR[@]} WAR files to deploy: [${WAR[@]}]"
+for war in "${WAR[@]}" ; do
+
+	ARTIFACT_NAME="${war##*/}"
+	BASENAME="${ARTIFACT_NAME%.*}"
+
+	# The default WAR's target is its basename without the extension
+	# inside of WARS_DIR
+	WAR_TGT="${BASENAME}"
+
+	# If this is the Portal WAR, we can potentially pick where
+	# it will be deployed into, other than the default path
+	[ "${war}" == "${PORTAL_WAR}" ] && [ -v PORTAL_CONTEXT ] && WAR_TGT="${PORTAL_CONTEXT:-${WAR_TGT}}"
+
+	# Pre-pend the actual target's parent directory
+	WAR_TGT="${WARS_DIR}/${WAR_TGT}"
+
+	if ${DEV} ; then
+		WAR_PAT="${BASENAME}"
+
+		# If we're in dev mode, then first we check to see if this
+		# WAR is in the list of excluded WARs. We support treating
+		# "foia" and "portal" as interchangeable (for now, at least)
+		[ "${war}" == "${PORTAL_WAR}" ] && WAR_PAT="(portal|foia)"
+
+		if egrep -q "^${WAR_PAT}$" <<< "${SKIP_WARS}" ; then
+			say "The WAR file [${BASENAME}] is on the skip list, will ignore (matched /^${WAR_PAT}$/)"
+			continue
+		fi
+
+		# This war is not excluded, so let's first check to see if
+		# there's a development version of the WAR we should be
+		# deploying instead
+		if [ -s "${DEV_WARS_DIR}/${ARTIFACT_NAME}" ] ; then
+			# We have a custom WAR to deploy! Use it!
+			say "Found a development WAR at [${DEV_WARS_DIR}/${ARTIFACT_NAME}], will deploy it instead"
+			mkdir -p "${WAR_TGT}"
+			unzip -o -d "${WAR_TGT}" "${DEV_WARS_DIR}/${ARTIFACT_NAME}"
+			continue
+		fi
+	fi
+
+	mkdir -p "${WAR_TGT}" || fail "Failed to create the extraction target at [${WAR_TGT}]"
+
+	# There's no development version, and the WAR is not excluded,
+	# so let's go ahead and deploy it normally
+	deploy-artifact extract "${war}" "${WAR_TGT}" || fail "Failed to deploy the WAR from [${war}] into [${WAR_TGT}]"
+done
+
+#
+# Save the SHA-256 of the global artifacts
+#
+GLOBAL_SUMS="$(get-global-sums)" || fail "Failed to get the artifact global sums"
+SUMS_FILE="${WARS_DIR}/.artifacts.global.sums"
+echo -n "${GLOBAL_SUMS}" > "${SUMS_FILE}" || fail "Failed to store the artifact global sums into [${SUMS_FILE}]"
+
+ok "Configuration Initialization Complete"
+exit 0

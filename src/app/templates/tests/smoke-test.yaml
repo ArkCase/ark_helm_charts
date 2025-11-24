@@ -1,0 +1,42 @@
+{{- if (include "arkcase.subsystem.enabled" $) }}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ printf "%s-test" (include "arkcase.fullname" $) | quote }}
+  namespace: {{ $.Release.Namespace | quote }}
+  labels: {{- include "arkcase.labels" $ | nindent 4 }}
+    {{- include "arkcase.labels.test.smoke" $ | nindent 4 }}
+    {{- with ($.Values.labels).common }}
+      {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- with ($.Values.test).labels }}
+      {{- toYaml . | nindent 4 }}
+    {{- end }}
+  annotations:
+    helm.sh/hook: test
+    helm.sh/hook-delete-policy: hook-succeeded
+    {{- with ($.Values.annotations).common }}
+      {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- with ($.Values.test).annotations }}
+      {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  {{- include "arkcase.image.pullSecrets" $ | nindent 2 }}
+  containers:
+    - name: test
+      {{- include "arkcase.image" (dict "ctx" $ "name" "smoke-test" "repository" "arkcase/nettest") | nindent 6 }}
+      command: [ "/usr/local/bin/run-from-env" ]
+      args: [ "SCRIPT" ]
+      env:
+        - name: SERVICE_NAME
+          value: {{ include "arkcase.service.name" $ | quote }}
+        - name: SCRIPT
+          value: |-
+            set -xeuo pipefail
+            . /.functions
+            init_ssl
+            curl -fsSL -m 3 -o /dev/null "https://$(SERVICE_NAME)-artifacts/"
+            curl -fsSL -m 3 -o /dev/null "https://$(SERVICE_NAME)-proxy:18443/healthz"
+  restartPolicy: Never
+{{- end }}
