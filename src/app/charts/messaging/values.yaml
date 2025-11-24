@@ -48,6 +48,9 @@ image:
   #   repository: "arkcase/setperm"
   #   tag: "latest"
 
+  smoke-test:
+    repository: "arkcase/nettest"
+
 # You generally shouldn't mess with these. These exist to support some name-generation templates
 nameOverride: ""
 fullnameOverride: ""
@@ -153,6 +156,3 @@ service:
       successThreshold: 1
     startup:
       failureThreshold: 90
-    readiness:
-      tcpSocket:
-        port: *openwire

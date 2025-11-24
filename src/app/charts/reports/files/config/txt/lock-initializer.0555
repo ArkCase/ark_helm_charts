@@ -33,6 +33,29 @@ export INIT_PROCESS="${2}"
 
 export INIT_VERSION="${PENTAHO_VERSION}"
 
+# We have the init version include the hash for the artifacts so we don't deploy
+# the new artifacts unless we absolutely have to. This also has a side effect that
+# it avoids duplicate installation for the artifacts
+set_or_default INIT_DIR "${BASE_DIR}/init"
+set_or_default DATA_DIR "${BASE_DIR}/data"
+
+set_or_default INIT_INFO_FILE "${INIT_DIR}/.artifact-info.json"
+is_file_readable "${INIT_INFO_FILE}" && INIT_INFO="$(<"${INIT_INFO_FILE}")" || INIT_INFO=""
+[ -n "${INIT_INFO}" ] || INIT_INFO="{}"
+
+FINAL_TS="$(jq -r '.timestamp // ""' <<< "${INIT_INFO}")"
+FINAL_HASH="$(jq -r '.checksum // ""' <<< "${INIT_INFO}")"
+
+set_or_default NEW_HASH_FILE "${INIT_DIR}/.artifact-sums"
+is_file_readable "${NEW_HASH_FILE}" && NEW_HASH="$(<"${NEW_HASH_FILE}")" || NEW_HASH=""
+
+if [ -n "${NEW_HASH}" ] && [ "${FINAL_HASH}" != "${NEW_HASH}" ] ; then
+	FINAL_TS="$(date -u "+%Y%m%d%H%M%S%NZ")"
+	FINAL_HASH="${NEW_HASH}"
+fi
+
+[ -n "${FINAL_TS}" ] && INIT_VERSION+="-${FINAL_TS}"
+
 say "Version info: ${INIT_VERSION}"
 say "Process info: ${INIT_PROCESS}"
 say "Marker info:  ${#INIT_MARKER}:[${MARKER_SUM}]"
@@ -40,7 +63,18 @@ say "Marker info:  ${#INIT_MARKER}:[${MARKER_SUM}]"
 export CURATOR_WRAPPER_JAR="/usr/local/bin/curator-wrapper.jar"
 export CURATOR_WRAPPER_CONF="/usr/local/etc/curator-wrapper.yaml"
 
+RC=0
 (
 	execute java -Dzookeeper.client.secure=true -jar "${CURATOR_WRAPPER_JAR}" -c "${CURATOR_WRAPPER_CONF}"
-)
-exit ${?}
+) || RC=${?}
+
+if [ ${RC} -eq 0 ] && [ -n "${FINAL_HASH}" ] ; then
+	cat <<-EOF > "${INIT_INFO_FILE}"
+	{
+		"timestamp" : "${FINAL_TS}",
+		"checksum" : "${FINAL_HASH}"
+	}
+	EOF
+fi
+
+exit ${RC}

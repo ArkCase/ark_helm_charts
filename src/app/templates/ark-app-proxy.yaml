@@ -77,7 +77,7 @@ spec:
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
             - name: SSL_SERVICE_EXTRA_NAMES
-              value: "core,reports"
+              value: {{ include "arkcase.app.ssl-names" $ | quote }}
           command: [ "/usr/local/bin/acme-init" ]
           volumeMounts:
             {{- include "arkcase.acme.volumeMount-shared" $ | nindent 12 }}

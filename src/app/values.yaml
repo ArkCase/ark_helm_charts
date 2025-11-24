@@ -64,22 +64,41 @@ service:
         failureThreshold: 1
 
   core:
+    downstream: true
     ports:
       - name: https
         protocol: TCP
         port: 8443
 
   portal:
+    downstream: true
     ports:
       - name: https
         protocol: TCP
         port: 8443
 
   reports:
+    downstream: true
     ports:
       - name: https
         protocol: TCP
         port: 8443
+
+  messaging:
+    downstream: true
+    ports:
+      - name: console
+        protocol: TCP
+        port: 8443
+      - name: stomp
+        protocol: TCP
+        port: 61613
+      - name: openwire
+        protocol: TCP
+        port: 61616
+
+platform: ""
+
 
 platform: ""
 
@@ -113,6 +132,9 @@ image:
   haproxy:
     repository: "arkcase/haproxy"
     tag: "2.6"
+
+  smoke-test:
+    repository: "arkcase/nettest"
 
 # You generally shouldn't mess with these. These exist to support some name-generation templates
 nameOverride: ""
