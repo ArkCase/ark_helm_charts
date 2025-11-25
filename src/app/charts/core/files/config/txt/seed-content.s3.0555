@@ -238,7 +238,7 @@ try:
 		if type(config) != dict:
 			fail(f"The configuration data is malformed - the value 'buckets[{name_template}]' must be a dict")
 
-		name = resolve_value(name.strip())
+		name = resolve_value(name_template.strip())
 		if not name:
 			fail(f"The configuration data is malformed - the bucket with the name template [{name_template}] resolved to an empty bucket name")
 
