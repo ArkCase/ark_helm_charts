@@ -60,6 +60,12 @@
             <AppenderRef ref="file-log"/>
             <AppenderRef ref="file-errors-log"/>
         </Logger>
+        <!-- gov.foia debug and above -->
+        <Logger name="gov.foia" level="debug" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="file-log"/>
+            <AppenderRef ref="file-errors-log"/>
+        </Logger>
         {{- include "arkcase.core.renderLoggers" (dict "ctx" $ "loggers" $loggers) | nindent 8 }}
         <Root level="info" additivity="false">
             <AppenderRef ref="Console"/>
