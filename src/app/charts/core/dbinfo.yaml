@@ -40,7 +40,7 @@ postgresql:
   port: 5432
   jdbc:
     driver: org.postgresql.Driver
-    url: "jdbc:postgresql://${ARKCASE_JDBC_HOST}:${ARKCASE_JDBC_PORT}/${ARKCASE_JDBC_DATABASE}?ssl=true&sslrootcert=/etc/ssl/certs/ca-certificates.crt"
+    url: "jdbc:postgresql://${ARKCASE_JDBC_HOST}:${ARKCASE_JDBC_PORT}/${ARKCASE_JDBC_DATABASE}?ssl=true"
   aliases:
     - psql
     - postgres
