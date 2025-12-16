@@ -127,4 +127,8 @@ say "👉 Waiting for ArkCase to become available before starting the Cron proce
 poll_url "${CORE_URL}" || fail "ArkCase did not come up in time"
 
 say "👉 Starting the Cron process..."
-exec /usr/sbin/crond -n -P
+
+# Support both Ubuntu and Rocky, for now
+CMD=( /usr/sbin/cron -f -L 15 )
+[ -x "/usr/sbin/crond" ] && CMD=( /usr/sbin/crond -n -P )
+exec "${CMD[@]}"
