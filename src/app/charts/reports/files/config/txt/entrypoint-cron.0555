@@ -79,4 +79,12 @@ eyes "Storing the runtime environment to a temporary file"
 declare -px > "${HOME}/.cron-env"
 
 doing "Starting the Cron process..."
-execute /usr/sbin/crond -n -P
+
+# This is for the new Ubuntu-centric containers
+CMD=(/usr/sbin/cron -f -L 15)
+
+# This is vestigial to support Rocky-centric containers
+is_file_executable /usr/sbin/crond && CMD=(/usr/sbin/crond -n -P)
+
+# Launch the correct daemon!
+execute "${CMD[@]}"
