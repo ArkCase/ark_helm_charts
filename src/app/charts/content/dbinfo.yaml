@@ -26,7 +26,7 @@ postgresql:
   port: 5432
   jdbc:
     driver: org.postgresql.Driver
-    url: "jdbc:postgresql://$(ALFRESCO_JDBC_HOST):$(ALFRESCO_JDBC_PORT)/$(ALFRESCO_JDBC_DATABASE)?ssl=true&sslrootcert=/etc/pki/tls/cert.pem"
+    url: "jdbc:postgresql://$(ALFRESCO_JDBC_HOST):$(ALFRESCO_JDBC_PORT)/$(ALFRESCO_JDBC_DATABASE)?ssl=true&sslrootcert=/etc/ssl/certs/ca-certificates.crt"
   aliases:
     - psql
     - postgres
