@@ -95,5 +95,5 @@ if [ -v ZK_HOST ] ; then
 	say "SSL Enabled!"
 fi
 
-set -- "${HOME_DIR}/bin/solr" start -f --cloud
+set -- "${HOME_DIR}/bin/solr" start -f -c
 execute "${@}"
