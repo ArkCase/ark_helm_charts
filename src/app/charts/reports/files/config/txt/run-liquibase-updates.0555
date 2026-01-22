@@ -13,25 +13,35 @@ redirect_logs "${LOGS_DIR}/liquibase.stdout.log"
 set_as_boolean ARKCASE_ENTERPRISE
 
 CHANGELOGS=("create_quartz:quartz")
-"${ARKCASE_ENTERPRISE}" && CHANGELOGS+=("pentaho_mart:hibernate")
+"${ARKCASE_ENTERPRISE}" && CHANGELOGS+=("pentaho_mart:hibernate:true")
 
 # We do it like this so we don't enter it multiple times
 
 for CHANGELOG in "${CHANGELOGS[@]}" ; do
-	IFS=":" read CHANGELOG DB <<< "${CHANGELOG}"
-	running "Running changelog ${CHANGELOG} ..."
-	URL="REPORTS_JDBC_${DB^^}_URL"
-	USERNAME="REPORTS_JDBC_${DB^^}_USERNAME"
-	PASSWORD="REPORTS_JDBC_${DB^^}_PASSWORD"
-	DRIVER="REPORTS_JDBC_${DB^^}_DRIVER"
+	IFS=":" read CHANGELOG DB OPTIONAL <<< "${CHANGELOG}"
 
-	export LIQUIBASE_COMMAND_DRIVER="${!DRIVER}"
-	[ -n "${LIQUIBASE_COMMAND_DRIVER}" ] || fail "No JDBC driver given for database ${DB}, cannot continue"
+	CHANGELOG_FILE="changelog.${CHANGELOG}.xml"
 
-	./liquibase update \
-		--changelog-file="changelog.${CHANGELOG}.xml" \
-		--url="${!URL}" \
-		--username="${!USERNAME}" \
-		--password="${!PASSWORD}"
+	if is_file_readable "${CHANGELOG_FILE}" ; then
+		running "Running changelog ${CHANGELOG} ..."
+		URL="REPORTS_JDBC_${DB^^}_URL"
+		USERNAME="REPORTS_JDBC_${DB^^}_USERNAME"
+		PASSWORD="REPORTS_JDBC_${DB^^}_PASSWORD"
+		DRIVER="REPORTS_JDBC_${DB^^}_DRIVER"
+
+		export LIQUIBASE_COMMAND_DRIVER="${!DRIVER}"
+		[ -n "${LIQUIBASE_COMMAND_DRIVER}" ] || fail "No JDBC driver given for database ${DB}, cannot continue"
+
+		./liquibase update \
+			--changelog-file="changelog.${CHANGELOG}.xml" \
+			--url="${!URL}" \
+			--username="${!USERNAME}" \
+			--password="${!PASSWORD}"
+		continue
+	fi
+
+	as_boolean "${OPTIONAL}" && \
+		warn "Skipping the missing optional changelog file [${CHANGELOG_FILE}]" || \
+		fail "The required changelog file [${CHANGELOG_FILE}] does not exist!"
 done
 ok "Changelogs complete."
