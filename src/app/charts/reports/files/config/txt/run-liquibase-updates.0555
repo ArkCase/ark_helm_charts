@@ -5,6 +5,7 @@ set -euo pipefail
 set_or_default BASE_DIR "/app"
 set_or_default LB_DIR "${BASE_DIR}/lb"
 set_or_default LOGS_DIR "${BASE_DIR}/logs"
+set_or_default CHANGELOG_DIR "${LB_DIR}/pentaho"
 
 cd "${LB_DIR}"
 
@@ -21,8 +22,7 @@ for CHANGELOG in "${CHANGELOGS[@]}" ; do
 	IFS=":" read CHANGELOG DB OPTIONAL <<< "${CHANGELOG}"
 
 	CHANGELOG_FILE="changelog.${CHANGELOG}.xml"
-
-	if is_file_readable "${CHANGELOG_FILE}" ; then
+	if is_file_readable "${CHANGELOG_DIR}/${CHANGELOG_FILE}" ; then
 		running "Running changelog ${CHANGELOG} ..."
 		URL="REPORTS_JDBC_${DB^^}_URL"
 		USERNAME="REPORTS_JDBC_${DB^^}_USERNAME"
@@ -33,7 +33,7 @@ for CHANGELOG in "${CHANGELOGS[@]}" ; do
 		[ -n "${LIQUIBASE_COMMAND_DRIVER}" ] || fail "No JDBC driver given for database ${DB}, cannot continue"
 
 		./liquibase update \
-			--changelog-file="changelog.${CHANGELOG}.xml" \
+			--changelog-file="${CHANGELOG_FILE}" \
 			--url="${!URL}" \
 			--username="${!USERNAME}" \
 			--password="${!PASSWORD}"
