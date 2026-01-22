@@ -139,7 +139,7 @@
     <Loggers>
         <Logger name="org.apache.hadoop.io.retry" level="INFO"/>
         <Logger name="org.hibernate" level="ERROR"/>
-        <Logger name="net.sf.ehcache" level="ERROR"/>
+        <Logger name="org.ehcache" level="ERROR"/>
         <Logger name="org.quartz" level="ERROR"/>
         <Logger name="org.springframework" level="ERROR"/>
         <Logger name="org.springframework.security" level="ERROR"/>
@@ -147,12 +147,13 @@
         <Logger name="com.pentaho" level="ERROR"/>
         <Logger name="org.jfree.JCommon" level="ERROR"/>
         <Logger name="org.apache.jackrabbit.core.security.authentication.AbstractLoginModule" level="ERROR"/>
-        <Logger name="org.pentaho.hadoop.shim" level="INFO"/>
         <Logger name="org.pentaho.platform.osgi" level="INFO"/>
         <Logger name="org.pentaho.platform.web.http.context" level="WARN"/>
         <Logger name="org.pentaho.di.osgi" level="ERROR"/>
         <Logger name="org.pentaho.di.monitor" level="ERROR"/>
         <Logger name="org.pentaho.platform.engine.core.system.status" level="INFO"/>
+        <Logger name="org.pentaho.reporting.engine.classic.core.modules.output.fast.validator.ReportStructureValidator" level="INFO"/>
+        <Logger name="org.pentaho.platform.engine.security.authorization" level="ERROR"/>
         <Logger name="com.pentaho.yarn" level="INFO"/>
         <Logger name="com.pentaho.big.data.bundles" level="INFO"/>
         <Logger name="com.pentaho.big.data.ee" level="INFO"/>
@@ -167,6 +168,19 @@
         <Logger name="org.pentaho.di.job.Job" level="INFO" additivity="false">
             <appender-ref ref="pdi-execution-appender"/>
         </Logger>
+
+        <!-- REVENERA -->
+        <Logger name="com.pentaho.dsc.elm" level="INFO">
+            <appender-ref ref="license-execution-appender"/>
+        </Logger>
+
+        <!-- =========================== -->
+        <!-- Scheduler Log Levels        -->
+        <!-- =========================== -->
+        <!-- Set these to WARN to enable logging of scheduler output location validation and fallback process. -->
+        <Logger name="org.pentaho.platform.scheduler2.action.SchedulerOutputPathResolver" level="WARN"/>
+        <Logger name="org.pentaho.platform.web.http.api.resources.SchedulerOutputPathResolver" level="WARN"/>
+        <Logger name="org.pentaho.platform.web.http.api.resources.SchedulerResource" level="WARN"/>
 
         <!-- =========================== -->
         <!-- Mondrian Log Levels         -->
