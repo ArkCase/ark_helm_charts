@@ -164,7 +164,9 @@
         <Valve className="org.pentaho.tomcat.logvalve.FilteredAccessLogValve" directory="${LOGS_DIR}"
                prefix="localhost_access" suffix=".log"
                pattern="%h %l %u %t &quot;%r&quot; %s %b" />
-
+        <Valve className="org.apache.catalina.valves.ErrorReportValve"
+               showServerInfo="false"
+        />
       </Host>
     </Engine>
   </Service>
