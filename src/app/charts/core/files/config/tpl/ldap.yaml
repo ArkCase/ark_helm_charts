@@ -5,7 +5,7 @@ springConfigLdapProperties:
       ldapUrl:
         - "${ARKCASE_LDAP_URL}"
       userDomain: "${ARKCASE_LDAP_DOMAIN_LOWER}"
-      authUserDn: "${ARKCASE_LDAP_REALM}\\${ARKCASE_LDAP_USERNAME}"
+      authUserDn: "${ARKCASE_LDAP_USERNAME}@${ARKCASE_LDAP_DOMAIN_LOWER}"
       authUserPassword: "${ARKCASE_LDAP_PASSWORD}"
       base: "${ARKCASE_LDAP_BASE_DN},${ARKCASE_LDAP_ROOT_DN_LOWER}"
       userSearchBase: "${ARKCASE_LDAP_USER_BASE_DN}"
