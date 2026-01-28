@@ -115,8 +115,6 @@ spec:
               value: "-XX:MinRAMPercentage=50.0 -XX:MaxRAMPercentage=80.0"
             - name: SOLR_CORES
               value: "acmAdvancedSearch=arkcase,acmQuickSearch=arkcase"
-            - name: SOLR_JETTY_HOST
-              value: "0.0.0.0"
             {{- if $.Values.env }}
               {{- $.Values.env | toYaml | nindent 12 }}
             {{- end }}
