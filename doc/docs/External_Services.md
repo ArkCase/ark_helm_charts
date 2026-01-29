@@ -396,10 +396,14 @@ global:
       ......
       -----END CERTIFICATE-----
 
-    # A string of the form [serverName@]hostName:port, which will be queried
-    # using openssl s_client to obtain the offered certificates, and any CA
-    # certificates returned will be added to the trust.
+    # A string of the form [serverName@]hostName:port[/tls-protocol], which will be queried
+    # using openssl s_client to obtain the offered certificates, and any CA certificates
+    # returned will be added to the trust.
     - psql.service.com@10.35.4.32:3434
+
+    # You MUST specify the TLS protocol to use if the service in question requires TLS,
+    # instead of hosting a direct SSL connection.
+    - mysql.service.com@10.35.4.35:3434/mysql
 ```
 
 You can add any number of certificates or pointers/URLs to certificates here. Only CA certificates (`basicConstraints.CA=TRUE`) will be added to the trust stores.
