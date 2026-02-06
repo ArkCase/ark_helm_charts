@@ -15,6 +15,7 @@ Specifically, the stack is comprised of the following separate components, each 
  - [PostgreSQL](https://www.postgresql.org/)/[MariaDB](https://mariadb.org/), for database storage (only one instance is needed)
  - [Pentaho](https://www.hitachivantara.com/en-us/products/dataops-software/data-integration-analytics.html) (for reporting services)
  - [Alfresco](https://www.alfresco.com/), for content storage services
+- [Tika](https://tika.apache.org/), for document metadata and text extraction services
 
 In particular, Pentaho and Alfresco are offered in both Enterprise and Community editions. The edition deployed is automatically selected by the framework, by way of detecting the presence of the [required license data](#licenses) in the configuration at deployment time.
 

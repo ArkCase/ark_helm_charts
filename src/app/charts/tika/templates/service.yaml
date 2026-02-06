@@ -1,0 +1,3 @@
+{{- if not (include "arkcase.subsystem.external" $) -}}
+  {{- include "arkcase.subsystem.service" (dict "ctx" $ "dnsOnly" true) -}}
+{{- end -}}
