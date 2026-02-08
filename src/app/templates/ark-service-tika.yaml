@@ -1,4 +1,0 @@
-{{- if (not (include "arkcase.artifacts.external" $)) -}}
-  {{- include "arkcase.subsystem.service" (dict "ctx" $ "targetPart" "proxy" "partNameOnly" true "noDns" true) -}}
-{{- end -}}
-

@@ -83,15 +83,7 @@ tolerations:
 affinity:
 
 persistence:
-  enabled: true
-  volumeSize:
-    init: "1Gi"
-    data: "16Gi"
-  volumes:
-    data:
-      capacity: "16Gi"
-      accessModes:
-        - ReadWriteOnce
+  enabled: false
 
 service:
   #external: host-or-IP
