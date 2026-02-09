@@ -96,11 +96,6 @@ spec:
             {{- include "arkcase.alt-java" $ | nindent 12 }}
             - name: DATA_DIR
               value: *dataDir
-            - name: JAVA_TOOL_OPTIONS
-              value: >-
-                -XX:MinRAMPercentage=50.0
-                -XX:MaxRAMPercentage=80.0
-                -XX:+UseG1GC
             {{- if $.Values.env }}
               {{- $.Values.env | toYaml | nindent 12 }}
             {{- end }}
