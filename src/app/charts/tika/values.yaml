@@ -42,9 +42,6 @@ annotations:
 # Custom labels to apply throughout
 labels:
 
-updateStrategy: RollingUpdate
-rollingUpdatePartition: ""
-
 serviceAccount:
   # Specifies whether a service account should be created
   create: false
@@ -105,7 +102,7 @@ service:
     enabled: true
     spec:
       httpGet:
-        scheme: HTTP
+        scheme: HTTPS
         path: "/tika"
         port: *tika
       initialDelaySeconds: 30
