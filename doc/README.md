@@ -38,7 +38,7 @@ Specifically, the stack is comprised of the following separate components, each 
  - [Pentaho](https://www.hitachivantara.com/en-us/products/dataops-software/data-integration-analytics.html) (for reporting services)
  - [Alfresco](https://www.alfresco.com/), for content storage services
  - [Minio](https://min.io/), for content storage services in S3-compatible mode
-- [Tika](https://tika.apache.org/), for document metadata and text extraction services
+ - [Tika](https://tika.apache.org/), for document metadata and text extraction services
 
 In particular, Pentaho and Alfresco are offered in both Enterprise and Community editions. The edition deployed is automatically selected by the framework, by way of detecting the presence of the [required license data](docs/Licenses.md) in the configuration at deployment time.
 
