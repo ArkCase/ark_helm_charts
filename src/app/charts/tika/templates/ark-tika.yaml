@@ -67,30 +67,26 @@ spec:
         - name: init-set-permissions
           {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
-            - name: DATA_DIR
-              value: &dataDir "/app/data"
-            - name: INIT_DIR
-              value: &initDir "/app/init"
+            - name: TEMP_DIR
+              value: &tempDir "/app/temp"
             - name: JOBS
               value: |-
                 jobs:
                   - ownership: {{ coalesce ($.Values.persistence).ownership "1999:1999" | quote }}
                     permissions: "u=rwX,g=rX,o="
                     flags: [ "recurse", "forced", "create", "changes" ]
-                    targets: [ "$(DATA_DIR)", "$(INIT_DIR)" ]
+                    targets: [ "$(TEMP_DIR)" ]
           volumeMounts:
-            - name: &dataVol "data"
-              mountPath: *dataDir
-            - name: &initVol "init"
-              mountPath: *initDir
+            - name: &tempVol "temp"
+              mountPath: *tempDir
       containers:
         - name: tika
           {{- include "arkcase.image" $ | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
             {{- include "arkcase.alt-java" $ | nindent 12 }}
-            - name: DATA_DIR
-              value: *dataDir
+            - name: TEMP_DIR
+              value: *tempDir
             {{- if $.Values.env }}
               {{- $.Values.env | toYaml | nindent 12 }}
             {{- end }}
@@ -99,26 +95,15 @@ spec:
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "tika") | nindent 12 }}
           volumeMounts:
-            - name: *dataVol
-              mountPath: *dataDir
-            - name: *initVol
-              mountPath: *initDir
+            - name: *tempVol
+              mountPath: *tempDir
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/entrypoint") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/tika-config.xml" "subPath" "tika-config.xml") | nindent 12 }}
       volumes:
-        - name: *initVol
+        - name: *tempVol
           emptyDir:
-            sizeLimit: 1Gi
-        - name: *dataVol
-          {{- if $.Values.persistence.enabled }}
-          persistentVolumeClaim:
-            claimName: {{ include "arkcase.fullname" $ }}-data
-          {{- else }}
-          emptyDir:
-            sizeLimit: {{ ((.Values.persistence).volumeSize).data | default "2Gi" }}
-          {{- end }}
+            sizeLimit: {{ ((.Values.persistence).volumeSize).temp | default "2Gi" }}
         {{- include "arkcase.acme.volume" $ | nindent 8 }}
         {{- include "arkcase.file-resource.volumes" $ | nindent 8 }}
-  {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "data") | nindent 0 }}
 {{- end }}
