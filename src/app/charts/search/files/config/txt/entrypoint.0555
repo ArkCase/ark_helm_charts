@@ -18,22 +18,6 @@ set-java
 
 set_or_default BASE_DIR "/app"
 set_or_default DATA_DIR "/app/data"
-set_or_default INIT_MARKER "${DATA_DIR}/.initialized"
-
-# This is important: ${HOME_DIR} must be *ephemeral* - this flag is only meant to
-# inform when the init script ran, so we can run the post-init script in the helm chart
-set_or_default RUN_MARKER "${HOME_DIR}/.initRan"
-
-if [ -e "${INIT_MARKER}" ] ; then
-	say "Persistence is already initialized, proceeding with the normal boot"
-else
-	say "Persistence has not been initialized, proceeding with the first-time initialization"
-
-	/config-pre.sh || fail "Pre-configuration failed - the Solr initialization may not be complete"
-
-	touch "${INIT_MARKER}"
-	touch "${RUN_MARKER}"
-fi
 
 set_or_default SOLR_LOGS_DIR "${DATA_DIR}/logs"
 [ -v SOLR_LOGS_DIR ] || export SOLR_LOGS_DIR="${DATA_DIR}/logs"
@@ -93,6 +77,23 @@ if [ -v ZK_HOST ] ; then
 		exec server/scripts/cloud-scripts/zkcli.sh -zkhost "${ZK_HOST}" -cmd clusterprop -name urlScheme -val https
 	)
 	say "SSL Enabled!"
+fi
+
+set_or_default INIT_MARKER "${DATA_DIR}/.initialized"
+
+# This is important: ${HOME_DIR} must be *ephemeral* - this flag is only meant to
+# inform when the init script ran, so we can run the post-init script in the helm chart
+set_or_default RUN_MARKER "${HOME_DIR}/.initRan"
+
+if [ -e "${INIT_MARKER}" ] ; then
+	say "Persistence is already initialized, proceeding with the normal boot"
+else
+	say "Persistence has not been initialized, proceeding with the first-time initialization"
+
+	/config-pre.sh || fail "Pre-configuration failed - the Solr initialization may not be complete"
+
+	touch "${INIT_MARKER}"
+	touch "${RUN_MARKER}"
 fi
 
 set -- "${HOME_DIR}/bin/solr" start -f -cloud
