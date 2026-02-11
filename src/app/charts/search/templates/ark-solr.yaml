@@ -94,9 +94,7 @@ spec:
             {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
             {{- include "arkcase.alt-java" $ | nindent 12 }}
-            - name: ENABLE_MULTISHARD
-              value: {{ (not (empty (include "arkcase.solr.sharding" $))) | toString | quote }}
-            - name: REPLICAS
+            - name: NODES
               value: {{ $replicas | toString | quote }}
             - name: JAVA_TOOL_OPTIONS
               value: >-
