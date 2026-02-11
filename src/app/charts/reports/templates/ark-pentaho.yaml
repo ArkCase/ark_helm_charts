@@ -153,7 +153,7 @@ spec:
         {{- include "arkcase.initDependencies.container" $ | nindent 8 }}
       containers:
         - name: pentaho
-          {{- include "arkcase.image" $ | nindent 10 }}
+          {{- include "arkcase.image" (dict "ctx" $ "name" "pentaho" "repository" "arkcase/pentaho") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
             {{- include "arkcase.cluster.env" $ | nindent 12 }}
@@ -179,8 +179,7 @@ spec:
               value: "8443"
             - name: ADMIN_URL
               value: "https://localhost:$(ADMIN_PORT)/pentaho"
-            - name: PENTAHO_INSTALLED_LICENSE_PATH
-              value: "$(DATA_DIR)/.installedLicenses.xml"
+            {{- include "arkcase.pentaho.license.env" $ | nindent 12 }}
             {{- if $portal.reportsTimezone }}
             - name: FOIA_TIME_ZONE
               value: {{ $portal.reportsTimezone | quote }}
@@ -211,7 +210,7 @@ spec:
               mountPath: *initDir
             - name: *logsVol
               mountPath: *logsDir
-            {{- include "arkcase.pentaho.license.volumeMounts" $ | nindent 12 }}
+            {{- include "arkcase.pentaho.license.volumeMount" $ | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/tomcat/webapps/pentaho/META-INF/context.xml") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/pentaho-solutions/system/jackrabbit/repository.xml") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/pentaho-solutions/system/applicationContext-security-ldap.properties") | nindent 12 }}

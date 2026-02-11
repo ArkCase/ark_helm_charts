@@ -89,7 +89,7 @@ spec:
         {{- include "arkcase.initDependencies.container" $ | nindent 8 }}
       containers:
         - name: cron
-          {{- include "arkcase.image" $ | nindent 10 }}
+          {{- include "arkcase.image" (dict "ctx" $ "name" "pentaho" "repository" "arkcase/pentaho") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
             {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
@@ -100,8 +100,7 @@ spec:
               value: *dataDir
             - name: PENTAHO_SERVICE
               value: {{ $pentahoService | quote }}
-            - name: PENTAHO_INSTALLED_LICENSE_PATH
-              value: "$(DATA_DIR)/.installedLicenses.xml"
+            {{- include "arkcase.pentaho.license.env" $ | nindent 12 }}
             {{- if $portal.reportsTimezone }}
             - name: FOIA_TIME_ZONE
               value: {{ $portal.reportsTimezone | quote }}
@@ -118,7 +117,7 @@ spec:
             - name: *initVol
               mountPath: *initDir
             {{- include "arkcase.trusts.mount" $ | nindent 12 }}
-            {{- include "arkcase.pentaho.license.volumeMounts" $ | nindent 12 }}
+            {{- include "arkcase.pentaho.license.volumeMount" $ | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/render-template") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/encrypt-passwords") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/run-kjb") | nindent 12 }}

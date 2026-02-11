@@ -23,35 +23,6 @@ init_ssl
 set-java
 
 ###################################################################
-# INSTALL ANY LICENSES                                            #
-###################################################################
-
-#
-# Configure license location
-#
-set_or_default PENTAHO_INSTALLED_LICENSE_PATH "${DATA_DIR}/.installedLicenses.xml"
-ensure_dir "$(dirname "${PENTAHO_INSTALLED_LICENSE_PATH}")"
-export PENTAHO_INSTALLED_LICENSE_PATH
-
-#
-# Install the licenses
-#
-set_or_default LICENSE_DIR "${INIT_DIR}/licenses"
-
-if is_dir_readable "${LICENSE_DIR}" ; then
-	LICENSE_INSTALLER="${PENTAHO_HOME}/license-installer/install_license.sh"
-	doing "Installing all available license files from [${LICENSE_DIR}]"
-	while read LICENSE ; do
-		if /bin/sh "${LICENSE_INSTALLER}" install -q "${LICENSE}" ; then
-			ok "Installed the license from [${LICENSE}], removing the original file"
-			rm -fv "${LICENSE}" &>/dev/null || true
-		else
-			err "❌ Failed to install the license from [${LICENSE}]"
-		fi
-	done < <(find "${LICENSE_DIR}" -type f -name '*.lic' | sort)
-fi
-
-###################################################################
 # Render the correct server.properties file                       #
 ###################################################################
 set_or_default PENTAHO_HOME "${BASE_DIR}/pentaho"
