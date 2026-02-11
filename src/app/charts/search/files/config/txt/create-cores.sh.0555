@@ -55,18 +55,27 @@ is_dir_readwrite "${CONF_HOME}" || fail "Can't find the configsets directory at 
 # If there are no collection to add, skip this job
 [ -v SOLR_CORES ] || exit 0
 
-set_as_boolean ENABLE_MULTISHARD "false"
-set_or_default REPLICAS "1"
-[[ "${REPLICAS}" =~ ^[1-9][0-9]*$ ]] || fail "The number of replicas [${REPLICAS}] is not a valid positive number"
+set_or_default NODES "1"
+[[ "${NODES}" =~ ^[1-9][0-9]*$ ]] || fail "The number of nodes [${NODES}] is not a valid positive number"
 
-# Default values
 SHARDS=1
+REPLICAS=1
 
-# Have we been given a number of nodes that merits more sophisticated logic?
-if as_boolean "${ENABLE_MULTISHARD}" ; then
-	SHARDS=${REPLICAS}
-	REPLICAS=$(( ( SHARDS + 1 ) / 2 ))
-fi
+# We only vary the number of shards and replicas
+# if
+case ${NODES} in
+
+	# If it's a single-node deployment, then go with the defaults
+	1 ) ;;
+
+	# Two-node deployments are special: you only get one extra replica
+	2 ) REPLICAS=2 ;;
+
+	# All other scales we compute the replica counts such that
+	# we can lose up to half the pods and still be operational
+	# TODO: is this efficient in terms of performance?
+	* ) SHARDS=${NODES} ; REPLICAS=$(( ( SHARDS + 2 ) / 2 )) ;;
+esac
 
 readarray -d , -t CORES < <(echo -n "${SOLR_CORES}" | sed -e 's;,\+;,;g')
 eyes "Validating the collection specifications"
