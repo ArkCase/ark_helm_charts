@@ -20,17 +20,11 @@ platform: ""
 image:
   registry: "public.ecr.aws"
 
-  # TODO: Hardcoded for testing with local docker image, will be changed when we have the ark_tika published with the required change
   tika:
-    registry: ""
     repository: "arkcase/tika"
-    tag: "local-test"
-    pullPolicy: Never
 
   setperm:
     repository: "arkcase/setperm"
-    tag: "latest"
-    pullPolicy: IfNotPresent
 
 # You generally shouldn't mess with these. These exist to support some name-generation templates
 nameOverride: ""
