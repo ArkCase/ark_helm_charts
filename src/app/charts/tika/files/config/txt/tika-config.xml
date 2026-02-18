@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<properties>
+    <service-loader initializableProblemHandler="ignore"/>
+
+    <parsers>
+        <parser class="org.apache.tika.parser.DefaultParser">
+            <parser-exclude class="org.apache.tika.parser.ocr.TesseractOCRParser"/>
+        </parser>
+        <parser class="org.apache.tika.parser.DefaultParser">
+            <parser-exclude class="org.apache.tika.parser.mp4.MP4Parser"/>
+            <parser-exclude class="org.apache.tika.parser.mp3.Mp3Parser"/>
+            <parser-exclude class="org.apache.tika.parser.audio.AudioParser"/>
+        </parser>
+        <parser class="com.armedia.acm.tika.parser.EnhancedMp4Parser"/>
+        <parser class="com.armedia.acm.tika.parser.EnhancedMp3Parser"/>
+        <parser class="com.armedia.acm.tika.parser.EnhancedAudioParser"/>
+    </parsers>
+
+    <metadataFilters>
+        <metadataFilter class="com.armedia.acm.tika.filter.ContentTypeNormalizationFilter">
+            <contentTypeFixes>audio/vnd.wave:audio/wav,audio/mpeg:audio/mp3,audio/x-flac:audio/flac,video/quicktime:video/mp4</contentTypeFixes>
+            <extensionOverrides>.mpga:.mp3,.qt:.mp4</extensionOverrides>
+        </metadataFilter>
+        <metadataFilter class="com.armedia.acm.tika.filter.CreatedDateNormalizationFilter"/>
+        <metadataFilter class="com.armedia.acm.tika.filter.GpsEnrichmentFilter"/>
+    </metadataFilters>
+</properties>
