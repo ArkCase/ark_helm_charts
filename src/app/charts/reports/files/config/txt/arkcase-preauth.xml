@@ -23,7 +23,7 @@
         <beans:property name="requirePrincipalHeader" value="false" />
 
         <!-- do not change this -->
-        <beans:property name="authenticationManager" ref="authenticationManager" />        
+        <beans:property name="authenticationManager" ref="authenticationManager" />
     </beans:bean>
 
     <!-- DO NOT TOUCH - no changes needed here -->
@@ -31,7 +31,7 @@
     <http entry-point-ref="basicProcessingFilterEntryPoint" authentication-manager-ref="authenticationManager">
         <custom-filter position="PRE_AUTH_FILTER" ref="arkcasePreAuthFilter"/>
     </http>
-     
+
     <beans:bean id="arkcasePreAuthProvider" class="org.springframework.security.web.authentication.preauth.PreAuthenticatedAuthenticationProvider">
         <beans:property name="preAuthenticatedUserDetailsService">
             <beans:bean id="userDetailsServiceWrapper" class="org.springframework.security.core.userdetails.UserDetailsByNameServiceWrapper">
