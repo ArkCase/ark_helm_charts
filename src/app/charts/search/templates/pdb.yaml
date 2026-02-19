@@ -10,7 +10,7 @@ metadata:
   name: {{ include "arkcase.fullname" $ | quote }}
   namespace: {{ $.Release.Namespace | quote }}
 spec:
-  maxUnavailable: {{ $maxUnavailable | quote }}
+  maxUnavailable: {{ $maxUnavailable }}
   selector:
     matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
   {{- end -}}
