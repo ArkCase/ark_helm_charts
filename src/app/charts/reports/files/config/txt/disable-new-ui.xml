@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plugin title="Pentaho App Shell" name="app-shell">
+  <overlays>
+    <overlay id="startup-app-shell" resourcebundle="content/app-shell/bundles/messages" priority="1">
+      <menubar id="mainMenubar">
+        <!--
+        <menuitem id="newPUCLayout" label="${newPUCLayoutMenuTitle}" insertafter="helpmenu"
+                  js-command="window.open('plugin/app-shell/content/', 'newPUC');"/>
+        -->
+      </menubar>
+    </overlay>
+  </overlays>
+  <static-paths>
+    <static-path url="/app-shell/bundles" localFolder="bundles"/>
+  </static-paths>
+</plugin>
