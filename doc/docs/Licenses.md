@@ -104,31 +104,9 @@ global:
       ip7xmOa75sZJLQqFAwjXpsvP2yg27w7i4XLlSw==
 
     pentaho:
-      - |-
-        Yf39fES+xgnSd60b8dtr2ciOoAaJcVPbt4UbDdxrTWfKO4YJRTsQxqN6yIrkmrrSbWrhM0H1MWOS
-        xQhsjME1rclEEYgYMpUejOuPN02pDsfofsmWyf4EML3epNIrbWvxSKr6sZe7yKvYNQIF1E4FNxyZ
-        # ...
-        ip7xmOa75sZJLQqFAwjXpsvP2yg27w7i4XLlSw==
-
-      - |-
-        Yf39fES+xgnSd60b8dtr2ciOoAaJcVPbt4UbDdxrTWfKO4YJRTsQxqN6yIrkmrrSbWrhM0H1MWOS
-        xQhsjME1rclEEYgYMpUejOuPN02pDsfofsmWyf4EML3epNIrbWvxSKr6sZe7yKvYNQIF1E4FNxyZ
-        # ...
-        ip7xmOa75sZJLQqFAwjXpsvP2yg27w7i4XLlSw==
-
-      - |-
-        Yf39fES+xgnSd60b8dtr2ciOoAaJcVPbt4UbDdxrTWfKO4YJRTsQxqN6yIrkmrrSbWrhM0H1MWOS
-        xQhsjME1rclEEYgYMpUejOuPN02pDsfofsmWyf4EML3epNIrbWvxSKr6sZe7yKvYNQIF1E4FNxyZ
-        # ...
-        ip7xmOa75sZJLQqFAwjXpsvP2yg27w7i4XLlSw==
-
-      - |-
-        Yf39fES+xgnSd60b8dtr2ciOoAaJcVPbt4UbDdxrTWfKO4YJRTsQxqN6yIrkmrrSbWrhM0H1MWOS
-        xQhsjME1rclEEYgYMpUejOuPN02pDsfofsmWyf4EML3epNIrbWvxSKr6sZe7yKvYNQIF1E4FNxyZ
-        # ...
-        ip7xmOa75sZJLQqFAwjXpsvP2yg27w7i4XLlSw==
-
-      - |-
+      # The license type is optional, and defaults to NODE_UNLOCKED
+      host: "some-host-id"
+      file: |-
         Yf39fES+xgnSd60b8dtr2ciOoAaJcVPbt4UbDdxrTWfKO4YJRTsQxqN6yIrkmrrSbWrhM0H1MWOS
         xQhsjME1rclEEYgYMpUejOuPN02pDsfofsmWyf4EML3epNIrbWvxSKr6sZe7yKvYNQIF1E4FNxyZ
         # ...
@@ -177,11 +155,13 @@ You may now reference this file using `-f` during a Helm deployment. This may al
 
 ### <a name="#encoding-pentaho"></a>Pentaho
 
-Pentaho EE licenses are also fairly straightforward, like Alfresco's, but with one difference: there are multiple binary files. Since there is no need to treat those files in distinct ways during deployment, the license structure is just an array of the contents of the requisite files, encoded in `base64`:
+Pentaho EE licenses are also fairly straightforward, like Alfresco's, but with one difference: the file has an associated _*host identifier*_ that must also be provided, as well as a _*license type*_. Hitachi-Vantara should have provided you with these values when they provided you with the license file. If they did not, you must request them.
 
-First, encode each file as base64:
+_*NOTE: for containerized deployments, a NODE_UNLOCKED license is required due to the fact that pods may be moved around from one host to another by the infrastructure without warning, and thus Pentaho will face licensing issues if using a node-locked license.*_
 
-    $ base64 pentaho-1.lic
+First, encode the license file as follows:
+
+    $ base64 pentaho-license.bin
     H4sIANUf7WMCA4WRT2vDMAzF7/0UIuzQrosDg+0Q2GGXjV166P700osXq4kgsYKttCttv/vkLmOD
     HQYGC/P0ftLz4VBcwpa6EiIKbKhF2fd41w1RbNVgCZfF6TQ5qGqyssGTr8G+8yAwxFQHbtt0i63N
     5DXaGksVA/mqHRxCVnHXsTe7r9ZoRv2LrTMwb7YdMJreSmOEjTRoqFOLJbOAUkd0Dg435P9xy1V7
@@ -196,27 +176,21 @@ Then, paste the contents into a YAML file, like so:
 global:
   licenses:
     pentaho:
+      # Read the notes above regarding how to determine the "type" and "host" values
+      # type: "NODE_UNLOCKED"  # optional, defaults to NODE_UNLOCKED
+      host: "some-host-id"
       #
       # The results of the base-64 encoding command, above. MIND THE INDENTATION!!!
-      # One list item per file!
       #
-      - |-
+      file: |-
         H4sIANUf7WMCA4WRT2vDMAzF7/0UIuzQrosDg+0Q2GGXjV166P700osXq4kgsYKttCttv/vkLmOD
         HQYGC/P0ftLz4VBcwpa6EiIKbKhF2fd41w1RbNVgCZfF6TQ5qGqyssGTr8G+8yAwxFQHbtt0i63N
         5DXaGksVA/mqHRxCVnHXsTe7r9ZoRv2LrTMwb7YdMJreSmOEjTRoqFOLJbOAUkd0Dg435P9xy1V7
         FtMGrHcwrdiLJR8heyfxtqNCkQF7jiQc9jOYesVMjY4ORxB+lpA2OULAGj8eSD2yPKzXbn5xjI29
+        ...
         vrkts9kszbW6Xy6eFo8lLH+21xkFK0EF6/6/ONpQppekOZ1mV9C3aCOCwhGksQKkJ0KUwL5u94pP
         a6J36iUMdsvk/qYdNWOw0Ad2QyXEHtBvSS20U8xkTn7D0Ij0sSwKx1U0YwpG3YsxGwyxaHiXCxeD
         8oL+uXf5SMkTJf+lPKerc8F30qlOsX8CQkPmiUQCAAA=
-
-      #
-      # Another file ...
-      #
-      - |-
-        H4sIANUf7WMCA4WRT2vDMAzF7/0UIuzQrosDg+0Q2GGXjV166P700osXq4kgsYKttCttv/vkLmOD
-        HQYGC/P0ftLz4VBcwpa6EiIKbKhF2fd41w1RbNVgCZfF6TQ5qGqyssGTr8G+8yAwxFQHbtt0i63N
-        5DXaGksVA/mqHRxCVnHXsTe7r9ZoRv2LrTMwb7YdMJreSmOEjTRoqFOLJbOAUkd0Dg435P9xy1V7
-        ...
 ```
 
 You may now reference this file using `-f` during a Helm deployment. This may also be combined with other licenses into a larger YAML file containing all licenses. This may make your life easier (or not... YMMV).
