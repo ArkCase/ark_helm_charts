@@ -27,11 +27,12 @@
     </beans:bean>
 
     <!-- DO NOT TOUCH - no changes needed here -->
-
+    <!--
     <http entry-point-ref="basicProcessingFilterEntryPoint" authentication-manager-ref="authenticationManager">
         <custom-filter position="PRE_AUTH_FILTER" ref="arkcasePreAuthFilter"/>
-        <intercept-url pattern="/**" access="access"/>
+        <intercept-url pattern="/**" access="Authenticated"/>
     </http>
+    -->
 
     <beans:bean id="arkcasePreAuthProvider" class="org.springframework.security.web.authentication.preauth.PreAuthenticatedAuthenticationProvider">
         <beans:property name="preAuthenticatedUserDetailsService">
