@@ -64,9 +64,9 @@
          Java HTTP Connector: /docs/config/http.html (blocking & non-blocking)
          Java AJP  Connector: /docs/config/ajp.html
          APR (HTTP/AJP) Connector: /docs/apr.html
-         Define a non-SSL/TLS HTTP/1.1 Connector on port 4040
+         Define a non-SSL/TLS HTTP/1.1 Connector on port 8080
     -->
-    <Connector port="4040" protocol="HTTP/1.1"
+    <Connector port="8080" protocol="HTTP/1.1"
        connectionTimeout="20000"
        URIEncoding="UTF-8"
        relaxedPathChars="[]|"
@@ -76,7 +76,7 @@
     <!-- A "Connector" using the shared thread pool-->
     <!--
     <Connector URIEncoding="UTF-8" executor="tomcatThreadPool"
-               port="4040" protocol="HTTP/1.1"
+               port="8080" protocol="HTTP/1.1"
                connectionTimeout="20000"
                redirectPort="8443" />
     -->
