@@ -85,6 +85,8 @@ spec:
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
             {{- include "arkcase.alt-java" $ | nindent 12 }}
+            - name: ACME_KEYSTORE_WITH_TRUSTS
+              value: "true"
             - name: TEMP_DIR
               value: *tempDir
             {{- if $.Values.env }}
