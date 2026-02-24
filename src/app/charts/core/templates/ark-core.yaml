@@ -274,6 +274,8 @@ spec:
               value: &loopTerminationFile "/app/.terminate"
             - name: SESSION_COOKIE_NAME
               value: "ARKCASE_SESSIONID"
+            - name: JGROUPS_CONFIG
+              value: "$(HOME_DIR)/.arkcase/custom/WEB-INF/classes/jgroups.xml"
             {{- if $dev }}
             - name: DEVELOPMENT
               value: "true"
@@ -370,6 +372,7 @@ spec:
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/acm/licenses/pdfnet_sdk_license.txt") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/milton.license.properties") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/milton.license.sig") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/jgroups.xml") | nindent 12 }}
             {{- include "arkcase.core.sso.saml.idpMetadata.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/acm/sso/idp.xml") | nindent 12 }}
       volumes:
         {{- include "arkcase.subsystem-access.volume" $ | nindent 8 }}
