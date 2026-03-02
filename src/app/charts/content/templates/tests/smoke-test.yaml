@@ -42,7 +42,7 @@ spec:
             {{- if (eq "alfresco" $contentDialect) }}
             timeout 3 openssl s_client -connect "$(SERVICE_NAME)-activemq:61616" -verify_quiet -verify_return_error -showcerts </dev/null
             curl -fsSL -m 3 -o /dev/null "https://$(SERVICE_NAME)-main:8443/alfresco/"
-            timeout 3 openssl s_client -connect "$(SERVICE_NAME)-search:8983" -verify_quiet -verify_return_error -showcerts  -cert "$(SSL_DIR)/cert.pem" -key "$(SSL_DIR)/cert.key" </dev/null
+            timeout 3 openssl s_client -connect "$(SERVICE_NAME)-search:8983" -verify_quiet -verify_return_error -showcerts -cert "$(SSL_DIR)/cert.pem" -key "$(SSL_DIR)/cert.key" </dev/null
             curl -fsSL -m 3 -o /dev/null "https://$(SERVICE_NAME)-share:8443/share/"
             curl -fsSL -m 3 -o /dev/null "https://$(SERVICE_NAME)-xform-core-aio:8090/actuator/health"
               {{- if $enterprise }}
