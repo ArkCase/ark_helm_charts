@@ -53,6 +53,23 @@
             </DefaultRolloverStrategy>
         </RollingFile>
 
+        <!-- REVENERA -->
+        <RollingFile name="license-execution-appender" fileName="${env:LOGS_DIR:-../logs}/license.log" filePattern="${env:LOGS_DIR:-../logs}/license-%d{yyyyMMdd-HHmmss}.log.gz">
+            <PatternLayout>
+                <Pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n</Pattern>
+            </PatternLayout>
+            <Policies>
+                <OnStartupTriggeringPolicy />
+                <SizeBasedTriggeringPolicy size="500MB" />
+            </Policies>
+            <DefaultRolloverStrategy>
+                <Delete basePath="${env:LOGS_DIR:-../logs}">
+                    <IfFileName glob="license-*.log.gz" />
+                    <IfLastModified age="P90D" />
+                </Delete>
+            </DefaultRolloverStrategy>
+         </RollingFile>
+
         <!-- ============================== -->
         <!-- Append messages to the console -->
         <!-- ============================== -->
@@ -137,7 +154,6 @@
     <!-- Limit loggers    -->
     <!-- ================ -->
     <Loggers>
-        <Logger name="org.apache.hadoop.io.retry" level="INFO"/>
         <Logger name="org.hibernate" level="ERROR"/>
         <Logger name="org.ehcache" level="ERROR"/>
         <Logger name="org.quartz" level="ERROR"/>
@@ -154,9 +170,6 @@
         <Logger name="org.pentaho.platform.engine.core.system.status" level="INFO"/>
         <Logger name="org.pentaho.reporting.engine.classic.core.modules.output.fast.validator.ReportStructureValidator" level="INFO"/>
         <Logger name="org.pentaho.platform.engine.security.authorization" level="ERROR"/>
-        <Logger name="com.pentaho.yarn" level="INFO"/>
-        <Logger name="com.pentaho.big.data.bundles" level="INFO"/>
-        <Logger name="com.pentaho.big.data.ee" level="INFO"/>
 
         <!-- =========================== -->
         <!-- Repository Import Log Level -->
