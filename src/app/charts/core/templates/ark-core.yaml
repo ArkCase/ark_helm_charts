@@ -380,7 +380,7 @@ spec:
             {{- include "arkcase.core.dev.runMounts" $ | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/tomcat-live") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/render-altcase-vars") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/tomcat/conf/server.xml.tpl") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/tomcat/conf/server.xml") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/tomcat/webapps/arkcase/WEB-INF/tomcat-web.xml" "subPath" "arkcase-tomcat-web.xml" ) | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/acm/acm-config-server-repo/spring/quartz.properties") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/acm/log4j2.xml") | nindent 12 }}
