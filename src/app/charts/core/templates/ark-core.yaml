@@ -417,8 +417,8 @@ spec:
               subPath: &tomcatLive "tomcat-live"
               readOnly: true
             - name: *configMap
-              mountPath: "/app/tomcat/conf/server.xml.tpl"
-              subPath: &serverXmlTpl "server.xml.tpl"
+              mountPath: "/app/tomcat/conf/server.xml"
+              subPath: &serverXmlTpl "server.xml"
               readOnly: true
             - name: *configMap
               mountPath: "/app/home/.arkcase/acm/acm-config-server-repo/spring/quartz.properties"
