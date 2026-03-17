@@ -190,7 +190,7 @@ spec:
               value: "PENTAHO_SESSIONID"
             - name: JAVA_TOOL_OPTIONS
               value: >-
-                -Dcom.redhat.fips=false
+                -Dcom.redhat.fips={{ include "arkcase.fips.bool" $ }}
           {{- include "arkcase.subsystem.ports" (dict "ctx" $ "name" "pentaho") | nindent 10 }}
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "pentaho") | nindent 12 }}

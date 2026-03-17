@@ -13,6 +13,10 @@
   {{- (include "arkcase.toBoolean" $global.fips) -}}
 {{- end -}}
 
+{{- define "arkcase.fips.bool" -}}
+  {{- (not (empty (include "arkcase.fips" $))) -}}
+{{- end -}}
+
 {{- define "arkcase.image.info.parsePullPolicy" -}}
   {{- $v := "" -}}
   {{- if . -}}
