@@ -89,7 +89,7 @@ spec:
         {{- include "arkcase.initDependencies.container" $ | nindent 8 }}
       containers:
         - name: cron
-          {{- include "arkcase.image" (dict "ctx" $ "name" "pentaho" "repository" "arkcase/pentaho") | nindent 10 }}
+          {{- include "arkcase.image" (dict "ctx" $ "name" "pentaho" "repository" "arkcase/pentaho-ee") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
             {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}

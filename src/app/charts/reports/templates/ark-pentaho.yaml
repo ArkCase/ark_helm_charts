@@ -153,7 +153,7 @@ spec:
         {{- include "arkcase.initDependencies.container" $ | nindent 8 }}
       containers:
         - name: pentaho
-          {{- include "arkcase.image" (dict "ctx" $ "name" "pentaho" "repository" "arkcase/pentaho") | nindent 10 }}
+          {{- include "arkcase.image" (dict "ctx" $ "name" "pentaho" "repository" "arkcase/pentaho-ee") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
             {{- include "arkcase.cluster.env" $ | nindent 12 }}
