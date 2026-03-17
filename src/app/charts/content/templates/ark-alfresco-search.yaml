@@ -92,7 +92,7 @@ spec:
                 -XX:MaxRAMPercentage=80
             - name: JAVA_TOOL_OPTIONS
               value: >-
-                -Dcom.redhat.fips=false
+                -Dcom.redhat.fips={{ include "arkcase.fips.bool" $ }}
                 -Dalfresco.secureComms=$(ALFRESCO_SECURE_COMMS)
                 -Dalfresco.host=$(SOLR_ALFRESCO_HOST)
                 -Dalfresco.port.ssl=$(SOLR_ALFRESCO_PORT)

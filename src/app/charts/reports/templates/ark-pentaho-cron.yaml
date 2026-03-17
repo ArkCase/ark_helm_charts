@@ -102,7 +102,7 @@ spec:
               value: "$(DATA_DIR)/.installedLicenses.xml"
             - name: JAVA_TOOL_OPTIONS
               value: >-
-                -Dcom.redhat.fips=false
+                -Dcom.redhat.fips={{ include "arkcase.fips.bool" $ }}
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "cron") | nindent 12 }}
           volumeMounts:
