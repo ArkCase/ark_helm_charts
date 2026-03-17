@@ -295,7 +295,7 @@ spec:
               value: "$(EXTRA_LIBRARY_DIR)"
             - name: JAVA_TOOL_OPTIONS
               value: >-
-                -Dcom.redhat.fips=false
+                -Dcom.redhat.fips={{ include "arkcase.fips.bool" $ }}
             {{- include "arkcase.core.tomcatNative.env" $debug | nindent 12 }}
             - name: CATALINA_OPTS
               # For Java 8, these percentages must be given as doubles. The JVM may

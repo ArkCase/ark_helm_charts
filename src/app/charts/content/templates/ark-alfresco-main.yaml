@@ -104,7 +104,7 @@ spec:
                   key: *key
             - name: JAVA_TOOL_OPTIONS
               value: >-
-                -Dcom.redhat.fips=false
+                -Dcom.redhat.fips={{ include "arkcase.fips.bool" $ }}
                 -Dencryption.keystore.type=JCEKS
                 -Dencryption.cipherAlgorithm=DESede/CBC/PKCS5Padding
                 -Dencryption.keyAlgorithm=DESede
