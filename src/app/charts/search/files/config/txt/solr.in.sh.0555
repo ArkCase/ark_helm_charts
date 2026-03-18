@@ -165,10 +165,14 @@ SOLR_CLUSTERING_ENABLED=true
 SOLR_SSL_ENABLED=true
 # Uncomment to set SSL-related system properties
 # Be sure to update the paths to the correct keystore for your environment
+SOLR_SSL_KEY_STORE_PASSWORD_PATH="${SSL_DIR}/keystore.pass"
 SOLR_SSL_KEY_STORE="${SSL_DIR}/keystore.pkcs12"
-SOLR_SSL_KEY_STORE_PASSWORD="$(<"${SSL_DIR}/keystore.pass")"
+SOLR_SSL_KEY_STORE_PASSWORD="$(<"${SOLR_SSL_KEY_STORE_PASSWORD_PATH}")"
+SOLR_SSL_KEY_STORE_TYPE="PKCS12"
+SOLR_SSL_TRUST_STORE_PASSWORD_PATH="${SOLR_SSL_KEY_STORE_PASSWORD_PATH}"
 SOLR_SSL_TRUST_STORE="${SOLR_SSL_KEY_STORE}"
-SOLR_SSL_TRUST_STORE_PASSWORD="${SOLR_SSL_KEY_STORE_PASSWORD}"
+SOLR_SSL_TRUST_STORE_PASSWORD="$(<"${SOLR_SSL_TRUST_STORE_PASSWORD_PATH}")"
+SOLR_SSL_TRUST_STORE_TYPE="${SOLR_SSL_KEY_STORE_TYPE}"
 # Require clients to authenticate
 SOLR_SSL_NEED_CLIENT_AUTH=false
 # Enable clients to authenticate (but not require)
@@ -180,9 +184,11 @@ SOLR_SSL_CLIENT_HOSTNAME_VERIFICATION=false
 # This will also be used for the default value of whether SNI Host checking should be enabled.
 #SOLR_SSL_CHECK_PEER_NAME=true
 # Override Key/Trust Store types if necessary
-SOLR_SSL_KEY_STORE_TYPE="PKCS12"
-SOLR_SSL_TRUST_STORE_TYPE="${SOLR_SSL_KEY_STORE_TYPE}"
-#SOLR_SSL_RELOAD_ENABLED=true
+
+#
+# These settings are for ZooKeeper mTLS
+#
+SOLR_OPTS="${SOLR_OPTS} -Dzookeeper.client.secure=true -Dzookeeper.ssl.hostnameVerification=true -Dzookeeper.ssl.protocol=TLSv1.3 -Dzookeeper.ssl.enabledProtocols=TLSv1.3 -Dzookeeper.ssl.keyStore.location=${SOLR_SSL_KEY_STORE} -Dzookeeper.ssl.keyStore.passwordPath=${SOLR_SSL_KEY_STORE_PASSWORD_PATH} -Dzookeeper.ssl.keyStore.type=${SOLR_SSL_KEY_STORE_TYPE} -Dzookeeper.ssl.trustStore.location=${SOLR_SSL_TRUST_STORE} -Dzookeeper.ssl.trustStore.passwordPath=${SOLR_SSL_TRUST_STORE_PASSWORD_PATH} -Dzookeeper.ssl.trustStore.type=${SOLR_SSL_TRUST_STORE_TYPE}"
 
 # Uncomment if you want to override previously defined SSL values for HTTP client
 # otherwise keep them commented and the above values will automatically be set for HTTP clients
