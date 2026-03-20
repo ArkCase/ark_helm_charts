@@ -185,6 +185,30 @@
   {{- $env := list (dict "name" "CLUSTER_ENABLED" "value" "true") -}}
   {{- if $config.enabled -}}
     {{- $env = concat $env (include "arkcase.subsystem-access.env" (dict "ctx" $ "subsys" "zookeeper" "key" "zkHost" "name" "ZK_HOST") | fromYamlArray) -}}
+    {{- $ssl := (
+        list
+          "-Dzookeeper.clientCnxnSocket=org.apache.zookeeper.ClientCnxnSocketNetty"
+          "-Dzookeeper.client.secure=true"
+          "-Dzookeeper.ssl.hostnameVerification=true"
+          "-Dzookeeper.ssl.protocol=TLSv1.3"
+          "-Dzookeeper.ssl.enabledProtocols=TLSv1.3"
+
+          "-Dzookeeper.ssl.keyStore.location=$(JAVA_KEYSTORE)"
+          "-Dzookeeper.ssl.keyStore.passwordPath=$(JAVA_KEYSTORE_PASSWORD_FILE)"
+          "-Dzookeeper.ssl.keyStore.type=$(JAVA_KEYSTORE_TYPE)"
+
+          "-Dzookeeper.ssl.trustStore.location=$(JAVA_TRUSTSTORE)"
+          "-Dzookeeper.ssl.trustStore.passwordPath=$(JAVA_TRUSTSTORE_PASSWORD_FILE)"
+          "-Dzookeeper.ssl.trustStore.type=$(JAVA_TRUSTSTORE_TYPE)"
+      )
+    -}}
+    {{-
+      $env = concat $env (
+        dict
+          "name" "ZOOKEEPER_CLIENT_SSL_OPTIONS"
+          "value" ($ssl | join " ")
+      )
+    -}}
   {{- end -}}
   {{- $env | toYaml -}}
 {{- end -}}
