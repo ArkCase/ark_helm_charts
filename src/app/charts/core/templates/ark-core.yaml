@@ -320,7 +320,7 @@ spec:
               value: "$(EXTRA_LIBRARY_DIR)"
             - name: JAVA_TOOL_OPTIONS
               value: >-
-                -Dcom.redhat.fips=false
+                -Dcom.redhat.fips={{ include "arkcase.fips.bool" $ }}
             - name: CATALINA_OPTS
               # For Java 8, these percentages must be given as doubles. The JVM may
               # choke if the ".0" isn't provided at the end
@@ -380,7 +380,7 @@ spec:
             {{- include "arkcase.core.dev.runMounts" $ | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/tomcat-live") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/render-altcase-vars") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/tomcat/conf/server.xml.tpl") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/tomcat/conf/server.xml") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/tomcat/webapps/arkcase/WEB-INF/tomcat-web.xml" "subPath" "arkcase-tomcat-web.xml" ) | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/acm/acm-config-server-repo/spring/quartz.properties") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/acm/log4j2.xml") | nindent 12 }}
@@ -430,7 +430,7 @@ spec:
               value: *confDir
             - name: JAVA_TOOL_OPTIONS
               value: >-
-                -Dcom.redhat.fips=false
+                -Dcom.redhat.fips={{ include "arkcase.fips.bool" $ }}
                 -XX:MinRAMPercentage=50
                 -XX:MaxRAMPercentage=80
                 -Djava.keystore.key.alias=$(ACME_KEY_ALIAS)

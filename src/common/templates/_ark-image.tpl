@@ -1,3 +1,22 @@
+{{- define "arkcase.fips" -}}
+  {{- $ctx := . -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- $ctx = $.ctx -}}
+    {{- if not (include "arkcase.isRootContext" $ctx) -}}
+      {{- fail "Must provide the root context (. or $) as either the only parameter, or the 'ctx' parameter" -}}
+    {{- end -}}
+  {{- end -}}
+  {{- $global := ($ctx.Values.global | default dict) -}}
+  {{- if not (kindIs "map" $global) -}}
+    {{- $global = dict -}}
+  {{- end -}}
+  {{- (include "arkcase.toBoolean" $global.fips) -}}
+{{- end -}}
+
+{{- define "arkcase.fips.bool" -}}
+  {{- (not (empty (include "arkcase.fips" $))) -}}
+{{- end -}}
+
 {{- define "arkcase.image.info.parsePullPolicy" -}}
   {{- $v := "" -}}
   {{- if . -}}
@@ -63,6 +82,9 @@
     )
   -}}
 
+  {{- /* This helps track which attributes came from expressly-set values */ -}}
+  {{- $fromGlobal := dict -}}
+
   {{- range $s := $search -}}
     {{- /* Small optimization - don't search if there's nothing missing */ -}}
     {{- if not $pending -}}
@@ -90,6 +112,9 @@
         {{- $v := get $r.value $att -}}
         {{- if and $v (kindIs "string" $v) -}}
           {{- $result = set $result $att $v -}}
+          {{- if (hasPrefix "global." $s) -}}
+            {{- $fromGlobal = set $fromGlobal $att $v -}}
+          {{- end -}}
           {{- /* Mark the found attribute as ... well ... found! */ -}}
           {{- $pending = omit $pending $att -}}
           {{- if not $pending -}}
@@ -174,6 +199,12 @@
   {{- if and (not $image) (not (hasKey $result "tag")) -}}
     {{- $result = set $result "tag" ($ctx.Chart.AppVersion | toString) -}}
     {{- $pending = omit $pending "tag" -}}
+  {{- end -}}
+
+  {{- /* If FIPS mode is active, append "-fips" to the default repository. */ -}}
+  {{- /* Do NOT apply it when using manually-specified images (i.e. global) */ -}}
+  {{- if and (include "arkcase.fips" $ctx) (hasKey $result "repository") (not (hasKey $fromGlobal "repository")) -}}
+    {{- $result = set $result "repository" (printf "%s-fips" $result.repository) -}}
   {{- end -}}
 
   {{- $result | toYaml -}}

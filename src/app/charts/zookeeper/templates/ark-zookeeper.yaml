@@ -115,7 +115,7 @@ spec:
               value: *logsDir
             - name: JAVA_TOOL_OPTIONS
               value: >-
-                -Dcom.redhat.fips=false
+                -Dcom.redhat.fips={{ include "arkcase.fips.bool" $ }}
             {{- if $.Values.env }}
             {{- $.Values.env | toYaml | nindent 12 }}
             {{- end }}

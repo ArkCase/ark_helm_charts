@@ -63,7 +63,7 @@ spec:
           {{- end }}
             - name: JAVA_TOOL_OPTIONS
               value: >-
-                -Dcom.redhat.fips=false
+                -Dcom.redhat.fips={{ include "arkcase.fips.bool" $ }}
                 -XX:MinRAMPercentage=50
                 -XX:MaxRAMPercentage=80
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
