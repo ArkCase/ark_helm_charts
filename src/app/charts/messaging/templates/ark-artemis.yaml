@@ -1,22 +1,45 @@
 {{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.subsystem.external" $)) -}}
-{{- $fullname := (include "arkcase.fullname" $) -}}
-{{- $cluster := (include "arkcase.cluster" $ | fromYaml) -}}
-{{- /* For this component, we'll either have one node, or two */ -}}
-{{- $nodes := ((max 1 (min 2 ($cluster.nodes | default 2))) | int) -}}
-{{- if (gt $nodes 1) }}
-  {{- /* We only enable the PDB if we will have more than one node */ -}}
+  {{- $fullname := (include "arkcase.fullname" $) -}}
+  {{- $cluster := (include "arkcase.cluster" $ | fromYaml) -}}
+  {{- /* For this component, we'll either have one node, or two */ -}}
+  {{- $replicas := ((max 1 (min 2 ($cluster.replicas | default 2))) | int) -}}
+  {{- $serviceAccountName := (include "arkcase.serviceAccountName" $) -}}
+  {{- $serviceAccountName = (or (empty $serviceAccountName) (eq "default" $serviceAccountName)) | ternary (include "arkcase.fullname" $) $serviceAccountName -}}
+  {{- $roleName := (printf "%s-cluster-membership" $serviceAccountName) -}}
 ---
-apiVersion: policy/v1
-kind: PodDisruptionBudget
+apiVersion: v1
+kind: ServiceAccount
 metadata:
-  name: {{ include "arkcase.fullname" $ | quote }}
+  name: {{ $serviceAccountName | quote }}
   namespace: {{ $.Release.Namespace | quote }}
-spec:
-  minAvailable: 1
-  selector:
-    matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
+  labels: {{- include "arkcase.labels" $ | nindent 4 }}
 ---
-{{- end }}
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: {{ $roleName | quote }}
+  namespace: {{ $.Release.Namespace | quote }}
+  labels: {{- include "arkcase.labels" $ | nindent 4 }}
+rules:
+  # "" indicates the core API group
+  - apiGroups: [ "" ]
+    resources: [ "pods" ]
+    verbs: [ "get", "watch", "list" ]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ printf "%s:%s" $serviceAccountName $roleName | quote }}
+  namespace: {{ $.Release.Namespace | quote }}
+  labels: {{- include "arkcase.labels" $ | nindent 4 }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ $serviceAccountName | quote }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ $roleName | quote }}
+---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -30,7 +53,7 @@ metadata:
   annotations: {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  replicas: {{ $cluster.enabled | ternary $nodes 1 }}
+  replicas: {{ $replicas }}
   selector: &labelSelector
     matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
   serviceName: {{ include "arkcase.service.headless" $ | quote }}
@@ -76,7 +99,9 @@ spec:
       {{- if $.Values.schedulerName }}
       schedulerName: {{ $.Values.schedulerName | quote }}
       {{- end }}
-      serviceAccountName: {{ include "arkcase.serviceAccountName" $ | quote }}
+      {{- if $serviceAccountName }}
+      serviceAccountName: {{ $serviceAccountName | quote }}
+      {{- end }}
       securityContext: {{- include "arkcase.securityContext" $ | nindent 8 }}
       terminationGracePeriodSeconds: 15
       initContainers:
@@ -108,6 +133,8 @@ spec:
             {{- include "arkcase.cluster.env" $ | nindent 12 }}
             {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
+            {{- include "arkcase.cluster.discovery.env" (dict "ctx" $ "port" "jgroup") | nindent 12 }}
+            {{- include "arkcase.alt-java" $ | nindent 12 }}
             - name: ARTEMIS_NEW_USER_MODEL
               value: "true"
             - name: JAVA_TOOL_OPTIONS
@@ -137,6 +164,7 @@ spec:
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/check-health") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/bootstrap.xml.template") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/broker.xml.template") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/jgroups-artemis-k8s.xml") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/jolokia-access.xml") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/log4j2.properties") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/login.config") | nindent 12 }}

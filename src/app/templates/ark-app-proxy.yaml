@@ -1,0 +1,130 @@
+{{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.artifacts.external" $)) -}}
+  {{- $cluster := (include "arkcase.cluster" $ | fromYaml) -}}
+  {{- $portal := (include "arkcase.portal" $ | fromYaml) -}}
+  {{- $replicas := $cluster.replicas -}}
+  {{- $fullName := (include "arkcase.fullname" $) -}}
+  {{- $ingressHost := "localhost.localdomain" -}}
+  {{- $baseUrl := (include "arkcase.tools.conf" (dict "ctx" $ "value" "baseUrl") | toString) -}}
+  {{- if $baseUrl -}}
+    {{- $baseUrl = ((include "arkcase.tools.parseUrl" $baseUrl) | fromYaml) -}}
+    {{- $ingressHost = $baseUrl.hostname -}}
+  {{- end -}}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ $fullName | quote }}
+  namespace: &namespace {{ $.Release.Namespace | quote }}
+  labels: {{- include "arkcase.labels.service" $ | nindent 4 }}
+    {{- with ($.Values.labels).common }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with ($.Values.annotations).common }}
+  annotations: {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  replicas: {{ $replicas }}
+  selector: &labelSelector
+    matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
+  serviceName: {{ include "arkcase.service.headless" $ | quote }}
+  updateStrategy: {{- include "arkcase.cluster.statefulUpdateStrategy" $ | nindent 4 }}
+  podManagementPolicy: Parallel
+  template:
+    metadata:
+      name: {{ $fullName | quote }}
+      namespace: {{ $.Release.Namespace | quote }}
+      labels: {{- include "arkcase.labels.service" $ | nindent 8 }}
+        {{- with ($.Values.labels).common }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      annotations:
+        {{- with ($.Values.annotations).common }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      affinity:
+        podAntiAffinity:
+        {{- if $cluster.onePerHost }}
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - topologyKey: "kubernetes.io/hostname"
+              namespaces: [ {{ $.Release.Namespace | quote }} ]
+              labelSelector:
+                <<: *labelSelector
+        {{- else }}
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 1
+              podAffinityTerm:
+                topologyKey: "kubernetes.io/hostname"
+                namespaces: [ {{ $.Release.Namespace | quote }} ]
+                labelSelector:
+                  <<: *labelSelector
+        {{- end }}
+      {{- include "arkcase.image.pullSecrets" $ | nindent 6 }}
+      {{- with $.Values.hostAliases }}
+      hostAliases: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if $.Values.schedulerName }}
+      schedulerName: {{ $.Values.schedulerName | quote }}
+      {{- end }}
+      {{- with ($.Values.securityContext).template }}
+      securityContext: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      terminationGracePeriodSeconds: 15
+      subdomain: {{ include "arkcase.service.name" $ | quote }}
+      initContainers:
+        - name: init-ssl
+          {{- include "arkcase.image" (dict "ctx" $ "name" "init-ssl" "repository" "arkcase/base") | nindent 10 }}
+          env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            {{- include "arkcase.acme.env" $ | nindent 12 }}
+            - name: SSL_SERVICE_EXTRA_NAMES
+              value: {{ include "arkcase.app.ssl-names" $ | quote }}
+          command: [ "/usr/local/bin/acme-init" ]
+          volumeMounts:
+            {{- include "arkcase.acme.volumeMount-shared" $ | nindent 12 }}
+        - name: init-permissions
+          {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
+          env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            {{- include "arkcase.acme.env" $ | nindent 12 }}
+            - name: JOBS
+              value: |-
+                jobs:
+                  - ownership: "99:99"
+                    flags: [ "recurse", "forced", "create", "changes" ]
+                    targets: [ "$(SSL_DIR)" ]
+          volumeMounts:
+            {{- include "arkcase.acme.volumeMount-shared" $ | nindent 12 }}
+      containers:
+        - name: haproxy
+          {{- include "arkcase.image" (dict "ctx" $ "name" "haproxy" "repository" "haproxy") | nindent 10 }}
+          env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            {{- include "arkcase.acme.env" $ | nindent 12 }}
+            {{- include "arkcase.cluster.discovery.env" (dict "ctx" $ "port" "healthz") | nindent 12 }}
+            - name: INGRESS_HOST
+              value: {{ $ingressHost | quote }}
+            - name: PORTAL_CONTEXT
+              value: {{ $portal.context | default "foia" | quote }}
+            - name: ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "arkcase.subsystem-access.name" (dict "ctx" $ "conn" "proxy") | quote }}
+                  key: "password"
+                  optional: false
+          command: [ "/entrypoint" ]
+          {{- include "arkcase.subsystem.ports" (dict "ctx" $ "name" "proxy") | nindent 10 }}
+          securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "haproxy") | nindent 12 }}
+          volumeMounts:
+            {{- include "arkcase.acme.volumeMount-shared" $ | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/etc/haproxy/haproxy.cfg") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/etc/haproxy/lua/responses.lua") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/entrypoint" "subPath" "entrypoint-haproxy") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/hap") | nindent 12 }}
+      volumes:
+        {{- include "arkcase.acme.volume-shared" $ | nindent 8 }}
+        {{- include "arkcase.file-resource.volumes" $ | nindent 8 }}
+      {{- with $.Values.nodeSelector }}
+      nodeSelector: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $.Values.tolerations }}
+      tolerations: {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end -}}

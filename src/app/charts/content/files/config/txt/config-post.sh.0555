@@ -2,6 +2,75 @@
 set -euo pipefail
 . /.functions
 
+define_user()
+{
+	local USERNAME="${1}"
+	local PASSWORD="${2}"
+	local POLICY="${3:-}"
+
+	[ -n "${USERNAME}" ] || return 0
+	[ -n "${PASSWORD}" ] || return 0
+
+	# Add the configuration for MC access in read-write mode
+	say "Creating the service account with username [${USERNAME}] (policy = ${POLICY})..."
+	mcli admin user add "${INSTANCE}" < <(echo -en "${USERNAME}\n${PASSWORD}") || fail "Failed to create the user account for [${USERNAME}]..."
+
+	local POLICY_ATTACHED="$(mcli admin policy entities "${INSTANCE}" --user "${USERNAME}" --json | jq -r ".result?.userMappings[]?.policies[]? | select(. == \"${POLICY}\")")"
+
+	# If the policy isn't attached, attach it
+	[ -n "${POLICY_ATTACHED}" ] || \
+		mcli admin policy attach "${INSTANCE}" "${POLICY}" --user "${USERNAME}" || fail "Failed to attach the ${POLICY} policy to user [${USERNAME}]..."
+
+	return 0
+}
+
+sanitize_path()
+{
+	local P="${1}"
+	echo -n "${P}" | \
+		tr '/' '\n' | \
+		egrep -v '^[.]{1,2}$' | \
+		egrep -v '^$' | \
+		tr '\n' '/' | \
+		sed -e 's;^/;;g' -e 's;/$;;g'
+}
+
+clear_expiration_rules()
+{
+	local INSTANCE="${1}"
+	local BUCKET="${2}"
+	local PREFIX="${3}"
+
+	while read id ; do
+		mcli ilm rule rm "${INSTANCE}/${BUCKET}" --id "${id}" || fail "Failed to remove an existing expiration rule on [${INSTANCE}/${BUCKET}/${PREFIX}]: ${id}"
+	done < <(mcli ilm rule ls "${INSTANCE}/${BUCKET}" --expiry --json | jq -r ".config.Rules[] | select(.Filter.Prefix == \"${PREFIX}/\") | .ID")
+}
+
+apply_expiration()
+{
+	local INSTANCE="${1}"
+	local BUCKET="${2}"
+	local PREFIX="${3}"
+	local EXPIRATION="${4}"
+
+	# Sanitize the prefix, removing leading and trailing slashes
+	PREFIX="$(sanitize_path "${PREFIX}")"
+	
+	# mcli ilm rule rm --all --force "${INSTANCE}/${BUCKET}" &>/dev/null || true
+
+	# Apply the new expiration rule
+	if [ ${EXPIRATION} -gt 0 ] ; then
+		local PREFIX_FLAG=()
+		if [ -n "${PREFIX}" ] ; then
+			PREFIX_FLAG=(--prefix "${PREFIX}/")
+			clear_expiration_rules "${INSTANCE}" "${BUCKET}" "${PREFIX}"
+		fi
+		mcli ilm rule add "${PREFIX_FLAG[@]}" --expire-days "${EXPIRATION}" "${INSTANCE}/${BUCKET}" || fail "Failed to apply the expiration policy for the content in [${BUCKET}${PREFIX:+/}${PREFIX}]"
+	fi
+
+	return 0
+}
+
 set_or_default BASE_DIR "/app"
 set_or_default DATA_DIR "${BASE_DIR}/data"
 set_or_default LOGS_DIR "${DATA_DIR}"
@@ -39,20 +108,34 @@ INSTANCE="local"
 ALIAS_ARGS=("${INSTANCE}" "${MINIO_ADMIN_URL}" "${MINIO_ROOT_USER}" "${MINIO_ROOT_PASSWORD}")
 mcli config host add "${ALIAS_ARGS[@]}" || mcli alias set "${ALIAS_ARGS[@]}" || fail "Failed to define the alias [${INTANCE}] for ${MINIO_ADMIN_URL} using either 'mcli config' or 'mcli alias'"
 
+for BUCKET in CONTENT_BUCKET CONTENT_INTERNAL_BUCKET ; do
+	set_or_default "${BUCKET}" "arkcase"
+	REAL_BUCKET="${INSTANCE}/${!BUCKET}"
+
+	# Make sure we create the bucket if it doesn't exist
+	mcli ls "${REAL_BUCKET}" &>/dev/null || mcli mb "${REAL_BUCKET}" || fail "Failed to create the bucket [${REAL_BUCKET}] specified by ${BUCKET}"
+done
+
+#
+# Create the user accounts
+#
 set_or_default MINIO_USER ""
 set_or_default MINIO_PASSWORD ""
 set_or_default MINIO_POLICY "readwrite"
+define_user "${MINIO_USER}" "${MINIO_PASSWORD}" "${MINIO_POLICY}"
 
-if [ -n "${MINIO_USER}" ] && [ -n "${MINIO_PASSWORD}" ] ; then
-	# Add the configuration for MC access in read-write mode
-	say "Creating the service account with username [${MINIO_USER}] (policy = ${MINIO_POLICY})..."
-	mcli admin user add "${INSTANCE}" < <(echo -en "${MINIO_USER}\n${MINIO_PASSWORD}") || fail "Failed to create the user account for [${MINIO_USER}]..."
+set_or_default MINIO_INTERNAL_USER ""
+set_or_default MINIO_INTERNAL_PASSWORD ""
+set_or_default MINIO_INTERNAL_POLICY "readwrite"
+define_user "${MINIO_INTERNAL_USER}" "${MINIO_INTERNAL_PASSWORD}" "${MINIO_INTERNAL_POLICY}"
 
-	POLICY_ATTACHED="$(mcli admin policy entities local --user "${MINIO_USER}" --json | jq -r ".result?.userMappings[]?.policies[]? | select(. == \"${MINIO_POLICY}\")")"
+#
+# Configure the temporary content expiration rules
+#
+set_or_default TEMP_EXPIRE_DAYS "15"
+apply_expiration "${INSTANCE}" "${CONTENT_INTERNAL_BUCKET}" "temporary" "${TEMP_EXPIRE_DAYS}"
 
-	# If the policy isn't attached, attach it
-	[ -n "${POLICY_ATTACHED}" ] || \
-		mcli admin policy attach "${INSTANCE}" "${MINIO_POLICY}" --user "${MINIO_USER}" || fail "Failed to attach the ${MINIO_POLICY} policy to user [${MINIO_USER}]..."
-fi
+set_or_default UPLOAD_EXPIRE_DAYS "7"
+apply_expiration "${INSTANCE}" "${CONTENT_INTERNAL_BUCKET}" "uploads" "${UPLOAD_EXPIRE_DAYS}"
 
 exit 0

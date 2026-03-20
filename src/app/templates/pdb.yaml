@@ -1,0 +1,12 @@
+{{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.artifacts.external" $)) }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "arkcase.fullname" $ | quote }}
+  namespace: {{ $.Release.Namespace | quote }}
+spec:
+  maxUnavailable: "90%"
+  selector:
+    matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
+{{- end }}

@@ -8,6 +8,26 @@
   {{- include "arkcase.image" $param }}
 {{- end -}}
 
+{{- define "arkcase.app.ssl-names" -}}
+  {{- $ctx := $ -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "The single parameter given must be the root context (. or $)" -}}
+  {{- end -}}
+
+  {{- $services := $ctx.Values.service -}}
+  {{- if and $services (kindIs "map" $services) -}}
+    {{- $result := list -}}
+    {{- range $service, $data := $services -}}
+      {{- if (include "arkcase.toBoolean" $data.downstream) -}}
+        {{- $result = append $result ($service | lower) -}}
+      {{- end -}}
+    {{- end -}}
+    {{- $result | compact | sortAlpha | uniq | join "," -}}
+  {{- else -}}
+    {{- fail "KABOOM" -}}
+  {{- end -}}
+{{- end -}}
+
 {{- define "arkcase.artifacts.external" -}}
   {{- $url := (include "arkcase.tools.conf" (dict "ctx" $ "value" "app-artifacts.url" "detailed" true) | fromYaml) -}}
   {{- if or (and $url $url.global) -}}

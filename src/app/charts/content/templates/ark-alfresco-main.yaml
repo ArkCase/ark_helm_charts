@@ -1,4 +1,4 @@
-{{- if and (include "arkcase.subsystem.enabled" $) (eq "alfresco" (include "arkcase.content.info.dialect" $)) -}}
+{{- if and (include "arkcase.subsystem.enabled" $) (eq "alfresco" (include "arkcase.content.dialect" $)) -}}
 {{- $db := (include "arkcase.db.info" $ | fromYaml) -}}
 {{- $fullname := (include "arkcase.fullname" $) -}}
 ---
@@ -113,7 +113,7 @@ spec:
                 -Dmetadata-keystore.aliases=metadata
                 -Dmetadata-keystore.metadata.password=$(METADATA_KEYSTORE_METADATA_PASSWORD)
                 -Dmetadata-keystore.metadata.algorithm=DESede
-            {{- $content := (include "arkcase.cm.info" $ | fromYaml) }}
+            {{- $content := (include "arkcase.content.info" $ | fromYaml) }}
             {{- $indexing := (not (empty (include "arkcase.content.indexing" $))) }}
             - name: DATA_DIR
               value: *dataDir

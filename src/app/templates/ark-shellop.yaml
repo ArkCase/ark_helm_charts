@@ -1,5 +1,4 @@
 {{- if false -}}
-{{- $cluster := (include "arkcase.cluster.info" $ | fromYaml) -}}
 {{- $fullName := (include "arkcase.fullname" $) -}}
 {{- $roleBaseName := "pod-modifier" -}}
 {{- $roleName := (printf "%s-%s" $fullName $roleBaseName) -}}

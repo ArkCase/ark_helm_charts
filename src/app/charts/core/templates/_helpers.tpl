@@ -1,12 +1,25 @@
-{{- define "arkcase.core.dev.deployEnv" -}}
-  {{- $ctx := . -}}
+{{- define "arkcase.core.dev" -}}
+  {{- $ctx := $ -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "Must send the root context as the only parameter" -}}
   {{- end -}}
+  {{- $part := (include "arkcase.part.name" $ctx | default "arkcase") -}}
+  {{- $devRoot := (include "arkcase.dev" $ctx | fromYaml) -}}
+  {{- $dev := get $devRoot $part | default dict -}}
+  {{- if not (kindIs "map" $dev) -}}
+    {{- $dev = dict -}}
+  {{- end -}}
+  {{- dict "part" $part "dev" ($dev | default dict) "conf" (ne $part "portal") | toYaml -}}
+{{- end -}}
+
+{{- define "arkcase.core.dev.deployEnv" -}}
+  {{- $dev := (include "arkcase.core.dev" $ | fromYaml) -}}
+  {{- $part := $dev.part -}}
+  {{- $useConf := $dev.conf -}}
+  {{- $dev = $dev.dev -}}
 
   {{- $wars := list -}}
   {{- $conf := "" -}}
-  {{- $dev := (include "arkcase.dev" $ctx | fromYaml) -}}
   {{- if $dev.wars -}}
     {{- range $name := (keys $dev.wars | sortAlpha) -}}
       {{- $war := get $dev.wars $name -}}
@@ -15,7 +28,7 @@
       {{- end -}}
     {{- end -}}
   {{- end -}}
-  {{- if and $dev.conf (not ($dev.conf).file) -}}
+  {{- if and $useConf $dev.conf (not ($dev.conf).file) -}}
     {{- $conf = "true" -}}
   {{- end -}}
 
@@ -23,7 +36,7 @@
 - name: SKIP_WARS
   value: {{ $wars | join "/" | quote }}
   {{- end }}
-  {{- if $conf }}
+  {{- if and $useConf $conf }}
 - name: SKIP_CONF
   value: {{ $conf | quote }}
   {{- end }}
@@ -32,14 +45,13 @@
 {{- end -}}
 
 {{- define "arkcase.core.dev.deployMounts" -}}
-  {{- $ctx := . -}}
-  {{- if not (include "arkcase.isRootContext" $ctx) -}}
-    {{- fail "Must send the root context as the only parameter" -}}
-  {{- end -}}
+  {{- $dev := (include "arkcase.core.dev" $ | fromYaml) -}}
+  {{- $part := $dev.part -}}
+  {{- $useConf := $dev.conf -}}
+  {{- $dev = $dev.dev -}}
 
 - name: "wars"
   mountPath: "/app/depl/wars"
-  {{- $dev := (include "arkcase.dev" $ctx | fromYaml) -}}
   {{- if $dev.wars }}
     {{- $num := 0 -}}
     {{- range $name := (keys $dev.wars | sortAlpha) }}
@@ -51,31 +63,34 @@
       {{- $num = add 1 $num }}
     {{- end }}
   {{- end }}
-  {{- if or (not $dev.conf) ($dev.conf).file }}
+  {{- if $useConf }}
+    {{- if or (not $dev.conf) ($dev.conf).file }}
 - name: "conf"
   mountPath: "/app/depl/conf"
-  {{- end }}
-  {{- if $dev.conf }}
+    {{- end }}
+    {{- if $dev.conf }}
 - name: "dev-conf"
   mountPath: {{ $dev.conf.file | ternary "/app/dev/conf/01-conf.zip" "/app/depl/conf" | quote }}
+    {{- end }}
   {{- end }}
 {{- end -}}
 
 {{- define "arkcase.core.dev.permissionMounts" -}}
-  {{- $ctx := . -}}
-  {{- if not (include "arkcase.isRootContext" $ctx) -}}
-    {{- fail "Must send the root context as the only parameter" -}}
-  {{- end -}}
+  {{- $dev := (include "arkcase.core.dev" $ | fromYaml) -}}
+  {{- $part := $dev.part -}}
+  {{- $useConf := $dev.conf -}}
+  {{- $dev = $dev.dev -}}
 
-  {{- $dev := (include "arkcase.dev" $ctx | fromYaml) -}}
-  {{- $num := 0 -}}
-  {{- $confVolumeName := "conf" -}}
-  {{- if and $dev.conf (not ($dev.conf).file) -}}
-    {{- $confVolumeName = "dev-conf" -}}
-  {{- end -}}
+  {{- if $useConf -}}
+    {{- $confVolumeName := "conf" -}}
+    {{- if and $dev.conf (not ($dev.conf).file) -}}
+      {{- $confVolumeName = "dev-conf" -}}
+    {{- end -}}
 - name: &confVol {{ $confVolumeName | quote }}
   mountPath: &confDir "/app/conf"
+  {{- end }}
   {{- if $dev.wars }}
+    {{- $num := 0 -}}
     {{- range $name := (keys $dev.wars | sortAlpha) }}
       {{- $war := get $dev.wars $name }}
       {{- if not $war.file }}
@@ -88,12 +103,11 @@
 {{- end -}}
 
 {{- define "arkcase.core.dev.runMounts" -}}
-  {{- $ctx := . -}}
-  {{- if not (include "arkcase.isRootContext" $ctx) -}}
-    {{- fail "Must send the root context as the only parameter" -}}
-  {{- end -}}
+  {{- $dev := (include "arkcase.core.dev" $ | fromYaml) -}}
+  {{- $part := $dev.part -}}
+  {{- $useConf := $dev.conf -}}
+  {{- $dev = $dev.dev -}}
 
-  {{- $dev := (include "arkcase.dev" $ctx | fromYaml) -}}
   {{- if $dev.wars -}}
     {{- $num := 0 -}}
     {{- range $name := (keys $dev.wars | sortAlpha) }}
@@ -108,20 +122,22 @@
 {{- end -}}
 
 {{- define "arkcase.core.dev.volumes" -}}
-  {{- $ctx := . -}}
-  {{- if not (include "arkcase.isRootContext" $ctx) -}}
-    {{- fail "Must send the root context as the only parameter" -}}
-  {{- end -}}
+  {{- $ctx := $ -}}
+  {{- $dev := (include "arkcase.core.dev" $ | fromYaml) -}}
+  {{- $part := $dev.part -}}
+  {{- $useConf := $dev.conf -}}
+  {{- $dev = $dev.dev -}}
 
-  {{- $dev := (include "arkcase.dev" $ctx | fromYaml) -}}
-  {{- if or (not $dev.conf) $dev.conf.file }}
-    {{- include "arkcase.persistence.volume" (dict "ctx" $ctx "name" "conf") }}
-  {{- end }}
-  {{- if $dev.conf }}
+  {{- if $useConf }}
+    {{- if or (not $dev.conf) $dev.conf.file }}
+      {{- include "arkcase.persistence.volume" (dict "ctx" $ctx "name" "conf") }}
+    {{- end }}
+    {{- if $dev.conf }}
 - name: "dev-conf"
   hostPath:
     path: {{ $dev.conf.path | quote }}
     type: {{ $dev.conf.file | ternary "File" "Directory" | quote }}
+    {{- end }}
   {{- end }}
   {{- if $dev.wars }}
     {{- $num := 0 -}}
@@ -168,22 +184,6 @@
   {{- $host := ($messaging.hostname | default "messaging") -}}
   {{- $port := (include "arkcase.tools.conf" (dict "ctx" $ "value" "messaging.openwire") | default "61616" | int) -}}
   {{- printf "%s://%s:%d" $scheme $host $port -}}
-{{- end -}}
-
-{{- define "arkcase.core.content.url" -}}
-  {{- if not (include "arkcase.isRootContext" $) -}}
-    {{- fail "Must send the root context as the only parameter" -}}
-  {{- end -}}
-  {{- $content := (include "arkcase.cm.info" $ | fromYaml) -}}
-  {{- $content.url.baseUrl -}}
-{{- end -}}
-
-{{- define "arkcase.core.content.ui" -}}
-  {{- if not (include "arkcase.isRootContext" $) -}}
-    {{- fail "Must send the root context as the only parameter" -}}
-  {{- end -}}
-  {{- $content := (include "arkcase.cm.info" $ | fromYaml) -}}
-  {{- $content.ui.baseUrl -}}
 {{- end -}}
 
 {{- define "arkcase.core.email" -}}
@@ -448,7 +448,9 @@
   {{- end -}}
 
   {{- /* Loggers from dev mode override both the defaults and the configured extra loggers */ -}}
-  {{- $dev := (include "arkcase.dev" $ctx | fromYaml) -}}
+  {{- $dev := (include "arkcase.core.dev" $ctx | fromYaml) -}}
+  {{- $part := $dev.part -}}
+  {{- $dev = $dev.dev -}}
   {{- if $dev.logs -}}
     {{- $loggers = merge $dev.logs $loggers -}}
   {{- end -}}
@@ -833,4 +835,52 @@
   {{- end }}
 
   {{- $result | uniq | toYaml -}}
+{{- end -}}
+
+{{- define "__arkcase.env.applicationVars.compute.active" -}}
+{{- $portal := (include "arkcase.portal" . | fromYaml) -}}
+{{- list "arkcase" "arkcase-activemq" "arkcase-oidc" "ldap" "lookups" ((empty $portal) | ternary "" "arkcase-portal") | compact | join "," -}}
+{{- end }}
+
+{{- define "__arkcase.env.applicationVars.compute.profile" -}}
+{{- $portal := (include "arkcase.portal" . | fromYaml) -}}
+{{- $custom := (include "arkcase.customization" .) -}}
+{{- $customBase := printf "%s_base" $custom -}}
+{{- (empty $portal) | ternary (list $customBase $custom "server" "runtime") (list $customBase "foia" $custom "server" "FOIA_server" "runtime") | compact | join "," -}}
+{{- end }}
+
+{{- define "arkcase.env.applicationVars" }}
+- name: ARKCASE_APPLICATION_ACTIVE
+  value: "{{ include "__arkcase.env.applicationVars.compute.active" $ }}"
+- name: ARKCASE_APPLICATION_PROFILE
+  value: "{{ include "__arkcase.env.applicationVars.compute.profile" $ }}"
+{{- end }}
+
+{{- define "__arkcase.core.settings.flattenToEnv" -}}
+  {{- $prefixPath := .prefix -}}
+  {{- $map := .map -}}
+  {{- range $k, $v := $map }}
+    {{- $newPath := printf "%s_%s" $prefixPath ($k | snakecase | upper) | trimPrefix "_" }}
+    {{- if kindIs "map" $v }}
+      {{- include "__arkcase.core.settings.flattenToEnv" (dict "prefix" $newPath "map" $v) }}
+    {{- else }}
+- name: {{ printf "ARKCASE_SETTINGS_%s" $newPath | quote }}
+  value: {{ $v | toString | quote }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+
+{{- define "arkcase.core.settings.env" -}}
+  {{- $coreSettings := (include "arkcase.subsystem.settings" $ | fromYaml) -}}
+  {{- include "__arkcase.core.settings.flattenToEnv" (dict "prefix" "" "map" $coreSettings) }}
+{{- end }}
+
+{{- define "arkcase.core.tomcatNative.env" -}}
+  {{- $debug := $ -}}
+  {{- $tomcatNative := true -}}
+  {{- if (hasKey $debug "tomcatNative") -}}
+    {{- $tomcatNative = (not (empty (include "arkcase.toBoolean" $debug.tomcatNative))) -}}
+  {{- end -}}
+- name: TOMCAT_NATIVE_ENABLE
+  value: {{ $tomcatNative | toString | quote }}
 {{- end -}}

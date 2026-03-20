@@ -1,19 +1,6 @@
-{{- if and (include "arkcase.subsystem.enabled" $) (include "arkcase.zookeeper.required" $) }}
-{{- $cluster := (include "arkcase.cluster" $ | fromYaml) }}
-{{- $nodes := ($cluster.nodes | int) -}}
-{{- if (gt $nodes 1) }}
+{{- if (include "arkcase.subsystem.enabled" $) -}}
+  {{- $cluster := (include "arkcase.cluster" $ | fromYaml) -}}
 ---
-apiVersion: policy/v1
-kind: PodDisruptionBudget
-metadata:
-  name: {{ include "arkcase.fullname" $ | quote }}
-  namespace: {{ $.Release.Namespace | quote }}
-spec:
-  minAvailable: {{ include "arkcase.zookeeper.minAvailable" $nodes | atoi }}
-  selector:
-    matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
----
-{{- end }}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -27,7 +14,7 @@ metadata:
   annotations: {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  replicas: {{ include "arkcase.zookeeper.nodes" $nodes }}
+  replicas: {{ include "arkcase.zookeeper.replicas" $ }}
   selector: &labelSelector
     matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
   serviceName: {{ include "arkcase.service.headless" $ | quote }}
@@ -109,6 +96,7 @@ spec:
             {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
             {{- include "arkcase.cluster.discovery.env" (dict "ctx" $ "port" "clients") | nindent 12 }}
+            {{- include "arkcase.alt-java" $ | nindent 12 }}
             - name: ZOOCFGDIR
               value: *confDir
             - name: ZOO_LOG_DIR
@@ -133,9 +121,10 @@ spec:
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/zoo.cfg") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/logback.xml") | nindent 12 }}
       volumes:
+        # Configuration is ephemeral, b/c it's re-rendered every time
         - name: *confVol
           emptyDir:
-            sizeLimit: 1Gi
+            sizeLimit: 16Mi
         {{- include "arkcase.subsystem-access.volume" $ | nindent 8 }}
         {{- include "arkcase.acme.volume" $ | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}

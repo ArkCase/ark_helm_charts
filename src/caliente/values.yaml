@@ -1,0 +1,80 @@
+# Default values for hostpath-provisioner.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+strategyType: Recreate
+
+image:
+  pullSecrets:
+    - name: aws-arkcase-pull
+
+  registry: "public.ecr.aws"
+
+  minio:
+    repository: "arkcase/minio"
+    tag: "20240803043323.0.0"
+
+  postgres:
+    repository: "arkcase/postgres"
+    tag: "13"
+
+  caliente:
+    repository: "arkcase/caliente"
+
+persistence:
+  # If set to `false`, an ephemeral volume will be used instead and all other `persistence.*` parameters
+  # are ignored.
+  enabled: true
+
+  # Set the default capacity for volumes in case none is assigned explicitly
+  # and the default value is insufficient
+  volumeSize:
+    content-data: "100Gi"
+    db-data: "32Gi"
+    data: "32Gi"
+    temp: "16Gi"
+
+# You generally shouldn't mess with these. These exist to support some name-generation templates
+nameOverride: ""
+fullnameOverride: ""
+
+# Custom annotations to apply throughout
+annotations:
+
+# Custom labels to apply throughout
+labels:
+
+updateStrategy: RollingUpdate
+rollingUpdatePartition: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: false
+  # Annotations to add to the service account
+  annotations:
+  # Annotations to add to the service account
+  labels:
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+securityContext:
+  # You must specify an `fsGroup` to allow ActiveMQ write access to mounted
+  # volumes (as long as ActiveMQ runs as a non-root user, which should be the
+  # case). Any random number will do.
+  # fsGroup: &fsGroup 1997
+  # fsGroupChangePolicy: OnRootMismatch
+
+#autoscaling:
+  #enabled: false
+  #minReplicas: 1
+  #maxReplicas: 100
+  #targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+nodeSelector:
+
+tolerations:
+
+affinity:
+

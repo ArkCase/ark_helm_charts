@@ -35,14 +35,20 @@ network/minio:
 
 settings:
   $self:
+    internal:
+      username: CONTENT_INTERNAL_USERNAME
+      password: CONTENT_INTERNAL_PASSWORD
+      bucket: CONTENT_INTERNAL_BUCKET
+
     main:
-      url: CONTENT_URL
-      ui: CONTENT_UI
       username: CONTENT_USERNAME
       password: CONTENT_PASSWORD
+      bucket:
+        env:
+          name: CONTENT_BUCKET
+          optional: true
+
     admin:
-      url: CONTENT_ADMIN_URL
-      ui: CONTENT_ADMIN_UI
       username: CONTENT_ADMIN_USERNAME
       password: CONTENT_ADMIN_PASSWORD
       group: CONTENT_ADMIN_GROUP

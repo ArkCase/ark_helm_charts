@@ -19,7 +19,7 @@
   {{- $enabled := or (not (hasKey $ingress "enabled")) (not (empty (include "arkcase.toBoolean" $ingress.enabled))) -}}
 
   {{- $portal := (include "arkcase.portal" $ | fromYaml) -}}
-  {{- $content := (include "arkcase.cm.info" $ | fromYaml) -}}
+  {{- $contentDialect := (include "arkcase.content.dialect" $) -}}
   {{- $dev := (include "arkcase.dev" $ | fromYaml) -}}
 
   {{- $hostnames := list $baseUrl.hostname -}}
@@ -135,7 +135,7 @@ spec:
                   number: 443
       {{- end }}
       {{- if or $dev $modules.entries.content }}
-        {{- if (eq $content.dialect "alfresco") }}
+        {{- if (eq $contentDialect "alfresco") }}
           - path: "/alfresco"
             pathType: Prefix
             backend:
@@ -158,7 +158,7 @@ spec:
                 port:
                   number: 8443
         {{- end }}
-        {{- if (eq $content.dialect "s3") }}
+        {{- if (eq $contentDialect "s3") }}
           - path: "/minio"
             pathType: Prefix
             backend:

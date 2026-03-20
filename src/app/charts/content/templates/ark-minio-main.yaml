@@ -1,20 +1,6 @@
-{{- if and (include "arkcase.subsystem.enabled" $) (eq "s3" (include "arkcase.content.info.dialect" $)) -}}
-{{- $minAvailable := (include "arkcase.content.minio.minAvailable" $ | int) }}
+{{- if and (include "arkcase.subsystem.enabled" $) (eq "s3" (include "arkcase.content.dialect" $)) -}}
 {{- $nodes := (include "arkcase.content.minio.nodeCount" $ | int) }}
 {{- $onePerHost := (include "arkcase.content.minio.onePerHost" $) }}
-{{- if (gt $nodes 1) }}
----
-apiVersion: policy/v1
-kind: PodDisruptionBudget
-metadata:
-  name: {{ include "arkcase.fullname" $ | quote }}
-  namespace: {{ $.Release.Namespace | quote }}
-spec:
-  minAvailable: {{ $minAvailable }}
-  selector:
-    matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
----
-{{- end }}
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -110,6 +96,8 @@ spec:
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
             {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
+            - name: SSL_SERVICE_EXTRA_NAMES
+              value: "$(SUBSYS_CURRENT)-internal"
             - name: NODES
               value: {{ $nodes | toString | quote }}
             - name: DATA_DIR
@@ -122,6 +110,10 @@ spec:
               value: "$(CONTENT_USERNAME)"
             - name: MINIO_PASSWORD
               value: "$(CONTENT_PASSWORD)"
+            - name: MINIO_INTERNAL_USER
+              value: "$(CONTENT_INTERNAL_USERNAME)"
+            - name: MINIO_INTERNAL_PASSWORD
+              value: "$(CONTENT_INTERNAL_PASSWORD)"
             # These two make sure things run in the correct ports
             - name: MINIO_ADDRESS
               value: ":9000"

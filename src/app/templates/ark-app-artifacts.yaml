@@ -10,7 +10,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ $fullName | quote }}
-  namespace: {{ $.Release.Namespace | quote }}
+  namespace: &namespace {{ $.Release.Namespace | quote }}
   labels: {{- include "arkcase.labels.service" $ | nindent 4 }}
     {{- with ($.Values.labels).common }}
     {{- toYaml . | nindent 4 }}
@@ -20,7 +20,7 @@ metadata:
   {{- end }}
 spec:
   replicas: 1
-  selector:
+  selector: &labelSelector
     matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
   strategy:
     type: "Recreate"
@@ -37,6 +37,21 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
     spec:
+      affinity:
+        podAntiAffinity:
+          # Affinity is preferred vs. required to ensure that we try
+          # to deploy multiple replicas to different hosts, but if that's
+          # not possible, we still deploy and schedule the replicas
+          #
+          # If the policy were required, then additional replicas may
+          # not be able to boot up b/c of node issues
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 1
+              podAffinityTerm:
+                topologyKey: "kubernetes.io/hostname"
+                namespaces: [ {{ $.Release.Namespace | quote }} ]
+                labelSelector:
+                  <<: *labelSelector
       {{- include "arkcase.image.pullSecrets" $ | nindent 6 }}
       {{- with $.Values.hostAliases }}
       hostAliases: {{- toYaml . | nindent 8 }}
@@ -48,6 +63,7 @@ spec:
       securityContext: {{- toYaml . | nindent 8 }}
       {{- end }}
       terminationGracePeriodSeconds: 0
+      subdomain: {{ include "arkcase.service.name" $ | quote }}
       containers:
         - name: artifacts
           {{- include "arkcase.app.image.artifacts" (dict "ctx" $ "name" "artifacts" "useChartTag" true) | nindent 10 }}
@@ -88,9 +104,6 @@ spec:
         {{- end }}
       {{- with $.Values.nodeSelector }}
       nodeSelector: {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with $.Values.affinity }}
-      affinity: {{- toYaml . | nindent 8 }}
       {{- end }}
       {{- with $.Values.tolerations }}
       tolerations: {{- toYaml . | nindent 8 }}

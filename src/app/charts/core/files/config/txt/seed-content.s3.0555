@@ -232,14 +232,20 @@ try:
 	if TOKEN:
 		os.environ["AWS_SESSION_TOKEN"] = TOKEN
 
-	for name, config in buckets.items():
+	processed = {}
+	for name_template, config in buckets.items():
 
 		if type(config) != dict:
-			fail(f"The configuration data is malformed - the value 'buckets.{name}' must be a dict")
+			fail(f"The configuration data is malformed - the value 'buckets[{name_template}]' must be a dict")
 
-		name = resolve_value(name.strip())
+		name = resolve_value(name_template.strip())
 		if not name:
-			fail("The configuration data is malformed - there is a bucket with an empty name")
+			fail(f"The configuration data is malformed - the bucket with the name template [{name_template}] resolved to an empty bucket name")
+
+		if name in processed:
+			fail(f"Duplicate bucket name [{name}] detected: the name templates [{processed[name]}] and [{name_template}] were resolved to the same bucket name")
+
+		processed[name] = name_template
 
 		# Check to see if the bucket exists ...
 		result = s3api("head-bucket", "--bucket", name)

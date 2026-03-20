@@ -307,11 +307,6 @@ ArkCase makes use of [Apache ActiveMQ Artemis](https://activemq.apache.org/compo
         - `password`: The password to use when authenticating
         - `amqpUrl`: The AMQP URL where the service is being hosted (e.g. `ssl://activemq.server.com:61616`)
         - `stompUrl`: The STOMP URL where the service is being hosted (e.g. `ssl://activemq.server.com:61613`)
-    - `cloudconfig`:
-        - `username`: The username to use when authenticating to either service
-        - `password`: The password to use when authenticating
-        - `amqpUrl`: The AMQP URL where the service is being hosted (e.g. `ssl://activemq.server.com:61616`)
-        - `stompUrl`: The STOMP URL where the service is being hosted (e.g. `ssl://activemq.server.com:61613`)
 
 ### <a name="secret-rdbms"></a>Database (MariaDB 10.6 / PostgreSQL 13)
 

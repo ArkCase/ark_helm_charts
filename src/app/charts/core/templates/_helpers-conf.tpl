@@ -24,4 +24,28 @@
       name: *confSecret
       key: "jdbcUrl"
       optional: false
+# - name: ARKCASE_JDBC_SCHEMA
+#   valueFrom:
+#     secretKeyRef:
+#       name: *confSecret
+#       key: "jdbcSchema"
+#       optional: false
+- name: ARKCASE_JDBC_WORKFLOW_DB_TYPE
+  valueFrom:
+    secretKeyRef:
+      name: *confSecret
+      key: "jdbcWorkflowDbType"
+      optional: false
+- name: ARKCASE_JDBC_PLATFORM
+  valueFrom:
+    secretKeyRef:
+      name: *confSecret
+      key: "jdbcPlatform"
+      optional: false
+- name: ARKCASE_JDBC_QUARTZ_DELEGATE
+  valueFrom:
+    secretKeyRef:
+      name: *confSecret
+      key: "jdbcQuartzDelegate"
+      optional: false
 {{- end -}}

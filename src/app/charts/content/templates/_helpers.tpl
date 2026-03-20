@@ -36,20 +36,12 @@
   {{- end -}}
 {{- end -}}
 
-{{- define "arkcase.content.info.dialect" -}}
-  {{- if not (include "arkcase.isRootContext" $) -}}
-    {{- fail "The parameter must be the root context" -}}
-  {{- end -}}
-  {{- $content := (include "arkcase.cm.info" $ | fromYaml) -}}
-  {{- $content.dialect -}}
-{{- end -}}
-
 {{- define "arkcase.content.minio.nodeCount" -}}
   {{- if not (include "arkcase.isRootContext" $) -}}
     {{- fail "The parameter must be the root context" -}}
   {{- end -}}
 
-  {{- $content := (include "arkcase.cm.info" $ | fromYaml) -}}
+  {{- $content := (include "arkcase.content.info" $ | fromYaml) -}}
   {{- $nodes := ($content.nodes | default 1 | toString | atoi) -}}
   {{- if (lt $nodes 1) -}}
     {{- $nodes = 1 -}}
@@ -69,7 +61,7 @@
     {{- fail "The parameter must be the root context" -}}
   {{- end -}}
 
-  {{- $content := (include "arkcase.cm.info" $ | fromYaml) -}}
+  {{- $content := (include "arkcase.content.info" $ | fromYaml) -}}
   {{- $nodes := ($content.nodes | default 1 | toString) -}}
 
   {{- /* If it's not set at all, use the default of 1 node */ -}}
@@ -113,7 +105,7 @@
     {{- fail "The parameter must be the root context" -}}
   {{- end -}}
 
-  {{- $content := (include "arkcase.cm.info" $ | fromYaml) -}}
+  {{- $content := (include "arkcase.content.info" $ | fromYaml) -}}
   {{- if or (not (hasKey $content "indexing")) (include "arkcase.toBoolean" $content.indexing) -}}
     {{- true -}}
   {{- end -}}

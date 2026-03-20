@@ -34,6 +34,5 @@
 # The shared certificates volume is laughably tiny
 - name: "acme-ssl-vol"
   emptyDir:
-    medium: "Memory"
     sizeLimit: 4Mi
 {{- end -}}

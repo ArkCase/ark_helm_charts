@@ -24,9 +24,6 @@ configuration:
     arkcase:
       roles: *adminRole
       persistent: false
-    cloudconfig:
-      roles: *adminRole
-      persistent: false
 
   # Limit, in GiB, of how big the KahaDB store can grow
   maxStoreUsageGb: 50
@@ -50,6 +47,9 @@ image:
   # setperm:
   #   repository: "arkcase/setperm"
   #   tag: "latest"
+
+  smoke-test:
+    repository: "arkcase/nettest"
 
 # You generally shouldn't mess with these. These exist to support some name-generation templates
 nameOverride: ""
@@ -129,6 +129,9 @@ service:
     - name: stomp
       protocol: TCP
       port: &stomp 61613
+    - name: jgroup
+      protocol: TCP
+      port: &jgroup 7800
 ##
 ## Configure extra options for containers' liveness and readiness probes
 ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/#configure-probes
@@ -153,6 +156,3 @@ service:
       successThreshold: 1
     startup:
       failureThreshold: 90
-    readiness:
-      tcpSocket:
-        port: *openwire

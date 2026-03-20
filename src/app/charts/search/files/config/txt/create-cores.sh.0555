@@ -55,16 +55,16 @@ is_dir_readwrite "${CONF_HOME}" || fail "Can't find the configsets directory at 
 # If there are no collection to add, skip this job
 [ -v SOLR_CORES ] || exit 0
 
-[ -v NODES ] || NODES=1
-[[ "${NODES}" =~ ^[1-9][0-9]*$ ]] || fail "The number of nodes [${NODES}] is not a valid number"
+set_as_boolean ENABLE_MULTISHARD "false"
+set_or_default REPLICAS "1"
+[[ "${REPLICAS}" =~ ^[1-9][0-9]*$ ]] || fail "The number of replicas [${REPLICAS}] is not a valid positive number"
 
 # Default values
 SHARDS=1
-REPLICAS=${NODES}
 
 # Have we been given a number of nodes that merits more sophisticated logic?
-if [ ${NODES} -gt 2 ] ; then
-	SHARDS=${NODES}
+if as_boolean "${ENABLE_MULTISHARD}" ; then
+	SHARDS=${REPLICAS}
 	REPLICAS=$(( ( SHARDS + 1 ) / 2 ))
 fi
 

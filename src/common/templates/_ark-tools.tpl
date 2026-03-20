@@ -37,15 +37,24 @@
 {{- /* Output the short name, optionally supporting a subcomponent name for charts with mutliple components */ -}}
 {{- define "arkcase.name" -}}
   {{- $ctx := $ -}}
+  {{- $partNameOnly := false -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
-    {{- fail "Incorrect context given - submit the root context as the only parameter" -}}
+    {{- $ctx = $.ctx -}}
+    {{- if not (include "arkcase.isRootContext" $ctx) -}}
+      {{- fail "Must provide the root context ($ or .) as the 'ctx' parameter, or the only parameter" -}}
+    {{- end -}}
+    {{- $partNameOnly = (not (empty (include "arkcase.toBoolean" $.partNameOnly))) -}}
   {{- end -}}
 
   {{- $name := (include "common.name" $ctx) -}}
-
   {{- $partname := (include "arkcase.part.name" $ctx) -}}
+
   {{- if $partname -}}
-    {{- $name = (printf "%s-%s" $name $partname) -}}
+    {{- if $partNameOnly -}}
+      {{- $name = $partname -}}
+    {{- else -}}
+      {{- $name = (printf "%s-%s" $name $partname) -}}
+    {{- end -}}
   {{- end -}}
   {{- $name | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
@@ -84,25 +93,25 @@ version: {{ $ctx.Chart.AppVersion | quote }}
 {{- end -}}
 
 {{- define "arkcase.selectorLabels" -}}
-  {{- include "arkcase.labels.matchLabels" . -}}
+  {{- include "arkcase.labels.matchLabels" $ -}}
 {{- end -}}
 
 {{/*
 Kubernetes standard labels
 */}}
 {{- define "arkcase.labels.standard" -}}
-  {{- $partname := (include "arkcase.part.name" .) -}}
-  {{- $ctx := . -}}
+  {{- $partname := (include "arkcase.part.name" $) -}}
+  {{- $ctx := $ -}}
 
   {{- if (hasKey $ctx "ctx") -}}
-    {{- $ctx = .ctx -}}
+    {{- $ctx = $.ctx -}}
   {{- end -}}
 
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "Incorrect context given - either submit the root context as the only parameter, or a 'ctx' parameter pointing to it" -}}
   {{- end -}}
 
-  {{- include "arkcase.selectorLabels" . }}
+  {{- include "arkcase.selectorLabels" $ }}
 app.kubernetes.io/managed-by: {{ $ctx.Release.Service | quote }}
 helm.sh/chart: {{ include "common.names.chart" $ctx | quote }}
 {{- end -}}
@@ -111,11 +120,11 @@ helm.sh/chart: {{ include "common.names.chart" $ctx | quote }}
 Labels to use on deploy.spec.selector.matchLabels and svc.spec.selector
 */}}
 {{- define "arkcase.labels.matchLabels" -}}
-  {{- $partname := (include "arkcase.part.name" .) -}}
-  {{- $ctx := . -}}
+  {{- $partname := (include "arkcase.part.name" $) -}}
+  {{- $ctx := $ -}}
 
   {{- if (hasKey $ctx "ctx") -}}
-    {{- $ctx = .ctx -}}
+    {{- $ctx = $.ctx -}}
   {{- end -}}
 
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
@@ -130,7 +139,7 @@ app.kubernetes.io/part: {{ $partname | quote }}
 {{- end -}}
 
 {{- define "arkcase.labels.matchLabels.service" -}}
-  {{- include "arkcase.labels.matchLabels" . }}
+  {{- include "arkcase.labels.matchLabels" $ }}
 app.kubernetes.io/service-support: "true"
 {{- end -}}
 
@@ -923,15 +932,110 @@ return either the value if correct, or the empty string if not.
   {{- $debug := $ -}}
   {{- $result := dict -}}
   {{- if and $debug (kindIs "map" $debug) -}}
-    {{- if or (not (hasKey $debug "enabled")) (not (empty (include "arkcase.toBoolean" $debug.enabled))) -}}
-      {{- $result = dict "enabled" true "suspend" (and (hasKey $debug "suspend") (not (empty (include "arkcase.toBoolean" $debug.suspend))) | ternary "y" "n") -}}
+    {{- /* Grab any extra stuff */ -}}
+    {{- $extras := omit $debug "enabled" "suspend" "tomcatNative" -}}
+
+    {{- /* Pick the values we're interested in */ -}}
+    {{- $debug = pick $debug "enabled" "suspend" "tomcatNative" -}}
+
+    {{- /* Debug must expressly be enabled */ -}}
+    {{- if (not (empty (include "arkcase.toBoolean" $debug.enabled))) -}}
+      {{- $result = dict "enabled" true -}}
+
+      {{- /* Suspend gets sanitized to "y" or "n" */ -}}
+      {{- $result = set $result "suspend" (and (hasKey $debug "suspend") (not (empty (include "arkcase.toBoolean" $debug.suspend))) | ternary "y" "n") -}}
+
+      {{- /* TomcatNative gets sanitized to a boolean */ -}}
+      {{- $result = set $result "tomcatNative" (or (not (hasKey $debug "tomcatNative")) (not (empty (include "arkcase.toBoolean" $debug.tomcatNative)))) -}}
+
+      {{- /* Add the extra stuff verbatim */ -}}
+      {{- $result = merge $result $extras -}}
     {{- end -}}
   {{- end -}}
   {{- $result | toYaml -}}
 {{- end -}}
 
+{{- define "__arkcase.dev.compute-shared" -}}
+  {{- $dev := $ -}}
+
+  {{- $uid := 1000 -}}
+  {{- if hasKey $dev "uid" -}}
+    {{- $uid = ($dev.uid | toString) -}}
+    {{- if (not (regexMatch "^[1-9][0-9]*$" $uid)) -}}
+      {{- fail (printf "The value for global.dev.uid must be a positive number (%s)" $uid) -}}
+    {{- end -}}
+    {{- $uid = atoi $uid -}}
+  {{- end -}}
+
+  {{- $gid := 1000 -}}
+  {{- if hasKey $dev "gid" -}}
+    {{- $gid = ($dev.gid | toString) -}}
+    {{- if (not (regexMatch "^[1-9][0-9]*$" $gid)) -}}
+      {{- fail (printf "The value for global.dev.gid must be a positive number (%s)" $gid) -}}
+    {{- end -}}
+    {{- $gid = atoi $gid -}}
+  {{- end -}}
+
+  {{- dict "uid" $uid "gid" $gid | toYaml -}}
+{{- end -}}
+
+{{- define "__arkcase.dev.compute-component" -}}
+  {{- $dev := $ -}}
+  {{- $result := dict "enabled" true -}}
+  {{- /* Handle the custom WAR files */ -}}
+  {{- if and $dev.wars (kindIs "map" $dev.wars) -}}
+    {{- $wars := dict -}}
+    {{- range $k, $v := $dev.wars -}}
+      {{- $war := $v | toString -}}
+      {{- $file := (hasPrefix "file:/" $war) -}}
+      {{- if or (hasPrefix "path:/" $war) (hasPrefix "file:/" $war) -}}
+        {{- $path := (regexReplaceAll "^(path|file):" $war "") -}}
+        {{- if not $path -}}
+          {{- fail (printf "The value for global.dev.wars.%s must contain a path: [%s]" $k $war) -}}
+        {{- end -}}
+        {{- $war = $path -}}
+      {{- end -}}
+      {{- $war = (include "arkcase.tools.normalizePath" $war) -}}
+      {{- if not (isAbs $war) -}}
+        {{- fail (printf "The value for global.dev.wars.%s must be an absolute path: [%s]" $k $war) -}}
+      {{- end -}}
+      {{- $wars = set $wars $k (dict "file" $file "path" $war) -}}
+    {{- end -}}
+    {{- $result = set $result "wars" $wars -}}
+  {{- else if $dev.wars -}}
+    {{- fail (printf "The value for global.dev.wars must be a map (%s)" (kindOf $dev.war)) -}}
+  {{- end -}}
+
+  {{- if and $dev.conf (kindIs "string" $dev.conf) -}}
+    {{- $conf := $dev.conf | toString -}}
+    {{- $file := (hasPrefix "file:/" $conf) -}}
+    {{- if or (hasPrefix "path:/" $conf) (hasPrefix "file:/" $conf) -}}
+      {{- $path := (regexReplaceAll "^(path|file):" $conf "") -}}
+      {{- if not $path -}}
+        {{- fail (printf "The value for global.dev.conf must contain a path: [%s]" $conf) -}}
+      {{- end -}}
+      {{- $conf = $path -}}
+    {{- end -}}
+    {{- $conf = (include "arkcase.tools.normalizePath" $conf) -}}
+    {{- if not (isAbs $conf) -}}
+      {{- fail (printf "The value for global.dev.conf must be an absolute path: [%s]" $conf) -}}
+    {{- end -}}
+    {{- $result = set $result "conf" (dict "file" $file "path" $conf) -}}
+  {{- else if $dev.conf -}}
+    {{- fail (printf "The value for global.dev.conf must be a string (%s)" (kindOf $dev.conf)) -}}
+  {{- end -}}
+
+  {{- $result = set $result "debug" (include "__arkcase.dev.compute-debug" $dev.debug | fromYaml) -}}
+
+  {{- $result = set $result "logs" (include "arkcase.sanitizeLoggers" $dev.logs | fromYaml) -}}
+
+  {{- /* Copy all the other keys verbatim */ -}}
+  {{- $result = merge $result (omit $dev "enabled" "war" "conf" "debug" "uid" "gid" "resources") -}}
+  {{- $result | toYaml -}}
+{{- end -}}
+
 {{- define "__arkcase.dev.compute" -}}
-  {{- $ctx := . -}}
+  {{- $ctx := $ -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
     {{- fail "The parameter must be the root context (. or $)" -}}
   {{- end -}}
@@ -947,70 +1051,16 @@ return either the value if correct, or the empty string if not.
     {{- $dev := $global.dev -}}
     {{- $enabled := (or (not (hasKey $dev "enabled")) (not (empty (include "arkcase.toBoolean" $dev.enabled)))) -}}
     {{- if $enabled -}}
-      {{- $result = set $result "enabled" true -}}
 
-      {{- /* Handle the custom WAR files */ -}}
-      {{- if and $dev.wars (kindIs "map" $dev.wars) -}}
-        {{- $wars := dict -}}
-        {{- range $k, $v := $dev.wars -}}
-          {{- $war := $v | toString -}}
-          {{- $file := (hasPrefix "file:/" $war) -}}
-          {{- if or (hasPrefix "path:/" $war) (hasPrefix "file:/" $war) -}}
-            {{- $path := (regexReplaceAll "^(path|file):" $war "") -}}
-            {{- if not $path -}}
-              {{- fail (printf "The value for global.dev.wars.%s must contain a path: [%s]" $k $war) -}}
-            {{- end -}}
-            {{- $war = $path -}}
-          {{- end -}}
-          {{- $war = (include "arkcase.tools.normalizePath" $war) -}}
-          {{- if not (isAbs $war) -}}
-            {{- fail (printf "The value for global.dev.wars.%s must be an absolute path: [%s]" $k $war) -}}
-          {{- end -}}
-          {{- $wars = set $wars $k (dict "file" $file "path" $war) -}}
+      {{- /* Go for each part! */ -}}
+      {{- $shared := (include "__arkcase.dev.compute-shared" $dev | fromYaml) -}}
+      {{- range $part := (keys (omit $dev "enabled" "resources" "uid" "gid") | sortAlpha) -}}
+        {{- $data := get $dev $part -}}
+        {{- if and $data (kindIs "map" $data) -}}
+          {{- $data = (include "__arkcase.dev.compute-component" $data | fromYaml) -}}
+          {{- $result = set $result $part (merge $data $shared) -}}
         {{- end -}}
-        {{- $result = set $result "wars" $wars -}}
-      {{- else if $dev.wars -}}
-        {{- fail (printf "The value for global.dev.wars must be a map (%s)" (kindOf $dev.war)) -}}
       {{- end -}}
-
-      {{- if and $dev.conf (kindIs "string" $dev.conf) -}}
-        {{- $conf := $dev.conf | toString -}}
-        {{- $file := (hasPrefix "file:/" $conf) -}}
-        {{- if or (hasPrefix "path:/" $conf) (hasPrefix "file:/" $conf) -}}
-          {{- $path := (regexReplaceAll "^(path|file):" $conf "") -}}
-          {{- if not $path -}}
-            {{- fail (printf "The value for global.dev.conf must contain a path: [%s]" $conf) -}}
-          {{- end -}}
-          {{- $conf = $path -}}
-        {{- end -}}
-        {{- $conf = (include "arkcase.tools.normalizePath" $conf) -}}
-        {{- if not (isAbs $conf) -}}
-          {{- fail (printf "The value for global.dev.conf must be an absolute path: [%s]" $conf) -}}
-        {{- end -}}
-        {{- $result = set $result "conf" (dict "file" $file "path" $conf) -}}
-      {{- else if $dev.conf -}}
-        {{- fail (printf "The value for global.dev.conf must be a string (%s)" (kindOf $dev.conf)) -}}
-      {{- end -}}
-
-      {{- $uid := 1000 -}}
-      {{- if hasKey $dev "uid" -}}
-        {{- $uid := ($dev.uid | toString) -}}
-        {{- if (not (regexMatch "^[1-9][0-9]*$" $uid)) -}}
-          {{- fail (printf "The value for global.dev.uid must be a positive number (%s)" $uid) -}}
-        {{- end -}}
-        {{- $uid = atoi $uid -}}
-      {{- end -}}
-      {{- $result = set $result "uid" $uid -}}
-
-      {{- $gid := 1000 -}}
-      {{- if hasKey $dev "gid" -}}
-        {{- $gid = ($dev.gid | toString) -}}
-        {{- if (not (regexMatch "^[1-9][0-9]*$" $gid)) -}}
-          {{- fail (printf "The value for global.dev.gid must be a positive number (%s)" $gid) -}}
-        {{- end -}}
-        {{- $gid = atoi $gid -}}
-      {{- end -}}
-      {{- $result = set $result "gid" $gid -}}
 
       {{- /* For now, we don't use development-mode resources, b/c they're borked! */ -}}
       {{- $resources := false -}}
@@ -1019,25 +1069,6 @@ return either the value if correct, or the empty string if not.
       {{- end -}}
       {{- $result = set $result "resources" $resources -}}
 
-      {{- $debug := dict -}}
-      {{- if and $dev.debug (kindIs "map" $dev.debug) -}}
-        {{- $debugSrc := $dev.debug -}}
-        {{- if or (not (hasKey $debugSrc "enabled")) (not (empty (include "arkcase.toBoolean" $debugSrc.enabled))) -}}
-          {{- range $part := (list "arkcase" "cloudconfig") -}}
-            {{- $partConf := (dict "enabled" true "suspend" "n") -}}
-            {{- if (hasKey $debugSrc $part) -}}
-              {{- $partConf = (include "__arkcase.dev.compute-debug" (get $debugSrc $part) | fromYaml) -}}
-            {{- end -}}
-            {{- $debug = set $debug $part $partConf -}}
-          {{- end -}}
-        {{- end -}}
-      {{- end -}}
-      {{- $result = set $result "debug" $debug -}}
-
-      {{- $result = set $result "logs" (include "arkcase.sanitizeLoggers" $dev.logs | fromYaml) -}}
-
-      {{- /* Copy all the other keys verbatim */ -}}
-      {{- $result = merge $result (omit $dev "enabled" "war" "conf" "debug" "uid" "gid" "resources") -}}
     {{- end -}}
   {{- end -}}
   {{- $result | toYaml -}}
@@ -1242,3 +1273,14 @@ return either the value if correct, or the empty string if not.
   {{- end -}}
   {{- $result | toYaml -}}
 {{- end -}}
+
+{{- define "arkcase.alt-java" -}}
+  {{- $settings := (include "arkcase.subsystem.settings" $ | fromYaml) -}}
+  {{- if and $settings (kindIs "map" $settings) -}}
+    {{- $altJava := (get $settings "alt-java" | default "" | toString) -}}
+    {{- if $altJava -}}
+- name: ALT_JAVA
+  value: {{ $altJava | quote }}
+    {{- end -}}
+  {{- end -}}
+{{- end }}

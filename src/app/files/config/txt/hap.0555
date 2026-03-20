@@ -1,0 +1,17 @@
+#!/bin/bash
+
+set -euo pipefail
+. /.functions
+
+set_or_default API_SOCKET_TYPE "unix-connect"
+set_or_default API_SOCKET_ADDX "/var/lib/haproxy/haproxy-stats"
+set_or_default API_SOCKET "${API_SOCKET_TYPE}:${API_SOCKET_ADDX}"
+
+render_command()
+{
+	[ ${#} -eq 0 ] && exec cat
+	echo "${@}"
+}
+
+# If there are no parameters, read from STDIN
+exec socat stdio "${API_SOCKET}" < <(render_command "${@}")

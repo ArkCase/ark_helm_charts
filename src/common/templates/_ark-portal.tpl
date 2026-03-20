@@ -83,6 +83,12 @@
       {{- $apiSecret = "voSNRpEtMsK0ocueclMvd97KE7aTezFTtEOoYfe2MtX7/8t+dq1dXvlOMpD10B8Nu+R/UE8CA1rvD4o2Nrb9gwZt" -}}
     {{- end -}}
 
+    {{- $reportsTimezone := (hasKey $portal "reportsTimezone" | ternary $portal.reportsTimezone "") -}}
+    {{- if or (not $reportsTimezone) (not (kindIs "string" $reportsTimezone)) -}}
+      {{- /* If the report's timezone isn't set, default to America/New_York */ -}}
+      {{- $reportsTimezone = "America/New_York" -}}
+    {{- end -}}
+
     {{- /* If we're not authenticating, then we won't be generating users */ -}}
     {{- $generateUsers = and $generateUsers (not $disableAuth) -}}
 
@@ -106,6 +112,7 @@
       $result = dict
         "context" $context
         "containerSuffix" $containerSuffix
+        "reportsTimezone" $reportsTimezone
         "apiSecret" $apiSecret
         "disableAuth" $disableAuth
         "generateUsers" $generateUsers

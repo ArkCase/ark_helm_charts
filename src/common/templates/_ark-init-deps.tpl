@@ -67,7 +67,6 @@ that checks the boot order
   {{- $networkSet := $.networkSet -}}
   {{- $explicit := $.explicit -}}
   {{- $subsysDeps := ($ctx.Files.Get "subsys-deps.yaml" | fromYaml | default dict) -}}
-  {{- $cluster := (include "arkcase.cluster" $ctx | fromYaml) -}}
 
   {{- /*
     Allow for "network:", "network.something:", "network.other:", etc.
@@ -111,26 +110,19 @@ that checks the boot order
 
   {{- $result := dict -}}
   {{- range $host, $settings := $dependencies -}}
-    {{- if and (not $cluster.enabled) $settings.clusterOnly -}}
-      {{- /* This dependency is only applicable when clustering is enabled */ -}}
-      {{- continue -}}
-    {{- end -}}
-
     {{- /* Normalize */ -}}
-    {{- if (hasKey $settings "port") -}}
-      {{- $settings = omit $settings "ports" -}}
-    {{- else if (hasKey $settings "ports") -}}
+    {{- if (hasKey $settings "ports") -}}
       {{- $ports := $settings.ports -}}
-      {{- $settings = omit $settings "ports" -}}
+      {{- $settings = omit $settings "port" -}}
       {{- $settings = set $settings "port" $ports -}}
     {{- end -}}
 
-    {{- if and (hasKey $settings "url") (or (hasKey $settings "host") (hasKey $settings "port")) -}}
-      {{- fail (printf "The dependency declaration for %s has conflicting settings: may only have URL or host/port specs" $host) -}}
+    {{- if and (hasKey $settings "url") (or (hasKey $settings "http") (hasKey $settings "host") (hasKey $settings "ports")) -}}
+      {{- fail (printf "The dependency declaration for %s has conflicting settings: may only have URL, HTTP, or host/port(s) specs" $host) -}}
     {{- end -}}
 
-    {{- if and (not (hasKey $settings "url")) (not (hasKey $settings "port")) -}}
-      {{- fail (printf "The dependency declaration for %s doesn't have any port information - no URL or port given" $host) -}}
+    {{- if and (not (hasKey $settings "url")) (not (hasKey $settings "http")) (not (hasKey $settings "port")) -}}
+      {{- fail (printf "The dependency declaration for %s doesn't have any port information - no URL, HTTP or port(s) given" $host) -}}
     {{- end -}}
 
     {{- $result = set $result $host (omit $settings "clusterOnly") -}}
@@ -164,7 +156,7 @@ that checks the boot order
   {{- if $yaml -}}
 - name: {{ $containerName | quote }}
   {{- include "arkcase.image" (dict "ctx" $ctx "name" "nettest" "repository" "arkcase/nettest") | nindent 2 }}
-  command: [ "/usr/local/bin/wait-for-ports" ]
+  command: [ "/usr/local/bin/wait-for-dependencies" ]
   env: {{- include "arkcase.tools.baseEnv" $ctx | nindent 4 }}
     {{- include "arkcase.acme.env" $ctx | nindent 4 }}
     {{- include "arkcase.subsystem-access.env" $ctx | nindent 4 }}

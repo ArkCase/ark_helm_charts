@@ -140,13 +140,11 @@
       <!--For clustering, please take a look at documentation at:
           /docs/cluster-howto.html  (simple how to)
           /docs/config/cluster.html (reference documentation) -->
-      <!--
       <Cluster className="org.apache.catalina.ha.tcp.SimpleTcpCluster">
         <Channel className="org.apache.catalina.tribes.group.GroupChannel">
           <Membership className="org.apache.catalina.tribes.membership.cloud.CloudMembershipService"/>
         </Channel>
       </Cluster>
-      -->
 
       <!-- Use the LockOutRealm to prevent attempts to guess user passwords
            via a brute-force attack -->
@@ -159,8 +157,9 @@
                resourceName="UserDatabase"/>
       </Realm>
 
+      <!-- We turn off autoDeploy for security -->
       <Host name="localhost"  appBase="webapps"
-            unpackWARs="true" autoDeploy="true" workDir="${WORK_DIR}">
+            unpackWARs="true" autoDeploy="false" workDir="${WORK_DIR}">
 
         <!-- SingleSignOn valve, share authentication between web applications
              Documentation at: /docs/config/valve.html -->
