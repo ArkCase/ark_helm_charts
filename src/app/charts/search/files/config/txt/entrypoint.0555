@@ -29,6 +29,17 @@ ensure_dir "${SOLR_LOGS_DIR}"
 #
 . /usr/local/bin/zk-host
 
+#
+# Enable HTTPS on the cluster
+#
+say "Enabling SSL on the cluster"
+(
+	set -euo pipefail
+	cd "${BASE_DIR}/solr"
+	exec server/scripts/cloud-scripts/zkcli.sh -zkhost "${ZK_HOST}" -cmd clusterprop -name urlScheme -val https
+)
+say "SSL Enabled!"
+
 set_or_default INIT_MARKER "${DATA_DIR}/.initialized"
 
 # This is important: ${HOME_DIR} must be *ephemeral* - this flag is only meant to

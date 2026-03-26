@@ -2,6 +2,8 @@
 set -euo pipefail
 . /.functions
 
+init_ssl
+
 cleanup()
 {
 	[ -v RUN_MARKER ] || RUN_MARKER=""
