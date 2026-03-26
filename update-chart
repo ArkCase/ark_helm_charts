@@ -1,6 +1,9 @@
 #!/bin/bash
-SCRIPT="$(readlink -f "${BASH_SOURCE:-${0}}")"
+CALLED="${BASH_ARGV0:-${BASH_SOURCE:-${0}}}"
+SCRIPT="$(readlink -f "${CALLED}")"
 BASEDIR="$(dirname "${SCRIPT}")"
+
+set -euo pipefail
 
 #
 # This script helps to manage dependencies when one or more charts are updated.
@@ -8,58 +11,82 @@ BASEDIR="$(dirname "${SCRIPT}")"
 # It automatically triggers downstream builds as required on dependent charts.
 #
 
-say() {
+say()
+{
 	echo -e "${@}"
 }
 
-unique_dependencies()
+doing()
 {
-	for n in "${@}" ; do
-		echo "${n}"
-	done | sort -u
+	say "👉 ${@}"
 }
 
-set -euo pipefail
+ok()
+{
+	say "✅ ${@}"
+}
 
-cd "${BASEDIR}"
+warn()
+{
+	say "⚠️ ${@}"
+}
 
-while true ; do
-	NEXT_ITERATION=()
-	for CHART_NAME in "${@}" ; do
-		CHART="src/${CHART_NAME}"
+err()
+{
+	say "❌ ${@}"
+}
 
-		say "Packaging ${CHART_NAME}"
-		OUT="$(helm package -d "." "${CHART}")"
+fail()
+{
+	err "${@}"
+	exit ${EXIT_CODE:-1}
+}
 
-		SRC="$(echo -n "${OUT}" | sed -e 's;^.*and saved it to: ;;g')"
-		NEW_DEPS=()
-		while read f ; do
-			CHARTSDIR="$(dirname "${f}")"
-			MAINDIR="$(dirname "${CHARTSDIR}")"
-			DEPENDENCY="$(basename "${MAINDIR}")"
-			say "\tApplying ${CHART_NAME} to ${DEPENDENCY}"
-			(
-				rm -fv "${f}"
-				cp -vf "${SRC}" "${CHARTSDIR}"
-			) |& sed -e 's;^;\t\t;g'
-			NEW_DEPS+=("${DEPENDENCY}")
-		done < <(find src -type f -name "${CHART_NAME}-*.tgz" | sort)
-		rm -f "${SRC}" &>/dev/null
+cleanup()
+{
+	[ -v WORKDIR ] && rm -rf "${WORKDIR}" &>/dev/null
+}
 
-		# If there are no new dependencies, ditch!
-		[ ${#NEW_DEPS[@]} -gt 0 ] || continue
+usage()
+{
+	echo -e "usage: ${CALLED} source target-dir-1 [ target-dir-2 target-dir-3 ... target-dir-N ]"
+	exit 1
+}
 
-		# Remove duplicates in the new dependencies
-		readarray -t NEW_DEPS < <(unique_dependencies "${NEW_DEPS[@]}")
+package()
+{
+	local SRC="${1}"
+	local WORKDIR="${2}"
+	local PACKAGE=""
+	OUT="$(helm package -d "${WORKDIR}" "${SRC}")" || return ${?}
+	PACKAGE="$(echo -n "${OUT}" | sed -e 's;^.*and saved it to: ;;g')" || return ${?}
+	[ -f "${PACKAGE}" ] || return 1
+	echo -n "${PACKAGE}"
+	return 0
+}
 
-		say "\tFound ${#NEW_DEPS[@]} dependencies for ${CHART_NAME}:"
-		for D in "${NEW_DEPS[@]}" ; do
-			say "\t\t${D}"
-		done | sort
-		NEXT_ITERATION+=("${NEW_DEPS[@]}")
-	done
+[ ${#} -ge 2 ] || usage
 
-	readarray -t NI < <(unique_dependencies "${NEXT_ITERATION[@]}")
-	set -- "${NI[@]}"
-    [ "${#}" -lt 1 ] && break
+SOURCE="${1}"
+shift
+
+WORKDIR="$(mktemp -d)"
+trap cleanup EXIT
+
+PACKAGE=""
+
+for TARGET in "${@}" ; do
+	if [ -z "${PACKAGE}" ] ; then
+		doing "Packaging the chart from [${SOURCE}] ..."
+		PACKAGE="$(package "${SOURCE}" "${WORKDIR}")" || fail "Failed to package the chart (rc=${?}): ${PACKAGE}"
+		ok "The chart was packaged as $(basename "${PACKAGE}")"
+	fi
+
+	TARGET_CHARTS_DIR="${TARGET}/charts"
+	[ -d "${TARGET_CHARTS_DIR}" ] || { err "No 'charts' directory for ${TARGET}" ; continue ; }
+
+	rm -f "${TARGET_CHARTS_DIR}"/common-*.tgz &>/dev/null || true
+	cp -vf "${PACKAGE}" "${TARGET_CHARTS_DIR}" &>/dev/null \
+		&& ok "Chart deployed into ${TARGET}" \
+		|| err "Failed to deploy the new common chart into ${CHART}"
 done
