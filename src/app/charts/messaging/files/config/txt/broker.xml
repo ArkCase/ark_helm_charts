@@ -1,4 +1,3 @@
-{{- $clusterId := (printf "%s-%s" $.Release.Namespace $.Release.Name) -}}
 <?xml version='1.0'?>
 <!--
 Licensed to the Apache Software Foundation (ASF) under one
@@ -118,7 +117,7 @@ under the License.
 
 		<connectors>
 				<!-- Connector used to be announced through cluster connections and notifications -->
-				<connector name="local">tcp://${POD_HOSTNAME}.{{ include "arkcase.service.headless" $ }}:61616?sslEnabled=true;enabledProtocols=TLSv1.2;</connector>
+				<connector name="local">tcp://${POD_HOSTNAME}.${DNS_SERVICE}:61616?sslEnabled=true;enabledProtocols=TLSv1.2;</connector>
 		</connectors>
 
 
@@ -181,36 +180,36 @@ under the License.
 		<cluster-password>this-value-is-substituted-at-startup</cluster-password>
 
 		<broadcast-groups>
-			<broadcast-group name="bcast-{{ $clusterId }}">
+			<broadcast-group name="bcast-${ARTEMIS_CLUSTER_ID}">
 				<broadcast-period>5000</broadcast-period>
 				<jgroups-file>jgroups-artemis-k8s.xml</jgroups-file>
-				<jgroups-channel>{{ $clusterId }}</jgroups-channel>
+				<jgroups-channel>${ARTEMIS_CLUSTER_ID}</jgroups-channel>
 				<connector-ref>local</connector-ref>
 			</broadcast-group>
 		</broadcast-groups>
 
 		<discovery-groups>
-			<discovery-group name="disc-{{ $clusterId }}">
+			<discovery-group name="disc-${ARTEMIS_CLUSTER_ID}">
 				<jgroups-file>jgroups-artemis-k8s.xml</jgroups-file>
-				<jgroups-channel>{{ $clusterId }}</jgroups-channel>
+				<jgroups-channel>${ARTEMIS_CLUSTER_ID}</jgroups-channel>
 				<refresh-timeout>10000</refresh-timeout>
 			</discovery-group>
 		</discovery-groups>
 
 		<cluster-connections>
-			<cluster-connection name="conn-{{ $clusterId }}">
+			<cluster-connection name="conn-${ARTEMIS_CLUSTER_ID}">
 				<connector-ref>local</connector-ref>
 				<message-load-balancing>ON_DEMAND</message-load-balancing>
 				<max-hops>0</max-hops>
-				<discovery-group-ref discovery-group-name="disc-{{ $clusterId }}"/>
+				<discovery-group-ref discovery-group-name="disc-${ARTEMIS_CLUSTER_ID}"/>
 			</cluster-connection>
 		</cluster-connections>
 
 		<ha-policy>
 			<replication>
 				<primary>
-					<group-name>{{ $clusterId }}</group-name>
-					<cluster-name>conn-{{ $clusterId }}</cluster-name>
+					<group-name>${ARTEMIS_CLUSTER_ID}</group-name>
+					<cluster-name>conn-${ARTEMIS_CLUSTER_ID}</cluster-name>
 					<check-for-active-server>true</check-for-active-server>
 					<manager>
 						<properties>
@@ -222,25 +221,24 @@ under the License.
 							<property key="retries-ms" value="1000" />
 						</properties>
 					</manager>
-					<coordination-id>{{ $clusterId }}</coordination-id>
+					<coordination-id>${ARTEMIS_CLUSTER_ID}</coordination-id>
 				</primary>
 			</replication>
 		</ha-policy>
 
 		<security-settings>
 			<security-setting match="#">
-				{{- $admin := (include "arkcase.artemis.admin" $ | fromYaml) }}
-				<permission type="createNonDurableQueue" roles="{{ $admin.roles }}"/>
-				<permission type="deleteNonDurableQueue" roles="{{ $admin.roles }}"/>
-				<permission type="createDurableQueue" roles="{{ $admin.roles }}"/>
-				<permission type="deleteDurableQueue" roles="{{ $admin.roles }}"/>
-				<permission type="createAddress" roles="{{ $admin.roles }}"/>
-				<permission type="deleteAddress" roles="{{ $admin.roles }}"/>
-				<permission type="consume" roles="{{ $admin.roles }}"/>
-				<permission type="browse" roles="{{ $admin.roles }}"/>
-				<permission type="send" roles="{{ $admin.roles }}"/>
+				<permission type="createNonDurableQueue" roles="${ARTEMIS_ADMIN_ROLES}"/>
+				<permission type="deleteNonDurableQueue" roles="${ARTEMIS_ADMIN_ROLES}"/>
+				<permission type="createDurableQueue" roles="${ARTEMIS_ADMIN_ROLES}"/>
+				<permission type="deleteDurableQueue" roles="${ARTEMIS_ADMIN_ROLES}"/>
+				<permission type="createAddress" roles="${ARTEMIS_ADMIN_ROLES}"/>
+				<permission type="deleteAddress" roles="${ARTEMIS_ADMIN_ROLES}"/>
+				<permission type="consume" roles="${ARTEMIS_ADMIN_ROLES}"/>
+				<permission type="browse" roles="${ARTEMIS_ADMIN_ROLES}"/>
+				<permission type="send" roles="${ARTEMIS_ADMIN_ROLES}"/>
 				<!-- we need this otherwise ./artemis data imp wouldn't work -->
-				<permission type="manage" roles="{{ $admin.roles }}"/>
+				<permission type="manage" roles="${ARTEMIS_ADMIN_ROLES}"/>
 			</security-setting>
 		</security-settings>
 

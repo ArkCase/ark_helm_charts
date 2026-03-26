@@ -137,6 +137,11 @@ spec:
             {{- include "arkcase.alt-java" $ | nindent 12 }}
             - name: ARTEMIS_NEW_USER_MODEL
               value: "true"
+            - name: ARTEMIS_CLUSTER_ID
+              value: {{ (printf "%s-%s" $.Release.Namespace $.Release.Name) | quote }}
+            {{- $admin := (include "arkcase.artemis.admin" $ | fromYaml) }}
+            - name: ARTEMIS_ADMIN_ROLES
+              value: {{ $admin.roles | quote }}
             - name: JAVA_TOOL_OPTIONS
               value: >-
                 -Dcom.redhat.fips={{ include "arkcase.fips.bool" $ }}
@@ -162,8 +167,8 @@ spec:
             - name: *logsVol
               mountPath: *logsDir
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/check-health") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/bootstrap.xml.template") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/broker.xml.template") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/bootstrap.xml") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/broker.xml") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/jgroups-artemis-k8s.xml") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/jolokia-access.xml") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/log4j2.properties") | nindent 12 }}
