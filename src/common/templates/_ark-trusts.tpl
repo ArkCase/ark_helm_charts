@@ -58,6 +58,10 @@
   {{- include "__arkcase.tools.getCachedValue" $args -}}
 {{- end -}}
 
+{{- define "arkcase.trusts.dir" -}}
+/.trusts
+{{- end -}}
+
 {{- define "arkcase.trusts.secret" -}}
   {{- if not (include "arkcase.isRootContext" $) -}}
     {{- fail "The parameter given must be the root context (. or $)" -}}
@@ -71,7 +75,7 @@
   {{- end -}}
   {{- $volumeName := (include "arkcase.trusts.secret" $) -}}
 - name: &sslTrustSecrets {{ $volumeName | quote }}
-  mountPath: "/.trusts"
+  mountPath: {{ include "arkcase.trusts.dir" $ | quote }}
   readOnly: true
 {{- end -}}
 

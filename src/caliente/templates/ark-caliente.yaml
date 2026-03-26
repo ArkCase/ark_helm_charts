@@ -168,7 +168,7 @@ spec:
                   optional: false
           volumeMounts:
             - name: arkcase-ssl-trusts
-              mountPath: /.trusts
+              mountPath: {{ include "arkcase.trusts.dir" $ | quote }}
               readOnly: true
             - name: *dataVol
               mountPath: *dataDir
