@@ -139,9 +139,6 @@ spec:
               value: "true"
             - name: ARTEMIS_CLUSTER_ID
               value: {{ (printf "%s-%s" $.Release.Namespace $.Release.Name) | quote }}
-            {{- $admin := (include "arkcase.artemis.admin" $ | fromYaml) }}
-            - name: ARTEMIS_ADMIN_ROLES
-              value: {{ $admin.roles | quote }}
             - name: JAVA_TOOL_OPTIONS
               value: >-
                 -Dcom.redhat.fips={{ include "arkcase.fips.bool" $ }}
