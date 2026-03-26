@@ -1,45 +1,31 @@
 #!/bin/bash
 
-[ -v SSL_DIR ] || SSL_DIR=""
-[ -n "${SSL_DIR}" ] || SSL_DIR="/.ssl"
+set -euo pipefail
+. /.functions
 
 #
-# Set the required values for TLS/SSL
+# If the SSL stuff is enabled, we use it!
 #
-export JAVA_KEYSTORE_PASS="$(<"${SSL_DIR}/keystore.pass")"
-export JAVA_KEYSTORE_KEY_PASS="${JAVA_KEYSTORE_PASS}"
-[ "$(readlink -f "${JAVA_KEYSTORE}")" == "$(readlink -f "${JAVA_TRUSTSTORE}")" ] && export JAVA_TRUSTSTORE_PASS="${JAVA_KEYSTORE_PASS}"
+init_ssl
 
 [ -v JAVA_TOOL_OPTIONS ] || JAVA_TOOL_OPTIONS=""
-
-# Base JVM (we generally avoid touching these)
-# JAVA_TOOL_OPTIONS+=" -Djavax.net.ssl.keyStore=${JAVA_KEYSTORE} -Djavax.net.ssl.keyStoreType=${JAVA_KEYSTORE_TYPE} -Djavax.net.ssl.keyStorePassword=${JAVA_KEYSTORE_PASS}"
-# JAVA_TOOL_OPTIONS+=" -Djavax.net.ssl.trustStore=${JAVA_TRUSTSTORE} -Djavax.net.ssl.trustStoreType=${JAVA_TRUSTSTORE_TYPE} -Djavax.net.ssl.trustStorePassword=${JAVA_TRUSTSTORE_PASS}"
-
 export JAVA_TOOL_OPTIONS
 
-source <(/usr/local/bin/expand-urls)
-
-source <(/usr/local/bin/render-altcase-vars)
+#
+# Expand any variable named *_URL into its components
+#
+. <(/usr/local/bin/expand-urls)
 
 #
-# Add ZooKeeper MTLS stuff
+# Export upper and lowercase versions of some variables
 #
-ZK_SSL_FLAGS=(
-	-Dzookeeper.clientCnxnSocket="org.apache.zookeeper.ClientCnxnSocketNetty"
+. <(/usr/local/bin/render-altcase-vars)
 
-	-Dzookeeper.client.secure="true"
-	-Dzookeeper.ssl.hostnameVerification="true"
-	-Dzookeeper.ssl.protocol="TLSv1.3"
-	-Dzookeeper.ssl.enabledProtocols="TLSv1.3"
-	-Dzookeeper.ssl.keyStore.location="${SSL_DIR}/keystore.pkcs12"
-	-Dzookeeper.ssl.keyStore.passwordPath="${SSL_DIR}/keystore.pass"
-	-Dzookeeper.ssl.keyStore.type="PKCS12"
-	-Dzookeeper.ssl.trustStore.location="${SSL_DIR}/keystore.pkcs12"
-	-Dzookeeper.ssl.trustStore.passwordPath="${SSL_DIR}/keystore.pass"
-	-Dzookeeper.ssl.trustStore.type="PKCS12"
-)
-export CATALINA_OPTS+=" ${ZK_SSL_FLAGS[@]}"
+#
+# Add the ZooKeeper client options
+#
+. /usr/local/bin/zk-client-init
+[ -n "${ZOOKEEPER_SSL_CLIENT_OPTIONS}" ] && export CATALINA_OPTS+=" ${ZOOKEEPER_SSL_CLIENT_OPTIONS}"
 
 #
 # Add more stuff...
