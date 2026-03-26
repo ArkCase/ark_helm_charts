@@ -158,6 +158,14 @@ spec:
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.deployment.env" $ | nindent 12 }}
             {{- include "arkcase.core.dev.deployEnv" $ | nindent 12 }}
+            - name: BASE_DIR
+              value: "/app"
+            - name: DEPL_DIR
+              value: "$(BASE_DIR)/depl"
+            - name: CONF_DIR
+              value: "$(DEPL_DIR)/conf"
+            - name: WARS_DIR
+              value: "$(DEPL_DIR)/wars"
             - name: REALM_FIX
               value: {{ printf "arkcase.org=%s" (include "arkcase.ldap" (dict "ctx" $ "value" "domain")) | quote }}
             {{- if $portal }}
