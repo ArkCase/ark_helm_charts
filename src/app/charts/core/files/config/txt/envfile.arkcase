@@ -25,7 +25,8 @@ export JAVA_TOOL_OPTIONS
 # Add the ZooKeeper client options
 #
 . /usr/local/bin/zk-client-init
-[ -n "${ZOOKEEPER_SSL_CLIENT_OPTIONS}" ] && export CATALINA_OPTS+=" ${ZOOKEEPER_SSL_CLIENT_OPTIONS}"
+[ -n "${ZOOKEEPER_SSL_CLIENT_OPTIONS}" ] && CATALINA_OPTS+=" ${ZOOKEEPER_SSL_CLIENT_OPTIONS}"
+export CATALINA_OPTS
 
 #
 # Add more stuff...
