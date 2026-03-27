@@ -76,6 +76,10 @@
   {{- $yamlResult -}}
 {{- end -}}
 
+{{- define "arkcase.trusts.dir" -}}
+/.trusts
+{{- end -}}
+
 {{- define "arkcase.trusts.secret" -}}
   {{- if not (include "arkcase.isRootContext" $) -}}
     {{- fail "The parameter given must be the root context (. or $)" -}}
