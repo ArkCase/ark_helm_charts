@@ -38,23 +38,6 @@ spec:
           {{- toYaml .value | nindent 8 }}
         {{- end }}
     spec:
-      affinity:
-        podAntiAffinity:
-        {{- if $onePerHost }}
-          requiredDuringSchedulingIgnoredDuringExecution:
-            - topologyKey: "kubernetes.io/hostname"
-              namespaces: [ {{ $.Release.Namespace | quote }} ]
-              labelSelector:
-                <<: *labelSelector
-        {{- else }}
-          preferredDuringSchedulingIgnoredDuringExecution:
-            - weight: 1
-              podAffinityTerm:
-                topologyKey: "kubernetes.io/hostname"
-                namespaces: [ {{ $.Release.Namespace | quote }} ]
-                labelSelector:
-                  <<: *labelSelector
-        {{- end }}
       {{- include "arkcase.image.pullSecrets" $ | nindent 6 }}
       {{- with (include "arkcase.values" (dict "ctx" $ "base" "hostAliases") | fromYaml) }}
       hostAliases: {{- toYaml .value | nindent 8 }}
