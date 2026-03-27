@@ -1,22 +1,5 @@
 {{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.subsystem.external" $)) -}}
 {{- $fullname := (include "arkcase.fullname" $) -}}
-{{- $cluster := (include "arkcase.cluster" $ | fromYaml) -}}
-{{- /* For this component, we'll either have one node, or two */ -}}
-{{- $nodes := ((max 1 (min 2 ($cluster.nodes | default 2))) | int) -}}
-{{- if (gt $nodes 1) }}
-  {{- /* We only enable the PDB if we will have more than one node */ -}}
----
-apiVersion: policy/v1
-kind: PodDisruptionBudget
-metadata:
-  name: {{ include "arkcase.fullname" $ | quote }}
-  namespace: {{ $.Release.Namespace | quote }}
-spec:
-  minAvailable: 1
-  selector:
-    matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
----
-{{- end }}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -30,11 +13,12 @@ metadata:
   annotations: {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  replicas: {{ $cluster.enabled | ternary $nodes 1 }}
+  replicas: 1
   selector: &labelSelector
     matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
   serviceName: {{ include "arkcase.service.headless" $ | quote }}
-  updateStrategy: {{- include "arkcase.cluster.statefulUpdateStrategy" $ | nindent 4 }}
+  updateStrategy:
+    type: RollingUpdate
   podManagementPolicy: Parallel
   template:
     metadata:
@@ -52,23 +36,6 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
     spec:
-      affinity:
-        podAntiAffinity:
-        {{- if $cluster.onePerHost }}
-          requiredDuringSchedulingIgnoredDuringExecution:
-            - topologyKey: "kubernetes.io/hostname"
-              namespaces: [ {{ $.Release.Namespace | quote }} ]
-              labelSelector:
-                <<: *labelSelector
-        {{- else }}
-          preferredDuringSchedulingIgnoredDuringExecution:
-            - weight: 1
-              podAffinityTerm:
-                topologyKey: "kubernetes.io/hostname"
-                namespaces: [ {{ $.Release.Namespace | quote }} ]
-                labelSelector:
-                  <<: *labelSelector
-        {{- end }}
       {{- include "arkcase.image.pullSecrets" $ | nindent 6 }}
       {{- with $.Values.hostAliases }}
       hostAliases: {{- toYaml . | nindent 8 }}
@@ -105,7 +72,6 @@ spec:
         - name: artemis
           {{- include "arkcase.image" $ | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
-            {{- include "arkcase.cluster.env" $ | nindent 12 }}
             {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
             - name: ARTEMIS_NEW_USER_MODEL
@@ -135,8 +101,8 @@ spec:
             - name: *logsVol
               mountPath: *logsDir
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/check-health") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/bootstrap.xml.template") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/broker.xml.template") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/bootstrap.xml") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/broker.xml") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/jolokia-access.xml") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/log4j2.properties") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/login.config") | nindent 12 }}
