@@ -6,6 +6,7 @@ Welcome to the [ArkCase](https://www.arkcase.com/) Helm Chart Library!
 <a name="toc"></a>Here's a table of contents so you can quickly reach the documentation section you're most interested in:
 
  - [Overview](#overview)
+ - [Upgrade from 0.7.0 series to 0.8.0 series Helm charts](docs/Upgrade-0.8.md)
  - [Preparation for Deployment](#preparation)
  - [Deployment](#deployment)
  - [Security](#security)
@@ -75,7 +76,7 @@ The above command will result in a deployment of pre-configured containers, inte
 
 ## <a name="security"></a>Security
 
-Due to the highly varied nature of the security requriements each deployer may choose to require or enforce, it's impossiblte to anticipate and support them beyond granting the ability to run (portions of) the stack under service accounts. This helm chart supports the following syntax for indicating service account usage:
+Due to the highly varied nature of the security requriements each deployer may choose to require or enforce, it's impossible to anticipate and support them beyond granting the ability to run (portions of) the stack under service accounts. This helm chart supports the following syntax for indicating service account usage:
 
 ```yaml
 
