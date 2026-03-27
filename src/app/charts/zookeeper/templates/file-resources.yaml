@@ -1,3 +1,0 @@
-{{- if and (include "arkcase.subsystem.enabled" $) (include "arkcase.zookeeper.required" $) }}
-  {{- include "arkcase.file-resources" $ -}}
-{{- end -}}
