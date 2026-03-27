@@ -26,9 +26,7 @@
 
    <!-- The web server is only bound to localhost by default -->
    <web path="web" rootRedirectLocation="console">
-	   <binding uri="https://0.0.0.0:8443" keyStorePath="" keyStorePassword="">
-		   <app url="activemq-branding" war="activemq-branding.war"/>
-		   <app url="artemis-plugin" war="artemis-plugin.war"/>
+       <binding name="artemis" uri="https://0.0.0.0:8443" keyStorePath="${org.apache.activemq.ssl.keyStore}" keyStorePassword="${org.apache.activemq.ssl.keyStorePassword}" keyStoreType="${org.apache.activemq.ssl.keyStoreType}" sniHostCheck="false" sniRequired="false">
 		   <app url="console" war="console.war"/>
 	   </binding>
    </web>

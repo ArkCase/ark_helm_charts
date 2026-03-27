@@ -1,63 +1,15 @@
 #!/bin/bash
 
-timestamp() {
-	/usr/bin/date -Isec -u
-}
-
-say() {
-	echo -e "$(timestamp): ${@}"
-}
-
-fail() {
-	say "${@}" 1>&2
-	exit ${EXIT_CODE:-1}
-}
-
 set -euo pipefail
+. /.functions
 
 #
 # First things first: enable SSL
 #
-[ -v SSL_DIR ] || export SSL_DIR="/.ssl"
-
-acme-init
+init_ssl
 
 [ -v SOLR_LOGS_DIR ] || export SOLR_LOGS_DIR="${DATA_DIR}/logs"
 [ -d "${SOLR_LOGS_DIR}" ] || mkdir -p "${SOLR_LOGS_DIR}" || say "WARNING: Failed to find and create the log directory at [${SOLR_LOGS_DIR}]"
-
-if [ -v ZK_HOST ] ; then
-	# Validate the hostnames
-	readarray -d , -t FLAGS < <(echo -n "${ZK_HOST}")
-	say "Validating the Zookeeper settings"
-	ZK=()
-	for H in "${FLAGS[@]}" ; do
-		# Each host must be in the form hostname:port
-		[ -n "${H}" ] || continue
-		[[ "${H}" =~ ^([^:]+)(:([1-9][0-9]*))?$ ]] || fail "\tIgnoring the Zookeeper spec [${H}]: must be in the form \${hostname}:\${port}"
-
-		HOST="${BASH_REMATCH[1]}"
-		PORT="${BASH_REMATCH[3]}"
-
-		[[ "${HOST}" =~ ^([a-z0-9][-a-z0-9]*)?[a-z0-9]([.]([a-z0-9][-a-z0-9]*)?[a-z0-9])*$ ]] || fail "\tInvalid Zookeeper spec [${H}]: invalid host name [${HOST}]"
-		[ -z "${PORT}" ] && PORT="2181"
-		[ ${PORT} -le 65535 ] || fail "\tInvalid Zookeeper spec [${H}]: invalid port number ${PORT}"
-
-		say "\tAdding Zookeeper at ${HOST}:${PORT}"
-		ZK+=("${HOST}:${PORT}")
-	done
-
-	say "Setting the ZK_HOST value [${ZK_HOST}]"
-	export ZK_HOST="$(echo -n "${ZK[@]}" | tr ' ' ',')"
-
-	# Enable HTTPS on the cluster
-	say "Enabling SSL on the cluster"
-	(
-		set -euo pipefail
-		cd "/app/solr"
-		exec server/scripts/cloud-scripts/zkcli.sh -zkhost "${ZK_HOST}" -cmd clusterprop -name urlScheme -val https
-	)
-	say "SSL Enabled!"
-fi
 
 #
 # Now, continue with the boot

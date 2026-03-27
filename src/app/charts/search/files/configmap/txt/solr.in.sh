@@ -16,6 +16,9 @@
 # Settings here will override settings in existing env vars or in bin/solr.  The default shipped state
 # of this file is completely commented.
 
+. /.functions
+init_ssl
+
 # By default the script will use JAVA_HOME to determine which java
 # to use, but you can set a specific path for Solr to use without
 # affecting other Java applications on your server/workstation.
@@ -150,10 +153,14 @@ SOLR_HOST="$(hostname -f)"
 SOLR_SSL_ENABLED=true
 # Uncomment to set SSL-related system properties
 # Be sure to update the paths to the correct keystore for your environment
-SOLR_SSL_KEY_STORE="${SSL_DIR}/keystore.pkcs12"
-SOLR_SSL_KEY_STORE_PASSWORD="$(<"${SSL_DIR}/keystore.pass")"
-SOLR_SSL_TRUST_STORE="/etc/pki/java/cacerts"
-SOLR_SSL_TRUST_STORE_PASSWORD="changeit"
+SOLR_SSL_KEY_STORE_PASSWORD_PATH="${JAVA_KEYSTORE_PASSWORD_FILE}"
+SOLR_SSL_KEY_STORE="${JAVA_KEYSTORE}"
+SOLR_SSL_KEY_STORE_PASSWORD="$(<"${SOLR_SSL_KEY_STORE_PASSWORD_PATH}")"
+SOLR_SSL_KEY_STORE_TYPE="${JAVA_KEYSTORE_TYPE}"
+SOLR_SSL_TRUST_STORE_PASSWORD_PATH="${JAVA_TRUSTSTORE_PASSWORD_FILE}"
+SOLR_SSL_TRUST_STORE="${JAVA_TRUSTSTORE}"
+SOLR_SSL_TRUST_STORE_PASSWORD="$(<"${SOLR_SSL_TRUST_STORE_PASSWORD_PATH}")"
+SOLR_SSL_TRUST_STORE_TYPE="${JAVA_TRUSTSTORE_TYPE}"
 # Require clients to authenticate
 SOLR_SSL_NEED_CLIENT_AUTH=false
 # Enable clients to authenticate (but not require)
@@ -164,8 +171,6 @@ SOLR_SSL_CLIENT_HOSTNAME_VERIFICATION=false
 # this to false can be useful to disable these checks when re-using a certificate on many hosts
 #SOLR_SSL_CHECK_PEER_NAME=true
 # Override Key/Trust Store types if necessary
-SOLR_SSL_KEY_STORE_TYPE="PKCS12"
-SOLR_SSL_TRUST_STORE_TYPE="JKS"
 
 # Uncomment if you want to override previously defined SSL values for HTTP client
 # otherwise keep them commented and the above values will automatically be set for HTTP clients

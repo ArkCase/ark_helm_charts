@@ -1,25 +1,10 @@
 #!/bin/bash
 
 set -euo pipefail
+. /.functions
 
-timestamp() {
-	/usr/bin/date -Ins -u
-}
-
-say() {
-	echo -e "$(timestamp): ${@}"
-}
-
-err() {
-	say "❌ ${@}" 1>&2
-}
-
-fail() {
-	say "❌ ${@}" 1>&2
-	exit ${EXIT_CODE:-1}
-}
-
-poll_url() {
+poll_url()
+{
 	local URL="${1}"
 	local START="$(date +%s)"
 	say "👉 Starting the polling cycle for [${URL}]..."
@@ -52,7 +37,7 @@ export DATA_DIR
 ###################################################################
 # UPDATE CA CERTIFICATES                                          #
 ###################################################################
-acme-init
+init_ssl
 
 ###################################################################
 # INSTALL ANY LICENSES                                            #

@@ -1,19 +1,7 @@
 #!/bin/bash
 
-timestamp() {
-	/usr/bin/date -Ins -u
-}
-
-say() {
-	echo -e "$(timestamp): ${@}"
-}
-
-fail() {
-	say "${@}" 1>&2
-	exit ${EXIT_CODE:-1}
-}
-
 set -euo pipefail
+. /.functions
 
 [ -v BASE_DIR ] || BASE_DIR="/app"
 [ -v PENTAHO_HOME ] || PENTAHO_HOME="${BASE_DIR}/pentaho"
@@ -76,8 +64,7 @@ export DATA_DIR
 ###################################################################
 # UPDATE CA CERTIFICATES                                          #
 ###################################################################
-[ -v SSL_DIR ] || export SSL_DIR="/.ssl"
-acme-init
+init_ssl
 
 # Enable reading the cert that HAProxy will need
 [ -v CLUSTER_ENABLED ] || CLUSTER_ENABLED="false"

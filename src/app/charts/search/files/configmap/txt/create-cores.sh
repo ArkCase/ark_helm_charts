@@ -1,23 +1,9 @@
 #!/bin/bash
 
 set -euo pipefail
+. /.functions
 
-timestamp() {
-	date -Isec -u
-}
-
-say() {
-	echo -e "$(timestamp): ${@}"
-}
-
-err() {
-	say "ERROR: ${@}" 1>&2
-}
-
-fail() {
-	say "${@}"
-	exit ${EXIT_CODE:-1}
-}
+init_ssl
 
 create() {
 	local NAME="${1}"

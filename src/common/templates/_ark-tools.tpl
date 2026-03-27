@@ -656,6 +656,8 @@ Create the environment variables to facilitate detecting the Pod's IP, name, nam
   valueFrom:
     fieldRef:
       fieldPath: status.hostIP
+- name: DNS_SERVICE
+  value: {{ include "arkcase.service.headless" $ | quote }}
 {{- end -}}
 
 {{- /*

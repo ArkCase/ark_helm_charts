@@ -1,22 +1,5 @@
 {{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.subsystem.external" $)) }}
 {{- $fullname := (include "arkcase.fullname" $) -}}
-{{- $cluster := (include "arkcase.cluster" $ | fromYaml) -}}
-{{- /* For this component, we'll either have one node, or two */ -}}
-{{- $nodes := ((max 1 (min 2 ($cluster.nodes | default 2))) | int) -}}
-{{- if (gt $nodes 1) }}
-  {{- /* We only enable the PDB if we will have more than one node */ -}}
----
-apiVersion: policy/v1
-kind: PodDisruptionBudget
-metadata:
-  name: {{ include "arkcase.fullname" $ | quote }}
-  namespace: {{ $.Release.Namespace | quote }}
-spec:
-  minAvailable: 1
-  selector:
-    matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
----
-{{- end }}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -30,11 +13,12 @@ metadata:
   annotations: {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  replicas: {{ $cluster.enabled | ternary $nodes 1 }}
+  replicas: 1
   selector: &labelSelector
     matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
   serviceName: {{ include "arkcase.service.headless" $ | quote }}
-  updateStrategy: {{- include "arkcase.cluster.statefulUpdateStrategy" $ | nindent 4 }}
+  updateStrategy:
+    type: RollingUpdate
   podManagementPolicy: Parallel
   template:
     metadata:
@@ -52,23 +36,6 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
     spec:
-      affinity:
-        podAntiAffinity:
-        {{- if $cluster.onePerHost }}
-          requiredDuringSchedulingIgnoredDuringExecution:
-            - topologyKey: "kubernetes.io/hostname"
-              namespaces: [ {{ $.Release.Namespace | quote }} ]
-              labelSelector:
-                <<: *labelSelector
-        {{- else }}
-          preferredDuringSchedulingIgnoredDuringExecution:
-            - weight: 1
-              podAffinityTerm:
-                topologyKey: "kubernetes.io/hostname"
-                namespaces: [ {{ $.Release.Namespace | quote }} ]
-                labelSelector:
-                  <<: *labelSelector
-        {{- end }}
       {{- include "arkcase.image.pullSecrets" $ | nindent 6 }}
       {{- with $.Values.hostAliases }}
       hostAliases: {{- toYaml . | nindent 8 }}
@@ -105,6 +72,8 @@ spec:
           {{- include "arkcase.image" $ | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
+            - name: ARTEMIS_ADMIN_ROLES
+              value: {{ include "arkcase.artemis.adminRole" $ | quote }}
             - name: ARTEMIS_ADMIN_PASSWORD
               valueFrom:
                 secretKeyRef:
@@ -120,9 +89,6 @@ spec:
                 secretKeyRef:
                   name: *secretName
                   key: ENCRYPTION_PASSWORD
-            {{- if $cluster }}
-              {{- include "arkcase.cluster.zookeeper" $ | nindent 12 }}
-            {{- end }}
           {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
           {{- with (include "arkcase.values" (dict "ctx" $ "base" "command") | fromYaml) }}
           command: {{ toJson .value }}
@@ -146,12 +112,12 @@ spec:
               subPath: &artemisRolesProperties "artemis-roles.properties"
               readOnly: true
             - name: *secret
-              mountPath: "/app/conf/broker.xml.template"
-              subPath: &brokerXmlTemplate "broker.xml.template"
+              mountPath: "/app/conf/broker.xml"
+              subPath: &brokerXmlTemplate "broker.xml"
               readOnly: true
             - name: &configMap "config-map"
-              mountPath: "/app/conf/bootstrap.xml.template"
-              subPath: &bootstrapXmlTemplate "bootstrap.xml.template"
+              mountPath: "/app/conf/bootstrap.xml"
+              subPath: &bootstrapXmlTemplate "bootstrap.xml"
               readOnly: true
             - name: *configMap
               mountPath: "/check-health"

@@ -1,3 +1,4 @@
+
 {{- define "arkcase.trusts.certs.compute" -}}
   {{- if not (include "arkcase.isRootContext" $) -}}
     {{- fail "The parameter given must be the root context (. or $)" -}}
@@ -74,6 +75,10 @@
     {{- $yamlResult = get $masterCache $masterKey | toYaml -}}
   {{- end -}}
   {{- $yamlResult -}}
+{{- end -}}
+
+{{- define "arkcase.trusts.dir" -}}
+/.trusts
 {{- end -}}
 
 {{- define "arkcase.trusts.secret" -}}

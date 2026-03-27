@@ -1,9 +1,17 @@
+{{- define "arkcase.acme.dir" -}}
+/.ssl
+{{- end -}}
+
 {{- define "arkcase.acme.env" -}}
   {{- if not (include "arkcase.isRootContext" $) -}}
     {{- fail "The parameter given must be the root context (. or $)" -}}
   {{- end -}}
 - name: SSL_DIR
-  value: "/.ssl"
+  value: {{ include "arkcase.acme.dir" $ | quote }}
+- name: SSL_ENV_FILE
+  value: "$(SSL_DIR)/.env"
+- name: SSL_TRUSTS_DIR
+  value: {{ include "arkcase.trusts.dir" $ | quote }}
 - name: &acmeUrlVar {{ include "arkcase.acme.urlVariable" $ | quote }}
   valueFrom:
     secretKeyRef:
@@ -41,7 +49,7 @@ ACME_CLIENT_PASSWORD
 {{- define "arkcase.acme.volumeMount-shared" -}}
   {{- include "arkcase.acme.volumeMount" $ | nindent 0 }}
 - name: "acme-ssl-vol"
-  mountPath: "/.ssl"
+  mountPath: {{ include "arkcase.acme.dir" $ | quote }}
 {{- end -}}
 
 {{- define "arkcase.acme.volume" -}}

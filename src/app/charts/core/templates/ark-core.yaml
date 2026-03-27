@@ -5,10 +5,6 @@
   {{- $devGid := (empty $dev) | ternary 1997 $dev.gid | int64 -}}
   {{- $portal := (include "arkcase.portal" $ | fromYaml) -}}
   {{- $content := (include "arkcase.cm.info" $ | fromYaml) -}}
-  {{- $cluster := (include "arkcase.cluster" $ | fromYaml) -}}
-  {{- /* Disable clustering multinodes for now ... not supported for ArkCase just yet */ -}}
-  {{- $cluster = set $cluster "nodes" 1 -}}
-  {{- $nodes := (min 4 ($cluster.nodes | int)) -}}
   {{- $serviceAccountName := (include "arkcase.serviceAccountName" $) }}
   {{- $saml := (include "arkcase.core.sso.saml" $ | fromYaml) -}}
 ---
@@ -58,35 +54,6 @@ spec:
   selector:
     matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
   {{- end }}
-  {{- if $cluster.enabled }}
-    {{- $roleName := (printf "%s-cluster-membership" $serviceAccountName) }}
----
-kind: Role
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: {{ $roleName | quote }}
-  namespace: {{ $.Release.Namespace | quote }}
-  labels: {{- include "arkcase.labels" $ | nindent 4 }}
-rules:
-  # "" indicates the core API group
-  - apiGroups: [ "" ]
-    resources: [ "pods" ]
-    verbs: [ "get", "watch", "list" ]
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: {{ printf "%s:%s" $serviceAccountName $roleName | quote }}
-  namespace: {{ $.Release.Namespace | quote }}
-  labels: {{- include "arkcase.labels" $ | nindent 4 }}
-subjects:
-  - kind: ServiceAccount
-    name: {{ $serviceAccountName | quote }}
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: {{ $roleName | quote }}
-  {{- end }}
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -105,7 +72,8 @@ spec:
   selector: &labelSelector
     matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
   serviceName: {{ include "arkcase.service.headless" $ | quote }}
-  updateStrategy: {{- include "arkcase.cluster.statefulUpdateStrategy" $ | nindent 4 }}
+  updateStrategy:
+    type: RollingUpdate
   podManagementPolicy: Parallel
   template:
     metadata:
@@ -124,23 +92,6 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
     spec:
-      affinity:
-        podAntiAffinity:
-        {{- if $cluster.onePerHost }}
-          requiredDuringSchedulingIgnoredDuringExecution:
-            - topologyKey: "kubernetes.io/hostname"
-              namespaces: [ {{ $.Release.Namespace | quote }} ]
-              labelSelector:
-                <<: *labelSelector
-        {{- else }}
-          preferredDuringSchedulingIgnoredDuringExecution:
-            - weight: 1
-              podAffinityTerm:
-                topologyKey: "kubernetes.io/hostname"
-                namespaces: [ {{ $.Release.Namespace | quote }} ]
-                labelSelector:
-                  <<: *labelSelector
-        {{- end }}
       {{- include "arkcase.image.pullSecrets" $ | nindent 6 }}
       {{- with $.Values.hostAliases }}
       hostAliases: {{- toYaml . | nindent 8 }}
@@ -286,8 +237,6 @@ spec:
         - name: arkcase
           {{- include "arkcase.image" $ | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
-            {{- include "arkcase.cluster.zookeeper" $ | nindent 12 }}
-            {{- include "arkcase.cluster.tomcat.env" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
             - name: HOME_DIR
               value: *homeDir
@@ -297,18 +246,6 @@ spec:
               value: *logsDir
             - name: TEMP_DIR
               value: *tempDir
-            - name: ACME_KEYSTORE_WITH_TRUSTS
-              value: "true"
-            - name: ACME_KEY_ALIAS
-              value: "arkcase-private-key-$(POD_NAME)"
-            - name: JAVA_KEYSTORE
-              value: "$(SSL_DIR)/keystore.pkcs12"
-            - name: JAVA_KEYSTORE_TYPE
-              value: "PKCS12"
-            - name: JAVA_TRUSTSTORE
-              value: "$(JAVA_KEYSTORE)"
-            - name: JAVA_TRUSTSTORE_TYPE
-              value: "$(JAVA_KEYSTORE_TYPE)"
             - name: ARKCASE_JDBC_DRIVER
               valueFrom:
                 secretKeyRef:
@@ -389,8 +326,6 @@ spec:
               value: >-
                 -XX:MinRAMPercentage=50.0
                 -XX:MaxRAMPercentage=80.0
-                -Djava.keystore.key.alias=$(ACME_KEY_ALIAS)
-                -Dsaml.keystore.defaultKeyName=$(ACME_KEY_ALIAS)
                 -Dacm.configurationserver.propertyfile=$(HOME_DIR)/.arkcase/acm/conf.yml
                 -Dconfiguration.client.spring.path=spring
                 -Dspring.profiles.active={{ $springProfiles | join "," }}
@@ -536,25 +471,12 @@ spec:
           {{- include "arkcase.image" (dict "ctx" $ "name" "cloudconfig" "repository" "arkcase/cloudconfig") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
-            - name: ACME_KEYSTORE_WITH_TRUSTS
-              value: "true"
-            - name: ACME_KEY_ALIAS
-              value: "arkcase-private-key-$(POD_NAME)"
-            - name: JAVA_KEYSTORE
-              value: "$(SSL_DIR)/keystore.pkcs12"
-            - name: JAVA_KEYSTORE_TYPE
-              value: "PKCS12"
-            - name: JAVA_TRUSTSTORE
-              value: "$(JAVA_KEYSTORE)"
-            - name: JAVA_TRUSTSTORE_TYPE
-              value: "$(JAVA_KEYSTORE_TYPE)"
             - name: DATA_DIR
               value: *confDir
             - name: JAVA_TOOL_OPTIONS
               value: >-
                 -XX:MinRAMPercentage=50
                 -XX:MaxRAMPercentage=80
-                -Djava.keystore.key.alias=$(ACME_KEY_ALIAS)
                 {{- with $debug.cloudconfig }}
                 -Xdebug
                 -agentlib:jdwp=transport=dt_socket,server=y,suspend={{ .suspend }},address=*:8889
