@@ -118,9 +118,19 @@ under the License.
 		<!-- <network-check-ping6-command>ping6 -c 1 %2$s</network-check-ping6-command> -->
 
 
+		{{- $cluster := (include "arkcase.cluster" $ | fromYaml) }}
+		{{- $nodes := ($cluster.nodes | int) }}
+		{{- $serviceName := (include "arkcase.service.headless" $) }}
+		{{- $podName := (include "arkcase.fullname" $) }}
 		<connectors>
 				<!-- Connector used to be announced through cluster connections and notifications -->
-				<connector name="local">tcp://${POD_HOSTNAME}.${DNS_SERVICE}:61616?sslEnabled=true;enabledProtocols=TLSv1.2;</connector>
+				<connector name="local">tcp://${POD_HOSTNAME}.{{ $serviceName }}:61616?sslEnabled=true;enabledProtocols=TLSv1.2;</connector>
+
+				{{- if $cluster.enabled }}
+					{{- range (until $nodes) }}
+				<connector name="{{ printf "node-%d" . }}">tcp://{{ printf "%s-%d.%s" $podName . $serviceName }}:61616?sslEnabled=true;enabledProtocols=TLSv1.2;</connector>
+					{{- end }}
+				{{- end }}
 		</connectors>
 
 
@@ -182,6 +192,7 @@ under the License.
 		<cluster-user>cluster-admin</cluster-user>
 		<cluster-password>this-value-is-substituted-at-startup</cluster-password>
 
+		{{- if not $cluster.enabled }}
 		<broadcast-groups>
 			<broadcast-group name="bg-group1">
 				<group-address>231.7.7.7</group-address>
@@ -198,37 +209,63 @@ under the License.
 				<refresh-timeout>10000</refresh-timeout>
 			</discovery-group>
 		</discovery-groups>
+		{{- end }}
 
 		<cluster-connections>
-			<cluster-connection name="${POD_NAME}">
+			<cluster-connection name="{{ $podName }}">
 				<connector-ref>local</connector-ref>
 				<message-load-balancing>ON_DEMAND</message-load-balancing>
 				<max-hops>0</max-hops>
+				{{- if $cluster.enabled }}
+				<static-connectors>
+					{{- range (until $nodes) }}
+					<connector-ref>{{ printf "node-%d" . }}</connector-ref>
+					{{- end }}
+				</static-connectors>
+				{{- else }}
 				<discovery-group-ref discovery-group-name="dg-group1"/>
+				{{- end }}
 			</cluster-connection>
 		</cluster-connections>
 
 		<ha-policy>
 			<replication>
+				{{- if $cluster.enabled }}
+				<primary>
+					<manager>
+						<properties>
+							<!-- This should be populated with the ZooKeeper service's host:port combo -->
+							<property key="connect-string" value="${ZK_HOST}" />
+							<property key="session-ms" value="2000" />
+							<property key="connection-ms" value="1000" />
+							<property key="retries" value="0" />
+							<property key="retries-ms" value="1000" />
+						</properties>
+					</manager>
+					<coordination-id>{{- $.Release.Namespace -}}-{{- $.Release.Name -}}</coordination-id>
+				</primary>
+				{{- else }}
 				<master>
 					<vote-on-replication-failure>true</vote-on-replication-failure>
 				</master>
+				{{- end }}
 			</replication>
 		</ha-policy>
 
 		<security-settings>
 			<security-setting match="#">
-				<permission type="createNonDurableQueue" roles="${ARTEMIS_ADMIN_ROLES}"/>
-				<permission type="deleteNonDurableQueue" roles="${ARTEMIS_ADMIN_ROLES}"/>
-				<permission type="createDurableQueue" roles="${ARTEMIS_ADMIN_ROLES}"/>
-				<permission type="deleteDurableQueue" roles="${ARTEMIS_ADMIN_ROLES}"/>
-				<permission type="createAddress" roles="${ARTEMIS_ADMIN_ROLES}"/>
-				<permission type="deleteAddress" roles="${ARTEMIS_ADMIN_ROLES}"/>
-				<permission type="consume" roles="${ARTEMIS_ADMIN_ROLES}"/>
-				<permission type="browse" roles="${ARTEMIS_ADMIN_ROLES}"/>
-				<permission type="send" roles="${ARTEMIS_ADMIN_ROLES}"/>
+				{{- $admin := (include "arkcase.artemis.admin" $ | fromYaml) }}
+				<permission type="createNonDurableQueue" roles="{{ $admin.roles }}"/>
+				<permission type="deleteNonDurableQueue" roles="{{ $admin.roles }}"/>
+				<permission type="createDurableQueue" roles="{{ $admin.roles }}"/>
+				<permission type="deleteDurableQueue" roles="{{ $admin.roles }}"/>
+				<permission type="createAddress" roles="{{ $admin.roles }}"/>
+				<permission type="deleteAddress" roles="{{ $admin.roles }}"/>
+				<permission type="consume" roles="{{ $admin.roles }}"/>
+				<permission type="browse" roles="{{ $admin.roles }}"/>
+				<permission type="send" roles="{{ $admin.roles }}"/>
 				<!-- we need this otherwise ./artemis data imp wouldn't work -->
-				<permission type="manage" roles="${ARTEMIS_ADMIN_ROLES}"/>
+				<permission type="manage" roles="{{ $admin.roles }}"/>
 			</security-setting>
 		</security-settings>
 

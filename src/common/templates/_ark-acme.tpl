@@ -7,7 +7,7 @@
     {{- fail "The parameter given must be the root context (. or $)" -}}
   {{- end -}}
 - name: SSL_DIR
-  value:  {{ include "arkcase.acme.dir" $ | quote }}
+  value: {{ include "arkcase.acme.dir" $ | quote }}
 - name: SSL_ENV_FILE
   value: "$(SSL_DIR)/.env"
 - name: SSL_TRUSTS_DIR
