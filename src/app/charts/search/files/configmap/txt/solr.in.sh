@@ -152,8 +152,8 @@ SOLR_SSL_ENABLED=true
 # Be sure to update the paths to the correct keystore for your environment
 SOLR_SSL_KEY_STORE="${SSL_DIR}/keystore.pkcs12"
 SOLR_SSL_KEY_STORE_PASSWORD="$(<"${SSL_DIR}/keystore.pass")"
-SOLR_SSL_TRUST_STORE="/etc/pki/java/cacerts"
-SOLR_SSL_TRUST_STORE_PASSWORD="changeit"
+SOLR_SSL_TRUST_STORE="${SOLR_SSL_KEY_STORE}"
+SOLR_SSL_TRUST_STORE_PASSWORD="${SOLR_SSL_KEY_STORE_PASSWORD}"
 # Require clients to authenticate
 SOLR_SSL_NEED_CLIENT_AUTH=false
 # Enable clients to authenticate (but not require)
