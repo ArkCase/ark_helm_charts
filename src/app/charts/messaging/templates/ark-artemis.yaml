@@ -108,6 +108,8 @@ spec:
         - name: init-set-permissions
           {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            - name: ARTEMIS_CLUSTER_ID
+              value: {{ (printf "%s-%s" $.Release.Namespace $.Release.Name) | quote }}
             - name: DATA_DIR
               value: &dataDir "/app/data"
             - name: LOGS_DIR
@@ -162,8 +164,8 @@ spec:
             - name: *logsVol
               mountPath: *logsDir
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/check-health") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/bootstrap.xml.template") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/broker.xml.template") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/bootstrap.xml") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/broker.xml") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/jgroups-artemis-k8s.xml") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/jolokia-access.xml") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/log4j2.properties") | nindent 12 }}
