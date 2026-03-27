@@ -3,6 +3,8 @@
 set -euo pipefail
 . /.functions
 
+init_ssl
+
 poll_url()
 {
 	local URL="${1}"
@@ -33,11 +35,6 @@ poll_url()
 [ -v DATA_DIR ] || DATA_DIR="${BASE_DIR}/data"
 [ -d "${DATA_DIR}" ] || mkdir -p "${DATA_DIR}"
 export DATA_DIR
-
-###################################################################
-# UPDATE CA CERTIFICATES                                          #
-###################################################################
-init_ssl
 
 ###################################################################
 # INSTALL ANY LICENSES                                            #

@@ -3,6 +3,8 @@
 set -euo pipefail
 . /.functions
 
+init_ssl
+
 [ -v BASE_DIR ] || BASE_DIR="/app"
 [ -v PENTAHO_HOME ] || PENTAHO_HOME="${BASE_DIR}/pentaho"
 [ -v PENTAHO_PDI_HOME ] || PENTAHO_HOME="${BASE_DIR}/pentaho"
@@ -60,15 +62,6 @@ fi
 export DATA_DIR
 
 [ -v INIT_DIR ] || INIT_DIR="${BASE_DIR}/init"
-
-###################################################################
-# UPDATE CA CERTIFICATES                                          #
-###################################################################
-init_ssl
-
-# Enable reading the cert that HAProxy will need
-[ -v CLUSTER_ENABLED ] || CLUSTER_ENABLED="false"
-"${CLUSTER_ENABLED}" && chmod a+r "${SSL_DIR}/haproxy-cert.pem"
 
 ###################################################################
 # INSTALL ANY LICENSES                                            #
