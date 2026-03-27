@@ -111,13 +111,13 @@ spec:
               mountPath: "/app/conf/artemis-roles.properties"
               subPath: &artemisRolesProperties "artemis-roles.properties"
               readOnly: true
-            - name: *secret
-              mountPath: "/app/conf/broker.xml"
-              subPath: &brokerXmlTemplate "broker.xml"
-              readOnly: true
             - name: &configMap "config-map"
               mountPath: "/app/conf/bootstrap.xml"
               subPath: &bootstrapXmlTemplate "bootstrap.xml"
+              readOnly: true
+            - name: *configMap
+              mountPath: "/app/conf/broker.xml"
+              subPath: &brokerXml "broker.xml"
               readOnly: true
             - name: *configMap
               mountPath: "/check-health"
@@ -153,8 +153,6 @@ spec:
                 path: *artemisUsersProperties
               - key: *artemisRolesProperties
                 path: *artemisRolesProperties
-              - key: *brokerXmlTemplate
-                path: *brokerXmlTemplate
         - name: *configMap
           configMap:
             optional: false
@@ -163,6 +161,8 @@ spec:
             items:
               - key: *bootstrapXmlTemplate
                 path: *bootstrapXmlTemplate
+              - key: *brokerXml
+                path: *brokerXml
               - key: *checkHealth
                 path: *checkHealth
                 mode: 0755
