@@ -162,6 +162,14 @@ spec:
             {{- include "arkcase.deployment.env" $ | nindent 12 }}
             {{- include "arkcase.core.dev.deployEnv" $ | nindent 12 }}
             {{- include "arkcase.subsystem-access.env" (dict "ctx" $ "subsys" "ldap" "conn" "main" "key" "domain" "name" "LDAP_DOMAIN") | nindent 12 }}
+            - name: BASE_DIR
+              value: "/app"
+            - name: DEPL_DIR
+              value: "$(BASE_DIR)/depl"
+            - name: CONF_DIR
+              value: "$(DEPL_DIR)/conf"
+            - name: WARS_DIR
+              value: "$(DEPL_DIR)/wars"
             - name: REALM_FIX
               value: "arkcase.org=$(LDAP_DOMAIN)"
             {{- if $portal }}
