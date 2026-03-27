@@ -2,6 +2,11 @@
 set -euo pipefail
 . /.functions
 
+#
+# Init all the SSL-related stuff
+#
+init_ssl
+
 ###################################################################
 # CONFIGURE FILESYSTEM PERSISTENCE                                #
 ###################################################################
@@ -11,11 +16,6 @@ set_or_default INIT_DIR "${BASE_DIR}/init"
 
 ensure_dir "${DATA_DIR}"
 export DATA_DIR
-
-###################################################################
-# UPDATE CA CERTIFICATES                                          #
-###################################################################
-init_ssl
 
 ###################################################################
 # INSTALL ANY LICENSES                                            #

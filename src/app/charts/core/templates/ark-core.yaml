@@ -281,18 +281,6 @@ spec:
               value: *logsDir
             - name: TEMP_DIR
               value: *tempDir
-            - name: ACME_KEYSTORE_WITH_TRUSTS
-              value: "true"
-            - name: ACME_KEY_ALIAS
-              value: "arkcase-private-key-$(POD_NAME)"
-            - name: JAVA_KEYSTORE
-              value: "$(SSL_DIR)/keystore.pkcs12"
-            - name: JAVA_KEYSTORE_TYPE
-              value: "PKCS12"
-            - name: JAVA_TRUSTSTORE
-              value: "$(JAVA_KEYSTORE)"
-            - name: JAVA_TRUSTSTORE_TYPE
-              value: "$(JAVA_KEYSTORE_TYPE)"
             - name: LOOP_TERMINATION_FILE
               value: &loopTerminationFile "/app/.terminate"
             {{- if $portal }}
@@ -328,8 +316,6 @@ spec:
                 -XX:MinRAMPercentage=50.0
                 -XX:MaxRAMPercentage=80.0
                 -Dk8s.rename.ldap.directories=true
-                -Djava.keystore.key.alias=$(ACME_KEY_ALIAS)
-                -Dsaml.keystore.defaultKeyName=$(ACME_KEY_ALIAS)
                 -Dacm.configurationserver.propertyfile=$(HOME_DIR)/.arkcase/acm/conf.yml
                 -Dconfiguration.client.spring.path=spring
                 -Duser.home=$(HOME_DIR)
@@ -414,18 +400,6 @@ spec:
             {{- include "arkcase.acme.env" $ | nindent 12 }}
             - name: ALT_VARS
               value: "PORTAL_LDAP_DOMAIN PORTAL_LDAP_ROOT_DN ARKCASE_LDAP_DOMAIN ARKCASE_LDAP_ROOT_DN"
-            - name: ACME_KEYSTORE_WITH_TRUSTS
-              value: "true"
-            - name: ACME_KEY_ALIAS
-              value: "arkcase-private-key-$(POD_NAME)"
-            - name: JAVA_KEYSTORE
-              value: "$(SSL_DIR)/keystore.pkcs12"
-            - name: JAVA_KEYSTORE_TYPE
-              value: "PKCS12"
-            - name: JAVA_TRUSTSTORE
-              value: "$(JAVA_KEYSTORE)"
-            - name: JAVA_TRUSTSTORE_TYPE
-              value: "$(JAVA_KEYSTORE_TYPE)"
             - name: DATA_DIR
               value: *confDir
             - name: JAVA_TOOL_OPTIONS
@@ -433,7 +407,6 @@ spec:
                 -Dcom.redhat.fips={{ include "arkcase.fips.bool" $ }}
                 -XX:MinRAMPercentage=50
                 -XX:MaxRAMPercentage=80
-                -Djava.keystore.key.alias=$(ACME_KEY_ALIAS)
                 -Dcom.sun.management.jmxremote.port=7092
                 -Dcom.sun.management.jmxremote.authenticate=false
                 -Dcom.sun.management.jmxremote.ssl=false

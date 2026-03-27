@@ -1,4 +1,3 @@
-{{- $adminRole := "administrator" -}}
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <!--
   ~ Licensed to the Apache Software Foundation (ASF) under one or more
@@ -23,22 +22,22 @@
          <entry domain="hawtio"/>
       </allowlist>
       <default-access>
-         <access method="list*" roles="{{ $adminRole }}"/>
-         <access method="get*" roles="{{ $adminRole }}"/>
-         <access method="is*" roles="{{ $adminRole }}"/>
-         <access method="set*" roles="{{ $adminRole }}"/>
-         <access method="*" roles="{{ $adminRole }}"/>
+         <access method="list*" roles="${ARTEMIS_ADMIN_ROLES}"/>
+         <access method="get*" roles="${ARTEMIS_ADMIN_ROLES}"/>
+         <access method="is*" roles="${ARTEMIS_ADMIN_ROLES}"/>
+         <access method="set*" roles="${ARTEMIS_ADMIN_ROLES}"/>
+         <access method="*" roles="${ARTEMIS_ADMIN_ROLES}"/>
       </default-access>
       <role-access>
          <match domain="org.apache.activemq.artemis">
-            <access method="list*" roles="{{ $adminRole }}"/>
-            <access method="get*" roles="{{ $adminRole }}"/>
-            <access method="is*" roles="{{ $adminRole }}"/>
-            <access method="set*" roles="{{ $adminRole }}"/>
+            <access method="list*" roles="${ARTEMIS_ADMIN_ROLES}"/>
+            <access method="get*" roles="${ARTEMIS_ADMIN_ROLES}"/>
+            <access method="is*" roles="${ARTEMIS_ADMIN_ROLES}"/>
+            <access method="set*" roles="${ARTEMIS_ADMIN_ROLES}"/>
             <!-- Note count and browse are need to access the browse tab in the console-->
-            <access method="browse*" roles="{{ $adminRole }}"/>
-            <access method="count*" roles="{{ $adminRole }}"/>
-            <access method="*" roles="{{ $adminRole }}"/>
+            <access method="browse*" roles="${ARTEMIS_ADMIN_ROLES}"/>
+            <access method="count*" roles="${ARTEMIS_ADMIN_ROLES}"/>
+            <access method="*" roles="${ARTEMIS_ADMIN_ROLES}"/>
          </match>
          <!--example of how to configure a specific object-->
          <!--<match domain="org.apache.activemq.artemis" key="subcomponent=queues">

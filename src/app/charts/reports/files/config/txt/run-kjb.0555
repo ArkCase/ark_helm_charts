@@ -3,6 +3,11 @@ set -euo pipefail
 . /.functions
 
 #
+# Init all the SSL-related stuff
+#
+init_ssl
+
+#
 # We use PENTAHO_HOME as our canary ... if it's not set,
 # it's a good indication that we need to try to load the
 # runtime environment from the stored file
@@ -117,10 +122,8 @@ else
 	say "The configuration directory [${CONF_KJB}] was not found, will not set the KETTLE_HOME and PENTAHO_METASTORE_FOLDER variables"
 fi
 
-if [ -v SSL_DIR ] ; then
-	export KEYSTORE_PATH="${SSL_DIR}/keystore.pkcs12"
-	export KEYSTORE_PASSWORD="$(<"${SSL_DIR}/keystore.pass")"
-fi
+export KEYSTORE_PATH="${JAVA_KEYSTORE}"
+export KEYSTORE_PASSWORD="${JAVA_KEYSTORE_PASSWORD}"
 
 # Allow rendering to be disabled
 if "${NOTEMPLATES}" ; then

@@ -2,6 +2,11 @@
 set -euo pipefail
 . /.functions
 
+#
+# Init all the SSL-related stuff
+#
+init_ssl
+
 set_as_boolean DEBUG
 
 set_or_default BASE_DIR "/app"
