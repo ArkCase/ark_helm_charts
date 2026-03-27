@@ -1,20 +1,4 @@
 {{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.content.external" $)) (eq "s3" (include "arkcase.content.info.dialect" $)) -}}
-{{- $minAvailable := (include "arkcase.content.minio.minAvailable" $ | int) }}
-{{- $nodes := (include "arkcase.content.minio.nodeCount" $ | int) }}
-{{- $onePerHost := (include "arkcase.content.minio.onePerHost" $) }}
-{{- if (gt $nodes 1) }}
----
-apiVersion: policy/v1
-kind: PodDisruptionBudget
-metadata:
-  name: {{ include "arkcase.fullname" $ | quote }}
-  namespace: {{ $.Release.Namespace | quote }}
-spec:
-  minAvailable: {{ $minAvailable }}
-  selector:
-    matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
----
-{{- end }}
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -30,11 +14,12 @@ metadata:
       {{- toYaml .value | nindent 4 }}
     {{- end }}
 spec:
-  replicas: {{ $nodes }}
+  replicas: 1
   selector: &labelSelector
     matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
   serviceName: {{ include "arkcase.service.headless" $ | quote }}
-  updateStrategy: {{- include "arkcase.cluster.statefulUpdateStrategy" $ | nindent 4 }}
+  updateStrategy:
+    type: RollingUpdate
   podManagementPolicy: Parallel
   template:
     metadata:
@@ -109,7 +94,7 @@ spec:
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
             - name: NODES
-              value: {{ $nodes | toString | quote }}
+              value: "1"
             - name: DATA_DIR
               value: *dataDir
             - name: MINIO_ADDRESS

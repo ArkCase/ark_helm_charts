@@ -1,20 +1,4 @@
 {{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.subsystem.external" $)) }}
-{{- $cluster := (include "arkcase.cluster" $ | fromYaml) }}
-{{- $nodes := ($cluster.nodes | int) -}}
-{{- $minAvailable := (include "arkcase.solr.minAvailable" ($nodes | int) | atoi) }}
-{{- if and $cluster.enabled (gt $nodes 1) }}
----
-apiVersion: policy/v1
-kind: PodDisruptionBudget
-metadata:
-  name: {{ include "arkcase.fullname" $ | quote }}
-  namespace: {{ $.Release.Namespace | quote }}
-spec:
-  minAvailable: {{ $minAvailable }}
-  selector:
-    matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
----
-{{- end }}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -28,11 +12,12 @@ metadata:
   annotations: {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  replicas: {{ $nodes }}
+  replicas: 1
   selector: &labelSelector
     matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
   serviceName: {{ include "arkcase.service.headless" $ | quote }}
-  updateStrategy: {{- include "arkcase.cluster.statefulUpdateStrategy" $ | nindent 4 }}
+  updateStrategy:
+    type: RollingUpdate
   podManagementPolicy: Parallel
   template:
     metadata:
@@ -51,23 +36,6 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
     spec:
-      affinity:
-        podAntiAffinity:
-        {{- if $cluster.onePerHost }}
-          requiredDuringSchedulingIgnoredDuringExecution:
-            - topologyKey: "kubernetes.io/hostname"
-              namespaces: [ {{ $.Release.Namespace | quote }} ]
-              labelSelector:
-                <<: *labelSelector
-        {{- else }}
-          preferredDuringSchedulingIgnoredDuringExecution:
-            - weight: 1
-              podAffinityTerm:
-                topologyKey: "kubernetes.io/hostname"
-                namespaces: [ {{ $.Release.Namespace | quote }} ]
-                labelSelector:
-                  <<: *labelSelector
-        {{- end }}
       {{- include "arkcase.image.pullSecrets" $ | nindent 6 }}
       {{- with $.Values.hostAliases }}
       hostAliases: {{- toYaml . | nindent 8 }}
@@ -105,13 +73,9 @@ spec:
             {{- include "arkcase.acme.env" $ | nindent 12 }}
             {{- include "arkcase.cluster.zookeeper" $ | nindent 12 }}
             - name: NODES
-              value: {{ $nodes | toString | quote }}
+              value: "1"
             - name: SOLR_OPTS
-            {{- if $cluster.enabled }}
-              value: "-Dsolr.autoSoftCommit.maxTime=1000 -Dzookeeper.client.secure=true"
-            {{- else }}
               value: "-Dsolr.autoSoftCommit.maxTime=1000"
-            {{- end }}
             - name: DATA_DIR
               value: *dataDir
             - name: SOLR_HOME

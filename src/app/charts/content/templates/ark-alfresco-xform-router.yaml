@@ -14,13 +14,12 @@ metadata:
       {{- toYaml .value | nindent 4 }}
     {{- end }}
 spec:
-  {{- if not ($.Values.autoscaling).enabled }}
-  replicas: {{ $.Values.replicaCount | default 1 }}
-  {{- end }}
+  replicas: 1
   selector:
     matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
   serviceName: {{ include "arkcase.service.headless" $ | quote }}
-  updateStrategy: {{- include "arkcase.cluster.statefulUpdateStrategy" $ | nindent 4 }}
+  updateStrategy:
+    type: RollingUpdate
   template:
     metadata:
       name: {{ include "arkcase.fullname" $ | quote }}
