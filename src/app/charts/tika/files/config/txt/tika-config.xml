@@ -1,0 +1,213 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<properties>
+    <service-loader initializableProblemHandler="ignore"/>
+
+    <parsers>
+        <parser class="org.apache.tika.parser.DefaultParser">
+            <parser-exclude class="org.apache.tika.parser.ocr.TesseractOCRParser"/>
+        </parser>
+        <parser class="org.apache.tika.parser.DefaultParser">
+            <parser-exclude class="org.apache.tika.parser.mp4.MP4Parser"/>
+            <parser-exclude class="org.apache.tika.parser.mp3.Mp3Parser"/>
+            <parser-exclude class="org.apache.tika.parser.audio.AudioParser"/>
+        </parser>
+        <parser class="com.armedia.acm.tika.parser.EnhancedMp4Parser"/>
+        <parser class="com.armedia.acm.tika.parser.EnhancedMp3Parser"/>
+        <parser class="com.armedia.acm.tika.parser.EnhancedAudioParser"/>
+    </parsers>
+
+    <metadataFilters>
+        <metadataFilter class="com.armedia.acm.tika.filter.ContentTypeNormalizationFilter">
+            <contentTypeFixes>audio/vnd.wave:audio/wav,audio/mpeg:audio/mp3,audio/x-flac:audio/flac,video/quicktime:video/mp4</contentTypeFixes>
+            <extensionOverrides>.mpga:.mp3,.qt:.mp4</extensionOverrides>
+        </metadataFilter>
+        <metadataFilter class="com.armedia.acm.tika.filter.CreatedDateNormalizationFilter"/>
+        <metadataFilter class="com.armedia.acm.tika.filter.GpsEnrichmentFilter"/>
+    </metadataFilters>
+
+    <emitters>
+        <emitter class="org.apache.tika.pipes.emitter.jdbc.JDBCEmitter">
+            <params>
+                <name>rdbms</name>
+                <connection>${ARKCASE_JDBC_URL}</connection>
+                <insert><!-- some SQL ... --></insert>
+            </params>
+        </emitter>
+        <emitter class="org.apache.tika.pipes.emitter.s3.S3Emitter">
+            <params>
+                <name>content-store</name>
+                <endpointConfigurationService>${ARKCASE_INTERNAL_CONTENT_URL}</endpointConfigurationService>
+                <region>${ARKCASE_INTERNAL_CONTENT_REGION}</region>
+                <bucket>${ARKCASE_INTERNAL_CONTENT_BUCKET}</bucket>
+                <credentialsProvider>key_secret</credentialsProvider>
+                <accessKey>${ARKCASE_INTERNAL_CONTENT_USERNAME}</accessKey>
+                <secretKey>${ARKCASE_INTERNAL_CONTENT_PASSWORD}</secretKey>
+                <pathStyleAccessEnabled>true</pathStyleAccessEnabled>
+
+                <!-- whether or not to spool the s3 object to a local temp file
+                     before fetching. Default: true -->
+                <spoolToTemp>false</spoolToTemp>
+
+                <!-- these are all optional -->
+                <!-- if your pipes iterator is working on a list of files under my-prefix -->
+                <!-- <prefix>${ARKCASE_INTERNAL_CONTENT_PREFIX}</bucket> -->
+
+                <!-- the s3 api sets a fairly low max. If you are running a heavily concurrent application, you
+                     may need to bump this. -->
+                <maxConnections>300</maxConnections>
+            </params>
+        </emitter>
+    </emitters>
+
+    <fetchers>
+        <fetcher class="org.apache.tika.pipes.fetcher.s3.S3Fetcher">
+            <params>
+                <name>content-store</name>
+                <endpointConfigurationService>${ARKCASE_INTERNAL_CONTENT_URL}</endpointConfigurationService>
+                <region>${ARKCASE_INTERNAL_CONTENT_REGION}</region>
+                <bucket>${ARKCASE_INTERNAL_CONTENT_BUCKET}</bucket>
+                <!-- <prefix>${ARKCASE_INTERNAL_CONTENT_PREFIX}</bucket> -->
+                <credentialsProvider>key_secret</credentialsProvider>
+                <accessKey>${ARKCASE_INTERNAL_CONTENT_USERNAME}</accessKey>
+                <secretKey>${ARKCASE_INTERNAL_CONTENT_PASSWORD}</secretKey>
+                <pathStyleAccessEnabled>true</pathStyleAccessEnabled>
+
+                <!-- whether or not to spool the s3 object to a local temp file
+                     before fetching. Default: true -->
+                <spoolToTemp>false</spoolToTemp>
+
+                <!-- these are all optional -->
+                <!-- if your pipes iterator is working on a list of files under my-prefix -->
+                <!-- <prefix>${ARKCASE_INTERNAL_CONTENT_PREFIX}</bucket> -->
+
+                <!-- extract the s3 object user metadata and inject it into the Tika metadata -->
+                <!-- <extractUserMetadata>false</extractUserMetadata> -->
+
+                <!-- the s3 api sets a fairly low max. If you are running a heavily concurrent application, you
+                     may need to bump this. -->
+                <maxConnections>300</maxConnections>
+                <maxLength>-1</maxLength>
+            </params>
+        </fetcher>
+    </fetchers>
+
+    <!-- ??? how to configure our pipes here? do we even need to? -->
+    <pipes>
+        <params>
+            <tikaConfig>${TIKA_PIPES_CONFIG}</tikaConfig>
+        </params>
+    </pipes>
+
+    <server>
+        <params>
+            <!-- which port to start the server on. If you specify a range,
+                 e.g. 9995-9998, TikaServerCli will start four forked servers,
+                 one at each port. You can also specify multiple forked servers
+                 via a comma-delimited value: 9995,9997. -->
+            <!--
+            <port>9998</port>
+            <host>localhost</host>
+            -->
+
+            <!-- if specified, this will be the id that is used in the
+                 /status endpoint and elsewhere.    If an id is specified
+                 and more than one forked processes are invoked, each process
+                 will have an id followed by the port, e.g my_id-9998. If a
+                 forked server has to restart, it will maintain its original id.
+                 If not specified, a UUID will be generated.
+                 -->
+            <id>${POD_NAME}</id>            
+
+            <!-- Origin URL for cors requests. Set to '*' if you
+                 want to allow all CORS requests. Leave blank or remove element
+                 if you do not want to enable CORS. -->
+            <cors>*</cors>            
+
+            <!-- which digests to calculate, comma delimited (e.g. md5,sha256);
+                 optionally specify encoding followed by a colon (e.g. "sha1:32").
+                 Can be empty if you don't want to calculate a digest -->
+            <digest>sha256</digest>
+
+            <!-- how much to read to memory during the digest phase before
+                 spooling to disc...only if digest is selected -->
+            <!-- Start off with exactly 1GiB -->
+            <digestMarkLimit>1073741824</digestMarkLimit>
+
+            <!-- request URI log level 'debug' or 'info' -->
+            <logLevel>${LOG_LEVEL}</logLevel>
+
+            <!-- whether or not to return the stacktrace in the data returned
+                 to the user when a parse exception happens-->
+            <returnStackTrace>false</returnStackTrace>
+
+            <!-- If set to 'true', this runs tika server "in process"
+                 in the legacy 1.x mode.
+                 This means that the server will be susceptible to infinite loops
+                 and crashes.
+                 If set to 'false', the server will spawn a forked
+                 process and restart the forked process on catastrophic failures
+                 (this was called -spawnChild mode in 1.x).
+                 noFork=false is the default in 2.x -->
+            <noFork>false</noFork>
+
+            <!-- maximum time to allow per parse before shutting down and restarting
+                 the forked parser. Not allowed if noFork=true. -->
+            <taskTimeoutMillis>300000</taskTimeoutMillis>
+
+            <!-- maximum amount of time to wait for a forked process to
+                 start up. Not allowed if noFork=true. -->
+            <maxForkedStartupMillis>120000</maxForkedStartupMillis>
+
+            <!-- maximum number of times to allow a specific forked process
+                 to be restarted.
+                 Not allowed if noFork=true. -->
+            <maxRestarts>-1</maxRestarts>
+
+            <!-- maximum files to parse per forked process before
+                 restarting the forked process to clear potential
+                 memory leaks.
+                 Not allowed if noFork=true. -->
+            <maxFiles>100000</maxFiles>
+
+            <!-- if you want to specify a specific javaPath for
+                 the forked process.    This path should end
+                 the application 'java', e.g. /my/special-java/java
+                 Not allowed if noFork=true. -->
+            <javaPath>java</javaPath>
+
+            <!-- jvm args to use in the forked process -->
+            <forkedJvmArgs>
+                <arg>-Xms1g</arg>
+                <arg>-Xmx1g</arg>
+            </forkedJvmArgs>
+
+            <!-- this must be set to true for any handler that uses a fetcher or emitter.
+                 These pipes features are inherently unsecure because the client has the
+                 same read/write access as the tika-server process. Implementers must secure
+                 Tika server so that only their clients can reach it.    A byproduct of
+                 setting this to true is that the /status endpoint is turned on -->
+            <enableUnsecureFeatures>true</enableUnsecureFeatures>
+
+            <!-- you can optionally select specific endpoints to turn on/load. This can
+                 improve resource usage and decrease your attack surface. If you want to
+                 access the status endpoint, specify it here or set unsecureFeatures to true -->
+            <!--
+            <endpoints>
+                <endpoint>status</endpoint>
+                <endpoint>rmeta</endpoint>
+            </endpoints>        
+            -->
+        </params>
+        <tlsConfig>
+            <params>
+                <active>true</active>
+                <keyStoreType>PKCS12</keyStoreType>
+                <keyStoreFile>${KEYSTORE}</keyStoreFile>
+                <keyStorePassword>${KEYSTORE_PASSWORD}</keyStorePassword>
+                <trustStoreType>PKCS12</trustStoreType>
+                <trustStoreFile>${TRUSTSTORE}</trustStoreFile>
+                <trustStorePassword>${TRUSTSTORE_PASSWORD}</trustStorePassword>
+            </params>
+        </tlsConfig>
+    </server>
+</properties>
