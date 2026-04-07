@@ -117,7 +117,7 @@ under the License.
 
 		<connectors>
 				<!-- Connector used to be announced through cluster connections and notifications -->
-				<connector name="local">tcp://${POD_HOSTNAME}.${DNS_SERVICE}:61616?sslEnabled=true;enabledProtocols=TLSv1.2;</connector>
+				<connector name="local">tcp://${POD_HOSTNAME}.${DNS_SERVICE}:61616?sslEnabled=true;enabledProtocols=TLSv1.3;</connector>
 		</connectors>
 
 
@@ -168,16 +168,16 @@ under the License.
 
 
 			<!-- Acceptor for every supported protocol -->
-			<acceptor name="local">tcp://0.0.0.0:61616?tcpSendBufferSize=1048576;tcpReceiveBufferSize=1048576;amqpMinLargeMessageSize=102400;protocols=CORE,AMQP,STOMP,HORNETQ,MQTT,OPENWIRE;useEpoll=true;amqpCredits=1000;amqpLowCredits=300;amqpDuplicateDetection=true;supportAdvisory=false;suppressInternalManagementObjects=false;sslEnabled=true;enabledProtocols=TLSv1.2;keyStorePath=${JAVA_KEYSTORE};keyStorePassword=${JAVA_KEYSTORE_PASSWORD};</acceptor>
+			<acceptor name="local">tcp://0.0.0.0:61616?tcpSendBufferSize=1048576;tcpReceiveBufferSize=1048576;amqpMinLargeMessageSize=102400;protocols=CORE,AMQP,STOMP,HORNETQ,MQTT,OPENWIRE;useEpoll=true;amqpCredits=1000;amqpLowCredits=300;amqpDuplicateDetection=true;supportAdvisory=false;suppressInternalManagementObjects=false;sslEnabled=true;enabledProtocols=TLSv1.3;keyStorePath=${JAVA_KEYSTORE};keyStorePassword=${JAVA_KEYSTORE_PASSWORD};</acceptor>
 
 			<!-- STOMP Acceptor. -->
-			<acceptor name="stomp">tcp://0.0.0.0:61613?tcpSendBufferSize=1048576;tcpReceiveBufferSize=1048576;protocols=STOMP;useEpoll=true;sslEnabled=true;enabledProtocols=TLSv1.2;keyStorePath=${JAVA_KEYSTORE};keyStorePassword=${JAVA_KEYSTORE_PASSWORD};</acceptor>
+			<acceptor name="stomp">tcp://0.0.0.0:61613?tcpSendBufferSize=1048576;tcpReceiveBufferSize=1048576;protocols=STOMP;useEpoll=true;sslEnabled=true;enabledProtocols=TLSv1.3;keyStorePath=${JAVA_KEYSTORE};keyStorePassword=${JAVA_KEYSTORE_PASSWORD};</acceptor>
 
 		</acceptors>
 
 
-		<cluster-user>cluster-admin</cluster-user>
-		<cluster-password>this-value-is-substituted-at-startup</cluster-password>
+		<cluster-user>${ARTEMIS_CLUSTER_ID}</cluster-user>
+		<cluster-password>${ARTEMIS_CLUSTER_PASSWORD}</cluster-password>
 
 		<broadcast-groups>
 			<broadcast-group name="bcast-${ARTEMIS_CLUSTER_ID}">
