@@ -101,6 +101,18 @@ spec:
               value: *confDir
             - name: ZOO_LOG_DIR
               value: *logsDir
+            - name: ZOOKEEPER_TICK_TIME
+              value: {{ include "arkcase.tools.conf" (dict "ctx" $ "value" "tickTime") | toString | quote }}
+            - name: ZOOKEEPER_INIT_LIMIT
+              value: {{ include "arkcase.tools.conf" (dict "ctx" $ "value" "initLimit") | toString | quote }}
+            - name: ZOOKEEPER_SYNC_LIMIT
+              value: {{ include "arkcase.tools.conf" (dict "ctx" $ "value" "syncLimit") | toString | quote }}
+            - name: ZOOKEEPER_MAX_CLIENTS
+              value: {{ include "arkcase.tools.conf" (dict "ctx" $ "value" "maxClients") | toString | quote }}
+            - name: ZOOKEEPER_AUTOPURGE_INTERVAL
+              value: {{ include "arkcase.tools.conf" (dict "ctx" $ "value" "autopurge.purgeInterval") | toString | quote }}
+            - name: ZOOKEEPER_AUTOPURGE_SNAP_RETAIN_COUNT
+              value: {{ include "arkcase.tools.conf" (dict "ctx" $ "value" "autopurge.snapRetainCount") | toString | quote }}
             - name: JAVA_TOOL_OPTIONS
               value: >-
                 -Dcom.redhat.fips={{ include "arkcase.fips.bool" $ }}
@@ -117,8 +129,9 @@ spec:
               mountPath: *dataDir
             {{- include "arkcase.subsystem-access.volumeMount" $ | nindent 12 }}
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/zoo.cfg") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/zoo.cfg.tpl") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/logback.xml") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/zookeeper-env.sh") | nindent 12 }}
       volumes:
         # Configuration is ephemeral, b/c it's re-rendered every time
         - name: *confVol
