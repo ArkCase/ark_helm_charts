@@ -105,6 +105,7 @@ spec:
             - name: JAVA_TOOL_OPTIONS
               value: >-
                 -Dcom.redhat.fips={{ include "arkcase.fips.bool" $ }}
+                {{ include "arkcase.fips.module-path" $ }}
                 -Dencryption.keystore.type=JCEKS
                 -Dencryption.cipherAlgorithm=DESede/CBC/PKCS5Padding
                 -Dencryption.keyAlgorithm=DESede

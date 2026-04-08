@@ -66,6 +66,7 @@ spec:
             - name: JAVA_TOOL_OPTIONS
               value: >-
                 -Dcom.redhat.fips={{ include "arkcase.fips.bool" $ }}
+                {{ include "arkcase.fips.module-path" $ }}
             - name: CATALINA_OPTS
               value: >-
                 -XX:MinRAMPercentage=50
