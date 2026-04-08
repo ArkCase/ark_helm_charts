@@ -21,8 +21,8 @@ dataDir=${DATA_DIR}
 standaloneEnabled=false
 
 # the port at which the clients will connect
-client.portUnification=false
-# clientPort=2181
+client.portUnification=true
+clientPort=2181
 secureClientPort=2281
 quorumListenOnAllIPs=true
 sslQuorum=true
