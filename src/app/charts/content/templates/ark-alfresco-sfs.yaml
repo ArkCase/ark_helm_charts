@@ -73,6 +73,7 @@ spec:
             - name: JAVA_TOOL_OPTIONS
               value: >-
                 -Dcom.redhat.fips={{ include "arkcase.fips.bool" $ }}
+                {{ include "arkcase.fips.module-path" $ }}
                 -XX:MinRAMPercentage=50
                 -XX:MaxRAMPercentage=80
             # Stuff expires after 6 hours, but gets cleaned up every hour
