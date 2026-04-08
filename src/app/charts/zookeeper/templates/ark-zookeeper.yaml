@@ -116,6 +116,7 @@ spec:
             - name: JAVA_TOOL_OPTIONS
               value: >-
                 -Dcom.redhat.fips={{ include "arkcase.fips.bool" $ }}
+                {{ include "arkcase.fips.module-path" $ }}
             {{- if $.Values.env }}
             {{- $.Values.env | toYaml | nindent 12 }}
             {{- end }}
