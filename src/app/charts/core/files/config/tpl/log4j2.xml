@@ -12,6 +12,7 @@
 <Configuration monitorInterval="30" packages="com.armedia.acm.audit.log4j2">
     <Appenders>
         <Console name="Console" target="SYSTEM_OUT">
+            <ThresholdFilter level="WARN"/>
             <PatternLayout disableAnsi="false">
                 <pattern>%highlight{%d{yyyy-MM-dd HH:mm:ss,SSS} [%-5p] [%t] %c - %confidential{%m}%n}</pattern>
             </PatternLayout>
@@ -55,14 +56,14 @@
         </RollingFile>
     </Appenders>
     <Loggers>
-        <!-- INFO and above to console and log file; com.armedia debug and above to log file -->
-        <Logger name="com.armedia" level="debug" additivity="false">
+        <!-- INFO and above to console and log file -->
+        <Logger name="com.armedia" level="info" additivity="false">
             <AppenderRef ref="Console"/>
             <AppenderRef ref="file-log"/>
             <AppenderRef ref="file-errors-log"/>
         </Logger>
         <!-- gov.foia debug and above -->
-        <Logger name="gov.foia" level="debug" additivity="false">
+        <Logger name="gov.foia" level="info" additivity="false">
             <AppenderRef ref="Console"/>
             <AppenderRef ref="file-log"/>
             <AppenderRef ref="file-errors-log"/>
