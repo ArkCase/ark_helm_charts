@@ -35,6 +35,7 @@ fips-mode=${FIPS}
 
 ssl.authProvider=x509
 
+ssl.clientAuth=need
 ssl.hostnameVerification=${ZOOKEEPER_HOSTNAME_VERIFICATION}
 ssl.protocol=TLSv1.3
 ssl.enabledProtocols=TLSv1.3
@@ -48,6 +49,7 @@ ssl.trustStore.location=${JAVA_TRUSTSTORE}
 ssl.trustStore.passwordPath=${JAVA_TRUSTSTORE_PASSWORD_FILE}
 ssl.trustStore.type=${JAVA_TRUSTSTORE_TYPE}
 
+ssl.quorum.clientAuth=need
 ssl.quorum.hostnameVerification=${ZOOKEEPER_HOSTNAME_VERIFICATION}
 ssl.quorum.protocol=TLSv1.3
 ssl.quorum.enabledProtocols=TLSv1.3
