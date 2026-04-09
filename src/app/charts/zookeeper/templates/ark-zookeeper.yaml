@@ -115,8 +115,7 @@ spec:
               value: {{ include "arkcase.tools.conf" (dict "ctx" $ "value" "autopurge.snapRetainCount") | toString | quote }}
             - name: JAVA_TOOL_OPTIONS
               value: >-
-                -Dcom.redhat.fips={{ include "arkcase.fips.bool" $ }}
-                {{ include "arkcase.fips.module-path" $ }}
+                {{ include "arkcase.fips.java-options" $ }}
             {{- if $.Values.env }}
             {{- $.Values.env | toYaml | nindent 12 }}
             {{- end }}

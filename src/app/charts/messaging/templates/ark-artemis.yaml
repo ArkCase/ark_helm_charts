@@ -141,8 +141,7 @@ spec:
               value: {{ (printf "%s-%s" $.Release.Namespace $.Release.Name) | quote }}
             - name: JAVA_TOOL_OPTIONS
               value: >-
-                -Dcom.redhat.fips={{ include "arkcase.fips.bool" $ }}
-                {{ include "arkcase.fips.module-path" $ }}
+                {{ include "arkcase.fips.java-options" $ }}
             #
             # Add the configured users
             #

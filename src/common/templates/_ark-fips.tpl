@@ -1,7 +1,3 @@
-{{- define "__arkcase.fips.default-crypto-dir" -}}
-/app/crypto/bc
-{{- end -}}
-
 {{- define "arkcase.fips" -}}
   {{- $ctx := . -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
@@ -15,36 +11,15 @@
     {{- $global = dict -}}
   {{- end -}}
 
-  {{- $fips := (get $global "fips" | default (dict "enabled" false)) -}}
-  {{- if (kindIs "map" $fips) -}}
-    {{- $enabled := (hasKey $fips "enabled" | ternary (not (empty (include "arkcase.toBoolean" $fips.enabled))) false) -}}
-    {{- $fips = set $fips "enabled" $enabled -}}
-  {{- else -}}
-    {{- $fips = dict "enabled" (not (empty (include "arkcase.toBoolean" ($fips | toString)))) -}}
-  {{- end -}}
-
-  {{- if $fips.enabled -}}
-    {{- $cryptoDir := (get $fips "crypto-dir" | default (include "__arkcase.fips.default-crypto-dir" $) | toString) -}}
-    {{- $modulePath := (get $fips "module-path" | default list) -}}
-    {{- if $modulePath -}}
-      {{- if not (kindIs "slice" $modulePath) -}}
-        {{- fail (printf "The value for global.fips.module-path MUST be a list, not a %s: %s" (kindOf $modulePath) $modulePath) -}}
-      {{- end -}}
-      {{- $fips = set $fips "modulePath" (concat (list $cryptoDir) $modulePath | toStrings | compact | uniq) -}}
-    {{- else -}}
-      {{- $fips = set $fips "modulePath" (list $cryptoDir) -}}
-    {{- end -}}
-    {{- set $fips "cryptoDir" $cryptoDir | toYaml -}}
-  {{- end -}}
+  {{- include "arkcase.toBoolean" $global.fips -}}
 {{- end -}}
 
 {{- define "arkcase.fips.bool" -}}
   {{- (not (empty (include "arkcase.fips" $))) -}}
 {{- end -}}
 
-{{- define "arkcase.fips.module-path" -}}
-  {{- $fips := (include "arkcase.fips" $ | fromYaml) -}}
-  {{- if $fips -}}
---module-path={{ $fips.modulePath | join ":" }}
-  {{- end -}}
+{{- define "arkcase.fips.java-options" -}}
+  {{- $fips := (include "arkcase.fips.bool" $) -}}
+  {{- /* -Dcom.redhat.fips={{ $fips }} -Dorg.bouncycastle.fips.approved_only={{ $fips }} --module-path=/app/fips */ -}}
+-Dcom.redhat.fips={{ $fips }} --module-path=/app/fips
 {{- end -}}
