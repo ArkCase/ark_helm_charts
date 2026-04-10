@@ -266,18 +266,6 @@ spec:
               value: *logsDir
             - name: TEMP_DIR
               value: *tempDir
-            - name: ACME_KEYSTORE_WITH_TRUSTS
-              value: "true"
-            - name: ACME_KEY_ALIAS
-              value: "arkcase-private-key-$(POD_NAME)"
-            - name: JAVA_KEYSTORE
-              value: "$(SSL_DIR)/keystore.pkcs12"
-            - name: JAVA_KEYSTORE_TYPE
-              value: "PKCS12"
-            - name: JAVA_TRUSTSTORE
-              value: "$(JAVA_KEYSTORE)"
-            - name: JAVA_TRUSTSTORE_TYPE
-              value: "$(JAVA_KEYSTORE_TYPE)"
             - name: LOOP_TERMINATION_FILE
               value: &loopTerminationFile "/app/.terminate"
             - name: SESSION_COOKIE_NAME
@@ -303,7 +291,7 @@ spec:
               value: "$(EXTRA_LIBRARY_DIR)"
             - name: JAVA_TOOL_OPTIONS
               value: >-
-                -Dcom.redhat.fips={{ include "arkcase.fips.bool" $ }}
+                {{ include "arkcase.fips.java-options" $ }}
             {{- include "arkcase.core.tomcatNative.env" $debug | nindent 12 }}
             - name: CATALINA_OPTS
               # For Java 8, these percentages must be given as doubles. The JVM may
@@ -312,8 +300,6 @@ spec:
                 -XX:MinRAMPercentage=50.0
                 -XX:MaxRAMPercentage=80.0
                 -Dk8s.rename.ldap.directories=true
-                -Djava.keystore.key.alias=$(ACME_KEY_ALIAS)
-                -Dsaml.keystore.defaultKeyName=$(ACME_KEY_ALIAS)
                 -Dconfiguration.client.spring.path=spring
                 -Duser.home=$(HOME_DIR)
                 -Dhazelcast.shutdownhook.policy=GRACEFUL
