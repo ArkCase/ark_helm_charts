@@ -2,6 +2,8 @@
 set -euo pipefail
 . /.functions
 
+init_ssl
+
 set_as_boolean DEBUG
 
 cleanup()
@@ -63,22 +65,11 @@ say "Marker info:  ${#INIT_MARKER}:[${MARKER_SUM}]"
 export CURATOR_WRAPPER_JAR="/usr/local/bin/curator-wrapper.jar"
 export CURATOR_WRAPPER_CONF="/usr/local/etc/curator-wrapper.yaml"
 
+
 RC=0
 (
-	ZK_SSL_FLAGS=(
-		-Dzookeeper.clientCnxnSocket="org.apache.zookeeper.ClientCnxnSocketNetty"
-		-Dzookeeper.client.secure="true"
-		-Dzookeeper.ssl.hostnameVerification="true"
-		-Dzookeeper.ssl.protocol="TLSv1.3"
-		-Dzookeeper.ssl.enabledProtocols="TLSv1.3"
-		-Dzookeeper.ssl.keyStore.location="${SSL_DIR}/keystore.pkcs12"
-		-Dzookeeper.ssl.keyStore.passwordPath="${SSL_DIR}/keystore.pass"
-		-Dzookeeper.ssl.keyStore.type="PKCS12"
-		-Dzookeeper.ssl.trustStore.location="${SSL_DIR}/keystore.pkcs12"
-		-Dzookeeper.ssl.trustStore.passwordPath="${SSL_DIR}/keystore.pass"
-		-Dzookeeper.ssl.trustStore.type="PKCS12"
-	)
-	execute java "${ZK_SSL_FLAGS[@]}" -jar "${CURATOR_WRAPPER_JAR}" -c "${CURATOR_WRAPPER_CONF}"
+	. /usr/local/bin/zk-client-init
+	execute java "${ZOOKEEPER_SSL_CLIENT_OPTIONS_ARR[@]}" -jar "${CURATOR_WRAPPER_JAR}" -c "${CURATOR_WRAPPER_CONF}"
 ) || RC=${?}
 
 if [ ${RC} -eq 0 ] && [ -n "${FINAL_HASH}" ] ; then

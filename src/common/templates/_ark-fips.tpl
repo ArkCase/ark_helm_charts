@@ -23,3 +23,16 @@
   {{- /* -Dcom.redhat.fips={{ $fips }} -Dorg.bouncycastle.fips.approved_only={{ $fips }} --module-path=/app/fips */ -}}
 -Dcom.redhat.fips={{ $fips }} --module-path=/app/fips
 {{- end -}}
+
+{{- define "arkcase.fips.legacy-env" -}}
+- name: JAVA_SSL_KEYSTORE_TYPE
+  value: "PKCS12"
+- name: JAVA_SSL_KEYSTORE_PROVIDER
+  value: "-"
+- name: JAVA_SSL_KEYSTORE_PROVIDER_CLASS
+  value: "-"
+- name: JAVA_SSL_KEYSTORE_PROVIDER_PATH
+  value: "-"
+- name: JAVA_SSL_KEYSTORE_PROVIDER_ARGS
+  value: "-"
+{{- end -}}
