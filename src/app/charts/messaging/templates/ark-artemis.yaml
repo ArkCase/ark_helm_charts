@@ -139,7 +139,7 @@ spec:
               value: "true"
             - name: JAVA_TOOL_OPTIONS
               value: >-
-                {{ include "arkcase.fips.java-options" $ | nindent 16 }}
+                {{ include "arkcase.fips.java-options" $ }}
             #
             # Add the configured users
             #
