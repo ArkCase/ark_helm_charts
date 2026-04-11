@@ -120,9 +120,9 @@ spec:
           {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
           command: [ "/entrypoint" ]
           lifecycle:
-            postStart:
-              exec:
-                command: [ "/config-post.sh" ]
+            # postStart:
+            #   exec:
+            #     command: [ "/config-post.sh" ]
             preStop:
               exec:
                 command: [ "/app/solr/bin/solr", "stop", "-p", "8983" ]
