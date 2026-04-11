@@ -412,8 +412,7 @@ spec:
               value: *confDir
             - name: JAVA_TOOL_OPTIONS
               value: >-
-                -Dcom.redhat.fips={{ include "arkcase.fips.bool" $ }}
-                {{ include "arkcase.fips.module-path" $ }}
+                {{ include "arkcase.fips.java-options" $ }}
                 -XX:MinRAMPercentage=50
                 -XX:MaxRAMPercentage=80
                 -Dcom.sun.management.jmxremote.port=7092
