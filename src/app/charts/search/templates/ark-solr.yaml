@@ -95,16 +95,6 @@ spec:
             {{- include "arkcase.acme.env" $ | nindent 12 }}
             {{- include "arkcase.alt-java" $ | nindent 12 }}
             {{- include "arkcase.fips.legacy-env" $ | nindent 12 }}
-            - name: JAVA_SSL_KEYSTORE_TYPE
-              value: "PKCS12"
-            - name: JAVA_SSL_KEYSTORE_PROVIDER
-              value: "-"
-            - name: JAVA_SSL_KEYSTORE_PROVIDER_CLASS
-              value: "-"
-            - name: JAVA_SSL_KEYSTORE_PROVIDER_PATH
-              value: "-"
-            - name: JAVA_SSL_KEYSTORE_PROVIDER_ARGS
-              value: "-"
             - name: NODES
               value: {{ $replicas | toString | quote }}
             - name: JAVA_TOOL_OPTIONS
