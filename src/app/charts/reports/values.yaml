@@ -130,11 +130,6 @@ initDependencies:
       ports:
         - 636
 
-    zookeeper:
-      clusterOnly: true
-      ports:
-        - 2181
-
 resources:
   development:
     limits: "2Gi,1"
@@ -168,10 +163,6 @@ image:
     cron:
       repository: "arkcase/pentaho-ee"
       # tag: *pentahoVersion
-
-  haproxy:
-    repository: "arkcase/haproxy"
-    tag: "2.6"
 
 # You generally shouldn't mess with these. These exist to support some name-generation templates
 nameOverride: ""
@@ -250,61 +241,26 @@ service:
       - name: https
         protocol: TCP
         port: &https 8443
-    probes: &pentahoProbes
+    probes:
       enabled: true
-      spec: &baseProbeThreshold
+      spec:
         initialDelaySeconds: 0
         periodSeconds: 10
         timeoutSeconds: 10
         failureThreshold: 1
         successThreshold: 1
       startup:
-        exec: &tomcatStartup
+        exec:
           command: [ "/usr/local/bin/tomcat-live", "STARTUP" ]
         failureThreshold: 90
       liveness:
-        exec: &tomcatLiveness
+        exec:
           command: [ "/usr/local/bin/tomcat-live", "LIVENESS" ]
       readiness:
         httpGet:
           scheme: HTTPS
           port: *https
           path: "/pentaho"
-
-  clusteredPentaho:
-    ports:
-      - name: clustered-https
-        protocol: TCP
-        port: &clustered 4443
-    probes:
-      <<: *pentahoProbes
-      readiness:
-        httpGet:
-          scheme: HTTPS
-          port: *clustered
-          path: "/pentaho"
-
-  clusteredHaproxy:
-    ports:
-      - name: healthz
-        protocol: TCP
-        port: &healthz 18443
-    probes:
-      enabled: true
-      spec:
-        <<: *baseProbeThreshold
-      startup: &haproxyProbe
-        httpGet:
-          scheme: HTTPS
-          port: *healthz
-          path: "/healthz"
-        failureThreshold: 90
-      liveness:
-        <<: *haproxyProbe
-        failureThreshold: 3
-      readiness:
-        <<: *haproxyProbe
-        failureThreshold: 1
 
 ##
 ## Configure extra options for containers' liveness and readiness probes

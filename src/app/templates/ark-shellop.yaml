@@ -1,5 +1,4 @@
 {{- if false -}}
-{{- $cluster := (include "arkcase.cluster.info" $ | fromYaml) -}}
 {{- $fullName := (include "arkcase.fullname" $) -}}
 {{- $roleBaseName := "pod-modifier" -}}
 {{- $roleName := (printf "%s-%s" $fullName $roleBaseName) -}}
@@ -49,7 +48,8 @@ spec:
   selector:
     matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
   serviceName: {{ include "arkcase.service.headless" $ | quote }}
-  updateStrategy: {{- include "arkcase.cluster.statefulUpdateStrategy" $ | nindent 4 }}
+  updateStrategy:
+    type: RollingUpdate
   template:
     metadata:
       name: {{ $fullName | quote }}
