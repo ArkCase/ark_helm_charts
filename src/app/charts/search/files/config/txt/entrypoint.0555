@@ -56,5 +56,4 @@ else
 	touch "${RUN_MARKER}"
 fi
 
-set -- "${HOME_DIR}/bin/solr" start -f -c
-execute "${@}"
+execute "${HOME_DIR}/bin/solr" start --foreground "${@}"
