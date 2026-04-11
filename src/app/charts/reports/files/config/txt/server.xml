@@ -113,7 +113,7 @@
         <SSLHostConfig protocols="TLSv1.2" certificateVerification="none">
             <Certificate certificateKeyAlias="${JAVA_KEY_ALIAS}"
                          certificateKeystoreFile="${JAVA_KEYSTORE}"
-                         certificateKeystorePasswordFile="${JAVA_KEYSTORE_PASSWORD_FILE}"
+                         certificateKeystorePassword="${JAVA_KEYSTORE_PASSWORD}"
                          certificateKeystoreType="${JAVA_KEYSTORE_TYPE}" />
         </SSLHostConfig>
     </Connector>
