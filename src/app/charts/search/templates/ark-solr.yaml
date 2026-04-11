@@ -110,7 +110,7 @@ spec:
               value: {{ $nodes | toString | quote }}
             - name: JAVA_TOOL_OPTIONS
               value: >-
-                {{ include "arkcase.fips.java-options" $ | nindent 16 }}
+                {{ include "arkcase.fips.java-options" $ }}
             - name: SOLR_OPTS
               value: >-
                 -Dsolr.autoSoftCommit.maxTime=1000
