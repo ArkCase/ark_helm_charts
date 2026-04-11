@@ -63,7 +63,7 @@ spec:
           {{- end }}
             - name: JAVA_TOOL_OPTIONS
               value: >-
-                {{ include "arkcase.fips.java-options" $ | nindent 16 }}
+                {{ include "arkcase.fips.java-options" $ }}
                 -XX:MinRAMPercentage=50
                 -XX:MaxRAMPercentage=80
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
