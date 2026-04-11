@@ -65,7 +65,7 @@ spec:
               value: "alfresco"
             - name: JAVA_TOOL_OPTIONS
               value: >-
-                {{ include "arkcase.fips.java-options" $ | nindent 16 }}
+                {{ include "arkcase.fips.java-options" $ }}
             - name: CATALINA_OPTS
               value: >-
                 -XX:MinRAMPercentage=50
