@@ -316,8 +316,7 @@ spec:
               value: "$(EXTRA_LIBRARY_DIR)"
             - name: JAVA_TOOL_OPTIONS
               value: >-
-                -Dcom.redhat.fips={{ include "arkcase.fips.bool" $ }}
-                {{ include "arkcase.fips.module-path" $ }}
+                {{ include "arkcase.fips.java-options" $ | nindent 16 }}
             - name: CATALINA_OPTS
               # For Java 8, these percentages must be given as doubles. The JVM may
               # choke if the ".0" isn't provided at the end
