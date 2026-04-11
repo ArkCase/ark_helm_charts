@@ -17,7 +17,8 @@ spec:
   selector:
     matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
   serviceName: {{ include "arkcase.service.headless" $ | quote }}
-  updateStrategy: {{- include "arkcase.cluster.statefulUpdateStrategy" $ | nindent 4 }}
+  updateStrategy:
+    type: RollingUpdate
   template:
     metadata:
       name: *fullname

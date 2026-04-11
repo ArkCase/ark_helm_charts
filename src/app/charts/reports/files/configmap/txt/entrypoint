@@ -79,10 +79,6 @@ export DATA_DIR
 [ -v SSL_DIR ] || export SSL_DIR="/.ssl"
 acme-init
 
-# Enable reading the cert that HAProxy will need
-[ -v CLUSTER_ENABLED ] || CLUSTER_ENABLED="false"
-"${CLUSTER_ENABLED}" && chmod a+r "${SSL_DIR}/haproxy-cert.pem"
-
 ###################################################################
 # INSTALL ANY LICENSES                                            #
 ###################################################################
