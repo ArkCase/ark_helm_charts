@@ -226,6 +226,7 @@ spec:
           {{- include "arkcase.image" $ | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
+            {{- include "arkcase.fips.legacy-env" $ | nindent 12 }}
             - name: HOME_DIR
               value: *homeDir
             - name: CONF_DIR
@@ -459,6 +460,7 @@ spec:
           {{- include "arkcase.image" (dict "ctx" $ "name" "cloudconfig" "repository" "arkcase/cloudconfig") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
+            {{- include "arkcase.fips.legacy-env" $ | nindent 12 }}
             - name: DATA_DIR
               value: *confDir
             - name: JAVA_TOOL_OPTIONS

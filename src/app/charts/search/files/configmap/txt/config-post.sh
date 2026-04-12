@@ -3,6 +3,7 @@
 set -euo pipefail
 . /.functions
 
+export ACME_WAIT="true"
 init_ssl
 
 cleanup() {
