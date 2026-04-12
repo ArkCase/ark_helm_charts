@@ -2,58 +2,7 @@
 {{- $db := (include "arkcase.db.info" $ | fromYaml) -}}
 {{- $fullName := (include "arkcase.fullname" $) -}}
 {{- $serviceName := (include "arkcase.service.name" $) -}}
-{{- $cluster := (include "arkcase.cluster" $ | fromYaml) -}}
-{{- $nodes := (min 4 ($cluster.nodes | int)) -}}
-{{- if (gt $nodes 1) }}
----
-apiVersion: policy/v1
-kind: PodDisruptionBudget
-metadata:
-  name: {{ $fullName | quote }}
-  namespace: {{ $.Release.Namespace | quote }}
-spec:
-  minAvailable: 1
-  selector:
-    matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
-{{- end }}
 {{- $serviceAccountName := (include "arkcase.serviceAccountName" $) }}
-{{- if $cluster.enabled }}
-  {{- $serviceAccountName = (or (empty $serviceAccountName) (eq "default" $serviceAccountName)) | ternary $fullName $serviceAccountName }}
-  {{- $roleName := (printf "%s-cluster-membership" $serviceAccountName) }}
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: {{ $serviceAccountName | quote }}
-  namespace: {{ $.Release.Namespace | quote }}
-  labels: {{- include "arkcase.labels" $ | nindent 4 }}
----
-kind: Role
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: {{ $roleName | quote }}
-  namespace: {{ $.Release.Namespace | quote }}
-  labels: {{- include "arkcase.labels" $ | nindent 4 }}
-rules:
-  # "" indicates the core API group
-  - apiGroups: [ "" ]
-    resources: [ "pods" ]
-    verbs: [ "get", "watch", "list" ]
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: {{ printf "%s:%s" $serviceAccountName $roleName | quote }}
-  namespace: {{ $.Release.Namespace | quote }}
-  labels: {{- include "arkcase.labels" $ | nindent 4 }}
-subjects:
-  - kind: ServiceAccount
-    name: {{ $serviceAccountName | quote }}
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: {{ $roleName | quote }}
-{{- end }}
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -68,11 +17,12 @@ metadata:
   annotations: {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  replicas: {{ $nodes }}
+  replicas: 1
   selector: &labelSelector
     matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
   serviceName: {{ include "arkcase.service.headless" $ | quote }}
-  updateStrategy: {{- include "arkcase.cluster.statefulUpdateStrategy" $ | nindent 4 }}
+  updateStrategy:
+    type: RollingUpdate
   podManagementPolicy: Parallel
   template:
     metadata:
@@ -91,23 +41,6 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
     spec:
-      affinity:
-        podAntiAffinity:
-        {{- if $cluster.onePerHost }}
-          requiredDuringSchedulingIgnoredDuringExecution:
-            - topologyKey: "kubernetes.io/hostname"
-              namespaces: [ {{ $.Release.Namespace | quote }} ]
-              labelSelector:
-                <<: *labelSelector
-        {{- else }}
-          preferredDuringSchedulingIgnoredDuringExecution:
-            - weight: 1
-              podAffinityTerm:
-                topologyKey: "kubernetes.io/hostname"
-                namespaces: [ {{ $.Release.Namespace | quote }} ]
-                labelSelector:
-                  <<: *labelSelector
-        {{- end }}
       {{- include "arkcase.image.pullSecrets" $ | nindent 6 }}
       {{- with $.Values.hostAliases }}
       hostAliases: {{- toYaml . | nindent 8 }}
@@ -169,8 +102,6 @@ spec:
           {{- include "arkcase.image" $ | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
-            {{- include "arkcase.cluster.env" $ | nindent 12 }}
-            {{- include "arkcase.cluster.tomcat.env" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
             {{- include "arkcase.pentaho.jdbc-urls" $ | nindent 12 }}
             {{- include "arkcase.pentaho.extraDataSources.env" $ | nindent 12 }}
@@ -188,14 +119,17 @@ spec:
             - name: PENTAHO_SERVICE
               value: {{ $serviceName | quote }}
             - name: ADMIN_PORT
-              value: {{ $cluster.enabled | ternary 4443 8443 | toString | quote }}
+              value: "8443"
             - name: ADMIN_URL
               value: "https://localhost:$(ADMIN_PORT)/pentaho"
             - name: PENTAHO_INSTALLED_LICENSE_PATH
               value: "$(DATA_DIR)/.installedLicenses.xml"
             - name: ARKCASE_ENTERPRISE
               value: {{ not (empty (include "arkcase.enterprise" $)) | toString | quote }}
-          {{- include "arkcase.subsystem.ports" (dict "ctx" $ "name" ($cluster.enabled | ternary "clusteredPentaho" "pentaho")) | nindent 10 }}
+            - name: JAVA_TOOL_OPTIONS
+              value: >-
+                {{ include "arkcase.fips.java-options" $ }}
+          {{- include "arkcase.subsystem.ports" (dict "ctx" $ "name" "pentaho") | nindent 10 }}
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "pentaho") | nindent 12 }}
           lifecycle:
@@ -244,20 +178,6 @@ spec:
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/install-mondrian-schema") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/lock-initializer") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/etc/curator-wrapper.yaml") | nindent 12 }}
-        {{- if $cluster.enabled }}
-        - name: haproxy
-          {{- include "arkcase.image" (dict "ctx" $ "name" "haproxy" "repository" "haproxy") | nindent 10 }}
-          env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
-            {{- include "arkcase.acme.env" $ | nindent 12 }}
-          command: [ "/entrypoint" ]
-          {{- include "arkcase.subsystem.ports" (dict "ctx" $ "name" "clusteredHaproxy") | nindent 10 }}
-          securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "haproxy") | nindent 12 }}
-          volumeMounts:
-            {{- include "arkcase.acme.volumeMount-shared" $ | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/etc/haproxy/haproxy.cfg") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/etc/haproxy/lua/responses.lua") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/entrypoint" "subPath" "entrypoint-haproxy") | nindent 12 }}
-        {{- end }}
       volumes:
         - name: *initVol
           emptyDir:
