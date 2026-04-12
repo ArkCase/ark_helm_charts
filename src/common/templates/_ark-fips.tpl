@@ -1,7 +1,3 @@
-{{- define "__arkcase.fips.default-crypto-dir" -}}
-/app/crypto/bc
-{{- end -}}
-
 {{- define "arkcase.fips" -}}
   {{- $ctx := . -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
@@ -32,9 +28,9 @@
 - name: JAVA_SSL_KEYSTORE_TYPE
   value: "PKCS12"
 - name: JAVA_SSL_KEYSTORE_PROVIDER
-  value: "-"
+  value: "SUN"
 - name: JAVA_SSL_KEYSTORE_PROVIDER_CLASS
-  value: "-"
+  value: "sun.security.provider.Sun"
 - name: JAVA_SSL_KEYSTORE_PROVIDER_PATH
   value: "-"
 - name: JAVA_SSL_KEYSTORE_PROVIDER_ARGS
