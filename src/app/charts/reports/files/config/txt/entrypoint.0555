@@ -67,10 +67,6 @@ export DATA_DIR
 
 set_or_default INIT_DIR "${BASE_DIR}/init"
 
-# Enable reading the cert that HAProxy will need
-set_as_boolean CLUSTER_ENABLED "false"
-"${CLUSTER_ENABLED}" && chmod a+r "${SSL_DIR}/haproxy-cert.pem"
-
 ###################################################################
 # INSTALL ANY LICENSES                                            #
 ###################################################################
