@@ -1,7 +1,3 @@
-{{- define "__arkcase.fips.default-crypto-dir" -}}
-/app/crypto/bc
-{{- end -}}
-
 {{- define "arkcase.fips" -}}
   {{- $ctx := . -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}

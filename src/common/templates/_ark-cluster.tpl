@@ -172,6 +172,7 @@
   {{- end -}}
 
   {{- include "arkcase.subsystem-access.env" (dict "ctx" $ "subsys" "zookeeper" "key" "zkHost" "name" "ZK_HOST") -}}
+  {{- include "arkcase.subsystem-access.env" (dict "ctx" $ "subsys" "zookeeper" "key" "zkQuerySvc" "name" "ZK_QUERY_SVC") | nindent 0 }}
 {{- end -}}
 
 {{- define "arkcase.cluster.tomcat.env" -}}
