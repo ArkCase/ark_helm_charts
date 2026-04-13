@@ -157,7 +157,7 @@ service:
         protocol: TCP
         port: 5710
 
-    probes:
+    probes: &arkcaseProbes
       enabled: true
       spec:
         initialDelaySeconds: 0
