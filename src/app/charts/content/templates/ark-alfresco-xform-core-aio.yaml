@@ -54,6 +54,7 @@ spec:
           env:
             {{- include "arkcase.acme.env" $ | nindent 12 }}
             {{- include "arkcase.alfresco.service.env" $ | nindent 12 }}
+            {{- include "arkcase.fips.legacy-env" $ | nindent 12 }}
             - name: ACTIVEMQ_URL
               value: nio+ssl://$(SERVICE_ALFRESCO_ACTIVEMQ):61616
           {{- if not (include "arkcase.enterprise" $) }}
@@ -63,7 +64,6 @@ spec:
           {{- end }}
             - name: JAVA_TOOL_OPTIONS
               value: >-
-                {{ include "arkcase.fips.java-options" $ }}
                 -XX:MinRAMPercentage=50
                 -XX:MaxRAMPercentage=80
           resources: {{- include "arkcase.resources" $ | nindent 12 }}

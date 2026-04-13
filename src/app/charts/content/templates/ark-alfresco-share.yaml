@@ -55,6 +55,7 @@ spec:
           env:
             {{- include "arkcase.acme.env" $ | nindent 12 }}
             {{- include "arkcase.alfresco.service.env" $ | nindent 12 }}
+            {{- include "arkcase.fips.legacy-env" $ | nindent 12 }}
             - name: REPO_SCHEME
               value: "https"
             - name: REPO_HOST
@@ -63,9 +64,6 @@ spec:
               value: "8443"
             - name: REPO_CONTEXT
               value: "alfresco"
-            - name: JAVA_TOOL_OPTIONS
-              value: >-
-                {{ include "arkcase.fips.java-options" $ }}
             - name: CATALINA_OPTS
               value: >-
                 -XX:MinRAMPercentage=50
