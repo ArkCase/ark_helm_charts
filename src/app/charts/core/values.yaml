@@ -157,9 +157,9 @@ service:
         protocol: TCP
         port: 5710
 
-    probes: &arkcaseProbes
+    probes:
       enabled: true
-      spec: &baseProbeThreshold
+      spec:
         initialDelaySeconds: 0
         periodSeconds: 10
         timeoutSeconds: 10
