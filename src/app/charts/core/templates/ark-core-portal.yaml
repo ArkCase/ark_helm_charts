@@ -198,6 +198,7 @@ spec:
             {{- include "arkcase.env.applicationVars" $ | nindent 12 }}
             {{- include "arkcase.core.settings.env" $ | nindent 12 }}
             {{- include "arkcase.alt-java" $ | nindent 12 }}
+            {{- include "arkcase.fips.legacy-env" $ | nindent 12 }}
             - name: COMPONENT
               value: "portal"
             - name: POLL_CONFIG
@@ -231,9 +232,6 @@ spec:
             {{- with (($.Values.configuration).arkcase).env }}
               {{- toYaml . | nindent 12 }}
             {{- end }}
-            - name: JAVA_TOOL_OPTIONS
-              value: >-
-                {{ include "arkcase.fips.java-options" $ }}
             {{- include "arkcase.core.tomcatNative.env" $debug | nindent 12 }}
             - name: CATALINA_OPTS
               # For Java 8, these percentages must be given as doubles. The JVM may

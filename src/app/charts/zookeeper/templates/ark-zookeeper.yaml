@@ -97,6 +97,7 @@ spec:
             {{- include "arkcase.acme.env" $ | nindent 12 }}
             {{- include "arkcase.cluster.discovery.env" (dict "ctx" $ "port" "clients") | nindent 12 }}
             {{- include "arkcase.alt-java" $ | nindent 12 }}
+            {{- include "arkcase.fips.legacy-env" $ | nindent 12 }}
             - name: ZOOCFGDIR
               value: *confDir
             - name: ZOO_LOG_DIR
@@ -113,9 +114,6 @@ spec:
               value: {{ include "arkcase.tools.conf" (dict "ctx" $ "value" "autopurge.purgeInterval") | toString | quote }}
             - name: ZOOKEEPER_AUTOPURGE_SNAP_RETAIN_COUNT
               value: {{ include "arkcase.tools.conf" (dict "ctx" $ "value" "autopurge.snapRetainCount") | toString | quote }}
-            - name: JAVA_TOOL_OPTIONS
-              value: >-
-                {{ include "arkcase.fips.java-options" $ }}
             {{- if $.Values.env }}
             {{- $.Values.env | toYaml | nindent 12 }}
             {{- end }}

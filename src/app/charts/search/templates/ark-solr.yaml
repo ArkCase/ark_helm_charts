@@ -99,9 +99,6 @@ spec:
               value: {{ (not (empty (include "arkcase.solr.sharding" $))) | toString | quote }}
             - name: REPLICAS
               value: {{ $replicas | toString | quote }}
-            - name: JAVA_TOOL_OPTIONS
-              value: >-
-                {{ include "arkcase.fips.java-options" $ }}
             - name: SOLR_OPTS
               value: >-
                 -Dsolr.autoSoftCommit.maxTime=1000

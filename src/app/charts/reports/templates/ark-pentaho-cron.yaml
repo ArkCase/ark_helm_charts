@@ -107,9 +107,6 @@ spec:
             - name: FOIA_TIME_ZONE
               value: {{ $portal.reportsTimezone | quote }}
             {{- end }}
-            - name: JAVA_TOOL_OPTIONS
-              value: >-
-                {{ include "arkcase.fips.java-options" $ }}
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "cron") | nindent 12 }}
           volumeMounts:
