@@ -78,7 +78,7 @@ init_ssl
 
 # By default the start script uses "localhost"; override the hostname here
 # for production SolrCloud environments to control the hostname exposed to cluster state
-SOLR_HOST="$(hostname -f)"
+SOLR_HOST_ADVERTISE="$(hostname -f)"
 
 # By default Solr will try to connect to Zookeeper with 30 seconds in timeout; override the timeout if needed
 #SOLR_CLOUD_WAIT_FOR_ZK_SECONDS="30"
@@ -201,9 +201,11 @@ SOLR_OPTS="${SOLR_OPTS} -Dzookeeper.client.secure=true -Dzookeeper.ssl.hostnameV
 
 # Settings for authentication
 # Please configure only one of SOLR_AUTHENTICATION_CLIENT_BUILDER or SOLR_AUTH_TYPE parameters
-#SOLR_AUTHENTICATION_CLIENT_BUILDER="org.apache.solr.client.solrj.jetty.PreemptiveBasicAuthClientBuilderFactory"
-#SOLR_AUTH_TYPE="basic"
-#SOLR_AUTHENTICATION_OPTS="-Dsolr.security.auth.basicauth.credentials=solr:SolrRocks"
+#SOLR_AUTHENTICATION_CLIENT_BUILDER="org.apache.solr.client.solrj.impl.PreemptiveBasicAuthClientBuilderFactory"
+if [ -n "${SOLR_ADMIN_USERNAME:-}" ] && [ -n "${SOLR_ADMIN_PASSWORD:-}" ] ; then
+  SOLR_AUTH_TYPE="basic"
+  SOLR_AUTHENTICATION_OPTS="-Dbasicauth=${SOLR_ADMIN_USERNAME}:${SOLR_ADMIN_PASSWORD}"
+fi
 
 # Settings for ZK ACL
 #SOLR_ZK_CREDS_AND_ACLS="-DzkACLProvider=org.apache.solr.common.cloud.DigestZkACLProvider \

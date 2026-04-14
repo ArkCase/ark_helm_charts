@@ -114,6 +114,17 @@ spec:
               value: "acmAdvancedSearch=arkcase"
             - name: SOLR_HOST_BIND
               value: "0.0.0.0"
+            {{- /* Solr allows anonymous read/update (blockUnknown: false) — no app-level credentials injected */}}
+            - name: SOLR_ADMIN_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "arkcase.subsystem-access.name" (dict "ctx" $ "conn" "admin") | quote }}
+                  key: username
+            - name: SOLR_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "arkcase.subsystem-access.name" (dict "ctx" $ "conn" "admin") | quote }}
+                  key: password
             {{- if $.Values.env }}
               {{- $.Values.env | toYaml | nindent 12 }}
             {{- end }}
@@ -139,10 +150,6 @@ spec:
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/entrypoint") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/config-pre.sh") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/config-post.sh") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/init/pre/00-deploy-config.sh" "subPath" "deploy-configs.sh") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/init/pre/arkcase-conf.tar.gz") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/init/post/00-set-cluster-policy.sh" "subPath" "set-cluster-policy.sh") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/init/post/01-create-cores.sh" "subPath" "create-cores.sh") | nindent 12 }}
       volumes:
         - name: *initVol
           emptyDir:

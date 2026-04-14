@@ -39,6 +39,62 @@ say "Enabling SSL on the cluster"
 )
 say "SSL Enabled!"
 
+# Configure Basic Auth — always writes security.json to ZK before Solr starts so that
+# credentials from the K8s secret are always in sync with what Solr enforces.
+# Writing is safe to repeat: all pods read the same ZK node and hold the same password
+# from the K8s secret, so the last writer always wins with consistent credentials.
+if [ -n "${SOLR_ADMIN_USERNAME:-}" ] && [ -n "${SOLR_ADMIN_PASSWORD:-}" ] ; then
+	solr_hash() {
+		local PASSWORD="${1}"
+		local SALT_B64
+		SALT_B64="$(openssl rand 32 | openssl base64 | tr -d '\n')"
+		local HASH
+		HASH="$(
+			(openssl base64 -d <<< "${SALT_B64}"; printf '%s' "${PASSWORD}") \
+			| openssl dgst -sha256 -binary \
+			| openssl dgst -sha256 -binary \
+			| openssl base64 \
+			| tr -d '\n'
+		)"
+		echo "${HASH} ${SALT_B64}"
+	}
+
+	say "Generating password hash for admin user '${SOLR_ADMIN_USERNAME}'..."
+	ADMIN_HASH="$(solr_hash "${SOLR_ADMIN_PASSWORD}")"
+
+	SEC_TMP="$(mktemp)"
+	cat > "${SEC_TMP}" << EOF
+{
+  "authentication": {
+    "class": "solr.BasicAuthPlugin",
+    "blockUnknown": false,
+    "credentials": {
+      "${SOLR_ADMIN_USERNAME}": "${ADMIN_HASH}"
+    }
+  },
+  "authorization": {
+    "class": "solr.RuleBasedAuthorizationPlugin",
+    "permissions": [
+      {"name": "read", "role": null},
+      {"name": "update", "role": null},
+      {"name": "security-edit", "role": "admin"},
+      {"name": "collection-admin-edit", "role": "admin"},
+      {"name": "core-admin-edit", "role": "admin"}
+    ],
+    "user-role": {
+      "${SOLR_ADMIN_USERNAME}": "admin"
+    }
+  }
+}
+EOF
+	"${BASE_DIR}/solr/bin/solr" zk cp "${SEC_TMP}" "zk:/security.json" --zk-host "${ZK_HOST}" || \
+		fail "Could not write security.json to ZooKeeper"
+	rm -f "${SEC_TMP}"
+	say "Basic Auth configured: admin user '${SOLR_ADMIN_USERNAME}' (role: admin). Anonymous read/update allowed."
+else
+	say "No SOLR_ADMIN_USERNAME/SOLR_ADMIN_PASSWORD set — Solr will run open (no auth)."
+fi
+
 set_or_default INIT_MARKER "${DATA_DIR}/.initialized"
 
 # This is important: ${HOME_DIR} must be *ephemeral* - this flag is only meant to
