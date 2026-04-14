@@ -2,13 +2,13 @@ mariadb:
   port: 3306
   jdbc:
     driver: org.mariadb.jdbc.Driver
-    url: "jdbc:mariadb://$(ALFRESCO_JDBC_HOST):$(ALFRESCO_JDBC_PORT)/$(ALFRESCO_JDBC_DATABASE)?useSSL=true&requireSsl=true&enabledSslProtocolSuites=TLSv1.2"
+    url: "jdbc:mariadb://$(ALFRESCO_JDBC_HOST):$(ALFRESCO_JDBC_PORT)/$(ALFRESCO_JDBC_DATABASE)?useSSL=true&requireSsl=true&enabledSslProtocolSuites=TLSv1.3"
 
 mysql:
   port: 3306
   jdbc:
     driver: com.mysql.cj.jdbc.Driver
-    url: "jdbc:mysql://$(ALFRESCO_JDBC_HOST):$(ALFRESCO_JDBC_PORT)/$(ALFRESCO_JDBC_DATABASE)?useSSL=true&autoReconnect=true&useUnicode=true&characterEncoding=UTF-8&enabledTLSProtocols=TLSv1.2"
+    url: "jdbc:mysql://$(ALFRESCO_JDBC_HOST):$(ALFRESCO_JDBC_PORT)/$(ALFRESCO_JDBC_DATABASE)?useSSL=true&autoReconnect=true&useUnicode=true&characterEncoding=UTF-8&enabledTLSProtocols=TLSv1.3"
 
 oracle:
   port: 1521

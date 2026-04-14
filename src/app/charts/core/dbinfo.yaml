@@ -5,7 +5,7 @@ mariadb: &mariaDb
   port: 3306
   jdbc:
     driver: org.mariadb.jdbc.Driver
-    url: "jdbc:mariadb://${ARKCASE_JDBC_HOST}:${ARKCASE_JDBC_PORT}/${ARKCASE_JDBC_DATABASE}?useSSL=true&requireSsl=true&enabledSslProtocolSuites=TLSv1.2"
+    url: "jdbc:mariadb://${ARKCASE_JDBC_HOST}:${ARKCASE_JDBC_PORT}/${ARKCASE_JDBC_DATABASE}?useSSL=true&requireSsl=true&enabledSslProtocolSuites=TLSv1.3"
   aliases:
     - mysql
 
