@@ -40,9 +40,12 @@ portal:
   serviceProvider:
     directory.name: "portal"
   keystoreFilename: "${JAVA_KEYSTORE}"
+  keystoreKeyPassword: "${JAVA_KEY_PASSWORD}"
   keystorePassword: "${JAVA_KEYSTORE_PASSWORD}"
+  keystoreType: "${JAVA_KEYSTORE_TYPE}"
   truststoreFilename: "${JAVA_TRUSTSTORE}"
   truststorePassword: "${JAVA_TRUSTSTORE_PASSWORD}"
+  truststoreType: "${JAVA_TRUSTSTORE_TYPE}"
   security.authentication:
     header.parameter.name: foia-api-secret
     token:  {{ $portal.apiSecret | quote }}
