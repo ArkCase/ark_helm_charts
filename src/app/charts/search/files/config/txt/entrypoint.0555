@@ -19,13 +19,12 @@ set_or_default BASE_DIR "/app"
 set_or_default DATA_DIR "/app/data"
 
 set_or_default SOLR_LOGS_DIR "${DATA_DIR}/logs"
-[ -v SOLR_LOGS_DIR ] || export SOLR_LOGS_DIR="${DATA_DIR}/logs"
+export SOLR_LOGS_DIR
 
 ensure_dir "${SOLR_LOGS_DIR}"
 
 #
-# Recompute the ZK_HOST value from DNS, but only
-# if we're running in a potentially-clustered environment
+# Recompute the ZK_HOST value from DNS
 #
 . /usr/local/bin/zk-host
 
@@ -36,7 +35,7 @@ say "Enabling SSL on the cluster"
 (
 	set -euo pipefail
 	cd "${BASE_DIR}/solr"
-	exec server/scripts/cloud-scripts/zkcli.sh -zkhost "${ZK_HOST}" -cmd clusterprop -name urlScheme -val https
+	exec bin/solr cluster --zk-host "${ZK_HOST}" --property urlScheme --value https
 )
 say "SSL Enabled!"
 
@@ -57,5 +56,4 @@ else
 	touch "${RUN_MARKER}"
 fi
 
-set -- "${HOME_DIR}/bin/solr" start -f -cloud
-execute "${@}"
+execute "${HOME_DIR}/bin/solr" start --foreground "${@}"
