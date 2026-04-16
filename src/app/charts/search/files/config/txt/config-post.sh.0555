@@ -30,10 +30,7 @@ set_or_default INIT_POLL_SLEEP
 set_or_default INIT_MAX_WAIT
 [[ "${INIT_MAX_WAIT}" =~ ^[1-9][0-9]*$ ]] || INIT_MAX_WAIT=90
 
-set_or_default SOLR_URL "https://localhost:8983/solr"
-SOLR_URL+="/admin/info/health"
-
-poll_url "${SOLR_URL}" "${INIT_MAX_WAIT}" "${INIT_POLL_SLEEP}" || exit 1
+poll_url "https://localhost:8983/solr/admin/info/health" "${INIT_MAX_WAIT}" "${INIT_POLL_SLEEP}" || exit 1
 
 # Don't run if init didn't run
 [ -f "${RUN_MARKER}" ] || exit 0

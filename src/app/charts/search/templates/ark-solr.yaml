@@ -114,17 +114,6 @@ spec:
               value: "acmAdvancedSearch=arkcase"
             - name: SOLR_HOST_BIND
               value: "0.0.0.0"
-            {{- /* Solr allows anonymous read/update (blockUnknown: false) — no app-level credentials injected */}}
-            - name: SOLR_ADMIN_USERNAME
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "arkcase.subsystem-access.name" (dict "ctx" $ "conn" "admin") | quote }}
-                  key: username
-            - name: SOLR_ADMIN_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "arkcase.subsystem-access.name" (dict "ctx" $ "conn" "admin") | quote }}
-                  key: password
             {{- if $.Values.env }}
               {{- $.Values.env | toYaml | nindent 12 }}
             {{- end }}
