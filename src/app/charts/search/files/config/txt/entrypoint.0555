@@ -49,7 +49,7 @@ say "Generating password hash for admin user '${SOLR_ADMIN_USERNAME}'..."
 ADMIN_HASH="$(solrpass "${SOLR_ADMIN_PASSWORD}")"
 
 SEC_TMP="$(mktemp)"
-cat > "${SEC_TMP}" << EOF
+cat > "${SEC_TMP}" <<-EOF
 {
   "authentication": {
     "class": "solr.BasicAuthPlugin",
@@ -87,10 +87,10 @@ SOLR_AUTH_CREDS="$(mktemp)"
 export SOLR_AUTH_CREDS
 (
 	umask 177
-	cat > "${SOLR_AUTH_CREDS}" << EOF
-httpBasicAuthUser=${SOLR_ADMIN_USERNAME}
-httpBasicAuthPassword=${SOLR_ADMIN_PASSWORD}
-EOF
+	cat > "${SOLR_AUTH_CREDS}" <<-EOF
+	httpBasicAuthUser=${SOLR_ADMIN_USERNAME}
+	httpBasicAuthPassword=${SOLR_ADMIN_PASSWORD}
+	EOF
 )
 chmod u=r,go= "${SOLR_AUTH_CREDS}"
 say "Wrote Solr client auth properties to ${SOLR_AUTH_CREDS}"
