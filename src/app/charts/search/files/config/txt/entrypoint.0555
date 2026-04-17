@@ -83,14 +83,17 @@ say "Basic Auth configured: user '${SOLR_USERNAME}' (role: user), admin '${SOLR_
 
 # Write credentials to a tmpfs file so Solr's HTTP client picks them up without
 # exposing them in the process table via -Dbasicauth=user:pass
+SOLR_AUTH_CREDS="$(mktemp)"
+export SOLR_AUTH_CREDS
 (
 	umask 177
-	cat > "/tmp/solr-auth.properties" << EOF
+	cat > "${SOLR_AUTH_CREDS}" << EOF
 httpBasicAuthUser=${SOLR_ADMIN_USERNAME}
 httpBasicAuthPassword=${SOLR_ADMIN_PASSWORD}
 EOF
 )
-say "Wrote Solr client auth properties to /tmp/solr-auth.properties"
+chmod u=r,go= "${SOLR_AUTH_CREDS}"
+say "Wrote Solr client auth properties to ${SOLR_AUTH_CREDS}"
 
 set_or_default INIT_MARKER "${DATA_DIR}/.initialized"
 

@@ -203,7 +203,7 @@ SOLR_OPTS="${SOLR_OPTS} -Dzookeeper.client.secure=true -Dzookeeper.ssl.hostnameV
 # Please configure only one of SOLR_AUTHENTICATION_CLIENT_BUILDER or SOLR_AUTH_TYPE parameters
 #SOLR_AUTHENTICATION_CLIENT_BUILDER="org.apache.solr.client.solrj.impl.PreemptiveBasicAuthClientBuilderFactory"
 SOLR_AUTH_TYPE="basic"
-SOLR_AUTHENTICATION_OPTS="-Dsolr.httpclient.config=/tmp/solr-auth.properties"
+SOLR_AUTHENTICATION_OPTS="-Dsolr.httpclient.config=${SOLR_AUTH_CREDS}"
 
 # Settings for ZK ACL
 #SOLR_ZK_CREDS_AND_ACLS="-DzkACLProvider=org.apache.solr.common.cloud.DigestZkACLProvider \
