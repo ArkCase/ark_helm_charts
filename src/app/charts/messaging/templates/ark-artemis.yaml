@@ -88,9 +88,10 @@ spec:
                   name: *secretName
                   key: ENCRYPTION_PASSWORD
           {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
-          {{- with (include "arkcase.values" (dict "ctx" $ "base" "command") | fromYaml) }}
-          command: {{ toJson .value }}
-          {{- end }}
+          lifecycle:
+            preStop:
+              exec:
+                command: [ "/app/artemis/bin/broker", "stop" ]
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "artemis") | nindent 12 }}
           volumeMounts:
