@@ -277,7 +277,8 @@ service:
     ports:
       - name: artifacts
         protocol: TCP
-        port: &artifactsPort 443
+        targetPort: &artifactsPort 8443
+        port: 443
 
 ##
 ## Configure extra options for containers' liveness and readiness probes
