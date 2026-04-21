@@ -81,7 +81,7 @@ spec:
           lifecycle:
             preStop:
               exec:
-                command: [ "/usr/bin/pg_ctl", "stop" ]
+                command: [ "/usr/bin/pg_ctl", "stop", "-w" ]
           volumeMounts:
             {{- include "arkcase.subsystem-access.volumeMount" $ | nindent 12 }}
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
