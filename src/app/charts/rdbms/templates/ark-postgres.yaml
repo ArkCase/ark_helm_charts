@@ -72,9 +72,11 @@ spec:
             {{- include "arkcase.initDatabase.adminPassEnv" (dict "ctx" $ "var" "POSTGRESQL_ADMIN_PASSWORD") | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
           {{- include "arkcase.rdbms.ports" $ | nindent 10 }}
-          {{- if $.Values.command }}
-          command: {{- $.Values.command | toYaml | nindent 12 }}
-          {{- end }}
+          lifecycle:
+            preStop:
+              exec:
+                command: [ "/usr/bin/pg_ctl", "stop", "-w" ]
+          volumeMounts:
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "postgres") | nindent 12 }}
           volumeMounts:
