@@ -48,6 +48,25 @@ spec:
       securityContext: {{- include "arkcase.securityContext" $ | nindent 8 }}
       terminationGracePeriodSeconds: 5
       initContainers:
+        - name: init-permissions
+          {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
+          env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            - name: HOME_DIR
+              value: &homeDir "/var/lib/samba"
+            - name: LOGS_DIR
+              value: &logsDir "/var/log/samba"
+            - name: JOBS
+              value: |-
+                jobs:
+                  - ownership: "1999:1999"
+                    permissions: "u=rwX,g=rX,o="
+                    flags: [ "recurse", "forced", "create", "changes" ]
+                    targets: [ "$(HOME_DIR)", "$(LOGS_DIR)" ]
+          volumeMounts:
+            - name: &dataVol "data"
+              mountPath: *homeDir
+            - name: &logsVol "logs"
+              mountPath: *logsDir
         {{- include "arkcase.initDependencies.container" $ | nindent 8 }}
       containers:
         - name: samba
@@ -94,10 +113,10 @@ spec:
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/init/init.d/000-init-seeds-wrapper" "subPath" "init-seeds-wrapper") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/boot/000-init-managed" "subPath" "init-managed") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/init-seeds") | nindent 12 }}
-            - name: "data"
-              mountPath: "/var/lib/samba"
-            - name: "logs"
-              mountPath: "/var/log/samba"
+            - name: *dataVol
+              mountPath: *homeDir
+            - name: *logsVol
+              mountPath: *logsDir
             - name: &seedFiles "seed-files"
               mountPath: *seedDir
               readOnly: true
