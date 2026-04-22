@@ -24,8 +24,7 @@
 
 {{- define "arkcase.fips.java-options" -}}
   {{- $fips := (include "arkcase.fips.bool" $) -}}
-  {{- /* -Dcom.redhat.fips={{ $fips }} -Dorg.bouncycastle.fips.approved_only={{ $fips }} --module-path=/app/fips */ -}}
--Dcom.redhat.fips={{ $fips }} --module-path=/app/fips
+-Dcom.redhat.fips={{ $fips }} -Dorg.bouncycastle.fips.approved_only={{ $fips }} --module-path=/app/fips
 {{- end -}}
 
 {{- define "arkcase.fips.legacy-env" -}}
