@@ -26,6 +26,21 @@ ensure_dir "${SOLR_LOGS_DIR}"
 
 if [ -v ZK_HOST ] ; then
 
+	ZK_SSL_FLAGS=(
+		-Dzookeeper.clientCnxnSocket="org.apache.zookeeper.ClientCnxnSocketNetty"
+		-Dzookeeper.client.secure="true"
+		-Dzookeeper.ssl.hostnameVerification="true"
+		-Dzookeeper.ssl.protocol="TLSv1.3"
+		-Dzookeeper.ssl.enabledProtocols="TLSv1.3"
+		-Dzookeeper.ssl.keyStore.location="${SSL_DIR}/keystore.pkcs12"
+		-Dzookeeper.ssl.keyStore.password="$(<"${SSL_DIR}/keystore.pass")"
+		-Dzookeeper.ssl.keyStore.type="PKCS12"
+		-Dzookeeper.ssl.trustStore.location="${SSL_DIR}/keystore.pkcs12"
+		-Dzookeeper.ssl.trustStore.password="$(<"${SSL_DIR}/keystore.pass")"
+		-Dzookeeper.ssl.trustStore.type="PKCS12"
+	)
+	export ZKCLI_JVM_FLAGS="${ZK_SSL_FLAGS[@]}"
+
 	# Get the hostnames from ZooKeeper
 	#
 	# This is only needed because Solr doesn't (yet ... 8.11.4) do
@@ -77,6 +92,9 @@ if [ -v ZK_HOST ] ; then
 		exec server/scripts/cloud-scripts/zkcli.sh -zkhost "${ZK_HOST}" -cmd clusterprop -name urlScheme -val https
 	)
 	say "SSL Enabled!"
+
+	# Remove temporary variables
+	unset ZK_SSL_FLAGS ZKCLI_JVM_FLAGS
 fi
 
 set_or_default INIT_MARKER "${DATA_DIR}/.initialized"

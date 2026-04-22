@@ -123,20 +123,20 @@ service:
       - name: https
         protocol: TCP
         port: &https 8443
-    probes: &pentahoProbes
+    probes:
       enabled: true
-      spec: &baseProbeThreshold
+      spec:
         initialDelaySeconds: 0
         periodSeconds: 10
         timeoutSeconds: 10
         failureThreshold: 1
         successThreshold: 1
       startup:
-        exec: &tomcatStartup
+        exec:
           command: [ "/usr/local/bin/tomcat-live", "STARTUP" ]
         failureThreshold: 90
       liveness:
-        exec: &tomcatLiveness
+        exec:
           command: [ "/usr/local/bin/tomcat-live", "LIVENESS" ]
       readiness:
         httpGet:

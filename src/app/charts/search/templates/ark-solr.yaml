@@ -98,11 +98,10 @@ spec:
               value: {{ $replicas | toString | quote }}
             - name: JAVA_TOOL_OPTIONS
               value: >-
-                -Dcom.redhat.fips=false
+                {{ include "arkcase.fips.java-options" $ }}
             - name: SOLR_OPTS
               value: >-
                 -Dsolr.autoSoftCommit.maxTime=1000
-                -Dzookeeper.client.secure=true
             - name: DATA_DIR
               value: *dataDir
             - name: SOLR_HOME
@@ -140,7 +139,8 @@ spec:
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/config-post.sh") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/init/pre/00-deploy-config.sh" "subPath" "deploy-configs.sh") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/init/pre/arkcase-conf.tar.gz") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/init/post/00-create-cores.sh" "subPath" "create-cores.sh") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/init/post/00-set-cluster-policy.sh" "subPath" "set-cluster-policy.sh") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/init/post/01-create-cores.sh" "subPath" "create-cores.sh") | nindent 12 }}
       volumes:
         - name: *initVol
           emptyDir:

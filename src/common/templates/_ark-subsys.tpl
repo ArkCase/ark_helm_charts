@@ -599,7 +599,7 @@ ports:
       {{- range . }}
   - name: {{ (required "Port specifications must contain a name" .name) | quote }}
     protocol: {{ coalesce .protocol "TCP" }}
-    containerPort: {{ required (printf "Port [%s] doesn't have a port number" .name) .port }}
+    containerPort: {{ required (printf "Port [%s] doesn't have a port number (targetPort: or port:)" .name) (.targetPort | default .port) }}
       {{- end }}
     {{- end }}
     {{- $probes := (coalesce .probes dict) }}

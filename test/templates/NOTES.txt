@@ -62,3 +62,5 @@ env: {{- include "arkcase.acme.env" $ | nindent 2 }}
 volumeMounts: {{- include "arkcase.acme.volumeMount" $ | nindent 2 }}
 volumes: {{- include "arkcase.acme.volume" $ | nindent 2 }}
 
+---
+FIPS: [{{ include "arkcase.fips" $ }}] (bool = {{ include "arkcase.fips.bool" $ }})
