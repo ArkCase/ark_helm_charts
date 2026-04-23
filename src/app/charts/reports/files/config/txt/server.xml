@@ -66,7 +66,7 @@
          APR (HTTP/AJP) Connector: /docs/apr.html
          Define a non-SSL/TLS HTTP/1.1 Connector on port 4040
     -->
-    <Connector port="4040" protocol="HTTP/1.1"
+    <Connector port="8080" protocol="HTTP/1.1"
        connectionTimeout="20000"
        URIEncoding="UTF-8"
        relaxedPathChars="[]|"
@@ -76,7 +76,7 @@
     <!-- A "Connector" using the shared thread pool-->
     <!--
     <Connector URIEncoding="UTF-8" executor="tomcatThreadPool"
-               port="4040" protocol="HTTP/1.1"
+               port="8080" protocol="HTTP/1.1"
                connectionTimeout="20000"
                redirectPort="8443" />
     -->
@@ -110,11 +110,13 @@
                SSLEnabled="true"
                useBodyEncodingForURI="true">
         <UpgradeProtocol className="org.apache.coyote.http2.Http2Protocol" />
-        <SSLHostConfig protocols="TLSv1.2" certificateVerification="none">
+        <SSLHostConfig protocols="TLSv1.3" certificateVerification="none">
             <Certificate certificateKeyAlias="${JAVA_KEY_ALIAS}"
+                         certificateKeyPassword="${JAVA_KEY_PASSWORD}"
                          certificateKeystoreFile="${JAVA_KEYSTORE}"
                          certificateKeystorePassword="${JAVA_KEYSTORE_PASSWORD}"
-                         certificateKeystoreType="${JAVA_KEYSTORE_TYPE}" />
+                         certificateKeystoreType="${JAVA_KEYSTORE_TYPE}"
+                         certificateKeystoreProvider="${JAVA_KEYSTORE_PROVIDER}" />
         </SSLHostConfig>
     </Connector>
 
