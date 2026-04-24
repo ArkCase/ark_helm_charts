@@ -105,6 +105,8 @@ pentaho-license
   {{- $license := (include "arkcase.pentaho.license" $ctx | fromYaml) -}}
   {{- if $license }}
 # License environment begins
+- name: "PENTAHO_LICENSE_HOME"
+  value: "/app/pentaho/.pentaho"
 - name: "PENTAHO_LICENSE_FILE"
   valueFrom:
     secretKeyRef:
@@ -123,6 +125,12 @@ pentaho-license
       name: *license-secret
       key: "type"
       optional: false
+- name: "PENTAHO_LICENSE_OPT"
+  value: >-
+    -Dpentaho.license.filetype=$(PENTAHO_LICENSE_TYPE)
+    -Dpentaho.license.custom.host.name=$(PENTAHO_LICENSE_HOST)
+    -Dpentaho.license.file=$(PENTAHO_LICENSE_FILE)
+    -Dpentaho.license.information.path=$(PENTAHO_LICENSE_HOME)/.license.plt
 # License environment ends
   {{- end }}
 {{- end -}}
