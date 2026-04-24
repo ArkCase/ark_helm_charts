@@ -107,6 +107,8 @@ pentaho-license
 # License environment begins
 - name: "PENTAHO_LICENSE_HOME"
   value: "/app/pentaho/.pentaho"
+- name: "PENTAHO_LICENSE_INFORMATION_PATH"
+  value: "$(PENTAHO_LICENSE_HOME)/.license.plt"
 - name: "PENTAHO_LICENSE_FILE"
   valueFrom:
     secretKeyRef:
@@ -130,7 +132,7 @@ pentaho-license
     -Dpentaho.license.filetype=$(PENTAHO_LICENSE_TYPE)
     -Dpentaho.license.custom.host.name=$(PENTAHO_LICENSE_HOST)
     -Dpentaho.license.file=$(PENTAHO_LICENSE_FILE)
-    -Dpentaho.license.information.path=$(PENTAHO_LICENSE_HOME)/.license.plt
+    -Dpentaho.license.information.path=$(PENTAHO_LICENSE_INFORMATION_PATH)
 # License environment ends
   {{- end }}
 {{- end -}}
