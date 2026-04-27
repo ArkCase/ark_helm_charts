@@ -44,41 +44,13 @@ say "SSL Enabled!"
 # Writing is safe to repeat: all pods read the same ZK node and hold the same password
 # from the K8s secret, so the last writer always wins with consistent credentials.
 say "Generating password hash for user '${SOLR_USERNAME}'..."
-USER_HASH="$(solrpass "${SOLR_PASSWORD}")"
+export USER_HASH="$(solrpass "${SOLR_PASSWORD}")"
 say "Generating password hash for admin user '${SOLR_ADMIN_USERNAME}'..."
-ADMIN_HASH="$(solrpass "${SOLR_ADMIN_PASSWORD}")"
+export ADMIN_HASH="$(solrpass "${SOLR_ADMIN_PASSWORD}")"
 
 SEC_TMP="$(mktemp)"
-cat > "${SEC_TMP}" <<-EOF
-{
-  "authentication": {
-    "class": "solr.BasicAuthPlugin",
-    "blockUnknown": true,
-    "credentials": {
-      "${SOLR_USERNAME}": "${USER_HASH}",
-      "${SOLR_ADMIN_USERNAME}": "${ADMIN_HASH}"
-    }
-  },
-  "authorization": {
-    "class": "solr.RuleBasedAuthorizationPlugin",
-    "permissions": [
-      {"name": "health-check", "path": "/admin/info/health", "role": null},
-      {"name": "security-read", "role": "admin"},
-      {"name": "security-edit", "role": "admin"},
-      {"name": "schema-edit", "role": "admin"},
-      {"name": "config-edit", "role": "admin"},
-      {"name": "collection-admin-edit", "role": "admin"},
-      {"name": "core-admin-edit", "role": "admin"},
-      {"name": "read", "role": "user"},
-      {"name": "update", "role": "user"}
-    ],
-    "user-role": {
-      "${SOLR_USERNAME}": "user",
-      "${SOLR_ADMIN_USERNAME}": ["admin", "user"]
-    }
-  }
-}
-EOF
+jq -n -f "${BASE_DIR}/solr/security.json.tpl" > "${SEC_TMP}" || \
+	fail "Could not render security.json template"
 "${BASE_DIR}/solr/bin/solr" zk cp "${SEC_TMP}" "zk:/security.json" --zk-host "${ZK_HOST}" || \
 	fail "Could not write security.json to ZooKeeper"
 rm -f "${SEC_TMP}"
@@ -86,15 +58,13 @@ say "Basic Auth configured: user '${SOLR_USERNAME}' (role: user), admin '${SOLR_
 
 # Write credentials to a tmpfs file so Solr's HTTP client picks them up without
 # exposing them in the process table via -Dbasicauth=user:pass
-SOLR_AUTH_CREDS="$(mktemp)"
+ensure_dir "${SOLR_HOME}"
+SOLR_AUTH_CREDS="$(mktemp --tmpdir="${SOLR_HOME}" .solr-auth.XXXXXX)"
 export SOLR_AUTH_CREDS
-(
-	umask 177
-	cat > "${SOLR_AUTH_CREDS}" <<-EOF
-	httpBasicAuthUser=${SOLR_ADMIN_USERNAME}
-	httpBasicAuthPassword=${SOLR_ADMIN_PASSWORD}
-	EOF
-)
+cat > "${SOLR_AUTH_CREDS}" <<-EOF
+httpBasicAuthUser=${SOLR_ADMIN_USERNAME}
+httpBasicAuthPassword=${SOLR_ADMIN_PASSWORD}
+EOF
 chmod u=r,go= "${SOLR_AUTH_CREDS}"
 say "Wrote Solr client auth properties to ${SOLR_AUTH_CREDS}"
 
