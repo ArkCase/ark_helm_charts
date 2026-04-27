@@ -53,7 +53,7 @@ cat > "${SEC_TMP}" <<-EOF
 {
   "authentication": {
     "class": "solr.BasicAuthPlugin",
-    "blockUnknown": false,
+    "blockUnknown": true,
     "credentials": {
       "${SOLR_USERNAME}": "${USER_HASH}",
       "${SOLR_ADMIN_USERNAME}": "${ADMIN_HASH}"
@@ -63,11 +63,14 @@ cat > "${SEC_TMP}" <<-EOF
     "class": "solr.RuleBasedAuthorizationPlugin",
     "permissions": [
       {"name": "health-check", "path": "/admin/info/health", "role": null},
-      {"name": "read", "role": "user"},
-      {"name": "update", "role": "user"},
+      {"name": "security-read", "role": "admin"},
       {"name": "security-edit", "role": "admin"},
+      {"name": "schema-edit", "role": "admin"},
+      {"name": "config-edit", "role": "admin"},
       {"name": "collection-admin-edit", "role": "admin"},
-      {"name": "core-admin-edit", "role": "admin"}
+      {"name": "core-admin-edit", "role": "admin"},
+      {"name": "read", "role": "user"},
+      {"name": "update", "role": "user"}
     ],
     "user-role": {
       "${SOLR_USERNAME}": "user",
@@ -79,7 +82,7 @@ EOF
 "${BASE_DIR}/solr/bin/solr" zk cp "${SEC_TMP}" "zk:/security.json" --zk-host "${ZK_HOST}" || \
 	fail "Could not write security.json to ZooKeeper"
 rm -f "${SEC_TMP}"
-say "Basic Auth configured: user '${SOLR_USERNAME}' (role: user), admin '${SOLR_ADMIN_USERNAME}' (roles: admin, user). Unauthenticated access restricted to /admin/info/health."
+say "Basic Auth configured: user '${SOLR_USERNAME}' (role: user), admin '${SOLR_ADMIN_USERNAME}' (roles: admin, user). All unauthenticated access blocked; /admin/info/health accessible to any authenticated user."
 
 # Write credentials to a tmpfs file so Solr's HTTP client picks them up without
 # exposing them in the process table via -Dbasicauth=user:pass
