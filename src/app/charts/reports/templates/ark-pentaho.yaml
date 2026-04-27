@@ -148,7 +148,7 @@ spec:
           volumeMounts:
             {{- include "arkcase.pentaho.license.volumeMounts" (dict "ctx" $ "volume" "secrets" "path" "/app/init/licenses") | nindent 12 }}
             {{- include "arkcase.trusts.mount" $ | nindent 12 }}
-            {{- include "arkcase.acme.volumeMount-shared" $ | nindent 12 }}
+            {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
             - name: *dataVol
               mountPath: *dataDir
             - name: *tempVol
@@ -281,7 +281,7 @@ spec:
               readOnly: true
       volumes:
         {{- include "arkcase.trusts.volume" $ | nindent 8 }}
-        {{- include "arkcase.acme.volume-shared" $ | nindent 8 }}
+        {{- include "arkcase.acme.volume" $ | nindent 8 }}
         - name: *initVol
           emptyDir:
             sizeLimit: 1Gi
