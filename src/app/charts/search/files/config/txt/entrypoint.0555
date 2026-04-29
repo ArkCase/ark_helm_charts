@@ -61,7 +61,7 @@ say "Basic Auth configured: user '${SOLR_USERNAME}' (role: user), admin '${SOLR_
 ensure_dir "${SOLR_HOME}"
 SOLR_AUTH_CREDS="$(mktemp --tmpdir="${SOLR_HOME}" .solr-auth.XXXXXX)"
 export SOLR_AUTH_CREDS
-cat > "${SOLR_AUTH_CREDS}" <<-EOF
+cat <<-EOF > "${SOLR_AUTH_CREDS}"
 httpBasicAuthUser=${SOLR_ADMIN_USERNAME}
 httpBasicAuthPassword=${SOLR_ADMIN_PASSWORD}
 EOF
