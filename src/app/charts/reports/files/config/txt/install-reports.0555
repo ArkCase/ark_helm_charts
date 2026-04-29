@@ -258,7 +258,8 @@ install_report()
 		#
 
 		say "Installing the ${FILE_TYPE} from [${F}]${ARCHIVE_INFO}..."
-		local UPLOAD_LOG_FILE="${LOGS_DIR}/uploads-$(date -u +%Y%m%d-%H%M%S)Z.log"
+		local UPLOAD_LOG_FILE="${LOGS_DIR}/uploads-$(printf "%04x" "${INSTALL_COUNTER}")-$(date -u +%Y%m%d-%H%M%S)Z.log"
+		(( ++INSTALL_COUNTER )) || true
 		CMD=(
 			"${REPORT_INSTALLER}"
 			--import
@@ -324,6 +325,7 @@ if is_debug || is_check || is_file_executable "${REPORT_INSTALLER}" ; then
 	#
 	ERROR="false"
 	REPORTS_DIR="${INIT_DIR}/reports"
+	INSTALL_COUNTER=0
 	while read FILE ; do
 		# TODO: What if we want to undeploy? How do we do that?
 
