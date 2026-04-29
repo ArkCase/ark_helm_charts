@@ -28,18 +28,11 @@ config_exists()
 exists()
 {
 	local NAME="${1}"
-	local RC=0
 
 	# Run the query
-	local JSON="$(curl -fL "https://localhost:8983/solr/admin/collections?action=colstatus&collection=${NAME}")" || RC=${?}
-	[ ${RC} -eq 0 ] || return ${RC}
-
-	# Examine the result
-	local RESULT="$(jq -r ".${NAME}.stateFormat // \"missing\"" <<< "${JSON}")" || return ${?}
-
-	RC=0
-	[ "${RESULT}" == "missing" ] && RC=1
-	return ${RC}
+	local JSON=""
+	JSON="$(curl -fsSL "https://localhost:8983/api/collections/${NAME}" 2>&1)" || return ${?}
+	return 0
 }
 
 set_or_default BASE_DIR "/app"
