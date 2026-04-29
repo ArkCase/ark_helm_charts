@@ -171,8 +171,37 @@
     {{- fail "The only parameter value must be the root context" -}}
   {{- end -}}
 
-  {{- include "arkcase.subsystem-access.env" (dict "ctx" $ "subsys" "zookeeper" "key" "zkHost" "name" "ZK_HOST") | nindent 0 }}
-  {{- include "arkcase.subsystem-access.env" (dict "ctx" $ "subsys" "zookeeper" "key" "zkQuerySvc" "name" "ZK_QUERY_SVC") | nindent 0 }}
+  {{- /* This stupid toYaml/fromYaml works around a bug in hasKey */ -}}
+  {{- $annotations := ($ctx.Chart.Annotations | toYaml | fromYaml) -}}
+  {{- $subsys := (include "arkcase.subsystem.name" $ctx) -}}
+
+  {{- $key := "arkcase.com/zk-chroot" -}}
+  {{- $chroot := "" -}}
+  {{- if hasKey $annotations $key -}}
+    {{- $chroot = (get $annotations $key | default "" | toString) -}}
+  {{- end -}}
+
+  {{- $secretKey := "ZK_HOST" -}}
+  {{- if $chroot -}}
+    {{- $version := $ctx.Chart.AppVersion -}}
+    {{- $versionParts := (splitList "." $version) -}}
+    {{- $major := first $versionParts -}}
+    {{- $minor := join "." (slice $versionParts 0 2) -}}
+    {{- $data := dict "subsys" $subsys "major" $major "minor" $minor "version" $version -}}
+    {{- $chroot = (tpl $chroot $data) -}}
+    {{- $chroot = regexReplaceAll "/+" $chroot "/" -}}
+    {{- $chroot = regexReplaceAll "/$" $chroot "" -}}
+    {{- $chroot = regexReplaceAll "^/" $chroot "" -}}
+    {{- $chroot = (printf "/%s/%s" $ctx.Release.Namespace ($chroot | default $subsys)) -}}
+    {{- $secretKey = "ZK_HOST_BASE" -}}
+  {{- end -}}
+
+  {{- include "arkcase.subsystem-access.env" (dict "ctx" $ctx "subsys" "zookeeper" "key" "zkHost" "name" $secretKey) | nindent 0 }}
+  {{- include "arkcase.subsystem-access.env" (dict "ctx" $ctx "subsys" "zookeeper" "key" "zkQuerySvc" "name" "ZK_QUERY_SVC") | nindent 0 }}
+  {{- if $chroot }}
+- name: ZK_HOST
+  value: {{ printf "$(%s)%s" $secretKey $chroot | quote }}
+  {{- end }}
 {{- end -}}
 
 {{- define "arkcase.cluster.tomcat.env" -}}
