@@ -40,6 +40,9 @@
   {{- end -}}
   {{- $result = set $result "replicas" $replicas -}}
 
+  {{- /* Set/sanitize the general "chroot" value */ -}}
+  {{- $result = set $result "chroot" ($rules.chroot | default "" | toString) -}}
+
   {{- $result | toYaml -}}
 {{- end -}}
 
@@ -72,8 +75,8 @@
   {{- /* Set/sanitize the general "onePerHost" value */ -}}
   {{- $cluster = set $cluster "onePerHost" ((hasKey $cluster "onePerHost") | ternary (not (empty (include "arkcase.toBoolean" $cluster.onePerHost))) false) -}}
 
-  {{- $subsystems := omit $cluster "enabled" "onePerHost" -}}
-  {{- $cluster = pick $cluster "enabled" "onePerHost" -}}
+  {{- $subsystems := omit $cluster "enabled" "onePerHost" "replicas" "chroot" -}}
+  {{- $cluster = pick $cluster "enabled" "onePerHost" "replicas" "chroot" -}}
 
   {{- /* Sanitize the maps for each subsystem */ -}}
   {{- range $k, $v := $subsystems -}}
@@ -145,14 +148,16 @@
 
   {{- $subsys := (include "arkcase.name" $) -}}
   {{- $rules := (include "arkcase.cluster.info.rules" $ | fromYaml) -}}
-  {{- $cluster := dict "enabled" false "onePerHost" false "replicas" 1 -}}
+  {{- $cluster := dict "enabled" false "onePerHost" false "replicas" 1 "chroot" ($rules.chroot | default $subsys) -}}
   {{- if $rules.supported -}}
     {{- $info := (include "arkcase.cluster.info" $ | fromYaml) -}}
     {{- if and $info (hasKey $info $subsys) -}}
       {{- $info = get $info $subsys -}}
     {{- else -}}
-      {{- $info = merge (dict "replicas" ($rules.replicas.def | int)) (pick $info "enabled" "onePerHost") -}}
+      {{- $info = merge (dict "replicas" ($rules.replicas.def | int)) (pick $info "enabled" "onePerHost" "chroot") -}}
     {{- end -}}
+
+    {{- $info = set $info "chroot" ($info.chroot | default $cluster.chroot) -}}
 
     {{- /* apply the rules */ -}}
     {{- $replicas := 1 -}}
@@ -171,36 +176,31 @@
     {{- fail "The only parameter value must be the root context" -}}
   {{- end -}}
 
-  {{- /* This stupid toYaml/fromYaml works around a bug in hasKey */ -}}
-  {{- $annotations := ($ctx.Chart.Annotations | toYaml | fromYaml) -}}
-  {{- $subsys := (include "arkcase.subsystem.name" $ctx) -}}
+  {{- $cluster := (include "arkcase.cluster" $ctx | fromYaml) -}}
+  {{- if $cluster -}}
+    {{- $subsys := (include "arkcase.subsystem.name" $ctx) -}}
 
-  {{- $key := "arkcase.com/zk-chroot" -}}
-  {{- $chroot := "" -}}
-  {{- if hasKey $annotations $key -}}
-    {{- $chroot = (get $annotations $key | default "" | toString) -}}
-  {{- end -}}
-
-  {{- $secretKey := "ZK_HOST" -}}
-  {{- if $chroot -}}
-    {{- $version := $ctx.Chart.AppVersion -}}
-    {{- $versionParts := (splitList "." $version) -}}
-    {{- $major := first $versionParts -}}
-    {{- $minor := join "." (slice $versionParts 0 2) -}}
-    {{- $data := dict "subsys" $subsys "major" $major "minor" $minor "version" $version -}}
-    {{- $chroot = (tpl $chroot $data) -}}
-    {{- $chroot = regexReplaceAll "/+" $chroot "/" -}}
-    {{- $chroot = regexReplaceAll "/$" $chroot "" -}}
-    {{- $chroot = regexReplaceAll "^/" $chroot "" -}}
-    {{- $chroot = (printf "/%s/%s" $ctx.Release.Namespace ($chroot | default $subsys)) -}}
-    {{- $secretKey = "ZK_HOST_BASE" -}}
-  {{- end -}}
-
-  {{- include "arkcase.subsystem-access.env" (dict "ctx" $ctx "subsys" "zookeeper" "key" "zkHost" "name" $secretKey) | nindent 0 }}
-  {{- include "arkcase.subsystem-access.env" (dict "ctx" $ctx "subsys" "zookeeper" "key" "zkQuerySvc" "name" "ZK_QUERY_SVC") | nindent 0 }}
-  {{- if $chroot }}
+    {{- $chroot := ($cluster.chroot | default "" | toString) -}}
+    {{- $secretKey := "ZK_HOST" -}}
+    {{- if $chroot -}}
+      {{- $version := $ctx.Chart.AppVersion -}}
+      {{- $versionParts := (splitList "." $version) -}}
+      {{- $major := first $versionParts -}}
+      {{- $minor := join "." (slice $versionParts 0 2) -}}
+      {{- $data := dict "subsys" $subsys "major" $major "minor" $minor "version" $version -}}
+      {{- $chroot = (tpl $chroot $data) -}}
+      {{- $chroot = regexReplaceAll "/+" $chroot "/" -}}
+      {{- $chroot = regexReplaceAll "/$" $chroot "" -}}
+      {{- $chroot = regexReplaceAll "^/" $chroot "" -}}
+      {{- $chroot = (printf "/%s/%s" $ctx.Release.Namespace ($chroot | default $subsys)) -}}
+      {{- $secretKey = "ZK_HOST_BASE" -}}
+    {{- end -}}
+    {{- include "arkcase.subsystem-access.env" (dict "ctx" $ctx "subsys" "zookeeper" "key" "zkHost" "name" $secretKey) | nindent 0 }}
+    {{- include "arkcase.subsystem-access.env" (dict "ctx" $ctx "subsys" "zookeeper" "key" "zkQuerySvc" "name" "ZK_QUERY_SVC") | nindent 0 }}
+    {{- if $chroot }}
 - name: ZK_HOST
   value: {{ printf "$(%s)%s" $secretKey $chroot | quote }}
+    {{- end }}
   {{- end }}
 {{- end -}}
 
