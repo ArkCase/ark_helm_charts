@@ -101,7 +101,7 @@ export INIT_MARKER
 		# KABOOM!! NUKE THE LOCAL DATA!
 		#
 		rm -rvf "${INIT_MARKER}" "${SOLR_LOGS_DIR}" "${DATA_DIR}/solr" || true
-		is_file "${INIT_MARKER}" || fail "Failed to remove the init marker [${INIT_MARKER}] - the local data may not be fully reset"
+		is_file "${INIT_MARKER}" && fail "Failed to remove the init marker [${INIT_MARKER}] - the local data may not be fully reset"
 		ensure_dir "${SOLR_LOGS_DIR}"
 
 		ok "Existing local Solr data removed"
