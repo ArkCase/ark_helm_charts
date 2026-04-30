@@ -2,6 +2,8 @@
 set -euo pipefail
 . /.functions
 
+init_ssl
+
 create()
 {
 	local NAME="${1}"
@@ -12,7 +14,7 @@ create()
 	[[ "${SHARDS}" =~ ^[1-9][0-9]*$ ]] || SHARDS=1
 	[[ "${REPLICAS}" =~ ^[1-9][0-9]*$ ]] || REPLICAS=1
 
-	solr create -c "${NAME}" -d "${CONF_HOME}/${CONF}" -n "${CONF}" -shards ${SHARDS} -replicationFactor ${REPLICAS} -V
+	solr create --name "${NAME}" --conf-dir "${CONF_HOME}/${CONF}" --conf-name "${CONF}" --shards ${SHARDS} --replication-factor ${REPLICAS} --verbose
 }
 
 config_exists()
@@ -26,18 +28,11 @@ config_exists()
 exists()
 {
 	local NAME="${1}"
-	local RC=0
 
 	# Run the query
-	local JSON="$(curl -fL "https://localhost:8983/solr/admin/collections?action=colstatus&collection=${NAME}")" || RC=${?}
-	[ ${RC} -eq 0 ] || return ${RC}
-
-	# Examine the result
-	local RESULT="$(jq -r ".${NAME}.stateFormat // \"missing\"" <<< "${JSON}")" || return ${?}
-
-	RC=0
-	[ "${RESULT}" == "missing" ] && RC=1
-	return ${RC}
+	local JSON=""
+	JSON="$(curl -fsSL "https://localhost:8983/api/collections/${NAME}" 2>&1)" || return ${?}
+	return 0
 }
 
 set_or_default BASE_DIR "/app"

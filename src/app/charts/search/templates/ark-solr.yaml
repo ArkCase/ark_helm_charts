@@ -111,7 +111,9 @@ spec:
             - name: SOLR_JAVA_MEM
               value: "-XX:MinRAMPercentage=50.0 -XX:MaxRAMPercentage=80.0"
             - name: SOLR_CORES
-              value: "acmAdvancedSearch=arkcase,acmQuickSearch=arkcase"
+              value: "acmAdvancedSearch=arkcase"
+            - name: SOLR_HOST_BIND
+              value: "0.0.0.0"
             {{- if $.Values.env }}
               {{- $.Values.env | toYaml | nindent 12 }}
             {{- end }}
@@ -139,7 +141,6 @@ spec:
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/config-post.sh") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/init/pre/00-deploy-config.sh" "subPath" "deploy-configs.sh") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/init/pre/arkcase-conf.tar.gz") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/init/post/00-set-cluster-policy.sh" "subPath" "set-cluster-policy.sh") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/init/post/01-create-cores.sh" "subPath" "create-cores.sh") | nindent 12 }}
       volumes:
         - name: *initVol

@@ -64,7 +64,7 @@
          Java HTTP Connector: /docs/config/http.html (blocking & non-blocking)
          Java AJP  Connector: /docs/config/ajp.html
          APR (HTTP/AJP) Connector: /docs/apr.html
-         Define a non-SSL/TLS HTTP/1.1 Connector on port 4040
+         Define a non-SSL/TLS HTTP/1.1 Connector on port 8080
     -->
     <Connector port="8080" protocol="HTTP/1.1"
        connectionTimeout="20000"
@@ -110,10 +110,11 @@
                SSLEnabled="true"
                useBodyEncodingForURI="true">
         <UpgradeProtocol className="org.apache.coyote.http2.Http2Protocol" />
-        <SSLHostConfig protocols="TLSv1.2" certificateVerification="none">
-            <Certificate certificateKeyFile="/.ssl/cert.key"
-                         certificateFile="/.ssl/cert.pem"
-                         certificateChainFile="/.ssl/ca-chain.pem"
+        <SSLHostConfig protocols="TLSv1.3" certificateVerification="none">
+            <Certificate certificateKeyFile="${SSL_PRIVATE_KEY_AES}"
+                         certificateKeyPassword="${SSL_PASSWORD}"
+                         certificateFile="${SSL_CERTIFICATE_TOMCAT}"
+                         certificateChainFile="${SSL_INT}"
                          type="RSA" />
         </SSLHostConfig>
     </Connector>
@@ -161,10 +162,12 @@
         <!-- Access log processes all example.
              Documentation at: /docs/config/valve.html
              Note: The pattern used is equivalent to using pattern="common" -->
-        <Valve className="org.pentaho.tomcat.logvalve.FilteredAccessLogValve" directory="${LOGS_DIR}"
+        <Valve className="org.pentaho.tomcat.logvalve.FilteredAccessLogValve" directory="${TOMCAT_LOGS_DIR}"
                prefix="localhost_access" suffix=".log"
                pattern="%h %l %u %t &quot;%r&quot; %s %b" />
-
+        <Valve className="org.apache.catalina.valves.ErrorReportValve"
+               showServerInfo="false"
+        />
       </Host>
     </Engine>
   </Service>

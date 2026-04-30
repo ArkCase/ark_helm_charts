@@ -10,10 +10,13 @@ gov.foia.broker:
   url: "${ARKCASE_MQ_AMQP_URL}"
   userName: "${ARKCASE_MQ_USERNAME}"
   password: "${ARKCASE_MQ_PASSWORD}"
+  keystore.keyPassword: "${JAVA_KEY_PASSWORD}"
   keystore: "${JAVA_KEYSTORE}"
-  keystore.password: "${JAVA_KEYSTORE_PASS}"
+  keystore.password: "${JAVA_KEYSTORE_PASSWORD}"
+  keystore.type: "${JAVA_KEYSTORE_TYPE}"
   truststore: "${JAVA_TRUSTSTORE}"
-  truststore.password: "${JAVA_TRUSTSTORE_PASS}"
+  truststore.password: "${JAVA_TRUSTSTORE_PASSWORD}"
+  truststore.type: "${JAVA_TRUSTSTORE_TYPE}"
 
 application:
   properties:

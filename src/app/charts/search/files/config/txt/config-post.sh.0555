@@ -2,6 +2,11 @@
 set -euo pipefail
 . /.functions
 
+# This causes us to wait until the SSL stuff is initialized
+# since apparently the flock in the main script is ineffective
+export ACME_WAIT="true"
+init_ssl
+
 cleanup()
 {
 	[ -v RUN_MARKER ] || RUN_MARKER=""
