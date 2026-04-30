@@ -105,7 +105,6 @@ export INIT_MARKER
 		ensure_dir "${SOLR_LOGS_DIR}"
 
 		ok "Existing local Solr data removed"
-
 	elif [ ${NEW_MAJOR} -lt ${OLD_MAJOR} ] ; then
 		CAUSE="the existing major version ${OLD_MAJOR} is greater than the incoming major version ${NEW_MAJOR}"
 	else
@@ -115,7 +114,7 @@ export INIT_MARKER
 		# We're clear on the minors! Boot up normally!
 	fi
 
-	[ -n "${CAUSE}" ] && fail "The data was already booted up for Solr v${OLD_VERSION}, but you're now booting with v${NEW_VERSION} - this is not allowed: ${CAUSE}"
+	[ -z "${CAUSE}" ] || fail "The data was already booted up for Solr v${OLD_VERSION}, but you're now booting with v${NEW_VERSION} - this is not allowed: ${CAUSE}"
 ) || exit ${?}
 
 #
