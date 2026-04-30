@@ -130,6 +130,12 @@ say "Enabling SSL on the cluster"
 )
 say "SSL Enabled!"
 
+# Add the option to disable plugin editing
+set_or_default SOLR_OPTS
+export SOLR_OPTS
+
+SOLR_OPTS+=" -Dsolr.cluster.plugin.edit.enabled=false"
+
 # This is important: ${HOME_DIR} must be *ephemeral* - this flag is only meant to
 # inform when the init script ran, so we can run the post-init script in the helm chart
 set_or_default RUN_MARKER "${HOME_DIR}/.initRan"
