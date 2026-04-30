@@ -93,19 +93,21 @@ export INIT_MARKER
 	OLD_MAJOR="${OLD_PARTS[0]}"
 	OLD_MINOR="${OLD_PARTS[1]}"
 
-	CAUSE=""
+	# Is the new version newer than the old one?
 	if [ ${NEW_MAJOR} -gt ${OLD_MAJOR} ] ; then
-		warn "This version of Solr is a new major version, the existing data must be deleted!"
+		warn "Solr version ${NEW_VERSION} is a newer major version than the existing data for ${OLD_VERSION}. The data must be deleted!"
 
-		#
-		# KABOOM!! NUKE THE LOCAL DATA!
-		#
 		rm -rvf "${INIT_MARKER}" "${SOLR_LOGS_DIR}" "${DATA_DIR}/solr" || true
-		is_file "${INIT_MARKER}" && fail "Failed to remove the init marker [${INIT_MARKER}] - the local data may not be fully reset"
+		is_file "${INIT_MARKER}" && fail "Failed to remove the init marker [${INIT_MARKER}] - the local data may not be fully reset! An administrator must examine the filesystem to identify the issue"
 		ensure_dir "${SOLR_LOGS_DIR}"
 
-		ok "Existing local Solr data removed"
-	elif [ ${NEW_MAJOR} -lt ${OLD_MAJOR} ] ; then
+		ok "The existing local Solr data for ${OLD_VERSION} was removed, initializing new data for ${NEW_VERSION}"
+		exit 0
+	fi
+
+	# Is the new major older than the old one?
+	CAUSE=""
+	if [ ${NEW_MAJOR} -lt ${OLD_MAJOR} ] ; then
 		CAUSE="the existing major version ${OLD_MAJOR} is greater than the incoming major version ${NEW_MAJOR}"
 	else
 		# Same major ... how's the minors?
