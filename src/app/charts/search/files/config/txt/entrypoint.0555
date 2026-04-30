@@ -59,7 +59,7 @@ say "Basic Auth configured: user '${SOLR_USERNAME}' (role: user), admin '${SOLR_
 # Write credentials to a tmpfs file so Solr's HTTP client picks them up without
 # exposing them in the process table via -Dbasicauth=user:pass
 ensure_dir "${SOLR_HOME}"
-SOLR_AUTH_CREDS="$(mktemp --tmpdir="${SOLR_HOME}" .solr-auth.XXXXXX)"
+SOLR_AUTH_CREDS="${SOLR_HOME}/.solr-auth"
 export SOLR_AUTH_CREDS
 cat <<-EOF > "${SOLR_AUTH_CREDS}"
 httpBasicAuthUser=${SOLR_ADMIN_USERNAME}

@@ -119,7 +119,7 @@ service:
           - -c
           - >-
             curl -sf -k
-            --config "${SOLR_AUTH_CREDS}"
+            -u "${SOLR_ADMIN_USERNAME}:${SOLR_ADMIN_PASSWORD}"
             "https://localhost:8983/solr/admin/info/health"
       initialDelaySeconds: 0
       periodSeconds: 10
