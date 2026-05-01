@@ -20,6 +20,7 @@ set_or_default INIT_DIR "${BASE_DIR}/init"
 set_or_default DATA_DIR "${BASE_DIR}/data"
 set_or_default LOGS_DIR "${DATA_DIR}/logs"
 
+ensure_dir "${LOGS_DIR}"
 redirect_logs "${LOGS_DIR}/config-post.log"
 
 # How long to sleep between polling attempts
@@ -32,10 +33,14 @@ set_or_default INIT_MAX_WAIT "90s"
 INIT_MAX_WAIT_STR="$(secs_to_timestr "${INIT_MAX_WAIT}")" || fail "Invalid timestring [${INIT_MAX_WAIT}]"
 INIT_MAX_WAIT_SEC="$(timestr_to_secs "${INIT_MAX_WAIT_STR}")"
 
-set_or_default SOLR_URL "https://localhost:8983"
 set_or_default POLL_PATH "/solr/admin/info/health"
 
-export POLL_URL="${SOLR_URL}${POLL_PATH}"
+#
+# We poll localhost vs. the service b/c the service won't route
+# traffic until the pod is ready, whereas the local instance may
+# already be ready to help us with our initializations.
+#
+export POLL_URL="https://localhost:8983${POLL_PATH}"
 
 FIRST="true"
 START="$(date +%s)"
@@ -47,8 +52,7 @@ while true ; do
 	as_boolean "${FIRST}" && sleeping "Waiting for Solr at [${POLL_URL}] (up to ${INIT_MAX_WAIT_STR})..."
 	FIRST="false"
 
-	NOW="$(date +%s)"
-	[ $(( NOW - START )) -lt ${INIT_MAX_WAIT_SEC} ] || fail "Timed out waiting for Solr at [${POLL_URL}] (rc=${RC}): ${OUT}"
+	[ $(( $(date +%s) - START )) -ge ${INIT_MAX_WAIT_SEC} ] && fail "Timed out waiting for Solr at [${POLL_URL}] (rc=${RC}): ${OUT}"
 	sleep "${INIT_POLL_SLEEP_SEC}" || fail "Polling cycle sleep interrupted"
 done
 ok "Solr is ready"
