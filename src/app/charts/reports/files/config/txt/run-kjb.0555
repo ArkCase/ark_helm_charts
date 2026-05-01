@@ -209,6 +209,12 @@ if [ ${#LOG_FLAG[@]} -eq 0 ] && [ -f "${JOB}.debug" ] ; then
 	[ -n "${LOG_LEVEL}" ] && LOG_FLAG=("-level:${LOG_LEVEL}")
 fi
 
+#
+# Apply the license stuff
+#
+[ -v OPT ] || export OPT=""
+OPT+=" ${PENTAHO_LICENSE_OPT}"
+
 running "Running the Kettle job from [${JOB}]"
 cd "${PENTAHO_PDI_HOME}/data-integration"
 RC=0

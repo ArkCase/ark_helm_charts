@@ -1,0 +1,11 @@
+#!/bin/bash
+
+set -euo pipefail
+. /.functions
+
+OUT="$(solr version 2>&1)" || fail "Failed to capture the version data (rc=${?}): ${OUT}"
+
+VER="$(echo -n "${OUT}" | tail -1 | sed -e 's;^.* ;;g')"
+
+echo "${VER}"
+exit 0

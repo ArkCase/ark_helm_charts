@@ -16,18 +16,108 @@ init_ssl
 # Now, continue with the boot
 #
 set_or_default BASE_DIR "/app"
-set_or_default DATA_DIR "/app/data"
+set_or_default DATA_DIR "${BASE_DIR}/data"
 
 set_or_default SOLR_LOGS_DIR "${DATA_DIR}/logs"
-[ -v SOLR_LOGS_DIR ] || export SOLR_LOGS_DIR="${DATA_DIR}/logs"
+export SOLR_LOGS_DIR
 
 ensure_dir "${SOLR_LOGS_DIR}"
 
 #
-# Recompute the ZK_HOST value from DNS, but only
-# if we're running in a potentially-clustered environment
+# Recompute the ZK_HOST value from DNS
 #
 . /usr/local/bin/zk-host
+
+#
+# This is used to parse version numbers
+#
+RE_FULL_REVISION="^((0|[1-9][0-9]*)([.][0-9]+){2})(-([a-zA-Z0-9-]+([.][a-zA-Z0-9-]+)*))?([+]([a-zA-Z0-9-]+))?$"
+
+#
+# Take stock of the current Solr version
+#
+RC=0
+export NEW_VERSION="$(solr-version 2>&1)" || RC=${?}
+[ ${RC} -eq 0 ] || { echo "${NEW_VERSION}" ; exit ${RC} ; }
+
+# We only care about the version number itself, not the pre-release or metadata crap
+[[ "${NEW_VERSION}" =~ ${RE_FULL_REVISION} ]] \
+	&& NEW_VERSION="${BASH_REMATCH[1]}" \
+	|| fail "Invalid Solr version number [${NEW_VERSION}]"
+
+export NEW_PARTS=( ${NEW_VERSION//./ } )
+[ ${#NEW_PARTS[@]} -eq 3 ] || fail "Invalid number of version parts for the new Solr version [${NEW_VERSION}] (${#NEW_PARTS[@])}"
+
+#
+# This is where we'll store the version information
+#
+set_or_default INIT_MARKER "${DATA_DIR}/.initialized"
+export INIT_MARKER
+
+(
+	#
+	# Validate the current persistent data against this version of Solr.
+	#
+	# If the data is for an older MAJOR version, then we can safely nuke
+	# it and start over b/c the data will also be copied into ZK under a
+	# new chroot "folder".
+	#
+	# If it's a newer MAJOR, then this is an unsolvable problem and we
+	# explode rather loudly and irrevocably.
+	#
+	# If it's the same MAJOR, but the MINOR is newer than ours, then
+	# we also explode loudly as downgrades are NOT generally a good idea.
+	#
+	# Otherwise, we keep the existing data and boot up normally. We don't
+	# care about PATCH versions (yet!).
+	#
+	if [ -e "${INIT_MARKER}" ] ; then
+		# The init marker will contain the version of Solr that this data
+		# set was created for. If it's not a valid version number, then
+		# then it's assumed to be version 0.0.0
+		OLD_VERSION="$(<"${INIT_MARKER}")"
+	else
+		OLD_VERSION="0.0.0"
+	fi
+
+	# We only care about the version number itself, not the pre-release or metadata crap
+	[[ "${OLD_VERSION}" =~ ${RE_FULL_REVISION} ]] \
+		&& OLD_VERSION="${BASH_REMATCH[1]}" \
+		|| OLD_VERSION="0.0.0"
+
+	# Use a subshell to clean up all the temporary variables
+	OLD_PARTS=( ${OLD_VERSION//./ } )
+
+	NEW_MAJOR="${NEW_PARTS[0]}"
+	NEW_MINOR="${NEW_PARTS[1]}"
+	OLD_MAJOR="${OLD_PARTS[0]}"
+	OLD_MINOR="${OLD_PARTS[1]}"
+
+	# Is the new version newer than the old one?
+	if [ ${NEW_MAJOR} -gt ${OLD_MAJOR} ] ; then
+		warn "Solr version ${NEW_VERSION} is a newer major version than the existing data for ${OLD_VERSION}. The data must be deleted!"
+
+		rm -rvf "${INIT_MARKER}" "${SOLR_LOGS_DIR}" "${DATA_DIR}/solr" || true
+		is_file "${INIT_MARKER}" && fail "Failed to remove the init marker [${INIT_MARKER}] - the local data may not be fully reset! An administrator must examine the filesystem to identify the issue"
+		ensure_dir "${SOLR_LOGS_DIR}"
+
+		ok "The existing local Solr data for ${OLD_VERSION} was removed, initializing new data for ${NEW_VERSION}"
+		exit 0
+	fi
+
+	# Is the new major older than the old one?
+	CAUSE=""
+	if [ ${NEW_MAJOR} -lt ${OLD_MAJOR} ] ; then
+		CAUSE="the existing major version ${OLD_MAJOR} is greater than the incoming major version ${NEW_MAJOR}"
+	else
+		# Same major ... how's the minors?
+		[ ${NEW_MINOR} -ge ${OLD_MINOR} ] || CAUSE="the existing minor version ${OLD_MAJOR}.${OLD_MINOR} is newer than the incoming minor version ${NEW_MAJOR}.${NEW_MINOR}"
+
+		# We're clear on the minors! Boot up normally!
+	fi
+
+	[ -z "${CAUSE}" ] || fail "The data was already booted up for Solr v${OLD_VERSION}, but you're now booting with v${NEW_VERSION} - this is not allowed: ${CAUSE}"
+) || exit ${?}
 
 #
 # Enable HTTPS on the cluster
@@ -36,11 +126,44 @@ say "Enabling SSL on the cluster"
 (
 	set -euo pipefail
 	cd "${BASE_DIR}/solr"
-	exec server/scripts/cloud-scripts/zkcli.sh -zkhost "${ZK_HOST}" -cmd clusterprop -name urlScheme -val https
+	exec bin/solr cluster --zk-host "${ZK_HOST}" --property urlScheme --value https
 )
 say "SSL Enabled!"
 
-set_or_default INIT_MARKER "${DATA_DIR}/.initialized"
+# Add the option to disable plugin editing
+set_or_default SOLR_OPTS
+export SOLR_OPTS
+
+SOLR_OPTS+=" -Dsolr.cluster.plugin.edit.enabled=false"
+
+# Configure Basic Auth — always writes security.json to ZK before Solr starts so that
+# credentials from the K8s secret are always in sync with what Solr enforces.
+# Writing is safe to repeat: all pods read the same ZK node and hold the same password
+# from the K8s secret, so the last writer always wins with consistent credentials.
+say "Generating password hash for user '${SOLR_USERNAME}'..."
+export USER_HASH="$(solrpass "${SOLR_PASSWORD}")"
+say "Generating password hash for admin user '${SOLR_ADMIN_USERNAME}'..."
+export ADMIN_HASH="$(solrpass "${SOLR_ADMIN_PASSWORD}")"
+
+SEC_TMP="$(mktemp)"
+jq -n -f "${BASE_DIR}/solr/security.json.tpl" > "${SEC_TMP}" || \
+	fail "Could not render security.json template"
+"${BASE_DIR}/solr/bin/solr" zk cp "${SEC_TMP}" "zk:/security.json" --zk-host "${ZK_HOST}" || \
+	fail "Could not write security.json to ZooKeeper"
+rm -f "${SEC_TMP}"
+say "Basic Auth configured: user '${SOLR_USERNAME}' (role: user), admin '${SOLR_ADMIN_USERNAME}' (roles: admin, user). All unauthenticated access blocked; /admin/info/health accessible to any authenticated user."
+
+# Write credentials to a tmpfs file so Solr's HTTP client picks them up without
+# exposing them in the process table via -Dbasicauth=user:pass
+ensure_dir "${SOLR_HOME}"
+SOLR_AUTH_CREDS="${SOLR_HOME}/.solr-auth"
+export SOLR_AUTH_CREDS
+cat <<-EOF > "${SOLR_AUTH_CREDS}"
+httpBasicAuthUser=${SOLR_ADMIN_USERNAME}
+httpBasicAuthPassword=${SOLR_ADMIN_PASSWORD}
+EOF
+chmod u=r,go= "${SOLR_AUTH_CREDS}"
+say "Wrote Solr client auth properties to ${SOLR_AUTH_CREDS}"
 
 # This is important: ${HOME_DIR} must be *ephemeral* - this flag is only meant to
 # inform when the init script ran, so we can run the post-init script in the helm chart
@@ -53,9 +176,10 @@ else
 
 	/config-pre.sh || fail "Pre-configuration failed - the Solr initialization may not be complete"
 
-	touch "${INIT_MARKER}"
 	touch "${RUN_MARKER}"
 fi
 
-set -- "${HOME_DIR}/bin/solr" start -f -cloud
-execute "${@}"
+# Always update the init marker with the booted version
+echo -n "${NEW_VERSION}" > "${INIT_MARKER}"
+
+execute "${HOME_DIR}/bin/solr" start --foreground "${@}"

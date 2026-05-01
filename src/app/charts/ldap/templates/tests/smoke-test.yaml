@@ -29,17 +29,13 @@ spec:
       command: [ "/usr/local/bin/run-from-env" ]
       args: [ "SCRIPT" ]
       env: {{- include "arkcase.tools.baseEnv" $ | nindent 8 }}
-        {{- include "arkcase.subsystem-access.env" (dict "ctx" $ "conn" "admin" "key" "username" "name" "ADMIN_USERNAME") | nindent 8 }}
-        {{- include "arkcase.subsystem-access.env" (dict "ctx" $ "conn" "admin" "key" "password" "name" "ADMIN_PASSWORD") | nindent 8 }}
-        {{- include "arkcase.subsystem-access.env" (dict "ctx" $ "conn" "main" "key" "realm" "name" "ADMIN_REALM") | nindent 8 }}
-        {{- include "arkcase.subsystem-access.env" (dict "ctx" $ "conn" "main" "key" "rootDn" "name" "ROOT_DN") | nindent 8 }}
-        - name: SERVICE_NAME
-          value: {{ include "arkcase.service.name" $ | quote }}
+        {{- include "arkcase.acme.env" $ | nindent 8 }}
+        {{- include "arkcase.subsystem-access.env" $ | nindent 8 }}
         - name: SCRIPT
           value: |-
             set -xeuo pipefail
             . /.functions
             init_ssl
-            timeout 3 ldapsearch -H "ldaps://$(SERVICE_NAME)" -D "$(ADMIN_REALM)\\$(ADMIN_USERNAME)" -y <(echo -n "$(ADMIN_PASSWORD)") -s base -b "$(ROOT_DN)" "(objectClass=*)" dn
+            timeout 3 ldapsearch -H "$(ADMIN_URL)" -D "$(MANAGED_DOMAIN_USERNAME)@$(ARKCASE_DOMAIN)" -y <(echo -n "$(MANAGED_DOMAIN_PASSWORD)") -s base -b "$(ARKCASE_ROOT_DN)" "(objectClass=*)" dn
   restartPolicy: Never
 {{- end }}

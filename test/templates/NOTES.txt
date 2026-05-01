@@ -64,3 +64,6 @@ volumes: {{- include "arkcase.acme.volume" $ | nindent 2 }}
 
 ---
 FIPS: [{{ include "arkcase.fips" $ }}] (bool = {{ include "arkcase.fips.bool" $ }})
+---
+CLUSTERING: {{ include "arkcase.cluster" $ | nindent 0 }}
+---
