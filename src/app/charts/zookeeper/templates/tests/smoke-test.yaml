@@ -28,7 +28,9 @@ spec:
       {{- include "arkcase.image" (dict "ctx" $ "name" "smoke-test" "repository" "arkcase/nettest") | nindent 6 }}
       command: [ "/usr/local/bin/run-from-env" ]
       args: [ "SCRIPT" ]
-      env:
+      env: {{- include "arkcase.tools.baseEnv" $ | nindent 8 }}
+        {{- include "arkcase.acme.env" $ | nindent 8 }}
+        {{- include "arkcase.subsystem-access.env" $ | nindent 8 }}
         - name: SERVICE_NAME
           value: {{ include "arkcase.service.name" $ | quote }}
         - name: SCRIPT
@@ -36,11 +38,9 @@ spec:
             set -xeuo pipefail
             . /.functions
             init_ssl
-            OUT="$(timeout 3 nc "${SERVICE_NAME}" 2181 <<< "ruok" 2>&1)"
-            [ "${OUT}" == "imok" ] && exit 0
-            echo "Check failed:"
-            echo "${OUT}"
-            exit 1
-
+            RC=0
+            OUT="$(timeout 3 nc "${SERVICE_NAME}" 2181 <<< "ruok" 2>&1)" || RC=${?}
+            [ ${RC} -eq 0 ] && [ "${OUT}" == "imok" ] && quit "Check successful!"
+            fail "Check failed (rc=${RC}): ${OUT}"
   restartPolicy: Never
 {{- end -}}

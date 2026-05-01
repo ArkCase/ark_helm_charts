@@ -33,14 +33,14 @@ spec:
       {{- include "arkcase.image" (dict "ctx" $ "name" "smoke-test" "repository" "arkcase/nettest") | nindent 6 }}
       command: [ "/usr/local/bin/run-from-env" ]
       args: [ "SCRIPT" ]
-      env:
-        {{- include "arkcase.subsystem-access.env" (dict "ctx" $ "conn" "admin" "key" "endpoint" "name" "SERVICE_HOST") | nindent 8 }}
-        {{- include "arkcase.subsystem-access.env" (dict "ctx" $ "conn" "admin" "key" "port" "name" "SERVICE_PORT") | nindent 8 }}
+      env: {{- include "arkcase.tools.baseEnv" $ | nindent 8 }}
+        {{- include "arkcase.acme.env" $ | nindent 8 }}
+        {{- include "arkcase.subsystem-access.env" $ | nindent 8 }}
         - name: SCRIPT
           value: |-
             set -xeuo pipefail
             . /.functions
             init_ssl
-            timeout 3 openssl s_client -connect "$(SERVICE_HOST):$(SERVICE_PORT)" -verify_quiet -verify_return_error -showcerts {{ $startTls }} < /dev/null
+            timeout 3 openssl s_client -connect "$(DB_ADMIN_HOST):$(DB_ADMIN_PORT)" -verify_quiet -verify_return_error -showcerts {{ $startTls }} < /dev/null
   restartPolicy: Never
 {{- end -}}

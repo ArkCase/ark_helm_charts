@@ -28,15 +28,20 @@ spec:
       {{- include "arkcase.image" (dict "ctx" $ "name" "smoke-test" "repository" "arkcase/nettest") | nindent 6 }}
       command: [ "/usr/local/bin/run-from-env" ]
       args: [ "SCRIPT" ]
-      env:
-        - name: SERVICE_NAME
-          value: {{ include "arkcase.service.name" $ | quote }}
+      env: {{- include "arkcase.tools.baseEnv" $ | nindent 8 }}
+        {{- include "arkcase.acme.env" $ | nindent 8 }}
+        {{- include "arkcase.subsystem-access.env" $ | nindent 8 }}
         - name: SCRIPT
           value: |-
             set -xeuo pipefail
             . /.functions
             init_ssl
-            curl -fsSL -m 3 -o /dev/null "https://$(SERVICE_NAME):8443/console"
-            timeout 3 openssl s_client -connect "$(SERVICE_NAME):61616" -verify_quiet -verify_return_error -showcerts </dev/null
+            curl -fsSL -m 3 -o /dev/null "$(ARTEMIS_CONSOLE_URL)"
+            AMQP="$(ARTEMIS_AMQP_URL)"
+            [[ "${AMQP}" =~ ^ssl://(.*) ]] && AMQP="${BASH_REMATCH[1]}"
+            timeout 3 openssl s_client -connect "${AMQP}" -verify_quiet -verify_return_error -showcerts </dev/null
+            STOMP="$(ARTEMIS_STOMP_URL)"
+            [[ "${STOMP}" =~ ^ssl://(.*) ]] && STOMP="${BASH_REMATCH[1]}"
+            timeout 3 openssl s_client -connect "${STOMP}" -verify_quiet -verify_return_error -showcerts </dev/null
   restartPolicy: Never
 {{- end -}}
