@@ -7,10 +7,13 @@ set -euo pipefail
 export ACME_WAIT="true"
 init_ssl
 
+AUTH_CFG=""
+
 cleanup()
 {
 	[ -v RUN_MARKER ] || RUN_MARKER=""
 	[ -z "${RUN_MARKER}" ] || rm -rf "${RUN_MARKER}" &>/dev/null
+	[ -z "${AUTH_CFG}" ] || rm -f "${AUTH_CFG}" &>/dev/null
 }
 
 RUN_MARKER="${HOME_DIR}/.initRan"
@@ -33,7 +36,16 @@ set_or_default INIT_MAX_WAIT
 set_or_default SOLR_URL "https://localhost:8983"
 SOLR_URL+="/solr/admin/info/health"
 
-poll_url "${SOLR_URL}" "${INIT_MAX_WAIT}" "${INIT_POLL_SLEEP}" || exit 1
+AUTH_CFG="$(mktemp)"
+(umask 177 ; auth_params "${SOLR_ADMIN_USERNAME}" "${SOLR_ADMIN_PASSWORD}" > "${AUTH_CFG}")
+
+DEADLINE=$(( $(date +%s) + INIT_MAX_WAIT ))
+waiting "Waiting for Solr at [${SOLR_URL}] (up to ${INIT_MAX_WAIT}s)..."
+until curl -fsSL -k -m 5 --config "${AUTH_CFG}" "${SOLR_URL}" &>/dev/null ; do
+	[ "$(date +%s)" -lt "${DEADLINE}" ] || fail "Timed out waiting for Solr at [${SOLR_URL}]"
+	sleep "${INIT_POLL_SLEEP}"
+done
+ok "Solr is ready"
 
 # Don't run if init didn't run
 [ -f "${RUN_MARKER}" ] || exit 0

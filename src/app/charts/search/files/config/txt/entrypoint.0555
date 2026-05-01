@@ -136,6 +136,35 @@ export SOLR_OPTS
 
 SOLR_OPTS+=" -Dsolr.cluster.plugin.edit.enabled=false"
 
+# Configure Basic Auth — always writes security.json to ZK before Solr starts so that
+# credentials from the K8s secret are always in sync with what Solr enforces.
+# Writing is safe to repeat: all pods read the same ZK node and hold the same password
+# from the K8s secret, so the last writer always wins with consistent credentials.
+say "Generating password hash for user '${SOLR_USERNAME}'..."
+export USER_HASH="$(solrpass "${SOLR_PASSWORD}")"
+say "Generating password hash for admin user '${SOLR_ADMIN_USERNAME}'..."
+export ADMIN_HASH="$(solrpass "${SOLR_ADMIN_PASSWORD}")"
+
+SEC_TMP="$(mktemp)"
+jq -n -f "${BASE_DIR}/solr/security.json.tpl" > "${SEC_TMP}" || \
+	fail "Could not render security.json template"
+"${BASE_DIR}/solr/bin/solr" zk cp "${SEC_TMP}" "zk:/security.json" --zk-host "${ZK_HOST}" || \
+	fail "Could not write security.json to ZooKeeper"
+rm -f "${SEC_TMP}"
+say "Basic Auth configured: user '${SOLR_USERNAME}' (role: user), admin '${SOLR_ADMIN_USERNAME}' (roles: admin, user). All unauthenticated access blocked; /admin/info/health accessible to any authenticated user."
+
+# Write credentials to a tmpfs file so Solr's HTTP client picks them up without
+# exposing them in the process table via -Dbasicauth=user:pass
+ensure_dir "${SOLR_HOME}"
+SOLR_AUTH_CREDS="${SOLR_HOME}/.solr-auth"
+export SOLR_AUTH_CREDS
+cat <<-EOF > "${SOLR_AUTH_CREDS}"
+httpBasicAuthUser=${SOLR_ADMIN_USERNAME}
+httpBasicAuthPassword=${SOLR_ADMIN_PASSWORD}
+EOF
+chmod u=r,go= "${SOLR_AUTH_CREDS}"
+say "Wrote Solr client auth properties to ${SOLR_AUTH_CREDS}"
+
 # This is important: ${HOME_DIR} must be *ephemeral* - this flag is only meant to
 # inform when the init script ran, so we can run the post-init script in the helm chart
 set_or_default RUN_MARKER "${HOME_DIR}/.initRan"
