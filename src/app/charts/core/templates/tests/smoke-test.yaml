@@ -29,22 +29,18 @@ spec:
       {{- include "arkcase.image" (dict "ctx" $ "name" "smoke-test" "repository" "arkcase/nettest") | nindent 6 }}
       command: [ "/usr/local/bin/run-from-env" ]
       args: [ "SCRIPT" ]
-      env:
-        - name: SERVICE_NAME
-          value: {{ include "arkcase.service.name" $ | quote }}
-        {{- if $portal }}
-        - name: PORTAL_CONTEXT
-          value: {{ $portal.context | quote }}
-        {{- end }}
+      env: {{- include "arkcase.tools.baseEnv" $ | nindent 8 }}
+        {{- include "arkcase.acme.env" $ | nindent 8 }}
+        {{- include "arkcase.subsystem-access.env" $ | nindent 8 }}
         - name: SCRIPT
           value: |-
             set -xeuo pipefail
             . /.functions
             init_ssl
-            curl -fsSL -m 3 -o /dev/null "https://$(SERVICE_NAME):8443/arkcase/login"
+            curl -fsSL -m 3 -o /dev/null "$(ARKCASE_ADMIN_URL)/login"
             {{- if $portal }}
-            /usr/bin/curl -fsSL -m 3 -o /dev/null "https://$(SERVICE_NAME):8443/arkcase/external-portal/rest/request/authenticatedMode"
-            /usr/bin/curl -fsSL -m 3 -o /dev/null "https://$(SERVICE_NAME):8443/$(PORTAL_CONTEXT)/"
+            /usr/bin/curl -fsSL -m 3 -o /dev/null "$(ARKCASE_ADMIN_URL)/external-portal/rest/request/authenticatedMode"
+            /usr/bin/curl -fsSL -m 3 -o /dev/null "$(PORTAL_ADMIN_URL)/"
             {{- end }}
   restartPolicy: Never
 {{- end }}

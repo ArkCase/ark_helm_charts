@@ -30,8 +30,9 @@ spec:
       {{- include "arkcase.image" (dict "ctx" $ "name" "smoke-test" "repository" "arkcase/nettest") | nindent 6 }}
       command: [ "/usr/local/bin/run-from-env" ]
       args: [ "SCRIPT" ]
-      env:
+      env: {{- include "arkcase.tools.baseEnv" $ | nindent 8 }}
         {{- include "arkcase.acme.env" $ | nindent 8 }}
+        {{- include "arkcase.subsystem-access.env" $ | nindent 8 }}
         - name: SERVICE_NAME
           value: {{ include "arkcase.service.name" $ | quote }}
         - name: SCRIPT
@@ -40,10 +41,10 @@ spec:
             . /.functions
             init_ssl
             {{- if (eq "alfresco" $contentDialect) }}
+            curl -fsSL -m 3 -o /dev/null "$(CONTENT_URL)/"
+            curl -fsSL -m 3 -o /dev/null "$(CONTENT_UI)/"
             timeout 3 openssl s_client -connect "$(SERVICE_NAME)-activemq:61616" -verify_quiet -verify_return_error -showcerts </dev/null
-            curl -fsSL -m 3 -o /dev/null "https://$(SERVICE_NAME)-main:8443/alfresco/"
-            timeout 3 openssl s_client -connect "$(SERVICE_NAME)-search:8983" -verify_quiet -verify_return_error -showcerts -cert "$(SSL_DIR)/cert.pem" -key "$(SSL_DIR)/cert.key" </dev/null
-            curl -fsSL -m 3 -o /dev/null "https://$(SERVICE_NAME)-share:8443/share/"
+            timeout 3 openssl s_client -connect "$(SERVICE_NAME)-search:8983" -verify_quiet -verify_return_error -showcerts -cert "${SSL_CERTIFICATE}" -key "${SSL_PRIVATE_KEY}" </dev/null
             curl -fsSL -m 3 -o /dev/null "https://$(SERVICE_NAME)-xform-core-aio:8090/actuator/health"
               {{- if $enterprise }}
             timeout 3 openssl s_client -connect "$(SERVICE_NAME)-sfs:8099" -verify_quiet -verify_return_error -showcerts </dev/null
@@ -51,7 +52,7 @@ spec:
               {{- end }}
             {{- end }}
             {{- if (eq "s3" (include "arkcase.content.dialect" $)) }}
-            curl -fsSL -m 3 -o /dev/null "https://$(SERVICE_NAME)-main:9000/minio/health/live"
+            curl -fsSL -m 3 -o /dev/null "$(CONTENT_UI)/health/live"
             {{- end }}
       volumeMounts:
         {{- include "arkcase.acme.volumeMount" $ | nindent 8 }}

@@ -2,3 +2,8 @@ settings:
   # We specifically don't consume from ACME b/c those are handled directly
   # by the ACME templates, and there's no need to address them beyond that
   # acme: {}
+  $self:
+    main:
+      url: ARTIFACTS_URL
+    proxy:
+      healthUrl: PROXY_HEALTH_URL
