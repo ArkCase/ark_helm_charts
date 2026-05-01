@@ -99,9 +99,14 @@ spec:
             - name: JAVA_TOOL_OPTIONS
               value: >-
                 {{ include "arkcase.fips.java-options" $ }}
+            - name: SOLR_TOOL_OPTS
+              value: >-
+                -Djava.util.logging.manager=org.apache.logging.log4j.jul.LogManager
             - name: SOLR_OPTS
               value: >-
+                $(SOLR_TOOL_OPTS)
                 -Dsolr.autoSoftCommit.maxTime=1000
+                -Dsolr.cluster.plugin.edit.enabled=false
             - name: DATA_DIR
               value: *dataDir
             - name: SOLR_HOME
