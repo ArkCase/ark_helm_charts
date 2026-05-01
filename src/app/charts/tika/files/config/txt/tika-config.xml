@@ -201,12 +201,12 @@
         <tlsConfig>
             <params>
                 <active>true</active>
-                <keyStoreType>PKCS12</keyStoreType>
-                <keyStoreFile>${KEYSTORE}</keyStoreFile>
-                <keyStorePassword>${KEYSTORE_PASSWORD}</keyStorePassword>
-                <trustStoreType>PKCS12</trustStoreType>
-                <trustStoreFile>${TRUSTSTORE}</trustStoreFile>
-                <trustStorePassword>${TRUSTSTORE_PASSWORD}</trustStorePassword>
+                <keyStoreType>${JAVA_KEYSTORE_TYPE}</keyStoreType>
+                <keyStoreFile>${JAVA_KEYSTORE}</keyStoreFile>
+                <keyStorePassword>${JAVA_KEYSTORE_PASSWORD}</keyStorePassword>
+                <trustStoreType>${JAVA_TRUSTSTORE_TYPE}</trustStoreType>
+                <trustStoreFile>${JAVA_TRUSTSTORE}</trustStoreFile>
+                <trustStorePassword>${JAVA_TRUSTSTORE_PASSWORD}</trustStorePassword>
             </params>
         </tlsConfig>
     </server>
