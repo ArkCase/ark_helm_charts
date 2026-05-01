@@ -28,7 +28,8 @@ spec:
       {{- include "arkcase.image" (dict "ctx" $ "name" "smoke-test" "repository" "arkcase/nettest") | nindent 6 }}
       command: [ "/usr/local/bin/run-from-env" ]
       args: [ "SCRIPT" ]
-      env:
+      env: {{- include "arkcase.tools.baseEnv" $ | nindent 8 }}
+        {{- include "arkcase.acme.env" $ | nindent 8 }}
         {{- include "arkcase.subsystem-access.env" $ | nindent 8 }}
         - name: SCRIPT
           value: |-
