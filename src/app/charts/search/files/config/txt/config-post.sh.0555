@@ -7,13 +7,9 @@ set -euo pipefail
 export ACME_WAIT="true"
 init_ssl
 
-AUTH_CFG=""
-
 cleanup()
 {
-	[ -v RUN_MARKER ] || RUN_MARKER=""
-	[ -z "${RUN_MARKER}" ] || rm -rf "${RUN_MARKER}" &>/dev/null
-	[ -z "${AUTH_CFG}" ] || rm -f "${AUTH_CFG}" &>/dev/null
+	[ -v RUN_MARKER ] && rm -rf "${RUN_MARKER}" &>/dev/null
 }
 
 RUN_MARKER="${HOME_DIR}/.initRan"
@@ -26,29 +22,39 @@ set_or_default LOGS_DIR "${DATA_DIR}/logs"
 
 redirect_logs "${LOGS_DIR}/config-post.log"
 
-# By default, wait up to 90 seconds if not told otherwise
-set_or_default INIT_POLL_SLEEP
-[[ "${INIT_POLL_SLEEP}" =~ ^[1-9][0-9]*$ ]] || INIT_POLL_SLEEP=2
+# How long to sleep between polling attempts
+set_or_default INIT_POLL_SLEEP "1s"
+INIT_POLL_SLEEP_STR="$(secs_to_timestr "${INIT_POLL_SLEEP}")" || fail "Invalid timestring [${INIT_POLL_SLEEP}]"
+INIT_POLL_SLEEP_SEC="$(timestr_to_secs "${INIT_POLL_SLEEP_STR}")"
 
-set_or_default INIT_MAX_WAIT
-[[ "${INIT_MAX_WAIT}" =~ ^[1-9][0-9]*$ ]] || INIT_MAX_WAIT=90
+# By default, wait up to 90 seconds if not told otherwise
+set_or_default INIT_MAX_WAIT "90s"
+INIT_MAX_WAIT_STR="$(secs_to_timestr "${INIT_MAX_WAIT}")" || fail "Invalid timestring [${INIT_MAX_WAIT}]"
+INIT_MAX_WAIT_SEC="$(timestr_to_secs "${INIT_MAX_WAIT_STR}")"
 
 set_or_default SOLR_URL "https://localhost:8983"
-SOLR_URL+="/solr/admin/info/health"
+set_or_default POLL_PATH "/solr/admin/info/health"
 
-AUTH_CFG="$(mktemp)"
-(umask 177 ; auth_params "${SOLR_ADMIN_USERNAME}" "${SOLR_ADMIN_PASSWORD}" > "${AUTH_CFG}")
+export POLL_URL="${SOLR_URL}${POLL_PATH}"
 
-DEADLINE=$(( $(date +%s) + INIT_MAX_WAIT ))
-waiting "Waiting for Solr at [${SOLR_URL}] (up to ${INIT_MAX_WAIT}s)..."
-until curl -fsSL -k -m 5 --config "${AUTH_CFG}" "${SOLR_URL}" &>/dev/null ; do
-	[ "$(date +%s)" -lt "${DEADLINE}" ] || fail "Timed out waiting for Solr at [${SOLR_URL}]"
-	sleep "${INIT_POLL_SLEEP}"
+FIRST="true"
+START="$(date +%s)"
+while true ; do
+	RC=0
+	OUT="$(curl -m 5 -fsSL --config <(auth_params "${SOLR_ADMIN_USERNAME}" "${SOLR_ADMIN_PASSWORD}") "${POLL_URL}" 2>&1)" || RC=${?}
+	[ ${RC} -eq 0 ] && break
+
+	as_boolean "${FIRST}" && sleeping "Waiting for Solr at [${POLL_URL}] (up to ${INIT_MAX_WAIT_STR})..."
+	FIRST="false"
+
+	NOW="$(date +%s)"
+	[ $(( NOW - START )) -lt ${INIT_MAX_WAIT_SEC} ] || fail "Timed out waiting for Solr at [${POLL_URL}] (rc=${RC}): ${OUT}"
+	sleep "${INIT_POLL_SLEEP_SEC}" || fail "Polling cycle sleep interrupted"
 done
 ok "Solr is ready"
 
 # Don't run if init didn't run
-[ -f "${RUN_MARKER}" ] || exit 0
+is_file "${RUN_MARKER}" || exit 0
 
 # Run the scripts due to be run before Solr is booted up
 INIT_DIR="${INIT_DIR}/post"
@@ -58,10 +64,10 @@ if is_dir_readable "${INIT_DIR}" ; then
 	(
 		set -euo pipefail
 		while read script ; do
-			[ -x "${script}" ] || continue
+			is_file_executable "${script}" || continue
 			# Run the script
 			say "\tInitializing from script [${script}]..."
-			"${script}" || exit 1
+			"${script}" 2>&1 || exit 1
 		done < <(/usr/bin/find . -mindepth 1 -maxdepth 1 -type f -name '*.sh' | sort)
 	) || fail "Initialization failed"
 fi
