@@ -306,6 +306,12 @@ spec:
                 secretKeyRef:
                   name: *secretName
                   key: "contentPassword"
+            - name: FILE_PDF_OWNER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: *secretName
+                  key: "pdfOwnerPassword"
+                  optional: true
             {{- if $dev }}
             - name: DEVELOPMENT
               value: "true"
