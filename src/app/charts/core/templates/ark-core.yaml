@@ -312,6 +312,18 @@ spec:
                   name: *secretName
                   key: "pdfOwnerPassword"
                   optional: true
+            - name: FILE_PDF_SIGNING_KEYSTORE
+              valueFrom:
+                secretKeyRef:
+                  name: *secretName
+                  key: "pdfSigningKeystore"
+                  optional: true
+            - name: FILE_PDF_SIGNING_KEYSTORE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: *secretName
+                  key: "pdfSigningKeystorePassword"
+                  optional: true
             {{- if $dev }}
             - name: DEVELOPMENT
               value: "true"
