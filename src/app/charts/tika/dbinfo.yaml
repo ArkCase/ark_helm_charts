@@ -1,0 +1,45 @@
+mariadb: &mariaDb
+  port: 3306
+  jdbc:
+    driver: org.mariadb.jdbc.Driver
+    url: "jdbc:mariadb://${ARKCASE_JDBC_HOST}:${ARKCASE_JDBC_PORT}/${ARKCASE_JDBC_DATABASE}?useSSL=true&requireSsl=true&enabledSslProtocolSuites=TLSv1.3"
+  aliases:
+    - mysql
+
+# mysql:
+#   port: 3306
+#   jdbc:
+#     driver: com.mysql.cj.jdbc.Driver
+#     url: "jdbc:mysql://${ARKCASE_JDBC_HOST}:${ARKCASE_JDBC_PORT}/${ARKCASE_JDBC_DATABASE}?sslMode=VERIFY_IDENTITY"
+
+oracle:
+  port: 1521
+  jdbc:
+    driver: oracle.jdbc.driver.OracleDriver
+    url: "jdbc:oracle:thin:@${ARKCASE_JDBC_HOST}:${ARKCASE_JDBC_PORT}"
+    # url: "jdbc:oracle:thin:@${ARKCASE_JDBC_HOST}:${ARKCASE_JDBC_PORT}${INSTANCE}"
+    # instance:
+    #   format: "/${ARKCASE_JDBC_INSTANCE}"
+  aliases:
+    - orcl
+
+postgresql:
+  port: 5432
+  jdbc:
+    driver: org.postgresql.Driver
+    url: "jdbc:postgresql://${ARKCASE_JDBC_HOST}:${ARKCASE_JDBC_PORT}/${ARKCASE_JDBC_DATABASE}?ssl=true"
+  aliases:
+    - psql
+    - postgres
+
+sqlserver:
+  port: 1433
+  jdbc:
+    driver: com.microsoft.sqlserver.jdbc.SQLServerDriver
+    url: "jdbc:sqlserver://${ARKCASE_JDBC_HOST}:${ARKCASE_JDBC_PORT};DatabaseName=${ARKCASE_JDBC_DATABASE};encrypt=true;trustServerCertificate=false;"
+    # url: "jdbc:sqlserver://${ARKCASE_JDBC_HOST}${INSTANCE}:${ARKCASE_JDBC_PORT};DatabaseName=${ARKCASE_JDBC_DATABASE};encrypt=true;trustServerCertificate=false;"
+    # instance:
+    #   format: "\\${ARKCASE_JDBC_INSTANCE}"
+  aliases:
+    - mssql
+
