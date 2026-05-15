@@ -26,16 +26,18 @@
     </metadataFilters>
 
     <emitters>
+        <!--
         <emitter class="org.apache.tika.pipes.emitter.jdbc.JDBCEmitter">
             <params>
                 <name>rdbms</name>
                 <connection>${ARKCASE_JDBC_URL}</connection>
-                <insert><!-- some SQL ... --></insert>
+                <insert>some SQL ...</insert>
             </params>
         </emitter>
+        -->
         <emitter class="org.apache.tika.pipes.emitter.s3.S3Emitter">
             <params>
-                <name>content-store</name>
+                <name>internal-content-store</name>
                 <endpointConfigurationService>${ARKCASE_INTERNAL_CONTENT_URL}</endpointConfigurationService>
                 <region>${ARKCASE_INTERNAL_CONTENT_REGION}</region>
                 <bucket>${ARKCASE_INTERNAL_CONTENT_BUCKET}</bucket>
@@ -62,7 +64,7 @@
     <fetchers>
         <fetcher class="org.apache.tika.pipes.fetcher.s3.S3Fetcher">
             <params>
-                <name>content-store</name>
+                <name>internal-content-store</name>
                 <endpointConfigurationService>${ARKCASE_INTERNAL_CONTENT_URL}</endpointConfigurationService>
                 <region>${ARKCASE_INTERNAL_CONTENT_REGION}</region>
                 <bucket>${ARKCASE_INTERNAL_CONTENT_BUCKET}</bucket>
@@ -94,7 +96,9 @@
     <!-- ??? how to configure our pipes here? do we even need to? -->
     <pipes>
         <params>
+            <!--
             <tikaConfig>${TIKA_PIPES_CONFIG}</tikaConfig>
+            -->
         </params>
     </pipes>
 

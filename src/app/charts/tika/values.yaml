@@ -19,12 +19,14 @@ platform: ""
 
 image:
   registry: "public.ecr.aws"
-
-  tika:
-    repository: "arkcase/tika"
+  repository: "arkcase/tika"
+  # tag: latest
 
   setperm:
     repository: "arkcase/setperm"
+
+  smoke-test:
+    repository: "arkcase/nettest"
 
 # You generally shouldn't mess with these. These exist to support some name-generation templates
 nameOverride: ""

@@ -10,6 +10,11 @@ network:
   dependencies:
     acme:
       url: "@env:ACME_URL"
+    internal-content:
+      url: "@env:ARKCASE_INTERNAL_CONTENT_URL"
+    rdbms:
+      host: "@env:ARKCASE_JDBC_HOST"
+      port: "@env:ARKCASE_JDBC_PORT"
 
 settings:
   # We specifically don't consume from ACME b/c those are handled directly
@@ -19,3 +24,25 @@ settings:
   # We specifically don't consume from ZooKeeper b/c those are handled directly
   # by the Clustering templates, and there's no need to address them beyond that
   # zookeeper: {}
+  $self:
+    db:
+      jdbcDriver: ARKCASE_JDBC_DRIVER
+      jdbcUrl: ARKCASE_JDBC_URL
+
+  content:
+    internal:
+      url: ARKCASE_INTERNAL_CONTENT_URL
+      username: ARKCASE_INTERNAL_CONTENT_USERNAME
+      password: ARKCASE_INTERNAL_CONTENT_PASSWORD
+      bucket: ARKCASE_INTERNAL_CONTENT_BUCKET
+      region: ARKCASE_INTERNAL_CONTENT_REGION
+
+  rdbms:
+    arkcase:
+      endpoint: ARKCASE_JDBC_HOST
+      port: ARKCASE_JDBC_PORT
+      username: ARKCASE_JDBC_USERNAME
+      password: ARKCASE_JDBC_PASSWORD
+      database: ARKCASE_JDBC_DATABASE
+      # schema: ARKCASE_JDBC_SCHEMA
+      # instance: ARKCASE_JDBC_INSTANCE

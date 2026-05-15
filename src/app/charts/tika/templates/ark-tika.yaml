@@ -84,11 +84,15 @@ spec:
           {{- include "arkcase.image" $ | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
+            {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
             {{- include "arkcase.alt-java" $ | nindent 12 }}
             - name: ACME_KEYSTORE_WITH_TRUSTS
               value: "true"
             - name: TEMP_DIR
               value: *tempDir
+            - name: JAVA_TOOL_OPTIONS
+              value: >-
+                {{ include "arkcase.fips.java-options" $ }}
             {{- if $.Values.env }}
               {{- $.Values.env | toYaml | nindent 12 }}
             {{- end }}
