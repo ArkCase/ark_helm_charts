@@ -94,6 +94,7 @@ spec:
           {{- include "arkcase.image" $ | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.deployment.env" $ | nindent 12 }}
+            {{- include "arkcase.fips.legacy-env" $ | nindent 12 }}
             - name: DATA_DIR
               value: *dataDir
             - name: PENTAHO_SERVICE

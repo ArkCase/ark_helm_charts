@@ -1,21 +1,10 @@
 #!/bin/bash
 
-timestamp() {
-	/usr/bin/date -Isec -u
-}
+set -euo pipefail
+. /.functions
 
-say() {
-	echo -e "$(timestamp): ${@}"
-}
-
-err() {
-	say "ERROR: ${@}" 1>&2
-}
-
-fail() {
-	say "${@}"
-	exit ${EXIT_CODE:-1}
-}
+export ACME_WAIT="true"
+init_ssl
 
 cleanup() {
 	[ -v RUN_MARKER ] || RUN_MARKER=""
@@ -24,7 +13,6 @@ cleanup() {
 
 RUN_MARKER="${HOME_DIR}/.initRan"
 trap cleanup EXIT
-set -euo pipefail
 
 [ -v BASE_DIR ] || BASE_DIR="/app"
 [ -v DATA_DIR ] || DATA_DIR="${BASE_DIR}/data"

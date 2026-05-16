@@ -118,11 +118,9 @@ under the License.
 		<!-- <network-check-ping6-command>ping6 -c 1 %2$s</network-check-ping6-command> -->
 
 
-		{{- $serviceName := (include "arkcase.service.headless" $) }}
-		{{- $podName := (include "arkcase.fullname" $) }}
 		<connectors>
 				<!-- Connector used to be announced through cluster connections and notifications -->
-				<connector name="local">tcp://${POD_HOSTNAME}.{{ $serviceName }}:61616?sslEnabled=true;enabledProtocols=TLSv1.2;</connector>
+				<connector name="local">tcp://${POD_HOSTNAME}.${DNS_SERVICE}:61616?sslEnabled=true;enabledProtocols=TLSv1.3;</connector>
 		</connectors>
 
 
@@ -173,10 +171,10 @@ under the License.
 
 
 			<!-- Acceptor for every supported protocol -->
-			<acceptor name="local">tcp://0.0.0.0:61616?tcpSendBufferSize=1048576;tcpReceiveBufferSize=1048576;amqpMinLargeMessageSize=102400;protocols=CORE,AMQP,STOMP,HORNETQ,MQTT,OPENWIRE;useEpoll=true;amqpCredits=1000;amqpLowCredits=300;amqpDuplicateDetection=true;supportAdvisory=false;suppressInternalManagementObjects=false;sslEnabled=true;enabledProtocols=TLSv1.2;keyStorePath=${KEYSTORE};keyStorePassword=${KEYSTORE_PASSWORD};</acceptor>
+			<acceptor name="local">tcp://0.0.0.0:61616?tcpSendBufferSize=1048576;tcpReceiveBufferSize=1048576;amqpMinLargeMessageSize=102400;protocols=CORE,AMQP,STOMP,HORNETQ,MQTT,OPENWIRE;useEpoll=true;amqpCredits=1000;amqpLowCredits=300;amqpDuplicateDetection=true;supportAdvisory=false;suppressInternalManagementObjects=false;sslEnabled=true;enabledProtocols=TLSv1.3;keyStorePath=${JAVA_KEYSTORE};keyStorePassword=${JAVA_KEYSTORE_PASSWORD};keyStoreType=${JAVA_KEYSTORE_TYPE};keyStoreProvider=${JAVA_KEYSTORE_PROVIDER};</acceptor>
 
 			<!-- STOMP Acceptor. -->
-			<acceptor name="stomp">tcp://0.0.0.0:61613?tcpSendBufferSize=1048576;tcpReceiveBufferSize=1048576;protocols=STOMP;useEpoll=true;sslEnabled=true;enabledProtocols=TLSv1.2;keyStorePath=${KEYSTORE};keyStorePassword=${KEYSTORE_PASSWORD};</acceptor>
+			<acceptor name="stomp">tcp://0.0.0.0:61613?tcpSendBufferSize=1048576;tcpReceiveBufferSize=1048576;protocols=STOMP;useEpoll=true;sslEnabled=true;enabledProtocols=TLSv1.3;keyStorePath=${JAVA_KEYSTORE};keyStorePassword=${JAVA_KEYSTORE_PASSWORD};keyStoreType=${JAVA_KEYSTORE_TYPE};keyStoreProvider=${JAVA_KEYSTORE_PROVIDER};</acceptor>
 
 		</acceptors>
 
@@ -202,7 +200,7 @@ under the License.
 		</discovery-groups>
 
 		<cluster-connections>
-			<cluster-connection name="{{ $podName }}">
+			<cluster-connection name="${POD_NAME}">
 				<connector-ref>local</connector-ref>
 				<message-load-balancing>ON_DEMAND</message-load-balancing>
 				<max-hops>0</max-hops>
@@ -220,18 +218,17 @@ under the License.
 
 		<security-settings>
 			<security-setting match="#">
-				{{- $adminRole := (include "arkcase.artemis.adminRole" $) }}
-				<permission type="createNonDurableQueue" roles="{{ $adminRole }}"/>
-				<permission type="deleteNonDurableQueue" roles="{{ $adminRole }}"/>
-				<permission type="createDurableQueue" roles="{{ $adminRole }}"/>
-				<permission type="deleteDurableQueue" roles="{{ $adminRole }}"/>
-				<permission type="createAddress" roles="{{ $adminRole }}"/>
-				<permission type="deleteAddress" roles="{{ $adminRole }}"/>
-				<permission type="consume" roles="{{ $adminRole }}"/>
-				<permission type="browse" roles="{{ $adminRole }}"/>
-				<permission type="send" roles="{{ $adminRole }}"/>
+				<permission type="createNonDurableQueue" roles="${ARTEMIS_ADMIN_ROLES}"/>
+				<permission type="deleteNonDurableQueue" roles="${ARTEMIS_ADMIN_ROLES}"/>
+				<permission type="createDurableQueue" roles="${ARTEMIS_ADMIN_ROLES}"/>
+				<permission type="deleteDurableQueue" roles="${ARTEMIS_ADMIN_ROLES}"/>
+				<permission type="createAddress" roles="${ARTEMIS_ADMIN_ROLES}"/>
+				<permission type="deleteAddress" roles="${ARTEMIS_ADMIN_ROLES}"/>
+				<permission type="consume" roles="${ARTEMIS_ADMIN_ROLES}"/>
+				<permission type="browse" roles="${ARTEMIS_ADMIN_ROLES}"/>
+				<permission type="send" roles="${ARTEMIS_ADMIN_ROLES}"/>
 				<!-- we need this otherwise ./artemis data imp wouldn't work -->
-				<permission type="manage" roles="{{ $adminRole }}"/>
+				<permission type="manage" roles="${ARTEMIS_ADMIN_ROLES}"/>
 			</security-setting>
 		</security-settings>
 
