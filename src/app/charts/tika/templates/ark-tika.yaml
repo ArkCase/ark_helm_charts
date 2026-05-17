@@ -3,7 +3,7 @@
 {{- $replicas := ($cluster.replicas | int) -}}
 ---
 apiVersion: apps/v1
-kind: StatefulSet
+kind: Deployment
 metadata:
   name: {{ include "arkcase.fullname" $ | quote }}
   namespace: {{ $.Release.Namespace | quote }}
@@ -18,15 +18,14 @@ spec:
   replicas: {{ $replicas }}
   selector: &labelSelector
     matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
-  serviceName: {{ include "arkcase.service.headless" $ | quote }}
-  updateStrategy: {{- include "arkcase.cluster.statefulUpdateStrategy" $ | nindent 4 }}
-  podManagementPolicy: Parallel
+  strategy:
+    type: Recreate
   template:
     metadata:
       name: {{ include "arkcase.fullname" $ | quote }}
       namespace: {{ $.Release.Namespace | quote }}
       labels: {{- include "arkcase.labels.service" $ | nindent 8 }}
-        {{- include "arkcase.labels.deploys" "solr" | nindent 8 }}
+        {{- include "arkcase.labels.deploys" "tika" | nindent 8 }}
         {{- with ($.Values.labels).common }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -68,97 +67,49 @@ spec:
         - name: init-set-permissions
           {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
-            - name: DATA_DIR
-              value: &dataDir "/app/data"
-            - name: INIT_DIR
-              value: &initDir "/app/init"
+            - name: TEMP_DIR
+              value: &tempDir "/app/temp"
             - name: JOBS
               value: |-
                 jobs:
-                  # We know the ActiveMQ image uses user 998 (centos), 1998 (rocky)
-                  - ownership: {{ coalesce ($.Values.persistence).ownership "2000:2000" | quote }}
+                  - ownership: {{ coalesce ($.Values.persistence).ownership "1999:1999" | quote }}
                     permissions: "u=rwX,g=rX,o="
                     flags: [ "recurse", "forced", "create", "changes" ]
-                    targets: [ "$(DATA_DIR)", "$(INIT_DIR)" ]
+                    targets: [ "$(TEMP_DIR)" ]
           volumeMounts:
-            - name: &dataVol "data"
-              mountPath: *dataDir
-            - name: &initVol "init"
-              mountPath: *initDir
-        {{- include "arkcase.initDependencies.container" $ | nindent 8 }}
+            - name: &tempVol "temp"
+              mountPath: *tempDir
       containers:
-        - name: solr
+        - name: tika
           {{- include "arkcase.image" $ | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
-            {{- include "arkcase.cluster.env" $ | nindent 12 }}
-            {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
+            {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
             {{- include "arkcase.alt-java" $ | nindent 12 }}
-            - name: NODES
-              value: {{ $replicas | toString | quote }}
+            - name: ACME_KEYSTORE_WITH_TRUSTS
+              value: "true"
+            - name: TEMP_DIR
+              value: *tempDir
             - name: JAVA_TOOL_OPTIONS
               value: >-
                 {{ include "arkcase.fips.java-options" $ }}
-            - name: SOLR_TOOL_OPTS
-              value: >-
-                -Djava.util.logging.manager=org.apache.logging.log4j.jul.LogManager
-            - name: SOLR_OPTS
-              value: >-
-                $(SOLR_TOOL_OPTS)
-                -Dsolr.autoSoftCommit.maxTime=1000
-                -Dsolr.cluster.plugin.edit.enabled=false
-            - name: DATA_DIR
-              value: *dataDir
-            - name: SOLR_HOME
-              value: "$(DATA_DIR)/solr"
-            - name: SOLR_DIR
-              value: "/app/solr"
-            - name: SOLR_SERVER_DIR
-              value: "$(SOLR_DIR)/server"
-            - name: SOLR_AUTH_CREDS
-              value: "$(SOLR_SERVER_DIR)/.solr-auth"
-            - name: SOLR_JAVA_MEM
-              value: "-XX:MinRAMPercentage=50.0 -XX:MaxRAMPercentage=80.0"
-            - name: SOLR_HOST_BIND
-              value: "0.0.0.0"
             {{- if $.Values.env }}
               {{- $.Values.env | toYaml | nindent 12 }}
             {{- end }}
           {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
           command: [ "/entrypoint" ]
-          lifecycle:
-            postStart:
-              exec:
-                command: [ "/config-post.sh" ]
-            preStop:
-              exec:
-                command: [ "/app/solr/bin/solr", "stop", "-p", "8983" ]
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
-          securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "solr") | nindent 12 }}
+          securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "tika") | nindent 12 }}
           volumeMounts:
-            - name: *dataVol
-              mountPath: *dataDir
-            - name: *initVol
-              mountPath: *initDir
-            {{- include "arkcase.subsystem-access.volumeMount" $ | nindent 12 }}
+            - name: *tempVol
+              mountPath: *tempDir
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/solr/bin/solr.in.sh") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/solr/bin/solr-version") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/solr/server/solr/solr.xml") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/entrypoint") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/config-pre.sh") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/config-post.sh") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/solr/security.json.tpl") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/conf/tika-config.xml" "subPath" "tika-config.xml") | nindent 12 }}
       volumes:
-        - name: *initVol
+        - name: *tempVol
           emptyDir:
-            sizeLimit: 1Gi
-        {{- include "arkcase.subsystem-access.volume" $ | nindent 8 }}
+            sizeLimit: {{ ((.Values.persistence).volumeSize).temp | default "2Gi" }}
         {{- include "arkcase.acme.volume" $ | nindent 8 }}
-        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
         {{- include "arkcase.file-resource.volumes" $ | nindent 8 }}
-  volumeClaimTemplates:
-    {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "data") | nindent 4 }}
-
-  {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "data") | nindent 0 }}
 {{- end }}

@@ -1,8 +1,9 @@
 {{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.subsystem.external" $)) }}
   {{- $cluster := (include "arkcase.cluster" $ | fromYaml) }}
   {{- $replicas := ($cluster.replicas | int) -}}
-  {{- if (gt $replicas 1) -}}
-    {{- $maxUnavailable := (include "arkcase.solr.maxUnavailable" ($replicas | int)) }}
+  {{- $scale := (include "arkcase.solr.scale" $ | fromYaml) -}}
+  {{- $loss := ($scale.loss | atoi) -}}
+  {{- if (ge $loss 1) -}}
 ---
 apiVersion: policy/v1
 kind: PodDisruptionBudget
@@ -10,7 +11,7 @@ metadata:
   name: {{ include "arkcase.fullname" $ | quote }}
   namespace: {{ $.Release.Namespace | quote }}
 spec:
-  maxUnavailable: {{ $maxUnavailable }}
+  maxUnavailable: {{ $loss }}
   selector:
     matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
   {{- end -}}

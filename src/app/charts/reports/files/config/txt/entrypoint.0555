@@ -35,11 +35,6 @@ fi
 export NODE_ID="$(( 10#${NODE_ID} ))"
 
 ###################################################################
-# CONFIGURE THE SESSION COOKIE NAME                               #
-###################################################################
-set-session-cookie-name "${PENTAHO_TOMCAT}/conf/context.xml"
-
-###################################################################
 # CONFIGURE FILESYSTEM PERSISTENCE                                #
 ###################################################################
 set_or_default DATA_DIR "${BASE_DIR}/data"
