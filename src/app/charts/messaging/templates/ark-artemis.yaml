@@ -90,6 +90,9 @@ spec:
                 secretKeyRef:
                   name: *secretName
                   key: ENCRYPTION_PASSWORD
+            - name: JAVA_TOOL_OPTIONS
+              value: >-
+                {{ include "arkcase.fips.java-options" $ }}
           {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
           lifecycle:
             preStop:
