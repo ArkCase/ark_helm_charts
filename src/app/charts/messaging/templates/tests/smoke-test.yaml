@@ -30,7 +30,16 @@ spec:
       args: [ "SCRIPT" ]
       env: {{- include "arkcase.tools.baseEnv" $ | nindent 8 }}
         {{- include "arkcase.acme.env" $ | nindent 8 }}
-        {{- include "arkcase.subsystem-access.env" $ | nindent 8 }}
+        - name: SERVICE_NAME
+          value: {{ include "arkcase.service.name" $ | quote }}
+        - name: ARTEMIS_CONSOLE_URL
+          value: "https://$(SERVICE_NAME):8443/console"
+        - name: ARTEMIS_BASE_URL
+          value: "ssl://$(SERVICE_NAME)"
+        - name: ARTEMIS_AMQP_URL
+          value: "$(ARTEMIS_BASE_URL):61616"
+        - name: ARTEMIS_STOMP_URL
+          value: "$(ARTEMIS_BASE_URL):61613"
         - name: SCRIPT
           value: |-
             set -xeuo pipefail
