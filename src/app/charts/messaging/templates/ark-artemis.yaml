@@ -72,6 +72,9 @@ spec:
           {{- include "arkcase.image" $ | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
+            {{- include "arkcase.fips.legacy-env" $ | nindent 12 }}
+            - name: ARTEMIS_ADMIN_ROLES
+              value: {{ include "arkcase.artemis.adminRole" $ | quote }}
             - name: ARTEMIS_ADMIN_PASSWORD
               valueFrom:
                 secretKeyRef:
@@ -110,13 +113,13 @@ spec:
               mountPath: "/app/conf/artemis-roles.properties"
               subPath: &artemisRolesProperties "artemis-roles.properties"
               readOnly: true
-            - name: *secret
-              mountPath: "/app/conf/broker.xml.template"
-              subPath: &brokerXmlTemplate "broker.xml.template"
-              readOnly: true
             - name: &configMap "config-map"
-              mountPath: "/app/conf/bootstrap.xml.template"
-              subPath: &bootstrapXmlTemplate "bootstrap.xml.template"
+              mountPath: "/app/conf/bootstrap.xml"
+              subPath: &bootstrapXmlTemplate "bootstrap.xml"
+              readOnly: true
+            - name: *configMap
+              mountPath: "/app/conf/broker.xml"
+              subPath: &brokerXml "broker.xml"
               readOnly: true
             - name: *configMap
               mountPath: "/check-health"
@@ -152,8 +155,6 @@ spec:
                 path: *artemisUsersProperties
               - key: *artemisRolesProperties
                 path: *artemisRolesProperties
-              - key: *brokerXmlTemplate
-                path: *brokerXmlTemplate
         - name: *configMap
           configMap:
             optional: false
@@ -162,6 +163,8 @@ spec:
             items:
               - key: *bootstrapXmlTemplate
                 path: *bootstrapXmlTemplate
+              - key: *brokerXml
+                path: *brokerXml
               - key: *checkHealth
                 path: *checkHealth
                 mode: 0755
