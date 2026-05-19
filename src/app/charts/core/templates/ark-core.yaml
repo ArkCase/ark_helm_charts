@@ -324,6 +324,14 @@ spec:
                   name: *secretName
                   key: "pdfSigningKeystorePassword"
                   optional: true
+            - name: FILE_PDF_SIGNING_KEYSTORE_TYPE
+              value: "$(JAVA_KEYSTORE_TYPE)"
+            - name: FILE_PDF_SIGNING_KEYSTORE_PROVIDER
+              valueFrom:
+                secretKeyRef:
+                  name: *secretName
+                  key: "pdfSigningKeystoreProvider"
+                  optional: true
             {{- if $dev }}
             - name: DEVELOPMENT
               value: "true"
