@@ -1,19 +1,9 @@
 #!/bin/bash
 
-timestamp() {
-	/usr/bin/date -Isec -u
-}
-
-say() {
-	echo -e "$(timestamp): ${@}"
-}
-
-fail() {
-	say "${@}" 1>&2
-	exit ${EXIT_CODE:-1}
-}
-
 set -euo pipefail
+. /.functions
+
+init_ssl
 
 # First things first - duplicate the Solr home contents into ${SOLR_HOME}
 say "\tInitializing the SOLR_HOME at [${SOLR_HOME}]"

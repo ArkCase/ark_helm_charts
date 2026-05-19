@@ -105,16 +105,17 @@
                relaxedPathChars="[]|"
                relaxedQueryChars="^{}[]|&amp;"
                port="8443"
-               protocol="org.apache.coyote.http11.Http11AprProtocol"
+               protocol="org.apache.coyote.http11.Http11NioProtocol"
                scheme="https"
                secure="true"
                SSLEnabled="true"
                useBodyEncodingForURI="true">
         <UpgradeProtocol className="org.apache.coyote.http2.Http2Protocol" />
-        <SSLHostConfig protocols="TLSv1.2" certificateVerification="none">
-            <Certificate certificateKeyFile="/.ssl/cert.key"
-                         certificateFile="/.ssl/cert.pem"
-                         certificateChainFile="/.ssl/ca-chain.pem"
+        <SSLHostConfig protocols="TLSv1.3" certificateVerification="none">
+            <Certificate certificateKeyFile="${SSL_PRIVATE_KEY_AES}"
+                         certificateKeyPassword="${SSL_PASSWORD}"
+                         certificateFile="${SSL_CERTIFICATE_TOMCAT}"
+                         certificateChainFile="${SSL_INT}"
                          type="RSA" />
         </SSLHostConfig>
     </Connector>

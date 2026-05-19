@@ -1,26 +1,12 @@
 #!/bin/bash
 
-timestamp() {
-	/usr/bin/date -Isec -u
-}
-
-say() {
-	echo -e "$(timestamp): ${@}"
-}
-
-fail() {
-	say "${@}" 1>&2
-	exit ${EXIT_CODE:-1}
-}
-
 set -euo pipefail
+. /.functions
 
 #
 # First things first: enable SSL
 #
-[ -v SSL_DIR ] || export SSL_DIR="/.ssl"
-
-acme-init
+init_ssl
 
 [ -v SOLR_LOGS_DIR ] || export SOLR_LOGS_DIR="${DATA_DIR}/logs"
 [ -d "${SOLR_LOGS_DIR}" ] || mkdir -p "${SOLR_LOGS_DIR}" || say "WARNING: Failed to find and create the log directory at [${SOLR_LOGS_DIR}]"
