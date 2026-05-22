@@ -5,6 +5,7 @@ set -euo pipefail
 #
 # Init all the SSL-related stuff
 #
+export ACME_WAIT="true"
 init_ssl
 
 set_as_boolean DEBUG
