@@ -138,7 +138,7 @@ spec:
                 command: [ "/app/pentaho/pentaho-server/tomcat/bin/catalina.sh", "stop", "-force" ]
           volumeMounts:
             {{- include "arkcase.trusts.mount" $ | nindent 12 }}
-            {{- include "arkcase.acme.volumeMount-shared" $ | nindent 12 }}
+            {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
             {{- include "arkcase.subsystem-access.volumeMount" $ | nindent 12 }}
             - name: *dataVol
               mountPath: *dataDir
@@ -188,7 +188,7 @@ spec:
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "logs") | nindent 8 }}
         {{- include "arkcase.trusts.volume" $ | nindent 8 }}
-        {{- include "arkcase.acme.volume-shared" $ | nindent 8 }}
+        {{- include "arkcase.acme.volume" $ | nindent 8 }}
         {{- include "arkcase.pentaho.license.volume" $ | nindent 8 }}
         {{- include "arkcase.subsystem-access.volume" $ | nindent 8 }}
         {{- include "arkcase.file-resource.volumes" $ | nindent 8 }}
