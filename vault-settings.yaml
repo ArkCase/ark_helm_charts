@@ -1,0 +1,156 @@
+#
+# This file describes the vision of how vault configuration could be handled
+# for consuming values stored in Vault within ArkCase as seamlessly as possible
+#
+global:
+  settings:
+    ${subsys}: # core, reports, messaging, search, ldap, etc...
+      vault:
+
+        #
+        # Vault instance configurations that can be used to configure
+        # the secrets that will be consumed below. This will result
+        # in the generation of a VaultAuth resource, and as such
+        # the configuration mirrors that for the VaultAuth resource
+        # schema.
+        #
+        # If none is defined, a default one will be used with the
+        # following default values:
+        #
+        # - name: "arkcase-${subsys}"
+        # - vaultAuthGlobalRef:
+        #     - allowDefault: true
+        #     - namespace: "vault-secrets-operator"
+        # - kubernetes:
+        #     - role: "arkcase-${subsys}-read"
+        #     - serviceAccount: "arkcase-${subsys}"
+        #     - audiences: [ "vault" ]
+        instances:
+          instance-1:
+            enabled: (true|false)
+            auth-global-ref:
+              # If not set, will default to true
+              allow-default: (true|false)
+              # Optional, will default to "default"
+              name: ...
+              # If not set, will default to "vault-secrets-operator"
+              namespace: ...
+            # If not set, will default to [ "${release-namespace}" ]
+            allowedNamespaces: [ ... ]
+            # Optional
+            namespace: ...
+            # Optional, will default to "kv"
+            mount: ...
+            # If not set, will default to "vault-secrets-operator/default"
+            connection-ref: ...
+
+        #
+        # Vault secrets that will be accessible
+        #
+        secrets:
+          # Each secret can contain multiple key-value pairs, so
+          # we reference them independently.
+          #
+          # Optionally, no secrets can be defined and the default
+          # secret named "arkcase" will be defined using default
+          # values. However, this also requires that only one
+          # Vault instance be defined, since it will be the one
+          # consumed by the "default" secret.
+          #
+          # These definitions will directly influence the creation
+          # of VaultStaticSecret resources.
+          #
+          # If none is defined, this is the default that will be
+          # used:
+          #
+          # - name: &name "arkcase-${subsys}-vault"
+          # - destination:
+          #     - create: true
+          #     - name: *name
+          #     - overwrite: true
+          # - hmacSecretData: true
+          # - type: "kv-v2"
+          # - mount: "kv"
+          # - path: "arkcase/${subsys}
+          # - vaultAuthRef: (computed as per below rules)
+          #
+          # Upon definition, the target object's name will be
+          # "arkcase-${subsys}-vault-${secret-name}" as will
+          # the destination secret's.
+          secret-1:
+            # This describes the secret that is to be
+            # referenced from Vault, and whose values
+            # will be consumed below
+            #
+            # It will guide the generation of VaultStaticSecret
+            # resources. The destination configuration for those
+            # resources is controlled by the Helm chart, and
+            # the following rules will also be applied:
+            #
+            # - hmacSecretData=true
+            # - Must be a KV store (v1 or v2 supported)
+
+            # Turn this secret on/off
+            enabled: (true|false)
+
+            # the name of an "instance" defined above. If the instance
+            # named has not been defined or is not enabled, this will result
+            # in a rendering error. If the value is not provided and only one
+            # instance is defined, it will be used.
+            instance: intance-1
+
+            # The secret type, defaults to "v2" if not provided
+            # (VaultStaticSecret only supports kv-v1 or kv-v2, so we summarize)
+            type: (v1|v2)
+
+            # If not set, will default to "kv"
+            mount: ...
+
+            # If not set, will default to "arkcase/${subsys}/${secret-name}"
+            path: ...
+
+            # Only supported when using v2, default is not set
+            version: ...
+
+          secret-2:
+            enabled: false
+            instance: instance-X
+            type: ...
+            mount: ...
+            path: ...
+            version: ...
+
+        #
+        # The actual values that will be made available to the
+        # pods via either environment variables or mounted files
+        #
+        values:
+          # Put the specific value into the environment variable called VAULT_ENV_VAR_1,
+          # which can then be referenced in any Spring configuration as ${VAULT_ENV_VAR_1}
+          ENV_VAR_1:
+            # The name of the secret where the key comes from. If
+            # the secret is disabled or not defined, this raises
+            # a rendering error. If not provided and only one secret
+            # is defined, it will be used.
+            secret: secret-1
+            key: "key-to-fetch"
+            # false is the default if not specified
+            mount: false
+
+          # Put the specific value into a file at /vault/some-generated-path, and whose path
+          # will be placed into the environment variable VAULT_ENV_VAR_2, which can then be
+          # referenced in any Spring configuration as ${VAULT_ENV_VAR_2}
+          ENV_VAR_2:
+            secret: secret-2
+            key: "some-key"
+            mount: true
+            # Pattern that the filename must match. The "%s" component
+            # will be replaced with a randomly-generated string that is
+            # 16 characters long, and contains only alphanumeric characters
+            #
+            # If no pattern is given, the pattern "%s.dat" will be used
+            pattern: "some-filename-pattern-%s-we-want.ext"
+
+            # In case the application requires the file to be mounted in a
+            # specific location (defaults to "/vault" if not set)
+            path: "/vault"
