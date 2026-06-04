@@ -6,6 +6,12 @@ global:
   settings:
     ${subsys}: # core, reports, messaging, search, ldap, etc...
       vault:
+        settings:
+          # Optional, default value is "VAULT_"
+          env-prefix: "VAULT_"
+
+          # Optional, default value is "/vault"
+          default-path: "/vault"
 
         #
         # Vault instance configurations that can be used to configure
@@ -128,6 +134,11 @@ global:
           # Put the specific value into the environment variable called VAULT_ENV_VAR_1,
           # which can then be referenced in any Spring configuration as ${VAULT_ENV_VAR_1}
           ENV_VAR_1:
+            # Whether to prefix the environment variable with the prefix defined
+            # above (default "VAULT_"). This allows us to overwrite existing environment
+            # values. Should be used with caution! (defaults to true if not set)
+            env-prefix: (true|false)
+
             # The name of the secret where the key comes from. If
             # the secret is disabled or not defined, this raises
             # a rendering error. If not provided and only one secret
