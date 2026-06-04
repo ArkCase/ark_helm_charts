@@ -1,0 +1,63 @@
+#!/bin/bash
+
+set -euo pipefail
+. /.functions
+
+export RE_FULL_REVISION="^((0|[1-9][0-9]*)([.][0-9]+)*)(-([a-zA-Z0-9-]+([.][a-zA-Z0-9-]+)*))?([+]([a-zA-Z0-9-]+))?$"
+
+usage()
+{
+	echo -e "usage: ${CALLED} dir-1 [ dir-2 dir-3 ... dir-N ]"
+	exit 1
+}
+
+[ ${#} -ge 1 ] || usage
+
+for CHART in "${@}" ; do
+	if ! is_dir_readable "${CHART}" ; then
+		err "The directory [${CHART}] is not readable, skipping!"
+		continue
+	fi
+
+	if ! GIT="$(cd "${CHART}" && git rev-parse --is-inside-work-tree 2>&1)" || [ "${GIT,,}" == "false" ] ; then
+		err "The directory [${CHART}] is not under git control, skipping!"
+		continue
+	fi
+
+	CHART_YAML="${CHART}/Chart.yaml"
+	if ! is_file_readable "${CHART_YAML}" ; then
+		err "The file [${CHART_YAML}] does not exist, skipping the chart [${CHART}]!"
+		continue
+	fi
+
+	JSON="$(yaml2json < "${CHART_YAML}" 2>&1)" || fail "Failed to parse the file [${CHART_YAML}] (rc=${?}): ${JSON}"
+	VERSION="$(jq -r ".version" <<< "${JSON}" 2>&1)" || fail "Failed to parse the version from the chart [${CHART}] (rc=${?}): ${VERSION}"
+	NAME="$(jq -r ".name" <<< "${JSON}" 2>&1)" || fail "Failed to parse the name from the chart [${CHART}] (rc=${?}): ${NAME}"
+	[[ "${VERSION}" =~ ${RE_FULL_REVISION} ]] || fail "Revision number [${VERSION}] is not valid from [${CHART}]: ( /${RE_FULL_REVISION}/ )"
+
+	VERSION_BASE_NUMBER="${BASH_REMATCH[1]}"
+	VERSION_PRERELEASE="${BASH_REMATCH[5]}"
+	VERSION_METADATA="${BASH_REMATCH[8]}"
+
+	[ -z "${VERSION_PRERELEASE}" ] && TYPE="release" || TYPE="test"
+	export CHART NAME TYPE VERSION
+	(
+		cd "${CHART}" || fail "Failed to CD into ${CHART}"
+
+		TAG="${NAME}/${TYPE}/${VERSION}"
+		if REF="$(git show-ref --hash "${TAG}" 2>&1)" ; then
+			ok "The chart [${NAME}] (from [${CHART}]) has already been released with tag [${TAG}] (ref = ${REF})"
+			exit 0
+		fi
+
+		OUT="$(git tag "${TAG}" 2>&1)" || fail "Failed to create the tag [${TAG}] for the [${NAME}] chart at [${CHART}] (rc=${?}): ${OUT}"
+		ok "The chart [${NAME}] has been tagged as [${TAG}]"
+
+		BRANCH="$(git branch --show-current 2>&1)" || fail "Failed to read the checked out branch for the chart [${NAME}] at [${CHART}] (rc=${?}): ${BRANCH}"
+
+		eyes "Executing an atomic push for the chart [${NAME}] (branch [${BRANCH}], tag [${TAG}])"
+		OUT="$(git push --atomic origin "${BRANCH}" "${TAG}" 2>&1)" || fail "Failed to execute the atomic push for chart [${NAME}] at [${CHART}] (rc=${?}): ${OUT}"
+		ok "Pushed the branch [${BRANCH}] and the tag [${TAG}] for the chart [${NAME}]!"
+		exit 0
+	) || err "Failed to tag and publish the chart [${NAME}] at [${CHART}]"
+done
