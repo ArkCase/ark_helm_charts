@@ -47,15 +47,8 @@ doing "Waiting for ArkCase to become available before starting the Cron process.
 poll_url "${CORE_URL}" "${INIT_MAX_WAIT}" "${INIT_POLL_SLEEP}" || fail "ArkCase did not come up in time"
 
 eyes "Storing the runtime environment to a temporary file"
-declare -px > "${HOME}/.cron-env"
+set_or_default CRON_ENV "${HOME}/.cron-env"
+declare -px > "${CRON_ENV}"
 
 doing "Starting the Cron process..."
-
-# This is for the new Ubuntu-centric containers
-CMD=(/usr/sbin/cron -f -L 15)
-
-# This is vestigial to support Rocky-centric containers
-is_file_executable /usr/sbin/crond && CMD=(/usr/sbin/crond -n -P)
-
-# Launch the correct daemon!
-execute "${CMD[@]}"
+execute /usr/sbin/cron -f -L 15 -P
