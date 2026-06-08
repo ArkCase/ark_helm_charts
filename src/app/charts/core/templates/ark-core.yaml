@@ -354,6 +354,7 @@ spec:
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/render-altcase-vars") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/tomcat/conf/server.xml") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/tomcat/webapps/arkcase/WEB-INF/tomcat-web.xml" "subPath" "arkcase-tomcat-web.xml" ) | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/tomcat/webapps/arkcase/WEB-INF/classes/log4j2.xml") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/tomcat/webapps/arkcase/WEB-INF/classes/acm/log4j2.xml") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/acm/acm-config-server-repo/spring/quartz.properties") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/acm/spring/proxy-config/spring-config-proxy.xml") | nindent 12 }}
