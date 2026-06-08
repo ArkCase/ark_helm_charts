@@ -53,6 +53,27 @@
                 </Delete>
             </DefaultRolloverStrategy>
         </RollingFile>
+        <RollingFile name="session-log" fileName="${env:LOGS_DIR}/arkcase-sessions.log"
+            immediateFlush="true" bufferedIO="false"
+            filePattern="${env:LOGS_DIR}/arkcase-sessions-%d{yyyy-MM-dd}.log.gz">
+            <JsonLayout>
+                <complete>true</complete>
+                <compact>true</compact>
+                <eventEol>true</eventEol>
+                <includeStacktrace>true</includeStacktrace>
+            </JsonLayout>
+            <Policies>
+                <OnStartupTriggeringPolicy />
+                <SizeBasedTriggeringPolicy size="500MB" />
+            </Policies>
+            <ThresholdFilter level="debug"/>
+            <DefaultRolloverStrategy>
+                <Delete basePath="${env:LOGS_DIR}">
+                    <IfFileName glob="arkcase-sessions-*.log.gz" />
+                    <IfLastModified age="P90D" />
+                </Delete>
+            </DefaultRolloverStrategy>
+        </RollingFile>
     </Appenders>
     <Loggers>
         <!-- INFO and above to console and log file; com.armedia debug and above to log file -->
@@ -66,6 +87,10 @@
             <AppenderRef ref="Console"/>
             <AppenderRef ref="file-log"/>
             <AppenderRef ref="file-errors-log"/>
+        </Logger>
+        <!-- Audit for everything related to sessions -->
+        <Logger name="com.armedia.acm.AcmSessionAuditor" level="info" additivity="false">
+            <AppenderRef ref="session-log"/>
         </Logger>
         {{- include "arkcase.core.renderLoggers" (dict "ctx" $ "loggers" $loggers) | nindent 8 }}
         <Root level="info" additivity="false">
