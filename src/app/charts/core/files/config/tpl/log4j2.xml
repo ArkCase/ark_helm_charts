@@ -89,7 +89,7 @@
             <AppenderRef ref="file-errors-log"/>
         </Logger>
         <!-- Audit for everything related to sessions -->
-        <Logger name="com.armedia.acm.AcmSessionAuditor" level="info" additivity="false">
+        <Logger name="com.armedia.acm.session" level="info" additivity="false">
             <AppenderRef ref="session-log"/>
         </Logger>
         {{- include "arkcase.core.renderLoggers" (dict "ctx" $ "loggers" $loggers) | nindent 8 }}
