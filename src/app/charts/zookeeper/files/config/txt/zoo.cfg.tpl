@@ -85,10 +85,10 @@ autopurge.purgeInterval=${ZOOKEEPER_AUTOPURGE_INTERVAL}
 ## Metrics Providers
 #
 # https://prometheus.io Metrics Exporter
-metricsProvider.className=org.apache.zookeeper.metrics.prometheus.PrometheusMetricsProvider
-metricsProvider.httpHost=0.0.0.0
-metricsProvider.httpPort=7000
-metricsProvider.exportJvmInfo=true
+# metricsProvider.className=org.apache.zookeeper.metrics.prometheus.PrometheusMetricsProvider
+# metricsProvider.httpHost=0.0.0.0
+# metricsProvider.httpPort=7000
+# metricsProvider.exportJvmInfo=true
 
 cnxTimeout=60
 
