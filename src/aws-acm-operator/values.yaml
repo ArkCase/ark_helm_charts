@@ -1,0 +1,99 @@
+# Default values for aws-acm-operator.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+image:
+  repository: akki2208/aws-acm-operator
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "0.0.1"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+env:
+  # Below aws creds should only be enabled when you are not using iam roles using service account(IRSA)
+  # - name: AWS_ACCESS_KEY_ID
+  #   value: ""
+  # - name: AWS_SECRET_ACCESS_KEY
+  #   value: ""
+  # - name: AWS_DEFAULT_REGION
+  #   value: ""
+
+  # enable only in case your route35 is in some different aws account default value is false
+  # - name: IS_ROUTE53_CROSS_ACCOUNT
+  #   value: "true"
+
+  # define your assume role arm for creds needed for managing route53. Do not define in case route53 is in same account
+  # - name: ROUTE53_ACCOUNT_ASSUME_ROLE_ARN
+  #   value: "arn:aws:iam::XXXXXXXX:role/acm-cross-account"
+
+  # interval in which the script will keep checking for new cert requests default is 60 seconds
+  # - name: REFRESH_INTERVAL
+  #   value: "60"
+
+  # the name of the config map in which It keeps a track of certificates created. It acts like a state file.
+  # - name: CONFIG_MAP_NAME
+  #   value: "acm-cert-config"
+
+  # - name: CERT_ARN_ANNOTATION_KEY
+  #   value: "aws.k8s.acm.manager/cert_arn"
+
+  # - name: CERT_DOMAIN_ANNOTATION_KEY
+  #   value: "aws.k8s.acm.manager/domain_name"
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+clusterRole:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext:
+  {}
+  # fsGroup: 2000
+
+securityContext:
+  {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+resources:
+  {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
