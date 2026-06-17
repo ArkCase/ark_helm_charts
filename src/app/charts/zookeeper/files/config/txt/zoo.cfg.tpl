@@ -10,7 +10,7 @@ initLimit=${ZOOKEEPER_INIT_LIMIT}
 syncLimit=${ZOOKEEPER_SYNC_LIMIT}
 
 # Enable the admin server (??)
-admin.enableServer=true
+admin.enableServer=false
 
 # the directory where the snapshot is stored.
 # do not use /tmp for storage, /tmp here is just
