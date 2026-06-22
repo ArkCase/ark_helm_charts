@@ -1,0 +1,46 @@
+{{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.subsystem.external" $)) }}
+---
+# This is the actual scaled object that drives the thing
+{{- $db := (include "arkcase.db.info" $ | fromYaml) }}
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  labels: {{- include "arkcase.labels.service" $ | nindent 4 }}
+    {{- with ($.Values.labels).common }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with ($.Values.annotations).common }}
+  annotations: {{- toYaml . | nindent 4 }}
+  {{- end }}
+  name: &name {{ include "arkcase.basename" $ | quote }}
+  namespace: {{ $.Release.Namespace | quote }}
+spec:
+  # Configurable at deployment time?
+  pollingInterval: 10
+  # Configurable at deployment time?
+  cooldownPeriod: 30
+  # Configurable at deployment time?
+  maxReplicaCount: 10
+  # The rest is is driven by the rest of the chart
+  scaleTargetRef:
+    kind: Deployment
+    name: *name
+  triggers:
+    # Must be either 'postgresql' or 'mysql'
+    - type: {{ $db.type | lower | quote }}
+      authenticationRef:
+        name: *name
+      metadata:
+        sslmode: "require"
+        # For now try a direct query, but an SP or DB Function might be better: 'SELECT * from SCAN_QUEUE_CHECK()'
+        # This allows us to change the query definition with each ArkCase release without having to mess with
+        # this chart
+        query: |
+          SELECT
+            ceil(COUNT(*)::decimal / 16)
+          FROM
+            acm_doc_scan_job
+          WHERE
+            cm_status in ( 'running', 'queued' )
+        targetQueryValue: 1
+{{- end }}

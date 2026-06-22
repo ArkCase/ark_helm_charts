@@ -1,6 +1,5 @@
 {{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.subsystem.external" $)) }}
 {{- $cluster := (include "arkcase.cluster" $ | fromYaml) }}
-{{- $replicas := ($cluster.replicas | int) -}}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -15,7 +14,8 @@ metadata:
   annotations: {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  replicas: {{ $replicas }}
+  # We start with 0 replicas b/c this will be managed by the KEDA scaler
+  replicas: 0
   selector: &labelSelector
     matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
   strategy:

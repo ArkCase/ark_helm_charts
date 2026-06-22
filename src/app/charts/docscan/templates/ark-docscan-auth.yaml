@@ -1,0 +1,33 @@
+{{- if and (include "arkcase.subsystem.enabled" $) (not (include "arkcase.subsystem.external" $)) }}
+---
+# This handles the authentication for the ScaledObject, below
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  labels: {{- include "arkcase.labels.service" $ | nindent 4 }}
+    {{- with ($.Values.labels).common }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with ($.Values.annotations).common }}
+  annotations: {{- toYaml . | nindent 4 }}
+  {{- end }}
+  name: {{ include "arkcase.basename" $ | quote }}
+  namespace: {{ $.Release.Namespace | quote }}
+spec:
+  secretTargetRef:
+    - name: &name {{ include "arkcase.subsystem-access.name" (dict "ctx" $ "subsys" "rdbms" "conn" "arkcase") | quote }}
+      parameter: host
+      key: endpoint
+    - name: *name
+      parameter: port
+      key: port
+    - name: *name
+      parameter: userName
+      key: username
+    - name: *name
+      parameter: password
+      key: password
+    - name: *name
+      parameter: dbName
+      key: database
+{{- end }}
