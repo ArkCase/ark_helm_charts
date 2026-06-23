@@ -39,8 +39,8 @@ spec:
           SELECT
             ceil(COUNT(*)::decimal / 16)
           FROM
-            acm_doc_scan_job
+            acm_file
           WHERE
-            cm_status in ( 'running', 'queued' )
+            cm_file_status = 'ACTIVE'
         targetQueryValue: 1
 {{- end }}
