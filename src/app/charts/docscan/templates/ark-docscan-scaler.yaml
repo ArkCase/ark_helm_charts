@@ -23,6 +23,7 @@ spec:
   maxReplicaCount: 10
   # The rest is is driven by the rest of the chart
   scaleTargetRef:
+    apiVersion: apps/v1
     kind: Deployment
     name: *name
   triggers:
