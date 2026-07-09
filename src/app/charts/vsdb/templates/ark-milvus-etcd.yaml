@@ -100,6 +100,8 @@ spec:
             {{- include "arkcase.acme.env" $ | nindent 12 }}
             {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
             {{- include "arkcase.cluster.discovery.env" (dict "ctx" $ "port" "etcd") | nindent 12 }}
+            - name: SERVICE_NAME
+              value: {{ include "arkcase.service.name" $ | quote }}
             - name: ETCD_DISCOVERY_SRV
               value: "$(DNS_SERVICE).$(POD_NAMESPACE).svc"
             - name: ETCD_NAME
@@ -120,6 +122,14 @@ spec:
               value: "http://0.0.0.0:9090"
             - name: ETCD_DATA_DIR
               value: *dataDir
+            - name: ETCDCTL_ENDPOINTS
+              value: "$(SERVICE_NAME):2379"
+            - name: ETCDCTL_CACERT
+              value: "$(SSL_DIR)/ca-root.pem"
+            - name: ETCDCTL_CERT
+              value: "$(SSL_DIR)/cert.pem"
+            - name: ETCDCTL_KEY
+              value: "$(SSL_DIR)/cert.key"
           {{- include "arkcase.subsystem.ports" (dict "ctx" $ "name" "etcd") | nindent 10 }}
           resources: {{- include "arkcase.resources" (dict "ctx" $ "part" "etcd") | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "etcd") | nindent 12 }}

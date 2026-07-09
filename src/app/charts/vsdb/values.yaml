@@ -159,12 +159,12 @@ service:
 
   etcd:
     ports:
-      - name: etcd-client
+      - name: etcd-client-ssl
         protocol: TCP
         port: &etcd-client 2379
-      - name: etcd-peer
+      - name: etcd-server-ssl
         protocol: TCP
-        port: &etcd-peer 2380
+        port: &etcd-server 2380
 
     probes:
       enabled: true
@@ -174,10 +174,8 @@ service:
         timeoutSeconds: 10
         successThreshold: 1
         failureThreshold: 1
-        httpGet:
-          scheme: HTTPS
-          path: "/livez"
-          port: *etcd-client
+        exec:
+          command: [ "etcd-probe", "livez" ]
       startup:
         failureThreshold: 90
       liveness:
@@ -187,7 +185,5 @@ service:
         # safely pare down this number to a more reasonable count.
         failureThreshold: 6
       readiness:
-        httpGet:
-          scheme: HTTPS
-          path: "/readyz"
-          port: *etcd-client
+        exec:
+          command: [ "etcd-probe", "health" ]
