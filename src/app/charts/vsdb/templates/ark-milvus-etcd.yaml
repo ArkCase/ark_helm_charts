@@ -131,18 +131,24 @@ spec:
             - name: ETCDCTL_KEY
               value: "$(SSL_DIR)/cert.key"
           {{- include "arkcase.subsystem.ports" (dict "ctx" $ "name" "etcd") | nindent 10 }}
+          lifecycle:
+            postStart:
+              exec:
+                command: [ "/usr/local/bin/initialize-auth" ]
           resources: {{- include "arkcase.resources" (dict "ctx" $ "part" "etcd") | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "etcd") | nindent 12 }}
           volumeMounts:
             {{- include "arkcase.trusts.mount" $ | nindent 12 }}
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
             {{- include "arkcase.subsystem-access.volumeMount" $ | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/initialize-auth" "subPath" "etcd.initialize-auth") | nindent 12 }}
             - name: *dataVol
               mountPath: *dataDir
       volumes:
         {{- include "arkcase.trusts.volume" $ | nindent 8 }}
         {{- include "arkcase.acme.volume" $ | nindent 8 }}
         {{- include "arkcase.subsystem-access.volume" $ | nindent 8 }}
+        {{- include "arkcase.file-resource.volumes" $ | nindent 8 }}
         {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
   volumeClaimTemplates:
     {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "data") | nindent 4 }}

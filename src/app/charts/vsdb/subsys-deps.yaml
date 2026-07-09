@@ -50,18 +50,12 @@ settings:
 
     etcd:
       initialToken: ETCD_INITIAL_CLUSTER_TOKEN
+      endpoints: ETCD_ENDPOINTS
 
   content:
     vsdb:
-      url: ARKCASE_CONTENT_VSDB_URL
-      ui: ARKCASE_CONTENT_VSDB_UI
-      username: ARKCASE_CONTENT_VSDB_USERNAME
-      password: ARKCASE_CONTENT_VSDB_PASSWORD
-      bucket:
-        env:
-          name: ARKCASE_CONTENT_VSDB_BUCKET
-          optional: true
-      region:
-        env:
-          name: ARKCASE_CONTENT_VSDB_REGION
-          optional: true
+      url: MINIO_URL
+      region: MINIO_REGION
+      bucket: MINIO_BUCKET_NAME
+      username: MINIO_ACCESS_KEY_ID
+      password: MINIO_SECRET_ACCESS_KEY
