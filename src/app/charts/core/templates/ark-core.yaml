@@ -252,6 +252,9 @@ spec:
             {{- include "arkcase.env.applicationVars" $ | nindent 12 }}
             {{- include "arkcase.core.settings.env" $ | nindent 12 }}
             {{- include "arkcase.alt-java" $ | nindent 12 }}
+            # TODO: this should probably be computed based on available resources
+            - name: ARKCASE_AI_ENABLED
+              value: "true"
             - name: COMPONENT
               value: "arkcase"
             - name: POLL_CONFIG
