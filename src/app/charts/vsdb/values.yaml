@@ -1,0 +1,182 @@
+# This can be set to "false" by parent charts. If not defined, it will be taken as true
+#enabled: true
+
+#
+# This should group all application-specific configurations
+#
+resources:
+  development:
+    main:
+      limits: "3Gi,2"
+
+# Please leave the `replicaCount` to 1 for the time being. Clustering is not
+# supported yet.
+replicaCount: 1
+
+platform: ""
+
+image:
+  # pullPolicy: IfNotPresent
+  registry: "public.ecr.aws"
+
+  # Overrides the image tag whose default is the chart appVersion.
+  main:
+    repository: "arkcase/milvus"
+    # tag: "4.0.0"
+
+  etcd:
+    repository: "arkcase/etcd"
+    tag: "3.6.13"
+
+  setperm:
+    repository: "arkcase/setperm"
+  #   tag: "latest"
+
+  smoke-test:
+    repository: "arkcase/nettest"
+  #   tag: "latest"
+
+
+
+# You generally shouldn't mess with these. These exist to support some name-generation templates
+nameOverride: ""
+fullnameOverride: ""
+
+# Custom annotations to apply throughout
+annotations:
+
+# Custom labels to apply throughout
+labels:
+
+updateStrategy: RollingUpdate
+rollingUpdatePartition: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: false
+  # Annotations to add to the service account
+  annotations:
+  # Annotations to add to the service account
+  labels:
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+securityContext:
+  # You must specify an `fsGroup` to allow ActiveMQ write access to mounted
+  # volumes (as long as ActiveMQ runs as a non-root user, which should be the
+  # case). Any random number will do.
+  # fsGroup: &fsGroup 1000
+  # fsGroupChangePolicy: OnRootMismatch
+
+  main:
+    # capabilities:
+    #   drop:
+    #   - ALL
+    # readOnlyRootFilesystem: true
+    # runAsNonRoot: true
+    # runAsUser: &runAsUser 1000
+    # runAsGroup: *fsGroup
+
+  etcd:
+    # capabilities:
+    #   drop:
+    #   - ALL
+    # readOnlyRootFilesystem: true
+    # runAsNonRoot: true
+    # runAsUser: &runAsUser 1000
+    # runAsGroup: *fsGroup
+
+#autoscaling:
+  #enabled: false
+  #minReplicas: 1
+  #maxReplicas: 100
+  #targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+nodeSelector:
+
+tolerations:
+
+affinity:
+
+persistence:
+  # If set to `false`, an ephemeral volume will be used instead and all other `persistence.*` parameters
+  # are ignored.
+  enabled: true
+
+  # Set the default capacity for volumes in case none is assigned explicitly
+  # and the default value is insufficient
+  volumeSize:
+    main-data: "4Gi"
+    main-logs: "2Gi"
+    etcd-data: "2Gi"
+
+#  The volumes for persistent data
+  volumes:
+# The volume where the data will be stored (RTFM for more info on how to
+# properly declare volumes)
+
+service:
+  main:
+    ports:
+      - name: &grpc grpc
+        protocol: TCP
+        port: 8443
+        targetPort: 19530
+      - name: &admin admin
+        protocol: TCP
+        port: 9091
+
+    probes:
+      enabled: true
+      spec:
+        initialDelaySeconds: 0
+        periodSeconds: 10
+        timeoutSeconds: 10
+        successThreshold: 1
+        failureThreshold: 1
+        httpGet:
+          scheme: HTTPS
+          path: "/health"
+          port: *admin
+      startup:
+        failureThreshold: 90
+      liveness:
+        # For our liveness probe, we allow up to 6 probes to fail in case
+        # the pod is too resource-starved to respond to probes. This is a
+        # bad thing anyway, but we have yet to reach a point where we can
+        # safely pare down this number to a more reasonable count.
+        failureThreshold: 6
+
+  etcd:
+    ports:
+      - name: etcd
+        protocol: TCP
+        port: &etcd 2379
+
+    probes:
+      enabled: true
+      spec:
+        initialDelaySeconds: 0
+        periodSeconds: 10
+        timeoutSeconds: 10
+        successThreshold: 1
+        failureThreshold: 1
+        httpGet:
+          scheme: HTTPS
+          path: "/livez"
+          port: *etcd
+      startup:
+        failureThreshold: 90
+      liveness:
+        # For our liveness probe, we allow up to 6 probes to fail in case
+        # the pod is too resource-starved to respond to probes. This is a
+        # bad thing anyway, but we have yet to reach a point where we can
+        # safely pare down this number to a more reasonable count.
+        failureThreshold: 6
+      readiness:
+        httpGet:
+          scheme: HTTPS
+          path: "/readyz"
+          port: *etcd

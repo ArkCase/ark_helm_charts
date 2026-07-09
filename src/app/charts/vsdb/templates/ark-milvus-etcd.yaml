@@ -1,0 +1,141 @@
+{{- if (include "arkcase.subsystem.enabled" $) -}}
+  {{- $cluster := (include "arkcase.cluster" $ | fromYaml) -}}
+  {{- $replicas := (include "arkcase.vsdb.replicas-etcd" ($cluster.replicas | int)) -}}
+  {{- $serviceAccountName := (include "arkcase.serviceAccountName" $) }}
+  {{- $serviceAccountName = (or (empty $serviceAccountName) (eq "default" $serviceAccountName)) | ternary (include "arkcase.fullname" $) $serviceAccountName }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ $serviceAccountName | quote }}
+  namespace: {{ $.Release.Namespace | quote }}
+  labels: {{- include "arkcase.labels" $ | nindent 4 }}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "arkcase.fullname" $ | quote }}
+  namespace: {{ $.Release.Namespace | quote }}
+  labels: {{- include "arkcase.labels.service" $ | nindent 4 }}
+    {{- with ($.Values.labels).common }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with ($.Values.annotations).common }}
+  annotations: {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  replicas: {{ $replicas }}
+  selector: &labelSelector
+    matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
+  serviceName: {{ include "arkcase.service.headless" $ | quote }}
+  updateStrategy: {{- include "arkcase.cluster.statefulUpdateStrategy" $ | nindent 4 }}
+  podManagementPolicy: Parallel
+  template:
+    metadata:
+      name: {{ include "arkcase.fullname" $ | quote }}
+      namespace: {{ $.Release.Namespace | quote }}
+      labels: {{- include "arkcase.labels.service" $ | nindent 8 }}
+        {{- with ($.Values.labels).common }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      annotations:
+        # NB: Both these annotation values must be of type "string"
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9100"
+        {{- with ($.Values.annotations).common }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      affinity:
+        podAntiAffinity:
+        {{- if $cluster.onePerHost }}
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - topologyKey: "kubernetes.io/hostname"
+              namespaces: [ {{ $.Release.Namespace | quote }} ]
+              labelSelector:
+                <<: *labelSelector
+        {{- else }}
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 1
+              podAffinityTerm:
+                topologyKey: "kubernetes.io/hostname"
+                namespaces: [ {{ $.Release.Namespace | quote }} ]
+                labelSelector:
+                  <<: *labelSelector
+        {{- end }}
+      {{- include "arkcase.image.pullSecrets" $ | nindent 6 }}
+      {{- with $.Values.hostAliases }}
+      hostAliases: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if $.Values.schedulerName }}
+      schedulerName: {{ $.Values.schedulerName | quote }}
+      {{- end }}
+      {{- if $serviceAccountName }}
+      serviceAccountName: {{ $serviceAccountName | quote }}
+      {{- end }}
+      securityContext: {{- include "arkcase.securityContext" $ | nindent 8 }}
+      terminationGracePeriodSeconds: 15
+      initContainers:
+        - name: init-permissions
+          {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
+          env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            - name: DATA_DIR
+              value: &dataDir "/app/data"
+            - name: JOBS
+              value: |-
+                jobs:
+                  - ownership: "1000:1000"
+                    permissions: "u=rwX,g=rwX,o="
+                    flags: [ "recurse", "forced", "create", "changes" ]
+                    targets: [ "$(DATA_DIR)" ]
+          volumeMounts:
+            - name: &dataVol "data"
+              mountPath: *dataDir
+        {{- include "arkcase.initDependencies.container" (dict "ctx" $ "name" "init-dependencies" "network" "etcd") | nindent 8 }}
+      containers:
+        - name: etcd
+          {{- include "arkcase.image" (dict "ctx" $ "name" "etcd" "repository" "arkcase/etcd") | nindent 10 }}
+          env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            {{- include "arkcase.cluster.env" $ | nindent 12 }}
+            {{- include "arkcase.acme.env" $ | nindent 12 }}
+            {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
+            {{- include "arkcase.cluster.discovery.env" (dict "ctx" $ "port" "etcd") | nindent 12 }}
+            - name: ETCD_DISCOVERY_SRV
+              value: "$(DNS_SERVICE).$(POD_NAMESPACE).svc"
+            - name: ETCD_NAME
+              value: "$(POD_NAME)"
+            - name: ETCD_INITIAL_CLUSTER_STATE
+              value: "new"
+            - name: BASE_URL
+              value: "https://$(POD_NAME)"
+            - name: ETCD_INITIAL_ADVERTISE_PEER_URLS
+              value: "$(BASE_URL):2380"
+            - name: ETCD_ADVERTISE_CLIENT_URLS
+              value: "$(BASE_URL):2379"
+            - name: ETCD_LISTEN_PEER_URLS
+              value: "https://0.0.0.0:2380"
+            - name: ETCD_LISTEN_CLIENT_URLS
+              value: "https://0.0.0.0:2379"
+            - name: ETCD_LISTEN_METRICS_URLS
+              value: "http://0.0.0.0:9090"
+            - name: ETCD_DATA_DIR
+              value: *dataDir
+          {{- include "arkcase.subsystem.ports" (dict "ctx" $ "name" "etcd") | nindent 10 }}
+          resources: {{- include "arkcase.resources" (dict "ctx" $ "part" "etcd") | nindent 12 }}
+          securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "etcd") | nindent 12 }}
+          volumeMounts:
+            {{- include "arkcase.trusts.mount" $ | nindent 12 }}
+            {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
+            {{- include "arkcase.subsystem-access.volumeMount" $ | nindent 12 }}
+            - name: *dataVol
+              mountPath: *dataDir
+      volumes:
+        {{- include "arkcase.subsystem-access.volume" $ | nindent 8 }}
+        {{- include "arkcase.trusts.volume" $ | nindent 8 }}
+        {{- include "arkcase.acme.volume" $ | nindent 8 }}
+  volumeClaimTemplates:
+    {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "data") | nindent 4 }}
+
+  {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "data") | nindent 0 }}
+
+{{- end -}}

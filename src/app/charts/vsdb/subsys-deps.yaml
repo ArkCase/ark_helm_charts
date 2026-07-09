@@ -1,0 +1,67 @@
+network/main:
+  enabled: true
+  mode: all
+  template:
+    # Any of the required ports are enough to succeed
+    mode: any
+    initialDelay: 10
+    delay: 10
+    timeout: 10
+    attempts: 120
+  dependencies:
+    acme:
+      url: "@env:ACME_URL"
+    content:
+      url: "@env:ARKCASE_CONTENT_VSDB_URL"
+
+network/etcd:
+  enabled: true
+  mode: all
+  template:
+    # Any of the required ports are enough to succeed
+    mode: any
+    initialDelay: 10
+    delay: 10
+    timeout: 10
+    attempts: 120
+  dependencies:
+    acme:
+      url: "@env:ACME_URL"
+
+settings:
+  # We specifically don't consume from ACME b/c those are handled directly
+  # by the ACME templates, and there's no need to address them beyond that
+  # acme: {}
+  #
+  # We specifically don't consume from ZooKeeper b/c those are handled directly
+  # by the Clustering templates, and there's no need to address them beyond that
+  # zookeeper: {}
+
+  $self:
+    main-admin:
+      username: ARKCASE_VSDB_ADMIN_USERNAME
+      password: ARKCASE_VSDB_ADMIN_PASSWORD
+      url: ARKCASE_VSDB_ADMIN_URL
+
+    main:
+      username: ARKCASE_VSDB_USERNAME
+      password: ARKCASE_VSDB_PASSWORD
+      url: ARKCASE_VSDB_URL
+
+    etcd:
+      initialToken: ETCD_INITIAL_CLUSTER_TOKEN
+
+  content:
+    vsdb:
+      url: ARKCASE_CONTENT_VSDB_URL
+      ui: ARKCASE_CONTENT_VSDB_UI
+      username: ARKCASE_CONTENT_VSDB_USERNAME
+      password: ARKCASE_CONTENT_VSDB_PASSWORD
+      bucket:
+        env:
+          name: ARKCASE_CONTENT_VSDB_BUCKET
+          optional: true
+      region:
+        env:
+          name: ARKCASE_CONTENT_VSDB_REGION
+          optional: true
