@@ -5,9 +5,13 @@
 # This should group all application-specific configurations
 #
 resources:
+  default:
+    main: "1Gi"
+    etcd: "256Mi-512Mi,500m-1000m"
+
   development:
-    main:
-      limits: "3Gi,2"
+    main: "1Gi"
+    etcd: "256Mi-512Mi,500m-1000m"
 
 # Please leave the `replicaCount` to 1 for the time being. Clustering is not
 # supported yet.
@@ -27,6 +31,10 @@ image:
   etcd:
     repository: "arkcase/etcd"
     tag: "3.6.13"
+
+  coord:
+    repository: "arkcase/milvus-coordinator"
+    # tag: "3.6.13"
 
   setperm:
     repository: "arkcase/setperm"
@@ -108,8 +116,8 @@ persistence:
   # Set the default capacity for volumes in case none is assigned explicitly
   # and the default value is insufficient
   volumeSize:
-    main-data: "4Gi"
-    main-logs: "2Gi"
+    data: "40Gi"
+    logs: "2Gi"
     etcd-data: "2Gi"
 
 #  The volumes for persistent data
@@ -151,9 +159,12 @@ service:
 
   etcd:
     ports:
-      - name: etcd
+      - name: etcd-client
         protocol: TCP
-        port: &etcd 2379
+        port: &etcd-client 2379
+      - name: etcd-peer
+        protocol: TCP
+        port: &etcd-peer 2380
 
     probes:
       enabled: true
@@ -166,7 +177,7 @@ service:
         httpGet:
           scheme: HTTPS
           path: "/livez"
-          port: *etcd
+          port: *etcd-client
       startup:
         failureThreshold: 90
       liveness:
@@ -179,4 +190,4 @@ service:
         httpGet:
           scheme: HTTPS
           path: "/readyz"
-          port: *etcd
+          port: *etcd-client
