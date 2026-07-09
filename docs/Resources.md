@@ -248,7 +248,6 @@ For brevity, we'll use the [string notation described above](#abbreviated-syntax
 ||transform-core-aio|\*-1536Mi|200Mi-1536Mi,300m-500m|
 ||transform-router|\*-512Mi||
 |core|arkcase||\*-3Gi,\*-2|
-||cloudconfig||\*-2Gi,\*-1|
 |ldap|samba||\*-1268Mi,\*-0.4|
 ||step-ca|||
 |rdbms (both MariaDB and PostgreSQL)|(main)||\*-100Mi,\*-0.1|
