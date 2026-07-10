@@ -1,4 +1,4 @@
-network/main:
+network/milvus:
   enabled: true
   mode: all
   template:
@@ -12,7 +12,10 @@ network/main:
     acme:
       url: "@env:ACME_URL"
     content:
-      url: "@env:ARKCASE_CONTENT_VSDB_URL"
+      url: "@env:MINIO_URL"
+    etcd:
+      host: "vsdb-etcd"
+      port: "2379"
 
 network/etcd:
   enabled: true
