@@ -140,7 +140,6 @@ service:
         successThreshold: 1
         failureThreshold: 1
         httpGet:
-          scheme: HTTPS
           path: "/healthz"
           port: *admin
       startup:
