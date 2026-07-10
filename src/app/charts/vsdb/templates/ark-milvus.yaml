@@ -106,8 +106,14 @@ spec:
             {{- include "arkcase.cluster.env" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
             {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
-            - name: LOCAL_STORAGE_PATH
+            - name: DATA_DIR
               value: *dataDir
+            - name: LOCAL_STORAGE_PATH
+              value: "$(DATA_DIR}/main"
+            - name: ROCKSMQ_PATH
+              value: "$(DATA_DIR}/rdb"
+            - name: FUNCTION_ANALYZER_LOCAL_RESOURCE_PATH
+              value: "$(DATA_DIR}/analyzer"
             - name: ETCD_LOG_PATH
               value: *logsDir
             - name: ETCD_SSL_TLS_MIN_VERSION
