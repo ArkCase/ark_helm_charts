@@ -25,53 +25,33 @@
         <metadataFilter class="com.armedia.acm.tika.filter.GpsEnrichmentFilter"/>
     </metadataFilters>
 
+{{- include "arkcase.core.integrations.config" $ | nindent 0 }}
     <emitters>
-        <!--
-        <emitter class="org.apache.tika.pipes.emitter.jdbc.JDBCEmitter">
-            <params>
-                <name>rdbms</name>
-                <connection>${ARKCASE_JDBC_URL}</connection>
-                <insert>some SQL ...</insert>
-            </params>
+        <emitter class="com.armedia.acm.tika.emitter.SolrEmitter">
+            <name>solr</name>
+            <solrUrl>${ARKCASE_SOLR_URL}</solrUrl>
+            <solrCollection>acmAdvancedSearch</solrCollection>
+            <idField>id</idField>
+            <connectionTimeout>10000</connectionTimeout>
+            <socketTimeout>60000</socketTimeout>
+            <userName>${ARKCASE_SOLR_USERNAME}</userName>
+            <password>${ARKCASE_SOLR_PASSWORD}</password>
         </emitter>
-        -->
-        <emitter class="org.apache.tika.pipes.emitter.s3.S3Emitter">
-            <params>
-                <name>internal-content-store</name>
-                <endpointConfigurationService>${ARKCASE_INTERNAL_CONTENT_URL}</endpointConfigurationService>
-                <region>${ARKCASE_INTERNAL_CONTENT_REGION}</region>
-                <bucket>${ARKCASE_INTERNAL_CONTENT_BUCKET}</bucket>
-                <credentialsProvider>key_secret</credentialsProvider>
-                <accessKey>${ARKCASE_INTERNAL_CONTENT_USERNAME}</accessKey>
-                <secretKey>${ARKCASE_INTERNAL_CONTENT_PASSWORD}</secretKey>
-                <pathStyleAccessEnabled>true</pathStyleAccessEnabled>
 
-                <!-- whether or not to spool the s3 object to a local temp file
-                     before fetching. Default: true -->
-                <spoolToTemp>false</spoolToTemp>
-
-                <!-- these are all optional -->
-                <!-- if your pipes iterator is working on a list of files under my-prefix -->
-                <!-- <prefix>${ARKCASE_INTERNAL_CONTENT_PREFIX}</bucket> -->
-
-                <!-- the s3 api sets a fairly low max. If you are running a heavily concurrent application, you
-                     may need to bump this. -->
-                <maxConnections>300</maxConnections>
-            </params>
-        </emitter>
     </emitters>
 
     <fetchers>
+{{- $content := (include "arkcase.content.info" $ | fromYaml) }}
+{{- if (eq "s3" $content.dialect) }}
         <fetcher class="org.apache.tika.pipes.fetcher.s3.S3Fetcher">
             <params>
-                <name>internal-content-store</name>
-                <endpointConfigurationService>${ARKCASE_INTERNAL_CONTENT_URL}</endpointConfigurationService>
-                <region>${ARKCASE_INTERNAL_CONTENT_REGION}</region>
-                <bucket>${ARKCASE_INTERNAL_CONTENT_BUCKET}</bucket>
-                <!-- <prefix>${ARKCASE_INTERNAL_CONTENT_PREFIX}</bucket> -->
+                <name>s3</name>
+                <endpointConfigurationService>${ARKCASE_CONTENT_URL}</endpointConfigurationService>
+                <region>${ARKCASE_CONTENT_REGION}</region>
+                <bucket>${ARKCASE_CONTENT_BUCKET}</bucket>
                 <credentialsProvider>key_secret</credentialsProvider>
-                <accessKey>${ARKCASE_INTERNAL_CONTENT_USERNAME}</accessKey>
-                <secretKey>${ARKCASE_INTERNAL_CONTENT_PASSWORD}</secretKey>
+                <accessKey>${ARKCASE_CONTENT_USERNAME}</accessKey>
+                <secretKey>${ARKCASE_CONTENT_PASSWORD}</secretKey>
                 <pathStyleAccessEnabled>true</pathStyleAccessEnabled>
 
                 <!-- whether or not to spool the s3 object to a local temp file
@@ -91,17 +71,20 @@
                 <maxLength>-1</maxLength>
             </params>
         </fetcher>
+{{- end }}
     </fetchers>
 
-    <!-- ??? how to configure our pipes here? do we even need to? -->
     <pipes>
         <params>
-            <!--
-            <tikaConfig>${TIKA_PIPES_CONFIG}</tikaConfig>
-            -->
+            <numClients>2</numClients>
+            <forkedJvmArgs>
+                <arg>-Xmx1g</arg>
+                <arg>-XX:ParallelGCThreads=2</arg>
+            </forkedJvmArgs>
+            <timeoutMillis>60000</timeoutMillis>
+            <maxForEmitBatchBytes>-1</maxForEmitBatchBytes> <!-- disable emit -->
         </params>
     </pipes>
-
     <server>
         <params>
             <!-- which port to start the server on. If you specify a range,
