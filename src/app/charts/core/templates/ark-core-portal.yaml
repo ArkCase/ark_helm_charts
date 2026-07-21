@@ -110,6 +110,13 @@ spec:
         {{- end }}
     spec:
       affinity:
+        {{- /* Honor a user-supplied affinity value, merged with the default
+               replica-spread podAntiAffinity under a single `affinity:` key. The
+               default podAntiAffinity is kept unless the user provides their own. */}}
+        {{- with $.Values.affinity }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- if not (($.Values.affinity | default dict).podAntiAffinity) }}
         podAntiAffinity:
         {{- if $cluster.onePerHost }}
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -125,6 +132,7 @@ spec:
                 namespaces: [ {{ $.Release.Namespace | quote }} ]
                 labelSelector:
                   <<: *labelSelector
+        {{- end }}
         {{- end }}
       {{- include "arkcase.image.pullSecrets" $ | nindent 6 }}
       {{- with $.Values.hostAliases }}

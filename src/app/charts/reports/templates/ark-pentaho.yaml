@@ -79,6 +79,16 @@ spec:
         {{- end }}
     spec:
       affinity:
+        {{- /* Merge any user-supplied affinity (global.subsys.reports.affinity) with the
+               default replica-spread podAntiAffinity. Rendering both under a single
+               `affinity:` key avoids the duplicate-key manifest that resulted when the
+               two were emitted separately. The default podAntiAffinity is kept unless the
+               user provides their own, so adding a podAffinity/nodeAffinity does not lose
+               the replica spread. */}}
+        {{- with $.Values.affinity }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- if not (($.Values.affinity | default dict).podAntiAffinity) }}
         podAntiAffinity:
         {{- if $cluster.onePerHost }}
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -94,6 +104,7 @@ spec:
                 namespaces: [ {{ $.Release.Namespace | quote }} ]
                 labelSelector:
                   <<: *labelSelector
+        {{- end }}
         {{- end }}
       {{- include "arkcase.image.pullSecrets" $ | nindent 6 }}
       {{- with $.Values.hostAliases }}
@@ -256,9 +267,7 @@ spec:
       {{- with $.Values.nodeSelector }}
       nodeSelector: {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with $.Values.affinity }}
-      affinity: {{- toYaml . | nindent 8 }}
-      {{- end }}
+      {{- /* affinity is rendered above (merged with the default podAntiAffinity) */}}
       {{- with $.Values.tolerations }}
       tolerations: {{- toYaml . | nindent 8 }}
       {{- end }}

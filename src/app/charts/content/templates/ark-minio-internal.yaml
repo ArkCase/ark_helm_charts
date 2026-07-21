@@ -40,6 +40,13 @@ spec:
         {{- end }}
     spec:
       affinity:
+        {{- /* Merge any user-supplied affinity with the default replica-spread
+               podAntiAffinity under a single `affinity:` key (see ark-pentaho.yaml). */}}
+        {{- $affinity := (include "arkcase.values" (dict "ctx" $ "base" "affinity") | fromYaml).value }}
+        {{- with $affinity }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- if not (($affinity | default dict).podAntiAffinity) }}
         podAntiAffinity:
         {{- if $onePerHost }}
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -55,6 +62,7 @@ spec:
                 namespaces: [ {{ $.Release.Namespace | quote }} ]
                 labelSelector:
                   <<: *labelSelector
+        {{- end }}
         {{- end }}
       {{- include "arkcase.image.pullSecrets" $ | nindent 6 }}
       {{- with (include "arkcase.values" (dict "ctx" $ "base" "hostAliases") | fromYaml) }}
@@ -140,9 +148,7 @@ spec:
       {{- with (include "arkcase.values" (dict "ctx" $ "base" "nodeSelector") | fromYaml) }}
       nodeSelector: {{- toYaml .value | nindent 8 }}
       {{- end }}
-      {{- with (include "arkcase.values" (dict "ctx" $ "base" "affinity") | fromYaml) }}
-      affinity: {{- toYaml .value | nindent 8 }}
-      {{- end }}
+      {{- /* affinity is rendered above (merged with the default podAntiAffinity) */}}
       {{- with (include "arkcase.values" (dict "ctx" $ "base" "tolerations") | fromYaml) }}
       tolerations: {{- toYaml .value | nindent 8 }}
       {{- end }}
