@@ -18,7 +18,9 @@
 
     <metadataFilters>
         <metadataFilter class="com.armedia.acm.tika.filter.ContentTypeNormalizationFilter">
-            <contentTypeFixes>audio/vnd.wave:audio/wav,audio/mpeg:audio/mp3,audio/x-flac:audio/flac,video/quicktime:video/mp4</contentTypeFixes>
+            <contentTypeFixes>
+                audio/vnd.wave:audio/wav,audio/mpeg:audio/mp3,audio/x-flac:audio/flac,video/quicktime:video/mp4
+            </contentTypeFixes>
             <extensionOverrides>.mpga:.mp3,.qt:.mp4</extensionOverrides>
         </metadataFilter>
         <metadataFilter class="com.armedia.acm.tika.filter.CreatedDateNormalizationFilter"/>
@@ -37,7 +39,6 @@
             <userName>${ARKCASE_SOLR_USERNAME}</userName>
             <password>${ARKCASE_SOLR_PASSWORD}</password>
         </emitter>
-
     </emitters>
 
     <fetchers>
@@ -53,20 +54,20 @@
                 <accessKey>${ARKCASE_CONTENT_USERNAME}</accessKey>
                 <secretKey>${ARKCASE_CONTENT_PASSWORD}</secretKey>
                 <pathStyleAccessEnabled>true</pathStyleAccessEnabled>
-
-                <!-- whether or not to spool the s3 object to a local temp file
-                     before fetching. Default: true -->
                 <spoolToTemp>false</spoolToTemp>
-
-                <!-- these are all optional -->
-                <!-- if your pipes iterator is working on a list of files under my-prefix -->
-                <!-- <prefix>${ARKCASE_INTERNAL_CONTENT_PREFIX}</bucket> -->
-
-                <!-- extract the s3 object user metadata and inject it into the Tika metadata -->
-                <!-- <extractUserMetadata>false</extractUserMetadata> -->
-
-                <!-- the s3 api sets a fairly low max. If you are running a heavily concurrent application, you
-                     may need to bump this. -->
+                <maxConnections>300</maxConnections>
+                <maxLength>-1</maxLength>
+            </params>
+        </fetcher>
+{{- end }}
+{{- if (eq "alfresco" $content.dialect) }}
+        <fetcher class="com.armedia.acm.tika.fetchers.AlfrescoFetcher">
+            <params>
+                <name>alfresco</name>
+                <baseUrl>${ARKCASE_CONTENT_URL}</baseUrl>
+                <userName>${ARKCASE_CONTENT_USERNAME}</userName>
+                <password>${ARKCASE_CONTENT_PASSWORD}</password>
+                <spoolToTemp>false</spoolToTemp>
                 <maxConnections>300</maxConnections>
                 <maxLength>-1</maxLength>
             </params>
@@ -103,12 +104,12 @@
                  forked server has to restart, it will maintain its original id.
                  If not specified, a UUID will be generated.
                  -->
-            <id>${POD_NAME}</id>            
+            <id>${POD_NAME}</id>
 
             <!-- Origin URL for cors requests. Set to '*' if you
                  want to allow all CORS requests. Leave blank or remove element
                  if you do not want to enable CORS. -->
-            <cors>*</cors>            
+            <cors>*</cors>
 
             <!-- which digests to calculate, comma delimited (e.g. md5,sha256);
                  optionally specify encoding followed by a colon (e.g. "sha1:32").
