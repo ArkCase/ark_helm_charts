@@ -1,0 +1,27 @@
+{{- /*
+  User-provided config-server-repo overlay files. `global.configOverlay` is a map of
+  <filename> -> <file content>; each file is rendered here and mounted (read-only, by
+  subPath) into the ArkCase config-server repo on core, where Spring Cloud Config layers
+  it over the baked config. This is the supported way to override arbitrary app-config
+  properties (e.g. chatbot.plugin.*) that have no dedicated chart value.
+
+  Filenames must be flat (no "/"): a ConfigMap key cannot contain a slash. Use a
+  high-precedence profile filename such as "arkcase-runtime.yaml".
+*/ -}}
+{{- with (($.Values.global).configOverlay) }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ printf "%s-config-overlay" (include "arkcase.fullname" $) | quote }}
+  namespace: {{ $.Release.Namespace | quote }}
+  labels:
+    {{- include "arkcase.labels" $ | nindent 4 }}
+data:
+  {{- range $file, $content := . }}
+  {{- if (contains "/" $file) }}
+  {{- fail (printf "global.configOverlay filename [%s] may not contain '/': ConfigMap keys cannot contain a slash. Use a flat filename like arkcase-runtime.yaml" $file) }}
+  {{- end }}
+  {{ $file | quote }}: |
+    {{- $content | toString | nindent 4 }}
+  {{- end }}
+{{- end }}

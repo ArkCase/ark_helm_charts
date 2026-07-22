@@ -1,6 +1,22 @@
 global:
   settings:
     baseUrl: "https://server.dev.arkcase.com:8443/arkcase"
+
+  # Custom config-server-repo overlay files. A map of <filename> -> <YAML content>.
+  # Each file is rendered into a ConfigMap and mounted (read-only) into core's ArkCase
+  # config-server repo, where Spring Cloud Config layers it OVER the baked config. Use
+  # this to set arbitrary app-config properties that have no dedicated chart value
+  # (e.g. the chatbot plugin). Filenames must be flat (no "/" — ConfigMap keys cannot
+  # contain a slash); pick a high-precedence profile name like `arkcase-runtime.yaml`.
+  #
+  # configOverlay:
+  #   arkcase-runtime.yaml: |
+  #     chatbot.plugin:
+  #       enabled: true
+  #       rag:
+  #         vector-store: "milvus"
+  configOverlay: {}
+
   image:
     pullSecrets:
       - name: aws-arkcase-pull

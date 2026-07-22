@@ -358,11 +358,23 @@ spec:
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/milton.license.properties") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/milton.license.sig") | nindent 12 }}
             {{- include "arkcase.core.sso.saml.idpMetadata.volumeMount" (dict "ctx" $ "mountPath" "/app/home/.arkcase/custom/WEB-INF/classes/acm/sso/idp.xml") | nindent 12 }}
+            {{- /* User config-server-repo overlay files (global.configOverlay) */ -}}
+            {{- range $file, $content := (($.Values.global).configOverlay | default dict) }}
+            - name: config-overlay
+              mountPath: {{ printf "/app/home/.arkcase/custom/WEB-INF/classes/acm/acm-config-server-repo/%s" $file | quote }}
+              subPath: {{ $file | quote }}
+              readOnly: true
+            {{- end }}
       volumes:
         {{- include "arkcase.subsystem-access.volume" $ | nindent 8 }}
         {{- include "arkcase.trusts.volume" $ | nindent 8 }}
         {{- include "arkcase.acme.volume" $ | nindent 8 }}
         {{- include "arkcase.file-resource.volumes" $ | nindent 8 }}
+        {{- if (($.Values.global).configOverlay) }}
+        - name: config-overlay
+          configMap:
+            name: {{ printf "%s-config-overlay" (include "arkcase.fullname" $) | quote }}
+        {{- end }}
         - name: *warsVol
           emptyDir:
             sizeLimit: 2Gi
