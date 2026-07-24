@@ -12,89 +12,60 @@ The ArkCase helm chart supports enabling development mode by way of a map whose 
 ```yaml
 global:
   dev:
-    #
     # Enable or disable development mode, explicitly ... if the global.dev map is not empty,
     # and this flag is not explicitly set to false, development features will be enabled.
-    #
     enabled: true
 
+    # Use the given WAR files or exploded WAR directories listed for execution. The path must be
+    # an absolute path. If the path specification has a "path:" prefix, it's assumed to be a
+    # local directory containing an "exploded WAR" directory structure.
     #
-    # These settings control the UID under which the ArkCase and Portal applications will
-    # be executed in development mode. This is important to enable the developer to be able
-    # to read and write live to the possibly shared WAR files/directories at runtime.
+    # To indicate a file (i.e. an actual WAR file), you must use the prefix "file:".
     #
-    # The default values are 1000/1000, and should only be modified if your Linux numeric UID
-    # is different from 1000, and/or your default GID is different from 1000
+    # This will result in the use of a hostPath volume by the core pod(s) that will point to
+    # either the given file or directory.
     #
-    # uid: 1000
-    # gid: 1000
-    #
+    # Directories will be directly accessible by the Tomcat runtime, while files will instead
+    # be treated like normal artifacts and be extracted and deployed during the deployment phase.
+    wars:
+      arkcase: "path:/mnt/c/Users/developer/workspace/ArkCase/WAR"
+      foia: "file:/mnt/c/Users/developer/workspace/ArkCase/foia.war"
+      # another#war: "file:/mnt/c/Users/developer/workspace/ArkCase/some/other/path.war"
 
+    # Use the ArkCase configuration zip file or exploded zip directory at this location for execution.
+    # the syntax and logic is identical for the war component, except this is for the .arkcase configuration
+    # file set.
     #
-    # This section controls the development mode for the ArkCase pod
+    # This will result in the use of a hostPath volume by the core pod(s)
+    conf: "path:/mnt/c/Users/developer/.arkcase"
+    # conf: "file:/mnt/c/Users/developer/workspace/ArkCase/target/.arkcase.zip"
+
+    # This section allows you to modify existing loggers, or add new ones.  The format
+    # is a map, where the key is the name of the logger, and the value is the Log4J level
+    # (for safety, quote both strings ... we've had some strange behavior with unquoted
+    # strings).
     #
-    arkcase:
+    # Importantly, a master flag (enabled) is supported, and can be used to turn on or off
+    # all the custom logs at once. Its value is assumed as "true" if it's not specified.
+    logs:
+      # enabled: true
+      "my.new.logger": "debug"
+      "org.eclipse.persistence.logging.metadata": "off"
+      # ... etc
 
-      #
-      # Debug-related settings
-      #
-      debug:
-        #
-        # Whether to enable or disable debugger features. Debugger features will be enabled if the debug map
-        # is not empty, and the enabled flag is not explicitly set to "false"
-        #
-        enabled: true
+    # The settings in this map govern the debugging features
+    debug:
+      # Whether to enable or disable debugger features. Debugger features will be enabled if the debug map
+      # is not empty, and the enabled flag is not explicitly set to "false"
+      enabled: true
 
-        #
-        # This setting governs the "suspend" setting in the debugger configuration for the JVM, and is useful
-        # to stop execution of any code until and unless a debugger connects to the instance (i.e. for
-        # debugging bootup issues). The default value is "false".
-        #
-        suspend: true
+      # The port to listen on for JDB connections. If not specified, the default of 8888 is used.
+      port: 8888
 
-      #
-      # This section allows you to modify existing loggers, or add new ones.  The format
-      # is a map, where the key is the name of the logger, and the value is the Log4J level
-      # (for safety, quote both strings ... we've had some strange behavior with unquoted
-      # strings).
-      #
-      # Importantly, a master flag (enabled) is supported, and can be used to turn on or off
-      # all the custom logs at once. Its value is assumed as "true" if it's not specified.
-      #
-      logs:
-        # enabled: true
-        "my.new.logger": "debug"
-        "org.eclipse.persistence.logging.metadata": "off"
-        # ... etc
-
-      #
-      # Use the given WAR files or exploded WAR directories listed for execution. The path must be
-      # an absolute path. If the path specification has a "path:" prefix, it's assumed to be a
-      # local directory containing an "exploded WAR" directory structure.
-      #
-      # To indicate a file (i.e. an actual WAR file), you must use the prefix "file:".
-      #
-      # This will result in the use of a hostPath volume by the ArkCase pod that will point to
-      # either the given file or directory.
-      #
-      # Directories will be directly accessible by the Tomcat runtime, while files will instead
-      # be treated like normal artifacts and be extracted and deployed during the deployment phase.
-      #
-      wars:
-        arkcase: "path:/mnt/c/Users/developer/workspace/ArkCase/WAR"
-
-    #
-    # This section controls the development mode for the ArkCase pod
-    #
-    portal:
-      #
-      # This section is structured almost identically to the "arkcase:" section, above.
-      #
-      # The main difference is that the "logs:" section has no effect.
-      #
-      wars:
-        "arkcase#external": "path:/......"
-        foia: "path:/......"
+      # This setting governs the "suspend" setting in the debugger configuration for the JVM, and is useful
+      # to stop execution of any code until and unless a debugger connects to the instance (i.e. for
+      # debugging bootup issues). The default value is "false".
+      suspend: true
 ```
 
 ## <a name="hostpath"></a>Enabling Host Path Persistence
