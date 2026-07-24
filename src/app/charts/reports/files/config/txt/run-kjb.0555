@@ -21,6 +21,7 @@ usage()
 
 cleanup_logs()
 {
+	local RC=${?}
 	if [ -n "${LOG}" ] && [ -f "${LOG}" ] ; then
 		# Compress the newly-produced log, if it exists
 		gzip -9 "${LOG}"
@@ -28,6 +29,7 @@ cleanup_logs()
 	while read log ; do
 		rm -f "${log}" &>/dev/null || true
 	done < <(find "${LOGS_DIR}" -type f -name "${JOB_NAME}-*.log.gz" | sort -r | tail -n +$(( LOG_KEEP + 1 )) )
+	return ${RC}
 }
 
 is_key_value_pair()
