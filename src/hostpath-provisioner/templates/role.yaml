@@ -9,10 +9,7 @@ metadata:
     app.kubernetes.io/instance: {{ $.Release.Name }}
     app.kubernetes.io/managed-by: {{ $.Release.Service }}
 rules:
-  - apiGroups: [""]
-    resources: ["endpoints"]
-    verbs: ["get", "update", "patch"]
-  - apiGroups: [""]
-    resources: ["endpoints"]
-    verbs: ["list", "watch", "create"]
+  - apiGroups: [ "coordination.k8s.io" ]
+    resources: [ "leases" ]
+    verbs: ["get", "update", "patch", "list", "watch", "create"]
 {{- end -}}

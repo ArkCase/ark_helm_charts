@@ -3,46 +3,54 @@
 # for consuming values stored in Vault within ArkCase as seamlessly as possible
 #
 global:
+  vault:
+    #
+    # Vault instance configurations that can be used to configure
+    # the secrets that will be consumed below. This will result
+    # in the generation of a VaultAuth resource, and as such
+    # the configuration mirrors that for the VaultAuth resource
+    # schema.
+    #
+    # If none is defined, a default one will be used with the
+    # following default values:
+    #
+    # - name: "arkcase-${subsys}"
+    # - vaultAuthGlobalRef:
+    #     - allowDefault: true
+    #     - namespace: "vault-secrets-operator"
+    # - kubernetes:
+    #     - role: "arkcase-${subsys}-read"
+    #     - serviceAccount: "arkcase-${subsys}"
+    #     - audiences: [ "vault" ]
+    instances:
+      instance-1:
+        enabled: (true|false)
+        auth-global-ref:
+          # If not set, will default to true
+          allow-default: (true|false)
+          # Optional, will default to "default"
+          name: ...
+          # If not set, will default to "vault-secrets-operator"
+          namespace: ...
+        # If not set, will default to [ "${release-namespace}" ]
+        allowedNamespaces: [ ... ]
+        # Optional
+        namespace: ...
+        # Optional, will default to "kv"
+        mount: ...
+        # If not set, will default to "vault-secrets-operator/default"
+        connection-ref: ...
+
   settings:
     ${subsys}: # core, reports, messaging, search, ldap, etc...
       vault:
+        settings:
+          # Optional, default value is "VAULT_"
+          env-prefix: "VAULT_"
 
-        #
-        # Vault instance configurations that can be used to configure
-        # the secrets that will be consumed below. This will result
-        # in the generation of a VaultAuth resource, and as such
-        # the configuration mirrors that for the VaultAuth resource
-        # schema.
-        #
-        # If none is defined, a default one will be used with the
-        # following default values:
-        #
-        # - name: "arkcase-${subsys}"
-        # - vaultAuthGlobalRef:
-        #     - allowDefault: true
-        #     - namespace: "vault-secrets-operator"
-        # - kubernetes:
-        #     - role: "arkcase-${subsys}-read"
-        #     - serviceAccount: "arkcase-${subsys}"
-        #     - audiences: [ "vault" ]
-        instances:
-          instance-1:
-            enabled: (true|false)
-            auth-global-ref:
-              # If not set, will default to true
-              allow-default: (true|false)
-              # Optional, will default to "default"
-              name: ...
-              # If not set, will default to "vault-secrets-operator"
-              namespace: ...
-            # If not set, will default to [ "${release-namespace}" ]
-            allowedNamespaces: [ ... ]
-            # Optional
-            namespace: ...
-            # Optional, will default to "kv"
-            mount: ...
-            # If not set, will default to "vault-secrets-operator/default"
-            connection-ref: ...
+          # Optional, default value is "/vault"
+          default-path: "/vault"
+
 
         #
         # Vault secrets that will be accessible
@@ -128,6 +136,11 @@ global:
           # Put the specific value into the environment variable called VAULT_ENV_VAR_1,
           # which can then be referenced in any Spring configuration as ${VAULT_ENV_VAR_1}
           ENV_VAR_1:
+            # Whether to prefix the environment variable with the prefix defined
+            # above (default "VAULT_"). This allows us to overwrite existing environment
+            # values. Should be used with caution! (defaults to true if not set)
+            env-prefix: (true|false)
+
             # The name of the secret where the key comes from. If
             # the secret is disabled or not defined, this raises
             # a rendering error. If not provided and only one secret

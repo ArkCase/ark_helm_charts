@@ -18,7 +18,9 @@ is_check()
 
 cleanup()
 {
+	local RC=${?}
 	[ "${#WORKDIRS[@]}" -gt 0 ] && rm -rf "${WORKDIRS[@]}" &>/dev/null
+	return ${RC}
 }
 
 export WORKDIRS=()
