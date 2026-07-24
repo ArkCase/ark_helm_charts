@@ -29,11 +29,13 @@ fail()
 
 cleanup()
 {
+	local RC=${?}
 	if [ ${#WORKDIRS[@]} -gt 0 ] ; then
 		for n in "${WORKDIRS[@]}" ; do
 			rm -rf "${n}" &>/dev/null
 		done
 	fi
+	return ${RC}
 }
 
 debug_report_installer()
