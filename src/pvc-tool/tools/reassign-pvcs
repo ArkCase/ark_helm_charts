@@ -202,9 +202,11 @@ delete_volumes()
 
 cleanup()
 {
+	local RC=${?}
 	if [ -v PVC_DIR ] ; then
 		[ -n "${PVC_DIR}" ] && execute rm -rf "${PVC_DIR}"
 	fi
+	return ${RC}
 }
 
 usage()
