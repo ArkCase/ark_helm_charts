@@ -5,8 +5,8 @@ set -euo pipefail
 
 usage()
 {
-    echo -e "usage: ${BASH_ARGV0:-${BASH_SOURCE:-${0}}} [vars-file-1 vars-file-2 vars-file-3 ... vars-file-N]" 1>&2
-    exit 1
+	echo -e "usage: ${BASH_ARGV0:-${BASH_SOURCE:-${0}}} [vars-file-1 vars-file-2 vars-file-3 ... vars-file-N]" 1>&2
+	exit 1
 }
 
 for F in "${@}" ; do
