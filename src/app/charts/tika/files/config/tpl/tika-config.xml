@@ -27,7 +27,6 @@
         <metadataFilter class="com.armedia.acm.tika.filter.GpsEnrichmentFilter"/>
     </metadataFilters>
 
-{{- include "arkcase.core.integrations.config" $ | nindent 0 }}
     <emitters>
         <emitter class="com.armedia.acm.tika.emitter.SolrEmitter">
             <name>solr</name>
