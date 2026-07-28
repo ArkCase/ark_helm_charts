@@ -1,19 +1,23 @@
 #!/bin/bash
+
 set -euo pipefail
 . /.functions
 
-[ -v VARS ] || VARS=""
+usage()
+{
+    echo -e "usage: ${BASH_ARGV0:-${BASH_SOURCE:-${0}}} [vars-file-1 vars-file-2 vars-file-3 ... vars-file-N]" 1>&2
+    exit 1
+}
 
-if [[ "$(declare -p VARS)" =~ "declare -a VARS" ]] ; then
-	# If it's already an array, pass it on verbatim
-	FILES=("${VARS[@]}")
-else
-	# Not an array, support splitting by commas for multiple files
-	IFS="," read -a FILES < <(echo "${VARS}") || true
-fi
+for F in "${@}" ; do
+	case "${F}" in
+		"--help" | "-h" | "-?" ) usage ;;
+		* ) ;;
+	esac
+done
 
 VARS=()
-for F in "${FILES[@]}" ; do
+for F in "${@}" ; do
 	[ -n "${F}" ] || continue
 	require_file_readable "${F}"
 	case "${F,,}" in
@@ -40,4 +44,5 @@ case "${MISSING_KEY}" in
 	* ) MISSING_KEY="zero" ;;
 esac
 
+# Render from STDIN into STDOUT
 exec gucci -o missingkey="${MISSING_KEY}" "${VARS[@]}"
