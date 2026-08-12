@@ -1,5 +1,4 @@
 {{- if (include "arkcase.subsystem.enabled" $) -}}
-  {{- $contentDialect := (include "arkcase.content.dialect" $) -}}
   {{- $cluster := (include "arkcase.cluster" $ | fromYaml) -}}
   {{- $replicas := ((include "arkcase.vsdb.replicas" $cluster.replicas) | int) -}}
   {{- $serviceAccountName := (include "arkcase.serviceAccountName" $) }}

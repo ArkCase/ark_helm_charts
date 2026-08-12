@@ -200,7 +200,23 @@ settings:
 
   vsdb:
     main:
-      url: ARKCASE_AI_VSDB_URL
-      type: ARKCASE_AI_VSDB_TYPE
-      username: ARKCASE_AI_VSDB_USERNAME
-      password: ARKCASE_AI_VSDB_PASSWORD
+      url:
+        env:
+          name: ARKCASE_AI_VSDB_URL
+          optional: true
+      type:
+        env:
+          name: ARKCASE_AI_VSDB_TYPE
+          optional: true
+      token:
+        env:
+          name: ARKCASE_AI_VSDB_TOKEN
+          optional: true
+      database:
+        env:
+          name: ARKCASE_AI_VSDB_DATABASE
+          optional: true
+      collection:
+        env:
+          name: ARKCASE_AI_VSDB_COLLECTION
+          optional: true
