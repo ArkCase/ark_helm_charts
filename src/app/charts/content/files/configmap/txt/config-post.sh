@@ -29,8 +29,10 @@ fail()
 
 cleanup()
 {
+	local RC=${?}
 	[ -v RUN_MARKER ] || RUN_MARKER=""
 	[ -z "${RUN_MARKER}" ] || rm -rf "${RUN_MARKER}" &>/dev/null
+	return ${RC}
 }
 
 RUN_MARKER="${HOME}/.initRan"
