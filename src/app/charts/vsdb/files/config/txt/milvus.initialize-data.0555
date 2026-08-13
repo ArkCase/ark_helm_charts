@@ -21,11 +21,10 @@ milvus_rest()
 	# We don't us the URL variable here b/c we always want to go to localhost
 	local CMD=(
 		curl -fsSL --request POST
-			--url "https://localhost:${PROXY_HTTP_PORT}/v2/vectordb/${URI}"
+			--url "${REST_URL}/v2/vectordb/${URI}"
 			--header "Content-Type: application/json"
-			--data "${DATA}"
 	)
-	"${CMD[@]}" --config <(milvus_auth)
+	"${CMD[@]}" --config <(milvus_auth) --data "${DATA}"
 }
 
 milvus_cmd()
