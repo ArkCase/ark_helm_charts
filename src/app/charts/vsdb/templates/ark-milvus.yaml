@@ -159,8 +159,14 @@ spec:
               value: *sslKey
             - name: TIKV_SSL_TLS_CA_CERT
               value: *caRoot
+            - name: ZILLIZ_TOKEN
+              value: "$(ADMIN_USERNAME):$(ADMIN_PASSWORD)"
+            - name: ZILLIZ_URI
+              value: "https://localhost:19530"
             - name: PROXY_HTTP_PORT
               value: "8080"
+            - name: REST_URL
+              value: "https://localhost:$(PROXY_HTTP_PORT)"
             - name: MINIO_USE_VIRTUAL_HOST
               value: "false"
             - name: MINIO_USE_SSL
