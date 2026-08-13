@@ -133,6 +133,16 @@ spec:
               value: *sslKey
             - name: TLS_CA_PEM_PATH
               value: *caRoot
+            - name: COMMON_SECURITY_AUTHORIZATION_ENABLED
+              value: "true"
+            - name: COMMON_SECURITY_SUPER_USERS
+              value: "$(ADMIN_USERNAME)"
+            - name: COMMON_SECURITY_DEFAULT_ROOT_PASSWORD
+              value: "$(ADMIN_PASSWORD)"
+            - name: COMMON_SECURITY_ENABLE_PUBLIC_PRIVILEGE
+              value: "false"
+            - name: COMMON_SECURITY_EXPR_ENABLED
+              value: "true"
             - name: COMMON_SECURITY_INTERNALTLS_ENABLED
               value: "true"
             - name: COMMON_SECURITY_TLS_MODE
@@ -164,12 +174,17 @@ spec:
             - name: MINIO_ROOT_PATH
               value: {{ printf "%s/%s" $.Release.Namespace $.Release.Name | quote }}
           {{- include "arkcase.subsystem.ports" (dict "ctx" $ "name" "main") | nindent 10 }}
+          lifecycle:
+            postStart:
+              exec:
+                command: [ "/usr/local/bin/initialize-data" ]
           resources: {{- include "arkcase.resources" (dict "ctx" $ "part" "main") | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "main") | nindent 12 }}
           volumeMounts:
             {{- include "arkcase.trusts.mount" $ | nindent 12 }}
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
             {{- include "arkcase.subsystem-access.volumeMount" $ | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/initialize-data" "subPath" "milvus.initialize-data") | nindent 12 }}
             - name: *dataVol
               mountPath: *dataDir
             - name: *logsVol

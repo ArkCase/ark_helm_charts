@@ -1,0 +1,463 @@
+#!/bin/bash
+
+# set -euo pipefail
+. /.functions
+
+set_or_default FALLBACK_COLLECTION "acm_chatbot_embedding"
+set_or_default FALLBACK_DIMENSIONS 768
+
+milvus_auth()
+{
+	echo -n "--user \"${ADMIN_USERNAME}:${ADMIN_PASSWORD}\""
+}
+
+milvus_rest()
+{
+	local URI="${1}"
+	local DATA="$(cat)"
+	local OUT=""
+	OUT="$(jq -r <<< "${DATA}")" || fail "Invalid JSON syntax on the submitted data (rc=${?}):\n${DATA}\n\n${OUT}"
+
+	# We don't us the URL variable here b/c we always want to go to localhost
+	local CMD=(
+		curl -fsSL --request POST
+			--url "https://localhost:${PROXY_HTTP_PORT}/v2/vectordb/${URI}"
+			--header "Content-Type: application/json"
+			--data "${DATA}"
+	)
+	"${CMD[@]}" --config <(milvus_auth)
+}
+
+milvus_cmd()
+{
+	local URI="${1}"
+
+	local OUT=""
+	OUT="$(milvus_rest "${URI}")" || fail "An error ocurred when issung the request (rc=${?}):\n${OUT}"
+
+	local CODE=""
+	local MSG=""
+	CODE="$(jq -r ".code" <<< "${OUT}")"
+	[ "${CODE}" -eq 0 ] && return 0
+
+	MSG="$(jq -r '.message // "(no description given)"' <<< "${OUT}")"
+	fail "${MSG:-"An unknown error has occurred (code=${CODE}):\n${OUT}"}"
+}
+
+milvus_database_get()
+{
+	local DATABASE="${1}"
+	local OUT=""
+	local RC=0
+
+	OUT="$(milvus_cmd "databases/describe" <<-EOF
+	{
+		"dbName": "${DATABASE}"
+	}
+	EOF
+	)" || RC=${?}
+
+	if [ ${RC} -ne 0 ] ; then
+		err "The database [${DATABASE}] does not exist (rc=${RC}):\n${OUT}"
+		return ${RC}
+	fi
+
+	ok "Found the database [${DATABASE}]"
+	return 0
+}
+
+milvus_database_create()
+{
+	local DATABASE="${1}"
+	local OUT=""
+	local RC=0
+
+	# Don't create if it's already there
+	milvus_database_get "${@}" && return 0
+
+	OUT="$(milvus_cmd "databases/create" <<-EOF
+	{
+		"dbName": "${DATABASE}"
+	}
+	EOF
+	)" || RC=${?}
+
+	if [ ${RC} -ne 0 ] ; then
+		err "Failed to create the database [${DATABASE}] (rc=${RC}):\n${OUT}"
+		return ${RC}
+	fi
+
+	ok "Created the database [${DATABASE}]"
+
+	# Verify!
+	milvus_database_get "${@}" && return 0
+
+	err "Failed to verify the database creation for [${DATABASE}]"
+	return 1
+}
+
+milvus_collection_get()
+{
+	local DATABASE="${1}"
+	local COLLECTION="${2}"
+	local OUT=""
+	local RC=0
+
+	OUT="$(milvus_cmd "collections/describe" <<-EOF
+	{
+		"dbName": "${DATABASE}",
+		"collectionName": "${COLLECTION}"
+	}
+	EOF
+	)" || RC=${?}
+
+	if [ ${RC} -ne 0 ] ; then
+		err "The collection [${DATABASE}::${COLLECTION}] does not exist (rc=${RC}):\n${OUT}"
+		return ${RC}
+	fi
+	ok "Found the collection [${DATABASE}::${COLLECTION}]"
+	return 0
+}
+
+milvus_collection_create()
+{
+	local DATABASE="${1}"
+	local COLLECTION="${2}"
+	local DIMENSION="${3}"
+	local OUT=""
+	local RC=0
+
+	# Don't create if it's already there
+	milvus_collection_get "${DATABASE}" "${COLLECTION}" && return 0
+
+	OUT="$(milvus_cmd "collections/create" <<-EOF
+	{
+		"dbName": "${DATABASE}",
+		"collectionName": "${COLLECTION}",
+		"dimension": ${DIMENSION}
+	}
+	EOF
+	)" || RC=${?}
+
+	if [ ${RC} -ne 0 ] ; then
+		err "Failed to create the collection [${DATABASE}::${COLLECTION}] (rc=${RC}):\n${OUT}"
+		return ${RC}
+	fi
+
+	ok "Created the collection [${DATABASE}::${COLLECTION}]"
+
+	# Verify!
+	milvus_collection_get "${DATABASE}" "${COLLECTION}" && return 0
+
+	err "Failed to verify the collection creation for [${DATABASE}::${COLLECTION}]"
+	return 1
+}
+
+milvus_role_get()
+{
+	local ROLE="${1}"
+	local OUT=""
+	local RC=0
+
+	OUT="$(milvus_cmd "roles/describe" <<-EOF
+	{
+		"roleName": "${ROLE}"
+	}
+	EOF
+	)" || RC=${?}
+
+	if [ ${RC} -ne 0 ] ; then
+		err "The role [${ROLE}] does not exist (rc=${RC}):\n${OUT}"
+		return ${RC}
+	fi
+	ok "Found the role [${ROLE}]"
+	return 0
+}
+
+milvus_role_create()
+{
+	local ROLE="${1}"
+	local OUT=""
+	local RC=0
+
+	# Don't create if it's already there
+	milvus_role_get "${ROLE}" && return 0
+
+	OUT="$(milvus_cmd "roles/create" <<-EOF
+	{
+		"roleName": "${ROLE}"
+	}
+	EOF
+	)" || RC=${?}
+
+	if [ ${RC} -ne 0 ] ; then
+		err "Failed to create the role [${ROLE}] (rc=${RC}):\n${OUT}"
+		return ${RC}
+	fi
+
+	ok "Created the role [${ROLE}]"
+
+	# Verify!
+	milvus_role_get "${ROLE}" && return 0
+
+	err "Failed to verify the role creation for [${ROLE}]"
+	return 1
+}
+
+milvus_role_grant()
+{
+	local ROLE="${1}"
+	local DATABASE="${2}"
+	shift 2
+
+	eyes "GRANTING [${@@Q}] TO ${ROLE} ON ${DATABASE}"
+
+	local OUT=""
+	local RC=0
+	for PRIVILEGE in "${@}" ; do
+		RC=0
+		OUT="$(milvus_cmd "roles/grant_privilege_v2" <<-EOF
+		{
+			"roleName": "${ROLE}",
+			"dbName": "${DATABASE}",
+			"collectionName": "*",
+			"privilege": "${PRIVILEGE}"
+		}
+		EOF
+		)" || RC=${?}
+
+		if [ ${RC} -ne 0 ] ; then
+			err "Failed to grant the [${PRIVILEGE}] privilege on the Database [${DATABASE}] to the role [${ROLE}] (rc=${RC}):\n${OUT}"
+			return ${RC}
+		fi
+
+		ok "Granted the [${PRIVILEGE}] privilege on the Database [${DATABASE}] to the role [${ROLE}]"
+	done
+	return 0
+}
+
+milvus_user_get()
+{
+	local USERNAME="${1}"
+	local OUT=""
+	local RC=0
+
+	OUT="$(milvus_cmd "users/describe" <<-EOF
+	{
+		"userName": "${USERNAME}"
+	}
+	EOF
+	)" || RC=${?}
+
+	if [ ${RC} -ne 0 ] ; then
+		err "The user [${USERNAME}] does not exist (rc=${RC}):\n${OUT}"
+		return ${RC}
+	fi
+	ok "Found the user [${USERNAME}]"
+	return 0
+}
+
+milvus_user_create()
+{
+	local USERNAME="${1}"
+	local PASSWORD="${2}"
+	local OUT=""
+	local RC=0
+
+	OUT="$(milvus_cmd "users/create" <<-EOF
+	{
+		"userName": "${USERNAME}",
+		"password": "${PASSWORD}"
+	}
+	EOF
+	)" || RC=${?}
+
+	if [ ${RC} -ne 0 ] ; then
+		err "Failed to create the user [${USERNAME}] (rc=${RC}):\n${OUT}"
+		return ${RC}
+	fi
+
+	ok "Created the user [${USERNAME}]"
+	return 0
+}
+
+milvus_user_grant()
+{
+	local USERNAME="${1}"
+	shift 1
+
+	local OUT=""
+	local RC=0
+	for ROLE in "${@}" ; do
+		OUT="$(milvus_cmd "users/grant_role" <<-EOF
+		{
+			"userName": "${USERNAME}",
+			"roleName": "${ROLE}"
+		}
+		EOF
+		)" || RC=${?}
+
+		if [ ${RC} -ne 0 ] ; then
+			err "Failed to grant the role [${ROLE}] to the user [${USERNAME}] (rc=${RC}):\n${OUT}"
+			return ${RC}
+		fi
+
+		ok "Granted the role [${ROLE}] to the user [${USERNAME}]"
+	done
+	return 0
+}
+
+milvus_user_reset_password()
+{
+	local USERNAME="${1}"
+	local PASSWORD="${2}"
+	local OUT=""
+	local RC=0
+
+	OUT="$(milvus_cmd "users/update_password" <<-EOF
+	{
+		"userName": "${USERNAME}",
+		"password": "",
+		"newPassword": "${PASSWORD}"
+	}
+	EOF
+	)" || RC=${?}
+
+	if [ ${RC} -ne 0 ] ; then
+		err "Failed to reset the password for the user [${USERNAME}] (rc=${RC}):\n${OUT}"
+		return ${RC}
+	fi
+
+	ok "Reset the password for the user [${USERNAME}]"
+	return 0
+}
+
+get_database_auth()
+{
+	local ALIAS="${1}"
+
+	local PFX="DB_${ALIAS^^}_"
+
+	local U="${PFX}USERNAME"
+	local P="${PFX}PASSWORD"
+
+	if [ -v "${U}" ] && [ -v "${P}" ] ; then
+		if [ -n "${!U}" ] ; then
+			[ -n "${!P}" ] && PASS="${!P}" || PASS="\$${!U}.12345\$"
+			declare -gx USERNAME="${!U}" PASSWORD="${!P}"
+			return 0
+		fi
+
+		err "The username for the database alias [${ALIAS}] appears to be empty (${U}) - this is not allowed"
+		return 1
+	fi
+
+	err "No credentials found for the database alias [${ALIAS}] (${PFX}USERNAME / ${PFX}PASSWORD)"
+	return 1
+}
+
+get_database_definitions()
+{
+	# Identify all varibles named DB_XXXX_USERNAME that also
+    # have DB_XXXX_PASSWORD also accept DB_XXXX_COLLECTION,
+    # DB_XXXX_DIMENSIONS and DB_XXXX_NAME (when the name needs to be "special")
+	local V=""
+	local LINES=()
+	for V in "${!DB_@}" ; do
+		[[ "${V}" =~ ^DB_([A-Z0-9_]+)_USERNAME$ ]] || continue
+		DB_ALIAS="${BASH_REMATCH[1]}"
+
+		# Prep for finding other values
+		DB_PFX="DB_${DB_ALIAS}_"
+
+		# If no password is also set, we ignore this definition
+		V="${DB_PFX}PASSWORD"
+		[ -v "${V}" ] || continue
+
+		# Does the DB have an alternate name?
+		V="${DB_PFX}NAME"
+		[ -v "${V}" ] && DB_NAME="${!V}" || DB_NAME="${DB_ALIAS,,}"
+
+		# If it's an invalid DB name, explode!
+		[[ "${DB_NAME}" =~ ^[a-zA-Z_][a-zA-Z0-9_]{0,254}$ ]] || fail "Invalid database name [${DB_NAME}] for the DB alias [${DB_ALIAS}] (${V})"
+
+		# Does it have a collection defined?
+		V="${DB_PFX}COLLECTION"
+		[ -v "${V}" ] && DB_COLLECTION="${!V}" || DB_COLLECTION="${FALLBACK_COLLECTION}"
+
+		# If it's an invalid collection name, explode!
+		[[ "${DB_COLLECTION}" =~ ^[a-zA-Z_][a-zA-Z0-9_]{0,254}$ ]] || fail "Invalid collection name [${DB_COLLECTION}] for the DB alias [${DB_ALIAS}] (${V})"
+
+		# Does it have a dimension set?
+		V="${DB_PFX}DIMENSION"
+		[ -v "${V}" ] && DB_DIMENSION="${!V}" || DB_DIMENSION="${FALLBACK_DIMENSIONS}"
+
+		# If it's an invalid dimension, explode!
+		[[ "${DB_DIMENSION}" =~ ^[1-9][0-9]*$ ]] || fail "Invalid dimension value [${DB_DIMENSION}] for the DB alias [${DB_ALIAS}] (${V})"
+		[ ${DB_DIMENSION} -le 32768 ] || fail "The dimension value [${DB_DIMENSION}] may not be greater than 32768 for the DB alias [${DB_ALIAS}] (${V})"
+
+		LINES+=( "${DB_ALIAS}:${DB_NAME}:${DB_COLLECTION}:${DB_DIMENSION}" )
+	done
+
+	for L in "${LINES[@]}" ; do
+		echo "${L}"
+	done
+}
+
+# Wait for Milvus to come online
+# By default, wait up to 900 seconds if not told otherwise
+set_or_default INIT_POLL_SLEEP
+[[ "${INIT_POLL_SLEEP}" =~ ^[1-9][0-9]*$ ]] || INIT_POLL_SLEEP=2
+set_or_default INIT_MAX_WAIT
+[[ "${INIT_MAX_WAIT}" =~ ^[1-9][0-9]*$ ]] || INIT_MAX_WAIT=900
+
+LOG="${LOGS_DIR}/initialize-data.log"
+redirect_logs "${LOG}"
+
+sleeping "Waiting for Milvus to come online..."
+poll_url "http://localhost:9091/healthz" "${INIT_MAX_WAIT}" "${INIT_POLL_SLEEP}" || fail "Cannot continue configuration if Milvus is not online"
+
+# Reset the admin password ...
+milvus_user_reset_password "${ADMIN_USERNAME}" "${ADMIN_PASSWORD}"
+
+if DEFINITIONS="$(get_database_definitions)" ; then
+	while IFS=":" read ALIAS DATABASE COLLECTION DIMENSIONS ; do
+	
+		# This will declare the USERNAME/PASSWORD variables accordingly
+		get_database_auth "${ALIAS}"
+	
+		milvus_database_create "${DATABASE}"
+		milvus_collection_create "${DATABASE}" "${COLLECTION}" "${DIMENSIONS}"
+	
+		ADMIN_ROLE=""
+		for PRIV in Admin RW:ReadWrite RO:ReadOnly ; do
+			if [[ "${PRIV}" =~ ^([^:]+):([^:]+)$ ]] ; then
+				PRIV="${BASH_REMATCH[1]}"
+				FULL_PRIV="Database${BASH_REMATCH[2]}"
+			else
+				FULL_PRIV="Database${PRIV}"
+			fi
+
+			ROLE="${DATABASE}_${PRIV,,}"
+	
+			# Track the admin role
+			[ "${PRIV}" == "Admin" ] && [ -z "${ADMIN_ROLE}" ] && ADMIN_ROLE="${ROLE}"
+	
+			# If the role already exists, don't mess with it
+			milvus_role_get "${ROLE}" && continue
+	
+			milvus_role_create "${ROLE}"
+			milvus_role_grant "${ROLE}" "${DATABASE}" "${FULL_PRIV}"
+		done
+	
+		if milvus_user_create "${USERNAME}" "${PASSWORD}" ; then
+			[ -n "${ADMIN_ROLE}" ] && milvus_user_grant "${USERNAME}" "${ADMIN_ROLE}"
+		else
+			# Reset the user's password to the expected value
+			milvus_user_reset_password "${USERNAME}" "${PASSWORD}"
+		fi
+	done < <(echo "${DEFINITIONS}")
+else
+	echo -e "${DEFINITIONS}"
+	exit ${?}
+fi
