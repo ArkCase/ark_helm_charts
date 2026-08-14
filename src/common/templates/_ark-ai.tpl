@@ -11,16 +11,18 @@
   {{- end -}}
 
   {{- $result := dict -}}
-  {{- $enabled := 0 -}}
+  {{- $features := 0 -}}
   {{- range $k := (list "chatbot" "redaction") -}}
     {{- $v := (not (empty (include "arkcase.toBoolean" (get $ai $k | default "false" )))) -}}
     {{- $result = set $result $k $v -}}
     {{- if $v -}}
-      {{- $enabled = add $enabled 1 -}}
+      {{- $features = add $features 1 -}}
     {{- end -}}
   {{- end -}}
 
-  {{- if (lt 0 $enabled) -}}
+  {{- $enabled := or (not (hasKey $ai "enabled")) (not (empty (include "arkcase.toBoolean" (get $ai "enabled" | default "false" )))) -}}
+
+  {{- if and $enabled (lt 0 $features) -}}
     {{- $result = set $result "enabled" true -}}
     {{- $llm := get $ai "llm" | default (printf "%s-llm" $ctx.Release.Name) -}}
     {{- $ns := $ctx.Release.Namespace -}}
