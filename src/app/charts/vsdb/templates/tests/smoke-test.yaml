@@ -41,5 +41,11 @@ spec:
             curl -fsSL --cert "${SSL_CERTIFICATE}" --key "${SSL_PRIVATE_KEY}" -m 3 -o /dev/null "https://${ETCD_ENDPOINTS}/health"
             # Milvus is OK like this
             curl -fsSL -m 3 -o /dev/null "${ADMIN_URL}/healthz"
+      volumeMounts:
+        {{- include "arkcase.trusts.mount" $ | nindent 12 }}
+        {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
+  volumes:
+    {{- include "arkcase.trusts.volume" $ | nindent 8 }}
+    {{- include "arkcase.acme.volume" $ | nindent 8 }}
   restartPolicy: Never
 {{- end }}

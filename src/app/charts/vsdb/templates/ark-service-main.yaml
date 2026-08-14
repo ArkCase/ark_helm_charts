@@ -1,3 +1,0 @@
-{{- if (include "arkcase.vsdb.enabled" $) -}}
-  {{- include "arkcase.subsystem.service" (dict "ctx" $ "partname" "main") -}}
-{{- end -}}

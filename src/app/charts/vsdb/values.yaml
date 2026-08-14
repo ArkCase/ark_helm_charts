@@ -6,11 +6,11 @@
 #
 resources:
   default:
-    main: "1Gi"
+    milvus: "1Gi"
     etcd: "256Mi-512Mi,500m-1000m"
 
   development:
-    main: "1Gi"
+    milvus: "1Gi"
     etcd: "256Mi-512Mi,500m-1000m"
 
 # Please leave the `replicaCount` to 1 for the time being. Clustering is not
@@ -72,7 +72,7 @@ securityContext:
   # fsGroup: &fsGroup 1000
   # fsGroupChangePolicy: OnRootMismatch
 
-  main:
+  milvus:
     # capabilities:
     #   drop:
     #   - ALL
@@ -121,12 +121,15 @@ persistence:
 # properly declare volumes)
 
 service:
-  main:
+  milvus:
     ports:
       - name: &grpc grpc
         protocol: TCP
         port: 443
         targetPort: 19530
+      - name: &rest rest
+        protocol: TCP
+        port: 8443
       - name: &admin admin
         protocol: TCP
         port: 9091

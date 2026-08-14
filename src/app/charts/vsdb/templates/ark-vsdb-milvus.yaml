@@ -102,7 +102,7 @@ spec:
         {{- include "arkcase.initDependencies.container" (dict "ctx" $ "name" "init-dependencies" "network" "milvus") | nindent 8 }}
       containers:
         - name: milvus
-          {{- include "arkcase.image" $ | nindent 10 }}
+          {{- include "arkcase.image" (dict "ctx" $ "name" "milvus" "repository" "arkcase/milvus") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.cluster.env" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
@@ -164,7 +164,7 @@ spec:
             - name: ZILLIZ_URI
               value: "https://localhost:19530"
             - name: PROXY_HTTP_PORT
-              value: "8080"
+              value: "8443"
             - name: REST_URL
               value: "https://localhost:$(PROXY_HTTP_PORT)"
             - name: MINIO_USE_VIRTUAL_HOST
@@ -179,13 +179,13 @@ spec:
               value: "1000"
             - name: MINIO_ROOT_PATH
               value: {{ printf "%s/%s" $.Release.Namespace $.Release.Name | quote }}
-          {{- include "arkcase.subsystem.ports" (dict "ctx" $ "name" "main") | nindent 10 }}
+          {{- include "arkcase.subsystem.ports" (dict "ctx" $ "name" "milvus") | nindent 10 }}
           lifecycle:
             postStart:
               exec:
                 command: [ "/usr/local/bin/initialize-data" ]
-          resources: {{- include "arkcase.resources" (dict "ctx" $ "part" "main") | nindent 12 }}
-          securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "main") | nindent 12 }}
+          resources: {{- include "arkcase.resources" (dict "ctx" $ "part" "milvus") | nindent 12 }}
+          securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "milvus") | nindent 12 }}
           volumeMounts:
             {{- include "arkcase.trusts.mount" $ | nindent 12 }}
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
