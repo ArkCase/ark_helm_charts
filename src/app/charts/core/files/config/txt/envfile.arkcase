@@ -29,15 +29,6 @@ export JAVA_TOOL_OPTIONS
 export CATALINA_OPTS
 
 #
-# Compute the VSDB token, if available ...
-#
-ARKCASE_AI_VSDB_TOKEN=""
-if [ -v ARKCASE_AI_VSDB_USERNAME ] && [ -v ARKCASE_AI_VSDB_PASSWORD ] ; then
-	ARKCASE_AI_VSDB_TOKEN="${ARKCASE_AI_VSDB_USERNAME}:${ARKCASE_AI_VSDB_PASSWORD}"
-fi
-export ARKCASE_AI_VSDB_TOKEN
-
-#
 # Add more stuff...
 #
 
