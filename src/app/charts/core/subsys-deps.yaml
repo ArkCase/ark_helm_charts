@@ -197,3 +197,26 @@ settings:
       replicas: SOLR_COLLECTION_REPLICAS
       shards: SOLR_COLLECTION_SHARDS
       nodes: SOLR_NODES
+
+  vsdb:
+    arkcase:
+      url:
+        env:
+          name: ARKCASE_AI_VSDB_URL
+          optional: true
+      type:
+        env:
+          name: ARKCASE_AI_VSDB_TYPE
+          optional: true
+      token:
+        env:
+          name: ARKCASE_AI_VSDB_TOKEN
+          optional: true
+      database:
+        env:
+          name: ARKCASE_AI_VSDB_DATABASE
+          optional: true
+      collection:
+        env:
+          name: ARKCASE_AI_VSDB_COLLECTION
+          optional: true

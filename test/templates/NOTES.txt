@@ -67,3 +67,6 @@ FIPS: [{{ include "arkcase.fips" $ }}] (bool = {{ include "arkcase.fips.bool" $ 
 ---
 CLUSTERING: {{ include "arkcase.cluster" $ | nindent 0 }}
 ---
+AI: [{{ include "arkcase.ai" $ | nindent 0 }}]
+AI-ENV: [{{ include "arkcase.ai.env" $ | nindent 0 }}]
+---

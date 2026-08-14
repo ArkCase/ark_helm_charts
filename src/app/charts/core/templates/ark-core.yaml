@@ -242,6 +242,7 @@ spec:
         - name: arkcase
           {{- include "arkcase.image" (dict "ctx" $ "name" "arkcase" "repository" "arkcase/core") | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            {{- include "arkcase.ai.env" $ | nindent 12 }}
             {{- include "arkcase.core.conf.env" $ | nindent 12 }}
             {{- include "arkcase.cluster.env" $ | nindent 12 }}
             {{- include "arkcase.cluster.tomcat.env" $ | nindent 12 }}
@@ -252,6 +253,7 @@ spec:
             {{- include "arkcase.env.applicationVars" $ | nindent 12 }}
             {{- include "arkcase.core.settings.env" $ | nindent 12 }}
             {{- include "arkcase.alt-java" $ | nindent 12 }}
+            # TODO: this should probably be computed based on available resources
             - name: COMPONENT
               value: "arkcase"
             - name: POLL_CONFIG
