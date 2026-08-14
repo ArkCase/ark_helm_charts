@@ -2,6 +2,13 @@
 set -euo pipefail
 . /.functions
 
+# Wait for ETCD to be up and running
+# Start creating the default tidbits ... do NOT overwrite anything that's already defined
+# except the passwords as configured from the secrets, just like everywhere else
+
+exit 0
+
+# This is copied from minio ... in case it's useful
 define_user()
 {
 	local USERNAME="${1}"

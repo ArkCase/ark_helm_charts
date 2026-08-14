@@ -1,0 +1,212 @@
+{{- if (include "arkcase.vsdb.enabled" $) -}}
+  {{- $cluster := (include "arkcase.cluster" $ | fromYaml) -}}
+  {{- $replicas := ((include "arkcase.vsdb.replicas" $cluster.replicas) | int) -}}
+  {{- $serviceAccountName := (include "arkcase.serviceAccountName" $) }}
+  {{- $serviceAccountName = (or (empty $serviceAccountName) (eq "default" $serviceAccountName)) | ternary (include "arkcase.fullname" $) $serviceAccountName }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ $serviceAccountName | quote }}
+  namespace: {{ $.Release.Namespace | quote }}
+  labels: {{- include "arkcase.labels" $ | nindent 4 }}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "arkcase.fullname" $ | quote }}
+  namespace: {{ $.Release.Namespace | quote }}
+  labels: {{- include "arkcase.labels.service" $ | nindent 4 }}
+    {{- with ($.Values.labels).common }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with ($.Values.annotations).common }}
+  annotations: {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  # replicas: {{ $replicas }}
+  # TODO: For now, only one replica
+  replicas: 1
+  selector: &labelSelector
+    matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
+  serviceName: {{ include "arkcase.service.headless" $ | quote }}
+  updateStrategy: {{- include "arkcase.cluster.statefulUpdateStrategy" $ | nindent 4 }}
+  podManagementPolicy: Parallel
+  template:
+    metadata:
+      name: {{ include "arkcase.fullname" $ | quote }}
+      namespace: {{ $.Release.Namespace | quote }}
+      labels: {{- include "arkcase.labels.service" $ | nindent 8 }}
+        {{- with ($.Values.labels).common }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      annotations:
+        # NB: Both these annotation values must be of type "string"
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9100"
+        {{- with ($.Values.annotations).common }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      affinity:
+        podAntiAffinity:
+        {{- if $cluster.onePerHost }}
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - topologyKey: "kubernetes.io/hostname"
+              namespaces: [ {{ $.Release.Namespace | quote }} ]
+              labelSelector:
+                <<: *labelSelector
+        {{- else }}
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 1
+              podAffinityTerm:
+                topologyKey: "kubernetes.io/hostname"
+                namespaces: [ {{ $.Release.Namespace | quote }} ]
+                labelSelector:
+                  <<: *labelSelector
+        {{- end }}
+      {{- include "arkcase.image.pullSecrets" $ | nindent 6 }}
+      {{- with $.Values.hostAliases }}
+      hostAliases: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if $.Values.schedulerName }}
+      schedulerName: {{ $.Values.schedulerName | quote }}
+      {{- end }}
+      {{- if $serviceAccountName }}
+      serviceAccountName: {{ $serviceAccountName | quote }}
+      {{- end }}
+      securityContext: {{- include "arkcase.securityContext" $ | nindent 8 }}
+      terminationGracePeriodSeconds: 15
+      initContainers:
+        - name: init-permissions
+          {{- include "arkcase.image" (dict "ctx" $ "name" "setperm" "repository" "arkcase/setperm") | nindent 10 }}
+          env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            - name: DATA_DIR
+              value: &dataDir "/app/data"
+            - name: LOGS_DIR
+              value: &logsDir "/app/logs"
+            - name: JOBS
+              value: |-
+                jobs:
+                  # We know the Cloudconfig image uses user 997i (centos) , 1997 (rocky)
+                  # TODO: Make this autodetected via the securityContext
+                  - ownership: "1000:1000"
+                    permissions: "u=rwX,g=rwX,o="
+                    flags: [ "recurse", "forced", "create", "changes" ]
+                    targets: [ "$(DATA_DIR)", "$(LOGS_DIR)" ]
+          volumeMounts:
+            - name: &dataVol "data"
+              mountPath: *dataDir
+            - name: &logsVol "logs"
+              mountPath: *logsDir
+        {{- include "arkcase.initDependencies.container" (dict "ctx" $ "name" "init-dependencies" "network" "milvus") | nindent 8 }}
+      containers:
+        - name: milvus
+          {{- include "arkcase.image" (dict "ctx" $ "name" "milvus" "repository" "arkcase/milvus") | nindent 10 }}
+          env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            {{- include "arkcase.cluster.env" $ | nindent 12 }}
+            {{- include "arkcase.acme.env" $ | nindent 12 }}
+            {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
+            - name: DATA_DIR
+              value: *dataDir
+            - name: LOCAL_STORAGE_PATH
+              value: "$(DATA_DIR)/main"
+            - name: ROCKSMQ_PATH
+              value: "$(DATA_DIR)/rdb"
+            - name: FUNCTION_ANALYZER_LOCAL_RESOURCE_PATH
+              value: "$(DATA_DIR)/analyzer"
+            - name: ETCD_LOG_PATH
+              value: *logsDir
+            - name: ETCD_SSL_ENABLED
+              value: "true"
+            - name: ETCD_SSL_TLS_CERT
+              value: &sslCert "$(SSL_DIR)/cert.pem"
+            - name: ETCD_SSL_TLS_KEY
+              value: &sslKey "$(SSL_DIR)/cert.key"
+            - name: ETCD_SSL_TLS_CA_CERT
+              value: &caRoot "$(SSL_DIR)/ca-root.pem"
+            - name: ETCD_SSL_TLS_MIN_VERSION
+              value: &tlsVer "1.3"
+            - name: TLS_SERVER_PEM_PATH
+              value: *sslCert
+            - name: TLS_SERVER_KEY_PATH
+              value: *sslKey
+            - name: TLS_CA_PEM_PATH
+              value: *caRoot
+            - name: COMMON_SECURITY_AUTHORIZATION_ENABLED
+              value: "true"
+            - name: COMMON_SECURITY_SUPER_USERS
+              value: "$(ADMIN_USERNAME)"
+            - name: COMMON_SECURITY_DEFAULT_ROOT_PASSWORD
+              value: "$(ADMIN_PASSWORD)"
+            - name: COMMON_SECURITY_ENABLE_PUBLIC_PRIVILEGE
+              value: "false"
+            - name: COMMON_SECURITY_EXPR_ENABLED
+              value: "true"
+            - name: COMMON_SECURITY_INTERNALTLS_ENABLED
+              value: "true"
+            - name: COMMON_SECURITY_TLS_MODE
+              value: "1"
+            - name: INTERNALTLS_SERVER_PEM_PATH
+              value: *sslCert
+            - name: INTERNALTLS_SERVER_KEY_PATH
+              value: *sslKey
+            - name: INTERNALTLS_CA_PEM_PATH
+              value: *caRoot
+            - name: TIKV_SSL_TLS_CERT
+              value: *sslCert
+            - name: TIKV_SSL_TLS_KEY
+              value: *sslKey
+            - name: TIKV_SSL_TLS_CA_CERT
+              value: *caRoot
+            - name: ZILLIZ_TOKEN
+              value: "$(ADMIN_USERNAME):$(ADMIN_PASSWORD)"
+            - name: ZILLIZ_URI
+              value: "https://localhost:19530"
+            - name: PROXY_HTTP_PORT
+              value: "8443"
+            - name: REST_URL
+              value: "https://localhost:$(PROXY_HTTP_PORT)"
+            - name: MINIO_USE_VIRTUAL_HOST
+              value: "false"
+            - name: MINIO_USE_SSL
+              value: "true"
+            - name: MINIO_SSL_TLS_CA_CERT
+              value: *caRoot
+            - name: MINIO_SSL_TLS_MIN_VERSION
+              value: *tlsVer
+            - name: MINIO_LIST_OBJECT_MAX_KEYS
+              value: "1000"
+            - name: MINIO_ROOT_PATH
+              value: {{ printf "%s/%s" $.Release.Namespace $.Release.Name | quote }}
+          {{- include "arkcase.subsystem.ports" (dict "ctx" $ "name" "milvus") | nindent 10 }}
+          lifecycle:
+            postStart:
+              exec:
+                command: [ "/usr/local/bin/initialize-data" ]
+          resources: {{- include "arkcase.resources" (dict "ctx" $ "part" "milvus") | nindent 12 }}
+          securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "milvus") | nindent 12 }}
+          volumeMounts:
+            {{- include "arkcase.trusts.mount" $ | nindent 12 }}
+            {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
+            {{- include "arkcase.subsystem-access.volumeMount" $ | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/initialize-data" "subPath" "milvus.initialize-data") | nindent 12 }}
+            - name: *dataVol
+              mountPath: *dataDir
+            - name: *logsVol
+              mountPath: *logsDir
+      volumes:
+        {{- include "arkcase.trusts.volume" $ | nindent 8 }}
+        {{- include "arkcase.acme.volume" $ | nindent 8 }}
+        {{- include "arkcase.subsystem-access.volume" $ | nindent 8 }}
+        {{- include "arkcase.file-resource.volumes" $ | nindent 8 }}
+        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "data") | nindent 8 }}
+        {{- include "arkcase.persistence.volume" (dict "ctx" $ "name" "logs") | nindent 8 }}
+  volumeClaimTemplates:
+    {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "data") | nindent 4 }}
+    {{- include "arkcase.persistence.volumeClaimTemplate" (dict "ctx" $ "name" "logs") | nindent 4 }}
+
+  {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "data") | nindent 0 }}
+  {{- include "arkcase.persistence.declareResources" (dict "ctx" $ "volume" "logs") | nindent 0 }}
+
+{{- end -}}

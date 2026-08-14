@@ -114,6 +114,10 @@ spec:
               value: "$(CONTENT_INTERNAL_USERNAME)"
             - name: MINIO_INTERNAL_PASSWORD
               value: "$(CONTENT_INTERNAL_PASSWORD)"
+            - name: MINIO_VSDB_USER
+              value: "$(CONTENT_VSDB_USERNAME)"
+            - name: MINIO_VSDB_PASSWORD
+              value: "$(CONTENT_VSDB_PASSWORD)"
             # These two make sure things run in the correct ports
             - name: MINIO_ADDRESS
               value: ":9000"

@@ -1,0 +1,63 @@
+network/milvus:
+  enabled: true
+  mode: all
+  template:
+    # Any of the required ports are enough to succeed
+    mode: any
+    initialDelay: 10
+    delay: 10
+    timeout: 10
+    attempts: 120
+  dependencies:
+    acme:
+      url: "@env:ACME_URL"
+    content:
+      url: "@env:MINIO_URL"
+    etcd:
+      host: "vsdb-etcd"
+      port: "2379"
+
+network/etcd:
+  enabled: true
+  mode: all
+  template:
+    # Any of the required ports are enough to succeed
+    mode: any
+    initialDelay: 10
+    delay: 10
+    timeout: 10
+    attempts: 120
+  dependencies:
+    acme:
+      url: "@env:ACME_URL"
+
+settings:
+  # We specifically don't consume from ACME b/c those are handled directly
+  # by the ACME templates, and there's no need to address them beyond that
+  # acme: {}
+  #
+  # We specifically don't consume from ZooKeeper b/c those are handled directly
+  # by the Clustering templates, and there's no need to address them beyond that
+  # zookeeper: {}
+
+  $self:
+    admin:
+      admin: ADMIN_URL
+      username: ADMIN_USERNAME
+      password: ADMIN_PASSWORD
+
+    arkcase:
+      username: DB_ARKCASE_USERNAME
+      password: DB_ARKCASE_PASSWORD
+
+    etcd:
+      initialToken: ETCD_INITIAL_CLUSTER_TOKEN
+      endpoints: ETCD_ENDPOINTS
+
+  content:
+    vsdb:
+      url: MINIO_URL
+      region: MINIO_REGION
+      bucket: MINIO_BUCKET_NAME
+      username: MINIO_ACCESS_KEY_ID
+      password: MINIO_SECRET_ACCESS_KEY

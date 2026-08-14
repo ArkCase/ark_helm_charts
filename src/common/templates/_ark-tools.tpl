@@ -1175,7 +1175,7 @@ return either the value if correct, or the empty string if not.
 
   {{- $result := dict -}}
   {{- if or $ctx.Release.IsUpgrade (not (empty (include "arkcase.toBoolean" $.always))) -}}
-    {{- $obj := (lookup "v1" "Secret" $ctx.Release.Namespace $name) -}}
+    {{- $obj := (lookup "v1" $resource $ctx.Release.Namespace $name) -}}
     {{- if $obj -}}
       {{- /* It's OK to pick "binaryData" here ... Secrets don't have it */ -}}
       {{- $result = (merge dict (pick $obj "data" "binaryData")) -}}

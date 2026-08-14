@@ -21,6 +21,7 @@ Welcome to the [ArkCase](https://www.arkcase.com/) Helm Chart Library!
    - [Resource Requests and Limits](docs/Resources.md)
    - [Clustering](docs/Clustering.md)
    - [Single Sign-On](docs/Single_Sign_On.md)
+   - [AI](docs/AI.md)
 
 ## <a name="overview"></a>Overview
 
