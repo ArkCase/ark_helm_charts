@@ -1,3 +1,10 @@
+{{- define "arkcase.vsdb.enabled" -}}
+  {{- $ai := (include "arkcase.ai" $ | fromYaml) -}}
+  {{- if and $ai (include "arkcase.subsystem.enabled" $) -}}
+    {{- true -}}
+  {{- end -}}
+{{- end -}}
+
 {{- define "arkcase.vsdb.replicas" -}}
   {{- /* Must always be at least one */ -}}
   {{- $r := max ($ | int) 1 -}}

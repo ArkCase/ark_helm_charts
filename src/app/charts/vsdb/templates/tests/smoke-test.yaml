@@ -1,4 +1,4 @@
-{{- if (include "arkcase.subsystem.enabled" $) }}
+{{- if (include "arkcase.vsdb.enabled" $) }}
   {{- $portal := (include "arkcase.portal" $ | fromYaml) -}}
 apiVersion: v1
 kind: Pod
@@ -38,8 +38,8 @@ spec:
             . /.functions
             init_ssl
             # Etcd does need client-side auth
-            curl -fsSL --cert "${SSL_CERTIFICATE}" --key "${SSL_PRIVATE_KEY}" -m 3 -o /dev/null "$(ETCD_CLUSTER_URL)/health"
+            curl -fsSL --cert "${SSL_CERTIFICATE}" --key "${SSL_PRIVATE_KEY}" -m 3 -o /dev/null "https://${ETCD_ENDPOINTS}/health"
             # Milvus is OK like this
-            curl -fsSL -m 3 -o /dev/null "$(ARKCASE_VSDB_ADMIN_URL)/health"
+            curl -fsSL -m 3 -o /dev/null "${ADMIN_URL}/healthz"
   restartPolicy: Never
 {{- end }}

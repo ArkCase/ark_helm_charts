@@ -1,4 +1,4 @@
-{{- if (include "arkcase.subsystem.enabled" $) -}}
+{{- if (include "arkcase.vsdb.enabled" $) -}}
   {{- $cluster := (include "arkcase.cluster" $ | fromYaml) -}}
   {{- $replicas := ((include "arkcase.vsdb.replicas" $cluster.replicas) | int) -}}
   {{- $serviceAccountName := (include "arkcase.serviceAccountName" $) }}
