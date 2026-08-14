@@ -60,6 +60,9 @@ stringData:
   # Optional, will be defaulted to an empty string if not provided
   password: "some-password"
 ```
+
+_*NOTE: The secret for LLM connectivity MUST exist, or deployment will fail*_
+
 ## <a name="special-considerations"></a>Special Considerations
 
 ### TBD ...
