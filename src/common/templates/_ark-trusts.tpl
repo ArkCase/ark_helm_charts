@@ -102,7 +102,7 @@
 /.trusts
 {{- end -}}
 
-{{- define "arkcase.trusts.secret" -}}
+{{- define "arkcase.trusts.secret-name" -}}
   {{- if not (include "arkcase.isRootContext" $) -}}
     {{- fail "The parameter given must be the root context (. or $)" -}}
   {{- end -}}
@@ -113,13 +113,23 @@
   {{- if not (include "arkcase.isRootContext" $) -}}
     {{- fail "The parameter given must be the root context (. or $)" -}}
   {{- end -}}
-  {{- $volumeName := (include "arkcase.trusts.secret" $) -}}
+  {{- $volumeName := (include "arkcase.trusts.secret-name" $) -}}
   {{- $trustsDir := (include "arkcase.trusts.dir" $) -}}
   {{- $trusts := (include "arkcase.trusts" $ | fromYaml) -}}
+  {{- $first := true -}}
+  {{- with (include "arkcase.trusts" $ | fromYaml) }}
+    {{- range .certs }}
+      {{- if $first }}
 # These are the statically-added trusts in the configuration
-- name: &sslTrustSecrets {{ $volumeName | quote }}
-  mountPath: {{ $trustsDir | quote }}
+        {{- $first = false }}
+      {{- end }}
+      {{- $name := (printf "%s.%s" .name .type) }}
+- name: {{ $volumeName | quote }}
+  mountPath: {{ printf "%s/%s" $trustsDir $name | quote }}
+  subPath: {{ $name | quote }}
   readOnly: true
+    {{- end }}
+  {{- end }}
   {{- $resNum := 0 }}
   {{- range $type := (keys $trusts.links | sortAlpha) }}
     {{- $items := get $trusts.links $type }}
@@ -146,13 +156,13 @@
   {{- if not (include "arkcase.isRootContext" $) -}}
     {{- fail "The parameter given must be the root context (. or $)" -}}
   {{- end -}}
-  {{- $secretName := (include "arkcase.trusts.secret" $) -}}
+  {{- $secretName := (include "arkcase.trusts.secret-name" $) -}}
   {{- $trusts := (include "arkcase.trusts" $ | fromYaml) -}}
 # This is the secret containing the statically-added trusts in the configuration
-- name: *sslTrustSecrets
+- name: {{ $secretName | quote }}
   secret:
     optional: true
-    secretName: *sslTrustSecrets
+    secretName: {{ $secretName | quote }}
     defaultMode: 0444
   {{- $resNum := 0 }}
   {{- range $type := (keys $trusts.links | sortAlpha) }}
@@ -168,6 +178,34 @@
     {{ $nameAtt }}: {{ $resource | quote }}
     defaultMode: 0444
       {{- $resNum = add $resNum 1 }}
+    {{- end }}
+  {{- end }}
+{{- end -}}
+
+{{- define "arkcase.trusts.secret" -}}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "arkcase.trusts.secret-name" $ | quote }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels: {{- include "arkcase.labels" $ | nindent 4 }}
+    {{- with ($.Values.labels).common }}
+      {{- toYaml . | nindent 4 }}
+    {{- end }}
+  annotations:
+    {{- with ($.Values.annotations).common }}
+      {{- toYaml . | nindent 4 }}
+    {{- end }}
+type: Opaque
+stringData:
+  {{- with (include "arkcase.trusts" $ | fromYaml) }}
+    {{- range .certs }}
+      {{- $name := (printf "%s.%s" .name .type) }}
+      {{- if (eq "pem" .type) }}
+  {{ $name }}: |- {{- .value | nindent 4 }}
+      {{- else }}
+  {{ $name }}: {{ .value | quote }}
+      {{- end }}
     {{- end }}
   {{- end }}
 {{- end -}}
