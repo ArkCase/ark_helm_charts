@@ -27,6 +27,7 @@
       {{- else if (regexMatch "^([^:/?#]+)://([^/?#]*)([^?#]*)([?]([^#]*))?(#(.*))?$" .) -}}
         {{- $value = . -}}
         {{- $type = "url" -}}
+        {{- /* TODO: Parse the URL and give configMap:// and secret:// special treatment */ -}}
       {{- else if (regexMatch "^(([^@:/]+)@)?(([^@:/]+):([^@:/]+))(/.*)?$" .) -}}
         {{- $value = . -}}
         {{- $type = "ssl" -}}
