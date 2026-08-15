@@ -1,4 +1,33 @@
-{{- define "__arkcase.trusts.certs.compute" -}}
+{{- define "__arkcase.trusts.parse-link" -}}
+  {{- $link := (. | toString) -}}
+  {{- $link = (include "arkcase.tools.parseUrl" $link | fromYaml) -}}
+
+  {{- $result := dict -}}
+  {{- $type := ($link.scheme | lower) -}}
+  {{- if has $type (list "secret" "configmap") -}}
+    {{- $type = ((eq "secret" $type) | ternary $type "configMap") -}}
+
+    {{- $name := $link.host -}}
+    {{- if not (include "arkcase.tools.checkHostname" $name) -}}
+      {{- fail (printf "The resource name [%s] is not valid (from [%s])" $name .) -}}
+    {{- end -}}
+
+    {{- $key := $link.fragment -}}
+    {{- if not (regexMatch "^[-._a-zA-Z0-9]+$" $key) -}}
+      {{- fail (printf "The target key [%s] is not a valid key for a %s resource (from [%s])" $key $type .) -}}
+    {{- end -}}
+
+    {{-
+      $result = dict
+        "type" $type
+        "name" $name
+        "key" $key
+    -}}
+  {{- end -}}
+  {{- $result | toYaml -}}
+{{- end -}}
+
+{{- define "__arkcase.trusts.compute" -}}
   {{- if not (include "arkcase.isRootContext" $) -}}
     {{- fail "The parameter given must be the root context (. or $)" -}}
   {{- end -}}
@@ -13,9 +42,11 @@
     {{- $trusts = list -}}
   {{- end -}}
 
-  {{- $finalTrusts := list -}}
-  {{- $current := 0 -}}
+  {{- $certs := list -}}
+  {{- $links := dict "secret" dict "configMap" dict -}}
+
   {{- $dupes := dict -}}
+  {{- $current := 0 -}}
   {{- range $trusts -}}
     {{- $current = add 1 $current -}}
     {{- if (kindIs "string" .) -}}
@@ -27,7 +58,15 @@
       {{- else if (regexMatch "^([^:/?#]+)://([^/?#]*)([^?#]*)([?]([^#]*))?(#(.*))?$" .) -}}
         {{- $value = . -}}
         {{- $type = "url" -}}
-        {{- /* TODO: Parse the URL and give configMap:// and secret:// special treatment */ -}}
+        {{- $newLink := (include "__arkcase.trusts.parse-link" $value | fromYaml) -}}
+        {{- if $newLink -}}
+          {{- $typeDict := (get $links $newLink.type | default dict) -}}
+          {{- $keys := (get $typeDict $newLink.name | default list) -}}
+          {{- $keys = (append $keys $newLink.key | sortAlpha | uniq) -}}
+          {{- $typeDict = set $typeDict $newLink.name $keys -}}
+          {{- $links = set $links $newLink.type $typeDict -}}
+          {{- continue -}}
+        {{- end -}}
       {{- else if (regexMatch "^(([^@:/]+)@)?(([^@:/]+):([^@:/]+))(/.*)?$" .) -}}
         {{- $value = . -}}
         {{- $type = "ssl" -}}
@@ -38,23 +77,23 @@
       {{- if $value -}}
         {{- $hash := ($value | sha256sum) -}}
         {{- if (not (hasKey $dupes $hash)) -}}
-          {{- $name := (printf "ssl-trust-%03d" (len $finalTrusts)) -}}
+          {{- $name := (printf "ssl-trust-%03d" (len $certs)) -}}
           {{- $result := (dict "type" $type "name" $name "value" $value "hash" $hash) -}}
-          {{- $finalTrusts = append $finalTrusts $result -}}
+          {{- $certs = append $certs $result -}}
           {{- $dupes = set $dupes $hash $result -}}
         {{- end -}}
       {{- end -}}
     {{- end -}}
   {{- end -}}
 
-  {{- dict "certs" $finalTrusts | toYaml -}}
+  {{- dict "certs" $certs "links" $links | toYaml -}}
 {{- end -}}
 
-{{- define "arkcase.trusts.certs" -}}
+{{- define "arkcase.trusts" -}}
   {{- $args :=
     dict
       "ctx" $
-      "template" "__arkcase.trusts.certs.compute"
+      "template" "__arkcase.trusts.compute"
   -}}
   {{- include "__arkcase.tools.getCachedValue" $args -}}
 {{- end -}}
@@ -75,9 +114,32 @@
     {{- fail "The parameter given must be the root context (. or $)" -}}
   {{- end -}}
   {{- $volumeName := (include "arkcase.trusts.secret" $) -}}
+  {{- $trustsDir := (include "arkcase.trusts.dir" $) -}}
+  {{- $trusts := (include "arkcase.trusts" $ | fromYaml) -}}
+# These are the statically-added trusts in the configuration
 - name: &sslTrustSecrets {{ $volumeName | quote }}
-  mountPath: {{ include "arkcase.trusts.dir" $ | quote }}
+  mountPath: {{ $trustsDir | quote }}
   readOnly: true
+  {{- $resNum := 0 }}
+  {{- range $type := (keys $trusts.links | sortAlpha) }}
+    {{- $items := get $trusts.links $type }}
+    {{- if eq 0 $resNum }}
+# These are the dynamic trusts added from other secrets/configMaps
+    {{- end }}
+    {{- range $resource := (keys $items | sortAlpha) }}
+      {{- $volumeName = (printf "ssl-trust-link-%03d" $resNum) }}
+      {{- $keys := (get $items $resource) }}
+      {{- $keyNum := 0 }}
+      {{- range $key := ($keys | sortAlpha) }}
+- name: {{ $volumeName | quote }}
+  mountPath: {{ printf "%s/ssl-trust-link-%03d-%03d.pem" $trustsDir $resNum $keyNum | quote }}
+  subPath: {{ $key | quote }}
+  readOnly: true
+        {{- $keyNum = add $keyNum 1 }}
+      {{- end }}
+      {{- $resNum = add $resNum 1 }}
+    {{- end }}
+  {{- end }}
 {{- end -}}
 
 {{- define "arkcase.trusts.volume" -}}
@@ -85,9 +147,27 @@
     {{- fail "The parameter given must be the root context (. or $)" -}}
   {{- end -}}
   {{- $secretName := (include "arkcase.trusts.secret" $) -}}
+  {{- $trusts := (include "arkcase.trusts" $ | fromYaml) -}}
+# This is the secret containing the statically-added trusts in the configuration
 - name: *sslTrustSecrets
   secret:
     optional: true
     secretName: *sslTrustSecrets
     defaultMode: 0444
+  {{- $resNum := 0 }}
+  {{- range $type := (keys $trusts.links | sortAlpha) }}
+    {{- $items := get $trusts.links $type }}
+    {{- if eq 0 $resNum }}
+# These are the secrets and configMaps containing the dynamic trusts
+    {{- end }}
+    {{- $nameAtt := ((eq "secret" $type) | ternary "secretName" "name") }}
+    {{- range $resource := (keys $items | sortAlpha) }}
+- name: {{ printf "ssl-trust-link-%03d" $resNum | quote }}
+  {{ $type }}:
+    optional: true
+    {{ $nameAtt }}: {{ $resource | quote }}
+    defaultMode: 0444
+      {{- $resNum = add $resNum 1 }}
+    {{- end }}
+  {{- end }}
 {{- end -}}
