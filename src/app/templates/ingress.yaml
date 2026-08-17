@@ -69,10 +69,10 @@ metadata:
 type: kubernetes.io/tls
 stringData:
       {{- with $secretData }}
-  tls.crt: |- {{- .crt | required "Must provide a certificate in the TLS section (label = 'crt')" | nindent 4 }}
-  tls.key: |- {{- .key | required "Must provide a private key in the TLS section (label = 'key')" | nindent 4 }}
+  tls.crt: | {{- .crt | required "Must provide a certificate in the TLS section (label = 'crt')" | trim | nindent 4 }}
+  tls.key: | {{- .key | required "Must provide a private key in the TLS section (label = 'key')" | trim | nindent 4 }}
         {{- if .ca }}
-  ca.crt: |- {{- .ca | nindent 4 }}
+  ca.crt: | {{- .ca | trim | nindent 4 }}
         {{- end }}
       {{- end }}
     {{- else }}
