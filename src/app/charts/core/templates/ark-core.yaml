@@ -7,9 +7,11 @@
   {{- $content := (include "arkcase.cm.info" $ | fromYaml) -}}
   {{- $serviceAccountName := (include "arkcase.serviceAccountName" $) }}
   {{- $saml := (include "arkcase.core.sso.saml" $ | fromYaml) -}}
+  {{- $fullName := (include "arkcase.fullname" $) -}}
+  {{- $extraName := (printf "%s-extra" $fullName) -}}
   {{- $extraEnv := (include "arkcase.core.extra-env" $ | fromYaml) -}}
 ---
-  {{- $serviceAccountName = (or (empty $serviceAccountName) (eq "default" $serviceAccountName)) | ternary (include "arkcase.fullname" $) $serviceAccountName }}
+  {{- $serviceAccountName = (or (empty $serviceAccountName) (eq "default" $serviceAccountName)) | ternary $fullName $serviceAccountName }}
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -47,7 +49,7 @@ roleRef:
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ include "arkcase.fullname" $ | quote }}
+  name: {{ $fullName | quote }}
   namespace: {{ $.Release.Namespace | quote }}
   labels: {{- include "arkcase.labels.service" $ | nindent 4 }}
     {{- with ($.Values.labels).common }}
@@ -66,7 +68,7 @@ spec:
   podManagementPolicy: Parallel
   template:
     metadata:
-      name: {{ include "arkcase.fullname" $ | quote }}
+      name: {{ $fullName | quote }}
       namespace: {{ $.Release.Namespace | quote }}
       labels: {{- include "arkcase.labels.service" $ | nindent 8 }}
         {{- include "arkcase.labels.deploys" "arkcase,alfresco" | nindent 8 }}
@@ -210,12 +212,27 @@ spec:
       containers:
         - name: arkcase
           {{- include "arkcase.image" $ | nindent 10 }}
+          envFrom:
+            - prefix: "ARK_EXTRA_SECRET_"
+              secretRef:
+                name: &extra-name {{ $extraName | quote }}
+                optional: true
+            - prefix: "ARK_EXTRA_CONF_"
+              configMapRef:
+                name: *extra-name
+                optional: true
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.core.conf.env" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
             {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
             {{- include "arkcase.core.extra-env.env" $ | nindent 12 }}
             {{- include "arkcase.fips.legacy-env" $ | nindent 12 }}
+            - name: EXTRA_BASE
+              value: "/app/.extra"
+            - name: EXTRA_SECRET
+              value: "$(EXTRA_BASE)/secret"
+            - name: EXTRA_CONF
+              value: "$(EXTRA_BASE)/conf"
             - name: ALT_VARS
               value: "PORTAL_LDAP_DOMAIN PORTAL_LDAP_ROOT_DN ARKCASE_LDAP_DOMAIN ARKCASE_LDAP_ROOT_DN"
             - name: HOME_DIR
@@ -280,6 +297,10 @@ spec:
             {{- include "arkcase.trusts.mount" $ | nindent 12 }}
             {{- include "arkcase.acme.volumeMount-shared" $ | nindent 12 }}
             {{- include "arkcase.subsystem-access.volumeMount" $ | nindent 12 }}
+            - name: &extra-secret "extra-secret"
+              mountPath: "/app/.extra/secret"
+            - name: &extra-conf "extra-conf"
+              mountPath: "/app/.extra/conf"
             - name: *homeVol
               mountPath: *homeDir
             - name: *confVol
@@ -395,6 +416,16 @@ spec:
         {{- include "arkcase.trusts.volume" $ | nindent 8 }}
         {{- include "arkcase.acme.volume-shared" $ | nindent 8 }}
         {{- include "arkcase.file-resource.volumes" $ | nindent 8 }}
+        - name: *extra-secret
+          secret:
+            optional: true
+            secretName: *extra-name
+            defaultMode: 0444
+        - name: *extra-conf
+          configMap:
+            optional: true
+            name: *extra-name
+            defaultMode: 0444
         - name: *warsVol
           emptyDir:
             sizeLimit: 2Gi
