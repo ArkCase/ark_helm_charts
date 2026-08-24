@@ -64,3 +64,7 @@ volumes: {{- include "arkcase.acme.volume" $ | nindent 2 }}
 
 ---
 FIPS: [{{ include "arkcase.fips" $ }}] (bool = {{ include "arkcase.fips.bool" $ }})
+---
+TRUSTS:[{{- include "arkcase.trusts" $ | nindent 0 -}}]
+VM:[{{- include "arkcase.trusts.mount" $ | nindent 0 -}}]
+V:[{{- include "arkcase.trusts.volume" $ | nindent 0 -}}]
