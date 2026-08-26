@@ -8,9 +8,11 @@
   {{- $cluster := (include "arkcase.cluster" $ | fromYaml) -}}
   {{- $replicas := (min 4 ($cluster.replicas | int)) -}}
   {{- $saml := (include "arkcase.core.sso.saml" $ | fromYaml) -}}
+  {{- $fullName := (include "arkcase.fullname" $) -}}
+  {{- $extraName := (printf "%s-extra" $fullName) -}}
   {{- $extraEnv := (include "arkcase.core.extra-env" $ | fromYaml) -}}
-  {{- $serviceAccountName := (include "arkcase.serviceAccountName" $) }}
-  {{- $serviceAccountName = (or (empty $serviceAccountName) (eq "default" $serviceAccountName)) | ternary (include "arkcase.fullname" $) $serviceAccountName }}
+  {{- $serviceAccountName := (include "arkcase.serviceAccountName" $) -}}
+  {{- $serviceAccountName = (or (empty $serviceAccountName) (eq "default" $serviceAccountName)) | ternary $fullName $serviceAccountName -}}
   {{- $roleName := (printf "%s-config-access" $serviceAccountName) }}
 ---
 apiVersion: v1
@@ -79,7 +81,7 @@ roleRef:
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ include "arkcase.fullname" $ | quote }}
+  name: {{ $fullName | quote }}
   namespace: {{ $.Release.Namespace | quote }}
   labels: {{- include "arkcase.labels.service" $ | nindent 4 }}
     {{- with ($.Values.labels).common }}
@@ -97,7 +99,7 @@ spec:
   podManagementPolicy: Parallel
   template:
     metadata:
-      name: {{ include "arkcase.fullname" $ | quote }}
+      name: {{ $fullName | quote }}
       namespace: {{ $.Release.Namespace | quote }}
       labels: {{- include "arkcase.labels.service" $ | nindent 8 }}
         {{- include "arkcase.labels.deploys" "arkcase,alfresco" | nindent 8 }}
@@ -113,6 +115,11 @@ spec:
         {{- end }}
     spec:
       affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - {{ include "arkcase.node-affinity.gpu-avoid" $ | indent 20 | trim }}
         podAntiAffinity:
         {{- if $cluster.onePerHost }}
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -241,6 +248,15 @@ spec:
       containers:
         - name: arkcase
           {{- include "arkcase.image" (dict "ctx" $ "name" "arkcase" "repository" "arkcase/core") | nindent 10 }}
+          envFrom:
+            - prefix: "ARK_EXTRA_SECRET_"
+              secretRef:
+                name: &extra-name {{ $extraName | quote }}
+                optional: true
+            - prefix: "ARK_EXTRA_CONF_"
+              configMapRef:
+                name: *extra-name
+                optional: true
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.ai.env" $ | nindent 12 }}
             {{- include "arkcase.core.conf.env" $ | nindent 12 }}
@@ -254,6 +270,12 @@ spec:
             {{- include "arkcase.core.settings.env" $ | nindent 12 }}
             {{- include "arkcase.alt-java" $ | nindent 12 }}
             # TODO: this should probably be computed based on available resources
+            - name: EXTRA_BASE
+              value: "/app/.extra"
+            - name: EXTRA_SECRET
+              value: "$(EXTRA_BASE)/secret"
+            - name: EXTRA_CONF
+              value: "$(EXTRA_BASE)/conf"
             - name: COMPONENT
               value: "arkcase"
             - name: POLL_CONFIG
@@ -333,6 +355,10 @@ spec:
             {{- include "arkcase.trusts.mount" $ | nindent 12 }}
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
             {{- include "arkcase.subsystem-access.volumeMount" $ | nindent 12 }}
+            - name: &extra-secret "extra-secret"
+              mountPath: "/app/.extra/secret"
+            - name: &extra-conf "extra-conf"
+              mountPath: "/app/.extra/conf"
             - name: *homeVol
               mountPath: *homeDir
             - name: *confVol
@@ -376,6 +402,16 @@ spec:
         {{- include "arkcase.trusts.volume" $ | nindent 8 }}
         {{- include "arkcase.acme.volume" $ | nindent 8 }}
         {{- include "arkcase.file-resource.volumes" $ | nindent 8 }}
+        - name: *extra-secret
+          secret:
+            optional: true
+            secretName: *extra-name
+            defaultMode: 0444
+        - name: *extra-conf
+          configMap:
+            optional: true
+            name: *extra-name
+            defaultMode: 0444
         - name: *warsVol
           emptyDir:
             sizeLimit: 2Gi

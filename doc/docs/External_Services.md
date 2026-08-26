@@ -471,6 +471,16 @@ global:
     # You MUST specify the TLS protocol to use if the service in question requires TLS,
     # instead of hosting a direct SSL connection.
     - mysql.service.com@10.35.4.35:3434/mysql
+
+    # A string of the form configMap://configMapName#key which indicates that
+    # the given key in the configmap contains a PEM certificate chain that is
+    # to be added into the pod's trusts, just like the PEM example, above.
+    - configMap://ca-trusts-cm#ca-trusts.pem
+
+    # A string of the form secret://secretName#key which indicates that
+    # the given key in the secret contains a PEM certificate chain that is
+    # to be added into the pod's trusts, just like the PEM example, above.
+    - secret://ca-trusts-secret#ca.crt
 ```
 
 You can add any number of certificates or pointers/URLs to certificates here. Only CA certificates (`basicConstraints.CA=TRUE`) will be added to the trust stores.
