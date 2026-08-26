@@ -37,6 +37,12 @@ spec:
           {{- toYaml .value | nindent 8 }}
         {{- end }}
     spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - {{ include "arkcase.node-affinity.gpu-avoid" $ | indent 20 | trim }}
       {{- include "arkcase.image.pullSecrets" $ | nindent 6 }}
       {{- with (include "arkcase.values" (dict "ctx" $ "base" "hostAliases") | fromYaml) }}
       hostAliases: {{- toYaml .value | nindent 8 }}
@@ -72,9 +78,6 @@ spec:
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
       {{- with (include "arkcase.values" (dict "ctx" $ "base" "nodeSelector") | fromYaml) }}
       nodeSelector: {{- toYaml .value | nindent 8 }}
-      {{- end }}
-      {{- with (include "arkcase.values" (dict "ctx" $ "base" "affinity") | fromYaml) }}
-      affinity: {{- toYaml .value | nindent 8 }}
       {{- end }}
       {{- with (include "arkcase.values" (dict "ctx" $ "base" "tolerations") | fromYaml) }}
       tolerations: {{- toYaml .value | nindent 8 }}
