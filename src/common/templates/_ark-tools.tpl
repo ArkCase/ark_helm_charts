@@ -899,6 +899,7 @@ return either the value if correct, or the empty string if not.
   {{- end -}}
 
   {{- $data = set $data "url" $url -}}
+  {{- $data = set $data "fragment" $data.fragment -}}
 
   {{- if and $data.scheme $data.host -}}
     {{- $data = set $data "baseUrl" (printf "%s://%s%s" $data.scheme $data.host $data.path) -}}
