@@ -79,6 +79,11 @@ spec:
         {{- end }}
     spec:
       affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - {{ include "arkcase.node-affinity.gpu-avoid" $ | indent 20 | trim }}
         podAntiAffinity:
         {{- if $cluster.onePerHost }}
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -257,9 +262,6 @@ spec:
         {{- include "arkcase.file-resource.volumes" $ | nindent 8 }}
       {{- with $.Values.nodeSelector }}
       nodeSelector: {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with $.Values.affinity }}
-      affinity: {{- toYaml . | nindent 8 }}
       {{- end }}
       {{- with $.Values.tolerations }}
       tolerations: {{- toYaml . | nindent 8 }}

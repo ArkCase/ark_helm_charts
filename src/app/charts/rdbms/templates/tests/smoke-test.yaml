@@ -27,6 +27,12 @@ metadata:
       {{- toYaml . | nindent 4 }}
     {{- end }}
 spec:
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - {{ include "arkcase.node-affinity.gpu-avoid" $ | indent 16 | trim }}
   {{- include "arkcase.image.pullSecrets" $ | nindent 2 }}
   containers:
     - name: test
