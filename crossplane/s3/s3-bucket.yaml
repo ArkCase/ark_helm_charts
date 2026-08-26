@@ -1,0 +1,88 @@
+################################################################################
+# EXPECTED DATA STRUCTURE
+################################################################################
+
+# Referenced as $bucket
+bucket:
+  name: "some-bucket-name"
+  region: "us-east-1"
+  # Optional
+  existing:
+    # If we want to use an existing KMS key (?)
+    keyId: "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
+    # If we want to use an existing bucket
+    bucket: "some-bucket-that-exists-already"
+
+{{- with $bucket }}
+################################################################################
+# KMS KEY MANAGEMENT (not needed except when provisioning a new bucket?)
+################################################################################
+---
+apiVersion: kms.aws.upbound.io/v1beta1
+kind: Key
+metadata:
+  name: {{ .name | quote }}
+  {{- with .existing.keyId }}
+  annotations:
+    crossplane.io/external-name: {{ . | toString | quote }}
+  {{- end }}
+spec:
+  # Effectively read-only - let it be managed elsewhere
+  deletionPolicy: [ "Orphan" ] 
+  forProvider:
+    region: {{ .region | quote }}
+    {{- if not .existing.keyId }}
+    description: {{ printf "KMS Key for the %s S3 bucket (managed by Crossplane)" .name | quote }}
+    enableKeyRotation: true
+    deletionWindowInDays: 7
+    # Add the default tags for easy AWS lookup ... these must be read from somewhere
+    tags: {{- include "arkcase.aws.tags.kms" $ | toYaml | nindent 6 }}
+    {{- end }}
+
+################################################################################
+# BUCKET MANAGEMENT
+################################################################################
+---
+# Option 1: use an existing bucket
+apiVersion: s3.aws.upbound.io/v1beta1
+kind: Bucket
+metadata:
+  name: {{ .name | quote }}
+  {{- if .existing.bucket }}
+  annotations:
+    # This must match the exact name of your existing bucket in AWS
+    crossplane.io/external-name: {{ .existing.bucket | quote }}
+  {{- end }}
+spec:
+  # Don't delete the contents if the resource is deleted!
+  deletionPolicy: "Orphan"
+  publishConnectionDetailsTo:
+    name: {{ .targetSecret.name | quote }}
+    metadata: {{ .targetSecret.metadata | default dict | toYaml | nident 6 }}
+  forProvider:
+    region: {{ .region | quote }}
+    description: {{ printf "S3 Bucket for ArkCase content (cluster %s, namespace %s, release %s, managed by Crossplane)" .cluster .namespace .release | quote }}
+    tags: {{- include "arkcase.aws.tags.s3" $ | toYaml | nindent 6 }}
+
+################################################################################
+# BUCKET ENCRYPTION (not needed except when provisioning a new bucket?)
+################################################################################
+---
+apiVersion: s3.aws.upbound.io/v1beta1
+kind: BucketServerSideEncryptionConfiguration
+metadata:
+  name: &name {{ .name | quote }}
+spec:
+  # Don't delete the underlying resources or whatnot
+  deletionPolicy: "Orphan"
+  forProvider:
+    region: {{ .region | quote }}
+    bucketRef:
+      name: *name
+    rule:
+      - applyServerSideEncryptionByDefault:
+          sseAlgorithm: aws:kms
+          kmsMasterKeyIdRef:
+            name: *name
+        bucketKeyEnabled: true
+{{- end }}
