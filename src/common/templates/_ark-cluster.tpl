@@ -221,6 +221,8 @@
   value: {{ include "arkcase.service.name" $ | quote }}
 - name: KUBERNETES_SERVICE_HEADLESS
   value: {{ include "arkcase.service.headless" $ | quote }}
+- name: KUBERNETES_SERVICE_HOST
+  value: "kubernetes.default.svc.cluster.local"
   {{- end }}
 {{- end -}}
 
