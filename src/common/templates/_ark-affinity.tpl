@@ -5,7 +5,7 @@
   {{- if or (eq $op "DoesNotExist") (eq $op "Exists") -}}
     {{- $values = list -}}
   {{- end -}}
-  {{- $result := dict "key" (printf "arkcase.com/support-%s" $type) "operator" $op -}}
+  {{- $result := dict "key" (printf "armedia.com/support-%s" $type) "operator" $op -}}
   {{- if $values -}}
     {{- $result = set $result "values" $values -}}
   {{- end -}}

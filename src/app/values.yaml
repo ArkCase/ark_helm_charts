@@ -40,6 +40,9 @@ service:
 
   proxy:
     ports:
+      - name: https
+        protocol: TCP
+        port: &https 8443
       - name: healthz
         protocol: TCP
         port: &healthz 18443
