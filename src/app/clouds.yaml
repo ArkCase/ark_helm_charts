@@ -95,9 +95,18 @@ aws:
     alb.ingress.kubernetes.io/listen-ports: >
       {{- list (dict ($.url.scheme | upper) $.url.port) | mustToJson -}}
     alb.ingress.kubernetes.io/scheme: "internet-facing"
+    alb.ingress.kubernetes.io/healthcheck-interval-seconds: "30"
+    alb.ingress.kubernetes.io/healthcheck-path: "/arkcase/login"
+    alb.ingress.kubernetes.io/healthcheck-port: "8443"
+    alb.ingress.kubernetes.io/healthcheck-protocol: >
+      {{- $.url.scheme | upper -}}
+    alb.ingress.kubernetes.io/healthcheck-timeout-seconds: "10"
+    alb.ingress.kubernetes.io/healthy-threshold-count: "2"
+    alb.ingress.kubernetes.io/unhealthy-threshold-count: "2"
     alb.ingress.kubernetes.io/ssl-policy: "ELBSecurityPolicy-TLS13-1-2-FIPS-2023-04"
     alb.ingress.kubernetes.io/ssl-redirect: >
       {{- $.url.port -}}
+    alb.ingress.kubernetes.io/success-codes: "200-299,300-302"
     alb.ingress.kubernetes.io/target-type: "ip"
     aws.k8s.acm.manager/domain_name: >
       {{- $.url.hostname -}}
