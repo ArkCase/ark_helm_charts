@@ -106,6 +106,8 @@ spec:
         {{- with ($.Values.labels).common }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
+        # This is for eclipse caching
+        jgroups.armedia.com/eclipse-cache: "true"
       annotations:
         # NB: Both these annotation values must be of type "string"
         prometheus.io/scrape: "true"

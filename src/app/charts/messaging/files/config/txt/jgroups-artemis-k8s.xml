@@ -9,7 +9,7 @@
 		port_range="0"
 		recv_buf_size="5M"
 		send_buf_size="1M"
-		sock_conn_timeout="300"
+		sock_conn_timeout="2000"
 		thread_naming_pattern="cl"
 		thread_pool.min_threads="0"
 		thread_pool.max_threads="500"
@@ -19,12 +19,12 @@
 	<org.jgroups.protocols.kubernetes.KUBE_PING
 		port_range="1"
 		namespace="${DNS_NAMESPACE}"
-		labels="app.kubernetes.io/instance=${RELEASE_NAME},app.kubernetes.io/name=${SUBSYS_CURRENT},app.kubernetes.io/service-support=true"
+		labels="jgroups.armedia.com/artemis=true"
 	/>
 
 	<MERGE3
-		max_interval="30000"
-		min_interval="10000"
+		min_interval="5000"
+		max_interval="15000"
 	/>
 
 	<FD_SOCK
@@ -64,11 +64,11 @@
 
 	<pbcast.GMS
 		print_local_addr="true"
-		join_timeout="3000"
+		join_timeout="5000"
 	/>
 
-	<MFC
-		max_credits="2M"
+	<UFC
+		max_credits="4M"
 		min_threshold="0.4"
 	/>
 
