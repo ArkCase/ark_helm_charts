@@ -127,7 +127,7 @@ spec:
             - name: ETCD_SSL_TLS_CERT
               value: &sslCert "$(SSL_DIR)/cert.pem"
             - name: ETCD_SSL_TLS_KEY
-              value: &sslKey "$(SSL_DIR)/cert.key"
+              value: &sslKey "$(SSL_DIR)/key.pem"
             - name: ETCD_SSL_TLS_CA_CERT
               value: &caRoot "$(SSL_DIR)/ca-root.pem"
             - name: ETCD_SSL_TLS_MIN_VERSION

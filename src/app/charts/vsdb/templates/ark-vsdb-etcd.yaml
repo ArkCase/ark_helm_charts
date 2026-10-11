@@ -134,7 +134,7 @@ spec:
             - name: ETCDCTL_CERT
               value: "$(SSL_DIR)/cert.pem"
             - name: ETCDCTL_KEY
-              value: "$(SSL_DIR)/cert.key"
+              value: "$(SSL_DIR)/key.pem"
           {{- include "arkcase.subsystem.ports" (dict "ctx" $ "name" "etcd") | nindent 10 }}
           lifecycle:
             postStart:
