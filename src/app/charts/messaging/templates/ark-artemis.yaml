@@ -143,6 +143,8 @@ spec:
             {{- include "arkcase.fips.legacy-env" $ | nindent 12 }}
             - name: ARTEMIS_NEW_USER_MODEL
               value: "true"
+            - name: ARTEMIS_DISCOVERY_ENABLED
+              value: "true"
             - name: ARTEMIS_CLUSTER_ID
               value: {{ (printf "%s-%s" $.Release.Namespace $.Release.Name) | quote }}
             #

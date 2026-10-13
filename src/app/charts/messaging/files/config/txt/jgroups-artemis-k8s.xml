@@ -14,6 +14,15 @@
 		thread_pool.min_threads="0"
 		thread_pool.max_threads="500"
 		thread_pool.keep_alive_time="30000"
+		tls.enabled="true"
+		tls.client_auth="NEED"
+		tls.keystore_path="${JAVA_KEYSTORE}"
+		tls.keystore_password="${JAVA_KEYSTORE_PASSWORD}"
+		tls.keystore_type="${JAVA_KEYSTORE_TYPE}"
+		tls.keystore_alias="${JAVA_KEY_ALIAS}"
+		tls.truststore_path="${JAVA_TRUSTSTORE}"
+		tls.truststore_password="${JAVA_TRUSTSTORE_PASSWORD}"
+		tls.truststore_type="${JAVA_TRUSTSTORE_TYPE}"
 	/>
 
 	<org.jgroups.protocols.kubernetes.KUBE_PING
@@ -62,6 +71,23 @@
 		max_bytes="8m"
 	/>
 
+	<!--
+		Keep this <AUTH/> section disabled until acme-init is patched to
+		add data encrypition as a valid key usage case for the certificate.
+	-->
+	<!--
+	<AUTH
+		auth_class="org.jgroups.auth.X509Token"
+		auth_token.auth_value="${ARTEMIS_CLUSTER_PASSWORD}"
+		auth_token.keystore_path="${JAVA_KEYSTORE}"
+		auth_token.keystore_password="${JAVA_KEYSTORE_PASSWORD}"
+		auth_token.keystore_type="${JAVA_KEYSTORE_TYPE}"
+		auth_token.cert_alias="${JAVA_KEY_ALIAS}"
+		auth_token.cert_password="${JAVA_KEY_PASSWORD}"
+		auth_token.cipher_type="RSA/ECB/OAEPWithSHA-256AndMGF1Padding"
+	/>
+	-->
+
 	<pbcast.GMS
 		print_local_addr="true"
 		join_timeout="3000"
@@ -77,13 +103,5 @@
 	/>
 
 	<pbcast.STATE_TRANSFER />
-
-	<CENTRAL_LOCK2 />
-
-	<COUNTER />
-
-	<STOMP
-		port="9000"
-	/>
 
 </config>
