@@ -72,8 +72,10 @@
 	/>
 
 	<!--
-		Keep this <AUTH/> section disabled until acme-init is patched to
-		add data encrypition as a valid key usage case for the certificate.
+		Keep this <AUTH/> section disabled until we come to the point where
+		we can deploy the same certificate into multiple pods, because in order
+		to use this authentication method all pods must have the same keypair,
+		otherwise encryption/decryption will fail.
 	-->
 	<!--
 	<AUTH
