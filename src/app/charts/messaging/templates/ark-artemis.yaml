@@ -82,6 +82,8 @@ spec:
             {{- include "arkcase.acme.env" $ | nindent 12 }}
             - name: ARTEMIS_NEW_USER_MODEL
               value: "true"
+            - name: ARTEMIS_DISCOVERY_ENABLED
+              value: "true"
             - name: JAVA_TOOL_OPTIONS
               value: >-
                 {{ include "arkcase.fips.java-options" $ }}
