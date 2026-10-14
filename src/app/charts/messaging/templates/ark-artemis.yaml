@@ -73,6 +73,8 @@ spec:
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
             {{- include "arkcase.fips.legacy-env" $ | nindent 12 }}
+            - name: ARTEMIS_DISCOVERY_ENABLED
+              value: "true"
             - name: ARTEMIS_ADMIN_ROLES
               value: {{ include "arkcase.artemis.adminRole" $ | quote }}
             - name: ARTEMIS_ADMIN_PASSWORD
