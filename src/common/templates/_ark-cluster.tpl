@@ -184,8 +184,6 @@
     {{- $result = append $result (printf "%s=%s" $k $v) -}}
   {{- end -}}
   {{- if $result }}
-- name: KUBERNETES_NAMESPACE
-  value: {{ $.Release.Namespace | quote }}
 - name: KUBERNETES_LABELS
   value: {{ join "," $result | quote }}
 - name: KUBERNETES_SERVICE

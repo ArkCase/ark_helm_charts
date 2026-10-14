@@ -672,6 +672,10 @@ Create the environment variables to facilitate detecting the Pod's IP, name, nam
       fieldPath: status.hostIP
 - name: SUBSYS_CURRENT
   value: {{ include "arkcase.subsystem.name" $ | quote }}
+- name: KUBERNETES_NAMESPACE
+  value: "$(POD_NAMESPACE)"
+- name: KUBERNETES_SERVICE_HOST
+  value: "kubernetes.default.svc"
 {{- end -}}
 
 {{- /*
