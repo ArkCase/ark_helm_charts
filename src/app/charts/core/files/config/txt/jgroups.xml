@@ -3,17 +3,31 @@
 	xmlns="urn:org:jgroups"
 	xsi:schemaLocation="urn:org:jgroups http://www.jgroups.org/schema/jgroups.xsd">
 
-	<TCP_NIO2
+	<TCP
 		bind_addr="NON_LOOPBACK"
 		bind_port="7800"
-		port_range="1"
+		non_blocking_sends="true"
+		port_range="0"
 		recv_buf_size="5M"
 		send_buf_size="1M"
 		sock_conn_timeout="2000"
+		thread_naming_pattern="cl"
+		thread_pool.min_threads="0"
+		thread_pool.max_threads="500"
+		thread_pool.keep_alive_time="30000"
+		tls.enabled="true"
+		tls.client_auth="NEED"
+		tls.keystore_path="${JAVA_KEYSTORE}"
+		tls.keystore_password="${JAVA_KEYSTORE_PASSWORD}"
+		tls.keystore_type="${JAVA_KEYSTORE_TYPE}"
+		tls.keystore_alias="${JAVA_KEY_ALIAS}"
+		tls.truststore_path="${JAVA_TRUSTSTORE}"
+		tls.truststore_password="${JAVA_TRUSTSTORE_PASSWORD}"
+		tls.truststore_type="${JAVA_TRUSTSTORE_TYPE}"
 	/>
 
 	<org.jgroups.protocols.kubernetes.KUBE_PING
-		port_range="1"
+		port_range="0"
 		namespace="${DNS_NAMESPACE}"
 		labels="jgroups.armedia.com/eclipse-cache=true"
 	/>
@@ -25,7 +39,10 @@
 
 	<FD_SOCK2/>
 
-	<FD_ALL3/>
+	<FD_ALL3
+		timeout="10000"
+		interval="2000"
+	/>
 
 	<VERIFY_SUSPECT2
 		timeout="1500"
@@ -52,12 +69,24 @@
 		max_bytes="8m"
 	/>
 
+	<!--
+		Keep this <AUTH/> section disabled until we deploy the custom
+		class com.armedia.jgroups.auth.HmacToken into the container
+	-->
+	<!--
+	<AUTH
+		auth_class="com.armedia.jgroups.auth.HmacToken"
+		auth_token.auth_value="${ARKCASE_CLUSTER_PASSWORD}"
+		auth_token.max_age="60000"
+	/>
+	-->
+
 	<pbcast.GMS
 		print_local_addr="true"
 		join_timeout="5000"
 	/>
 
-	<UFC
+	<MFC
 		max_credits="4M"
 		min_threshold="0.4"
 	/>
