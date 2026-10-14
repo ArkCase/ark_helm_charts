@@ -6,6 +6,7 @@
 	<TCP
 		bind_addr="NON_LOOPBACK"
 		bind_port="7800"
+		non_blocking_sends="true"
 		port_range="0"
 		recv_buf_size="5M"
 		send_buf_size="1M"
@@ -36,20 +37,14 @@
 		min_interval="10000"
 	/>
 
-	<FD_SOCK
-		start_port="0"
-	/>
-
-	<FD_ALL
+	<FD_ALL3
 		timeout="10000"
-		interval="3000"
+		interval="2000"
 	/>
 
-	<VERIFY_SUSPECT
+	<VERIFY_SUSPECT2
 		timeout="1500"
 	/>
-
-	<BARRIER />
 
 	<pbcast.NAKACK2
 		xmit_interval="500"
@@ -71,24 +66,11 @@
 		max_bytes="8m"
 	/>
 
-	<!--
-		Keep this <AUTH/> section disabled until we come to the point where
-		we can deploy the same certificate into multiple pods, because in order
-		to use this authentication method all pods must have the same keypair,
-		otherwise encryption/decryption will fail.
-	-->
-	<!--
 	<AUTH
-		auth_class="org.jgroups.auth.X509Token"
+		auth_class="com.armedia.jgroups.auth.HmacToken"
 		auth_token.auth_value="${ARTEMIS_CLUSTER_PASSWORD}"
-		auth_token.keystore_path="${JAVA_KEYSTORE}"
-		auth_token.keystore_password="${JAVA_KEYSTORE_PASSWORD}"
-		auth_token.keystore_type="${JAVA_KEYSTORE_TYPE}"
-		auth_token.cert_alias="${JAVA_KEY_ALIAS}"
-		auth_token.cert_password="${JAVA_KEY_PASSWORD}"
-		auth_token.cipher_type="RSA/ECB/OAEPWithSHA-256AndMGF1Padding"
+		auth_token.max_age="60000"
 	/>
-	-->
 
 	<pbcast.GMS
 		print_local_addr="true"
@@ -100,10 +82,8 @@
 		min_threshold="0.4"
 	/>
 
-	<FRAG2
+	<FRAG3
 		frag_size="60K"
 	/>
-
-	<pbcast.STATE_TRANSFER />
 
 </config>
