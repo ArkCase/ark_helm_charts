@@ -68,3 +68,8 @@ FIPS: [{{ include "arkcase.fips" $ }}] (bool = {{ include "arkcase.fips.bool" $ 
 TRUSTS:[{{- include "arkcase.trusts" $ | nindent 0 -}}]
 VM:[{{- include "arkcase.trusts.mount" $ | nindent 0 -}}]
 V:[{{- include "arkcase.trusts.volume" $ | nindent 0 -}}]
+
+---
+{{- $name := "my-test-label" -}}
+TOMCAT LABEL: [{{- include "arkcase.cluster.tomcat.label" $name -}}]
+TOMCAT ENV: {{- include "arkcase.cluster.tomcat.env" (dict "ctx" $ "name" $name) | nindent 2 }}
