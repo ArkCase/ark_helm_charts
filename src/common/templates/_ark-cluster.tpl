@@ -204,22 +204,31 @@
   {{- end }}
 {{- end -}}
 
+{{- define "__arkcase.cluster.tomcat.label-name" -}}
+arkcase.com/tomcat-cluster-name
+{{- end -}}
+
+{{- define "arkcase.cluster.tomcat.label" -}}
+  {{- $name := ($ | toString | required "The cluster name may not be an empty string") -}}
+  {{- $regex := "^[a-zA-Z0-9]([-a-zA-Z0-9_.]{0,61}[a-zA-Z0-9])?$" -}}
+  {{- if not (regexMatch $regex $name) -}}
+    {{- fail (printf "The cluster name [%s] is not valid - it must match the regular expression /%s/" $name $regex) -}}
+  {{- end -}}
+{{ include "__arkcase.cluster.tomcat.label-name" $ }}: {{ $name | quote }}
+{{- end -}}
+
 {{- define "arkcase.cluster.tomcat.env" -}}
-  {{- if not (include "arkcase.isRootContext" $) -}}
-    {{- fail "The parameter value must be the root context" -}}
+  {{- $ctx := $.ctx -}}
+  {{- if not (include "arkcase.isRootContext" $ctx) -}}
+    {{- fail "The parameter 'ctx' must be the root context" -}}
   {{- end -}}
-  {{- $result := list -}}
-  {{- range $k, $v := (include "arkcase.labels.matchLabels" $ | fromYaml) -}}
-    {{- $result = append $result (printf "%s=%s" $k $v) -}}
-  {{- end -}}
-  {{- if $result }}
+  {{- $name := $.name | toString | required "Must provide a non-empty cluster name" -}}
 - name: KUBERNETES_LABELS
-  value: {{ join "," $result | quote }}
+  value: {{ printf "%s=%s" (include "__arkcase.cluster.tomcat.label-name" $) $name | quote }}
 - name: KUBERNETES_SERVICE
   value: {{ include "arkcase.service.name" $ | quote }}
 - name: KUBERNETES_SERVICE_HEADLESS
   value: {{ include "arkcase.service.headless" $ | quote }}
-  {{- end }}
 {{- end -}}
 
 {{- define "arkcase.cluster.statefulUpdateStrategy" -}}
