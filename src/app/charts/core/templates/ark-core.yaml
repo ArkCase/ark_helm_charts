@@ -13,7 +13,8 @@
   {{- $extraEnv := (include "arkcase.core.extra-env" $ | fromYaml) -}}
   {{- $serviceAccountName := (include "arkcase.serviceAccountName" $) -}}
   {{- $serviceAccountName = (or (empty $serviceAccountName) (eq "default" $serviceAccountName)) | ternary $fullName $serviceAccountName -}}
-  {{- $roleName := (printf "%s-config-access" $serviceAccountName) }}
+  {{- $roleName := (printf "%s-config-access" $serviceAccountName) -}}
+  {{- $clusterName := "arkcase" -}}
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -102,6 +103,7 @@ spec:
       name: {{ $fullName | quote }}
       namespace: {{ $.Release.Namespace | quote }}
       labels: {{- include "arkcase.labels.service" $ | nindent 8 }}
+        {{- include "arkcase.cluster.tomcat.label" $clusterName | nindent 8 }}
         {{- include "arkcase.labels.deploys" "arkcase,alfresco" | nindent 8 }}
         {{- with ($.Values.labels).common }}
         {{- toYaml . | nindent 8 }}
@@ -260,7 +262,7 @@ spec:
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.core.conf.env" $ | nindent 12 }}
             {{- include "arkcase.cluster.env" $ | nindent 12 }}
-            {{- include "arkcase.cluster.tomcat.env" $ | nindent 12 }}
+            {{- include "arkcase.cluster.tomcat.env" (dict "ctx" $ "name" $clusterName) | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
             {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
             {{- include "arkcase.core.extra-env.env" $ | nindent 12 }}

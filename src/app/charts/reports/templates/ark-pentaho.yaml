@@ -5,9 +5,10 @@
   {{- $serviceName := (include "arkcase.service.name" $) -}}
   {{- $cluster := (include "arkcase.cluster" $ | fromYaml) -}}
   {{- $replicas := (min 4 ($cluster.replicas | int)) -}}
-  {{- $serviceAccountName := (include "arkcase.serviceAccountName" $) }}
-  {{- $serviceAccountName = (or (empty $serviceAccountName) (eq "default" $serviceAccountName)) | ternary $fullName $serviceAccountName }}
-  {{- $roleName := (printf "%s-cluster-membership" $serviceAccountName) }}
+  {{- $serviceAccountName := (include "arkcase.serviceAccountName" $) -}}
+  {{- $serviceAccountName = (or (empty $serviceAccountName) (eq "default" $serviceAccountName)) | ternary $fullName $serviceAccountName -}}
+  {{- $roleName := (printf "%s-cluster-membership" $serviceAccountName) -}}
+  {{- $clusterName := "pentaho" -}}
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -66,6 +67,7 @@ spec:
       name: *fullName
       namespace: {{ $.Release.Namespace | quote }}
       labels: {{- include "arkcase.labels.service" $ | nindent 8 }}
+        {{- include "arkcase.cluster.tomcat.label" $clusterName | nindent 8 }}
         {{- include "arkcase.labels.deploys" "pentaho" | nindent 8 }}
         {{- with ($.Values.labels).common }}
         {{- toYaml . | nindent 8 }}
@@ -162,7 +164,7 @@ spec:
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
             {{- include "arkcase.cluster.env" $ | nindent 12 }}
-            {{- include "arkcase.cluster.tomcat.env" $ | nindent 12 }}
+            {{- include "arkcase.cluster.tomcat.env" (dict "ctx" $ "name" $clusterName) | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
             {{- include "arkcase.pentaho.jdbc-urls" $ | nindent 12 }}
             {{- include "arkcase.pentaho.extraDataSources.env" $ | nindent 12 }}
