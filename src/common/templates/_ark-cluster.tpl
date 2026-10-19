@@ -209,8 +209,14 @@
     {{- fail "The parameter value must be the root context" -}}
   {{- end -}}
   {{- $result := list -}}
-  {{- range $k, $v := (include "arkcase.labels.matchLabels" $ | fromYaml) -}}
+  {{- $matchLabels := (include "arkcase.labels.matchLabels" $ | fromYaml) -}}
+  {{- range $k, $v := $matchLabels -}}
     {{- $result = append $result (printf "%s=%s" $k $v) -}}
+  {{- end -}}
+  {{- /* Without a part label, we'd also match the pods for all the other parts (i.e. core would match the portal) */ -}}
+  {{- $partLabel := "app.kubernetes.io/part" -}}
+  {{- if and $result (not (hasKey $matchLabels $partLabel)) -}}
+    {{- $result = append $result (printf "!%s" $partLabel) -}}
   {{- end -}}
   {{- if $result }}
 - name: KUBERNETES_LABELS
