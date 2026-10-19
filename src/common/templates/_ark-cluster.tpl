@@ -175,13 +175,17 @@
   {{- include "arkcase.subsystem-access.env" (dict "ctx" $ "subsys" "zookeeper" "key" "zkQuerySvc" "name" "ZK_QUERY_SVC") | nindent 0 }}
 {{- end -}}
 
+{{- define "__arkcase.cluster.tomcat.label-name" -}}
+arkcase.com/tomcat-cluster-name
+{{- end -}}
+
 {{- define "arkcase.cluster.tomcat.label" -}}
   {{- $name := ($ | toString | required "The cluster name may not be an empty string") -}}
   {{- $regex := "^[a-zA-Z0-9]([-a-zA-Z0-9_.]{0,61}[a-zA-Z0-9])?$" -}}
   {{- if not (regexMatch $regex $name) -}}
     {{- fail (printf "The cluster name [%s] is not valid - it must match the regular expression /%s/" $name $regex) -}}
   {{- end -}}
-  {{- printf "arkcase.com/tomcat-cluster-name=%s" $name -}}
+{{ include "__arkcase.cluster.tomcat.label-name" $ }}: {{ $name | quote }}
 {{- end -}}
 
 {{- define "arkcase.cluster.tomcat.env" -}}
@@ -191,7 +195,7 @@
   {{- end -}}
   {{- $name := $.name | toString | required "Must provide a non-empty cluster name" -}}
 - name: KUBERNETES_LABELS
-  value: {{ include "arkcase.cluster.tomcat.label" $name | quote }}
+  value: {{ printf "%s=%s" (include "__arkcase.cluster.tomcat.label-name" $) $name | quote }}
 - name: KUBERNETES_SERVICE
   value: {{ include "arkcase.service.name" $ | quote }}
 - name: KUBERNETES_SERVICE_HEADLESS
