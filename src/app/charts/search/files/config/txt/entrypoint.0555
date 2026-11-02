@@ -141,9 +141,11 @@ say "SSL Enabled!"
 # Writing is safe to repeat: all pods read the same ZK node and hold the same password
 # from the K8s secret, so the last writer always wins with consistent credentials.
 say "Generating password hash for user '${SOLR_USERNAME}'..."
-export USER_HASH="$(solrpass "${SOLR_PASSWORD}")"
+export USER_HASH=""
+USER_HASH="$(solrpass "${SOLR_PASSWORD}")" || fail "Failed to compute the hash for the '${SOLR_USERNAME}' user's password"
 say "Generating password hash for admin user '${SOLR_ADMIN_USERNAME}'..."
-export ADMIN_HASH="$(solrpass "${SOLR_ADMIN_PASSWORD}")"
+export ADMIN_HASH=""
+ADMIN_HASH="$(solrpass "${SOLR_ADMIN_PASSWORD}")" || fail "Failed to compute the hash for the '${SOLR_ADMIN_USERNAME}' user's password"
 
 SEC_TMP="$(mktemp)"
 jq -n -f "${BASE_DIR}/solr/security.json.tpl" > "${SEC_TMP}" || \
