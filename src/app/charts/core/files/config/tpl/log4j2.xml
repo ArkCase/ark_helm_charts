@@ -17,12 +17,15 @@
             </PatternLayout>
         </Console>
         <RollingFile name="file-log" fileName="${env:LOGS_DIR}/arkcase.log"
-            filePattern="${env:LOGS_DIR}/arkcase-%d{yyyy-MM-dd}.log.gz">
+            filePattern="${env:LOGS_DIR}/arkcase-%d{yyyy-MM-dd}-%i.log.gz">
             <PatternLayout>
                 <pattern>%highlight{%d{yyyy-MM-dd HH:mm:ss,SSS} [%-5p] [%t] %c - %confidential{%m}%n}</pattern>
             </PatternLayout>
             <Policies>
                 <OnStartupTriggeringPolicy />
+                <TimeBasedTriggeringPolicy
+                  interval="1"
+                  modulate="true" />
                 <SizeBasedTriggeringPolicy size="500MB" />
             </Policies>
             <ThresholdFilter level="debug"/>
@@ -34,7 +37,7 @@
             </DefaultRolloverStrategy>
         </RollingFile>
         <RollingFile name="file-errors-log" fileName="${env:LOGS_DIR}/arkcase-errors.log"
-            filePattern="${env:LOGS_DIR}/arkcase-errors-%d{yyyy-MM-dd}.log.gz">
+            filePattern="${env:LOGS_DIR}/arkcase-errors-%d{yyyy-MM-dd}-%i.log.gz">
             <JsonLayout>
                 <complete>true</complete>
                 <compact>true</compact>
@@ -43,6 +46,9 @@
             </JsonLayout>
             <Policies>
                 <OnStartupTriggeringPolicy />
+                <TimeBasedTriggeringPolicy
+                  interval="1"
+                  modulate="true" />
                 <SizeBasedTriggeringPolicy size="500MB" />
             </Policies>
             <ThresholdFilter level="error"/>
@@ -55,7 +61,7 @@
         </RollingFile>
         <RollingFile name="session-log" fileName="${env:LOGS_DIR}/arkcase-sessions.log"
             immediateFlush="true" bufferedIO="false"
-            filePattern="${env:LOGS_DIR}/arkcase-sessions-%d{yyyy-MM-dd}.log.gz">
+            filePattern="${env:LOGS_DIR}/arkcase-sessions-%d{yyyy-MM-dd}-%i.log.gz">
             <JsonLayout>
                 <complete>true</complete>
                 <compact>true</compact>
@@ -64,6 +70,9 @@
             </JsonLayout>
             <Policies>
                 <OnStartupTriggeringPolicy />
+                <TimeBasedTriggeringPolicy
+                  interval="1"
+                  modulate="true" />
                 <SizeBasedTriggeringPolicy size="500MB" />
             </Policies>
             <ThresholdFilter level="debug"/>
