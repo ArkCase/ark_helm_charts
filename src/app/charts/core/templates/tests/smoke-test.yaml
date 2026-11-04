@@ -45,7 +45,7 @@ spec:
             init_ssl
             curl -fsSL -m 3 -o /dev/null "$(ARKCASE_ADMIN_URL)/login"
             {{- if $portal }}
-            /usr/bin/curl -fsSL -m 3 -o /dev/null "$(ARKCASE_ADMIN_URL)/external-portal/rest/request/authenticatedMode"
+            /usr/bin/curl -fsSL -m 3 -o /dev/null "$(ARKCASE_ADMIN_URL)/external-portal/rest/request/anonymous-mode"
             /usr/bin/curl -fsSL -m 3 -o /dev/null "$(PORTAL_ADMIN_URL)/"
             {{- end }}
   restartPolicy: Never

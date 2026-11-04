@@ -47,7 +47,6 @@
     {{- /* We want a portal, so enable it and figure out the rest of the configurations */ -}}
 
     {{- $generateUsers := (not (empty (include "arkcase.toBoolean" $portal.generateUsers))) -}}
-    {{- $disableAuth := (not (empty (include "arkcase.toBoolean" $portal.disableAuth))) -}}
 
     {{- /* New! Configurable portal context!! */ -}}
     {{- $context := $key -}}
@@ -89,9 +88,6 @@
       {{- $reportsTimezone = "America/New_York" -}}
     {{- end -}}
 
-    {{- /* If we're not authenticating, then we won't be generating users */ -}}
-    {{- $generateUsers = and $generateUsers (not $disableAuth) -}}
-
     {{- $notificationGroups := ($portal.notificationGroups | default list) -}}
     {{- if $notificationGroups -}}
       {{- if (kindIs "map" $notificationGroups) -}}
@@ -114,7 +110,6 @@
         "containerSuffix" $containerSuffix
         "reportsTimezone" $reportsTimezone
         "apiSecret" $apiSecret
-        "disableAuth" $disableAuth
         "generateUsers" $generateUsers
         "portalId" $portalId
         "notificationGroups" $notificationGroups
