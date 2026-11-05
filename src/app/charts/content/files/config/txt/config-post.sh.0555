@@ -13,7 +13,7 @@ define_user()
 
 	# Add the configuration for MC access in read-write mode
 	say "Creating the service account with username [${USERNAME}] (policy = ${POLICY})..."
-	mcli admin user add "${INSTANCE}" < <(echo -en "${USERNAME}\n${PASSWORD}") || fail "Failed to create the user account for [${USERNAME}]..."
+	mcli admin user add "${INSTANCE}" < <(printf '%s\n%s' "${USERNAME}" "${PASSWORD}") || fail "Failed to create the user account for [${USERNAME}]..."
 
 	local POLICY_ATTACHED="$(mcli admin policy entities "${INSTANCE}" --user "${USERNAME}" --json | jq -r ".result?.userMappings[]?.policies[]? | select(. == \"${POLICY}\")")"
 
@@ -106,7 +106,7 @@ INSTANCE="local"
 
 # Add the configuration for MC control
 ALIAS_ARGS=("${INSTANCE}" "${MINIO_ADMIN_URL}" "${MINIO_ROOT_USER}" "${MINIO_ROOT_PASSWORD}")
-mcli config host add "${ALIAS_ARGS[@]}" || mcli alias set "${ALIAS_ARGS[@]}" || fail "Failed to define the alias [${INTANCE}] for ${MINIO_ADMIN_URL} using either 'mcli config' or 'mcli alias'"
+mcli config host add "${ALIAS_ARGS[@]}" || mcli alias set "${ALIAS_ARGS[@]}" || fail "Failed to define the alias [${INSTANCE}] for ${MINIO_ADMIN_URL} using either 'mcli config' or 'mcli alias'"
 
 for BUCKET in CONTENT_BUCKET CONTENT_INTERNAL_BUCKET CONTENT_VSDB_BUCKET ; do
 	set_or_default "${BUCKET}" "arkcase"

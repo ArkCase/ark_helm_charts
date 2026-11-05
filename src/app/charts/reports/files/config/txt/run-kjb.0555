@@ -24,7 +24,7 @@ cleanup_logs()
 	local RC=${?}
 	if [ -n "${LOG}" ] && [ -f "${LOG}" ] ; then
 		# Compress the newly-produced log, if it exists
-		gzip -9 "${LOG}"
+		gzip -9 "${LOG}" || true
 	fi
 	while read log ; do
 		rm -f "${log}" &>/dev/null || true
@@ -157,7 +157,8 @@ else
 		# Encrypt the passwords, so we don't persist sensitive
 		# values to disk unencrypted
 		say "Encrypting passwords for Kettle"
-		source <(encrypt-passwords kettle) || fail "Failed to encrypt the passwords"
+		ENCRYPTED="$(encrypt-passwords kettle)" || fail "Failed to encrypt the passwords"
+		source <(echo -n "${ENCRYPTED}") || fail "Failed to load the encrypted passwords"
 
 		say "Rendering any necessary templated files"
 		# Process the files
@@ -186,6 +187,7 @@ else
 				# Pre-pend the orignal template directory path
 				SRC="${SRC_DIR}/${SRC}"
 				say "\tRendering [${TGT}]..."
+				mkdir -p "$(dirname "${TGT}")"
 				render-template < "${SRC}" > "${TGT}"
 			done < <(cd "${SRC_DIR}" && find . -type f | sort)
 		done < <(find . -type d -iname '*.tpl' -not -ipath '*/*.tpl/*' | sort)

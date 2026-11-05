@@ -111,7 +111,7 @@ is_file_installed()
 	# Is it listed in the reports database file? (only consider the last entry)
 	[ -f "${REPORTS_DB}" ] || return 1
 	local EXISTING=""
-	EXISTING="$(egrep "^([0-9a-fA-F]{64})=${FILE}$" "${REPORTS_DB}")" || return 1
+	EXISTING="$(FILE="${FILE}" awk 'substr($0, 65, 1) == "=" && substr($0, 66) == ENVIRON["FILE"]' "${REPORTS_DB}")" || return 1
 	EXISTING="$(echo -n "${EXISTING}" | tail -1)"
 
 	# Does the record in the database file match our expected pattern?
@@ -198,7 +198,12 @@ install_report()
 		# Track it for cleanup
 		WORKDIRS+=("${WORK}")
 
-		readarray -t REPORTS < <(extract_archive "${ARCHIVE_TYPE}" "${ARCHIVE_FILE}" "${WORK}")
+		local EXTRACTED=""
+		if ! EXTRACTED="$(extract_archive "${ARCHIVE_TYPE}" "${ARCHIVE_FILE}" "${WORK}")" ; then
+			err "Failed to extract the reports from [${ARCHIVE_FILE}]"
+			return 1
+		fi
+		[ -z "${EXTRACTED}" ] || readarray -t REPORTS <<< "${EXTRACTED}"
 		SRC_FILE="${ARCHIVE_FILE}"
 	else
 		REPORTS=("$(dirname "${SRC_FILE}")${DIVIDER}${REPORTS_DIR}/${SRC_FILE}")
@@ -275,10 +280,11 @@ install_report()
 			--overwrite=true
 			--retainOwnership=true
 		)
-		is_debug && say "\t${CMD[@]@Q}"
+		local SAFE_CMD=("${CMD[@]/#--password=*/--password=********}")
+		is_debug && say "\t${SAFE_CMD[@]@Q}"
 		(
 			say "# Installing the file from [${F}]${ARCHIVE_INFO}..."
-			say "COMMAND: ${CMD[@]@Q}"
+			say "COMMAND: ${SAFE_CMD[@]@Q}"
 			say "--------------------------------------------------------------------------------"
 			exec "${CMD[@]}"
 		) &> "${UPLOAD_LOG_FILE}"
@@ -298,7 +304,8 @@ install_report()
 	is_check && return 0
 
 	if [ -n "${ARCHIVE_TYPE}" ] ; then
-		mark_file_installed "${ARCHIVE_MARKER}" "${ARCHIVE_HASH}"
+		# Leave the archive unmarked if anything failed, so those items get retried
+		[ ${RC} -ne 0 ] || mark_file_installed "${ARCHIVE_MARKER}" "${ARCHIVE_HASH}"
 		say "Finished processing the $(( COUNT_OK + COUNT_FAIL )) items contained in [${SRC_FILE}]"
 		[ ${COUNT_OK} -gt 0 ] && ok "\tInstalled ${COUNT_OK}"
 		[ ${COUNT_FAIL} -gt 0 ] && err "\tFailed ${COUNT_FAIL}"

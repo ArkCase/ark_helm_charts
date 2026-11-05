@@ -15,6 +15,7 @@ cleanup()
 usage()
 {
 	say "usage: ${BASH_SOURCE:-${0}} lock-marker initializer-process"
+	exit 1
 }
 
 [ ${#} -ne 2 ] && usage

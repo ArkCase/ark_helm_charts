@@ -45,7 +45,7 @@ def fail(msg):
 def to_boolean(v):
 	t = type(v)
 	if t == bool:
-		return t
+		return v
 	if t == str:
 		return ("true" == v.lower())
 	return True if v else False
@@ -166,8 +166,8 @@ else:
 		logging.info("Parsing the configuration from stdin...")
 	data = yaml.safe_load(source_file)
 
-if data is None:
-	fail("Data is not in YAML format")
+if type(data) != dict:
+	fail("Data is not in YAML format, or is not a map")
 
 # Use --endpoint-url parameter to set this value
 CONTENT = None
@@ -281,7 +281,7 @@ try:
 		logging.info(f"Setting the versioning configuration for the bucket [{name}] to {version}...")
 		result = s3api("put-bucket-versioning", "--bucket", name, "--versioning-configuration", version)
 		if result.returncode != 0:
-			fail(f"Failed to set the versioning configuration for the bucket [{name}] (rc={result.returncode}):\n{result.stdout}")
+			fail(f"Failed to set the versioning configuration for the bucket [{name}] (rc={result.returncode}):\n{result.stdout.decode('UTF-8')}")
 
 		# TODO: Enable retention policy description per bucket? How to describe them?
 
