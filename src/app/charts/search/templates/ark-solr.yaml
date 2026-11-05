@@ -90,11 +90,6 @@ spec:
               {{- $.Values.env | toYaml | nindent 12 }}
             {{- end }}
           {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
-          {{- if $.Values.command }}
-          command: {{ toJson $.Values.command }}
-          {{- else }}
-          command: [ "/entrypoint" ]
-          {{- end }}
           lifecycle:
             postStart:
               exec:
@@ -112,7 +107,7 @@ spec:
               subPath: &solrInSh "solr.in.sh"
               readOnly: true
             - name: *configMap
-              mountPath: "/entrypoint"
+              mountPath: "/usr/local/bin/entrypoint"
               subPath: &entrypoint "entrypoint"
               readOnly: true
             - name: *configMap

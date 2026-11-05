@@ -145,7 +145,7 @@ spec:
               subPath: &runKjb "run-kjb"
               readOnly: true
             - name: *configMap
-              mountPath: "/entrypoint"
+              mountPath: "/usr/local/bin/entrypoint"
               subPath: &entrypointCron "entrypoint-cron"
               readOnly: true
             - name: *configMap

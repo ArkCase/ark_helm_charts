@@ -179,7 +179,7 @@ spec:
               subPath: &runLiquibaseUpdates "run-liquibase-updates"
               readOnly: true
             - name: *configMap
-              mountPath: "/entrypoint"
+              mountPath: "/usr/local/bin/entrypoint"
               subPath: &entrypoint "entrypoint"
               readOnly: true
             - name: *configMap
