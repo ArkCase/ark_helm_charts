@@ -22,7 +22,7 @@ ArkCase generally requires the following artifacts for execution, all of which m
 1. the ArkCase configuration set (.arkcase)
 1. the Pentaho Reports set - both 
 1. the Solr configurations (schemas, etc) and names of search indexes (a.k.a. cores or collections)
-1. the content store's (Alfresco or Minio) initial configuration and content structure
+1. the content store's (Alfresco, Minio, or Box) initial configuration and content structure
 1. any additional customization configurations (to be deployed into .arkcase) and code modules (JARs to be deployed into .arkcase/custom/WEB-INF/lib)
 
 All components should be considered to be interrelated. In particular, ArkCase does not self install its dependencies onto its supporting cast (except for the Database schema management and updates). As a result, other containers must do this preparatory work on its behalf. This made it necessary to design and implement as simple a mechanism as possible to deliver a **set** of ***strongly-correlated*** artifacts, as a **unit**, for deployment, in order to guarantee the internal consistency of the deployment, while also enabling enough flexibility to allow containers to implement their supporting deployment processes in as individually-independent a fashion as possible.
