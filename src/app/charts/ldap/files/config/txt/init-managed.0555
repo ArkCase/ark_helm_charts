@@ -172,11 +172,15 @@ if [ ${#GROUP_MEMBERSHIPS[@]} -gt 0 ] ; then
 			ok "Group created!"
 		fi
 
-		IFS="," read -a MEMBERS <<< "${GROUP_MEMBERSHIPS[${GROUP}]}" || true
- 
+		MEMBERS="${GROUP_MEMBERSHIPS[${GROUP}]}"
+		if [ -z "${MEMBERS}" ] ; then
+			ok "No members to add to the ${GROUP} group"
+			continue
+		fi
+
 		doing "Adding these group members to the ${GROUP} group: [${MEMBERS}]"
 		RC=0
-		OUT="$(samba_tool group addmembers "${GROUP}" "${MEMBERS[@]}" 2>&1)" || RC=${?}
+		OUT="$(samba_tool group addmembers "${GROUP}" "${MEMBERS}" 2>&1)" || RC=${?}
 		if [ ${RC} -eq 0 ] ; then
 			ok "Members added!"
 		elif [[ "${OUT}" =~ ^.*${EXISTS_STR}.*$ ]] ; then
