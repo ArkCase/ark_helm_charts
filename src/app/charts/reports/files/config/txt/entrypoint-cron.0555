@@ -77,7 +77,7 @@ poll_url "${CORE_URL}" "${INIT_MAX_WAIT}" "${INIT_POLL_SLEEP}" || fail "ArkCase 
 
 eyes "Storing the runtime environment to a temporary file"
 set_or_default CRON_ENV "${HOME}/.cron-env"
-declare -px > "${CRON_ENV}"
+( umask 0077 ; declare -px > "${CRON_ENV}" )
 
 doing "Starting the Cron process..."
 execute /usr/sbin/cron -f -L 15 -P

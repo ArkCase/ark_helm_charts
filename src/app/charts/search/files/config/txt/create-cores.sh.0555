@@ -31,11 +31,13 @@ exists()
 	local RC=0
 
 	# Run the query
-	local JSON="$(curl -fL "https://localhost:8983/solr/admin/collections?action=colstatus&collection=${NAME}")" || RC=${?}
+	local JSON=""
+	JSON="$(curl -fL "https://localhost:8983/solr/admin/collections?action=colstatus&collection=${NAME}")" || RC=${?}
 	[ ${RC} -eq 0 ] || return ${RC}
 
 	# Examine the result
-	local RESULT="$(jq -r ".${NAME}.stateFormat // \"missing\"" <<< "${JSON}")" || return ${?}
+	local RESULT=""
+	RESULT="$(jq -r --arg NAME "${NAME}" '.[$NAME].stateFormat // "missing"' <<< "${JSON}")" || return ${?}
 
 	RC=0
 	[ "${RESULT}" == "missing" ] && RC=1

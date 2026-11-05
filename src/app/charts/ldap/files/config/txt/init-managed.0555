@@ -11,7 +11,8 @@ execute()
 	# Show the command about to be executed
 	#
 	if "${DEBUG_MANAGED}" ; then
-		say "👀 ${@@Q}"
+		local ARGS=("${@/#--newpassword=*/--newpassword=***}")
+		say "👀 ${ARGS[*]@Q}"
 		return 0
 	fi
 
@@ -106,7 +107,7 @@ while read ACCOUNT ; do
 	USERNAME="${!USERNAME_VAR}"
 	[ -n "${USERNAME}" ] || { warn "The username for the managed account ${ACCOUNT} was empty, skipping it" ; continue ; }
 
-	PASSWORD="${!PASSWORD_VAR}"
+	PASSWORD="${!PASSWORD_VAR:-}"
 	[ -n "${PASSWORD}" ] || { warn "The password for the managed account ${ACCOUNT} was empty, skipping it" ; continue ; }
 	read PASSWORD_SUM REST < <(echo -n "${PASSWORD}" | sha256sum)
 
@@ -147,7 +148,7 @@ while read ACCOUNT ; do
 	# Track the group memberships
 	#
 	while read GROUP ; do
-		[ -v GROUP_MEMBERSHIPS[${GROUP}] ] || GROUP_MEMBERSHIPS[${GROUP}]=""
+		[ -v "GROUP_MEMBERSHIPS[${GROUP}]" ] || GROUP_MEMBERSHIPS[${GROUP}]=""
 		CURRENT="${GROUP_MEMBERSHIPS[${GROUP}]}"
 		[ -z "${CURRENT}" ] || CURRENT+=","
 		CURRENT+="${USERNAME}"
@@ -172,17 +173,16 @@ if [ ${#GROUP_MEMBERSHIPS[@]} -gt 0 ] ; then
 		fi
 
 		IFS="," read -a MEMBERS <<< "${GROUP_MEMBERSHIPS[${GROUP}]}" || true
-		read -a MEMBERS < <(list_sorted "${MEMBERS[@]}")
-
+ 
 		doing "Adding these group members to the ${GROUP} group: [${MEMBERS}]"
 		RC=0
-		OUT="$(samba_tool group addmembers "${GROUP}" "${MEMBERS}" 2>&1)" || RC=${?}
+		OUT="$(samba_tool group addmembers "${GROUP}" "${MEMBERS[@]}" 2>&1)" || RC=${?}
 		if [ ${RC} -eq 0 ] ; then
 			ok "Members added!"
 		elif [[ "${OUT}" =~ ^.*${EXISTS_STR}.*$ ]] ; then
 			warn "Some of the members are already in the group!"
 		else
-			err "Failed to add the members to the group (rc=${RC}): ${OUT}"
+			fail "Failed to add the members to the group (rc=${RC}): ${OUT}"
 		fi
 	done < <(list_sorted "${!GROUP_MEMBERSHIPS[@]}")
 fi
@@ -200,7 +200,7 @@ SEED_DIR="$(readlink -f "${SEED_DIR}")" || fail "Failed to resolve the real path
 
 doing "Applying managed seeds..."
 while read FILE ; do
-    doing "Applying managed seeds based on the data from [${FILE}]..."
-    init-seeds "${FILE}" || fail "Failed to apply the managed seeds from [${FILE}]"
+	doing "Applying managed seeds based on the data from [${FILE}]..."
+	init-seeds "${FILE}" || fail "Failed to apply the managed seeds from [${FILE}]"
 done < <(find "${SEED_DIR}" -type f -name 'managed-*.yaml' | sort -u)
 ok "Managed seeds applied!"

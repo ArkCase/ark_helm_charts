@@ -32,11 +32,10 @@ for CHANGELOG in "${CHANGELOGS[@]}" ; do
 		export LIQUIBASE_COMMAND_DRIVER="${!DRIVER}"
 		[ -n "${LIQUIBASE_COMMAND_DRIVER}" ] || fail "No JDBC driver given for database ${DB}, cannot continue"
 
-		./liquibase update \
+		LIQUIBASE_COMMAND_PASSWORD="${!PASSWORD}" ./liquibase update \
 			--changelog-file="${CHANGELOG_FILE}" \
 			--url="${!URL}" \
-			--username="${!USERNAME}" \
-			--password="${!PASSWORD}"
+			--username="${!USERNAME}"
 		continue
 	fi
 

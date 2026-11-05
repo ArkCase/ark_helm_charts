@@ -65,5 +65,5 @@ execute curl -fsSL \
 	-F overwrite="true" \
 	-F xmlaEnabledFlag="false" \
 	-F parameters="Datasource=${DATA_SOURCE}" \
-	--config <(echo -n "--user \"${ADMIN_USERNAME}:${ADMIN_PASSWORD}\"") \
+	--config <(auth_params "${ADMIN_USERNAME}" "${ADMIN_PASSWORD}") \
 	"${ADMIN_URL}/plugin/data-access/api/datasource/analysis/catalog/${ENCODED}"

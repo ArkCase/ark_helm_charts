@@ -47,7 +47,7 @@ if "${RESET}" ; then
 	say "##############################################"
 	say "⚠️ RESETTING THE CRONTAB AND INSTALLATION LOG ⚠️"
 	say "##############################################"
-	crontab -r
+	crontab -r &>/dev/null || true
 	> "${INSTALL_LOG}"
 fi
 
@@ -100,7 +100,7 @@ while read CRON ; do
 	if [ -f "${JOB}" ] ; then
 		# Is the job a valid XML file?
 		if ! xmllint "${JOB}" &>/dev/null ; then
-			(( INVALID++ ))
+			(( ++INVALID ))
 			err "Ignoring job file with invalid XML: [${JOB}]"
 			continue
 		fi
