@@ -180,7 +180,7 @@ def get_config_value(conf, confName, args, argName, envName, default = None):
 #
 # Locate the seeds file
 #
-if len(sys.argv) < 2:
+if args.seedfile is None:
 	# If no parameter is given, use an environment variable
 	if ENV_LDAP_SEED_FILE not in os.environ:
 		parser.print_help(sys.stderr)
@@ -203,6 +203,7 @@ else:
 # Parse the seeds file
 #
 show_data = True
+source_name = f"the file [{source_file}]" if source_file_is_file else "the given string" if type(source_file) == str else "stdin"
 try:
 	if source_file_is_file:
 		logging.info(f"Loading the configuration from the file [{source_file}]...")
@@ -210,7 +211,7 @@ try:
 			data = yaml.safe_load(f)
 	else:
 		if type(source_file) == str:
-			logging.info(f"Parsing the configuration from the string: [\n{source_file}\n]...")
+			logging.info("Parsing the configuration from the given string...")
 			show_data = False
 		else:
 			logging.info("Parsing the configuration from stdin...")
@@ -219,13 +220,19 @@ try:
 		raise Exception("Data is not in YAML format")
 except Exception as e:
 	# Yaml parse failed ... try as JSON
-	logging.warning(f"File [{source_file}] was not in YAML format, trying JSON")
+	logging.warning(f"The configuration from {source_name} was not in YAML format, trying JSON")
 	try:
-		with open(source_file, "r") as f:
-			data = json.load(f)
+		if source_file_is_file:
+			with open(source_file, "r") as f:
+				data = json.load(f)
+		else:
+			data = json.loads(source_file)
 	except Exception as e:
 		logging.error(e)
 		sys.exit(1)
+
+if type(data) != dict:
+	fail(f"The configuration from {source_name} is not a map")
 
 #
 # For debugging purposes
@@ -245,11 +252,18 @@ def render_auth_info():
 		info += [ f"--username={LDAP_ADMIN_USER}", f"--password={LDAP_ADMIN_PASS}" ]
 	return info
 
+def redact_command(command):
+	return [ re.sub("^(--(?:new)?password=).*$", "\\1***", c, flags=re.DOTALL) for c in command ]
+
 def run_command(command):
+	# The result's rendering includes its arguments, and it's what gets logged upon failure
+	safe_command = redact_command(command)
 	if DEBUG:
-		logging.info(f"\tCommand = {command}")
+		logging.info(f"\tCommand = {safe_command}")
 		command = "true"
-	return subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+	result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+	result.args = safe_command
+	return result
 
 def samba_tool(flags):
 	return run_command([ EXE_SAMBA_TOOL ] + flags + render_auth_info())
@@ -264,7 +278,7 @@ def render_group_id(groupId):
 	# If the groupId starts with the plus sign, remove the plus sign and return
 	# it as-is, no prefix. If it doesn't start with a plus sign, apply the prefix
 	if groupId.startswith("+"):
-		return re.sub("^\+", "", groupId)
+		return re.sub(r"^\+", "", groupId)
 
 	# Allow the use of @env: and @file:
 	groupId = resolve_value(groupId, groupId)
@@ -325,6 +339,11 @@ def random_password():
 def set_user_password(userId, userData):
 	if KEY_PASSWORD in userData:
 		password = userData[KEY_PASSWORD]
+		if password:
+			# Allow the use of @env: and @file:
+			password = resolve_value(str(password))
+			if password is None:
+				fail(f"The password reference for '{userId}' could not be resolved: [{userData[KEY_PASSWORD]}]")
 	else:
 		password = DEFAULT_PASSWORD
 
@@ -362,8 +381,8 @@ def set_user_password(userId, userData):
 		return
 
 	if expiration > 0:
-		expiration = f"--days={expiration}"
 		expirationDesc = f"expire after {expiration} day(s)"
+		expiration = f"--days={expiration}"
 	else:
 		expiration = f"--noexpiry"
 		expirationDesc = "never expire"
@@ -395,10 +414,10 @@ def create_user(userId, userData):
 		# Maybe also apply admin rights
 		grant_ldap_admin_rights(userId, userData)
 
-		return None
+		return userId
 
 	# Create the new user
-	logging.info(f"Creating user '{userId}' from [{userData}]")
+	logging.info(f"Creating user '{userId}' from [{ {k: v for k, v in userData.items() if k != KEY_PASSWORD} }]")
 	command = [ "user", "add", userId, "--random-password" ]
 
 	if USER_OU:
@@ -489,7 +508,12 @@ def compile_memberships(memberships, memberId, memberData):
 	if KEY_GROUPS not in memberData:
 		return
 
-	groups = split_csv_values(memberData[KEY_GROUPS])
+	groups = memberData[KEY_GROUPS]
+	if type(groups) == str:
+		# A reference may resolve to a CSV list, or to nothing (i.e. an optional value)
+		groups = resolve_value(groups)
+
+	groups = split_csv_values(groups)
 	if not groups:
 		return
 
@@ -512,6 +536,7 @@ def create_group(groupId, groupData):
 
 	result = samba_tool(command)
 	if result.returncode == 0:
+		grant_ldap_admin_rights(groupId, groupData)
 		return groupId
 
 	logging.info(f"Creating group '{groupId}' from [{groupData}]")
@@ -585,7 +610,7 @@ if not LDAP_URL:
 
 LDAP_ADMIN_USER = get_config_value(None, None, args, "ldap_admin_user", ENV_LDAP_ADMIN_USER)
 if LDAP_ADMIN_USER:
-	LDAP_ADMIN_PASS = get_config_value(None, None, args, "ldap_admin_password", ENV_LDAP_ADMIN_PASS)
+	LDAP_ADMIN_PASS = get_config_value(None, None, args, "ldap_admin_pass", ENV_LDAP_ADMIN_PASS)
 	if not LDAP_ADMIN_PASS:
 		fail(f"Must provide a password to authenticate the user {LDAP_ADMIN_USER} with")
 else:
@@ -621,8 +646,8 @@ else:
 
 USER_PREFIX = ""
 v = get_config_value(serverInfo, KEY_USER_PREFIX, args, "ldap_user_prefix", ENV_LDAP_USER_PREFIX)
-if v and (not (v.endswith("."))):
-	USER_PREFIX = f"{v}."
+if v:
+	USER_PREFIX = v if v.endswith(".") else f"{v}."
 
 GROUP_OU = get_config_value(serverInfo, KEY_GROUP_OU, args, "ldap_group_ou", ENV_LDAP_GROUP_OU)
 if GROUP_OU:
@@ -636,8 +661,8 @@ else:
 
 GROUP_PREFIX = ""
 v = get_config_value(serverInfo, KEY_GROUP_PREFIX, args, "ldap_group_prefix", ENV_LDAP_GROUP_PREFIX)
-if v and (not (v.endswith("."))):
-	GROUP_PREFIX = f"{v}."
+if v:
+	GROUP_PREFIX = v if v.endswith(".") else f"{v}."
 
 try:
 	USERNAME_AS_CN = to_boolean(serverInfo[KEY_USERNAME_AS_CN], DEFAULT_USERNAME_AS_CN)
@@ -676,7 +701,7 @@ try:
 			for groupId, groupData in groups.items():
 				groupId = create_group(groupId, groupData)
 				if groupId is not None:
-					memberships[groupId] = set()
+					memberships.setdefault(groupId, set())
 					compile_memberships(memberships, groupId, groupData)
 		else:
 			logging.error(f"The '{KEY_GROUPS}' item in the configuration data is not a map, skipping its processing")

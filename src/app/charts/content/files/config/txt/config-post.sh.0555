@@ -37,7 +37,7 @@ INSTANCE="local"
 
 # Add the configuration for MC control
 ALIAS_ARGS=("${INSTANCE}" "${MINIO_ADMIN_URL}" "${MINIO_ROOT_USER}" "${MINIO_ROOT_PASSWORD}")
-mcli config host add "${ALIAS_ARGS[@]}" || mcli alias set "${ALIAS_ARGS[@]}" || fail "Failed to define the alias [${INTANCE}] for ${MINIO_ADMIN_URL} using either 'mcli config' or 'mcli alias'"
+mcli config host add "${ALIAS_ARGS[@]}" || mcli alias set "${ALIAS_ARGS[@]}" || fail "Failed to define the alias [${INSTANCE}] for ${MINIO_ADMIN_URL} using either 'mcli config' or 'mcli alias'"
 
 set_or_default MINIO_USER ""
 set_or_default MINIO_PASSWORD ""
@@ -46,7 +46,7 @@ set_or_default MINIO_POLICY "readwrite"
 if [ -n "${MINIO_USER}" ] && [ -n "${MINIO_PASSWORD}" ] ; then
 	# Add the configuration for MC access in read-write mode
 	say "Creating the service account with username [${MINIO_USER}] (policy = ${MINIO_POLICY})..."
-	mcli admin user add "${INSTANCE}" < <(echo -en "${MINIO_USER}\n${MINIO_PASSWORD}") || fail "Failed to create the user account for [${MINIO_USER}]..."
+	mcli admin user add "${INSTANCE}" < <(printf '%s\n%s' "${MINIO_USER}" "${MINIO_PASSWORD}") || fail "Failed to create the user account for [${MINIO_USER}]..."
 
 	POLICY_ATTACHED="$(mcli admin policy entities local --user "${MINIO_USER}" --json | jq -r ".result?.userMappings[]?.policies[]? | select(. == \"${MINIO_POLICY}\")")"
 

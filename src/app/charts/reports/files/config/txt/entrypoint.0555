@@ -110,7 +110,7 @@ export LOGS_DIR
 # we copy it from the base file
 #
 LOG4J2_XML="${PENTAHO_SERVER}/tomcat/webapps/pentaho/WEB-INF/classes/log4j2.xml"
-[ -f "${LOG4J2_XML}" ] || cp -vf "${LOG$J2_XML}.base" "${LOG4J2_XML}" || fail "Failed to create the Log4J2 configuration"
+[ -f "${LOG4J2_XML}" ] || cp -vf "${LOG4J2_XML}.base" "${LOG4J2_XML}" || fail "Failed to create the Log4J2 configuration"
 
 #
 # Tomcat Logging
@@ -164,6 +164,13 @@ if as_boolean "${CLUSTER_ENABLED}" ; then
 			ok "Initialization lock acquired"
 			# Don't use exec to launch Pentaho
 			INITIALIZER_MODE="true"
+
+			# The initializer's output comes through this pipe, so it must be kept flowing,
+			# or the initializer would block (and keep the lock) as soon as the pipe fills up.
+			# Bash won't let background jobs inherit the co-process's own descriptors, so we dup it.
+			exec {LOCK_DRAIN}<&"${LOCK_OUT}"
+			cat <&"${LOCK_DRAIN}" &>/dev/null &
+			exec {LOCK_DRAIN}<&-
 			break
 		fi
 
@@ -185,7 +192,9 @@ else
 	# If clustering is not enabled, then we simply mark ourselvs as the
 	# initializers, and fire off the config-post initializer process
 	INITIALIZER_MODE="true"
-	coproc "${INITIALIZER_PROCESS}"
+	# Nothing reads the co-process's output, so it can't be left going to a pipe
+	# that would block the initializer as soon as it fills up
+	coproc "${INITIALIZER_PROCESS}" >/dev/null
 fi
 
 # If we're not the initializer, then we have to jump through
@@ -236,7 +245,7 @@ PENTAHO_LIB="${PENTAHO_WEBAPP}/WEB-INF/lib"
 BUND_DIR="${INIT_DIR}/resource-bundles"
 BUND_SRC="${BUND_DIR}/arkcase-resource-bundles.zip"
 
-if is_file_exists "${BUND_SRC}" ; then
+if is_file "${BUND_SRC}" ; then
 	cp -vf "${BUND_SRC}" "${PENTAHO_LIB}" || fail "Failed to deploy the resource bundle from [${BUND_SRC}]"
 fi
 
@@ -245,5 +254,9 @@ fi
 ###################################################################
 
 CMD=("${PENTAHO_SERVER}/start-pentaho.sh" "${@}")
+
+# Only the initializer needs this shell to remain, as the parent of the co-process
+as_boolean "${INITIALIZER_MODE}" || execute "${CMD[@]}"
+
 running "${CMD[@]@Q}"
 "${CMD[@]}"

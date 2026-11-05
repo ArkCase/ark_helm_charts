@@ -41,7 +41,7 @@ def fail(msg):
 def to_boolean(v):
 	t = type(v)
 	if t == bool:
-		return t
+		return v
 	if t == str:
 		return ("true" == v.lower())
 	return True if v else False
@@ -111,8 +111,8 @@ else:
 		logging.info("Parsing the configuration from stdin...")
 	data = yaml.safe_load(source_file)
 
-if data is None:
-	fail("Data is not in YAML format")
+if type(data) != dict:
+	fail("Data is not in YAML format, or is not a map")
 
 CONTENT = None
 if args.content:
@@ -153,8 +153,7 @@ def login():
 	session = requests.Session()
 
 	# Retry up to 30 times, sleeping 10 seconds between attempts (up to 5 minutes)
-	retry_strategy = urllib3.Retry(total = 30, backoff_factor=10)
-	retry_strategy.BACKOFF_MAX = 10
+	retry_strategy = urllib3.Retry(total = 30, backoff_factor=10, backoff_max=10)
 	adapter = requests.adapters.HTTPAdapter(max_retries=retry_strategy)
 	session.mount("https://", adapter)
 	session.mount("http://", adapter)
@@ -171,7 +170,7 @@ def login():
 			"username": USERNAME,
 			"password": PASSWORD
 		})
-		if rsp.status_code > 400:
+		if rsp.status_code >= 400:
 			fail(f"Failed to log into share at {UI} - rc: {rsp.status_code}")
 		else:
 			logging.info(f"\tLogged in! (rc: {rsp.status_code})")
@@ -183,8 +182,8 @@ def login():
 		if "Alfresco-CSRFToken" not in cookies:
 			# If we didn't get it the first time around, execute a request to get it
 			logging.info("CSRF Token not found in the login response, fetching it explicitly")
-			rsp = session.get("{UI}/service/modules/authenticated?a=user")
-			if rsp.status_code > 400:
+			rsp = session.get(f"{UI}/service/modules/authenticated?a=user")
+			if rsp.status_code >= 400:
 				fail(f"Failed to fetch the CSRF token from {UI} - rc: {rsp.status_code}")
 			else:
 				logging.info(f"\tRequest complete! (rc: {rsp.status_code})")
@@ -207,9 +206,14 @@ def add_administrator(session, name, group, required):
 	required = to_boolean(required)
 
 	entity_type = "GROUP" if group else "PERSON"
+	if not name:
+		if required:
+			fail(f"\tThe name for a required {entity_type} could not be resolved")
+		logging.warning(f"\tThe name for a {entity_type} could not be resolved, but it wasn't required - skipping!")
+		return True
+
 	logging.info(f"\tAdding the {entity_type} named [{name}] to the ALFRESCO_ADMINISTRATORS group...")
 
-	name = urllib.parse.quote(name, safe='')
 	if group:
 		name = f"GROUP_{name}"
 
@@ -235,7 +239,7 @@ def add_administrator(session, name, group, required):
 		if (rsp.status_code == 404) and (not required):
 			try:
 				briefSummary = rsp.json()["error"]["briefSummary"]
-				if briefSummary.index(f"The entity with id: {name} was not found") >= 0:
+				if f"The entity with id: {name} was not found" in briefSummary:
 					logging.warning(f"\t\tThe {entity_type} named [{name}] was not found, but wasn't required - skipping!")
 					return True
 			except KeyError:
@@ -303,7 +307,7 @@ def create_category(session, site, parent, name):
 		"prop_rma_vitalRecordIndicator": "false"
 	})
 	data = rsp.json()
-	if rsp.status_code > 400:
+	if rsp.status_code >= 400:
 		if data["message"].find("DuplicateChildNodeNameException") < 0:
 			fail(f"\tFailed to create the records management category [{name}] (parent = {parent}) (sc: {rsp.status_code}): {rsp.text}")
 		else:
@@ -412,6 +416,7 @@ def grant_group_access(session, site, admin_role, groups):
 
 rmSite = ""
 rmEnabled = False
+rmDisabledSite = ""
 
 if "recordsManagement" in data:
 	rmConf = data["recordsManagement"]
@@ -425,6 +430,9 @@ if "recordsManagement" in data:
 		rmEnabled = to_boolean(rmConf["enabled"])
 	else:
 		rmEnabled = True
+
+	if rmSite and not rmEnabled:
+		rmDisabledSite = rmSite
 
 	if not rmSite or not rmEnabled:
 		rmSite = ""
@@ -440,14 +448,14 @@ try:
 	session = login()
 
 	if "admins" in data:
-		admins = data["admins"]
-		if admins and (type(admins) != dict):
+		admins = data["admins"] or {}
+		if type(admins) != dict:
 			fail("The configuration data is malformed - the 'admins' value must be a map")
 
 		admin_users = {}
 		if "users" in admins:
-			admin_users = admins["users"]
-		if admin_users and (type(admin_users) != dict):
+			admin_users = admins["users"] or {}
+		if type(admin_users) != dict:
 			fail("The configuration data is malformed - the 'admins.users' value must be a map")
 
 		admins_added = False
@@ -458,8 +466,8 @@ try:
 
 		admin_groups = {}
 		if "groups" in admins:
-			admin_groups = admins["groups"]
-		if admin_groups and (type(admin_users) != dict):
+			admin_groups = admins["groups"] or {}
+		if type(admin_groups) != dict:
 			fail("The configuration data is malformed - the 'admins.groups' value must be a map")
 
 		for group, required in admin_groups.items():
@@ -480,6 +488,10 @@ try:
 		name = resolve_value(name.strip())
 		if not name:
 			fail("The configuration data is malformed - there is a site with an empty name")
+
+		if name == rmDisabledSite:
+			logging.info(f"Records management is disabled, skipping the site [{name}]")
+			continue
 
 		if type(site) != dict:
 			fail(f"The configuration data is malformed - the value 'sites.{name}' must be a map")

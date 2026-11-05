@@ -14,7 +14,8 @@ export JAVA_TOOL_OPTIONS
 #
 # Expand any variable named *_URL into its components
 #
-. <(/usr/local/bin/expand-urls)
+EXPANDED_URLS="$(/usr/local/bin/expand-urls)" || fail "Failed to expand the URL environment variables (rc=${?})"
+. <(echo -n "${EXPANDED_URLS}")
 
 #
 # Export upper and lowercase versions of some variables

@@ -1,5 +1,5 @@
 #!/bin/bash
 
-ARGS=(--silent --up --user admin)
+ARGS=(--silent --up --user "${ARTEMIS_ADMIN_USERNAME:-admin}")
 [ -v ARTEMIS_ADMIN_PASSWORD ] && ARGS+=(--password "${ARTEMIS_ADMIN_PASSWORD}")
 exec broker check node "${ARGS[@]}"

@@ -29,7 +29,7 @@ SUBS=("${OLD}" "${NEW}")
 
 say "Finding the excel files from [${CONF_DIR}]..."
 FILES="$(find "${CONF_DIR}" -type f -iname '*.xlsx' | sort | sed -e '/^$/d')"
-TOTAL="$(echo -n "${FILES}" | wc -l)"
+TOTAL="$(grep -c . <<< "${FILES}" || true)"
 say "\t...found ${TOTAL} files"
 
 [ ${TOTAL} -gt 0 ] || quit "No files found to repair"
@@ -40,6 +40,6 @@ while read f ; do
 	say "Fixing the Excel file [${f}] (file $(( COUNT + 1 ))/${TOTAL})..."
 	fixExcel "${f}" "${SUBS[@]}" || fail "Failed to apply the realm fix for [${f}] (${COUNT}/${TOTAL} files processed successfully)"
 	(( ++COUNT ))
-done < <(echo -n "${FILES}")
+done < <(echo "${FILES}")
 say "Realm fixes completed on ${COUNT} files"
 exit 0

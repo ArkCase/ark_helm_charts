@@ -58,6 +58,8 @@ while read KJB ; do
 done < <(find "${DWHS_DIR}" -mindepth 2 -maxdepth 2 -type f -iname 'j_*.kjb' | sort)
 JOBS_COUNT=${#JOBS[@]}
 
+POLLER_PID=""
+
 if [ ${JOBS_COUNT} -gt 0 ] ; then
 	# Before we can run the dataminer first time, we MUST wait for
 	# ArkCase to come up ... if it doesn't, we're screwed
@@ -68,6 +70,9 @@ if [ ${JOBS_COUNT} -gt 0 ] ; then
 	done
 	running "Launching the background poller for [${CORE_URL}]..."
 	coproc { poll_url "${CORE_URL}" "${INIT_MAX_WAIT}" "${INIT_POLL_SLEEP}" ; }
+
+	# Bash unsets COPROC_PID as soon as the co-process ends, so that can't be used to join it
+	POLLER_PID="${!}"
 else
 	warn "No jobs found, will not wait for ArkCase to boot up"
 fi
@@ -82,9 +87,9 @@ install-reports
 ok "Reports deployed"
 
 # If we have to rejoin with the ArkCase poller, do so...
-if [ -v COPROC_PID ] ; then
+if [ -n "${POLLER_PID}" ] ; then
 	waiting "Joining the background poller for [${CORE_URL}]..."
-	wait ${COPROC_PID} || fail "Failed to wait for ArkCase to be online"
+	wait "${POLLER_PID}" || fail "Failed to wait for ArkCase to be online"
 fi
 
 # Leave this here ... if there are no jobs, nothing will happen...

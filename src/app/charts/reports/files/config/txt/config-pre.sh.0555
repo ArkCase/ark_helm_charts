@@ -16,7 +16,7 @@ SRC_AUDIT_XML="${PENTAHO_SOLUTIONS}/system/dialects/${DB_FILES_DIALECT}/audit_sq
 is_file_readable "${SRC_AUDIT_XML}" || fail "There's no audit_sql.xml file for DB dialect [${DB_FILES_DIALECT}], cannot continue"
 TGT_AUDIT_XML="${PENTAHO_SOLUTIONS}/system/audit_sql.xml"
 say "Setting the audit_xml file for dialect ${DB_FILES_DIALECT}..."
-cp -vf "${SRC_AUDIT_XML}" "${TGT_AUDIT_XML}" || fail "Failed to copy the audit sql XML configuration file for file dialect [${DB_FILE_DIALECT}]: [${SRC_AUDIT_XML}] -> [${TGT_AUDIT_XML}]"
+cp -vf "${SRC_AUDIT_XML}" "${TGT_AUDIT_XML}" || fail "Failed to copy the audit sql XML configuration file for file dialect [${DB_FILES_DIALECT}]: [${SRC_AUDIT_XML}] -> [${TGT_AUDIT_XML}]"
  
 SRC_HIBERNATE_CFG_XML="${PENTAHO_SOLUTIONS}/system/hibernate/${DB_FILES_DIALECT}.hibernate.cfg.xml"
 is_file_readable "${SRC_HIBERNATE_CFG_XML}" || fail "There's no hibernate.cfg.xml for DB dialect [${DB_FILES_DIALECT}], cannot continue"

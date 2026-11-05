@@ -45,9 +45,10 @@ run_curl()
 	esac
 
 	local RC=0
-	local HTTP_CODE="$(curl -sSL \
+	local HTTP_CODE=""
+	HTTP_CODE="$(curl -sSL \
 		--disallow-username-in-url \
-		--config <(echo -n "--user \"${ADMIN_USERNAME}:${ADMIN_PASSWORD}\"") \
+		--config <(auth_params "${ADMIN_USERNAME}" "${ADMIN_PASSWORD}") \
 		"${OUTPUT[@]}" \
 		"${METHOD[@]}" \
 		"${HEADERS[@]}" \
@@ -83,6 +84,6 @@ set_or_default ADMIN_PASSWORD "password"
 
 run_curl "/plugin/data-access/api/datasource/jdbc/connection" "" "" "false" | \
 	jq -r '.Item[]["$"]' | \
-	grep -q "^${DATASOURCE_NAME}$"
+	grep -qxF -- "${DATASOURCE_NAME}"
 
 exit ${?}
