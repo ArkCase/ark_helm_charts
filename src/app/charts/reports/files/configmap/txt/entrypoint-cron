@@ -69,7 +69,7 @@ fi
 # Render the correct server.properties file                       #
 ###################################################################
 [ -v PENTAHO_HOME ] || PENTAHO_HOME="${BASE_DIR}/pentaho"
-[ -v PENTAHO_PDI_HOME ] || PENTAHO_HOME="${BASE_DIR}/pentaho"
+[ -v PENTAHO_PDI_HOME ] || PENTAHO_PDI_HOME="${BASE_DIR}/pentaho-pdi"
 [ -v PENTAHO_PDI_PLUGINS ] || PENTAHO_PDI_PLUGINS="${PENTAHO_PDI_HOME}/data-integration/plugins"
 
 [ -v PENTAHO_SERVER ] || PENTAHO_SERVER="${PENTAHO_HOME}/pentaho-server"
@@ -107,6 +107,11 @@ deploy-job-schedules
 
 say "👉 Waiting for ArkCase to become available before starting the Cron process..."
 poll_url "${CORE_URL}" || fail "ArkCase did not come up in time"
+
+# Cron launches its jobs with an empty environment, so run-kjb reloads it from here
+say "👉 Storing the runtime environment for the Cron jobs"
+set_or_default CRON_ENV "${HOME}/.cron-env"
+( umask 0077 ; declare -px > "${CRON_ENV}" )
 
 say "👉 Starting the Cron process..."
 

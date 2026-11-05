@@ -116,7 +116,9 @@ is_report_installed()
 
 	# Is it listed in the reports database file? (only consider the last entry)
 	[ -f "${REPORTS_DB}" ] || return 1
-	local EXISTING="$(egrep "^([0-9a-f]{64})=${DEST}$" "${REPORTS_DB}" | tail -1)" || return 1
+	local EXISTING=""
+	EXISTING="$(DEST="${DEST}" awk 'substr($0, 65, 1) == "=" && substr($0, 66) == ENVIRON["DEST"]' "${REPORTS_DB}")" || return 1
+	EXISTING="$(echo -n "${EXISTING}" | tail -1)"
 
 	# Does the record in the database file match our expected pattern?
 	[[ "${EXISTING,,}" =~ ^([0-9a-f]{64})=(.*)$ ]] || return 1
@@ -165,7 +167,12 @@ install_report()
 		# Extract, then enumerate the contents into the SRC_FILE array
 		SRC_FILE="${REPORTS_DIR}/${SRC_FILE}"
 		say "Extracting the reports from [${SRC_FILE}]..."
-		readarray -t REPORTS < <(extract_archive "${ARCHIVE_TYPE}" "${SRC_FILE}")
+		local EXTRACTED=""
+		if ! EXTRACTED="$(extract_archive "${ARCHIVE_TYPE}" "${SRC_FILE}")" ; then
+			err "Failed to extract the reports from [${SRC_FILE}]"
+			return 1
+		fi
+		[ -z "${EXTRACTED}" ] || readarray -t REPORTS <<< "${EXTRACTED}"
 	else
 		REPORTS=("$(dirname "${SRC_FILE}")${DIVIDER}${REPORTS_DIR}/${SRC_FILE}")
 	fi
@@ -216,10 +223,11 @@ install_report()
 			--overwrite=true
 			--retainOwnership=true
 		)
-		${DEBUG} && say "\t${CMD[@]@Q}"
+		local SAFE_CMD=("${CMD[@]/#--password=*/--password=********}")
+		${DEBUG} && say "\t${SAFE_CMD[@]@Q}"
 		(
 			say "# Installing the report from [${F}]${ARCHIVE_INFO}..."
-			say "COMMAND: ${CMD[@]@Q}"
+			say "COMMAND: ${SAFE_CMD[@]@Q}"
 			say "--------------------------------------------------------------------------------"
 			exec "${CMD[@]}"
 		) &> "${UPLOAD_LOG_FILE}"
@@ -229,7 +237,7 @@ install_report()
 			rm -f "${UPLOAD_LOG_FILE}" &>/dev/null
 		else
 			err "\tFailed to install the report from [${F}]${ARCHIVE_INFO}\n$(cat "${UPLOAD_LOG_FILE}")"
-			return ${?}
+			return 1
 		fi
 	done
 	[ -z "${ARCHIVE_TYPE}" ] || say "Finished processing the reports contained in [${SRC_FILE}]"
@@ -239,7 +247,7 @@ install_report()
 list_reports()
 {
 	local REPORTS_DIR="${1}"
-	[ -d "${REPORTS_DIR}" ] | return 0
+	[ -d "${REPORTS_DIR}" ] || return 0
 	find "${REPORTS_DIR}" -type f -not -name ".*" | \
 		sed -e "s;^${REPORTS_DIR}/;;g" | \
 		sort

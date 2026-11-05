@@ -5,6 +5,12 @@ set -euo pipefail
 
 init_ssl
 
+#
+# Load the environment file, if present
+#
+set_or_default CRON_ENV "${HOME}/.cron-env"
+is_file_readable "${CRON_ENV}" && source "${CRON_ENV}"
+
 DEFAULT_LOG_KEEP=30
 [ -v LOG_KEEP ] || LOG_KEEP=${DEFAULT_LOG_KEEP}
 [[ "${LOG_KEEP}" =~ ^[1-9][0-9]*$ ]] || LOG_KEEP=${DEFAULT_LOG_KEEP}
@@ -23,7 +29,7 @@ cleanup_logs() {
 	local RC=${?}
 	if [ -n "${LOG}" ] && [ -f "${LOG}" ] ; then
 		# Compress the newly-produced log, if it exists
-		gzip -9 "${LOG}"
+		gzip -9 "${LOG}" || true
 	fi
 	while read log ; do
 		rm -f "${log}" &>/dev/null || true

@@ -1,6 +1,7 @@
 #!/bin/bash
 
 set -euo pipefail
+. /.functions
 
 timestamp() {
 	date -Ins -u
@@ -60,9 +61,10 @@ run_curl() {
 	esac
 
 	local RC=0
-	local HTTP_CODE="$(curl -sSL \
+	local HTTP_CODE=""
+	HTTP_CODE="$(curl -sSL \
 		--disallow-username-in-url \
-		--config <(echo -n "--user \"${ADMIN_USERNAME}:${ADMIN_PASSWORD}\"") \
+		--config <(auth_params "${ADMIN_USERNAME}" "${ADMIN_PASSWORD}") \
 		"${OUTPUT[@]}" \
 		"${METHOD[@]}" \
 		"${HEADERS[@]}" \
@@ -107,7 +109,7 @@ create_connection() {
 		return 1
 	fi
 
-	local NAME="$(jq -r '.name' < "${FILE}")"
+	local NAME="$(jq -r '.name // ""' < "${FILE}")"
 	if [ -z "${NAME}" ] ; then
 		say "The connection at [${JSON_FILE}] doesn't have a name"
 		return 1
@@ -123,7 +125,8 @@ create_connection() {
 	fi
 
 	say "Installing a new connection [${NAME}] from [${FILE}]..."
-	local RESULT="$(run_curl "/plugin/data-access/api/connection/add" "POST" "${FILE}")" && return 0
+	local RESULT=""
+	RESULT="$(run_curl "/plugin/data-access/api/connection/add" "POST" "${FILE}")" && return 0
 	say "Failed to create the database connection [${NAME}] (http code = ${RESULT})"
 	return 1
 }

@@ -177,6 +177,7 @@ else:
 		source_file_is_file = True
 
 show_data = True
+source_name = f"the file [{source_file}]" if source_file_is_file else "the given string" if type(source_file) == str else "stdin"
 try:
 	if source_file_is_file:
 		logging.info(f"Loading the configuration from the file [{source_file}]...")
@@ -184,7 +185,7 @@ try:
 			data = yaml.safe_load(f)
 	else:
 		if type(source_file) == str:
-			logging.info(f"Parsing the configuration from the string: [\n{source_file}\n]...")
+			logging.info("Parsing the configuration from the given string...")
 			show_data = False
 		else:
 			logging.info("Parsing the configuration from stdin...")
@@ -193,13 +194,19 @@ try:
 		raise Exception("Data is not in YAML format")
 except Exception as e:
 	# Yaml parse failed ... try as JSON
-	logging.warning(f"File [{source_file}] was not in YAML format, trying JSON")
+	logging.warning(f"The configuration from {source_name} was not in YAML format, trying JSON")
 	try:
-		with open(source_file, "r") as f:
-			data = json.load(f)
+		if source_file_is_file:
+			with open(source_file, "r") as f:
+				data = json.load(f)
+		else:
+			data = json.loads(source_file)
 	except Exception as e:
 		logging.error(e)
 		sys.exit(1)
+
+if type(data) != dict:
+	fail(f"The configuration from {source_name} is not a map")
 
 if show_data:
 	logging.debug(f"Loaded configuration: [{json.dumps(data, indent=4)}]")
@@ -210,17 +217,25 @@ def render_auth_info():
 	if LDAP_URL:
 		info += [ f"--URL={LDAP_URL}" ]
 	if LDAP_ADMIN_USER:
-		info += [ f"--username={LDAP_ADMIN_USER}", f"--password={LDAP_ADMIN_PASS}" ]
+		# The password goes through the PASSWD envvar (see run_command)
+		info += [ f"--username={LDAP_ADMIN_USER}" ]
 	return info
 
-def run_command(command):
+def run_command(command, stdin = None):
+	# No secrets may go on the command line: it shows up in the process
+	# table, and the result's rendering (which gets logged upon failure)
 	if DEBUG:
 		logging.info(f"\tCommand = {command}")
 		command = "true"
-	return subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+	env = os.environ.copy()
+	if LDAP_ADMIN_USER and LDAP_ADMIN_PASS:
+		env["PASSWD"] = LDAP_ADMIN_PASS
+	# The new session drops any controlling terminal, which is what getpass()
+	# would prefer to read from if we're handing it its input through STDIN
+	return subprocess.run(command, input = stdin, env = env, start_new_session = (stdin is not None), stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
-def samba_tool(flags):
-	return run_command([ EXE_SAMBA_TOOL ] + render_auth_info() + flags)
+def samba_tool(flags, stdin = None):
+	return run_command([ EXE_SAMBA_TOOL ] + render_auth_info() + flags, stdin)
 
 def render_user_id(userId):
 	return f"{USER_PREFIX}{userId}"
@@ -229,7 +244,7 @@ def render_group_id(groupId):
 	# If the groupId starts with the plus sign, remove the plus sign and return
 	# it as-is, no prefix. If it doesn't start with a plus sign, apply the prefix
 	if groupId.startswith("+"):
-		return re.sub("^\+", "", groupId)
+		return re.sub(r"^\+", "", groupId)
 	return f"{GROUP_PREFIX}{groupId}"
 
 # To track which OUs have been created via ensure_ou_exists()
@@ -297,9 +312,13 @@ def set_user_password(userId, userData):
 
 	sha256 = hashlib.sha256(password.encode("UTF-8")).hexdigest()
 	logging.info(f"\tSetting the password for '{userId}' (sha256:{sha256})...")
-	command = [ "user", "setpassword", userId, f"--newpassword={password}" ]
+	if "\n" in password:
+		fail(f"The password for '{userId}' may not contain line breaks")
 
-	result = samba_tool(command)
+	# Without --newpassword, samba-tool asks for it and for its confirmation
+	command = [ "user", "setpassword", userId ]
+
+	result = samba_tool(command, f"{password}\n{password}\n".encode("UTF-8"))
 	if result.returncode != 0:
 		fail(f"Failed to set the password for '{userId}' (rc={result})")
 
@@ -351,7 +370,7 @@ def create_user(userId, userData):
 		return None
 
 	# Create the new user
-	logging.info(f"Creating user '{userId}' from [{userData}]")
+	logging.info(f"Creating user '{userId}' from [{ {k: v for k, v in userData.items() if k != KEY_PASSWORD} }]")
 	command = [ "user", "add", userId, "--random-password" ]
 
 	if USER_OU:
@@ -506,7 +525,7 @@ if EXPIRATION_DAYS is not None:
 	try:
 		EXPIRATION_DAYS = int(EXPIRATION_DAYS)
 	except:
-		fail(f"The configuration value [{EXPIRATION_DAYS}] is not a valid integer - cannot proceeed")
+		fail(f"The configuration value [{EXPIRATION_DAYS}] is not a valid integer - cannot proceed")
 
 DEFAULT_PASSWORD = get_config_value(serverInfo, KEY_LDAP_DEFAULT_PASSWORD, args, "default_password", ENV_DEFAULT_PASSWORD)
 if not DEFAULT_PASSWORD:
@@ -612,7 +631,7 @@ try:
 			for groupId, groupData in groups.items():
 				groupId = create_group(groupId, groupData)
 				if groupId is not None:
-					memberships[groupId] = set()
+					memberships.setdefault(groupId, set())
 					compile_memberships(memberships, groupId, groupData)
 		else:
 			logging.error(f"The '{KEY_GROUPS}' item in the configuration data is not a map, skipping its processing")

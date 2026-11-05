@@ -140,6 +140,8 @@ while read JOB ; do
 done < <(find "${DWHS_DIR}" -mindepth 1 -maxdepth 1 -type d | sort)
 JOBS_COUNT=${#JOBS[@]}
 
+POLLER_PID=""
+
 if [ ${JOBS_COUNT} -gt 0 ] ; then
 	# Before we can run the dataminer first time, we MUST wait for
 	# ArkCase to come up ... if it doesn't, we're screwed
@@ -150,6 +152,9 @@ if [ ${JOBS_COUNT} -gt 0 ] ; then
 	done
 	say "Launching the background poller for [${CORE_URL}]..."
 	coproc { poll_url "${CORE_URL}" ; }
+
+	# Bash unsets COPROC_PID as soon as the co-process ends, so that can't be used to join it
+	POLLER_PID="${!}"
 else
 	say "No jobs found, will not wait for ArkCase to boot up"
 fi
@@ -160,13 +165,19 @@ fi
 # We also run this in parallel with waiting for ArkCase to come up, b/c
 # we try to be efficient with time :D
 say "Deploying reports"
-/usr/local/bin/install-reports
-say "Reports deployed"
+# A failure must not lose the first-time jobs: they won't be queued on the next boot
+REPORTS_OK="true"
+if /usr/local/bin/install-reports ; then
+	say "Reports deployed"
+else
+	REPORTS_OK="false"
+	err "Failed to deploy all the reports, please review the logs"
+fi
 
 # If we have to rejoin with the ArkCase poller, do so...
-if [ -v COPROC_PID ] ; then
+if [ -n "${POLLER_PID}" ] ; then
 	say "Joining the background poller for [${CORE_URL}]..."
-	wait ${COPROC_PID} || fail "Failed to wait for ArkCase to be online"
+	wait "${POLLER_PID}" || fail "Failed to wait for ArkCase to be online"
 fi
 
 # Leave this here ... if there are no jobs, nothing will happen...
@@ -180,5 +191,6 @@ for JOB in "${JOBS[@]}" ; do
 	fi
 done
 
+${REPORTS_OK} || fail "Post-configuration completed with errors"
 say "Post-configuration completed"
 exit 0
