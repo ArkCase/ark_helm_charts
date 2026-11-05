@@ -13,7 +13,7 @@ define_user()
 
 	# Add the configuration for MC access in read-write mode
 	say "Creating the service account with username [${USERNAME}] (policy = ${POLICY})..."
-	mcli admin user add "${INSTANCE}" < <(echo -en "${USERNAME}\n${PASSWORD}") || fail "Failed to create the user account for [${USERNAME}]..."
+	mcli admin user add "${INSTANCE}" < <(printf '%s\n%s' "${USERNAME}" "${PASSWORD}") || fail "Failed to create the user account for [${USERNAME}]..."
 
 	local POLICY_ATTACHED="$(mcli admin policy entities "${INSTANCE}" --user "${USERNAME}" --json | jq -r ".result?.userMappings[]?.policies[]? | select(. == \"${POLICY}\")")"
 
