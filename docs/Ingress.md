@@ -36,7 +36,7 @@ This is a brief example of what a completely valid ingress configuration (except
 
 ```yaml
 global:
-  settings:
+  conf:
     #
     # This is the URL through which ArkCase will be accessed. Only HTTPS
     # URLs are supported because only crazy people don't use SSL these days :)
