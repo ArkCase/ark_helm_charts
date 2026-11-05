@@ -8,7 +8,12 @@ set_or_default FALLBACK_DIMENSIONS 768
 
 milvus_auth()
 {
-	echo -n "--user \"${ADMIN_USERNAME}:${ADMIN_PASSWORD}\""
+	auth_params "${ADMIN_USERNAME}" "${ADMIN_PASSWORD}"
+}
+
+json_string()
+{
+	printf '%s' "${1}" | jq -Rs "."
 }
 
 milvus_rest()
@@ -16,15 +21,15 @@ milvus_rest()
 	local URI="${1}"
 	local DATA="$(cat)"
 	local OUT=""
-	OUT="$(jq -r <<< "${DATA}")" || fail "Invalid JSON syntax on the submitted data (rc=${?}):\n${DATA}\n\n${OUT}"
+	OUT="$(jq -r "." 2>&1 >/dev/null <<< "${DATA}")" || fail "Invalid JSON syntax on the submitted data (rc=${?}): ${OUT}"
 
 	# We don't us the URL variable here b/c we always want to go to localhost
 	local CMD=(
-		curl -fsSL --request POST
+		curl -fsSL --max-time 120 --request POST
 			--url "${REST_URL}/v2/vectordb/${URI}"
 			--header "Content-Type: application/json"
 	)
-	"${CMD[@]}" --config <(milvus_auth) --data "${DATA}"
+	"${CMD[@]}" --config <(milvus_auth) --data-binary "@-" <<< "${DATA}"
 }
 
 milvus_cmd()
@@ -265,8 +270,8 @@ milvus_user_create()
 
 	OUT="$(milvus_cmd "users/create" <<-EOF
 	{
-		"userName": "${USERNAME}",
-		"password": "${PASSWORD}"
+		"userName": $(json_string "${USERNAME}"),
+		"password": $(json_string "${PASSWORD}")
 	}
 	EOF
 	)" || RC=${?}
@@ -290,7 +295,7 @@ milvus_user_grant()
 	for ROLE in "${@}" ; do
 		OUT="$(milvus_cmd "users/grant_role" <<-EOF
 		{
-			"userName": "${USERNAME}",
+			"userName": $(json_string "${USERNAME}"),
 			"roleName": "${ROLE}"
 		}
 		EOF
@@ -315,9 +320,9 @@ milvus_user_reset_password()
 
 	OUT="$(milvus_cmd "users/update_password" <<-EOF
 	{
-		"userName": "${USERNAME}",
+		"userName": $(json_string "${USERNAME}"),
 		"password": "",
-		"newPassword": "${PASSWORD}"
+		"newPassword": $(json_string "${PASSWORD}")
 	}
 	EOF
 	)" || RC=${?}
@@ -417,16 +422,18 @@ sleeping "Waiting for Milvus to come online..."
 poll_url "http://localhost:9091/healthz" "${INIT_MAX_WAIT}" "${INIT_POLL_SLEEP}" || fail "Cannot continue configuration if Milvus is not online"
 
 # Reset the admin password ...
-milvus_user_reset_password "${ADMIN_USERNAME}" "${ADMIN_PASSWORD}"
+milvus_user_reset_password "${ADMIN_USERNAME}" "${ADMIN_PASSWORD}" || fail "Failed to reset the admin password"
 
 if DEFINITIONS="$(get_database_definitions)" ; then
 	while IFS=":" read ALIAS DATABASE COLLECTION DIMENSIONS ; do
+		# No definitions still yields an empty line
+		[ -n "${ALIAS}" ] || continue
 	
 		# This will declare the USERNAME/PASSWORD variables accordingly
-		get_database_auth "${ALIAS}"
+		get_database_auth "${ALIAS}" || fail "Failed to get the credentials for the database alias [${ALIAS}]"
 	
-		milvus_database_create "${DATABASE}"
-		milvus_collection_create "${DATABASE}" "${COLLECTION}" "${DIMENSIONS}"
+		milvus_database_create "${DATABASE}" || fail "Failed to initialize the database [${DATABASE}]"
+		milvus_collection_create "${DATABASE}" "${COLLECTION}" "${DIMENSIONS}" || fail "Failed to initialize the collection [${DATABASE}::${COLLECTION}]"
 	
 		ADMIN_ROLE=""
 		for PRIV in Admin RW:ReadWrite RO:ReadOnly ; do
@@ -445,18 +452,22 @@ if DEFINITIONS="$(get_database_definitions)" ; then
 			# If the role already exists, don't mess with it
 			milvus_role_get "${ROLE}" && continue
 	
-			milvus_role_create "${ROLE}"
-			milvus_role_grant "${ROLE}" "${DATABASE}" "${FULL_PRIV}"
+			milvus_role_create "${ROLE}" || fail "Failed to initialize the role [${ROLE}]"
+			milvus_role_grant "${ROLE}" "${DATABASE}" "${FULL_PRIV}" || fail "Failed to grant the privileges for the role [${ROLE}]"
 		done
 	
-		if milvus_user_create "${USERNAME}" "${PASSWORD}" ; then
-			[ -n "${ADMIN_ROLE}" ] && milvus_user_grant "${USERNAME}" "${ADMIN_ROLE}"
-		else
+		if ! milvus_user_create "${USERNAME}" "${PASSWORD}" ; then
 			# Reset the user's password to the expected value
-			milvus_user_reset_password "${USERNAME}" "${PASSWORD}"
+			milvus_user_reset_password "${USERNAME}" "${PASSWORD}" || fail "Failed to create or update the user [${USERNAME}]"
+		fi
+
+		# Granting is idempotent, and an earlier run may have stopped before getting here
+		if [ -n "${ADMIN_ROLE}" ] ; then
+			milvus_user_grant "${USERNAME}" "${ADMIN_ROLE}" || fail "Failed to grant the role [${ADMIN_ROLE}] to the user [${USERNAME}]"
 		fi
 	done < <(echo "${DEFINITIONS}")
 else
+	RC=${?}
 	echo -e "${DEFINITIONS}"
-	exit ${?}
+	exit ${RC}
 fi

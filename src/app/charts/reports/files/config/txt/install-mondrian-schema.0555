@@ -61,7 +61,7 @@ set_or_default REPORT_INSTALLER "${PENTAHO_HOME}/pentaho-server/import-export.sh
 # eyes "Validating the existence of the DataSource [${DATA_SOURCE}]..."
 # check-datasource "${DATA_SOURCE}" || fail "The DataSource [${DATA_SOURCE}] was not found in Pentaho"
 
-UPLOAD_LOG_FILE="${LOGS_DIR}/schema-upload-${NAME}-$(date -u +%Y%m%d-%H%M%S)Z.log"
+UPLOAD_LOG_FILE="${LOGS_DIR}/schema-upload-${NAME//\//_}-$(date -u +%Y%m%d-%H%M%S)Z.log"
 CMD=(
 	"${REPORT_INSTALLER}"
 	--import
@@ -75,12 +75,13 @@ CMD=(
 	--logfile="${UPLOAD_LOG_FILE}"
 	--overwrite="true"
 )
+SAFE_CMD=("${CMD[@]/#--password=*/--password=********}")
 (
 	say "# Installing the Mondrian schema [${NAME}] from [${SCHEMA_FILE}]..."
-	say "COMMAND: ${CMD[@]@Q}"
+	say "COMMAND: ${SAFE_CMD[@]@Q}"
 	say "--------------------------------------------------------------------------------"
 	exec "${CMD[@]}"
-) &> "${UPLOAD_LOG_FILE}"
+) &> "${UPLOAD_LOG_FILE}" || true
 grep -iq "Import was successful" "${UPLOAD_LOG_FILE}" || \
 	fail "\tFailed to install the schema [${NAME}] from [${SCHEMA_FILE}]\n$(cat "${UPLOAD_LOG_FILE}")"
 # mark_file_installed "${P}/${B}" "${HASH}"

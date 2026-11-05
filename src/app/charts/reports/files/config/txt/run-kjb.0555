@@ -212,7 +212,7 @@ fi
 # Apply the license stuff
 #
 [ -v OPT ] || export OPT=""
-OPT+=" ${PENTAHO_LICENSE_OPT}"
+OPT+=" ${PENTAHO_LICENSE_OPT:-}"
 
 running "Running the Kettle job from [${JOB}]"
 cd "${PENTAHO_PDI_HOME}/data-integration"
