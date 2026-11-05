@@ -303,6 +303,8 @@ spec:
             {{- if $dev }}
             - name: DEVELOPMENT
               value: "true"
+            - name: SSL_INIT_DEFERRED
+              value: "true"
             - name: DEBUG
               value: {{ not (empty $debug) | toString | quote }}
             - name: DEV_UID
