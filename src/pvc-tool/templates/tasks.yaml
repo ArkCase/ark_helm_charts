@@ -1,0 +1,239 @@
+{{- $mode := (include "pvc-tool.mode" $) -}}
+{{- if ne $mode "rsync" -}}
+{{- $release := .Release.Name -}}
+{{- $namespace := .Release.Namespace -}}
+{{- $clone := (eq $mode "clone") -}}
+{{- $clonePrefix := (include "pvc-tool.clonePrefix" $) -}}
+{{- $markerLabel := (include "pvc-tool.markerLabel" $) -}}
+{{- $taskLabel := (include "pvc-tool.taskLabel" $) -}}
+{{- $plan := (include "pvc-tool.plan" $ | fromYaml) -}}
+{{- $scripts := (.Files.Glob "scripts/*") -}}
+{{- $hostNetwork := (not (empty (include "arkcase.toBoolean" .Values.hostNetwork))) -}}
+{{- $maxAttempts := (.Values.maxAttempts | default 5 | toString) -}}
+{{- if not (regexMatch "^[1-9][0-9]*$" $maxAttempts) -}}
+  {{- fail (printf "The maxAttempts value [%s] must be a positive integer" $maxAttempts) -}}
+{{- end -}}
+
+{{- $s3 := (.Values.s3 | default dict) -}}
+{{- $s3Secret := "" -}}
+{{- if eq $mode "s3" -}}
+  {{- if not $s3.bucket -}}
+    {{- fail "Must provide the S3 bucket name (s3.bucket) to use the s3 mode" -}}
+  {{- end -}}
+  {{- if not (regexMatch "^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$" ($s3.bucket | toString)) -}}
+    {{- fail (printf "The S3 bucket name [%s] is not valid" $s3.bucket) -}}
+  {{- end -}}
+  {{- if or $s3.accessKey $s3.secretKey -}}
+    {{- if not (and $s3.accessKey $s3.secretKey) -}}
+      {{- fail "The S3 accessKey and secretKey must be given together, or not at all" -}}
+    {{- end -}}
+    {{- $s3Secret = (printf "%s-s3" $release) -}}
+  {{- end -}}
+{{- end -}}
+{{- $s3Prefix := (list ($s3.prefix | default "" | toString | trimAll "/") $namespace | compact | join "/") -}}
+
+{{- range $pvc := $plan.clones }}
+---
+{{ $pvc | toYaml }}
+{{- end }}
+
+{{- if $s3Secret }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  labels:
+    {{ $markerLabel }}: {{ $release | quote }}
+    {{- include "arkcase.labels.service" $ | nindent 4 }}
+  name: {{ $s3Secret | quote }}
+  namespace: {{ $namespace | quote }}
+type: Opaque
+stringData:
+  AWS_ACCESS_KEY_ID: {{ $s3.accessKey | toString | quote }}
+  AWS_SECRET_ACCESS_KEY: {{ $s3.secretKey | toString | quote }}
+{{- end }}
+
+{{- range $task := $plan.tasks }}
+  {{- $labels := (include "arkcase.labels.service" $ | fromYaml) }}
+  {{- $labels = set $labels $markerLabel $release }}
+  {{- $labels = set $labels $taskLabel $task.name }}
+  {{- $matchLabels := (include "arkcase.labels.matchLabels" $ | fromYaml) }}
+  {{- $matchLabels = set $matchLabels $taskLabel $task.name }}
+  {{- $sourceVolume := ($task.family | ternary $task.sourceTemplate "source") }}
+  {{- $targetVolume := ($task.family | ternary $task.targetTemplate "target") }}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels: {{- toYaml $labels | nindent 4 }}
+  name: {{ $task.name | quote }}
+  namespace: {{ $namespace | quote }}
+spec:
+  replicas: {{ $task.replicas }}
+  selector:
+    matchLabels: {{- toYaml $matchLabels | nindent 6 }}
+  serviceName: {{ $task.name | quote }}
+  podManagementPolicy: Parallel
+  updateStrategy:
+    type: RollingUpdate
+  persistentVolumeClaimRetentionPolicy:
+    whenDeleted: Retain
+    whenScaled: Retain
+  template:
+    metadata:
+      labels: {{- toYaml $labels | nindent 8 }}
+    spec:
+      {{- include "arkcase.image.pullSecrets" $ | nindent 6 }}
+      hostNetwork: {{ $hostNetwork }}
+      {{- with $.Values.serviceAccountName }}
+      serviceAccountName: {{ . | quote }}
+      {{- end }}
+      {{- with $.Values.nodeSelector }}
+      nodeSelector: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $.Values.affinity }}
+      affinity: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $.Values.tolerations }}
+      tolerations: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ $mode | quote }}
+          {{- include "arkcase.image" $ | nindent 10 }}
+          command: [ "/usr/local/bin/migrate-pvc" ]
+          workingDir: &logsDir "/logs"
+          resources: {{- include "arkcase.resources" (dict "ctx" $) | nindent 12 }}
+          securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "arkcase") | nindent 12 }}
+          env:
+            - name: "TASK_MODE"
+              value: {{ $mode | quote }}
+            - name: "MAX_ATTEMPTS"
+              value: {{ $maxAttempts | quote }}
+            - name: "LOGS_DIR"
+              value: *logsDir
+            - name: "POD_NAME"
+              valueFrom:
+                fieldRef:
+                  fieldPath: "metadata.name"
+            - name: "POD_NAMESPACE"
+              valueFrom:
+                fieldRef:
+                  fieldPath: "metadata.namespace"
+            - name: "SOURCE_DIR"
+              value: &sourceDir "/source"
+          {{- if $task.family }}
+            - name: "POD_INDEX"
+              valueFrom:
+                fieldRef:
+                  fieldPath: "metadata.labels['apps.kubernetes.io/pod-index']"
+            - name: "SOURCE_PVC"
+              value: {{ printf "%s-$(POD_INDEX)" $task.sourcePrefix | quote }}
+          {{- else }}
+            - name: "SOURCE_PVC"
+              value: {{ $task.claim | quote }}
+          {{- end }}
+          {{- if $clone }}
+            - name: "TARGET_DIR"
+              value: &targetDir "/target"
+            - name: "TARGET_PVC"
+              value: {{ printf "%s-$(SOURCE_PVC)" $clonePrefix | quote }}
+          {{- else }}
+            - name: "S3_BUCKET"
+              value: {{ $s3.bucket | toString | quote }}
+            {{- with $s3.region }}
+            - name: "S3_REGION"
+              value: {{ . | toString | quote }}
+            {{- end }}
+            {{- with $s3.endpoint }}
+            - name: "S3_ENDPOINT"
+              value: {{ . | toString | quote }}
+            {{- end }}
+            - name: "S3_PREFIX"
+              value: {{ (list $s3Prefix "$(SOURCE_PVC)" | compact | join "/") | quote }}
+            - name: "S3_VERIFY"
+              value: {{ (not (empty (include "arkcase.toBoolean" ((hasKey $s3 "verify") | ternary $s3.verify true)))) | toString | quote }}
+          {{- end }}
+          {{- if $s3Secret }}
+          envFrom:
+            - secretRef:
+                name: {{ $s3Secret | quote }}
+          {{- end }}
+          # Started: the work has begun
+          startupProbe:
+            exec:
+              command: [ "/usr/bin/test", "-e", "/.pod.started" ]
+            failureThreshold: 12
+            successThreshold: 1
+            periodSeconds: 5
+            timeoutSeconds: 5
+          livenessProbe:
+            exec:
+              command: [ "/usr/bin/test", "-e", "/.pod.started" ]
+            failureThreshold: 1
+            successThreshold: 1
+            periodSeconds: 5
+            timeoutSeconds: 5
+          # Ready: the work is done, and its exit status is in /.pod.result
+          readinessProbe:
+            exec:
+              command: [ "/usr/bin/test", "-e", "/.pod.result" ]
+            failureThreshold: 1
+            successThreshold: 1
+            periodSeconds: 5
+            timeoutSeconds: 5
+          volumeMounts:
+            - mountPath: *logsDir
+              name: "pvc-tool-logs"
+          {{- range $path, $_ := $scripts }}
+            {{- $name := ($path | base) }}
+            - mountPath: {{ printf "/usr/local/bin/%s" $name | quote }}
+              name: "pvc-tool-scripts"
+              subPath: {{ $name | quote }}
+              readOnly: true
+          {{- end }}
+            - mountPath: *sourceDir
+              name: {{ $sourceVolume | quote }}
+          {{- if $clone }}
+            - mountPath: *targetDir
+              name: {{ $targetVolume | quote }}
+          {{- end }}
+      volumes:
+        - name: "pvc-tool-scripts"
+          configMap:
+            name: {{ $release | quote }}
+            items:
+              {{- range $path, $_ := $scripts }}
+                {{- $name := ($path | base) }}
+              - key: {{ $name | quote }}
+                path: {{ $name | quote }}
+                mode: 0555
+              {{- end }}
+            defaultMode: 0640
+            optional: false
+        # Logs also go to stdout - an emptyDir avoids attaching yet another volume
+        - name: "pvc-tool-logs"
+          emptyDir: {}
+      {{- if not $task.family }}
+        - name: "source"
+          persistentVolumeClaim:
+            claimName: {{ $task.claim | quote }}
+        {{- if $clone }}
+        - name: "target"
+          persistentVolumeClaim:
+            claimName: {{ printf "%s-%s" $clonePrefix $task.claim | quote }}
+        {{- end }}
+      {{- end }}
+  {{- if $task.family }}
+  # These match the existing PVCs by name, so no new PVCs are created from them
+  volumeClaimTemplates:
+    - metadata:
+        name: {{ $task.sourceTemplate | quote }}
+      spec: {{- toYaml $task.sourceSpec | nindent 8 }}
+    {{- if $clone }}
+    - metadata:
+        name: {{ $task.targetTemplate | quote }}
+      spec: {{- toYaml $task.targetSpec | nindent 8 }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+{{- end }}

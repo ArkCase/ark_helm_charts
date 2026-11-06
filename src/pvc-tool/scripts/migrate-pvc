@@ -1,0 +1,342 @@
+#!/bin/bash
+SCRIPT="$(/usr/bin/readlink -f "${BASH_ARGV0:-${BASH_SOURCE:-${0}}}")"
+SCRIPT="$(/usr/bin/basename "${SCRIPT}")"
+
+set -euo pipefail
+
+#
+# Copies the data in one PVC (mounted at ${SOURCE_DIR}) into its target, which
+# depends on ${TASK_MODE}:
+#
+#   clone: the new PVC mounted at ${TARGET_DIR}, via rsync
+#   s3:    a tar.gz file at s3://${S3_BUCKET}/${S3_PREFIX}.tar.gz
+#
+# The work is attempted up to ${MAX_ATTEMPTS} times. Then, whatever the outcome,
+# the exit status is written into ${RESULT_MARKER} (which makes the pod Ready),
+# and the script waits forever: restart the pod to repeat the work.
+#
+
+STARTED_MARKER="/.pod.started"
+RESULT_MARKER="/.pod.result"
+
+DEFAULT_MAX_ATTEMPTS="5"
+
+timestamp()
+{
+	/usr/bin/date -Ins -u
+}
+
+say()
+{
+	echo -e "$(timestamp): ${@}"
+}
+
+ok()
+{
+	say "✅ ${@}"
+}
+
+warn()
+{
+	say "⚠️ ${@}"
+}
+
+err()
+{
+	say "❌ ${@}"
+}
+
+fail()
+{
+	err "${@}"
+	exit "${EXIT_CODE:-1}"
+}
+
+is_valid_name()
+{
+	local NAME="${1}"
+	[[ "${NAME}" =~ ^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$ ]] || return 1
+	return 0
+}
+
+ensure_dir()
+{
+	local DIR="${1}"
+	[ -e "${DIR}" ] || fail "The directory [${DIR}] does not exist"
+	[ -d "${DIR}" ] || fail "The path [${DIR}] is not a directory"
+	[ -r "${DIR}" ] || fail "The directory [${DIR}] is not readable"
+	[ -x "${DIR}" ] || fail "The directory [${DIR}] is not executable"
+	return 0
+}
+
+#
+# List the contents of the current directory such that two copies of
+# the same data produce the same output: type, mode, ownership, size
+# (except for directories, whose size depends on the filesystem), and
+# path, sorted by path
+#
+list_contents()
+{
+	/usr/bin/find . \
+		-path "./lost+found" -prune -o \
+		\( -type d -printf "%p\t%y %m %U:%G\n" \) -o \
+		-printf "%p\t%y %m %U:%G %s\n" | LC_ALL="C" /usr/bin/sort
+}
+
+#
+# List the paths in the current directory as tar would list them
+# (minus the trailing slashes on directories), sorted
+#
+list_paths()
+{
+	/usr/bin/find . -path "./lost+found" -prune -o -print | LC_ALL="C" /usr/bin/sort
+}
+
+verify_clone()
+{
+	say "👀 Verifying the copy's correctness"
+	local OLD_LIST="${WORK_DIR}/source.list"
+	local NEW_LIST="${WORK_DIR}/target.list"
+	( cd "${SOURCE_DIR}" && list_contents ) > "${OLD_LIST}" || { err "Failed to list the source's contents" ; return 1 ; }
+	( cd "${TARGET_DIR}" && list_contents ) > "${NEW_LIST}" || { err "Failed to list the target's contents" ; return 1 ; }
+
+	if ! /usr/bin/cmp -s "${OLD_LIST}" "${NEW_LIST}" ; then
+		err "The source and target contents differ (showing up to 100 lines of differences):"
+		/usr/bin/diff "${OLD_LIST}" "${NEW_LIST}" | /usr/bin/head -n 100 || true
+		return 1
+	fi
+
+	ok "Copy verified ($(/usr/bin/wc -l < "${OLD_LIST}") entries)"
+	return 0
+}
+
+run_clone()
+{
+	local CMD=(
+		"${RSYNC}"
+		-aHS
+		--numeric-ids
+		--delete-delay
+		--exclude="/lost+found"
+		--human-readable
+		--stats
+		"${SOURCE_DIR}/"
+		"${TARGET_DIR}/"
+	)
+	say "👀 Will use the command: ${CMD[@]@Q}"
+
+	local RC="0"
+	"${CMD[@]}" || RC="${?}"
+	case "${RC}" in
+		0 ) ;;
+		30 ) warn "Timeout detected" ; return "${RC}" ;;
+		* ) err "Failed to copy the data (rc = ${RC})" ; return "${RC}" ;;
+	esac
+
+	verify_clone || return "${?}"
+	return 0
+}
+
+verify_s3()
+{
+	say "👀 Verifying the archive at [${TARGET}] by listing its contents"
+	local OLD_LIST="${WORK_DIR}/source.list"
+	local NEW_LIST="${WORK_DIR}/target.list"
+	( cd "${SOURCE_DIR}" && list_paths ) > "${OLD_LIST}" || { err "Failed to list the source's contents" ; return 1 ; }
+	"${AWS}" "${AWS_FLAGS[@]}" s3 cp --only-show-errors "${TARGET}" - | \
+		"${TAR}" --quoting-style=literal -tzf - | \
+		/usr/bin/sed -e 's;/$;;' | \
+		LC_ALL="C" /usr/bin/sort > "${NEW_LIST}" || { err "Failed to download and list the archive" ; return 1 ; }
+
+	if ! /usr/bin/cmp -s "${OLD_LIST}" "${NEW_LIST}" ; then
+		err "The source and archive contents differ (showing up to 100 lines of differences):"
+		/usr/bin/diff "${OLD_LIST}" "${NEW_LIST}" | /usr/bin/head -n 100 || true
+		return 1
+	fi
+
+	ok "Archive verified ($(/usr/bin/wc -l < "${OLD_LIST}") entries)"
+	return 0
+}
+
+run_s3()
+{
+	# The AWS CLI needs an idea of the stream's size to pick a multipart chunk
+	# size that can handle it (the default only reaches ~78GiB)
+	local SIZE=""
+	SIZE="$(/usr/bin/du -sb "${SOURCE_DIR}" | /usr/bin/awk '{ print $1 }')" || { err "Failed to compute the source's size" ; return 1 ; }
+	say "👀 The source data is ${SIZE} bytes (uncompressed)"
+
+	local TAR_CMD=(
+		"${TAR}"
+		--create
+		--gzip
+		--file=-
+		--directory="${SOURCE_DIR}"
+		--numeric-owner
+		--sparse
+		"${TAR_FLAGS[@]}"
+		--exclude="./lost+found"
+		.
+	)
+	local AWS_CMD=(
+		"${AWS}" "${AWS_FLAGS[@]}" s3 cp
+		--only-show-errors
+		--expected-size "${SIZE}"
+		-
+		"${TARGET}"
+	)
+	say "👀 Will use the command: ${TAR_CMD[@]@Q} | ${AWS_CMD[@]@Q}"
+
+	local RC="0"
+	"${TAR_CMD[@]}" | "${AWS_CMD[@]}" || RC="${?}"
+	if [ "${RC}" -ne 0 ] ; then
+		err "Failed to upload the data (rc = ${RC})"
+		return "${RC}"
+	fi
+	ok "Upload complete"
+
+	if "${S3_VERIFY}" ; then
+		verify_s3 || return "${?}"
+	fi
+	return 0
+}
+
+run_task()
+{
+	local ATTEMPT=""
+	for (( ATTEMPT = 1 ; ATTEMPT <= MAX_ATTEMPTS ; ATTEMPT++ )) ; do
+		say "👉 Starting attempt # ${ATTEMPT} of ${MAX_ATTEMPTS}..."
+		if "run_${TASK_MODE}" ; then
+			ok "Work complete!"
+			return 0
+		fi
+		warn "Attempt # ${ATTEMPT} failed"
+	done
+	err "The work could not be completed after ${MAX_ATTEMPTS} attempts"
+	return 1
+}
+
+[ -v LOGS_DIR ] || LOGS_DIR=""
+[ -n "${LOGS_DIR}" ] || LOGS_DIR="/logs"
+
+[ -v MAX_ATTEMPTS ] || MAX_ATTEMPTS=""
+[[ "${MAX_ATTEMPTS}" =~ ^[1-9][0-9]*$ ]] || MAX_ATTEMPTS="${DEFAULT_MAX_ATTEMPTS}"
+
+LOG_BASE="${SCRIPT}"
+STAMP="$(/usr/bin/date -u "+%Y%m%d-%H%M%SZ")"
+MAIN_LOG="${LOGS_DIR}/${LOG_BASE}.${STAMP}.log"
+
+say "👀 Logging to [${MAIN_LOG}]"
+exec > >(/usr/bin/tee "${MAIN_LOG}")
+exec 2>&1
+
+:> "${STARTED_MARKER}"
+
+#
+# Run the work in a subshell, so any failure in it (including
+# the validations) still produces a result
+#
+(
+	set -euo pipefail
+
+	[ -v TASK_MODE ] || TASK_MODE=""
+	TASK_MODE="${TASK_MODE,,}"
+	case "${TASK_MODE}" in
+		clone | s3 ) ;;
+		* ) fail "Unsupported TASK_MODE value [${TASK_MODE}]" ;;
+	esac
+
+	[ -v POD_NAME ] || POD_NAME="${HOSTNAME}"
+
+	[ -v SOURCE_DIR ] || SOURCE_DIR=""
+	[ -n "${SOURCE_DIR}" ] || SOURCE_DIR="/source"
+	ensure_dir "${SOURCE_DIR}"
+
+	[ -v SOURCE_PVC ] || fail "The SOURCE_PVC variable is not set"
+	is_valid_name "${SOURCE_PVC}" || fail "The SOURCE_PVC value [${SOURCE_PVC}] is not a valid PVC name"
+
+	# When we're one of many pods, make sure we're working on our own PVC
+	if [ -v POD_INDEX ] ; then
+		[[ "${POD_INDEX}" =~ ^(0|[1-9][0-9]*)$ ]] || fail "The POD_INDEX value [${POD_INDEX}] is not valid (the apps.kubernetes.io/pod-index label requires Kubernetes 1.28 or later)"
+		[ "${POD_NAME##*-}" == "${POD_INDEX}" ] || fail "The POD_INDEX value [${POD_INDEX}] doesn't match the pod name [${POD_NAME}]"
+		[ "${SOURCE_PVC##*-}" == "${POD_INDEX}" ] || fail "The SOURCE_PVC value [${SOURCE_PVC}] doesn't match the pod index [${POD_INDEX}]"
+	fi
+
+	WORK_DIR="$(/usr/bin/mktemp -d)" || fail "Failed to create a work directory"
+
+	case "${TASK_MODE}" in
+		clone )
+			[ -v TARGET_DIR ] || TARGET_DIR=""
+			[ -n "${TARGET_DIR}" ] || TARGET_DIR="/target"
+			ensure_dir "${TARGET_DIR}"
+			[ -w "${TARGET_DIR}" ] || fail "The directory [${TARGET_DIR}] is not writable"
+
+			[ -v TARGET_PVC ] || TARGET_PVC="(unknown)"
+
+			RSYNC="$(type -P rsync)" || fail "Failed to find rsync in the path"
+
+			say "👉 Copying PVC ${SOURCE_PVC} into PVC ${TARGET_PVC}"
+			;;
+
+		s3 )
+			[ -v S3_BUCKET ] || S3_BUCKET=""
+			[ -n "${S3_BUCKET}" ] || fail "The S3_BUCKET variable is not set"
+			[ -v S3_PREFIX ] || S3_PREFIX=""
+			[ -n "${S3_PREFIX}" ] || fail "The S3_PREFIX variable is not set"
+			[ -v S3_REGION ] || S3_REGION=""
+			[ -v S3_ENDPOINT ] || S3_ENDPOINT=""
+			[ -v S3_VERIFY ] || S3_VERIFY=""
+			case "${S3_VERIFY,,}" in
+				false | f | no | n ) S3_VERIFY="false" ;;
+				* ) S3_VERIFY="true" ;;
+			esac
+
+			AWS="$(type -P aws)" || fail "Failed to find aws in the path"
+			TAR="$(type -P tar)" || fail "Failed to find tar in the path"
+			type -P gzip &>/dev/null || fail "Failed to find gzip in the path"
+
+			AWS_FLAGS=()
+			[ -n "${S3_REGION}" ] && AWS_FLAGS+=(--region "${S3_REGION}")
+			[ -n "${S3_ENDPOINT}" ] && AWS_FLAGS+=(--endpoint-url "${S3_ENDPOINT}")
+
+			# Preserve ACLs and extended attributes, if this tar can
+			TAR_FLAGS=()
+			TAR_HELP="$("${TAR}" --help 2>&1)" || true
+			for FLAG in --acls --xattrs ; do
+				[[ "${TAR_HELP}" == *"${FLAG}"* ]] && TAR_FLAGS+=("${FLAG}")
+			done
+
+			TARGET="s3://${S3_BUCKET}/${S3_PREFIX}.tar.gz"
+
+			say "👉 Uploading PVC ${SOURCE_PVC} into [${TARGET}]"
+			;;
+	esac
+
+	run_task
+) &
+TASK_PID="${!}"
+
+# Make pod deletions quick: we're PID 1, so SIGTERM is otherwise ignored
+trap "exit 143" TERM INT
+
+RC="0"
+wait "${TASK_PID}" || RC="${?}"
+
+if [ "${RC}" -eq 0 ] ; then
+	ok "All work completed successfully"
+else
+	err "The work failed (rc = ${RC})"
+fi
+
+# The creation of this file will signal the pod as ready,
+# which in turn means that the work is complete - whatever
+# the outcome...
+echo -n "${RC}" > "${RESULT_MARKER}"
+
+#
+# Since we're part of a StatefulSet, we have to wait forever...
+#
+while true ; do
+	/usr/bin/sleep 3600 &
+	wait "${!}" || true
+done

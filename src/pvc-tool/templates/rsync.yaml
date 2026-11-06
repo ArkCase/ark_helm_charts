@@ -1,0 +1,109 @@
+{{- if eq (include "pvc-tool.mode" $) "rsync" -}}
+{{- $podName := .Release.Name -}}
+{{- $namespace := .Release.Namespace -}}
+{{- $pvcs := (include "pvc-tool.rsyncPvcs" $ | fromYamlArray) -}}
+{{- $scripts := (.Files.Glob "scripts/*") -}}
+{{- $hostNetwork := (not (empty (include "arkcase.toBoolean" .Values.hostNetwork))) -}}
+{{- $externalDnsName := (.Values.externalDns).name | default "" -}}
+{{- $externalDnsAnnotation := (.Values.externalDns).annotation | default "external-dns.alpha.kubernetes.io/hostname" -}}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels: &labels
+    {{ include "pvc-tool.markerLabel" $ }}: &podName {{ $podName | quote }}
+    {{- include "arkcase.labels.service" $ | nindent 4 }}
+  name: &podName {{ $podName | quote }}
+  namespace: &namespace {{ $namespace | quote }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {{- include "arkcase.labels.matchLabels" $ | nindent 6 }}
+  serviceName: {{ include "arkcase.service.headless" $ | quote }}
+  updateStrategy: {{- include "arkcase.cluster.statefulUpdateStrategy" $ | nindent 4 }}
+  podManagementPolicy: Parallel
+  template:
+    metadata:
+      name: *podName
+      namespace: *namespace
+      labels:
+        {{ include "pvc-tool.markerLabel" $ }}: *podName
+        {{- include "arkcase.labels.service" $ | nindent 8 }}
+    spec:
+      {{- include "arkcase.image.pullSecrets" $ | nindent 6 }}
+      hostNetwork: {{ $hostNetwork }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: "rsyncd"
+          {{- include "arkcase.image" $ | nindent 10 }}
+          command: [ "rsync", "--daemon", "--no-detach", "--log-file=/dev/stdout", "--port=873" ]
+          workingDir: &logsDir "/logs"
+          resources: {{- include "arkcase.resources" (dict "ctx" $) | nindent 12 }}
+          securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "arkcase") | nindent 12 }}
+          env:
+            - name: "LOGS_DIR"
+              value: *logsDir
+          {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
+          volumeMounts:
+            - mountPath: *logsDir
+              name: "logs"
+          {{- range $path, $_ := $scripts }}
+            {{- $name := ($path | base) }}
+            - mountPath: {{ printf "/scripts/%s" $name | quote }}
+              name: &configMap "pvc-tool-scripts"
+              subPath: &script {{ $name | quote }}
+              readOnly: true
+            - mountPath: {{ printf "/usr/local/bin/%s" $name | quote }}
+              name: *configMap
+              subPath: *script
+              readOnly: true
+          {{- end }}
+            - mountPath: /etc/rsyncd.conf
+              name: "pvc-tool-scripts"
+              readOnly: true
+              subPath: &rsyncdConf rsyncd.conf
+          {{- range $pvc := $pvcs }}
+            - mountPath: {{ printf "/pvc/%s" $pvc | quote }}
+              name: {{ $pvc | quote }}
+          {{- end }}
+      volumes:
+        - name: "pvc-tool-scripts"
+          configMap:
+            name: *podName
+            items:
+              - key: *rsyncdConf
+                path: *rsyncdConf
+              {{- range $path, $_ := $scripts }}
+                {{- $name := ($path | base) }}
+              - key: {{ $name | quote }}
+                path: {{ $name | quote }}
+                mode: 0555
+              {{- end }}
+            defaultMode: 0640
+            optional: false
+        {{- include "arkcase.persistence.ephemeralVolume" (dict "ctx" $ "name" "logs") | nindent 8 }}
+        {{- range $pvc := $pvcs }}
+        - name: &pvc {{ $pvc | quote }}
+          persistentVolumeClaim:
+            claimName: *pvc
+        {{- end }}
+---
+  {{- $service := (include "arkcase.subsystem.service" . | fromYaml) }}
+  {{- if and $externalDnsName $externalDnsAnnotation }}
+    {{- $serviceMetadata := ($service.metadata | default dict) }}
+    {{- $serviceAnnotations := ($serviceMetadata.annotations | default dict) }}
+
+    {{- $serviceAnnotations = set $serviceAnnotations ($externalDnsAnnotation | toString) ($externalDnsName | toString) }}
+
+    {{- $serviceMetadata = set $serviceMetadata "annotations" $serviceAnnotations }}
+    {{- $service = set $service "metadata" $serviceMetadata }}
+  {{- end }}
+  {{- $service | toYaml | nindent 0 }}
+{{- end }}

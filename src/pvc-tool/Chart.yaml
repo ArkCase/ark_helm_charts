@@ -1,14 +1,15 @@
 apiVersion: v2
 name: pvc-tool
-version: 1.2.1
+version: 1.3.0
 appVersion: latest
-description: A Pod that mounts all the PVCs available in a given namespace, and exposes them over RSYNC or clones their data into another storageClass
+description: Exposes all the PVCs in a given namespace over RSYNC, or clones each one's data into another storageClass or into S3
 home: https://github.com/ArkCase/ark_helm_charts/tree/main/src/pvc-tool
 keywords:
 - pv
 - pvc
 - rsync
 - clone
+- s3
 maintainers:
 - email: diego.rivera@armedia.com
   name: diego.rivera

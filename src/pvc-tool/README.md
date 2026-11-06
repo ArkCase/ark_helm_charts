@@ -1,6 +1,69 @@
+# PVC Tool
+
+This chart works on all the PVCs in a given Namespace, in one of three modes (set with the `mode` value):
+
+  * ***rsync*** (default): a single StatefulSet mounts all the PVCs, and exposes them as modules in an [rsync daemon](https://en.wikipedia.org/wiki/Rsync) (see [RSYNC PVC Access](#rsync-pvc-access)).
+  * ***clone***: each PVC's data is copied into a new PVC named `${clonePrefix}-${pvcName}`, optionally with a different `storageClassName` (see [Clone and S3 Modes](#clone-and-s3-modes)).
+  * ***s3***: each PVC's data is uploaded into S3 as a `.tar.gz` file (see [Clone and S3 Modes](#clone-and-s3-modes)).
+
+## Clone and S3 Modes
+
+In these modes, instead of one pod mounting every PVC (which can't work when the volumes can't all be attached to the same node), each PVC (or pair of old and new PVCs) gets its own StatefulSet, so its pod can be scheduled wherever its volumes can be attached. Each pod copies its data, verifies the copy, and then becomes ***Ready*** whatever the outcome, with the exit status stored in `/.pod.result` (`0` means success). To repeat the work for a PVC, delete its pod.
+
+PVCs named `${something}-0` through `${something}-N` most likely came from the same StatefulSet's `volumeClaimTemplates`. They're handled by a single StatefulSet with `N+1` replicas, whose `volumeClaimTemplates` match the existing PVCs' names, so each pod mounts only the PVCs with its own ordinal. The StatefulSet's name is chosen by splitting `${something}` at a dash, such that it collides with no other StatefulSet or pod in the namespace (e.g. `data-arkcase-search-0` through `data-arkcase-search-2` will be handled by a StatefulSet named `arkcase-search`, or `search` if `arkcase-search` already exists). If no split works, or the ordinals aren't contiguous from `0`, each PVC gets a StatefulSet of its own, named `${releaseName}-${pvcName}`. This requires Kubernetes 1.28 or later, for the `apps.kubernetes.io/pod-index` pod label.
+
+Each pod receives these environment variables:
+
+|Variable|Modes|Description|
+|--------|-----|-----------|
+|`SOURCE_PVC`|both|The name of the PVC being copied, mounted at `/source`|
+|`TARGET_PVC`|clone|The name of the new PVC, mounted at `/target`|
+|`S3_BUCKET`|s3|The value of `s3.bucket`|
+|`S3_REGION`|s3|The value of `s3.region` (if given)|
+|`S3_PREFIX`|s3|`${s3.prefix}/${namespace}/${SOURCE_PVC}` (the object is `${S3_PREFIX}.tar.gz`)|
+|`S3_ENDPOINT`|s3|The value of `s3.endpoint` (if given)|
+
+### Clone
+
+```
+helm install pvc-tool arkcase/pvc-tool --set mode=clone --set storageClassName=new-storage-class
+```
+
+The new PVCs are annotated with `helm.sh/resource-policy: keep`, so they survive the chart's removal. If `storageClassName` isn't given, they'll use the cluster's default storage class. The copy is done with `rsync`, and is verified by comparing the type, permissions, ownership, size and path of every file in both volumes.
+
+### S3
+
+```
+helm install pvc-tool arkcase/pvc-tool \
+    --set mode=s3 \
+    --set s3.bucket=some-bucket \
+    --set s3.region=us-east-1 \
+    --set s3.prefix=pvc-tool-prefix
+```
+
+This will upload each PVC's data into `s3://some-bucket/pvc-tool-prefix/${namespace}/${pvcName}.tar.gz`. The archives are created with GNU `tar`, preserving numeric ownership, permissions, sparse files, and (if the `tar` in the image supports them) ACLs and extended attributes. To restore one, extract it as root with `tar --numeric-owner -xzpf ...`.
+
+  * `s3.accessKey` and `s3.secretKey`: if given, they're stored in a Secret and passed in as `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`. Otherwise, the AWS CLI's default credential chain is used (e.g. the node's instance profile, or IRSA/Pod Identity via `serviceAccountName`).
+  * `s3.endpoint`: the endpoint URL for S3-compatible stores.
+  * `s3.verify` (default `true`): download each archive after uploading it, and compare its file listing against the PVC's contents.
+
+### Container Image
+
+The pods in these modes need `bash`, `rsync` (clone mode), GNU `tar`, `gzip` and the `aws` CLI (s3 mode), plus GNU `coreutils`, `findutils` and `diffutils`. Set `image.registry`, `image.repository` and `image.tag` to an image that provides them.
+
+### Automation
+
+The `tools/convert-pvc-sc` script installs the chart in clone mode, waits for every pod to finish, and uninstalls it. Any arguments after `--` are passed to `helm install`:
+
+```
+tools/convert-pvc-sc my-namespace pvc-tool -- --set storageClassName=new-storage-class
+```
+
+The `tools/reassign-pvcs` script can then swap the new volumes in, under the old PVCs' names.
+
 # RSYNC PVC Access
 
-This chart creates a StatefulSet that mounts all PVCs in a given Namespace, and exposes them as modules in an [rsync daemon](https://en.wikipedia.org/wiki/Rsync).  This allows one to either extract the data from the PVCs, or transfer data into them from another source.
+In the ***rsync*** mode, this chart creates a StatefulSet that mounts all PVCs in a given Namespace, and exposes them as modules in an [rsync daemon](https://en.wikipedia.org/wiki/Rsync).  This allows one to either extract the data from the PVCs, or transfer data into them from another source.
 
 This tool is similar to [pv-migrate](https://github.com/utkuozdemir/pv-migrate), but differs in that it exposes all PVCs at once, and thus allows you to handle them in batch (i.e. when moving an application between namespaces).
 

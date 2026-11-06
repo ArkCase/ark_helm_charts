@@ -14,6 +14,11 @@ export DISABLE_CLONE
 [ -v RESULT_MARKER ] || RESULT_MARKER=""
 [ -n "${RESULT_MARKER}" ] || RESULT_MARKER="/.pod.result"
 
+[ -v CHART ] || CHART=""
+[ -n "${CHART}" ] || CHART="arkcase/pvc-tool"
+
+MARKER_LABEL="armedia.com/pvc-mounter-name"
+
 POD_POLL_WAIT="10"
 POD_REBOOT_WAIT="60"
 POD_REBOOT_TIMEOUT="$(( POD_REBOOT_WAIT * 15 ))"
@@ -104,11 +109,11 @@ compute_pod_state()
 	# It's not terminating ... maybe it's ready?
 	local COND=""
 
-	COND="$(jq -r '.status.conditions[] | select(.type == "Ready") | .status' <<< "${JSON}")"
+	COND="$(jq -r '.status.conditions[]? | select(.type == "Ready") | .status' <<< "${JSON}")"
 	[ "${COND,,}" == "true" ] && STATE="ready"
 	[ -n "${STATE}" ] && echo -n "${STATE}" && return 0
 
-	COND="$(jq -r '.status.conditions[] | select(.type == "Initialized") | .status' <<< "${JSON}")"
+	COND="$(jq -r '.status.conditions[]? | select(.type == "Initialized") | .status' <<< "${JSON}")"
 	[ "${COND,,}" == "true" ] && STATE="started"
 	[ -n "${STATE}" ] && echo -n "${STATE}" && return 0
 
@@ -195,9 +200,10 @@ deploy_chart()
 	should_install || return 0
 	say "👉 Deploying the chart to do the volume cloning..."
 	execute helm install \
-		"${RELEASE}" arkcase/pvc-tool \
+		"${RELEASE}" "${CHART}" \
 		--namespace "${NAMESPACE}" \
-		--set mode=clone || fail "Unable to deploy the chart"
+		--set mode=clone \
+		"${HELM_ARGS[@]}" || fail "Unable to deploy the chart"
 }
 
 track_logs()
@@ -224,9 +230,9 @@ wait_for_condition()
 		-o json 2>&1
 }
 
-get_copy_result()
+get_pod_result()
 {
-	local POD="${RELEASE}-0"
+	local POD="${1}"
 
 	local OLD_STATE=""
 	local NEW_STATE=""
@@ -293,11 +299,14 @@ get_copy_result()
 
 				# The happy path - we just went from "whatever" into Ready, which
 				# means the copy has completed and we have a result to harvest...
-				ok "The pod appears to have completed its work"
+				ok "The pod ${POD} appears to have completed its work"
 				local RESULT=""
-				RC=0
-				RESULT="$(kubectl exec --namespace "${NAMESPACE}" "${POD}" -- cat "${RESULT_MARKER}" 2>/dev/null)" || RC=${?}
-				[ ${RC} -eq 0 ] && return ${RESULT}
+				RC="0"
+				RESULT="$(kubectl exec --namespace "${NAMESPACE}" "${POD}" -- cat "${RESULT_MARKER}" 2>/dev/null)" || RC="${?}"
+				if [ "${RC}" -eq 0 ] ; then
+					[[ "${RESULT}" =~ ^[0-9]+$ ]] || RESULT="1"
+					return "${RESULT}"
+				fi
 
 				# If the RC isn't 0 it means there's something off and we weren't able
 				# to get the result, so we loop back up to poll again, and see what's up...
@@ -321,6 +330,47 @@ get_copy_result()
 	done
 }
 
+#
+# Wait for every pod of every StatefulSet the release created, and
+# report on each one's outcome. Each StatefulSet has one pod per PVC
+# (or PVC pair) being copied.
+#
+get_copy_results()
+{
+	local JSON=""
+	JSON="$(kubectl get statefulset --namespace "${NAMESPACE}" --selector "${MARKER_LABEL}=${RELEASE}" -o json)" || fail "Failed to list the release's StatefulSets"
+
+	local PODS=()
+	readarray -t PODS < <(jq -r '.items[] | .metadata.name as $n | range(0; .spec.replicas // 1) | "\($n)-\(.)"' <<< "${JSON}" | sort)
+	if [ "${#PODS[@]}" -eq 0 ] ; then
+		warn "The release ${RELEASE} has no StatefulSets: there were no PVCs to copy"
+		return 0
+	fi
+	say "👉 Waiting for ${#PODS[@]} pods to complete their work..."
+
+	local FAILED=()
+	local POD=""
+	for POD in "${PODS[@]}" ; do
+		say "👀 Waiting for ${POD}..."
+		if get_pod_result "${POD}" ; then
+			ok "The work in ${POD} succeeded"
+		else
+			err "The work in ${POD} failed (rc=${?})"
+			FAILED+=("${POD}")
+		fi
+	done
+
+	[ "${#FAILED[@]}" -eq 0 ] && return 0
+
+	err "The work failed in ${#FAILED[@]} pod(s): ${FAILED[*]}"
+	err "Review their logs, and delete them to repeat the work, like so:"
+	err ""
+	err "\t$ kubectl delete pod --namespace ${NAMESPACE@Q} ${FAILED[*]@Q}"
+	err ""
+	err "Then run this script again to resume waiting."
+	return 1
+}
+
 undeploy_chart()
 {
 	should_uninstall || return 0
@@ -335,9 +385,22 @@ undeploy_chart()
 
 usage()
 {
-	echo -e "usage: ${BASH_SOURCE:-${0}} [namespace] release" 1>&2
+	echo -e "usage: ${BASH_SOURCE:-${0}} [namespace] release [-- helm-install-args...]" 1>&2
+	echo -e "" 1>&2
+	echo -e "	Any arguments after -- are passed to 'helm install' (e.g. --set storageClassName=...," 1>&2
+	echo -e "	or --set mode=s3 --set s3.bucket=...). Set CHART to use a chart other than" 1>&2
+	echo -e "	${CHART} (e.g. a local directory)." 1>&2
 	exit 1
 }
+
+ARGS=()
+while [ "${#}" -gt 0 ] ; do
+	[ "${1}" == "--" ] && shift && break
+	ARGS+=("${1}")
+	shift
+done
+HELM_ARGS=("${@}")
+set -- "${ARGS[@]}"
 
 [ ${#} -ge 1 ] && [ ${#} -le 2 ] || usage
 
@@ -365,7 +428,7 @@ fi
 deploy_chart || fail "Couldn't deploy the chart to do the volume cloning"
 ok "Chart deployed!"
 
-get_copy_result || fail "The file copy seems to have failed, please review the full logs for more information"
+get_copy_results || fail "The file copy seems to have failed, please review the full logs for more information"
 ok "Copy complete!"
 
 undeploy_chart || fail "Couldn't un-deploy the chart"

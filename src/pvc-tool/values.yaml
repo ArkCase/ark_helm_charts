@@ -4,6 +4,55 @@
 
 strategyType: Recreate
 
+## The operating mode:
+##
+##   rsync: one pod mounts all the PVCs in the namespace, and exposes them via an rsync daemon
+##   clone: each PVC is copied into a new PVC named ${clonePrefix}-${pvcName} (optionally with
+##          a different storageClassName), by its own StatefulSet
+##   s3:    each PVC is uploaded as s3://${s3.bucket}/${s3.prefix}/${namespace}/${pvcName}.tar.gz,
+##          by its own StatefulSet
+##
+## In the clone and s3 modes, PVCs named ${something}-0 .. ${something}-N (most likely created
+## by the same StatefulSet) are handled by a single StatefulSet with N+1 replicas, where each
+## pod mounts only its matching PVC (requires Kubernetes 1.28 or later).
+mode: rsync
+
+## The prefix for the new PVCs' names (clone mode only)
+clonePrefix: clone
+
+## The storageClassName for the new PVCs (clone mode only) - if not given, the
+## cluster's default storage class will be used
+# storageClassName:
+
+## How many times to try each copy before giving up (clone and s3 modes)
+maxAttempts: 5
+
+## The S3 target (s3 mode only)
+s3:
+  # The bucket to upload into (required)
+  bucket: ""
+
+  # The bucket's region (optional)
+  region: ""
+
+  # The prefix (optional) to prepend to ${namespace}/${pvcName}.tar.gz
+  prefix: ""
+
+  # The endpoint URL, for S3-compatible stores (optional)
+  endpoint: ""
+
+  # The credentials (optional) - if not given, the AWS CLI's default credential
+  # chain is used (i.e. instance profiles, or IRSA via serviceAccountName)
+  accessKey: ""
+  secretKey: ""
+
+  # Download each archive after uploading it, and compare its file listing
+  # against the PVC's
+  verify: true
+
+## The service account for the clone and s3 pods (optional)
+# serviceAccountName:
+
 image:
   registry: "public.ecr.aws"
   repository: "arkcase/nettest"

@@ -1,0 +1,48 @@
+{{- $mode := (include "pvc-tool.mode" $) -}}
+{{- $scripts := (.Files.Glob "scripts/*") -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    {{ include "pvc-tool.markerLabel" $ }}: &podName {{ .Release.Name | quote }}
+  name: *podName
+  namespace: {{ .Release.Namespace | quote }}
+data:
+
+  #
+  # Common-use scripts
+  #
+  {{- range $path, $_ := $scripts }}
+  {{ $path | base }}: |{{- $.Files.Get $path | nindent 4 }}
+  {{- end }}
+
+  {{- if eq $mode "rsync" }}
+  #
+  # The rsyncd configuration
+  #
+  rsyncd.conf: |-
+    uid = 0
+    gid = 0
+    pid file = /tmp/rsyncd.pid
+    forward lookup = false
+    reverse lookup = false
+    lock file = /tmp/rsync.lock
+    read only = false
+
+    [scripts]
+    path = /scripts
+    comment = Utility scripts to interact with this server
+    exclude = lost+found/
+    transfer logging = yes
+    read only = true
+    timeout = 300
+
+    {{- range $pvc := (include "pvc-tool.rsyncPvcs" $ | fromYamlArray) }}
+    [{{ $pvc }}]
+    path = /pvc/{{ $pvc }}
+    comment = {{ $pvc }}
+    exclude = lost+found/
+    transfer logging = yes
+    timeout = 300
+    {{- end }}
+  {{- end }}

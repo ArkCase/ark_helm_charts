@@ -5,18 +5,23 @@ DEFAULT_POLL_SLEEP="30"
 
 [ -v POLL_SLEEP ] || POLL_SLEEP=""
 
-[ ${#} -eq 0 ] || POLL_SLEEP="${1}"
+[ "${#}" -eq 0 ] || POLL_SLEEP="${1}"
 
 [[ "${POLL_SLEEP}" =~ ^[1-9][0-9]*$ ]] || POLL_SLEEP="${DEFAULT_POLL_SLEEP}"
 
 ARGS=()
-for D in /pvc /clones ; do
-	[ -d "${D}" ] || continue
 
-	readarray -t L < <(ls -d "${D}"/* | sort)
+# The rsync pod mounts each PVC under /pvc
+if [ -d "/pvc" ] ; then
+	readarray -t L < <(/usr/bin/find "/pvc" -mindepth 1 -maxdepth 1 -type d | LC_ALL="C" /usr/bin/sort)
 	ARGS+=("${L[@]}")
+fi
+
+# The clone and s3 pods mount one source (and maybe one target)
+for D in "/source" "/target" ; do
+	[ -d "${D}" ] && ARGS+=("${D}")
 done
 
-[ ${#ARGS[@]} -gt 0 ] || exit 1
+[ "${#ARGS[@]}" -gt 0 ] || exit 1
 
 exec watch -n "${POLL_SLEEP}" df -kh "${ARGS[@]}"
