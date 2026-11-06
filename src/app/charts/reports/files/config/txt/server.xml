@@ -111,7 +111,8 @@
                useBodyEncodingForURI="true">
         <UpgradeProtocol className="org.apache.coyote.http2.Http2Protocol" />
         <SSLHostConfig protocols="TLSv1.3" certificateVerification="none">
-            <Certificate certificateKeyFile="${SSL_PRIVATE_KEY}"
+            <Certificate certificateKeyFile="${SSL_PRIVATE_KEY_ENCRYPTED}"
+                         certificateKeyPassword="${SSL_PASSWORD}"
                          certificateFile="${SSL_CERTIFICATE_TOMCAT}"
                          certificateChainFile="${SSL_CA_INT}"
                          type="RSA" />
@@ -151,8 +152,12 @@
                resourceName="UserDatabase"/>
       </Realm>
 
+      <!-- We turn off autoDeploy for security -->
+      <!-- The context descriptors (conf/Catalina/localhost by default) live under the
+           temp directory, so conf/ needn't be writable -->
       <Host name="localhost"  appBase="webapps"
-            unpackWARs="true" autoDeploy="true" workDir="${WORK_DIR}">
+            xmlBase="${java.io.tmpdir}/conf/Catalina/localhost"
+            unpackWARs="true" autoDeploy="false" workDir="${WORK_DIR}">
 
         <!-- SingleSignOn valve, share authentication between web applications
              Documentation at: /docs/config/valve.html -->
