@@ -160,11 +160,12 @@
                resourceName="UserDatabase"/>
       </Realm>
 
+      <!-- We turn off autoDeploy for security -->
       <!-- The context descriptors (conf/Catalina/localhost by default) live under the
            temp directory, so conf/ needn't be writable -->
       <Host name="localhost"  appBase="webapps"
             xmlBase="${java.io.tmpdir}/conf/Catalina/localhost"
-            unpackWARs="true" autoDeploy="true" workDir="${WORK_DIR}">
+            unpackWARs="true" autoDeploy="false" workDir="${WORK_DIR}">
 
         <!-- SingleSignOn valve, share authentication between web applications
              Documentation at: /docs/config/valve.html -->
