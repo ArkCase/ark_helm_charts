@@ -5,11 +5,14 @@ SCRIPT="$(/usr/bin/basename "${SCRIPT}")"
 set -euo pipefail
 
 #
-# Copies the data in one PVC (mounted at ${SOURCE_DIR}) into its target, which
-# depends on ${TASK_MODE}:
+# Copies the data for one PVC, depending on ${TASK_MODE} (and ${S3_DIRECTION}):
 #
-#   clone: the new PVC mounted at ${TARGET_DIR}, via rsync
-#   s3:    a tar.gz file at s3://${S3_BUCKET}/${S3_PREFIX}.tar.gz
+#   clone:          from ${SOURCE_DIR} into the new PVC at ${TARGET_DIR}, via rsync
+#   s3 (upload):    from ${SOURCE_DIR} into s3://${S3_BUCKET}/${S3_PREFIX}.tar.gz
+#   s3 (download):  from s3://${S3_BUCKET}/${S3_PREFIX}.tar.gz into ${TARGET_DIR}
+#
+# If ${CLEAN_TARGET} is true, the contents of ${TARGET_DIR} (except lost+found)
+# are removed before the first attempt.
 #
 # The work is attempted up to ${MAX_ATTEMPTS} times. Then, whatever the outcome,
 # the exit status is written into ${RESULT_MARKER} (which makes the pod Ready),
@@ -20,6 +23,9 @@ STARTED_MARKER="/.pod.started"
 RESULT_MARKER="/.pod.result"
 
 DEFAULT_MAX_ATTEMPTS="5"
+
+# Returned by an attempt that failed in a way that retrying won't fix
+NO_RETRY_RC="100"
 
 timestamp()
 {
@@ -52,6 +58,14 @@ fail()
 	exit "${EXIT_CODE:-1}"
 }
 
+to_boolean()
+{
+	case "${1,,}" in
+		true | t | yes | y ) echo -n "true" ;;
+		* ) echo -n "false" ;;
+	esac
+}
+
 is_valid_name()
 {
 	local NAME="${1}"
@@ -69,6 +83,22 @@ ensure_dir()
 	return 0
 }
 
+ensure_target_dir()
+{
+	ensure_dir "${TARGET_DIR}"
+	[ -w "${TARGET_DIR}" ] || fail "The directory [${TARGET_DIR}] is not writable"
+	[ "$(/usr/bin/readlink -f "${TARGET_DIR}")" != "/" ] || fail "The target directory may not be the root directory"
+	return 0
+}
+
+clean_target()
+{
+	say "🧹 Removing the existing contents of [${TARGET_DIR}] (except lost+found)..."
+	/usr/bin/find "${TARGET_DIR}" -mindepth 1 -maxdepth 1 ! -name "lost+found" -exec /usr/bin/rm -rf -- "{}" + || return 1
+	ok "The target directory is clean"
+	return 0
+}
+
 #
 # List the contents of the current directory such that two copies of
 # the same data produce the same output: type, mode, ownership, size
@@ -81,15 +111,6 @@ list_contents()
 		-path "./lost+found" -prune -o \
 		\( -type d -printf "%p\t%y %m %U:%G\n" \) -o \
 		-printf "%p\t%y %m %U:%G %s\n" | LC_ALL="C" /usr/bin/sort
-}
-
-#
-# List the paths in the current directory as tar would list them
-# (minus the trailing slashes on directories), sorted
-#
-list_paths()
-{
-	/usr/bin/find . -path "./lost+found" -prune -o -print | LC_ALL="C" /usr/bin/sort
 }
 
 verify_clone()
@@ -137,28 +158,38 @@ run_clone()
 	return 0
 }
 
+#
+# Compare the archive in S3 against the given directory, with tar --diff:
+# every member's type, permissions, ownership, size, modification time and
+# contents must match (files that aren't in the archive are ignored)
+#
 verify_s3()
 {
-	say "👀 Verifying the archive at [${TARGET}] by listing its contents"
-	local OLD_LIST="${WORK_DIR}/source.list"
-	local NEW_LIST="${WORK_DIR}/target.list"
-	( cd "${SOURCE_DIR}" && list_paths ) > "${OLD_LIST}" || { err "Failed to list the source's contents" ; return 1 ; }
-	"${AWS}" "${AWS_FLAGS[@]}" s3 cp --only-show-errors "${TARGET}" - | \
-		"${TAR}" --quoting-style=literal -tzf - | \
-		/usr/bin/sed -e 's;/$;;' | \
-		LC_ALL="C" /usr/bin/sort > "${NEW_LIST}" || { err "Failed to download and list the archive" ; return 1 ; }
-
-	if ! /usr/bin/cmp -s "${OLD_LIST}" "${NEW_LIST}" ; then
-		err "The source and archive contents differ (showing up to 100 lines of differences):"
-		/usr/bin/diff "${OLD_LIST}" "${NEW_LIST}" | /usr/bin/head -n 100 || true
+	local DIR="${1}"
+	say "👀 Verifying [${S3_URL}] against [${DIR}]..."
+	local CMD=(
+		"${TAR}"
+		--diff
+		--gzip
+		--file=-
+		--directory="${DIR}"
+		--numeric-owner
+		"${TAR_FLAGS[@]}"
+	)
+	local DIFF="${WORK_DIR}/tar.diff"
+	local RC="0"
+	"${AWS}" "${AWS_FLAGS[@]}" s3 cp --only-show-errors "${S3_URL}" - | "${CMD[@]}" > "${DIFF}" 2>&1 || RC="${?}"
+	if [ "${RC}" -ne 0 ] ; then
+		err "The archive and [${DIR}] differ, or the comparison failed (rc = ${RC}) - showing up to 100 lines of output:"
+		/usr/bin/head -n 100 "${DIFF}" || true
 		return 1
 	fi
 
-	ok "Archive verified ($(/usr/bin/wc -l < "${OLD_LIST}") entries)"
+	ok "Archive verified"
 	return 0
 }
 
-run_s3()
+run_s3_upload()
 {
 	# The AWS CLI needs an idea of the stream's size to pick a multipart chunk
 	# size that can handle it (the default only reaches ~78GiB)
@@ -183,7 +214,7 @@ run_s3()
 		--only-show-errors
 		--expected-size "${SIZE}"
 		-
-		"${TARGET}"
+		"${S3_URL}"
 	)
 	say "👀 Will use the command: ${TAR_CMD[@]@Q} | ${AWS_CMD[@]@Q}"
 
@@ -196,7 +227,54 @@ run_s3()
 	ok "Upload complete"
 
 	if "${S3_VERIFY}" ; then
-		verify_s3 || return "${?}"
+		verify_s3 "${SOURCE_DIR}" || return "${?}"
+	fi
+	return 0
+}
+
+run_s3_download()
+{
+	# Make sure there's something to download
+	local OUT=""
+	if ! OUT="$("${AWS}" "${AWS_FLAGS[@]}" s3api head-object --bucket "${S3_BUCKET}" --key "${S3_KEY}" --query "ContentLength" --output text 2>&1)" ; then
+		if [[ "${OUT}" == *"Not Found"* ]] || [[ "${OUT}" == *"(404)"* ]] ; then
+			err "The archive [${S3_URL}] does not exist"
+			return "${NO_RETRY_RC}"
+		fi
+		err "Failed to look up the archive [${S3_URL}]: ${OUT}"
+		return 1
+	fi
+	say "👀 The archive is ${OUT} bytes (compressed)"
+
+	local AWS_CMD=(
+		"${AWS}" "${AWS_FLAGS[@]}" s3 cp
+		--only-show-errors
+		"${S3_URL}"
+		-
+	)
+	local TAR_CMD=(
+		"${TAR}"
+		--extract
+		--gzip
+		--file=-
+		--directory="${TARGET_DIR}"
+		--numeric-owner
+		--same-owner
+		--same-permissions
+		"${TAR_FLAGS[@]}"
+	)
+	say "👀 Will use the command: ${AWS_CMD[@]@Q} | ${TAR_CMD[@]@Q}"
+
+	local RC="0"
+	"${AWS_CMD[@]}" | "${TAR_CMD[@]}" || RC="${?}"
+	if [ "${RC}" -ne 0 ] ; then
+		err "Failed to download and extract the data (rc = ${RC})"
+		return "${RC}"
+	fi
+	ok "Download complete"
+
+	if "${S3_VERIFY}" ; then
+		verify_s3 "${TARGET_DIR}" || return "${?}"
 	fi
 	return 0
 }
@@ -204,11 +282,18 @@ run_s3()
 run_task()
 {
 	local ATTEMPT=""
+	local RC=""
 	for (( ATTEMPT = 1 ; ATTEMPT <= MAX_ATTEMPTS ; ATTEMPT++ )) ; do
 		say "👉 Starting attempt # ${ATTEMPT} of ${MAX_ATTEMPTS}..."
-		if "run_${TASK_MODE}" ; then
+		RC="0"
+		"run_${TASK}" || RC="${?}"
+		if [ "${RC}" -eq 0 ] ; then
 			ok "Work complete!"
 			return 0
+		fi
+		if [ "${RC}" -eq "${NO_RETRY_RC}" ] ; then
+			err "Attempt # ${ATTEMPT} failed, and retrying won't help"
+			return 1
 		fi
 		warn "Attempt # ${ATTEMPT} failed"
 	done
@@ -241,8 +326,17 @@ exec 2>&1
 
 	[ -v TASK_MODE ] || TASK_MODE=""
 	TASK_MODE="${TASK_MODE,,}"
+	[ -v S3_DIRECTION ] || S3_DIRECTION=""
+	S3_DIRECTION="${S3_DIRECTION,,}"
 	case "${TASK_MODE}" in
-		clone | s3 ) ;;
+		clone ) TASK="clone" ;;
+		s3 )
+			case "${S3_DIRECTION}" in
+				"" | upload ) TASK="s3_upload" ;;
+				download ) TASK="s3_download" ;;
+				* ) fail "Unsupported S3_DIRECTION value [${S3_DIRECTION}]" ;;
+			esac
+			;;
 		* ) fail "Unsupported TASK_MODE value [${TASK_MODE}]" ;;
 	esac
 
@@ -250,46 +344,52 @@ exec 2>&1
 
 	[ -v SOURCE_DIR ] || SOURCE_DIR=""
 	[ -n "${SOURCE_DIR}" ] || SOURCE_DIR="/source"
-	ensure_dir "${SOURCE_DIR}"
+	[ -v SOURCE_PVC ] || SOURCE_PVC=""
+	[ -v TARGET_DIR ] || TARGET_DIR=""
+	[ -n "${TARGET_DIR}" ] || TARGET_DIR="/target"
+	[ -v TARGET_PVC ] || TARGET_PVC=""
+	[ -v CLEAN_TARGET ] || CLEAN_TARGET=""
+	CLEAN_TARGET="$(to_boolean "${CLEAN_TARGET}")"
 
-	[ -v SOURCE_PVC ] || fail "The SOURCE_PVC variable is not set"
-	is_valid_name "${SOURCE_PVC}" || fail "The SOURCE_PVC value [${SOURCE_PVC}] is not a valid PVC name"
+	# The PVC this pod was deployed for: the source, except when downloading into it
+	if [ "${TASK}" == "s3_download" ] ; then
+		PVC_VAR="TARGET_PVC"
+	else
+		PVC_VAR="SOURCE_PVC"
+	fi
+	PVC="${!PVC_VAR}"
+	[ -n "${PVC}" ] || fail "The ${PVC_VAR} variable is not set"
+	is_valid_name "${PVC}" || fail "The ${PVC_VAR} value [${PVC}] is not a valid PVC name"
 
 	# When we're one of many pods, make sure we're working on our own PVC
 	if [ -v POD_INDEX ] ; then
 		[[ "${POD_INDEX}" =~ ^(0|[1-9][0-9]*)$ ]] || fail "The POD_INDEX value [${POD_INDEX}] is not valid (the apps.kubernetes.io/pod-index label requires Kubernetes 1.28 or later)"
 		[ "${POD_NAME##*-}" == "${POD_INDEX}" ] || fail "The POD_INDEX value [${POD_INDEX}] doesn't match the pod name [${POD_NAME}]"
-		[ "${SOURCE_PVC##*-}" == "${POD_INDEX}" ] || fail "The SOURCE_PVC value [${SOURCE_PVC}] doesn't match the pod index [${POD_INDEX}]"
+		[ "${PVC##*-}" == "${POD_INDEX}" ] || fail "The ${PVC_VAR} value [${PVC}] doesn't match the pod index [${POD_INDEX}]"
 	fi
 
 	WORK_DIR="$(/usr/bin/mktemp -d)" || fail "Failed to create a work directory"
 
-	case "${TASK_MODE}" in
+	case "${TASK}" in
 		clone )
-			[ -v TARGET_DIR ] || TARGET_DIR=""
-			[ -n "${TARGET_DIR}" ] || TARGET_DIR="/target"
-			ensure_dir "${TARGET_DIR}"
-			[ -w "${TARGET_DIR}" ] || fail "The directory [${TARGET_DIR}] is not writable"
-
-			[ -v TARGET_PVC ] || TARGET_PVC="(unknown)"
+			ensure_dir "${SOURCE_DIR}"
+			ensure_target_dir
+			[ -n "${TARGET_PVC}" ] || TARGET_PVC="(unknown)"
 
 			RSYNC="$(type -P rsync)" || fail "Failed to find rsync in the path"
 
 			say "👉 Copying PVC ${SOURCE_PVC} into PVC ${TARGET_PVC}"
 			;;
 
-		s3 )
+		s3_* )
 			[ -v S3_BUCKET ] || S3_BUCKET=""
 			[ -n "${S3_BUCKET}" ] || fail "The S3_BUCKET variable is not set"
 			[ -v S3_PREFIX ] || S3_PREFIX=""
 			[ -n "${S3_PREFIX}" ] || fail "The S3_PREFIX variable is not set"
 			[ -v S3_REGION ] || S3_REGION=""
 			[ -v S3_ENDPOINT ] || S3_ENDPOINT=""
-			[ -v S3_VERIFY ] || S3_VERIFY=""
-			case "${S3_VERIFY,,}" in
-				false | f | no | n ) S3_VERIFY="false" ;;
-				* ) S3_VERIFY="true" ;;
-			esac
+			[ -v S3_VERIFY ] || S3_VERIFY="true"
+			S3_VERIFY="$(to_boolean "${S3_VERIFY}")"
 
 			AWS="$(type -P aws)" || fail "Failed to find aws in the path"
 			TAR="$(type -P tar)" || fail "Failed to find tar in the path"
@@ -306,11 +406,22 @@ exec 2>&1
 				[[ "${TAR_HELP}" == *"${FLAG}"* ]] && TAR_FLAGS+=("${FLAG}")
 			done
 
-			TARGET="s3://${S3_BUCKET}/${S3_PREFIX}.tar.gz"
+			S3_KEY="${S3_PREFIX}.tar.gz"
+			S3_URL="s3://${S3_BUCKET}/${S3_KEY}"
 
-			say "👉 Uploading PVC ${SOURCE_PVC} into [${TARGET}]"
+			if [ "${TASK}" == "s3_upload" ] ; then
+				ensure_dir "${SOURCE_DIR}"
+				say "👉 Uploading PVC ${SOURCE_PVC} into [${S3_URL}]"
+			else
+				ensure_target_dir
+				say "👉 Downloading [${S3_URL}] into PVC ${TARGET_PVC}"
+			fi
 			;;
 	esac
+
+	if [ "${TASK}" != "s3_upload" ] && "${CLEAN_TARGET}" ; then
+		clean_target || fail "Failed to clean out the target directory [${TARGET_DIR}]"
+	fi
 
 	run_task
 ) &

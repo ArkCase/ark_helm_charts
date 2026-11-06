@@ -9,8 +9,8 @@ strategyType: Recreate
 ##   rsync: one pod mounts all the PVCs in the namespace, and exposes them via an rsync daemon
 ##   clone: each PVC is copied into a new PVC named ${clonePrefix}-${pvcName} (optionally with
 ##          a different storageClassName), by its own StatefulSet
-##   s3:    each PVC is uploaded as s3://${s3.bucket}/${s3.prefix}/${namespace}/${pvcName}.tar.gz,
-##          by its own StatefulSet
+##   s3:    each PVC is uploaded as s3://${s3.bucket}/${s3.prefix}/${namespace}/${pvcName}.tar.gz
+##          (or downloaded from there, see s3.direction), by its own StatefulSet
 ##
 ## In the clone and s3 modes, PVCs named ${something}-0 .. ${something}-N (most likely created
 ## by the same StatefulSet) are handled by a single StatefulSet with N+1 replicas, where each
@@ -27,8 +27,20 @@ clonePrefix: clone
 ## How many times to try each copy before giving up (clone and s3 modes)
 maxAttempts: 5
 
+## Remove everything in each target PVC (except lost+found) before copying into it. This
+## applies to the new PVCs in clone mode, and to the existing PVCs in s3 mode when
+## s3.direction is "download". Without it, files that exist in the target PVC but not in
+## the source survive a download from S3 (a clone removes them anyway).
+cleanTarget: false
+
 ## The S3 target (s3 mode only)
 s3:
+  # Which way the data flows:
+  #   upload:   from each PVC into S3
+  #   download: from S3 into each PVC (e.g. into the PVCs created by deploying the
+  #             application, and released by scaling it down to 0)
+  direction: upload
+
   # The bucket to upload into (required)
   bucket: ""
 
@@ -38,16 +50,20 @@ s3:
   # The prefix (optional) to prepend to ${namespace}/${pvcName}.tar.gz
   prefix: ""
 
+  # The ${namespace} part of the archives' names (optional, defaults to the release's
+  # namespace) - e.g. to download data that was uploaded from another namespace
+  namespace: ""
+
   # The endpoint URL, for S3-compatible stores (optional)
   endpoint: ""
 
   # The credentials (optional) - if not given, the AWS CLI's default credential
-  # chain is used (i.e. instance profiles, or IRSA via serviceAccountName)
+  # chain is used (e.g. instance profiles, or IRSA via serviceAccountName)
   accessKey: ""
   secretKey: ""
 
-  # Download each archive after uploading it, and compare its file listing
-  # against the PVC's
+  # Download each archive again after the transfer, and compare it against the PVC's
+  # contents (with tar --diff: types, permissions, ownership, sizes, times and contents)
   verify: true
 
 ## The service account for the clone and s3 pods (optional)

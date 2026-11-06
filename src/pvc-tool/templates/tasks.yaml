@@ -14,9 +14,19 @@
   {{- fail (printf "The maxAttempts value [%s] must be a positive integer" $maxAttempts) -}}
 {{- end -}}
 
+{{- $cleanTarget := (not (empty (include "arkcase.toBoolean" .Values.cleanTarget))) -}}
+
 {{- $s3 := (.Values.s3 | default dict) -}}
 {{- $s3Secret := "" -}}
+{{- $s3Direction := ($s3.direction | default "upload" | toString | lower) -}}
+{{- $s3Namespace := ($s3.namespace | default $namespace | toString) -}}
 {{- if eq $mode "s3" -}}
+  {{- if not (has $s3Direction (list "upload" "download")) -}}
+    {{- fail (printf "Unsupported S3 direction [%s] - must be either upload or download" $s3Direction) -}}
+  {{- end -}}
+  {{- if not (regexMatch "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$" $s3Namespace) -}}
+    {{- fail (printf "The S3 namespace [%s] is not a valid namespace name" $s3Namespace) -}}
+  {{- end -}}
   {{- if not $s3.bucket -}}
     {{- fail "Must provide the S3 bucket name (s3.bucket) to use the s3 mode" -}}
   {{- end -}}
@@ -30,7 +40,13 @@
     {{- $s3Secret = (printf "%s-s3" $release) -}}
   {{- end -}}
 {{- end -}}
-{{- $s3Prefix := (list ($s3.prefix | default "" | toString | trimAll "/") $namespace | compact | join "/") -}}
+{{- $s3Prefix := (list ($s3.prefix | default "" | toString | trimAll "/") $s3Namespace | compact | join "/") -}}
+
+{{- /* The existing PVCs are the source, except when downloading from S3 into them */ -}}
+{{- $download := (and (eq $mode "s3") (eq $s3Direction "download")) -}}
+{{- $pvcRole := ($download | ternary "target" "source") -}}
+{{- $pvcVar := (printf "%s_PVC" (upper $pvcRole)) -}}
+{{- $hasTarget := (or $clone $download) -}}
 
 {{- range $pvc := $plan.clones }}
 ---
@@ -59,8 +75,8 @@ stringData:
   {{- $labels = set $labels $taskLabel $task.name }}
   {{- $matchLabels := (include "arkcase.labels.matchLabels" $ | fromYaml) }}
   {{- $matchLabels = set $matchLabels $taskLabel $task.name }}
-  {{- $sourceVolume := ($task.family | ternary $task.sourceTemplate "source") }}
-  {{- $targetVolume := ($task.family | ternary $task.targetTemplate "target") }}
+  {{- $pvcVolume := ($task.family | ternary $task.sourceTemplate $pvcRole) }}
+  {{- $cloneVolume := ($task.family | ternary $task.targetTemplate "target") }}
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -119,25 +135,33 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: "metadata.namespace"
+          {{- if not $download }}
             - name: "SOURCE_DIR"
-              value: &sourceDir "/source"
+              value: "/source"
+          {{- end }}
+          {{- if $hasTarget }}
+            - name: "TARGET_DIR"
+              value: "/target"
+            - name: "CLEAN_TARGET"
+              value: {{ $cleanTarget | toString | quote }}
+          {{- end }}
           {{- if $task.family }}
             - name: "POD_INDEX"
               valueFrom:
                 fieldRef:
                   fieldPath: "metadata.labels['apps.kubernetes.io/pod-index']"
-            - name: "SOURCE_PVC"
+            - name: {{ $pvcVar | quote }}
               value: {{ printf "%s-$(POD_INDEX)" $task.sourcePrefix | quote }}
           {{- else }}
-            - name: "SOURCE_PVC"
+            - name: {{ $pvcVar | quote }}
               value: {{ $task.claim | quote }}
           {{- end }}
           {{- if $clone }}
-            - name: "TARGET_DIR"
-              value: &targetDir "/target"
             - name: "TARGET_PVC"
               value: {{ printf "%s-$(SOURCE_PVC)" $clonePrefix | quote }}
           {{- else }}
+            - name: "S3_DIRECTION"
+              value: {{ $s3Direction | quote }}
             - name: "S3_BUCKET"
               value: {{ $s3.bucket | toString | quote }}
             {{- with $s3.region }}
@@ -149,7 +173,7 @@ spec:
               value: {{ . | toString | quote }}
             {{- end }}
             - name: "S3_PREFIX"
-              value: {{ (list $s3Prefix "$(SOURCE_PVC)" | compact | join "/") | quote }}
+              value: {{ (list $s3Prefix (printf "$(%s)" $pvcVar) | compact | join "/") | quote }}
             - name: "S3_VERIFY"
               value: {{ (not (empty (include "arkcase.toBoolean" ((hasKey $s3 "verify") | ternary $s3.verify true)))) | toString | quote }}
           {{- end }}
@@ -191,11 +215,12 @@ spec:
               subPath: {{ $name | quote }}
               readOnly: true
           {{- end }}
-            - mountPath: *sourceDir
-              name: {{ $sourceVolume | quote }}
+            - mountPath: {{ printf "/%s" $pvcRole | quote }}
+              name: {{ $pvcVolume | quote }}
+              readOnly: {{ eq $pvcRole "source" }}
           {{- if $clone }}
-            - mountPath: *targetDir
-              name: {{ $targetVolume | quote }}
+            - mountPath: "/target"
+              name: {{ $cloneVolume | quote }}
           {{- end }}
       volumes:
         - name: "pvc-tool-scripts"
@@ -214,7 +239,7 @@ spec:
         - name: "pvc-tool-logs"
           emptyDir: {}
       {{- if not $task.family }}
-        - name: "source"
+        - name: {{ $pvcRole | quote }}
           persistentVolumeClaim:
             claimName: {{ $task.claim | quote }}
         {{- if $clone }}

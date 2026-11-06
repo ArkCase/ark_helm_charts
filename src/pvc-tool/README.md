@@ -4,7 +4,7 @@ This chart works on all the PVCs in a given Namespace, in one of three modes (se
 
   * ***rsync*** (default): a single StatefulSet mounts all the PVCs, and exposes them as modules in an [rsync daemon](https://en.wikipedia.org/wiki/Rsync) (see [RSYNC PVC Access](#rsync-pvc-access)).
   * ***clone***: each PVC's data is copied into a new PVC named `${clonePrefix}-${pvcName}`, optionally with a different `storageClassName` (see [Clone and S3 Modes](#clone-and-s3-modes)).
-  * ***s3***: each PVC's data is uploaded into S3 as a `.tar.gz` file (see [Clone and S3 Modes](#clone-and-s3-modes)).
+  * ***s3***: each PVC's data is uploaded into S3 as a `.tar.gz` file, or downloaded from there (see [Clone and S3 Modes](#clone-and-s3-modes)).
 
 ## Clone and S3 Modes
 
@@ -16,12 +16,16 @@ Each pod receives these environment variables:
 
 |Variable|Modes|Description|
 |--------|-----|-----------|
-|`SOURCE_PVC`|both|The name of the PVC being copied, mounted at `/source`|
-|`TARGET_PVC`|clone|The name of the new PVC, mounted at `/target`|
+|`SOURCE_PVC`|clone, s3 upload|The name of the PVC being copied, mounted (read-only) at `/source`|
+|`TARGET_PVC`|clone, s3 download|The name of the PVC being copied into, mounted at `/target`|
+|`CLEAN_TARGET`|clone, s3 download|The value of `cleanTarget`|
+|`S3_DIRECTION`|s3|The value of `s3.direction` (`upload` or `download`)|
 |`S3_BUCKET`|s3|The value of `s3.bucket`|
 |`S3_REGION`|s3|The value of `s3.region` (if given)|
-|`S3_PREFIX`|s3|`${s3.prefix}/${namespace}/${SOURCE_PVC}` (the object is `${S3_PREFIX}.tar.gz`)|
+|`S3_PREFIX`|s3|`${s3.prefix}/${s3.namespace}/${pvcName}` (the object is `${S3_PREFIX}.tar.gz`)|
 |`S3_ENDPOINT`|s3|The value of `s3.endpoint` (if given)|
+
+Set `cleanTarget=true` to remove everything in each target PVC (except `lost+found`) before the first copy attempt. Without it, a clone still ends up as an exact copy (`rsync` removes the extra files), but a download from S3 leaves any files that aren't in the archive in place.
 
 ### Clone
 
@@ -41,11 +45,27 @@ helm install pvc-tool arkcase/pvc-tool \
     --set s3.prefix=pvc-tool-prefix
 ```
 
-This will upload each PVC's data into `s3://some-bucket/pvc-tool-prefix/${namespace}/${pvcName}.tar.gz`. The archives are created with GNU `tar`, preserving numeric ownership, permissions, sparse files, and (if the `tar` in the image supports them) ACLs and extended attributes. To restore one, extract it as root with `tar --numeric-owner -xzpf ...`.
+This will upload each PVC's data into `s3://some-bucket/pvc-tool-prefix/${namespace}/${pvcName}.tar.gz`. The archives are created with GNU `tar`, preserving numeric ownership, permissions, sparse files, and (if the `tar` in the image supports them) ACLs and extended attributes.
+
+To copy the data back into PVCs, deploy the application so it creates its PVCs, scale it down to 0 so the PVCs are released, and install the chart with `s3.direction=download`:
+
+```
+helm install pvc-tool arkcase/pvc-tool \
+    --set mode=s3 \
+    --set s3.direction=download \
+    --set s3.bucket=some-bucket \
+    --set s3.region=us-east-1 \
+    --set s3.prefix=pvc-tool-prefix \
+    --set cleanTarget=true
+```
+
+Each PVC in the namespace is filled from the archive with its name. If a PVC has no archive, its pod fails right away (without retrying). To download data that was uploaded from a different namespace, set `s3.namespace` to that namespace's name.
 
   * `s3.accessKey` and `s3.secretKey`: if given, they're stored in a Secret and passed in as `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`. Otherwise, the AWS CLI's default credential chain is used (e.g. the node's instance profile, or IRSA/Pod Identity via `serviceAccountName`).
   * `s3.endpoint`: the endpoint URL for S3-compatible stores.
-  * `s3.verify` (default `true`): download each archive after uploading it, and compare its file listing against the PVC's contents.
+  * `s3.direction` (default `upload`): `upload` copies each PVC into S3, `download` copies from S3 into each PVC.
+  * `s3.namespace` (default: the release's namespace): the `${namespace}` part of the archives' names.
+  * `s3.verify` (default `true`): after the transfer, download the archive again and compare it against the PVC with `tar --diff` (each archived file's type, permissions, ownership, size, modification time and contents).
 
 ### Container Image
 
@@ -53,10 +73,11 @@ The pods in these modes need `bash`, `rsync` (clone mode), GNU `tar`, `gzip` and
 
 ### Automation
 
-The `tools/convert-pvc-sc` script installs the chart in clone mode, waits for every pod to finish, and uninstalls it. Any arguments after `--` are passed to `helm install`:
+The `tools/convert-pvc-sc` script installs the chart in clone mode, waits for every pod to finish, and uninstalls it. Any arguments after `--` are passed to `helm install`, so it can also drive the s3 mode:
 
 ```
 tools/convert-pvc-sc my-namespace pvc-tool -- --set storageClassName=new-storage-class
+tools/convert-pvc-sc my-namespace pvc-tool -- --set mode=s3 --set s3.direction=download --set s3.bucket=some-bucket
 ```
 
 The `tools/reassign-pvcs` script can then swap the new volumes in, under the old PVCs' names.
