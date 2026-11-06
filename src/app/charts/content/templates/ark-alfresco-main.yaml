@@ -115,9 +115,7 @@ spec:
                 -Dencryption.cipherAlgorithm=DESede/CBC/PKCS5Padding
                 -Dencryption.keyAlgorithm=DESede
                 -Dencryption.keystore.location=/usr/local/tomcat/shared/classes/alfresco/extension/keystore/keystore
-                -Dmetadata-keystore.password=$(METADATA_KEYSTORE_PASSWORD)
                 -Dmetadata-keystore.aliases=metadata
-                -Dmetadata-keystore.metadata.password=$(METADATA_KEYSTORE_METADATA_PASSWORD)
                 -Dmetadata-keystore.metadata.algorithm=DESede
             {{- $content := (include "arkcase.content.info" $ | fromYaml) }}
             {{- $indexing := (not (empty (include "arkcase.content.indexing" $))) }}

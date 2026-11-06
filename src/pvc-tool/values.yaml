@@ -27,18 +27,14 @@ clonePrefix: clone
 ## How many times to try each copy before giving up (clone and s3 modes)
 maxAttempts: 5
 
-## Remove everything in each target PVC (except lost+found) before copying into it. This
-## applies to the new PVCs in clone mode, and to the existing PVCs in s3 mode when
-## s3.direction is "download". Without it, files that exist in the target PVC but not in
-## the source survive a download from S3 (a clone removes them anyway).
-cleanTarget: false
-
 ## The S3 target (s3 mode only)
 s3:
   # Which way the data flows:
   #   upload:   from each PVC into S3
   #   download: from S3 into each PVC (e.g. into the PVCs created by deploying the
-  #             application, and released by scaling it down to 0)
+  #             application, and released by scaling it down to 0). Each PVC's
+  #             existing contents (except lost+found) are removed first, so it ends
+  #             up as an exact copy of the archive
   direction: upload
 
   # The bucket to upload into (required)

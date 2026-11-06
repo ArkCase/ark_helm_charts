@@ -18,14 +18,13 @@ Each pod receives these environment variables:
 |--------|-----|-----------|
 |`SOURCE_PVC`|clone, s3 upload|The name of the PVC being copied, mounted (read-only) at `/source`|
 |`TARGET_PVC`|clone, s3 download|The name of the PVC being copied into, mounted at `/target`|
-|`CLEAN_TARGET`|clone, s3 download|The value of `cleanTarget`|
 |`S3_DIRECTION`|s3|The value of `s3.direction` (`upload` or `download`)|
 |`S3_BUCKET`|s3|The value of `s3.bucket`|
 |`S3_REGION`|s3|The value of `s3.region` (if given)|
 |`S3_PREFIX`|s3|`${s3.prefix}/${s3.namespace}/${pvcName}` (the object is `${S3_PREFIX}.tar.gz`)|
 |`S3_ENDPOINT`|s3|The value of `s3.endpoint` (if given)|
 
-Set `cleanTarget=true` to remove everything in each target PVC (except `lost+found`) before the first copy attempt. Without it, a clone still ends up as an exact copy (`rsync` removes the extra files), but a download from S3 leaves any files that aren't in the archive in place.
+Either way, each target PVC ends up as an exact copy of its source (`lost+found` is left alone). A clone uses `rsync`, which deletes the files that aren't in the source, and skips the ones that already match, so a restarted pod resumes where the previous one left off. A download from S3 has to re-read the whole archive on every attempt anyway, so it empties the target PVC first.
 
 ### Clone
 
@@ -55,11 +54,10 @@ helm install pvc-tool arkcase/pvc-tool \
     --set s3.direction=download \
     --set s3.bucket=some-bucket \
     --set s3.region=us-east-1 \
-    --set s3.prefix=pvc-tool-prefix \
-    --set cleanTarget=true
+    --set s3.prefix=pvc-tool-prefix
 ```
 
-Each PVC in the namespace is filled from the archive with its name. If a PVC has no archive, its pod fails right away (without retrying). To download data that was uploaded from a different namespace, set `s3.namespace` to that namespace's name.
+Each PVC in the namespace is emptied (except for `lost+found`) and filled from the archive with its name. If a PVC has no archive, its pod fails right away (without retrying). To download data that was uploaded from a different namespace, set `s3.namespace` to that namespace's name.
 
   * `s3.accessKey` and `s3.secretKey`: if given, they're stored in a Secret and passed in as `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`. Otherwise, the AWS CLI's default credential chain is used (e.g. the node's instance profile, or IRSA/Pod Identity via `serviceAccountName`).
   * `s3.endpoint`: the endpoint URL for S3-compatible stores.

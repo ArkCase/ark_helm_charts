@@ -14,8 +14,6 @@
   {{- fail (printf "The maxAttempts value [%s] must be a positive integer" $maxAttempts) -}}
 {{- end -}}
 
-{{- $cleanTarget := (not (empty (include "arkcase.toBoolean" .Values.cleanTarget))) -}}
-
 {{- $s3 := (.Values.s3 | default dict) -}}
 {{- $s3Secret := "" -}}
 {{- $s3Direction := ($s3.direction | default "upload" | toString | lower) -}}
@@ -142,8 +140,6 @@ spec:
           {{- if $hasTarget }}
             - name: "TARGET_DIR"
               value: "/target"
-            - name: "CLEAN_TARGET"
-              value: {{ $cleanTarget | toString | quote }}
           {{- end }}
           {{- if $task.family }}
             - name: "POD_INDEX"

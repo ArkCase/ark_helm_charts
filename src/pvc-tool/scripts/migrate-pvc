@@ -11,8 +11,10 @@ set -euo pipefail
 #   s3 (upload):    from ${SOURCE_DIR} into s3://${S3_BUCKET}/${S3_PREFIX}.tar.gz
 #   s3 (download):  from s3://${S3_BUCKET}/${S3_PREFIX}.tar.gz into ${TARGET_DIR}
 #
-# If ${CLEAN_TARGET} is true, the contents of ${TARGET_DIR} (except lost+found)
-# are removed before the first attempt.
+# Either way, ${TARGET_DIR} (except lost+found) ends up as an exact copy of the
+# source: rsync deletes what isn't in the source and skips what already matches
+# (so a restarted copy resumes), while a download from S3 has to re-read the
+# whole archive anyway, so the target is emptied before each attempt.
 #
 # The work is attempted up to ${MAX_ATTEMPTS} times. Then, whatever the outcome,
 # the exit status is written into ${RESULT_MARKER} (which makes the pod Ready),
@@ -246,6 +248,11 @@ run_s3_download()
 	fi
 	say "👀 The archive is ${OUT} bytes (compressed)"
 
+	# tar can't tell which existing files already match the archive (its skip
+	# options would keep files left half-written by an interrupted attempt), and
+	# it can't remove the files that aren't in the archive, so start from scratch
+	clean_target || return 1
+
 	local AWS_CMD=(
 		"${AWS}" "${AWS_FLAGS[@]}" s3 cp
 		--only-show-errors
@@ -348,8 +355,6 @@ exec 2>&1
 	[ -v TARGET_DIR ] || TARGET_DIR=""
 	[ -n "${TARGET_DIR}" ] || TARGET_DIR="/target"
 	[ -v TARGET_PVC ] || TARGET_PVC=""
-	[ -v CLEAN_TARGET ] || CLEAN_TARGET=""
-	CLEAN_TARGET="$(to_boolean "${CLEAN_TARGET}")"
 
 	# The PVC this pod was deployed for: the source, except when downloading into it
 	if [ "${TASK}" == "s3_download" ] ; then
@@ -418,10 +423,6 @@ exec 2>&1
 			fi
 			;;
 	esac
-
-	if [ "${TASK}" != "s3_upload" ] && "${CLEAN_TARGET}" ; then
-		clean_target || fail "Failed to clean out the target directory [${TARGET_DIR}]"
-	fi
 
 	run_task
 ) &
