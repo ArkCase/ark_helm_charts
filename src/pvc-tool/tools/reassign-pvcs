@@ -141,7 +141,7 @@ prepare_new_pvcs()
 	local ROLLBACK_DIR="${1}"
 	local TGT_DIR="${2}"
 	while read PV PVC ; do
-		local OLD="${PVC/clone-/}"
+		local OLD="${PVC#clone-}"
 		local DATA="$(kubectl get pvc --namespace "${NAMESPACE}" "${OLD}" -o yaml)"
 		echo -n "${DATA}" | clean_pvc > "${ROLLBACK_DIR}/${OLD}.yaml"
 		local OLD_PV="$(grep "volumeName:" <<< "${DATA}" | awk '{ print $2 }')"
@@ -153,13 +153,13 @@ prepare_new_pvcs()
 
 delete_pvcs()
 {
-	[ ${#} -gt 1 ] || return 0
+	[ "${#}" -gt 0 ] || return 0
 	execute kubectl delete pvc --namespace "${NAMESPACE}" "${@}"
 }
 
 clear_pv_claimref()
 {
-	[ ${#} -gt 1 ] || return 0
+	[ "${#}" -gt 0 ] || return 0
 
 	local PATCH="$(cat <<-EOF
 	spec:
@@ -186,7 +186,7 @@ link_new_pvs()
 		local PATCH="$(cat <<-EOF
 		spec:
 		  claimRef:
-		    name: ${PVC/clone-/}
+		    name: ${PVC#clone-}
 		EOF
 		)"
 
@@ -196,7 +196,7 @@ link_new_pvs()
 
 delete_volumes()
 {
-	[ ${#} -gt 1 ] || return 0
+	[ "${#}" -gt 0 ] || return 0
 	execute kubectl delete pv "${@}"
 }
 
@@ -240,8 +240,8 @@ KUBECTL="$(type -P kubectl)" || fail "Could not find kubectl in the path"
 
 say "👉 Gathering the PVC->PV mappings..."
 ALL_PVC_MAP="$(get_pvc_map)"
-OLD_PVC_MAP="$(grep -v " clone-" <<< "${ALL_PVC_MAP}")"
-NEW_PVC_MAP="$(grep " clone-" <<< "${ALL_PVC_MAP}")"
+OLD_PVC_MAP="$(grep -v " clone-" <<< "${ALL_PVC_MAP}" || true)"
+NEW_PVC_MAP="$(grep " clone-" <<< "${ALL_PVC_MAP}" || true)"
 
 readarray -t ALL_PVS < <(echo -n "${ALL_PVC_MAP}" | awk '{ print $1 }')
 readarray -t ALL_PVCS < <(echo -n "${ALL_PVC_MAP}" | awk '{ print $2 }')
