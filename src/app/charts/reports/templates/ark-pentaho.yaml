@@ -193,6 +193,9 @@ spec:
             {{- end }}
             - name: ARKCASE_ENTERPRISE
               value: {{ not (empty (include "arkcase.enterprise" $)) | toString | quote }}
+            # Uncomment these when MR#6873 is merged
+            # - name: ARKCASE_SHARED_KEY
+            #   value: "$(ARKCASE_PASSWORD)"
             - name: SESSION_COOKIE_NAME
               value: "PENTAHO_SESSIONID"
             - name: JAVA_TOOL_OPTIONS
