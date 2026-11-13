@@ -5,8 +5,6 @@
     <parsers>
         <parser class="org.apache.tika.parser.DefaultParser">
             <parser-exclude class="org.apache.tika.parser.ocr.TesseractOCRParser"/>
-        </parser>
-        <parser class="org.apache.tika.parser.DefaultParser">
             <parser-exclude class="org.apache.tika.parser.mp4.MP4Parser"/>
             <parser-exclude class="org.apache.tika.parser.mp3.Mp3Parser"/>
             <parser-exclude class="org.apache.tika.parser.audio.AudioParser"/>
@@ -81,7 +79,7 @@
                 <arg>-Xmx1g</arg>
                 <arg>-XX:ParallelGCThreads=2</arg>
             </forkedJvmArgs>
-            <timeoutMillis>60000</timeoutMillis>
+            <timeoutMillis>300000</timeoutMillis>
             <maxForEmitBatchBytes>2000000</maxForEmitBatchBytes>
         </params>
     </pipes>
