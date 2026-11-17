@@ -165,6 +165,9 @@
             xmlBase="${java.io.tmpdir}/conf/Catalina/localhost"
             unpackWARs="true" autoDeploy="false" workDir="${WORK_DIR}">
 
+        <!-- Remove the header that breaks everything! -->
+        <Valve className="com.armedia.web.tomcat.JavaxRemoveRequestHeaderValve" headers="X-ARKCASE-EXTERNAL-USER"/>
+
         <!-- SingleSignOn valve, share authentication between web applications
              Documentation at: /docs/config/valve.html -->
         <!--
