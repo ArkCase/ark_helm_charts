@@ -10,7 +10,6 @@
   {{- $saml := (include "arkcase.core.sso.saml" $ | fromYaml) -}}
   {{- $fullName := (include "arkcase.fullname" $) -}}
   {{- $extraName := (printf "%s-extra" $fullName) -}}
-  {{- $extraEnv := (include "arkcase.core.extra-env" $ | fromYaml) -}}
   {{- $serviceAccountName := (include "arkcase.serviceAccountName" $) -}}
   {{- $serviceAccountName = (or (empty $serviceAccountName) (eq "default" $serviceAccountName)) | ternary $fullName $serviceAccountName -}}
   {{- $roleName := (printf "%s-config-access" $serviceAccountName) -}}
