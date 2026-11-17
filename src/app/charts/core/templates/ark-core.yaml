@@ -227,11 +227,11 @@ spec:
         - name: arkcase
           {{- include "arkcase.image" $ | nindent 10 }}
           envFrom:
-            - prefix: "ARK_EXTRA_SECRET_"
+            - prefix: &extra-secret-prefix "ARK_EXTRA_SECRET_"
               secretRef:
                 name: &extra-name {{ $extraName | quote }}
                 optional: true
-            - prefix: "ARK_EXTRA_CONF_"
+            - prefix: &extra-conf-prefix "ARK_EXTRA_CONF_"
               configMapRef:
                 name: *extra-name
                 optional: true
@@ -487,6 +487,15 @@ spec:
             {{- end }}
         - name: cloudconfig
           {{- include "arkcase.image" (dict "ctx" $ "name" "cloudconfig" "repository" "arkcase/cloudconfig") | nindent 10 }}
+          envFrom:
+            - prefix: *extra-secret-prefix
+              secretRef:
+                name: *extra-name
+                optional: true
+            - prefix: *extra-conf-prefix
+              configMapRef:
+                name: *extra-name
+                optional: true
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
             {{- include "arkcase.fips.legacy-env" $ | nindent 12 }}
