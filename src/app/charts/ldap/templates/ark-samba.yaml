@@ -75,7 +75,9 @@ spec:
             - name: NOCOMPLEXITY
               value: "true"
             - name: SERVICE_NAME
-              value: {{ include "arkcase.name" $ | quote }}
+              value: &serviceName {{ include "arkcase.name" $ | quote }}
+            - name: SEED_DIR
+              value: &seedDir "/app/secrets"
           command: [ "/usr/local/bin/provision" ]
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           # This container needs SYS_ADMIN due to how Samba initializes its
@@ -88,6 +90,17 @@ spec:
             {{- include "arkcase.accounts.volumeMount" (dict "ctx" $ "type" "shared") | nindent 12 }}
             - name: &dataVol "data"
               mountPath: &dataDir "/var/lib/samba"
+            - name: &configMap "configmap"
+              mountPath: "/app/init/init.d/000-init-seeds-wrapper"
+              subPath: &initSeedsWrapper "init-seeds-wrapper"
+              readOnly: true
+            - name: *configMap
+              mountPath: "/usr/local/bin/init-seeds"
+              subPath: &initSeeds "init-seeds"
+              readOnly: true
+            - name: &secrets "secrets"
+              mountPath: *seedDir
+              readOnly: true
         {{- include "arkcase.initDependencies.container" $ | nindent 8 }}
       containers:
         - name: samba
@@ -122,9 +135,7 @@ spec:
             - name: NOCOMPLEXITY
               value: "true"
             - name: SERVICE_NAME
-              value: {{ include "arkcase.name" $ | quote }}
-            - name: SEED_DIR
-              value: &seedDir "/app/secrets"
+              value: *serviceName
           {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "samba") | nindent 12 }}
@@ -138,16 +149,8 @@ spec:
               mountPath: *dataDir
             - name: "logs"
               mountPath: "/var/log/samba"
-            - name: &secrets "secrets"
+            - name: *secrets
               mountPath: *seedDir
-              readOnly: true
-            - name: &configMap "configmap"
-              mountPath: "/app/init/init.d/000-init-seeds-wrapper"
-              subPath: &initSeedsWrapper "init-seeds-wrapper"
-              readOnly: true
-            - name: *configMap
-              mountPath: "/usr/local/bin/init-seeds"
-              subPath: &initSeeds "init-seeds"
               readOnly: true
       volumes:
         {{- include "arkcase.acme.volume" $ | nindent 8 }}
