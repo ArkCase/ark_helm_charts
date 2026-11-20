@@ -232,7 +232,8 @@ def run_command(command, stdin = None):
 		env["PASSWD"] = LDAP_ADMIN_PASS
 	# The new session drops any controlling terminal, which is what getpass()
 	# would prefer to read from if we're handing it its input through STDIN
-	return subprocess.run(command, input = stdin, env = env, start_new_session = (stdin is not None), stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+	# Only stdout is captured (some of it gets parsed): stderr goes straight to ours
+	return subprocess.run(command, input = stdin, env = env, start_new_session = (stdin is not None), stdout=subprocess.PIPE)
 
 def samba_tool(flags, stdin = None):
 	return run_command([ EXE_SAMBA_TOOL ] + render_auth_info() + flags, stdin)

@@ -43,7 +43,16 @@ spec:
       schedulerName: {{ $.Values.schedulerName | quote }}
       {{- end }}
       serviceAccountName: {{ include "arkcase.serviceAccountName" $ | quote }}
-      securityContext: {{- include "arkcase.securityContext" $ | nindent 8 }}
+      {{- /* Samba runs as non-root, so it needs this sysctl to listen on the low ports (389, 636, ...) */}}
+      {{- $securityContext := (include "arkcase.securityContext" $ | fromYaml) }}
+      {{- $portSysctl := "net.ipv4.ip_unprivileged_port_start" }}
+      {{- $sysctls := list (dict "name" $portSysctl "value" "0") }}
+      {{- range ($securityContext.sysctls | default list) }}
+        {{- if ne .name $portSysctl }}
+          {{- $sysctls = append $sysctls . }}
+        {{- end }}
+      {{- end }}
+      securityContext: {{- set $securityContext "sysctls" $sysctls | toYaml | nindent 8 }}
       initContainers:
         - name: init-provision
           {{- include "arkcase.image" $ | nindent 10 }}
@@ -83,6 +92,10 @@ spec:
           # This container needs SYS_ADMIN due to how Samba initializes its
           # provisioning. However, once that's done, this can be safely dropped.
           securityContext:
+            # Provisioning needs root (the runtime doesn't): it also hands the
+            # state and the logs over to the image's (non-root) runtime user
+            runAsUser: 0
+            runAsNonRoot: false
             capabilities:
               add: ["SYS_ADMIN"]
           volumeMounts:
@@ -101,6 +114,8 @@ spec:
             - name: &secrets "secrets"
               mountPath: *seedDir
               readOnly: true
+            - name: &logsVol "logs"
+              mountPath: &logsDir "/var/log/samba"
         {{- include "arkcase.initDependencies.container" $ | nindent 8 }}
       containers:
         - name: samba
@@ -147,8 +162,8 @@ spec:
               mountPath: "/app/init"
             - name: *dataVol
               mountPath: *dataDir
-            - name: "logs"
-              mountPath: "/var/log/samba"
+            - name: *logsVol
+              mountPath: *logsDir
             - name: *secrets
               mountPath: *seedDir
               readOnly: true
