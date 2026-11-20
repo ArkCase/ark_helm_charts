@@ -141,12 +141,20 @@ spec:
               value: *serviceName
             - name: SECRETS_DIR
               value: *secretsDir
+            - name: SEED_DIR
+              value: *seedDir
           {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "samba") | nindent 12 }}
           volumeMounts:
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
             {{- include "arkcase.subsystem-access.volumeMount" $ | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/init/init.d/000-init-seeds-wrapper" "subPath" "init-seeds-wrapper") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/boot/000-init-managed" "subPath" "init-managed") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/init-seeds") | nindent 12 }}
+            - name: *seedFiles
+              mountPath: *seedDir
+              readOnly: true
             - name: *dataVol
               mountPath: *dataDir
             - name: "logs"
