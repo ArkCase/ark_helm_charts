@@ -58,8 +58,9 @@ securityContext:
   # fsGroup: 2000
   # fsGroupChangePolicy: OnRootMismatch
   samba:
-    privileged: true
-    # capabilities:
+    privileged: false
+    capabilities:
+      add: [ "SYS_ADMIN" ]
     #   drop:
     #   - ALL
     # readOnlyRootFilesystem: true
