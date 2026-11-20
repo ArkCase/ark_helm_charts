@@ -45,9 +45,7 @@ spec:
       serviceAccountName: {{ include "arkcase.serviceAccountName" $ | quote }}
       securityContext: {{- include "arkcase.securityContext" $ | nindent 8 }}
       initContainers:
-        {{- include "arkcase.initDependencies.container" $ | nindent 8 }}
-      containers:
-        - name: samba
+        - name: init-provision
           {{- include "arkcase.image" $ | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
@@ -78,12 +76,54 @@ spec:
               value: "true"
             - name: SERVICE_NAME
               value: {{ include "arkcase.name" $ | quote }}
+          command: [ "/usr/local/bin/provision" ]
+          resources: {{- include "arkcase.resources" $ | nindent 12 }}
+          # This container needs SYS_ADMIN due to how Samba initializes its
+          # provisioning. However, once that's done, this can be safely dropped.
+          securityContext:
+            capabilities:
+              add: ["SYS_ADMIN"]
+          volumeMounts:
+            {{- include "arkcase.accounts.volumeMount" (dict "ctx" $ "type" "admin") | nindent 12 }}
+            {{- include "arkcase.accounts.volumeMount" (dict "ctx" $ "type" "shared") | nindent 12 }}
+            - name: &dataVol "data"
+              mountPath: &dataDir "/var/lib/samba"
+        {{- include "arkcase.initDependencies.container" $ | nindent 8 }}
+      containers:
+        - name: samba
+          {{- include "arkcase.image" $ | nindent 10 }}
+          env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            {{- include "arkcase.acme.env" $ | nindent 12 }}
+            - name: DOMAIN
+              valueFrom:
+                secretKeyRef:
+                  name: *secretName
+                  key: DOMAIN_NAME
+            - name: DOMAINPASS
+              valueFrom:
+                secretKeyRef:
+                  name: *secretName
+                  key: DOMAIN_PASSWORD
+            - name: DOMAIN_REALM
+              valueFrom:
+                secretKeyRef:
+                  name: *secretName
+                  key: DOMAIN_REALM
+            - name: JOIN
+              value: "false"
+            #- name: JOINSITE
+            #  value: ""
+            - name: INSECURELDAP
+              value: "false"
+            - name: MULTISITE
+              value: "false"
+            - name: NOCOMPLEXITY
+              value: "true"
+            - name: SERVICE_NAME
+              value: {{ include "arkcase.name" $ | quote }}
             - name: SEED_DIR
               value: &seedDir "/app/secrets"
           {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
-          {{- if $.Values.command }}
-          command: {{- $.Values.command | toYaml | nindent 12 }}
-          {{- end }}
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "samba") | nindent 12 }}
           volumeMounts:
@@ -92,8 +132,8 @@ spec:
             {{- include "arkcase.accounts.volumeMount" (dict "ctx" $ "type" "shared") | nindent 12 }}
             - name: &initVol "init"
               mountPath: "/app/init"
-            - name: "data"
-              mountPath: "/var/lib/samba"
+            - name: *dataVol
+              mountPath: *dataDir
             - name: "logs"
               mountPath: "/var/log/samba"
             - name: &secrets "secrets"
