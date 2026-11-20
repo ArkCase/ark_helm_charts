@@ -7,7 +7,7 @@ export RE_FULL_REVISION="^((0|[1-9][0-9]*)([.][0-9]+)*)(-([a-zA-Z0-9-]+([.][a-zA
 
 usage()
 {
-	echo -e "usage: ${CALLED} dir-1 [ dir-2 dir-3 ... dir-N ]"
+	echo -e "usage: ${BASH_ARGV0:-${BASH_SOURCE:-${0}}} dir-1 [ dir-2 dir-3 ... dir-N ]"
 	exit 1
 }
 
