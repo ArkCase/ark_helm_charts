@@ -94,6 +94,8 @@ spec:
           {{- include "arkcase.image" $ | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
+            - name: SPLIT_PROVISIONER
+              value: "true"
             - name: DOMAIN
               valueFrom:
                 secretKeyRef:
