@@ -261,7 +261,8 @@ def run_command(command):
 	if DEBUG:
 		logging.info(f"\tCommand = {safe_command}")
 		command = "true"
-	result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+	# Only stdout is captured (some of it gets parsed): stderr goes straight to ours
+	result = subprocess.run(command, stdout=subprocess.PIPE)
 	result.args = safe_command
 	return result
 
