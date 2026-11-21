@@ -28,11 +28,6 @@ set_or_default PENTAHO_SERVER "${PENTAHO_HOME}/pentaho-server"
 require_dir_readable "${PENTAHO_SERVER}"
 
 ###################################################################
-# DEPLOY, AS NEEDED, THE CRON SCHEDULES THAT WE'LL BE RUNNING     #
-###################################################################
-deploy-job-schedules
-
-###################################################################
 # ARKCASE MUST BE UP BEFORE WE START RUNNING JOBS                 #
 ###################################################################
 set_or_default INIT_POLL_SLEEP
@@ -50,5 +45,15 @@ eyes "Storing the runtime environment to a temporary file"
 set_or_default CRON_ENV "${HOME}/.cron-env"
 ( umask 0077 ; declare -px > "${CRON_ENV}" )
 
-doing "Starting the Cron process..."
-execute /usr/sbin/cron -f -L 15 -P
+# We bake these into the command-line to keep them
+# from being overridden by sillyness
+SSL_FLAGS=(
+	--tls-cert "${SSL_CERTIFICATE}"
+	--tls-key "${SSL_PRIVATE_KEY}"
+)
+
+# Don't do mTLS out-of-the box
+as_boolean "${ENABLE_MTLS:-}" && SSL_FLAGS+=( --tls-client-ca "${SSL_CA_CHAIN}" )
+
+doing "Starting the ETL Server process..."
+execute /usr/local/bin/etl-server "${SSL_FLAGS[@]}" "${@}"

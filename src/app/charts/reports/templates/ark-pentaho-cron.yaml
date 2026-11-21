@@ -104,6 +104,12 @@ spec:
             {{- include "arkcase.alt-java" $ | nindent 12 }}
             - name: DATA_DIR
               value: *dataDir
+            - name: JOBS_DIR
+              value: "$(DATA_DIR)"
+            - name: LOCK_MODE
+              value: "single"
+            - name: TLS_CLIENT_SUB
+              value: {{ printf "^cn=arkcase-core-(0|[1-9][0-9]*)[.]core(-dns)?[.]%s[.]svc[.]" $.Release.Namespace }}
             - name: PENTAHO_SERVICE
               value: {{ $pentahoService | quote }}
             {{- include "arkcase.pentaho.license.env" $ | nindent 12 }}
