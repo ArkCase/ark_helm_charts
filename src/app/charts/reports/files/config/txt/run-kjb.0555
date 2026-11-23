@@ -104,6 +104,9 @@ JOB_ID="${JOB_PATH%.*}"
 JOB_HOME="${JOBS_DIR}/$(dirname "${JOB_ID}")"
 JOB_NAME="$(basename "${JOB_ID}")"
 
+# The full path to the job
+JOB="${JOBS_DIR}/${JOB_PATH}"
+
 DEFAULT_LOG_KEEP=30
 set_or_default LOG_KEEP
 [[ "${LOG_KEEP}" =~ ^[1-9][0-9]*$ ]] || LOG_KEEP=${DEFAULT_LOG_KEEP}
