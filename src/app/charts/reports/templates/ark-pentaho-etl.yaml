@@ -65,7 +65,7 @@ spec:
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.deployment.env" $ | nindent 12 }}
           volumeMounts:
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/deploy" "subPath" "deploy-cron") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/deploy" "subPath" "deploy-etl") | nindent 12 }}
             - name: &initVol "init"
               mountPath: &initDir "/app/init"
             - name: &dataVol "data"
@@ -93,7 +93,7 @@ spec:
               mountPath: *dataDir
         {{- include "arkcase.initDependencies.container" $ | nindent 8 }}
       containers:
-        - name: cron
+        - name: etl-server
           {{- include "arkcase.image" $ | nindent 10 }}
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
@@ -102,6 +102,12 @@ spec:
             {{- include "arkcase.pentaho.extraDataSources.env" $ | nindent 12 }}
             - name: DATA_DIR
               value: *dataDir
+            - name: JOBS_DIR
+              value: "$(DATA_DIR)"
+            - name: LOCK_MODE
+              value: "single"
+            - name: TLS_CLIENT_SUB
+              value: {{ printf "^cn=arkcase-core-(0|[1-9][0-9]*)[.]core(-dns)?[.]%s[.]svc[.]" $.Release.Namespace }}
             - name: PENTAHO_SERVICE
               value: {{ $pentahoService | quote }}
             - name: PENTAHO_INSTALLED_LICENSE_PATH
@@ -110,7 +116,7 @@ spec:
               value: >-
                 {{ include "arkcase.fips.java-options" $ }}
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
-          securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "cron") | nindent 12 }}
+          securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "etl") | nindent 12 }}
           volumeMounts:
             {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
             - name: *dataVol
@@ -122,7 +128,7 @@ spec:
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/render-template") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/encrypt-passwords") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/run-kjb") | nindent 12 }}
-            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/entrypoint" "subPath" "entrypoint-cron") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/entrypoint" "subPath" "entrypoint-etl") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/deploy-job-schedules") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/pentaho-solutions/system/server.properties") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/pentaho/pentaho-server/pentaho-solutions/system/pdi-pur-plugin/plugin.properties") | nindent 12 }}

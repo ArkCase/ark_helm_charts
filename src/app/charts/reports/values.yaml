@@ -30,7 +30,7 @@ image:
     repository: "arkcase/pentaho-ce-9"
     # tag: &pentahoVersion "9.4.0.0"
 
-    cron:
+    etl:
       repository: "arkcase/pentaho-ce-9"
       # tag: *pentahoVersion
 
@@ -39,7 +39,7 @@ image:
     repository: "arkcase/pentaho-ee-9"
     # tag: *pentahoVersion
 
-    cron:
+    etl:
       repository: "arkcase/pentaho-ee-9"
       # tag: *pentahoVersion
 
@@ -140,6 +140,28 @@ service:
           scheme: HTTPS
           port: *https
           path: "/pentaho"
+  etl:
+    ports:
+      - name: etl
+        protocol: TCP
+        port: 443
+        targetPort: &etl 8443
+    probes:
+      enabled: true
+      spec:
+        httpGet:
+          scheme: HTTPS
+          port: *etl
+          path: "/ping"
+        initialDelaySeconds: 0
+        periodSeconds: 10
+        timeoutSeconds: 10
+        failureThreshold: 1
+        successThreshold: 1
+      startup:
+        failureThreshold: 90
+      liveness:
+        failureThreshold: 3
 
 ##
 ## Configure extra options for containers' liveness and readiness probes
