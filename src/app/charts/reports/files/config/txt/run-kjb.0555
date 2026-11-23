@@ -279,8 +279,8 @@ __main()
 __render_lock()
 {
 	local LOCK="${1}"
-	local ID="${2}"
-	local TIMESTAMP="${3}"
+	local JOB_ID="${2}"
+	local RUN_ID="${3}"
 	local CALLER="${4}"
 	shift 4
 	# No lock to record in no-lock mode: the target is /dev/null and
@@ -289,14 +289,14 @@ __render_lock()
 	local JQ='
 		def kv: map(capture("^(?<key>[^=]+)=(?<value>.*)$"; "s")) | from_entries;
 		($ARGS.positional | kv) as $parameters
-		| { job: "$JOB_ID", run: $JOB_RUN_ID, pid: $PID, started: $STARTED, caller: $CALLER, parameters: $parameters }
+		| { job: $JOB_ID, run: $RUN_ID, pid: $PID, started: $STARTED, caller: $CALLER, parameters: $parameters }
 	'
 	local CMD=()
 	CMD=(
 		jq -n
 			"${JQ}"
-			--arg JOB_ID "${ID}"
-			--arg JOB_RUN_ID "${ID}-${TIMESTAMP}"
+			--arg JOB_ID "${JOB_ID}"
+			--arg RUN_ID "${RUN_ID}"
 			--argjson PID "${BASHPID}"
 			--arg STARTED "$(date -u -Ins)"
 			--arg CALLER "${CALLER}"
