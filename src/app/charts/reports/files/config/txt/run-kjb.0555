@@ -19,21 +19,26 @@ usage()
 	exit 1
 }
 
-cleanup_logs()
+cleanup_runs()
 {
-	local RC=${?}
+	local GARBAGE="${JOB_RUNS_DIR}/${JOB_RUN_NAME}"
 
-	# Compress the newly-produced log, if it exists
-	[ -n "${JOB_LOG}" ] && [ -f "${JOB_LOG}" ] && gzip -9 "${JOB_LOG}"
+	# Check to see if the directory was compressed
+	if is_dir "${GARBAGE}" ; then
+		if is_file_readable "${GARBAGE}.tar.gz" ; then
+			rm -rf "${GARBAGE}" &>/dev/null || true
+		else
+			err "Something went wrong creating the output archive for [${JOB_RUN_NAME}] - the output directory [${GARBAGE}] will not be deleted"
+		fi
+	fi
 
 	# Retention within this job's own log tree: the run logs are named
 	# ${JOB_ID}-<ts>.log, so the file name here is ${JOB_NAME}-<ts>.log.gz.
-	# Newest last: keep the newest LOG_KEEP, remove the rest.
-	find "${JOB_LOG_DIR}" -type f -name "${JOB_NAME}-*.log.gz" -print0 | \
+	# Newest last: keep the newest KEEP_RUNS, remove the rest.
+	find "${JOB_RUNS_DIR}" -type f -name "${JOB_NAME}-*.tar.gz" -print0 | \
 		sort -z -r | \
-		tail -z -n +$(( LOG_KEEP + 1 )) | \
+		tail -z -n +$(( KEEP_RUNS + 1 )) | \
 		xargs -0 -r rm -fv
-	return ${RC}
 }
 
 is_key_value_pair()
@@ -46,7 +51,7 @@ is_key_value_pair()
 cleanup()
 {
 	local RC=${?}
-	cleanup_logs || true
+	cleanup_runs || true
 	return ${RC}
 }
 
@@ -107,9 +112,9 @@ JOB_NAME="$(basename "${JOB_ID}")"
 # The full path to the job
 JOB="${JOBS_DIR}/${JOB_PATH}"
 
-DEFAULT_LOG_KEEP=30
-set_or_default LOG_KEEP
-[[ "${LOG_KEEP}" =~ ^[1-9][0-9]*$ ]] || LOG_KEEP=${DEFAULT_LOG_KEEP}
+DEFAULT_KEEP_RUNS=30
+set_or_default KEEP_RUNS
+[[ "${KEEP_RUNS}" =~ ^[1-9][0-9]*$ ]] || KEEP_RUNS=${DEFAULT_KEEP_RUNS}
 
 # Capture and validate the timestamp
 set_or_default RUN_KJB_TIMESTAMP "$(date -u "+%Y%m%d-%H%M%SZ")"
@@ -126,9 +131,16 @@ FULL_DATE="${YR}/${MO}/${DY} ${HR}:${MI}:${SE}"
 OUT="$(date -d "${FULL_DATE}" 2>&1)" || fail "Invalid timestamp string [${RUN_KJB_TIMESTAMP}] (rc=${?}): ${OUT}"
 export RUN_KJB_TIMESTAMP
 
-# The run's logs live in ${JOB_HOME}/logs
-export JOB_LOG_DIR="${JOB_HOME}/logs"
-ensure_dir "${JOB_LOG_DIR}"
+set_or_default JOB_RUNS_DIR "${JOB_HOME}/runs"
+export JOB_RUNS_DIR
+
+export JOB_RUN_NAME="${JOB_NAME}-${RUN_KJB_TIMESTAMP}"
+
+export JOB_RUN_DIR="${JOB_RUNS_DIR}/${JOB_RUN_NAME}"
+ensure_dir "${JOB_RUN_DIR}"
+
+export JOB_OUTPUT_DIR="${JOB_RUN_DIR}/data"
+ensure_dir "${JOB_OUTPUT_DIR}"
 
 export DEV_NULL="/dev/null"
 
@@ -269,9 +281,20 @@ __main()
 	(
 		__render_lock "${JOB_LOCK}" "${JOB_ID}" "${RUN_KJB_TIMESTAMP}" "${JOB_CALLER}" "${PARAM[@]}" "${CUSTOM[@]}"
 		cd "${PENTAHO_PDI_HOME}/data-integration"
-		execute ./kitchen.sh "${PARAM[@]}" "${CUSTOM[@]}" -file:"${JOB}" "${LOG_FLAG[@]}" < /dev/null
+		execute ./kitchen.sh "${PARAM[@]}" "${CUSTOM[@]}" -param:"JOB_OUTPUT_DIR=${JOB_OUTPUT_DIR}" -file:"${JOB}" "${LOG_FLAG[@]}" < /dev/null
 	) || RC=${?}
-	say "Exit Status: [${RC}]"
+
+	[ ${RC} == 0 ] && ok "Job successful!" || err "Job failed (rc=${RC})"
+
+	# Whatever the output, try to gather all output data
+	local JOB_OUTPUT_TAR="${JOB_RUNS_DIR}/${JOB_RUN_NAME}.tar.gz"
+	if OUT="$(tar -C "${JOB_RUNS_DIR}" -czvf "${JOB_OUTPUT_TAR}" "${JOB_RUN_NAME}" </dev/null 2>&1)" ; then
+		ok "Job run output archived at [${JOB_OUTPUT_TAR}]"
+	else
+		rm -f "${JOB_OUTPUT_TAR}" &>/dev/null || true
+		err "Failed to create the job output archive at [${JOB_OUTPUT_TAR}] (rc=${?}):\n${OUT}"
+	fi
+
 	return ${RC}
 }
 
@@ -346,13 +369,10 @@ export DEV_NULL="/dev/null"
 # content). In single mode JOB_LOCK is the global lock.
 [ "${JOB_LOCK}" != "${DEV_NULL}" ] && : >> "${JOB_LOCK}"
 
-# The run is identified by ${JOB_ID}-${RUN_KJB_TIMESTAMP}; its log
-# file is named after the run ID's basename part,
-# ${JOB_NAME}-${RUN_KJB_TIMESTAMP}, under the job's log dir.
-export JOB_LOG="${JOB_LOG_DIR}/${JOB_NAME}-${RUN_KJB_TIMESTAMP}.log"
-
 # Start the logging!
-redirect_logs "${JOB_LOG}"
+JOB_LOGS_DIR="${JOB_RUN_DIR}/logs"
+ensure_dir "${JOB_LOGS_DIR}"
+redirect_logs "${JOB_LOGS_DIR}/etl.log"
 trap cleanup EXIT
 
 # One lock per run: the run locks exactly one file — the job's own
