@@ -105,8 +105,11 @@ spec:
               value: "$(DATA_DIR)"
             - name: LOCK_MODE
               value: "single"
+            - name: TLS_CLIENT_CA
+              value: "$(SSL_DIR)/ca-chain.pem"
+            # TODO: instead of "core-main" we should use one of the subsystem macros to fill in the subsystem name
             - name: TLS_CLIENT_SUB
-              value: {{ printf "^cn=arkcase-core-(0|[1-9][0-9]*)[.]core(-dns)?[.]%s[.]svc[.]" $.Release.Namespace }}
+              value: {{ printf "(?i)^cn=%s-core-main-(0|[1-9][0-9]*)[.]core-main(-dns)?[.]%s[.]svc[.]" $.Release.Name $.Release.Namespace }}
             - name: PENTAHO_SERVICE
               value: {{ $pentahoService | quote }}
             - name: PENTAHO_INSTALLED_LICENSE_PATH
