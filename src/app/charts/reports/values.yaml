@@ -27,21 +27,19 @@ image:
     # tag: 1.1.1-01
 
   community:
-    repository: "arkcase/pentaho-ce-11"
-    # tag: &pentahoVersion "9.4.0.0"
+    main: &pentaho-ce
+      repository: "arkcase/pentaho-ce-11"
 
     etl:
-      repository: "arkcase/pentaho-ce-11"
-      # tag: *pentahoVersion
+      <<: *pentaho-ce
 
   enterprise:
-    registry: "207428623785.dkr.ecr.us-east-1.amazonaws.com"
-    repository: "arkcase/pentaho-ee-11"
-    # tag: *pentahoVersion
+    main: &pentaho-ee
+      repository: "arkcase/pentaho-ee-11"
+      registry: "207428623785.dkr.ecr.us-east-1.amazonaws.com"
 
     etl:
-      repository: "arkcase/pentaho-ee-11"
-      # tag: *pentahoVersion
+      <<: *pentaho-ee
 
   smoke-test:
     repository: "arkcase/nettest"
@@ -76,7 +74,7 @@ securityContext:
   # case). Any random number will do.
   # fsGroup: 1998
   # fsGroupChangePolicy: OnRootMismatch
-  # pentaho:
+  # main:
     # capabilities:
     #   drop:
     #   - ALL
@@ -118,7 +116,7 @@ licenses:
   - "pentaho"
 
 service:
-  pentaho:
+  main:
     ports:
       - name: https
         protocol: TCP
