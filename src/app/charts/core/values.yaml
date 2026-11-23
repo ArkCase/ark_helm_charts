@@ -19,7 +19,7 @@ configuration:
 
 resources:
   development:
-    arkcase:
+    main:
       limits: "3Gi,2"
 
 # Please leave the `replicaCount` to 1 for the time being. Clustering is not
@@ -36,12 +36,12 @@ image:
   registry: "public.ecr.aws"
 
   # Overrides the image tag whose default is the chart appVersion.
-  arkcase: &arkcase
+  main: &main
     repository: "arkcase/core"
     tag: "3.0.0"
 
   portal:
-    <<: *arkcase
+    <<: *main
 
   deployer:
     repository: "arkcase/deployer"
@@ -92,7 +92,7 @@ securityContext:
   # fsGroup: &fsGroup 1997
   # fsGroupChangePolicy: OnRootMismatch
 
-  arkcase:
+  main:
     # capabilities:
     #   drop:
     #   - ALL
@@ -148,7 +148,7 @@ persistence:
 service:
   canDebug: true
 
-  arkcase:
+  main:
     ports:
       - name: https
         protocol: TCP
@@ -157,7 +157,7 @@ service:
         protocol: TCP
         port: 5710
 
-    probes: &arkcaseProbes
+    probes: &mainProbes
       enabled: true
       spec:
         initialDelaySeconds: 0
@@ -190,7 +190,7 @@ service:
         port: &https 8443
 
     probes:
-      <<: *arkcaseProbes
+      <<: *mainProbes
       readiness:
         httpGet:
           scheme: HTTPS
