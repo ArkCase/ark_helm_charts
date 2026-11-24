@@ -283,14 +283,33 @@ __main()
 	OPT+=" ${PENTAHO_LICENSE_OPT:-}"
 
 	running "Running the Kettle job from [${JOB}]"
+	local START="$(date -u "%+s")"
 	RC=0
 	(
 		__render_lock "${JOB_LOCK}" "${JOB_ID}" "${RUN_KJB_TIMESTAMP}" "${JOB_CALLER}" "${PARAM[@]}" "${CUSTOM[@]}"
 		cd "${PENTAHO_PDI_HOME}/data-integration"
 		execute ./kitchen.sh "${PARAM[@]}" "${CUSTOM[@]}" -param:"JOB_OUTPUT_DIR=${JOB_OUTPUT_DIR}" -file:"${JOB}" "${LOG_FLAG[@]}" < /dev/null
 	) || RC=${?}
+	local FINISHED="$(date -u -Ins)"
+	local DURATION="$(secs_to_timestr "$(( $(date -u "%+s") - START ))")"
 
-	[ ${RC} == 0 ] && ok "Job successful!" || err "Job failed (rc=${RC})"
+	[ ${RC} == 0 ] && ok "Job succeeded after ${DURATION}" || err "Job failed after ${DURATION} (rc=${RC})"
+
+	local CMD=(
+		jq -r
+			--arg F "${FINISHED}"
+			--argjson C "${RC}"
+			--arg D "${DURATION}"
+			'. + { "finished": $F, "exitCode": $C, "duration": $D }'
+			"${JOB_LOCK}"
+	)
+	local JOB_RUN_STATUS="${JOB_RUNS_DIR}/${JOB_RUN_NAME}/status.json"
+	local OUT=""
+	if OUT="$( "${CMD[@]}" > "${JOB_RUN_STATUS}")" ; then
+		ok "Generated the job's run info details:\n$(<"${JOB_RUN_STATUS}")"
+	else
+		err "Failed to generate the run's info file at [${JOB_RUN_STATUS}] (rc=${?}):\n$(<"${JOB_RUN_STATUS}")"
+	fi
 
 	# Whatever the output, try to gather all output data
 	local JOB_OUTPUT_TAR="${JOB_RUNS_DIR}/${JOB_RUN_NAME}.tar.gz"
