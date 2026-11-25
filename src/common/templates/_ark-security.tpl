@@ -7,6 +7,27 @@
   {{- end -}}
 {{- end -}}
 
+{{- /*
+Output "true" if the chart declares its pods need the Kubernetes API (networkPolicy.kubeApiAccess):
+it governs both their network access to it (see arkcase.network-policy.labels.kube-api) and whether
+their ServiceAccount token is mounted at all (see arkcase.serviceAccount.automountToken)
+
+Parameter: the root context (either "." or "$")
+*/ -}}
+{{- define "arkcase.kube-api.access" -}}
+  {{- include "arkcase.toBoolean" ($.Values.networkPolicy | default dict).kubeApiAccess -}}
+{{- end -}}
+
+{{- /*
+Render the value for a pod's automountServiceAccountToken: pods that don't need the Kubernetes API
+don't get a token they could abuse
+
+Parameter: the root context (either "." or "$")
+*/ -}}
+{{- define "arkcase.serviceAccount.automountToken" -}}
+  {{- (not (empty (include "arkcase.kube-api.access" $))) | toString -}}
+{{- end -}}
+
 {{- define "arkcase.securityContext" -}}
   {{- $ctx := . -}}
   {{- $container := "" -}}

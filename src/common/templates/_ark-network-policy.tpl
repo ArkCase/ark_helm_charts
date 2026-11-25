@@ -12,6 +12,15 @@ Network policies lock down a release's pods, and then open access to them one se
         addresses may be denied via global.networkPolicy.external.denyPublic (a list of public
         CIDRs), and non-public ones allowed via global.networkPolicy.external.allowPrivate (a list
         of non-public CIDRs). Only IPv4 is supported for now: IPv6 egress stays closed.
+      - "${fullname}-kube-api": allows egress to the Kubernetes API for the release's pods that
+        bear the arkcase.com/kube-api-access label (arkcase.network-policy.labels.kube-api),
+        which only the workload pods of charts that set networkPolicy.kubeApiAccess do. The API's
+        endpoints aren't pods, and NetworkPolicies usually see the endpoints the "kubernetes"
+        Service's address is translated to, which may change at any time (i.e. control plane
+        nodes or network interfaces being replaced). If Kyverno is available, it tracks them and keeps
+        the NetworkPolicy in sync (see __arkcase.network-policy.kube-api.policy). Otherwise, it "fails
+        open" as "${fullname}-kube-api-fail-open": all ports on the private network ranges (see
+        __arkcase.network-policy.kube-api).
 
   * Each internal service (via arkcase.subsystem.service) renders "${service}-ingress", which
     allows access to the service's pods on the service's declared ports, from the release's pods.
@@ -78,6 +87,19 @@ as a list of NetworkPolicyPeer declarations (the default is the kube-dns pods in
 {{- end -}}
 
 {{- /*
+The ranges the Kubernetes API's in-cluster endpoints live in, unless the API's endpoint is public
+(i.e. for clusters whose control plane is in the same private network as the nodes, or reachable
+through it: kubeadm, k3s, OpenShift, EKS, private AKS/GKE). Link-local addresses (169.254.0.0/16,
+where cloud instance metadata services live) are deliberately left out.
+*/ -}}
+{{- define "__arkcase.network-policy.kube-api" -}}
+- comment: "RFC 1918: private networks"
+  cidrs: [ "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16" ]
+- comment: "RFC 6598: shared address space (carrier-grade NAT)"
+  cidrs: [ "100.64.0.0/10" ]
+{{- end -}}
+
+{{- /*
 The IPv4 ranges that aren't publicly routable, grouped by the RFC that reserves them: the ones
 for private use (RFC 1918, RFC 6598), the ones a host uses locally (link-local, loopback, "this
 network"), and the rest of IANA's special-purpose ranges that aren't globally reachable.
@@ -114,12 +136,19 @@ network"), and the rest of IANA's special-purpose ranges that aren't globally re
 {{- /*
 Parse an IPv4 CIDR into a map with its canonical form ("cidr", host bits cleared), its network
 address as an integer ("base"), and its prefix length ("prefix"). Fails if it's not valid.
+
+Parameter: the CIDR, or a dict with the CIDR as "cidr" and the setting it came from as "source"
 */ -}}
 {{- define "__arkcase.network-policy.cidr" -}}
   {{- $cidr := ($ | toString) -}}
+  {{- $source := "global.networkPolicy" -}}
+  {{- if (kindIs "map" $) -}}
+    {{- $cidr = ($.cidr | toString) -}}
+    {{- $source = ($.source | default $source) -}}
+  {{- end -}}
   {{- $octet := "(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])" -}}
   {{- if not (regexMatch (printf "^%s(\\.%s){3}/(3[0-2]|[12]?[0-9])$" $octet $octet) $cidr) -}}
-    {{- fail (printf "Invalid IPv4 CIDR [%s] in global.networkPolicy.external (only IPv4 is supported)" $cidr) -}}
+    {{- fail (printf "Invalid IPv4 CIDR [%s] in %s (only IPv4 is supported)" $cidr $source) -}}
   {{- end -}}
   {{- $parts := (splitList "/" $cidr) -}}
   {{- $prefix := (atoi (last $parts)) -}}
@@ -164,7 +193,7 @@ Parameter: the "external" map computed by arkcase.network-policy.conf
 
   {{- $denied := list -}}
   {{- range $c := $.denyPublic -}}
-    {{- $public := (include "__arkcase.network-policy.cidr" $c | fromYaml) -}}
+    {{- $public := (include "__arkcase.network-policy.cidr" (dict "cidr" $c "source" "global.networkPolicy.external.denyPublic") | fromYaml) -}}
     {{- if (eq 0 (int $public.prefix)) -}}
       {{- fail (printf "The CIDR %s in global.networkPolicy.external.denyPublic denies all addresses: don't grant external access instead" $c) -}}
     {{- end -}}
@@ -181,7 +210,7 @@ Parameter: the "external" map computed by arkcase.network-policy.conf
 
   {{- $allowed := list -}}
   {{- range $c := $.allowPrivate -}}
-    {{- $private := (include "__arkcase.network-policy.cidr" $c | fromYaml) -}}
+    {{- $private := (include "__arkcase.network-policy.cidr" (dict "cidr" $c "source" "global.networkPolicy.external.allowPrivate") | fromYaml) -}}
     {{- $valid := false -}}
     {{- range $n := $nonPublic -}}
       {{- if (include "__arkcase.network-policy.cidr.within" (dict "inner" $private "outer" $n)) -}}
@@ -217,6 +246,23 @@ Parameter: the root context (either "." or "$")
 
 {{- define "__arkcase.network-policy.label.external" -}}
 arkcase.com/external-access: "true"
+{{- end -}}
+
+{{- /*
+Render the label that grants a pod access to the Kubernetes API, if the chart's
+networkPolicy.kubeApiAccess value is true. Included by arkcase.labels.workload, so all of the
+chart's workload pods bear it (but not its test pods).
+
+Parameter: the root context (either "." or "$")
+*/ -}}
+{{- define "arkcase.network-policy.labels.kube-api" -}}
+  {{- if and (include "arkcase.network-policy.enabled" $) (include "arkcase.kube-api.access" $) -}}
+    {{- include "__arkcase.network-policy.label.kube-api" $ -}}
+  {{- end -}}
+{{- end -}}
+
+{{- define "__arkcase.network-policy.label.kube-api" -}}
+arkcase.com/kube-api-access: "true"
 {{- end -}}
 
 {{- /*
@@ -312,6 +358,7 @@ spec:
             cidr: {{ $cidr | quote }}
       {{- end }}
     {{- end }}
+    {{- include "__arkcase.network-policy.kube-api.policy" (dict "ctx" $ctx "fullname" $fullname) }}
   {{- end }}
 {{- end -}}
 
@@ -480,4 +527,121 @@ spec:
       {{- end }}
     {{- end -}}
   {{- end -}}
+{{- end -}}
+
+{{- /*
+Render the policy that allows the release's pods bearing the arkcase.com/kube-api-access label to reach
+the Kubernetes API. If Kyverno's GeneratingPolicy (policies.kyverno.io/v1, Kyverno 1.19.1 or later) is
+available, a GeneratingPolicy keeps a NetworkPolicy in sync with the API's actual endpoints (the
+default/kubernetes EndpointSlice) and the "kubernetes" Service's address. Otherwise, the API's endpoints
+can't be tracked, so the policy fails open towards the private network ranges.
+
+Parameter: a dict with two keys:
+             - ctx = the root context (either "." or "$")
+             - fullname = the base name for the policies
+*/ -}}
+{{- define "__arkcase.network-policy.kube-api.policy" -}}
+  {{- $ctx := $.ctx -}}
+  {{- $selector := (merge (dict "app.kubernetes.io/instance" $ctx.Release.Name) (include "__arkcase.network-policy.label.kube-api" $ctx | fromYaml)) -}}
+  {{- if ($ctx.Capabilities.APIVersions.Has "policies.kyverno.io/v1/GeneratingPolicy") }}
+    {{- $name := (printf "%s-kube-api" $.fullname) }}
+    {{- /* Kyverno manages the generated NetworkPolicy, not Helm */ -}}
+    {{- $networkPolicyLabels := (omit (include "arkcase.labels" $ctx | fromYaml) "app.kubernetes.io/managed-by") }}
+---
+apiVersion: policies.kyverno.io/v1
+kind: GeneratingPolicy
+metadata:
+  # It's cluster-scoped, so it must be unique across namespaces
+  name: {{ printf "%s-%s" $ctx.Release.Namespace $name | quote }}
+  labels: {{- include "arkcase.labels" $ctx | nindent 4 }}
+    {{- with ($ctx.Values.labels).common }}
+      {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- with ($ctx.Values.annotations).common }}
+  annotations: {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  evaluation:
+    # Create the NetworkPolicy right away, keep it in sync with the endpoints, and delete it along with this policy
+    generateExisting:
+      enabled: true
+    synchronize:
+      enabled: true
+    orphanDownstreamOnPolicyDelete:
+      enabled: false
+  matchConstraints:
+    # Only the API's EndpointSlice, so no other EndpointSlice's changes ever reach Kyverno on our account
+    namespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: "default"
+    objectSelector:
+      matchLabels:
+        kubernetes.io/service-name: "kubernetes"
+    resourceRules:
+      - apiGroups: [ "discovery.k8s.io" ]
+        apiVersions: [ "v1" ]
+        # UPDATE must always be included, lest a no-op update delete the generated NetworkPolicy
+        operations: [ "CREATE", "UPDATE" ]
+        resources: [ "endpointslices" ]
+        resourceNames: [ "kubernetes" ]
+  variables:
+    # Each endpoint's first address (they're fungible), and the ports they serve the API on
+    - name: addresses
+      expression: >-
+        (has(object.endpoints) ? object.endpoints : []).filter(e, has(e.addresses) && size(e.addresses) > 0).map(e, e.addresses[0])
+    - name: endpointPorts
+      expression: >-
+        (has(object.ports) ? object.ports : []).filter(p, has(p.port)).map(p, dyn({"protocol": dyn(has(p.protocol) ? p.protocol : "TCP"), "port": dyn(p.port)}))
+    # The "kubernetes" Service's address, for CNIs that apply policies before translating it to the endpoints'
+    - name: service
+      expression: >-
+        resource.Get("v1", "services", "default", "kubernetes")
+    - name: servicePorts
+      expression: >-
+        variables.service.spec.ports.map(p, dyn({"protocol": dyn(has(p.protocol) ? p.protocol : "TCP"), "port": dyn(p.port)}))
+    - name: egress
+      expression: >-
+        (size(variables.addresses) > 0
+          ? [ dyn({"to": dyn(variables.addresses.map(a, dyn({"ipBlock": dyn({"cidr": dyn(a + (a.contains(":") ? "/128" : "/32"))})}))), "ports": dyn(variables.endpointPorts)}) ]
+          : [])
+        + [ dyn({"to": dyn([ dyn({"ipBlock": dyn({"cidr": dyn(variables.service.spec.clusterIP + (variables.service.spec.clusterIP.contains(":") ? "/128" : "/32"))})}) ]), "ports": dyn(variables.servicePorts)}) ]
+    - name: networkPolicy
+      expression: >-
+        {
+          "apiVersion": dyn("networking.k8s.io/v1"),
+          "kind": dyn("NetworkPolicy"),
+          "metadata": dyn({
+            "name": dyn({{ $name | toJson }}),
+            "labels": dyn({{ $networkPolicyLabels | toJson }})
+          }),
+          "spec": dyn({
+            "podSelector": dyn({ "matchLabels": dyn({{ $selector | toJson }}) }),
+            "policyTypes": dyn([ "Egress" ]),
+            "egress": dyn(variables.egress)
+          })
+        }
+  generate:
+    - expression: >-
+        generator.Apply({{ $ctx.Release.Namespace | toJson }}, [ variables.networkPolicy ])
+  {{- else }}
+    {{- $kubeApi := (include "__arkcase.network-policy.kube-api" $ctx | fromYamlArray) }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {{- include "__arkcase.network-policy.metadata" (dict "ctx" $ctx "name" (printf "%s-kube-api-fail-open" $.fullname)) | nindent 2 }}
+spec:
+  podSelector:
+    matchLabels: {{- $selector | toYaml | nindent 6 }}
+  policyTypes: [ "Egress" ]
+  egress:
+    # Kyverno isn't available to track the Kubernetes API's endpoints, so allow the private networks they live in (fail open)
+    - to:
+    {{- range $group := $kubeApi }}
+        # {{ $group.comment }}
+      {{- range $cidr := $group.cidrs }}
+        - ipBlock:
+            cidr: {{ $cidr | quote }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
 {{- end -}}

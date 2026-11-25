@@ -140,6 +140,9 @@ arkcase.com/subsystem: {{ include "arkcase.subsystem.name" $ | quote }}
   {{- with (include "arkcase.network-policy.labels.external" $) }}
 {{ . }}
   {{- end }}
+  {{- with (include "arkcase.network-policy.labels.kube-api" $) }}
+{{ . }}
+  {{- end }}
 {{- end -}}
 
 {{- define "arkcase.labels.deploys" -}}

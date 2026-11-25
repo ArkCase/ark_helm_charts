@@ -83,6 +83,7 @@ spec:
       schedulerName: {{ .value | quote }}
       {{- end }}
       serviceAccountName: {{ include "arkcase.serviceAccountName" $ | quote }}
+      automountServiceAccountToken: {{ include "arkcase.serviceAccount.automountToken" $ }}
       securityContext: {{- include "arkcase.securityContext" $ | nindent 8 }}
       terminationGracePeriodSeconds: 15
       initContainers:

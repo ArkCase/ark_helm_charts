@@ -148,6 +148,9 @@ persistence:
 #
 networkPolicy:
   externalAccess: true
+  # The config server reads ConfigMaps and Secrets (cloud-mapper), and Hazelcast
+  # discovers its peers, through the Kubernetes API
+  kubeApiAccess: true
 
 service:
   canDebug: true
