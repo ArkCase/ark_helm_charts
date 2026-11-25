@@ -36,14 +36,14 @@
 
 {{- /* Output the short name, optionally supporting a subcomponent name for charts with mutliple components */ -}}
 {{- define "arkcase.name" -}}
-  {{- $ctx := $ -}}
+  {{- $ctx := (hasKey $ "ctx" | ternary $.ctx $) -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
-    {{- fail "Incorrect context given - submit the root context as the only parameter" -}}
+    {{- fail "Incorrect context given - submit the root context as either the only parameter, or the 'ctx' parameter (with an optional 'subname')" -}}
   {{- end -}}
 
   {{- $name := (include "common.name" $ctx) -}}
 
-  {{- $partname := (include "arkcase.part.name" $ctx) -}}
+  {{- $partname := (include "arkcase.part.name" $) -}}
   {{- if $partname -}}
     {{- $name = (printf "%s-%s" $name $partname) -}}
   {{- end -}}
@@ -137,6 +137,9 @@ app.kubernetes.io/service-support: "true"
 {{- define "arkcase.labels.workload" -}}
 arkcase.com/task: "work"
 arkcase.com/subsystem: {{ include "arkcase.subsystem.name" $ | quote }}
+  {{- with (include "arkcase.network-policy.labels.external" $) }}
+{{ . }}
+  {{- end }}
 {{- end -}}
 
 {{- define "arkcase.labels.deploys" -}}

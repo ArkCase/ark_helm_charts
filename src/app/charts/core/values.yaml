@@ -142,6 +142,13 @@ persistence:
 # The volume where the data will be stored (RTFM for more info on how to
 # properly declare volumes)
 
+#
+# ArkCase connects to services outside of the namespace (i.e. e-mail, SSO,
+# externally-provided subsystems), so its pods may egress beyond it
+#
+networkPolicy:
+  externalAccess: true
+
 service:
   canDebug: true
   cloudconfig:

@@ -137,3 +137,108 @@
 
   {{- merge $result (pick $cloud "className" "labels" "annotations" "providesCertificate") | toYaml -}}
 {{- end -}}
+
+{{- /*
+Render the Ingress rules (a list), so they may be consumed both by the Ingress itself
+and by the network policies that grant access to its backends
+*/ -}}
+{{- define "arkcase.app.ingress.rules" -}}
+  {{- $hostnames := $.hostnames -}}
+  {{- $portal := $.portal -}}
+  {{- $dev := $.dev -}}
+  {{- $modules := $.modules -}}
+  {{- $content := $.content -}}
+  {{- range $host := $hostnames }}
+- host: {{ $host | quote }}
+  http:
+    paths:
+      - path: "/"
+        pathType: Prefix
+        backend:
+          service:
+            name: "core"
+            port:
+              number: 8443
+    {{- if $portal }}
+      # We'll re-enable this when we figure out how to cleanly
+      # expose Neo4j for user consumption
+      # - path: "/browser"
+      #   pathType: Prefix
+      #   backend:
+      #     service:
+      #       name: "analytics"
+      #       port:
+      #         number: 8443
+    {{- end }}
+    {{- if or $dev $modules.entries.artifacts }}
+      - path: "/artifacts"
+        pathType: Prefix
+        backend:
+          service:
+            name: "app-artifacts"
+            port:
+              number: 443
+    {{- end }}
+    {{- if or $dev $modules.entries.content }}
+      {{- if (eq $content.dialect "alfresco") }}
+      - path: "/alfresco"
+        pathType: Prefix
+        backend:
+          service:
+            name: "content-main"
+            port:
+              number: 8443
+      - path: "/api-explorer"
+        pathType: Prefix
+        backend:
+          service:
+            name: "content-share"
+            port:
+              number: 8443
+      - path: "/share"
+        pathType: Prefix
+        backend:
+          service:
+            name: "content-share"
+            port:
+              number: 8443
+      {{- end }}
+      {{- if (eq $content.dialect "s3") }}
+      - path: "/minio"
+        pathType: Prefix
+        backend:
+          service:
+            name: "content-main"
+            port:
+              number: 9000
+      {{- end }}
+    {{- end }}
+    {{- if or $dev $modules.entries.messaging }}
+      - path: "/console"
+        pathType: Prefix
+        backend:
+          service:
+            name: "messaging"
+            port:
+              number: 8443
+    {{- end }}
+    {{- if or $dev $modules.entries.reports }}
+      - path: "/pentaho"
+        pathType: Prefix
+        backend:
+          service:
+            name: "reports"
+            port:
+              number: 8443
+    {{- end }}
+    {{- if or $dev $modules.entries.search }}
+      - path: "/solr"
+        pathType: Prefix
+        backend:
+          service:
+            name: "search"
+            port:
+              number: 8983
+    {{- end }}
+  {{- end }}
+{{- end -}}
