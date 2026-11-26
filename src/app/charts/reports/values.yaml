@@ -127,6 +127,12 @@ service:
       - name: https
         protocol: TCP
         port: &https 8443
+    # Ports the Service doesn't publish, but the pods use among themselves
+    ingress:
+      # Tomcat clustering (SimpleTcpCluster's default receiver)
+      - name: tomcat-cluster
+        port: 4000
+        from: peers
     probes:
       enabled: true
       spec:
