@@ -21,13 +21,14 @@ set -euo pipefail
 
 usage()
 {
-	echo -e "usage: ${BASH_SOURCE:-${0}} [-b bucket] [-r release] [--retry-only [--max-retries n]] source-context/namespace [-- helm-install-args...]" 1>&2
+	echo -e "usage: ${BASH_SOURCE:-${0}} [-b bucket] [-r release] [--no-wait | --retry-only [--max-retries n]] source-context/namespace [-- helm-install-args...]" 1>&2
 	echo -e "" 1>&2
 	echo -e "	Exports the namespace into s3://\${bucket}/\${context}/\${namespace}/, and waits for the" 1>&2
 	echo -e "	transfers to finish." 1>&2
 	echo -e "" 1>&2
 	echo -e "	-b, --bucket    The bucket (default: \${MIGRATION_BUCKET})" 1>&2
 	echo -e "	-r, --release   The name of the pvc-tool release to install (default: ${DEFAULT_RELEASE})" 1>&2
+	echo -e "	--no-wait       Start the transfers, but don't wait for them (see wait-for-context-transfers)" 1>&2
 	echo -e "	--retry-only    Start nothing: just wait for the transfers that were already started," 1>&2
 	echo -e "	                and re-create the ones that fail (up to --max-retries times," 1>&2
 	echo -e "	                default ${DEFAULT_MAX_RETRIES}), e.g. after an interrupted run" 1>&2
@@ -48,6 +49,7 @@ set -- "${ARGS[@]}"
 
 RELEASE="${DEFAULT_RELEASE}"
 RETRY_ONLY="false"
+NO_WAIT="false"
 MAX_RETRIES="${DEFAULT_MAX_RETRIES}"
 POSITIONAL=()
 while [ "${#}" -gt 0 ] ; do
@@ -55,6 +57,7 @@ while [ "${#}" -gt 0 ] ; do
 		-b | --bucket ) [ "${#}" -ge 2 ] || usage ; MIGRATION_BUCKET="${2}" ; shift 2 ;;
 		-r | --release ) [ "${#}" -ge 2 ] || usage ; RELEASE="${2}" ; shift 2 ;;
 		--retry-only ) RETRY_ONLY="true" ; shift ;;
+		--no-wait ) NO_WAIT="true" ; shift ;;
 		--max-retries )
 			[ "${#}" -ge 2 ] || usage
 			[[ "${2}" =~ ^(0|[1-9][0-9]*)$ ]] || fail "Invalid --max-retries value [${2}] - must be a non-negative integer"
@@ -71,6 +74,8 @@ SOURCE="${CTX_PART}"
 NS="${NS_PART}"
 WHAT="${SOURCE}/${NS}"
 is_valid_name "${RELEASE}" || fail "Invalid release name [${RELEASE}]"
+
+"${RETRY_ONLY}" && "${NO_WAIT}" && fail "--retry-only and --no-wait don't go together"
 
 if "${RETRY_ONLY}" ; then
 	say "👉 Waiting for (and retrying) the export of ${WHAT}"
@@ -122,6 +127,11 @@ else
 		--set "s3.prefix=${SOURCE}" \
 		--set "s3.namespace=${NS}" >/dev/null || fail "${WHAT}: failed to install the pvc-tool chart"
 	ok "${WHAT}: exporting ${#PVCS[@]} PVC(s): ${PVCS[*]}"
+fi
+
+if "${NO_WAIT}" ; then
+	ok "${WHAT}: transfers started (not waiting for them)"
+	exit 0
 fi
 
 RC="0"

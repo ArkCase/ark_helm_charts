@@ -32,30 +32,6 @@ usage()
 	exit 1
 }
 
-#
-# One line per Job: state (complete, failed or running), namespace, name, the PVC it
-# works on, and (for failures) why
-#
-list_jobs()
-{
-	kubectl --context "${CONTEXT}" get job --all-namespaces --selector "${MARKER_LABEL}" -o json | jq -r --argjson namespaces "${NAMESPACES_JSON}" '
-		.items[]
-		| select(($namespaces | length) == 0 or (.metadata.namespace as $ns | $namespaces | index($ns)))
-		| (.status.conditions // []) as $c
-		| (if any($c[]; (.type == "Failed" or .type == "FailureTarget") and .status == "True") then "failed"
-		   elif any($c[]; .type == "Complete" and .status == "True") then "complete"
-		   else "running" end) as $state
-		| [
-			$state,
-			.metadata.namespace,
-			.metadata.name,
-			(.metadata.annotations["armedia.com/pvc-tool-source"] // .metadata.annotations["armedia.com/pvc-tool-target"] // "?"),
-			([$c[] | select((.type == "Failed" or .type == "FailureTarget") and .status == "True") | "\(.reason): \(.message)"] | first // "")
-		  ]
-		| @tsv
-	' | sort -k2,3
-}
-
 [ "${#}" -ge 1 ] || usage
 CONTEXT="${1}"
 shift
@@ -73,7 +49,7 @@ kubectl config get-contexts "${CONTEXT}" &>/dev/null || fail "There's no kube co
 ERRORS="0"
 LAST_RUNNING=""
 while true ; do
-	if ! JOBS="$(list_jobs)" ; then
+	if ! JOBS="$(list_transfer_jobs "${CONTEXT}" "${NAMESPACES_JSON}")" ; then
 		ERRORS="$(( ERRORS + 1 ))"
 		[ "${ERRORS}" -lt "${MAX_ERRORS}" ] || { err "Can't reach the cluster for the context ${CONTEXT} (${ERRORS} times in a row): run this again once it's back" ; exit 2 ; }
 		warn "Failed to list the Jobs in ${CONTEXT} (${ERRORS} of ${MAX_ERRORS}), trying again shortly"

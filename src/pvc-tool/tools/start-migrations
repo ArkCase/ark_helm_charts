@@ -1,0 +1,171 @@
+#!/bin/bash
+SCRIPT="$(readlink -f "${BASH_ARGV0:-${BASH_SOURCE:-${0}}}")"
+BASEDIR="$(dirname "${SCRIPT}")"
+
+set -euo pipefail
+
+. "${BASEDIR}/pvc-migration.functions"
+
+#
+# Starts the extractions (or the restores) of every namespace in the migrations table
+# (on stdin), with extract-namespace (or restore-namespace) --no-wait, and doesn't wait
+# for them: see watch-migrations for that.
+#
+# Each namespace's data goes into the bucket of the context it's going to (given with
+# -b, for each target context), under ${sourceContext}/${sourceNamespace}/. Each run's
+# Helm values come from the values file of the context it runs in (given with -v): the
+# source's when extracting, the target's when restoring.
+#
+# Every namespace is attempted, even after one fails to start. Since each namespace's
+# transfers are only ever started once (and the Jobs skip what was already done), this
+# can be run again and again.
+#
+
+usage()
+{
+	echo -e "usage: ${BASH_SOURCE:-${0}} extract|restore -b context=bucket... [-v context=values.yaml]... [-c context]... [-s old=new]... [-r release] [-n] [-- helm-install-args...] < migrations.txt" 1>&2
+	echo -e "" 1>&2
+	echo -e "	Starts the extractions (or restores) of the namespaces in the migrations table, one line" 1>&2
+	echo -e "	per namespace (# starts a comment):" 1>&2
+	echo -e "" 1>&2
+	echo -e "		source-context/namespace   target-context[/namespace]   (or - to stay in place)" 1>&2
+	echo -e "" 1>&2
+	echo -e "	-b, --bucket          The bucket for the namespaces going to the given context (repeatable;" 1>&2
+	echo -e "	                      every target context needs one)" 1>&2
+	echo -e "	-v, --values          The Helm values file for the given context's runs (repeatable; e.g." 1>&2
+	echo -e "	                      with the image, s3.region and that cluster's s3.irsaRole)" 1>&2
+	echo -e "	-c, --context         Only start the work that runs in this context (repeatable): the source" 1>&2
+	echo -e "	                      context when extracting, the target context when restoring" 1>&2
+	echo -e "	-s, --storage-class   For restores: re-create the PVCs of storage class 'old' with 'new'" 1>&2
+	echo -e "	                      (see restore-namespace)" 1>&2
+	echo -e "	-r, --release         The name of the pvc-tool release to install (default: ${DEFAULT_RELEASE})" 1>&2
+	echo -e "	-n, --dry-run         Only show what would be started" 1>&2
+	echo -e "" 1>&2
+	echo -e "	Any arguments after -- are passed to every 'helm install'." 1>&2
+	exit 1
+}
+
+ARGS=()
+while [ "${#}" -gt 0 ] ; do
+	[ "${1}" == "--" ] && shift && break
+	ARGS+=("${1}")
+	shift
+done
+HELM_ARGS=("${@}")
+set -- "${ARGS[@]}"
+
+[ "${#}" -ge 1 ] || usage
+DIRECTION="${1}"
+shift
+case "${DIRECTION}" in
+	extract | restore ) ;;
+	* ) usage ;;
+esac
+
+declare -A BUCKETS=()
+declare -A VALUES=()
+declare -A CONTEXT_FILTER=()
+RELEASE="${DEFAULT_RELEASE}"
+SC_ARGS=()
+DRY_RUN="false"
+while [ "${#}" -gt 0 ] ; do
+	case "${1}" in
+		-b | --bucket )
+			[ "${#}" -ge 2 ] || usage
+			[[ "${2}" =~ ^([^=]+)=(.+)$ ]] || fail "Invalid bucket mapping [${2}] - must be context=bucket"
+			KEY="${BASH_REMATCH[1]}"
+			VALUE="${BASH_REMATCH[2]}"
+			is_valid_context "${KEY}" || fail "Invalid context name [${KEY}] in [${2}]"
+			is_valid_bucket "${VALUE}" || fail "Invalid bucket name [${VALUE}] in [${2}]"
+			BUCKETS["${KEY}"]="${VALUE}"
+			shift 2
+			;;
+		-v | --values )
+			[ "${#}" -ge 2 ] || usage
+			[[ "${2}" =~ ^([^=]+)=(.+)$ ]] || fail "Invalid values mapping [${2}] - must be context=values.yaml"
+			KEY="${BASH_REMATCH[1]}"
+			VALUE="${BASH_REMATCH[2]}"
+			is_valid_context "${KEY}" || fail "Invalid context name [${KEY}] in [${2}]"
+			[ -f "${VALUE}" ] && [ -r "${VALUE}" ] || fail "The values file [${VALUE}] can't be read"
+			VALUES["${KEY}"]="$(readlink -f "${VALUE}")"
+			shift 2
+			;;
+		-c | --context )
+			[ "${#}" -ge 2 ] || usage
+			is_valid_context "${2}" || fail "Invalid context name [${2}]"
+			CONTEXT_FILTER["${2}"]="true"
+			shift 2
+			;;
+		-s | --storage-class ) [ "${#}" -ge 2 ] || usage ; SC_ARGS+=("-s" "${2}") ; shift 2 ;;
+		-r | --release ) [ "${#}" -ge 2 ] || usage ; RELEASE="${2}" ; shift 2 ;;
+		-n | --dry-run ) DRY_RUN="true" ; shift ;;
+		* ) usage ;;
+	esac
+done
+is_valid_name "${RELEASE}" || fail "Invalid release name [${RELEASE}]"
+[ "${DIRECTION}" == "extract" ] && [ "${#SC_ARGS[@]}" -gt 0 ] && fail "-s only applies to restores"
+
+read_migrations
+select_rows "${DIRECTION}"
+if [ "${#ROWS[@]}" -eq 0 ] ; then
+	ok "No transfers needed: the migrations table has nothing to ${DIRECTION}${CONTEXT_FILTER[*]:+ in the given contexts}"
+	exit 0
+fi
+
+# Every target needs its bucket, and every context its values, before anything starts
+BAD="0"
+declare -A MISSING_VALUES=()
+for I in "${ROWS[@]}" ; do
+	if [ -z "${BUCKETS["${MIG_DST_CTX[${I}]}"]:-}" ] ; then
+		err "$(row_name "${I}"): there's no bucket for ${MIG_DST_CTX[${I}]} (use -b ${MIG_DST_CTX[${I}]}=bucket)"
+		BAD="1"
+	fi
+	CTX="$(row_context "${DIRECTION}" "${I}")"
+	[ -n "${VALUES["${CTX}"]:-}" ] || MISSING_VALUES["${CTX}"]="true"
+done
+[ "${BAD}" -eq 0 ] || fail "Nothing was started: fix the above, and run this again"
+for CTX in "${!MISSING_VALUES[@]}" ; do
+	warn "There's no values file for ${CTX} (-v ${CTX}=values.yaml): its runs only get the arguments after --"
+done
+
+say "👉 Starting the ${DIRECTION} of ${#ROWS[@]} namespace(s)"
+STARTED=()
+FAILED=()
+for I in "${ROWS[@]}" ; do
+	NAME="$(row_name "${I}")"
+	BUCKET="${BUCKETS["${MIG_DST_CTX[${I}]}"]}"
+	CTX="$(row_context "${DIRECTION}" "${I}")"
+	CMD=( "${BASEDIR}/${DIRECTION}-namespace" --no-wait -b "${BUCKET}" -r "${RELEASE}" )
+	if [ "${DIRECTION}" == "extract" ] ; then
+		CMD+=( "${MIG_SRC_CTX[${I}]}/${MIG_SRC_NS[${I}]}" )
+	else
+		CMD+=( "${SC_ARGS[@]}" "${MIG_SRC_CTX[${I}]}/${MIG_SRC_NS[${I}]}" "${MIG_DST_CTX[${I}]}/${MIG_DST_NS[${I}]}" )
+	fi
+	CMD+=( -- )
+	[ -n "${VALUES["${CTX}"]:-}" ] && CMD+=( -f "${VALUES["${CTX}"]}" )
+	CMD+=( "${HELM_ARGS[@]}" )
+
+	if "${DRY_RUN}" ; then
+		say "🔎 ${NAME}: bucket ${BUCKET}, in ${CTX}: ${CMD[*]@Q}"
+		continue
+	fi
+
+	say "▶️ ${NAME} (bucket ${BUCKET})"
+	if "${CMD[@]}" 2>&1 | sed -u -e "s|^|\t|" ; then
+		STARTED+=("${NAME}")
+	else
+		FAILED+=("${NAME}")
+	fi
+done
+
+"${DRY_RUN}" && exit 0
+
+[ "${#STARTED[@]}" -gt 0 ] && ok "Started (or already going): ${#STARTED[@]} namespace(s)"
+if [ "${#FAILED[@]}" -gt 0 ] ; then
+	err "These ${#FAILED[@]} namespace(s) failed to start (see above), fix them and run this again:"
+	for NAME in "${FAILED[@]}" ; do
+		err "\t${NAME}"
+	done
+fi
+say "👉 Watch them with: ${BASEDIR}/watch-migrations ${DIRECTION}${CONTEXT_FILTER[*]:+ $(for C in "${!CONTEXT_FILTER[@]}" ; do echo -n "-c ${C@Q} " ; done)} < migrations.txt"
+[ "${#FAILED[@]}" -eq 0 ]

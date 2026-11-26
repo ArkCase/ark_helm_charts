@@ -1,7 +1,7 @@
 #!/bin/bash
 #
-# Shared by extract-namespace, restore-namespace, wait-for-context-transfers and
-# retry-context-transfers (it's sourced, not run).
+# Shared by extract-namespace, restore-namespace, start-migrations, watch-migrations,
+# wait-for-context-transfers and retry-context-transfers (it's sourced, not run).
 #
 # Each namespace's data goes into the bucket under ${sourceContext}/${sourceNamespace}/:
 #
@@ -340,4 +340,166 @@ retry_only()
 		[ "${RC}" -ne 0 ] || RC="1"
 	fi
 	return "${RC}"
+}
+
+#
+# The transfer Jobs in the given context (only those in the given namespaces, a JSON list,
+# unless it's empty), one per line: state (complete, failed or running), namespace, name,
+# the PVC it works on, and (for failures) why
+#
+list_transfer_jobs()
+{
+	local CONTEXT="${1}"
+	local NAMESPACES_JSON="${2:-[]}"
+	kubectl --context "${CONTEXT}" get job --all-namespaces --selector "${MARKER_LABEL}" -o json | jq -r --argjson namespaces "${NAMESPACES_JSON}" '
+		.items[]
+		| select(($namespaces | length) == 0 or (.metadata.namespace as $ns | $namespaces | index($ns)))
+		| (.status.conditions // []) as $c
+		| (if any($c[]; (.type == "Failed" or .type == "FailureTarget") and .status == "True") then "failed"
+		   elif any($c[]; .type == "Complete" and .status == "True") then "complete"
+		   else "running" end) as $state
+		| [
+			$state,
+			.metadata.namespace,
+			.metadata.name,
+			(.metadata.annotations["armedia.com/pvc-tool-source"] // .metadata.annotations["armedia.com/pvc-tool-target"] // "?"),
+			([$c[] | select((.type == "Failed" or .type == "FailureTarget") and .status == "True") | "\(.reason): \(.message)"] | first // "")
+		  ]
+		| @tsv
+	' | sort -k2,3
+}
+
+#
+# A Job, as it'd have to be created anew to run again: Kubernetes fills in the selector,
+# the pod labels that go with it, and the status (reads the Job's JSON from stdin)
+#
+job_for_recreation()
+{
+	jq -c '{
+		apiVersion,
+		kind,
+		metadata: { name: .metadata.name, namespace: .metadata.namespace, labels: .metadata.labels, annotations: .metadata.annotations },
+		spec: (.spec
+			| del(.selector, .manualSelector)
+			| .template.metadata.labels |= with_entries(select(.key | test("^(batch[.]kubernetes[.]io/)?(controller-uid|job-name)$") | not)))
+	}'
+}
+
+# Re-creates the given Job, so it runs again
+recreate_job()
+{
+	local CONTEXT="${1}"
+	local NAMESPACE="${2}"
+	local JOB="${3}"
+	local JSON=""
+	JSON="$(kubectl --context "${CONTEXT}" get job --namespace "${NAMESPACE}" "${JOB}" -o json | job_for_recreation)" || return 1
+	kubectl --context "${CONTEXT}" replace --force -f - <<< "${JSON}" >/dev/null
+}
+
+#
+# Reads the migrations table from stdin into the arrays MIG_SRC_CTX, MIG_SRC_NS,
+# MIG_DST_CTX and MIG_DST_NS (one entry per line), one line per namespace:
+#
+#   source-context/namespace   target-context[/namespace] | -
+#
+# A target of "-" means the namespace stays where it is (the same context and name), and
+# a target without a namespace keeps the source's name. Blank lines, and everything after
+# a #, are ignored. No two lines may have the same source, or the same target
+#
+read_migrations()
+{
+	MIG_SRC_CTX=()
+	MIG_SRC_NS=()
+	MIG_DST_CTX=()
+	MIG_DST_NS=()
+
+	[ -t 0 ] && fail "The migrations table must be given on stdin (e.g. ${0##*/} ... < migrations.txt)"
+
+	local -A SEEN_SRC=()
+	local -A SEEN_DST=()
+	local LINE=""
+	local NUM="0"
+	local BAD="0"
+	local FIELDS=()
+	while IFS="" read -r LINE || [ -n "${LINE}" ] ; do
+		NUM="$(( NUM + 1 ))"
+		LINE="${LINE%%#*}"
+		read -r -a FIELDS <<< "${LINE}"
+		[ "${#FIELDS[@]}" -eq 0 ] && continue
+		if [ "${#FIELDS[@]}" -ne 2 ] ; then
+			err "Migrations line ${NUM}: expected 'source-context/namespace target-context[/namespace]|-', got [${LINE}]"
+			BAD="1"
+			continue
+		fi
+		( parse_location "${FIELDS[0]}" ) 2>/dev/null || { err "Migrations line ${NUM}: [${FIELDS[0]}] isn't a valid context/namespace" ; BAD="1" ; continue ; }
+		parse_location "${FIELDS[0]}"
+		local SRC_CTX="${CTX_PART}"
+		local SRC_NS="${NS_PART}"
+		local DST_CTX="${SRC_CTX}"
+		local DST_NS="${SRC_NS}"
+		if [ "${FIELDS[1]}" != "-" ] ; then
+			( parse_location "${FIELDS[1]}" "${SRC_NS}" ) 2>/dev/null || { err "Migrations line ${NUM}: [${FIELDS[1]}] isn't a valid context[/namespace]" ; BAD="1" ; continue ; }
+			parse_location "${FIELDS[1]}" "${SRC_NS}"
+			DST_CTX="${CTX_PART}"
+			DST_NS="${NS_PART}"
+		fi
+		if [ -n "${SEEN_SRC["${SRC_CTX}/${SRC_NS}"]:-}" ] ; then
+			err "Migrations line ${NUM}: ${SRC_CTX}/${SRC_NS} is already on line ${SEEN_SRC["${SRC_CTX}/${SRC_NS}"]}"
+			BAD="1"
+			continue
+		fi
+		if [ -n "${SEEN_DST["${DST_CTX}/${DST_NS}"]:-}" ] ; then
+			err "Migrations line ${NUM}: ${DST_CTX}/${DST_NS} is already the target on line ${SEEN_DST["${DST_CTX}/${DST_NS}"]}"
+			BAD="1"
+			continue
+		fi
+		SEEN_SRC["${SRC_CTX}/${SRC_NS}"]="${NUM}"
+		SEEN_DST["${DST_CTX}/${DST_NS}"]="${NUM}"
+		MIG_SRC_CTX+=("${SRC_CTX}")
+		MIG_SRC_NS+=("${SRC_NS}")
+		MIG_DST_CTX+=("${DST_CTX}")
+		MIG_DST_NS+=("${DST_NS}")
+	done
+	[ "${BAD}" -eq 0 ] || fail "The migrations table has errors"
+	return 0
+}
+
+#
+# For start-migrations and watch-migrations: the rows of the migrations table to work on
+# (into ROWS), given the direction (the context the work runs in is the source's when
+# extracting, and the target's when restoring), and the -c filter (CONTEXT_FILTER, an
+# associative array, all contexts if empty)
+#
+select_rows()
+{
+	local DIRECTION="${1}"
+	ROWS=()
+	local I=""
+	for I in "${!MIG_SRC_CTX[@]}" ; do
+		local CTX="$(row_context "${DIRECTION}" "${I}")"
+		if [ "${#CONTEXT_FILTER[@]}" -gt 0 ] && [ -z "${CONTEXT_FILTER["${CTX}"]:-}" ] ; then
+			continue
+		fi
+		ROWS+=("${I}")
+	done
+}
+
+# The context and namespace a row's work runs in, given the direction
+row_context()
+{
+	[ "${1}" == "extract" ] && echo -n "${MIG_SRC_CTX[${2}]}" || echo -n "${MIG_DST_CTX[${2}]}"
+}
+
+row_namespace()
+{
+	[ "${1}" == "extract" ] && echo -n "${MIG_SRC_NS[${2}]}" || echo -n "${MIG_DST_NS[${2}]}"
+}
+
+# How a row reads in messages
+row_name()
+{
+	local I="${1}"
+	local SRC="${MIG_SRC_CTX[${I}]}/${MIG_SRC_NS[${I}]}"
+	local DST="${MIG_DST_CTX[${I}]}/${MIG_DST_NS[${I}]}"
+	[ "${SRC}" == "${DST}" ] && echo -n "${SRC}" || echo -n "${SRC} -> ${DST}"
 }

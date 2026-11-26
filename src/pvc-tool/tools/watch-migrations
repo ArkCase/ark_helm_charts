@@ -1,0 +1,198 @@
+#!/bin/bash
+SCRIPT="$(readlink -f "${BASH_ARGV0:-${BASH_SOURCE:-${0}}}")"
+BASEDIR="$(dirname "${SCRIPT}")"
+
+set -euo pipefail
+
+. "${BASEDIR}/pvc-migration.functions"
+
+#
+# Watches the extractions (or the restores) of every namespace in the migrations table
+# (on stdin) until they're all complete, across all the contexts they run in. It only
+# reads (unless --retry is given), so it can be run again and again.
+#
+# Exit status: 0 once every namespace's transfers completed (or it has none), 1 as soon
+# as any of them failed (or, with --retry, still failed after --max-retries retries), or
+# once all the others are done if some namespaces were never started, and 2 if a context
+# can't be reached for a while.
+#
+
+# How long to wait between rounds
+[ -v POLL_INTERVAL ] || POLL_INTERVAL=""
+[[ "${POLL_INTERVAL}" =~ ^[1-9][0-9]*$ ]] || POLL_INTERVAL="60"
+
+# How many rounds in a row a context may be unreachable before we give up
+MAX_ERRORS="5"
+
+usage()
+{
+	echo -e "usage: ${BASH_SOURCE:-${0}} extract|restore [-c context]... [--retry [--max-retries n]] [-r release] < migrations.txt" 1>&2
+	echo -e "" 1>&2
+	echo -e "	Watches the extractions (or restores) of the namespaces in the migrations table (see" 1>&2
+	echo -e "	start-migrations) until they're all complete, or any of them fails." 1>&2
+	echo -e "" 1>&2
+	echo -e "	-c, --context     Only watch the work that runs in this context (repeatable): the source" 1>&2
+	echo -e "	                  context when extracting, the target context when restoring" 1>&2
+	echo -e "	--retry           Re-create the Jobs that fail, up to --max-retries times each" 1>&2
+	echo -e "	                  (default ${DEFAULT_MAX_RETRIES}), instead of stopping" 1>&2
+	echo -e "	-r, --release     The name of the pvc-tool release (default: ${DEFAULT_RELEASE})" 1>&2
+	exit 1
+}
+
+[ "${#}" -ge 1 ] || usage
+DIRECTION="${1}"
+shift
+case "${DIRECTION}" in
+	extract | restore ) ;;
+	* ) usage ;;
+esac
+
+declare -A CONTEXT_FILTER=()
+RETRY="false"
+MAX_RETRIES="${DEFAULT_MAX_RETRIES}"
+RELEASE="${DEFAULT_RELEASE}"
+while [ "${#}" -gt 0 ] ; do
+	case "${1}" in
+		-c | --context )
+			[ "${#}" -ge 2 ] || usage
+			is_valid_context "${2}" || fail "Invalid context name [${2}]"
+			CONTEXT_FILTER["${2}"]="true"
+			shift 2
+			;;
+		--retry ) RETRY="true" ; shift ;;
+		--max-retries )
+			[ "${#}" -ge 2 ] || usage
+			[[ "${2}" =~ ^(0|[1-9][0-9]*)$ ]] || fail "Invalid --max-retries value [${2}] - must be a non-negative integer"
+			MAX_RETRIES="${2}"
+			shift 2
+			;;
+		-r | --release ) [ "${#}" -ge 2 ] || usage ; RELEASE="${2}" ; shift 2 ;;
+		* ) usage ;;
+	esac
+done
+is_valid_name "${RELEASE}" || fail "Invalid release name [${RELEASE}]"
+DIR_WORD="upload"
+[ "${DIRECTION}" == "restore" ] && DIR_WORD="download"
+
+read_migrations
+select_rows "${DIRECTION}"
+if [ "${#ROWS[@]}" -eq 0 ] ; then
+	ok "No transfers to watch: the migrations table has nothing to ${DIRECTION}${CONTEXT_FILTER[*]:+ in the given contexts}"
+	exit 0
+fi
+
+ensure_exe helm jq kubectl
+
+# The namespaces to watch in each context, and which row each one is
+declare -A CTX_NAMESPACES=()
+declare -A ROW_OF=()
+for I in "${ROWS[@]}" ; do
+	CTX="$(row_context "${DIRECTION}" "${I}")"
+	NS="$(row_namespace "${DIRECTION}" "${I}")"
+	CTX_NAMESPACES["${CTX}"]="${CTX_NAMESPACES["${CTX}"]:-} ${NS}"
+	ROW_OF["${CTX}/${NS}"]="${I}"
+done
+CONTEXTS=()
+readarray -t CONTEXTS < <(printf '%s\n' "${!CTX_NAMESPACES[@]}" | sort)
+for CTX in "${CONTEXTS[@]}" ; do
+	kubectl config get-contexts "${CTX}" &>/dev/null || fail "There's no kube context named [${CTX}]"
+done
+
+say "👉 Watching the ${DIRECTION} of ${#ROWS[@]} namespace(s) in ${#CONTEXTS[@]} context(s): ${CONTEXTS[*]}"
+
+declare -A ERRORS=()
+declare -A RETRIES=()
+LAST_REPORT=""
+ROUND="0"
+while true ; do
+	ROUND="$(( ROUND + 1 ))"
+	ALL_JOBS=""
+	UNSTARTED=()
+	UNREACHABLE=()
+	for CTX in "${CONTEXTS[@]}" ; do
+		read -r -a NSS <<< "${CTX_NAMESPACES["${CTX}"]}"
+		NSS_JSON="$(jq -cn '$ARGS.positional' --args "${NSS[@]}")"
+		if ! JOBS="$(list_transfer_jobs "${CTX}" "${NSS_JSON}")" ; then
+			ERRORS["${CTX}"]="$(( ${ERRORS["${CTX}"]:-0} + 1 ))"
+			[ "${ERRORS["${CTX}"]}" -lt "${MAX_ERRORS}" ] || { err "Can't reach ${CTX} (${ERRORS["${CTX}"]} rounds in a row): run this again once it's back" ; exit 2 ; }
+			UNREACHABLE+=("${CTX}")
+			continue
+		fi
+		ERRORS["${CTX}"]="0"
+		[ -n "${JOBS}" ] && ALL_JOBS+="$(sed -e "s|^|${CTX}\t|" <<< "${JOBS}")"$'\n'
+
+		# The namespaces without any Jobs: either there's nothing to transfer, or they
+		# were never started
+		NO_JOBS=()
+		for NS in "${NSS[@]}" ; do
+			grep -q -P "^[^\t]+\t${NS}\t" <<< "${JOBS}" || NO_JOBS+=("${NS}")
+		done
+		if [ "${#NO_JOBS[@]}" -gt 0 ] ; then
+			if ! FOUND="$(find_unstarted "${CTX}" "${DIR_WORD}" "${NO_JOBS[@]}")" ; then
+				UNREACHABLE+=("${CTX}")
+				continue
+			fi
+			while read -r NS ; do
+				[ -n "${NS}" ] && UNSTARTED+=("$(row_name "${ROW_OF["${CTX}/${NS}"]}")")
+			done <<< "${FOUND}"
+		fi
+	done
+	ALL_JOBS="$(grep -v '^$' <<< "${ALL_JOBS}" || true)"
+
+	count() { [ -n "${ALL_JOBS}" ] && awk -F '\t' -v s="${1}" '$2 == s' <<< "${ALL_JOBS}" | wc -l || echo 0 ; }
+	TOTAL="0"
+	[ -n "${ALL_JOBS}" ] && TOTAL="$(wc -l <<< "${ALL_JOBS}")"
+	COMPLETE="$(count complete)"
+	RUNNING="$(count running)"
+	FAILED="$(awk -F '\t' '$2 == "failed"' <<< "${ALL_JOBS}" || true)"
+	NUM_FAILED="0"
+	[ -n "${FAILED}" ] && NUM_FAILED="$(wc -l <<< "${FAILED}")"
+
+	if [ -n "${FAILED}" ] ; then
+		GIVE_UP=()
+		while IFS=$'\t' read -r CTX STATE NS JOB PVC WHY ; do
+			KEY="${CTX}/${NS}/${JOB}"
+			if "${RETRY}" && [ "${RETRIES["${KEY}"]:-0}" -lt "${MAX_RETRIES}" ] ; then
+				RETRIES["${KEY}"]="$(( ${RETRIES["${KEY}"]:-0} + 1 ))"
+				warn "${CTX}/${NS}/${JOB} (PVC ${PVC}) failed (${WHY}): retrying (${RETRIES["${KEY}"]} of ${MAX_RETRIES})"
+				recreate_job "${CTX}" "${NS}" "${JOB}" || { err "Failed to re-create the Job ${CTX}/${NS}/${JOB}" ; GIVE_UP+=("${CTX}"$'\t'"${NS}"$'\t'"${JOB}"$'\t'"${PVC}"$'\t'"${WHY}") ; }
+				continue
+			fi
+			GIVE_UP+=("${CTX}"$'\t'"${NS}"$'\t'"${JOB}"$'\t'"${PVC}"$'\t'"${WHY}")
+		done <<< "${FAILED}"
+
+		if [ "${#GIVE_UP[@]}" -gt 0 ] ; then
+			err "${#GIVE_UP[@]} transfer(s) failed$("${RETRY}" && echo " (after ${MAX_RETRIES} retries)") (${COMPLETE} of ${TOTAL} complete, ${RUNNING} still running):"
+			for LINE in "${GIVE_UP[@]}" ; do
+				IFS=$'\t' read -r CTX NS JOB PVC WHY <<< "${LINE}"
+				err "\t$(row_name "${ROW_OF["${CTX}/${NS}"]}"): ${JOB} (PVC ${PVC}): ${WHY}"
+				err "\t\tkubectl --context ${CTX@Q} --namespace ${NS@Q} logs job/${JOB}"
+			done
+			err "Look into them, then run this again$("${RETRY}" || echo " with --retry to retry them")"
+			exit 1
+		fi
+	fi
+
+	if [ "${NUM_FAILED}" -eq 0 ] && [ "${RUNNING}" -eq 0 ] && [ "${#UNREACHABLE[@]}" -eq 0 ] ; then
+		if [ "${#UNSTARTED[@]}" -gt 0 ] ; then
+			err "Not done: these ${#UNSTARTED[@]} namespace(s) were never started (run start-migrations ${DIRECTION} for them):"
+			for NAME in "${UNSTARTED[@]}" ; do err "\t${NAME}" ; done
+			[ "${TOTAL}" -gt 0 ] && ok "All ${TOTAL} transfer(s) of the others are complete"
+			exit 1
+		fi
+		ok "All ${TOTAL} transfer(s) of the ${#ROWS[@]} namespace(s) are complete"
+		exit 0
+	fi
+
+	# Report what's going on, in full whenever it changes
+	REPORT="$(awk -F '\t' '$2 == "running" { print $1 "/" $3 "/" $4 " (PVC " $5 ")" }' <<< "${ALL_JOBS}")"
+	say "👀 [${ROUND}] ${COMPLETE} of ${TOTAL} transfer(s) complete, ${RUNNING} running$( [ "${NUM_FAILED}" -gt 0 ] && echo ", ${NUM_FAILED} being retried")$( [ "${#UNSTARTED[@]}" -gt 0 ] && echo ", ${#UNSTARTED[@]} namespace(s) not started")$( [ "${#UNREACHABLE[@]}" -gt 0 ] && echo ", can't reach ${UNREACHABLE[*]} right now")"
+	if [ "${REPORT}" != "${LAST_REPORT}" ] ; then
+		while read -r LINE ; do
+			[ -n "${LINE}" ] && say "\t⏳ ${LINE}"
+		done <<< "${REPORT}"
+		LAST_REPORT="${REPORT}"
+	fi
+
+	sleep "${POLL_INTERVAL}"
+done

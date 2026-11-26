@@ -35,21 +35,12 @@ ensure_context "${CONTEXT}"
 
 JSON="$(kubectl --context "${CONTEXT}" get job --all-namespaces --selector "${MARKER_LABEL}" -o json)" || fail "Failed to list the Jobs in ${CONTEXT}"
 
-# The failed Jobs, as they'd have to be created anew: Kubernetes fills in the selector,
-# the pod labels that go with it, and the status
+# The failed Jobs, as they'd have to be created anew
 FAILED="$(jq -c --argjson namespaces "${NAMESPACES_JSON}" '
 	.items[]
 	| select(($namespaces | length) == 0 or (.metadata.namespace as $ns | $namespaces | index($ns)))
 	| select(any(.status.conditions[]?; (.type == "Failed" or .type == "FailureTarget") and .status == "True"))
-	| {
-		apiVersion,
-		kind,
-		metadata: { name: .metadata.name, namespace: .metadata.namespace, labels: .metadata.labels, annotations: .metadata.annotations },
-		spec: (.spec
-			| del(.selector, .manualSelector)
-			| .template.metadata.labels |= with_entries(select(.key | test("^(batch[.]kubernetes[.]io/)?(controller-uid|job-name)$") | not)))
-	  }
-' <<< "${JSON}")"
+' <<< "${JSON}" | while read -r JOB ; do job_for_recreation <<< "${JOB}" ; done)"
 
 if [ -z "${FAILED}" ] ; then
 	ok "No failed transfers to retry in ${CONTEXT}"

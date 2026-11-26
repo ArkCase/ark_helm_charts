@@ -131,7 +131,30 @@ These scripts move a namespace, with its PVCs and their data, between clusters t
 
   5. Deploy the application: it finds its PVCs in place. Secrets aren't exported, so any password a chart would otherwise generate (and the restored data depends on) must be given in its values.
 
-Either script only waits when the namespace's transfers were already started (the release is installed), and exits with `0` right away when the namespace has no PVCs. Since the Jobs skip the work when it was already done (see the records and markers above), the scripts can be run again and again, and even a re-installed release won't repeat a transfer needlessly. `-r` names the release (default `pvc-tool`, which is also the name of the ServiceAccount it creates for IRSA).
+#### Many namespaces at once
+
+`tools/start-migrations` starts the extractions (or the restores) of every namespace in a migrations table, without waiting for them, and `tools/watch-migrations` then watches them all, across every context, until they're complete. The table has one line per namespace (`#` starts a comment): its source, and its target (`-` if it stays where it is, and the namespace's name may be left out if it stays the same):
+
+```
+aws-fedramp-prod/cust-nysdhr          -
+aws-fedramp-stage/cust-dc-owc         aws-fedramp-prod/cust-dc-owc
+aws-fedramp-test/cust-usitc           aws-fedramp-stage
+```
+
+Each namespace's data goes into the bucket of the context it's going to (`-b context=bucket`, one for each target context), and each run gets the values file of the context it runs in (`-v context=values.yaml`, with that cluster's `s3.irsaRole`): the source's when extracting, the target's when restoring.
+
+```
+tools/start-migrations extract -b aws-fedramp-prod=aws-mig-202611-prod -b aws-fedramp-stage=aws-mig-202611-stage \
+    -v aws-fedramp-test=pvc-tool-test.yaml -v aws-fedramp-stage=pvc-tool-stage.yaml -v aws-fedramp-prod=pvc-tool-prod.yaml < migrations.txt
+tools/watch-migrations extract < migrations.txt
+```
+
+  * `-c context` (both, repeatable) narrows the work down to what runs in the given contexts: the source context when extracting, and the target context when restoring (e.g. to restore into each new cluster as it comes up).
+  * `-n` (start) shows what would be started, and `-s old=new` (start) maps storage classes for restores.
+  * `start-migrations` attempts every namespace, even after one fails to start, and only ever starts each one once, so it can be run again (e.g. after fixing the ones that failed).
+  * `watch-migrations` only reads, unless `--retry` is given (which re-creates the failed Jobs, up to `--max-retries` times each). It exits with `0` once every namespace's transfers completed, `1` as soon as any failed (or, with `--retry`, still failed after the last retry), or once the others are done if some namespaces were never started, and `2` if a context can't be reached for a while. `POLL_INTERVAL` sets the seconds between rounds (default 60).
+
+`extract-namespace` and `restore-namespace` only wait when the namespace's transfers were already started (the release is installed), or not at all with `--no-wait`, and exit with `0` right away when the namespace has no PVCs. Since the Jobs skip the work when it was already done (see the records and markers above), the scripts can be run again and again, and even a re-installed release won't repeat a transfer needlessly. `-r` names the release (default `pvc-tool`, which is also the name of the ServiceAccount it creates for IRSA).
 
 # RSYNC PVC Access
 
