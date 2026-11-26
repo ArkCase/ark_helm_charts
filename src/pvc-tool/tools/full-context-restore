@@ -19,18 +19,22 @@ set -euo pipefail
 # PVCs' storage classes exist here (or are mapped with -s), and if the namespace exists
 # already, it has no PVCs other than the exported ones. Namespaces whose transfers were
 # already started (the pvc-tool release is installed) are left alone, so this can be run
-# again.
+# again. With --retry-only, nothing is started: it waits for the transfers that were, and
+# re-creates the ones that fail.
 #
 
 usage()
 {
-	echo -e "usage: ${BASH_SOURCE:-${0}} [-b bucket] [-r release] [-s old=new]... [--relocations include|exclude|only] target-context [-- helm-install-args...] < layout-table.txt" 1>&2
+	echo -e "usage: ${BASH_SOURCE:-${0}} [-b bucket] [-r release] [--retry-only [--max-retries n]] [-s old=new]... [--relocations include|exclude|only] target-context [-- helm-install-args...] < layout-table.txt" 1>&2
 	echo -e "" 1>&2
 	echo -e "	Restores the namespaces the layout table sends to the target context, and waits for" 1>&2
 	echo -e "	the transfers to finish." 1>&2
 	echo -e "" 1>&2
 	echo -e "	-b, --bucket          The bucket (default: \${MIGRATION_BUCKET})" 1>&2
 	echo -e "	-r, --release         The name of the pvc-tool release to install (default: ${DEFAULT_RELEASE})" 1>&2
+	echo -e "	--retry-only          Start nothing: just wait for the transfers that were already started," 1>&2
+	echo -e "	                      and re-create the ones that fail (up to --max-retries times," 1>&2
+	echo -e "	                      default ${DEFAULT_MAX_RETRIES}), e.g. after an interrupted run" 1>&2
 	echo -e "	-s, --storage-class   Re-create the PVCs of storage class 'old' with the storage class 'new'" 1>&2
 	echo -e "	                      (repeatable; '*=new' applies to every other storage class, and" 1>&2
 	echo -e "	                      'old=' uses the cluster's default storage class)" 1>&2
@@ -57,6 +61,8 @@ HELM_ARGS=("${@}")
 set -- "${ARGS[@]}"
 
 RELEASE="${DEFAULT_RELEASE}"
+RETRY_ONLY="false"
+MAX_RETRIES="${DEFAULT_MAX_RETRIES}"
 RELOCATIONS="include"
 SC_MAP="{}"
 POSITIONAL=()
@@ -64,6 +70,13 @@ while [ "${#}" -gt 0 ] ; do
 	case "${1}" in
 		-b | --bucket ) [ "${#}" -ge 2 ] || usage ; MIGRATION_BUCKET="${2}" ; shift 2 ;;
 		-r | --release ) [ "${#}" -ge 2 ] || usage ; RELEASE="${2}" ; shift 2 ;;
+		--retry-only ) RETRY_ONLY="true" ; shift ;;
+		--max-retries )
+			[ "${#}" -ge 2 ] || usage
+			[[ "${2}" =~ ^(0|[1-9][0-9]*)$ ]] || fail "Invalid --max-retries value [${2}] - must be a non-negative integer"
+			MAX_RETRIES="${2}"
+			shift 2
+			;;
 		-s | --storage-class )
 			[ "${#}" -ge 2 ] || usage
 			[[ "${2}" =~ ^([^=]+)=(.*)$ ]] || fail "Invalid storage class mapping [${2}] - must be old=new"
@@ -86,8 +99,10 @@ done
 TARGET="${POSITIONAL[0]}"
 is_valid_context "${TARGET}" || fail "Invalid context name [${TARGET}]"
 is_valid_name "${RELEASE}" || fail "Invalid release name [${RELEASE}]"
-[ -n "${MIGRATION_BUCKET}" ] || fail "No bucket given (use -b, or set MIGRATION_BUCKET)"
-is_valid_bucket "${MIGRATION_BUCKET}" || fail "Invalid bucket name [${MIGRATION_BUCKET}]"
+if ! "${RETRY_ONLY}" ; then
+	[ -n "${MIGRATION_BUCKET}" ] || fail "No bucket given (use -b, or set MIGRATION_BUCKET)"
+	is_valid_bucket "${MIGRATION_BUCKET}" || fail "Invalid bucket name [${MIGRATION_BUCKET}]"
+fi
 
 read_layout
 
@@ -108,6 +123,17 @@ if [ "${#ROWS[@]}" -eq 0 ] ; then
 	exit 0
 fi
 [ "${SKIPPED}" -gt 0 ] && say "⏩ Skipping ${SKIPPED} namespace(s), per --relocations ${RELOCATIONS}"
+
+if "${RETRY_ONLY}" ; then
+	NAMESPACES=()
+	for I in "${ROWS[@]}" ; do
+		NAMESPACES+=("${LAYOUT_DST_NS[${I}]}")
+	done
+	say "👉 Waiting for (and retrying) the restores of ${#NAMESPACES[@]} namespace(s) into ${TARGET}: ${NAMESPACES[*]}"
+	RC="0"
+	retry_only "${TARGET}" download "${NAMESPACES[@]}" || RC="${?}"
+	exit "${RC}"
+fi
 
 ensure_exe aws helm jq kubectl
 ensure_context "${TARGET}"
@@ -230,4 +256,7 @@ for I in "${TODO[@]}" ; do
 	ok "${WHAT}: restoring ${#PVCS[@]} PVC(s): ${PVCS[*]}"
 done
 
-exec "${BASEDIR}/wait-for-context-transfers" "${TARGET}" "${NAMESPACES[@]}"
+RC="0"
+"${BASEDIR}/wait-for-context-transfers" "${TARGET}" "${NAMESPACES[@]}" || RC="${?}"
+[ "${RC}" -eq 1 ] && err "Or re-run this with --retry-only, to retry the failed transfers (and keep waiting)"
+exit "${RC}"

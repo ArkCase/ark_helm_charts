@@ -15,17 +15,22 @@ set -euo pipefail
 # Nothing is changed unless every namespace checks out first: it exists, and none of its
 # PVCs is in use (scale the workloads down first). Namespaces whose transfers were already
 # started (the pvc-tool release is installed) are left alone, so this can be run again.
+# With --retry-only, nothing is started: it waits for the transfers that were, and
+# re-creates the ones that fail.
 #
 
 usage()
 {
-	echo -e "usage: ${BASH_SOURCE:-${0}} [-b bucket] [-r release] source-context [-- helm-install-args...] < layout-table.txt" 1>&2
+	echo -e "usage: ${BASH_SOURCE:-${0}} [-b bucket] [-r release] [--retry-only [--max-retries n]] source-context [-- helm-install-args...] < layout-table.txt" 1>&2
 	echo -e "" 1>&2
 	echo -e "	Exports the namespaces the layout table lists for the source context into" 1>&2
 	echo -e "	s3://\${bucket}/\${sourceContext}/\${namespace}/, and waits for the transfers to finish." 1>&2
 	echo -e "" 1>&2
 	echo -e "	-b, --bucket    The bucket (default: \${MIGRATION_BUCKET})" 1>&2
 	echo -e "	-r, --release   The name of the pvc-tool release to install (default: ${DEFAULT_RELEASE})" 1>&2
+	echo -e "	--retry-only    Start nothing: just wait for the transfers that were already started," 1>&2
+	echo -e "	                and re-create the ones that fail (up to --max-retries times," 1>&2
+	echo -e "	                default ${DEFAULT_MAX_RETRIES}), e.g. after an interrupted run" 1>&2
 	echo -e "" 1>&2
 	echo -e "	Any arguments after -- are passed to 'helm install' (e.g. -f values.yaml, with the image," 1>&2
 	echo -e "	s3.region and s3.irsaRole). Set CHART to use a chart other than ${CHART}." 1>&2
@@ -46,11 +51,20 @@ HELM_ARGS=("${@}")
 set -- "${ARGS[@]}"
 
 RELEASE="${DEFAULT_RELEASE}"
+RETRY_ONLY="false"
+MAX_RETRIES="${DEFAULT_MAX_RETRIES}"
 POSITIONAL=()
 while [ "${#}" -gt 0 ] ; do
 	case "${1}" in
 		-b | --bucket ) [ "${#}" -ge 2 ] || usage ; MIGRATION_BUCKET="${2}" ; shift 2 ;;
 		-r | --release ) [ "${#}" -ge 2 ] || usage ; RELEASE="${2}" ; shift 2 ;;
+		--retry-only ) RETRY_ONLY="true" ; shift ;;
+		--max-retries )
+			[ "${#}" -ge 2 ] || usage
+			[[ "${2}" =~ ^(0|[1-9][0-9]*)$ ]] || fail "Invalid --max-retries value [${2}] - must be a non-negative integer"
+			MAX_RETRIES="${2}"
+			shift 2
+			;;
 		-* ) usage ;;
 		* ) POSITIONAL+=("${1}") ; shift ;;
 	esac
@@ -59,8 +73,10 @@ done
 SOURCE="${POSITIONAL[0]}"
 is_valid_context "${SOURCE}" || fail "Invalid context name [${SOURCE}] (it's part of the data's location in the bucket)"
 is_valid_name "${RELEASE}" || fail "Invalid release name [${RELEASE}]"
-[ -n "${MIGRATION_BUCKET}" ] || fail "No bucket given (use -b, or set MIGRATION_BUCKET)"
-is_valid_bucket "${MIGRATION_BUCKET}" || fail "Invalid bucket name [${MIGRATION_BUCKET}]"
+if ! "${RETRY_ONLY}" ; then
+	[ -n "${MIGRATION_BUCKET}" ] || fail "No bucket given (use -b, or set MIGRATION_BUCKET)"
+	is_valid_bucket "${MIGRATION_BUCKET}" || fail "Invalid bucket name [${MIGRATION_BUCKET}]"
+fi
 
 read_layout
 
@@ -71,6 +87,13 @@ done
 if [ "${#NAMESPACES[@]}" -eq 0 ] ; then
 	ok "No transfers needed: the layout table has no namespaces in ${SOURCE}"
 	exit 0
+fi
+
+if "${RETRY_ONLY}" ; then
+	say "👉 Waiting for (and retrying) the exports of ${#NAMESPACES[@]} namespace(s) from ${SOURCE}: ${NAMESPACES[*]}"
+	RC="0"
+	retry_only "${SOURCE}" upload "${NAMESPACES[@]}" || RC="${?}"
+	exit "${RC}"
 fi
 
 ensure_exe aws helm jq kubectl
@@ -130,4 +153,7 @@ for NS in "${TODO[@]}" ; do
 	ok "${SOURCE}/${NS}: exporting ${#PVCS[@]} PVC(s): ${PVCS[*]}"
 done
 
-exec "${BASEDIR}/wait-for-context-transfers" "${SOURCE}" "${NAMESPACES[@]}"
+RC="0"
+"${BASEDIR}/wait-for-context-transfers" "${SOURCE}" "${NAMESPACES[@]}" || RC="${?}"
+[ "${RC}" -eq 1 ] && err "Or re-run this with --retry-only, to retry the failed transfers (and keep waiting)"
+exit "${RC}"

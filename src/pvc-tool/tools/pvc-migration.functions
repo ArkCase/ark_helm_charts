@@ -292,3 +292,100 @@ rewrite_pvcs()
 		)
 	'
 }
+
+# How many times --retry-only re-creates failed Jobs before giving up
+DEFAULT_MAX_RETRIES="3"
+
+#
+# Waits for the transfer Jobs in the given namespaces, re-creating the failed ones up
+# to MAX_RETRIES times. Returns like wait-for-context-transfers: 0 once all of them
+# completed, 1 if some still fail after the last retry, 2 if the cluster can't be reached
+#
+wait_and_retry()
+{
+	local CONTEXT="${1}"
+	shift
+	local RETRIES="0"
+	local RC=""
+	while true ; do
+		RC="0"
+		"${BASEDIR}/wait-for-context-transfers" "${CONTEXT}" "${@}" || RC="${?}"
+		[ "${RC}" -eq 1 ] || return "${RC}"
+		if [ "${RETRIES}" -ge "${MAX_RETRIES}" ] ; then
+			err "Some transfers in ${CONTEXT} still fail after ${MAX_RETRIES} retries: look into them before retrying again"
+			return 1
+		fi
+		RETRIES="$(( RETRIES + 1 ))"
+		say "🔁 Retrying the failed transfers in ${CONTEXT} (retry ${RETRIES} of ${MAX_RETRIES})"
+		"${BASEDIR}/retry-context-transfers" "${CONTEXT}" "${@}" || return 1
+	done
+}
+
+# Whether the namespace has PVCs that pvc-tool would work on
+has_pvcs()
+{
+	local CONTEXT="${1}"
+	local NAMESPACE="${2}"
+	local COUNT=""
+	COUNT="$(kubectl --context "${CONTEXT}" get pvc --namespace "${NAMESPACE}" -o json | jq '[.items[] | select(.metadata.deletionTimestamp == null) | select((.spec.volumeMode // "Filesystem") == "Filesystem")] | length')" || return 2
+	[ "${COUNT}" -gt 0 ]
+}
+
+#
+# For --retry-only: the given namespaces whose transfers were never started (no release,
+# but there's work to do), one per line. For an export, that's a namespace with PVCs;
+# for a restore, one that wasn't created yet, or whose PVCs were
+#
+find_unstarted()
+{
+	local CONTEXT="${1}"
+	local DIRECTION="${2}"
+	shift 2
+	local NS=""
+	local RC=""
+	for NS in "${@}" ; do
+		is_release_installed "${CONTEXT}" "${NS}" && continue
+		if ! kubectl --context "${CONTEXT}" get namespace "${NS}" &>/dev/null ; then
+			[ "${DIRECTION}" == "download" ] && echo "${NS}"
+			continue
+		fi
+		RC="0"
+		has_pvcs "${CONTEXT}" "${NS}" || RC="${?}"
+		case "${RC}" in
+			0 ) echo "${NS}" ;;
+			1 ) ;;
+			* ) return 1 ;;
+		esac
+	done
+}
+
+#
+# The --retry-only mode: start nothing, just wait for (and retry) the transfers that
+# were already started, and say which ones never were
+#
+retry_only()
+{
+	local CONTEXT="${1}"
+	local DIRECTION="${2}"
+	shift 2
+
+	ensure_exe helm jq kubectl
+	ensure_context "${CONTEXT}"
+
+	local UNSTARTED=()
+	readarray -t UNSTARTED < <(find_unstarted "${CONTEXT}" "${DIRECTION}" "${@}" ; echo "rc=${?}")
+	[ "${UNSTARTED[-1]}" == "rc=0" ] || fail "Failed to check which transfers were started in ${CONTEXT}"
+	unset 'UNSTARTED[-1]'
+	if [ "${#UNSTARTED[@]}" -gt 0 ] ; then
+		warn "These namespaces' transfers were never started, so they won't be waited for: ${UNSTARTED[*]}"
+	fi
+
+	local RC="0"
+	wait_and_retry "${CONTEXT}" "${@}" || RC="${?}"
+
+	if [ "${#UNSTARTED[@]}" -gt 0 ] ; then
+		err "Not done: the transfers of ${UNSTARTED[*]} were never started (run this again without --retry-only to start them)"
+		[ "${RC}" -ne 0 ] || RC="1"
+	fi
+	return "${RC}"
+}

@@ -125,6 +125,8 @@ Each namespace's data goes into the bucket under `${sourceContext}/${sourceNames
 
   2. `tools/wait-for-context-transfers aws-fedramp-test` waits for the context's transfer Jobs: it exits with `0` once they all completed, `1` as soon as any of them failed (naming them), and `2` if the cluster can't be reached. It only reads, so it can be run as often as needed (e.g. after losing connectivity). `tools/retry-context-transfers aws-fedramp-test` re-creates the failed Jobs, so they run again.
 
+     To pick up an interrupted run, run the same command again with `--retry-only`: it starts nothing, but waits for the transfers that were already started, and re-creates the ones that fail (up to `--max-retries` times, default 3). It still exits with `1` if any of the table's namespaces were never started (and have something to transfer): run it without `--retry-only` to start them. It doesn't need the bucket.
+
   3. Tear down the old cluster once all its transfers completed, and build the new one.
 
   4. Restore every namespace the table sends to the new context:
