@@ -51,13 +51,21 @@ spec:
       schedulerName: {{ $.Values.schedulerName | quote }}
       {{- end }}
       serviceAccountName: {{ include "arkcase.serviceAccountName" $ | quote }}
-      securityContext: {{- include "arkcase.securityContext" $ | nindent 8 }}
+      {{- /* Samba runs as non-root, so it needs this sysctl to listen on the low ports (389, 636, ...) */}}
+      {{- $securityContext := (include "arkcase.securityContext" $ | fromYaml) }}
+      {{- $portSysctl := "net.ipv4.ip_unprivileged_port_start" }}
+      {{- $sysctls := list (dict "name" $portSysctl "value" "0") }}
+      {{- range ($securityContext.sysctls | default list) }}
+        {{- if ne .name $portSysctl }}
+          {{- $sysctls = append $sysctls . }}
+        {{- end }}
+      {{- end }}
+      securityContext: {{- set $securityContext "sysctls" $sysctls | toYaml | nindent 8 }}
       terminationGracePeriodSeconds: 5
       initContainers:
-        {{- include "arkcase.initDependencies.container" $ | nindent 8 }}
-      containers:
-        - name: samba
+        - name: init-provision
           {{- include "arkcase.image" $ | nindent 10 }}
+          command: [ "/usr/local/bin/provision" ]
           env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
             {{- include "arkcase.acme.env" $ | nindent 12 }}
             {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
@@ -86,11 +94,70 @@ spec:
             - name: NOCOMPLEXITY
               value: "true"
             - name: SERVICE_NAME
-              value: {{ include "arkcase.name" $ | quote }}
+              value: &serviceName {{ include "arkcase.name" $ | quote }}
             - name: SECRETS_DIR
-              value: "/run/secrets"
+              value: &secretsDir "/run/secrets"
             - name: SEED_DIR
               value: &seedDir "/seeds"
+          resources: {{- include "arkcase.resources" $ | nindent 12 }}
+          securityContext:
+            # Provisioning needs root (the runtime doesn't): it also hands the
+            # state and the logs over to the image's (non-root) runtime user
+            runAsUser: 0
+            runAsNonRoot: false
+            capabilities:
+              add: [ "SYS_ADMIN" ]
+          volumeMounts:
+            {{- include "arkcase.subsystem-access.volumeMount" $ | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/init/init.d/000-init-seeds-wrapper" "subPath" "init-seeds-wrapper") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/boot/000-init-managed" "subPath" "init-managed") | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/init-seeds") | nindent 12 }}
+            - name: &seedFiles "seed-files"
+              mountPath: *seedDir
+              readOnly: true
+            - name: &dataVol "data"
+              mountPath: &dataDir "/var/lib/samba"
+            - name: &logsVol "logs"
+              mountPath: &logsDir "/var/log/samba"
+        {{- include "arkcase.initDependencies.container" $ | nindent 8 }}
+      containers:
+        - name: samba
+          {{- include "arkcase.image" $ | nindent 10 }}
+          env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            {{- include "arkcase.acme.env" $ | nindent 12 }}
+            {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
+            - name: SPLIT_PROVISIONER
+              value: "true"
+            - name: DOMAIN
+              value: "$(ARKCASE_DOMAIN)"
+            - name: DOMAIN_REALM
+              value: "$(ARKCASE_REALM)"
+            - name: DOMAIN_ROOT_DN
+              value: "$(ARKCASE_ROOT_DN)"
+            - name: DOMAIN_USERNAME
+              value: "$(MANAGED_DOMAIN_USERNAME)"
+            - name: DOMAIN_PASSWORD
+              value: "$(MANAGED_DOMAIN_PASSWORD)"
+            - name: DOMAINPASS
+              value: "$(DOMAIN_PASSWORD)"
+            - name: MANAGED_ROOT_DN
+              value: "$(ARKCASE_ROOT_DN)"
+            - name: MANAGED_BASE_DN
+              value: "$(ARKCASE_BASE_DN)"
+            - name: MANAGED_USERS_OU
+              value: "$(ARKCASE_USER_BASE_DN)"
+            - name: MANAGED_GROUPS_OU
+              value: "$(ARKCASE_GROUP_BASE_DN)"
+            - name: INSECURELDAP
+              value: "false"
+            - name: NOCOMPLEXITY
+              value: "true"
+            - name: SERVICE_NAME
+              value: *serviceName
+            - name: SECRETS_DIR
+              value: *secretsDir
+            - name: SEED_DIR
+              value: *seedDir
           {{- include "arkcase.subsystem.ports" $ | nindent 10 }}
           resources: {{- include "arkcase.resources" $ | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "samba") | nindent 12 }}
@@ -100,13 +167,13 @@ spec:
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/init/init.d/000-init-seeds-wrapper" "subPath" "init-seeds-wrapper") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/app/boot/000-init-managed" "subPath" "init-managed") | nindent 12 }}
             {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/init-seeds") | nindent 12 }}
-            - name: "data"
-              mountPath: "/var/lib/samba"
-            - name: "logs"
-              mountPath: "/var/log/samba"
-            - name: &seedFiles "seed-files"
+            - name: *seedFiles
               mountPath: *seedDir
               readOnly: true
+            - name: *dataVol
+              mountPath: *dataDir
+            - name: *logsVol
+              mountPath: *logsDir
       volumes:
         {{- include "arkcase.subsystem-access.volume" $ | nindent 8 }}
         {{- include "arkcase.acme.volume" $ | nindent 8 }}

@@ -27,21 +27,19 @@ image:
     # tag: 1.1.1-01
 
   community:
-    repository: "arkcase/pentaho-ce-11"
-    # tag: &pentahoVersion "9.4.0.0"
-
-    cron:
+    main: &pentaho-ce
       repository: "arkcase/pentaho-ce-11"
-      # tag: *pentahoVersion
+
+    etl:
+      <<: *pentaho-ce
 
   enterprise:
-    registry: "207428623785.dkr.ecr.us-east-1.amazonaws.com"
-    repository: "arkcase/pentaho-ee-11"
-    # tag: *pentahoVersion
-
-    cron:
+    main: &pentaho-ee
       repository: "arkcase/pentaho-ee-11"
-      # tag: *pentahoVersion
+      registry: "207428623785.dkr.ecr.us-east-1.amazonaws.com"
+
+    etl:
+      <<: *pentaho-ee
 
   smoke-test:
     repository: "arkcase/nettest"
@@ -76,7 +74,7 @@ securityContext:
   # case). Any random number will do.
   # fsGroup: 1998
   # fsGroupChangePolicy: OnRootMismatch
-  # pentaho:
+  # main:
     # capabilities:
     #   drop:
     #   - ALL
@@ -118,7 +116,7 @@ licenses:
   - "pentaho"
 
 service:
-  pentaho:
+  main:
     ports:
       - name: https
         protocol: TCP
@@ -143,6 +141,28 @@ service:
           scheme: HTTPS
           port: *https
           path: "/pentaho/ping/alive.gif"
+  etl:
+    ports:
+      - name: etl
+        protocol: TCP
+        port: 443
+        targetPort: &etl 8443
+    probes:
+      enabled: true
+      spec:
+        httpGet:
+          scheme: HTTPS
+          port: *etl
+          path: "/ping"
+        initialDelaySeconds: 0
+        periodSeconds: 10
+        timeoutSeconds: 10
+        failureThreshold: 1
+        successThreshold: 1
+      startup:
+        failureThreshold: 90
+      liveness:
+        failureThreshold: 3
 
 ##
 ## Configure extra options for containers' liveness and readiness probes

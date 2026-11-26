@@ -105,6 +105,25 @@ spec:
             - name: &logsVol "logs"
               mountPath: *logsDir
         {{- include "arkcase.initDependencies.container" (dict "ctx" $ "name" "init-dependencies" "network" "milvus") | nindent 8 }}
+        # Milvus can't change the admin password without knowing its current
+        # value, so we roll it directly in etcd before Milvus starts up
+        - name: init-admin-password
+          {{- include "arkcase.image" (dict "ctx" $ "name" "etcd" "repository" "arkcase/etcd") | nindent 10 }}
+          env: {{- include "arkcase.tools.baseEnv" $ | nindent 12 }}
+            {{- include "arkcase.acme.env" $ | nindent 12 }}
+            {{- include "arkcase.subsystem-access.env" $ | nindent 12 }}
+            # These must match what Milvus uses, so it reads the same credentials
+            - name: ETCD_ROOT_PATH
+              value: &etcdRootPath "by-dev"
+            - name: ETCD_META_SUB_PATH
+              value: &etcdMetaSubPath "meta"
+          resources: {{- include "arkcase.resources" (dict "ctx" $ "part" "etcd") | nindent 12 }}
+          securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "etcd") | nindent 12 }}
+          volumeMounts:
+            {{- include "arkcase.trusts.mount" $ | nindent 12 }}
+            {{- include "arkcase.acme.volumeMount" $ | nindent 12 }}
+            {{- include "arkcase.subsystem-access.volumeMount" $ | nindent 12 }}
+            {{- include "arkcase.file-resource.volumeMount" (dict "ctx" $ "mountPath" "/usr/local/bin/entrypoint" "subPath" "milvus.roll-admin-password") | nindent 12 }}
       containers:
         - name: milvus
           {{- include "arkcase.image" (dict "ctx" $ "name" "milvus" "repository" "arkcase/milvus") | nindent 10 }}
@@ -120,6 +139,10 @@ spec:
               value: "$(DATA_DIR)/rdb"
             - name: FUNCTION_ANALYZER_LOCAL_RESOURCE_PATH
               value: "$(DATA_DIR)/analyzer"
+            - name: ETCD_ROOT_PATH
+              value: *etcdRootPath
+            - name: ETCD_META_SUB_PATH
+              value: *etcdMetaSubPath
             - name: ETCD_LOG_PATH
               value: *logsDir
             - name: ETCD_SSL_ENABLED

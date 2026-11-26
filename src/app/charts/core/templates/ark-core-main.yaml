@@ -10,7 +10,6 @@
   {{- $saml := (include "arkcase.core.sso.saml" $ | fromYaml) -}}
   {{- $fullName := (include "arkcase.fullname" $) -}}
   {{- $extraName := (printf "%s-extra" $fullName) -}}
-  {{- $extraEnv := (include "arkcase.core.extra-env" $ | fromYaml) -}}
   {{- $serviceAccountName := (include "arkcase.serviceAccountName" $) -}}
   {{- $serviceAccountName = (or (empty $serviceAccountName) (eq "default" $serviceAccountName)) | ternary $fullName $serviceAccountName -}}
   {{- $roleName := (printf "%s-config-access" $serviceAccountName) -}}
@@ -209,7 +208,7 @@ spec:
               mountPath: *tempDir
             - name: &logsVol "logs"
               mountPath: *logsDir
-        {{- include "arkcase.initDependencies.container" (dict "ctx" $ "name" "init-dependencies" "network" "arkcase") | nindent 8 }}
+        {{- include "arkcase.initDependencies.container" (dict "ctx" $ "name" "init-dependencies" "network" "main") | nindent 8 }}
         {{- if not (eq $contentDialect "box") }}
         - name: init-seed-content
           {{- include "arkcase.image" (dict "ctx" $ "name" "seed-content" "repository" "arkcase/nettest") | nindent 10 }}
@@ -251,7 +250,7 @@ spec:
         {{- end }}
       containers:
         - name: arkcase
-          {{- include "arkcase.image" (dict "ctx" $ "name" "arkcase" "repository" "arkcase/core") | nindent 10 }}
+          {{- include "arkcase.image" (dict "ctx" $ "name" "main" "repository" "arkcase/core") | nindent 10 }}
           envFrom:
             - prefix: "ARK_EXTRA_SECRET_"
               secretRef:
@@ -350,9 +349,9 @@ spec:
                 -agentlib:jdwp=transport=dt_socket,server=y,suspend={{ .suspend }},address=$(POD_IP):8888
                 -XX:FlightRecorderOptions=stackdepth=512,samplethreads=true
                 {{- end }}
-          {{- include "arkcase.subsystem.ports" (dict "ctx" $ "name" "arkcase") | nindent 10 }}
-          resources: {{- include "arkcase.resources" (dict "ctx" $ "part" "arkcase") | nindent 12 }}
-          securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "arkcase") | nindent 12 }}
+          {{- include "arkcase.subsystem.ports" (dict "ctx" $ "name" "main") | nindent 10 }}
+          resources: {{- include "arkcase.resources" (dict "ctx" $ "part" "main") | nindent 12 }}
+          securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "main") | nindent 12 }}
           lifecycle:
             preStop:
               exec:
