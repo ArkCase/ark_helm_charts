@@ -172,6 +172,13 @@ service:
       - name: tomcat-cluster
         port: 4000
         from: peers
+      # JGroups (jgroups.xml): the TCP transport, and FD_SOCK2 (the transport's port + 100)
+      - name: jgroups
+        port: 7800
+        from: peers
+      - name: jgroups-fd
+        port: 7900
+        from: peers
 
     probes: &mainProbes
       enabled: true
