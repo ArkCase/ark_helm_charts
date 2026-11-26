@@ -150,8 +150,8 @@ persistence:
 #
 networkPolicy:
   externalAccess: true
-  # The config server reads ConfigMaps and Secrets (cloud-mapper), and Hazelcast and Tomcat
-  # (CloudMembershipService) discover their peers, through the Kubernetes API
+  # The config server reads ConfigMaps and Secrets (cloud-mapper), and Tomcat (CloudMembershipService)
+  # and JGroups (KUBE_PING) discover their peers, through the Kubernetes API
   kubeApiAccess: true
 
 service:
@@ -162,9 +162,6 @@ service:
       - name: https
         protocol: TCP
         port: &https 8443
-      - name: hazelcast
-        protocol: TCP
-        port: 5710
 
     # Ports the Service doesn't publish, but the pods use among themselves
     ingress:
