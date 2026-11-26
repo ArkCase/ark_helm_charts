@@ -51,6 +51,7 @@ spec:
       schedulerName: {{ $.Values.schedulerName | quote }}
       {{- end }}
       serviceAccountName: {{ include "arkcase.serviceAccountName" $ | quote }}
+      automountServiceAccountToken: {{ include "arkcase.serviceAccount.automountToken" $ }}
       {{- /* Samba runs as non-root, so it needs this sysctl to listen on the low ports (389, 636, ...) */}}
       {{- $securityContext := (include "arkcase.securityContext" $ | fromYaml) }}
       {{- $portSysctl := "net.ipv4.ip_unprivileged_port_start" }}

@@ -115,6 +115,12 @@ persistence:
 licenses:
   - "pentaho"
 
+#
+# Pentaho's Tomcat discovers its cluster peers through the Kubernetes API (CloudMembershipService)
+#
+networkPolicy:
+  kubeApiAccess: true
+
 service:
   main:
     ports:

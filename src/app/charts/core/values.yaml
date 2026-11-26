@@ -145,6 +145,16 @@ persistence:
 # The volume where the data will be stored (RTFM for more info on how to
 # properly declare volumes)
 
+#
+# ArkCase connects to services outside of the namespace (i.e. e-mail, SSO,
+# externally-provided subsystems), so its pods may egress beyond it
+#
+networkPolicy:
+  externalAccess: true
+  # The config server reads ConfigMaps and Secrets (cloud-mapper), and Hazelcast and Tomcat
+  # (CloudMembershipService) discover their peers, through the Kubernetes API
+  kubeApiAccess: true
+
 service:
   canDebug: true
 

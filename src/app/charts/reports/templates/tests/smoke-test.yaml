@@ -22,6 +22,8 @@ metadata:
       {{- toYaml . | nindent 4 }}
     {{- end }}
 spec:
+  # Tests never need the Kubernetes API
+  automountServiceAccountToken: false
   affinity:
     nodeAffinity:
       requiredDuringSchedulingIgnoredDuringExecution:
