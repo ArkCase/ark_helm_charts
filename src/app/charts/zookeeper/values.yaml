@@ -113,6 +113,19 @@ service:
     - name: metrics
       protocol: TCP
       port: 7000
+  # Ports the Service doesn't publish, but the pods use
+  ingress:
+    # The quorum (follower <-> leader) and leader election ports
+    - name: quorum
+      port: 2888
+      from: peers
+    - name: election
+      port: 3888
+      from: peers
+    # The TLS-only client port (secureClientPort)
+    - name: clients-tls
+      port: 2281
+      from: release
 
 ##
 ## Configure extra options for containers' liveness and readiness probes
