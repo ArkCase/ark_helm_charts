@@ -147,21 +147,34 @@ Parameter: either the root context (i.e. "." or "$"), or
   {{- printf "%s-dns" (include "arkcase.service.name" $) -}}
 {{- end -}}
 
-{{- define "arkcase.subsystem.service.render" -}}
+{{- /*
+Compute the model for a single service, as described by the work item produced by
+arkcase.subsystem.service.models: its name (and headless name), type, ports, the
+additional ingress declarations for its pods (ports the service doesn't publish), the
+labels that select its pods, and whether it's provided externally. The result is
+empty if the subsystem is neither enabled nor external.
+
+This is the single source of truth for both the Service and the NetworkPolicy
+declarations, so they can never disagree on the target pods or ports.
+
+Parameter: a dict with these keys:
+             - ctx = the root context (either "." or "$")
+             - data = the service's configuration (ports, type, labels, etc.)
+             - part = the part whose name the service is rendered for (may be empty)
+             - targetPart = the part whose pods the service targets, if not the same (optional)
+             - partNameOnly = name the service after the part alone (optional)
+             - dnsOnly / noDns = render only the headless service / only the regular one (optional)
+*/ -}}
+{{- define "__arkcase.subsystem.service.model" -}}
   {{- $ctx := $.ctx -}}
   {{- $data := $.data -}}
-  {{- $global := $.global -}}
-  {{- $partname := $.partname -}}
-  {{- $targetPart := $.targetPart -}}
-  {{- $dnsOnly := $.dnsOnly -}}
-  {{- $noDns := $.noDns -}}
-  {{- $partNameOnly := $.partNameOnly -}}
+  {{- $part := ($.part | default "" | toString) -}}
+  {{- $targetPart := ($.targetPart | default "" | toString) -}}
+  {{- $partNameOnly := (not (empty $.partNameOnly)) -}}
 
   {{- /* This is important for services that will target other parts */ -}}
-  {{- $selectorCtx := $ctx -}}
-  {{- if $targetPart -}}
-    {{- $selectorCtx = (dict "ctx" $ctx "partname" $targetPart) -}}
-  {{- end -}}
+  {{- $selectorCtx := (dict "ctx" $ctx "partname" ($targetPart | default $part)) -}}
+  {{- $nameCtx := (dict "ctx" $ctx "partname" $part "partNameOnly" $partNameOnly) -}}
 
   {{- if (include "arkcase.subsystem.enabledOrExternal" $ctx) -}}
     {{- $external := (not (empty (include "arkcase.subsystem.external" $ctx ))) -}}
@@ -175,7 +188,7 @@ Parameter: either the root context (i.e. "." or "$"), or
     {{- if and (empty $ports) (not $external) -}}
       {{- fail (printf "No ports are defined for chart %s, and no external server was given" (include "common.name" $ctx)) -}}
     {{- end -}}
-    {{- $name := (include "arkcase.name" $ctx) -}}
+    {{- $name := (include "arkcase.name" (dict "ctx" $ctx "partname" $part)) -}}
     {{- $overrides := (include "arkcase.subsystem.service.global" $ctx | fromYaml) -}}
     {{- if hasKey $overrides $name -}}
       {{- $overrides = get $overrides $name -}}
@@ -185,8 +198,42 @@ Parameter: either the root context (i.e. "." or "$"), or
     {{- if and (hasKey $overrides "type") ($overrides.type) -}}
       {{- $type = $overrides.type -}}
     {{- end -}}
-    {{- $serviceName := (include "arkcase.service.name" (dict "ctx" $ctx "partNameOnly" $partNameOnly)) -}}
-    {{- $headlessName := (include "arkcase.service.headless" (dict "ctx" $ctx "partNameOnly" $partNameOnly)) -}}
+    {{-
+      $model := dict
+        "name" (include "arkcase.service.name" $nameCtx)
+        "headless" (include "arkcase.service.headless" $nameCtx)
+        "part" $part
+        "targetPart" $targetPart
+        "dnsOnly" (not (empty $.dnsOnly))
+        "noDns" (not (empty $.noDns))
+        "external" $external
+        "type" $type
+        "ports" $ports
+        "ingress" ($data.ingress | default list)
+        "enableDebug" $enableDebug
+        "overrides" $overrides
+        "labels" $data.labels
+        "annotations" $data.annotations
+        "selector" (include "arkcase.labels.matchLabels.service" $selectorCtx | fromYaml)
+    -}}
+    {{- $model | toYaml -}}
+  {{- end -}}
+{{- end -}}
+
+{{- define "arkcase.subsystem.service.render" -}}
+  {{- $ctx := $.ctx -}}
+  {{- $model := $.model -}}
+  {{- if $model -}}
+    {{- $selectorCtx := (dict "ctx" $ctx "partname" ($model.targetPart | default $model.part)) -}}
+    {{- $dnsOnly := $model.dnsOnly -}}
+    {{- $noDns := $model.noDns -}}
+    {{- $external := $model.external -}}
+    {{- $ports := $model.ports -}}
+    {{- $type := $model.type -}}
+    {{- $enableDebug := $model.enableDebug -}}
+    {{- $overrides := $model.overrides -}}
+    {{- $serviceName := $model.name -}}
+    {{- $headlessName := $model.headless -}}
     {{- if not $external -}}
       {{- if not $noDns -}}
 ---
@@ -204,7 +251,7 @@ metadata:
         {{- with $ctx.Values.labels }}
           {{- toYaml . | nindent 4 }}
         {{- end }}
-        {{- with $data.labels }}
+        {{- with $model.labels }}
           {{- toYaml . | nindent 4 }}
         {{- end }}
         {{- with $overrides.labels }}
@@ -214,7 +261,7 @@ metadata:
         {{- with $ctx.Values.annotations }}
           {{- toYaml . | nindent 4 }}
         {{- end }}
-        {{- with $data.annotations }}
+        {{- with $model.annotations }}
           {{- toYaml . | nindent 4 }}
         {{- end }}
         {{- with $overrides.annotations }}
@@ -251,7 +298,7 @@ metadata:
       {{- with $ctx.Values.labels }}
         {{- toYaml . | nindent 4 }}
       {{- end }}
-      {{- with $data.labels }}
+      {{- with $model.labels }}
         {{- toYaml . | nindent 4 }}
       {{- end }}
       {{- with $overrides.labels }}
@@ -261,7 +308,7 @@ metadata:
       {{- with $ctx.Values.annotations }}
         {{- toYaml . | nindent 4 }}
       {{- end }}
-      {{- with $data.annotations }}
+      {{- with $model.annotations }}
         {{- toYaml . | nindent 4 }}
       {{- end }}
       {{- with $overrides.annotations }}
@@ -459,11 +506,20 @@ spec:
 {{- end -}}
 
 {{- /*
-Render subsystem service declarations based on whether an external host declaration is provided or not
+Compute the list of service models (see __arkcase.subsystem.service.model) for the services that
+arkcase.subsystem.service renders for the given context. The list is empty if the subsystem isn't
+enabled, or if the (part's) template has no service to render.
 
-Parameter: the root context (i.e. "." or "$")
+Parameter: the root context (i.e. "." or "$"), or a dict with the root context as 'ctx' and these
+           optional keys:
+             - partname = the part whose service configuration is to be rendered
+             - part = the part whose name the services are rendered for (defaults to the part
+               derived from the name of the template being rendered)
+             - targetPart = the part whose pods the services target, if not the same
+             - partNameOnly = name the services after the part alone
+             - dnsOnly / noDns = render only the headless service / only the regular one
 */ -}}
-{{- define "arkcase.subsystem.service" }}
+{{- define "arkcase.subsystem.service.models" }}
   {{- $partname := (include "arkcase.part.name" $) -}}
   {{- $dnsOnly := false -}}
   {{- $noDns := false -}}
@@ -489,9 +545,13 @@ Parameter: the root context (i.e. "." or "$")
     {{- fail "Incorrect context given - either submit the root context as the only parameter, or a 'ctx' parameter pointing to it" -}}
   {{- end -}}
 
+  {{- /* The part whose name the services are rendered for: the template's, unless given explicitly */ -}}
+  {{- $part := ((hasKey $ "part") | ternary ($.part | toString | lower) (include "arkcase.part.name" $ctx)) -}}
+
+  {{- $models := list }}
   {{- if (include "arkcase.subsystem.enabled" $ctx) }}
     {{- /* Gather the global ports */ -}}
-    {{- $service := pick $ctx.Values.service "ports" "type" "probes" "canDebug" }}
+    {{- $service := pick $ctx.Values.service "ports" "ingress" "type" "probes" "canDebug" }}
     {{- $ports := list }}
     {{- if $service.ports }}
       {{- if not (kindIs "slice" $service.ports) }}
@@ -500,7 +560,7 @@ Parameter: the root context (i.e. "." or "$")
       {{- $ports = $service.ports }}
     {{- end }}
 
-    {{- $parts := omit $ctx.Values.service "ports" "type" "probes" "canDebug" }}
+    {{- $parts := omit $ctx.Values.service "ports" "ingress" "type" "probes" "canDebug" }}
 
     {{- /* Render the work to be performed */ -}}
     {{- $work := list }}
@@ -508,21 +568,43 @@ Parameter: the root context (i.e. "." or "$")
       {{- /* Render a single part as the global service, as necessary */ -}}
       {{- if hasKey $parts $partname }}
         {{- /* The single-part option supplants the global service */ -}}
-        {{- $work = append $work (dict "ctx" $ctx "data" (get $parts $partname) "global" $service "partname" $partname "targetPart" $targetPart "partNameOnly" $partNameOnly "dnsOnly" $dnsOnly "noDns" $noDns) }}
+        {{- $work = append $work (dict "ctx" $ctx "data" (get $parts $partname) "part" $part "targetPart" $targetPart "partNameOnly" $partNameOnly "dnsOnly" $dnsOnly "noDns" $noDns) }}
       {{- end }}
     {{- else }}
       {{- /* Render a global service with all the ports */ -}}
       {{- $data := pick $service "type" "canDebug" }}
+      {{- $ingress := ($service.ingress | default list) }}
       {{- range $pn, $p := $parts -}}
         {{- $ports = concat $ports $p.ports -}}
+        {{- $ingress = concat $ingress ($p.ingress | default list) -}}
       {{- end -}}
       {{- $data = set $data "ports" $ports }}
+      {{- $data = set $data "ingress" $ingress }}
       {{- /* Add the work item */ -}}
-      {{- $work = append $work (dict "ctx" $ctx "data" $data "partname" $partname "targetPart" $targetPart "partNameOnly" $partNameOnly "dnsOnly" $dnsOnly "noDns" $noDns) }}
+      {{- $work = append $work (dict "ctx" $ctx "data" $data "part" $part "targetPart" $targetPart "partNameOnly" $partNameOnly "dnsOnly" $dnsOnly "noDns" $noDns) }}
     {{- end }}
     {{- range $w := $work }}
-      {{- include "arkcase.subsystem.service.render" $w }}
+      {{- $model := (include "__arkcase.subsystem.service.model" $w | fromYaml) }}
+      {{- if $model }}
+        {{- $models = append $models $model }}
+      {{- end }}
     {{- end }}
+  {{- end }}
+  {{- $models | toYaml }}
+{{- end }}
+
+{{- /*
+Render subsystem service declarations based on whether an external host declaration is provided or not,
+along with the network policies that govern access to the pods behind each (internal) service
+
+Parameter: the root context (i.e. "." or "$"), or a dict with the root context as 'ctx' and the
+           optional keys described in arkcase.subsystem.service.models
+*/ -}}
+{{- define "arkcase.subsystem.service" }}
+  {{- $ctx := (hasKey $ "ctx" | ternary $.ctx $) -}}
+  {{- range $model := (include "arkcase.subsystem.service.models" $ | fromYamlArray) }}
+    {{- include "arkcase.subsystem.service.render" (dict "ctx" $ctx "model" $model) }}
+    {{- include "arkcase.network-policy.service" (dict "ctx" $ctx "model" $model) }}
   {{- end }}
 {{- end }}
 
@@ -579,8 +661,8 @@ Parameter: the root context (i.e. "." or "$"), or a map which descibes the ports
     {{- end -}}
   {{- end -}}
 
-  {{- $service := pick $ctx.Values.service "ports" "type" "probes" "external" -}}
-  {{- $parts := omit $ctx.Values.service "ports" "type" "probes" "external" }}
+  {{- $service := pick $ctx.Values.service "ports" "ingress" "type" "probes" "external" -}}
+  {{- $parts := omit $ctx.Values.service "ports" "ingress" "type" "probes" "external" }}
 
   {{- $partname := ((not (empty ($.name))) | ternary ($.name | toString) (include "arkcase.part.name" $ctx)) -}}
   {{- if $partname -}}

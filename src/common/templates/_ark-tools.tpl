@@ -47,7 +47,8 @@
   {{- end -}}
 
   {{- $name := (include "common.name" $ctx) -}}
-  {{- $partname := (include "arkcase.part.name" $ctx) -}}
+  {{- /* Pass the parameters along, so an explicit 'partname' is honored */ -}}
+  {{- $partname := (include "arkcase.part.name" $) -}}
 
   {{- if $partname -}}
     {{- if $partNameOnly -}}
@@ -146,6 +147,12 @@ app.kubernetes.io/service-support: "true"
 {{- define "arkcase.labels.workload" -}}
 arkcase.com/task: "work"
 arkcase.com/subsystem: {{ include "arkcase.subsystem.name" $ | quote }}
+  {{- with (include "arkcase.network-policy.labels.external" $) }}
+{{ . }}
+  {{- end }}
+  {{- with (include "arkcase.network-policy.labels.kube-api" $) }}
+{{ . }}
+  {{- end }}
 {{- end -}}
 
 {{- define "arkcase.labels.deploys" -}}

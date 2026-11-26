@@ -1,6 +1,7 @@
-{{- $baseUrl := (include "arkcase.tools.conf" (dict "ctx" $ "value" "baseUrl") | toString) -}}
+{{- /* The same inputs the services' network policies use to tell whether they're published through the Ingress */ -}}
+{{- $inputs := (include "arkcase.app.ingress.inputs" $ | fromYaml) -}}
+{{- $baseUrl := $inputs.baseUrl -}}
 {{- if $baseUrl -}}
-  {{- $baseUrl = ((include "arkcase.tools.parseUrl" $baseUrl) | fromYaml) -}}
   {{- if (ne "https" ($baseUrl.scheme | lower)) -}}
     {{- fail (printf "The baseUrl must be an https:// URL - [%s]" $baseUrl) -}}
   {{- end -}}
@@ -14,26 +15,15 @@
     {{- end -}}
   {{- end -}}
 
-  {{- $ingress := ($.Values.global.ingress | default dict) -}}
-  {{- $ingress = (kindIs "map" $ingress) | ternary $ingress dict -}}
-  {{- $enabled := or (not (hasKey $ingress "enabled")) (not (empty (include "arkcase.toBoolean" $ingress.enabled))) -}}
+  {{- $ingress := $inputs.ingress -}}
+  {{- $hostnames := $inputs.hostnames -}}
 
-  {{- $portal := (include "arkcase.portal" $ | fromYaml) -}}
-  {{- $contentDialect := (include "arkcase.content.dialect" $) -}}
-  {{- $dev := (include "arkcase.dev" $ | fromYaml) -}}
-
-  {{- $hostnames := list $baseUrl.hostname -}}
-  {{- /* For development mode, we enable other hostnames */ -}}
-  {{- if $dev -}}
-    {{- $hostnames = append $hostnames "localhost.localdomain" -}}
-  {{- end -}}
-
-  {{- if and $enabled $hostnames -}}
+  {{- if and $inputs.enabled $hostnames -}}
     {{- $secretData := dict -}}
     {{- $secretName := (printf "%s-ingress" (include "arkcase.fullname" $)) -}}
 
-    {{- $modules := (include "arkcase.app.ingress.sanitize-modules" $ingress | fromYaml) -}}
     {{- $cloud := (include "arkcase.app.ingress.sanitize-cloud" (dict "ctx" $ "ingress" $ingress "baseUrl" $baseUrl) | fromYaml) -}}
+    {{- $rules := (include "arkcase.app.ingress.rules" $inputs) -}}
 
     {{- $secretData = $ingress.secret -}}
     {{- if not $secretData -}}
@@ -102,100 +92,7 @@ spec:
     {{- with $cloud.className }}
   ingressClassName: {{ . | quote }}
     {{- end }}
-  rules:
-    {{- range $host := $hostnames }}
-    - host: {{ $host | quote }}
-      http:
-        paths:
-          - path: "/"
-            pathType: Prefix
-            backend:
-              service:
-                name: "core"
-                port:
-                  number: 8443
-      {{- if $portal }}
-          # We'll re-enable this when we figure out how to cleanly
-          # expose Neo4j for user consumption
-          # - path: "/browser"
-          #   pathType: Prefix
-          #   backend:
-          #     service:
-          #       name: "analytics"
-          #       port:
-          #         number: 8443
-      {{- end }}
-      {{- if or $dev $modules.entries.artifacts }}
-          - path: "/artifacts"
-            pathType: Prefix
-            backend:
-              service:
-                name: "app-artifacts"
-                port:
-                  number: 443
-      {{- end }}
-      {{- if or $dev $modules.entries.content }}
-        {{- if (eq $contentDialect "alfresco") }}
-          - path: "/alfresco"
-            pathType: Prefix
-            backend:
-              service:
-                name: "content-main"
-                port:
-                  number: 8443
-          - path: "/api-explorer"
-            pathType: Prefix
-            backend:
-              service:
-                name: "content-share"
-                port:
-                  number: 8443
-          - path: "/share"
-            pathType: Prefix
-            backend:
-              service:
-                name: "content-share"
-                port:
-                  number: 8443
-        {{- end }}
-        {{- if (eq $contentDialect "s3") }}
-          - path: "/minio"
-            pathType: Prefix
-            backend:
-              service:
-                name: "content-main"
-                port:
-                  number: 9000
-        {{- end }}
-      {{- end }}
-      {{- if or $dev $modules.entries.messaging }}
-          - path: "/console"
-            pathType: Prefix
-            backend:
-              service:
-                name: "messaging"
-                port:
-                  number: 8443
-      {{- end }}
-      {{- if or $dev $modules.entries.reports }}
-          - path: "/pentaho"
-            pathType: Prefix
-            backend:
-              service:
-                name: "reports"
-                port:
-                  number: 8443
-      {{- end }}
-      {{- if or $dev $modules.entries.search }}
-          - path: "/solr"
-            pathType: Prefix
-            backend:
-              service:
-                name: "search"
-                port:
-                  number: 8983
-      {{- end }}
-    {{- end }}
+  rules: {{- $rules | nindent 4 }}
   tls:
     - secretName: {{ $secretName | quote }}
       hosts: {{- $hostnames | toYaml | nindent 8 }}

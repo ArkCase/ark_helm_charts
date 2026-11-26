@@ -117,6 +117,12 @@ persistence:
 # properly declare volumes)
 #     data:
 
+#
+# Artemis discovers its cluster peers through the Kubernetes API (JGroups KUBE_PING)
+#
+networkPolicy:
+  kubeApiAccess: true
+
 service:
   #external: host-or-IP
   ports:
