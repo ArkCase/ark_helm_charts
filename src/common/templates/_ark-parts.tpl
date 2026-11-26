@@ -5,8 +5,8 @@
 
   {{- if hasKey . "ctx" -}}
     {{- $ctx = .ctx -}}
-    {{- if hasKey . "subname" -}}
-      {{- $partname = (.subname | toString | lower) -}}
+    {{- if hasKey . "partname" -}}
+      {{- $partname = (.partname | toString | lower) -}}
       {{- $explicit = true -}}
     {{- end -}}
   {{- end -}}

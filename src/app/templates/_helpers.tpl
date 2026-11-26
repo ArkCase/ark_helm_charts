@@ -139,15 +139,87 @@
 {{- end -}}
 
 {{- /*
+Compute the inputs that decide the Ingress' existence and its rules, exactly as the chart that renders
+the Ingress (app) sees them, so any chart may tell which of its services the Ingress routes to (see
+arkcase.app.ingress.backends): only global settings count, other than the app chart's own baseUrl
+(which only the app chart itself can see).
+
+Parameter: the root context (either "." or "$")
+*/ -}}
+{{- define "arkcase.app.ingress.inputs" -}}
+  {{- $ctx := $ -}}
+  {{- $result := dict -}}
+  {{- $global := ($ctx.Values.global | default dict) -}}
+
+  {{- /* The app chart may also set it in its own configuration */ -}}
+  {{- $baseUrl := (dig "subsys" "app" "settings" "baseUrl" "" $global | default (dig "settings" "baseUrl" "" $global) | toString) -}}
+  {{- if (eq "app" (include "arkcase.subsystem.name" $ctx)) -}}
+    {{- $baseUrl = (include "arkcase.tools.conf" (dict "ctx" $ctx "value" "baseUrl") | toString) -}}
+  {{- end -}}
+  {{- if $baseUrl -}}
+    {{- $baseUrl = ((include "arkcase.tools.parseUrl" $baseUrl) | fromYaml) -}}
+
+    {{- $ingress := ($ctx.Values.global.ingress | default dict) -}}
+    {{- $ingress = (kindIs "map" $ingress) | ternary $ingress dict -}}
+
+    {{- $dev := (include "arkcase.dev" $ctx | fromYaml) -}}
+
+    {{- $hostnames := list $baseUrl.hostname -}}
+    {{- /* For development mode, we enable other hostnames */ -}}
+    {{- if $dev -}}
+      {{- $hostnames = append $hostnames "localhost.localdomain" -}}
+    {{- end -}}
+
+    {{-
+      $result = dict
+        "baseUrl" $baseUrl
+        "ingress" $ingress
+        "enabled" (or (not (hasKey $ingress "enabled")) (not (empty (include "arkcase.toBoolean" $ingress.enabled))))
+        "hostnames" $hostnames
+        "portal" (include "arkcase.portal" $ctx | fromYaml)
+        "dev" $dev
+        "modules" (include "arkcase.app.ingress.sanitize-modules" $ingress | fromYaml)
+        "contentDialect" (dig "subsys" "content" "settings" "dialect" "" $global | default "s3" | toString | lower)
+    -}}
+  {{- end -}}
+  {{- $result | toYaml -}}
+{{- end -}}
+
+{{- /*
+Compute the list of the Ingress' backends (each a map with the service's name, and its port as
+the Ingress refers to it), or an empty list if there's no Ingress. The network policies use it to
+let the Ingress controller (wherever it may be) reach the pods behind those services.
+
+Parameter: the root context (either "." or "$")
+*/ -}}
+{{- define "arkcase.app.ingress.backends" -}}
+  {{- $inputs := (include "arkcase.app.ingress.inputs" $ | fromYaml) -}}
+  {{- $result := list -}}
+  {{- if and $inputs $inputs.enabled $inputs.hostnames -}}
+    {{- range $rule := (include "arkcase.app.ingress.rules" $inputs | fromYamlArray) -}}
+      {{- range $path := (dig "http" "paths" list $rule) -}}
+        {{- $service := (dig "backend" "service" dict $path) -}}
+        {{- if $service.name -}}
+          {{- $result = append $result (dict "name" $service.name "port" ($service.port | default dict)) -}}
+        {{- end -}}
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
+  {{- $result | uniq | toYaml -}}
+{{- end -}}
+
+{{- /*
 Render the Ingress rules (a list), so they may be consumed both by the Ingress itself
 and by the network policies that grant access to its backends
+
+Parameter: the inputs computed by arkcase.app.ingress.inputs
 */ -}}
 {{- define "arkcase.app.ingress.rules" -}}
   {{- $hostnames := $.hostnames -}}
   {{- $portal := $.portal -}}
   {{- $dev := $.dev -}}
   {{- $modules := $.modules -}}
-  {{- $content := $.content -}}
+  {{- $contentDialect := $.contentDialect -}}
   {{- range $host := $hostnames }}
 - host: {{ $host | quote }}
   http:
@@ -180,7 +252,7 @@ and by the network policies that grant access to its backends
               number: 443
     {{- end }}
     {{- if or $dev $modules.entries.content }}
-      {{- if (eq $content.dialect "alfresco") }}
+      {{- if (eq $contentDialect "alfresco") }}
       - path: "/alfresco"
         pathType: Prefix
         backend:
@@ -203,7 +275,7 @@ and by the network policies that grant access to its backends
             port:
               number: 8443
       {{- end }}
-      {{- if (eq $content.dialect "s3") }}
+      {{- if (eq $contentDialect "s3") }}
       - path: "/minio"
         pathType: Prefix
         backend:

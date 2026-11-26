@@ -22,10 +22,11 @@ Network policies lock down a release's pods, and then open access to them one se
         open" as "${fullname}-kube-api-fail-open": all ports on the private network ranges (see
         __arkcase.network-policy.kube-api).
 
-  * Each internal service (via arkcase.subsystem.service) renders "${service}-ingress", which
-    allows access to the service's pods on the service's declared ports, from the release's pods.
-    The release's pods may reach each other, but only on the ports each one opened. Ports the service doesn't publish (i.e. clustering, monitoring) may be
-    opened for its pods via service[.${part}].ingress, a list of:
+  * Each internal service (via arkcase.subsystem.service) renders "${service}-ingress" (named after
+    its headless service, if that's the only one rendered), which allows access to the service's
+    pods on the service's declared ports, from the release's pods. The release's pods may reach
+    each other, but only on the ports each one opened. Ports the service doesn't publish (i.e.
+    clustering, monitoring) may be opened for its pods via service[.${part}].ingress, a list of:
 
         - name: "cluster"         # Optional, for documentation
           protocol: "TCP"         # Optional, TCP by default
@@ -34,10 +35,9 @@ Network policies lock down a release's pods, and then open access to them one se
                                   # "peers" (only the pods behind the same service), or a list of
                                   # NetworkPolicyPeer declarations (i.e. a monitoring namespace)
 
-  * The chart that renders an Ingress renders "${ingress}-ingress-${service}" for each of its
-    backend services, allowing access to the backend ports from anywhere
-    (arkcase.network-policy.ingress), since the ingress controller's whereabouts (namespace,
-    pod labels, cloud load balancer addresses) aren't known.
+  * If the release's Ingress routes to a service (see arkcase.app.ingress.backends), the service's
+    policy also allows access to the ports the Ingress routes to from anywhere, since the ingress
+    controller's whereabouts (namespace, pod labels, cloud load balancer addresses) aren't known.
 
 Nothing outside of the release (not even other pods in its namespace) is reachable other than name
 resolution, unless the pod is allowed external access: not even the Kubernetes API, nor externally-provided
@@ -401,6 +401,14 @@ Parameter: a dict with two keys:
 {{- end -}}
 
 {{- /*
+The name of the Service a model actually renders, to name its policy after: the headless one, for
+services rendered only for DNS lookups (whose regular name may well belong to another service)
+*/ -}}
+{{- define "__arkcase.network-policy.service.name" -}}
+  {{- (not (empty $.dnsOnly)) | ternary $.headless $.name -}}
+{{- end -}}
+
+{{- /*
 Render the network policy that allows access to the pods behind a service, on its ports
 
 Parameter: a dict with two keys:
@@ -414,7 +422,7 @@ Parameter: a dict with two keys:
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
-metadata: {{- include "__arkcase.network-policy.metadata" (dict "ctx" $ctx "name" (printf "%s-ingress" $model.name)) | nindent 2 }}
+metadata: {{- include "__arkcase.network-policy.metadata" (dict "ctx" $ctx "name" (printf "%s-ingress" (include "__arkcase.network-policy.service.name" $model))) | nindent 2 }}
 spec:
   podSelector:
     matchLabels: {{- $model.selector | toYaml | nindent 6 }}
@@ -428,106 +436,43 @@ spec:
     # Ports the service doesn't publish
     {{- toYaml . | nindent 4 }}
     {{- end }}
+    {{- with (include "__arkcase.network-policy.ingress.published" (merge (dict "ctx" $ctx) $model) | fromYamlArray) }}
+    # Ports the Ingress routes to: its controller may be anywhere (in-cluster, or a cloud load balancer)
+    - ports: {{- include "__arkcase.network-policy.ports" . | nindent 8 }}
+    {{- end }}
   {{- end }}
 {{- end -}}
 
 {{- /*
-Compute the service models (see __arkcase.subsystem.service.model) for the services that
-the given chart and all its subcharts render. Subcharts that don't declare services (i.e.
-library charts, or charts that don't use the ArkCase service layout) are skipped.
+Compute the service's ports (as declared for the service) that the release's Ingress routes to,
+matching the Ingress' backends (see arkcase.app.ingress.backends) against the names of the
+Services the model actually renders, and their ports by number or name.
 
-Parameter: the root context (either "." or "$")
+Parameter: the service model (see __arkcase.subsystem.service.model), with "ctx" added
 */ -}}
-{{- define "__arkcase.network-policy.serviceModels" -}}
-  {{- $ctx := $ -}}
-  {{- $models := list -}}
-  {{- if and (ne "library" ($ctx.Chart.Type | default "")) (kindIs "map" $ctx.Values.service) -}}
-    {{- /* The services' template names aren't visible here, so assume each part's service is named after it */ -}}
-    {{- range $partname := (concat (list "") (keys (omit $ctx.Values.service "ports" "ingress" "type" "probes" "canDebug") | sortAlpha)) -}}
-      {{- $models = concat $models (include "arkcase.subsystem.service.models" (dict "ctx" $ctx "subname" $partname "part" $partname) | fromYamlArray) -}}
+{{- define "__arkcase.network-policy.ingress.published" -}}
+  {{- $model := $ -}}
+  {{- $names := list -}}
+  {{- if not $model.dnsOnly -}}
+    {{- $names = append $names $model.name -}}
+  {{- end -}}
+  {{- if not $model.noDns -}}
+    {{- $names = append $names $model.headless -}}
+  {{- end -}}
+  {{- $ports := list -}}
+  {{- range $backend := (include "arkcase.app.ingress.backends" $model.ctx | fromYamlArray) -}}
+    {{- if not (has $backend.name $names) -}}
+      {{- continue -}}
+    {{- end -}}
+    {{- range $p := $model.ports -}}
+      {{- if or (and $backend.port.number (eq (int $backend.port.number) (int $p.port))) (and $backend.port.name (eq ($backend.port.name | toString) ($p.name | toString))) -}}
+        {{- $ports = append $ports $p -}}
+      {{- end -}}
     {{- end -}}
   {{- end -}}
-  {{- range $name, $sub := ($ctx.Subcharts | default dict) -}}
-    {{-
-      $subctx := dict
-        "Values" $sub.Values
-        "Chart" $sub.Chart
-        "Release" $sub.Release
-        "Files" $sub.Files
-        "Capabilities" $sub.Capabilities
-        "Subcharts" $sub.Subcharts
-        "Template" $ctx.Template
-    -}}
-    {{- $models = concat $models (include "__arkcase.network-policy.serviceModels" $subctx | fromYamlArray) -}}
-  {{- end -}}
-  {{- $models | toYaml -}}
+  {{- $ports | uniq | toYaml -}}
 {{- end -}}
 
-{{- /*
-Render the network policies that allow access to an Ingress' backend services. The backends
-are resolved to the pods (and pod ports) behind them using the same service models that
-render the services themselves, for the chart that renders the Ingress and all its subcharts.
-Backends that can't be resolved (i.e. services rendered elsewhere, or provided externally)
-are skipped.
-
-Parameter: a dict with these keys:
-             - ctx = the root context (either "." or "$")
-             - name = the name of the Ingress
-             - rules = the list of Ingress rules (as in the Ingress' spec.rules)
-*/ -}}
-{{- define "arkcase.network-policy.ingress" -}}
-  {{- $ctx := $.ctx -}}
-  {{- if (include "arkcase.network-policy.enabled" $ctx) -}}
-    {{- $backends := dict -}}
-    {{- range $rule := ($.rules | default list) -}}
-      {{- range $path := (dig "http" "paths" list $rule) -}}
-        {{- $service := (dig "backend" "service" dict $path) -}}
-        {{- if $service.name -}}
-          {{- $backends = set $backends $service.name (append (get $backends $service.name | default list) ($service.port | default dict)) -}}
-        {{- end -}}
-      {{- end -}}
-    {{- end -}}
-
-    {{- $models := dict -}}
-    {{- if $backends -}}
-      {{- range $model := (include "__arkcase.network-policy.serviceModels" $ctx | fromYamlArray) -}}
-        {{- if not $model.external -}}
-          {{- $models = set $models $model.name $model -}}
-        {{- end -}}
-      {{- end -}}
-    {{- end -}}
-
-    {{- range $serviceName := (keys $backends | sortAlpha) -}}
-      {{- if not (hasKey $models $serviceName) -}}
-        {{- continue -}}
-      {{- end -}}
-      {{- $model := get $models $serviceName -}}
-
-      {{- $ports := list -}}
-      {{- range $port := (get $backends $serviceName) -}}
-        {{- range $p := $model.ports -}}
-          {{- if or (and $port.number (eq (int $port.number) (int $p.port))) (and $port.name (eq ($port.name | toString) ($p.name | toString))) -}}
-            {{- $ports = append $ports $p -}}
-          {{- end -}}
-        {{- end -}}
-      {{- end -}}
-
-      {{- if $ports }}
----
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata: {{- include "__arkcase.network-policy.metadata" (dict "ctx" $ctx "name" (printf "%s-ingress-%s" $.name $serviceName)) | nindent 2 }}
-spec:
-  podSelector:
-    matchLabels: {{- $model.selector | toYaml | nindent 6 }}
-  policyTypes: [ "Ingress" ]
-  ingress:
-    # The ingress controller may be anywhere (in-cluster, or a cloud load balancer)
-    - ports: {{- include "__arkcase.network-policy.ports" $ports | nindent 8 }}
-      {{- end }}
-    {{- end -}}
-  {{- end -}}
-{{- end -}}
 
 {{- /*
 Render the policy that allows the release's pods bearing the arkcase.com/kube-api-access label to reach

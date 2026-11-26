@@ -181,7 +181,7 @@ Parameter: a dict with these keys:
     {{- if and (empty $ports) (not $external) -}}
       {{- fail (printf "No ports are defined for chart %s, and no external server was given" (include "common.name" $ctx)) -}}
     {{- end -}}
-    {{- $name := (include "arkcase.name" (dict "ctx" $ctx "subname" $part)) -}}
+    {{- $name := (include "arkcase.name" (dict "ctx" $ctx "partname" $part)) -}}
     {{- $overrides := (include "arkcase.subsystem.service.global" $ctx | fromYaml) -}}
     {{- if hasKey $overrides $name -}}
       {{- $overrides = get $overrides $name -}}
@@ -204,7 +204,7 @@ Parameter: a dict with these keys:
         "overrides" $overrides
         "labels" $data.labels
         "annotations" $data.annotations
-        "selector" (include "arkcase.labels.matchLabels.service" (dict "ctx" $ctx "subname" $part) | fromYaml)
+        "selector" (include "arkcase.labels.matchLabels.service" (dict "ctx" $ctx "partname" $part) | fromYaml)
     -}}
     {{- $model | toYaml -}}
   {{- end -}}
@@ -266,7 +266,7 @@ spec:
       targetPort: {{ int .targetPort }}
           {{- end }}
         {{- end }}
-  selector: {{- include "arkcase.labels.matchLabels.service" (dict "ctx" $ctx "subname" $model.part) | nindent 4 }}
+  selector: {{- include "arkcase.labels.matchLabels.service" (dict "ctx" $ctx "partname" $model.part) | nindent 4 }}
       {{- end }}
     {{- end }}
 ---
@@ -330,7 +330,7 @@ spec:
           {{- end }}
         {{- end }}
       {{- end }}
-  selector: {{- include "arkcase.labels.matchLabels.service" (dict "ctx" $ctx "subname" $model.part) | nindent 4 }}
+  selector: {{- include "arkcase.labels.matchLabels.service" (dict "ctx" $ctx "partname" $model.part) | nindent 4 }}
     {{- end }}
   {{- end -}}
 {{- end -}}
@@ -491,7 +491,7 @@ arkcase.subsystem.service renders for the given context. The list is empty if th
 enabled, or if the (part's) template has no service to render.
 
 Parameter: the root context (i.e. "." or "$"), or a dict with the root context as 'ctx',
-           an optional 'subname' with the part whose service configuration is to be
+           an optional 'partname' with the part whose service configuration is to be
            rendered, and an optional 'part' with the part whose name and pod labels
            the services are rendered for (defaults to the part derived from the name
            of the template being rendered)
@@ -501,8 +501,8 @@ Parameter: the root context (i.e. "." or "$"), or a dict with the root context a
   {{- $ctx := $ }}
   {{- if hasKey $ "ctx" -}}
     {{- $ctx = $.ctx -}}
-    {{- if hasKey $ "subname" -}}
-      {{- $partname = (.subname | toString | lower) -}}
+    {{- if hasKey $ "partname" -}}
+      {{- $partname = (.partname | toString | lower) -}}
     {{- end -}}
   {{- end -}}
 

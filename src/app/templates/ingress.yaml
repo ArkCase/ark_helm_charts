@@ -1,6 +1,7 @@
-{{- $baseUrl := (include "arkcase.tools.conf" (dict "ctx" $ "value" "baseUrl") | toString) -}}
+{{- /* The same inputs the services' network policies use to tell whether they're published through the Ingress */ -}}
+{{- $inputs := (include "arkcase.app.ingress.inputs" $ | fromYaml) -}}
+{{- $baseUrl := $inputs.baseUrl -}}
 {{- if $baseUrl -}}
-  {{- $baseUrl = ((include "arkcase.tools.parseUrl" $baseUrl) | fromYaml) -}}
   {{- if (ne "https" ($baseUrl.scheme | lower)) -}}
     {{- fail (printf "The baseUrl must be an https:// URL - [%s]" $baseUrl) -}}
   {{- end -}}
@@ -14,27 +15,15 @@
     {{- end -}}
   {{- end -}}
 
-  {{- $ingress := ($.Values.global.ingress | default dict) -}}
-  {{- $ingress = (kindIs "map" $ingress) | ternary $ingress dict -}}
-  {{- $enabled := or (not (hasKey $ingress "enabled")) (not (empty (include "arkcase.toBoolean" $ingress.enabled))) -}}
+  {{- $ingress := $inputs.ingress -}}
+  {{- $hostnames := $inputs.hostnames -}}
 
-  {{- $portal := (include "arkcase.portal" $ | fromYaml) -}}
-  {{- $content := (include "arkcase.cm.info" $ | fromYaml) -}}
-  {{- $dev := (include "arkcase.dev" $ | fromYaml) -}}
-
-  {{- $hostnames := list $baseUrl.hostname -}}
-  {{- /* For development mode, we enable other hostnames */ -}}
-  {{- if $dev -}}
-    {{- $hostnames = append $hostnames "localhost.localdomain" -}}
-  {{- end -}}
-
-  {{- if and $enabled $hostnames -}}
+  {{- if and $inputs.enabled $hostnames -}}
     {{- $secretData := dict -}}
     {{- $secretName := (printf "%s-ingress" (include "arkcase.fullname" $)) -}}
 
-    {{- $modules := (include "arkcase.app.ingress.sanitize-modules" $ingress | fromYaml) -}}
     {{- $cloud := (include "arkcase.app.ingress.sanitize-cloud" (dict "ctx" $ "ingress" $ingress "baseUrl" $baseUrl) | fromYaml) -}}
-    {{- $rules := (include "arkcase.app.ingress.rules" (dict "hostnames" $hostnames "portal" $portal "dev" $dev "modules" $modules "content" $content)) -}}
+    {{- $rules := (include "arkcase.app.ingress.rules" $inputs) -}}
 
     {{- $secretData = $ingress.secret -}}
     {{- if not $secretData -}}
@@ -107,6 +96,5 @@ spec:
   tls:
     - secretName: {{ $secretName | quote }}
       hosts: {{- $hostnames | toYaml | nindent 8 }}
-    {{- include "arkcase.network-policy.ingress" (dict "ctx" $ "name" (include "arkcase.fullname" $) "rules" ($rules | fromYamlArray)) }}
   {{- end -}}
 {{- end -}}

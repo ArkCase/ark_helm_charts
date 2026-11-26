@@ -38,7 +38,7 @@
 {{- define "arkcase.name" -}}
   {{- $ctx := (hasKey $ "ctx" | ternary $.ctx $) -}}
   {{- if not (include "arkcase.isRootContext" $ctx) -}}
-    {{- fail "Incorrect context given - submit the root context as either the only parameter, or the 'ctx' parameter (with an optional 'subname')" -}}
+    {{- fail "Incorrect context given - submit the root context as either the only parameter, or the 'ctx' parameter (with an optional 'partname')" -}}
   {{- end -}}
 
   {{- $name := (include "common.name" $ctx) -}}
