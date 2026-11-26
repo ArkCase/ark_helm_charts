@@ -1,0 +1,126 @@
+#!/bin/bash
+SCRIPT="$(readlink -f "${BASH_ARGV0:-${BASH_SOURCE:-${0}}}")"
+BASEDIR="$(dirname "${SCRIPT}")"
+
+set -euo pipefail
+
+. "${BASEDIR}/pvc-migration.functions"
+
+#
+# Waits for the pvc-tool transfer Jobs in the given context (optionally, only in the
+# given namespaces) to finish. It only ever reads, so it can be run again and again
+# (e.g. after losing connectivity).
+#
+# Exit status: 0 if every Job completed (or there are none), 1 as soon as any Job
+# failed (the others keep going), and 2 if the cluster can't be reached.
+#
+
+# How long each round waits for the Jobs to complete, before checking on them again
+[ -v POLL_TIMEOUT ] || POLL_TIMEOUT=""
+[[ "${POLL_TIMEOUT}" =~ ^[1-9][0-9]*$ ]] || POLL_TIMEOUT="60"
+
+# How many rounds in a row may fail to reach the cluster before we give up
+MAX_ERRORS="5"
+
+usage()
+{
+	echo -e "usage: ${BASH_SOURCE:-${0}} kube-context [namespace...]" 1>&2
+	echo -e "" 1>&2
+	echo -e "	Waits for the context's pvc-tool transfer Jobs (all of them, or only those in the" 1>&2
+	echo -e "	given namespaces) to finish. Exits with 0 once they all completed, or 1 as soon as" 1>&2
+	echo -e "	any of them failed." 1>&2
+	exit 1
+}
+
+#
+# One line per Job: state (complete, failed or running), namespace, name, the PVC it
+# works on, and (for failures) why
+#
+list_jobs()
+{
+	kubectl --context "${CONTEXT}" get job --all-namespaces --selector "${MARKER_LABEL}" -o json | jq -r --argjson namespaces "${NAMESPACES_JSON}" '
+		.items[]
+		| select(($namespaces | length) == 0 or (.metadata.namespace as $ns | $namespaces | index($ns)))
+		| (.status.conditions // []) as $c
+		| (if any($c[]; (.type == "Failed" or .type == "FailureTarget") and .status == "True") then "failed"
+		   elif any($c[]; .type == "Complete" and .status == "True") then "complete"
+		   else "running" end) as $state
+		| [
+			$state,
+			.metadata.namespace,
+			.metadata.name,
+			(.metadata.annotations["armedia.com/pvc-tool-source"] // .metadata.annotations["armedia.com/pvc-tool-target"] // "?"),
+			([$c[] | select((.type == "Failed" or .type == "FailureTarget") and .status == "True") | "\(.reason): \(.message)"] | first // "")
+		  ]
+		| @tsv
+	' | sort -k2,3
+}
+
+[ "${#}" -ge 1 ] || usage
+CONTEXT="${1}"
+shift
+NAMESPACES=("${@}")
+for NS in "${NAMESPACES[@]}" ; do
+	is_valid_name "${NS}" || fail "Invalid namespace name [${NS}]"
+done
+NAMESPACES_JSON="$(jq -cn '$ARGS.positional' --args "${NAMESPACES[@]}")"
+SCOPE="${CONTEXT}"
+[ "${#NAMESPACES[@]}" -gt 0 ] && SCOPE="${CONTEXT} (namespaces: ${NAMESPACES[*]})"
+
+ensure_exe jq kubectl
+kubectl config get-contexts "${CONTEXT}" &>/dev/null || fail "There's no kube context named [${CONTEXT}]"
+
+ERRORS="0"
+LAST_RUNNING=""
+while true ; do
+	if ! JOBS="$(list_jobs)" ; then
+		ERRORS="$(( ERRORS + 1 ))"
+		[ "${ERRORS}" -lt "${MAX_ERRORS}" ] || { err "Can't reach the cluster for the context ${CONTEXT} (${ERRORS} times in a row): run this again once it's back" ; exit 2 ; }
+		warn "Failed to list the Jobs in ${CONTEXT} (${ERRORS} of ${MAX_ERRORS}), trying again shortly"
+		sleep "${POLL_TIMEOUT}"
+		continue
+	fi
+	ERRORS="0"
+
+	if [ -z "${JOBS}" ] ; then
+		ok "No transfers to wait for in ${SCOPE}"
+		exit 0
+	fi
+
+	TOTAL="$(wc -l <<< "${JOBS}")"
+	COMPLETE="$(grep -c '^complete' <<< "${JOBS}" || true)"
+	FAILED="$(grep '^failed' <<< "${JOBS}" || true)"
+	RUNNING="$(grep '^running' <<< "${JOBS}" || true)"
+	NUM_RUNNING="0"
+	[ -n "${RUNNING}" ] && NUM_RUNNING="$(wc -l <<< "${RUNNING}")"
+
+	if [ -n "${FAILED}" ] ; then
+		err "$(wc -l <<< "${FAILED}") of ${TOTAL} transfer(s) failed in ${SCOPE} (${COMPLETE} complete, ${NUM_RUNNING} still running):"
+		while IFS=$'\t' read -r STATE NS JOB PVC WHY ; do
+			err "\t${NS}/${JOB} (PVC ${PVC}): ${WHY}"
+		done <<< "${FAILED}"
+		err "See why with:"
+		while IFS=$'\t' read -r STATE NS JOB PVC WHY ; do
+			err "\tkubectl --context ${CONTEXT@Q} --namespace ${NS@Q} logs job/${JOB}"
+		done <<< "${FAILED}"
+		err "Then retry them with: ${BASEDIR}/retry-context-transfers ${CONTEXT@Q}${NAMESPACES[*]:+ ${NAMESPACES[*]@Q}}"
+		exit 1
+	fi
+
+	if [ "${NUM_RUNNING}" -eq 0 ] ; then
+		ok "All ${TOTAL} transfer(s) in ${SCOPE} are complete"
+		exit 0
+	fi
+
+	say "👀 ${COMPLETE} of ${TOTAL} transfer(s) complete in ${SCOPE}, ${NUM_RUNNING} still running"
+	if [ "${RUNNING}" != "${LAST_RUNNING}" ] ; then
+		while IFS=$'\t' read -r STATE NS JOB PVC WHY ; do
+			say "\t⏳ ${NS}/${JOB} (PVC ${PVC})"
+		done <<< "${RUNNING}"
+		LAST_RUNNING="${RUNNING}"
+	fi
+
+	# Returns as soon as they're all complete, or after the timeout (e.g. if any failed)
+	kubectl --context "${CONTEXT}" wait job --all-namespaces --selector "${MARKER_LABEL}" \
+		--for=condition=Complete --timeout="${POLL_TIMEOUT}s" &>/dev/null || true
+done

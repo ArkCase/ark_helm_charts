@@ -1,0 +1,294 @@
+#!/bin/bash
+#
+# Shared by full-context-extract, full-context-restore, wait-for-context-transfers and
+# retry-context-transfers (it's sourced, not run).
+#
+# The layout table (read from stdin) says where each namespace goes, one per line:
+#
+#   source-context  source-namespace  target-context  [target-namespace]
+#
+# The target namespace defaults to the source's. Blank lines, and everything after a #,
+# are ignored. Each namespace's data goes into the bucket under ${sourceContext}/${sourceNamespace}/:
+#
+#   _k8s/namespace.json, _k8s/pvcs.json   the definitions to re-create them from
+#   _k8s/original-*.json                  the same, as they were (for reference)
+#   ${pvcName}.tar.gz                     each PVC's data (by the pvc-tool chart)
+#   ${pvcName}.listing.gz                 each PVC's listing (stored last: the PVC's export is complete)
+#
+
+[ -v CHART ] || CHART=""
+[ -n "${CHART}" ] || CHART="arkcase/pvc-tool"
+
+[ -v MIGRATION_BUCKET ] || MIGRATION_BUCKET=""
+
+MARKER_LABEL="armedia.com/pvc-mounter-name"
+DEFAULT_RELEASE="pvc-tool"
+
+# Annotations and labels that tie a namespace or PVC to its cluster (or Rancher)
+LOCAL_NAMESPACE_KEYS="^((field|lifecycle|management)[.])?cattle[.]io/|^kubectl[.]kubernetes[.]io/last-applied-configuration$"
+LOCAL_PVC_KEYS="^(pv|volume|volume[.]beta)[.]kubernetes[.]io/|^kubectl[.]kubernetes[.]io/last-applied-configuration$"
+
+timestamp()
+{
+	date -Ins
+}
+
+say()
+{
+	echo -e "$(timestamp): ${@}"
+}
+
+ok()
+{
+	say "✅ ${@}"
+}
+
+warn()
+{
+	say "⚠️ ${@}"
+}
+
+err()
+{
+	say "❌ ${@}" 1>&2
+}
+
+fail()
+{
+	err "${@}"
+	exit ${EXIT_CODE:-1}
+}
+
+is_valid_name()
+{
+	local NAME="${1}"
+	[[ "${NAME}" =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?$ ]] || return ${?}
+	return 0
+}
+
+# Contexts name the data's location in the bucket, so they must be usable as a key prefix
+is_valid_context()
+{
+	local NAME="${1}"
+	[[ "${NAME}" =~ ^[A-Za-z0-9]([A-Za-z0-9._-]*[A-Za-z0-9])?$ ]] || return ${?}
+	return 0
+}
+
+is_valid_bucket()
+{
+	local NAME="${1}"
+	[[ "${NAME}" =~ ^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$ ]] || return ${?}
+	return 0
+}
+
+ensure_exe()
+{
+	local BAD=()
+	for EXE in "${@}" ; do
+		type -P "${EXE}" &>/dev/null || BAD+=("${EXE}")
+	done
+
+	[ ${#BAD[@]} -eq 0 ] && return 0
+
+	fail "Could not find the following executables in the path: [${BAD[@]@Q}]"
+}
+
+ensure_context()
+{
+	local CONTEXT="${1}"
+	kubectl config get-contexts "${CONTEXT}" &>/dev/null || fail "There's no kube context named [${CONTEXT}]"
+	kubectl --context "${CONTEXT}" get namespace default &>/dev/null || fail "Can't reach the cluster for the context [${CONTEXT}]"
+}
+
+#
+# Reads the layout table from stdin into the arrays LAYOUT_SRC_CTX, LAYOUT_SRC_NS,
+# LAYOUT_DST_CTX and LAYOUT_DST_NS (one entry per line), and validates it: every
+# source namespace may only go to one place, and no two may go to the same place
+#
+read_layout()
+{
+	LAYOUT_SRC_CTX=()
+	LAYOUT_SRC_NS=()
+	LAYOUT_DST_CTX=()
+	LAYOUT_DST_NS=()
+
+	[ -t 0 ] && fail "The layout table must be given on stdin (e.g. ${0##*/} ... < layout-table.txt)"
+
+	local -A SEEN_SRC=()
+	local -A SEEN_DST=()
+	local LINE=""
+	local NUM="0"
+	local BAD="0"
+	local FIELDS=()
+	while IFS="" read -r LINE || [ -n "${LINE}" ] ; do
+		NUM="$(( NUM + 1 ))"
+		LINE="${LINE%%#*}"
+		read -r -a FIELDS <<< "${LINE}"
+		[ "${#FIELDS[@]}" -eq 0 ] && continue
+		if [ "${#FIELDS[@]}" -lt 3 ] || [ "${#FIELDS[@]}" -gt 4 ] ; then
+			err "Layout line ${NUM}: expected 'source-context source-namespace target-context [target-namespace]', got [${LINE}]"
+			BAD="1"
+			continue
+		fi
+		local SRC_CTX="${FIELDS[0]}"
+		local SRC_NS="${FIELDS[1]}"
+		local DST_CTX="${FIELDS[2]}"
+		local DST_NS="${FIELDS[3]:-${SRC_NS}}"
+
+		local F=""
+		for F in "${SRC_CTX}" "${DST_CTX}" ; do
+			is_valid_context "${F}" || { err "Layout line ${NUM}: [${F}] is not a valid context name (letters, digits, '.', '_' and '-')" ; BAD="1" ; continue 2 ; }
+		done
+		for F in "${SRC_NS}" "${DST_NS}" ; do
+			is_valid_name "${F}" || { err "Layout line ${NUM}: [${F}] is not a valid namespace name" ; BAD="1" ; continue 2 ; }
+		done
+		if [ -n "${SEEN_SRC["${SRC_CTX}/${SRC_NS}"]:-}" ] ; then
+			err "Layout line ${NUM}: ${SRC_CTX}/${SRC_NS} is already on line ${SEEN_SRC["${SRC_CTX}/${SRC_NS}"]}"
+			BAD="1"
+			continue
+		fi
+		if [ -n "${SEEN_DST["${DST_CTX}/${DST_NS}"]:-}" ] ; then
+			err "Layout line ${NUM}: ${DST_CTX}/${DST_NS} is already the target on line ${SEEN_DST["${DST_CTX}/${DST_NS}"]}"
+			BAD="1"
+			continue
+		fi
+		SEEN_SRC["${SRC_CTX}/${SRC_NS}"]="${NUM}"
+		SEEN_DST["${DST_CTX}/${DST_NS}"]="${NUM}"
+
+		LAYOUT_SRC_CTX+=("${SRC_CTX}")
+		LAYOUT_SRC_NS+=("${SRC_NS}")
+		LAYOUT_DST_CTX+=("${DST_CTX}")
+		LAYOUT_DST_NS+=("${DST_NS}")
+	done
+	[ "${BAD}" -eq 0 ] || fail "The layout table has errors"
+	return 0
+}
+
+k8s_url()
+{
+	local SRC_CTX="${1}"
+	local SRC_NS="${2}"
+	echo -n "s3://${MIGRATION_BUCKET}/${SRC_CTX}/${SRC_NS}/_k8s"
+}
+
+# Whether the pvc-tool release is installed in the given namespace (i.e. its work was started)
+is_release_installed()
+{
+	local CONTEXT="${1}"
+	local NAMESPACE="${2}"
+	helm status "${RELEASE}" --kube-context "${CONTEXT}" --namespace "${NAMESPACE}" &>/dev/null
+}
+
+#
+# The namespace's PVCs that pods other than ours (and that aren't done) are using,
+# as "pvcName (pod podName)" lines
+#
+find_busy_pvcs()
+{
+	local CONTEXT="${1}"
+	local NAMESPACE="${2}"
+	kubectl --context "${CONTEXT}" get pod --namespace "${NAMESPACE}" -o json | jq -r --arg marker "${MARKER_LABEL}" '
+		.items[]
+		| select(.metadata.labels[$marker] == null)
+		| select(.status.phase != "Succeeded" and .status.phase != "Failed")
+		| .metadata.name as $pod
+		| .spec.volumes[]?
+		| select(.persistentVolumeClaim)
+		| "\(.persistentVolumeClaim.claimName) (pod \($pod))"
+	' | sort -u
+}
+
+#
+# Stores the namespace's definition and its PVCs' definitions in the bucket, minus
+# what ties them to this cluster: volumes, nodes, owners (e.g. StatefulSets, which
+# would garbage-collect them), and Rancher projects. Helm's ownership marks are kept,
+# so the application's chart adopts the PVCs it renders itself. Prints the names of
+# the PVCs the chart will export (the same ones pvc-tool.plan picks).
+#
+export_definitions()
+{
+	local CONTEXT="${1}"
+	local NAMESPACE="${2}"
+	local DIR="${3}"
+	local URL="$(k8s_url "${CONTEXT}" "${NAMESPACE}")"
+
+	kubectl --context "${CONTEXT}" get namespace "${NAMESPACE}" -o json > "${DIR}/original-namespace.json" || return 1
+	kubectl --context "${CONTEXT}" get pvc --namespace "${NAMESPACE}" -o json > "${DIR}/original-pvcs.json" || return 1
+
+	jq --arg local "${LOCAL_NAMESPACE_KEYS}" '{
+		apiVersion: "v1",
+		kind: "Namespace",
+		metadata: ({
+			name: .metadata.name,
+			labels: ((.metadata.labels // {}) | del(."kubernetes.io/metadata.name") | with_entries(select(.key | test($local) | not))),
+			annotations: ((.metadata.annotations // {}) | with_entries(select(.key | test($local) | not)))
+		} | with_entries(select(.value != {})))
+	}' "${DIR}/original-namespace.json" > "${DIR}/namespace.json" || return 1
+
+	jq --arg local "${LOCAL_PVC_KEYS}" '{
+		apiVersion: "v1",
+		kind: "List",
+		items: [
+			.items[]
+			| select(.metadata.deletionTimestamp == null)
+			| select((.spec.volumeMode // "Filesystem") == "Filesystem")
+			| {
+				apiVersion: "v1",
+				kind: "PersistentVolumeClaim",
+				metadata: ({
+					name: .metadata.name,
+					namespace: .metadata.namespace,
+					labels: (.metadata.labels // {}),
+					annotations: ((.metadata.annotations // {}) | with_entries(select(.key | test($local) | not)))
+				} | with_entries(select(.value != {}))),
+				spec: ({
+					accessModes: .spec.accessModes,
+					resources: { requests: .spec.resources.requests },
+					storageClassName: .spec.storageClassName,
+					volumeMode: (.spec.volumeMode // "Filesystem")
+				} | with_entries(select(.value != null)))
+			}
+		]
+	}' "${DIR}/original-pvcs.json" > "${DIR}/pvcs.json" || return 1
+
+	local FILE=""
+	for FILE in namespace.json pvcs.json original-namespace.json original-pvcs.json ; do
+		aws s3 cp --only-show-errors "${DIR}/${FILE}" "${URL}/${FILE}" 1>&2 || return 1
+	done
+
+	jq -r '.items[] | select(.metadata.deletionTimestamp != null or (.spec.volumeMode // "Filesystem") != "Filesystem") | .metadata.name' "${DIR}/original-pvcs.json" | while read -r PVC ; do
+		warn "${CONTEXT}/${NAMESPACE}: the PVC ${PVC} is being deleted, or isn't a filesystem: it won't be exported" 1>&2
+	done
+
+	jq -r '.items[].metadata.name' "${DIR}/pvcs.json" | sort
+}
+
+# The objects (key<TAB>size) under the given source namespace's location in the bucket
+list_exported_objects()
+{
+	local SRC_CTX="${1}"
+	local SRC_NS="${2}"
+	aws s3api list-objects-v2 --bucket "${MIGRATION_BUCKET}" --prefix "${SRC_CTX}/${SRC_NS}/" --query "Contents[].[Key, Size]" --output text | grep -v '^None$' || true
+}
+
+#
+# Applies the storage class map (JSON: { "old": "new", "*": "new" }, where "" means the
+# default class), the new namespace, and Helm's release namespace to the PVC definitions
+#
+rewrite_pvcs()
+{
+	local NAMESPACE="${1}"
+	local SC_MAP="${2}"
+	jq --arg ns "${NAMESPACE}" --argjson map "${SC_MAP}" '
+		.items |= map(
+			.metadata.namespace = $ns
+			| if .metadata.annotations."meta.helm.sh/release-namespace" then .metadata.annotations."meta.helm.sh/release-namespace" = $ns else . end
+			| (.spec.storageClassName // null) as $old
+			| if $old == null then .
+			  else
+				(if ($map | has($old)) then $map[$old] elif ($map | has("*")) then $map["*"] else $old end) as $new
+				| if $new == "" then del(.spec.storageClassName) else .spec.storageClassName = $new end
+			  end
+		)
+	'
+}

@@ -11,17 +11,8 @@ case "${DISABLE_CLONE,,}" in
 esac
 export DISABLE_CLONE
 
-[ -v RESULT_MARKER ] || RESULT_MARKER=""
-[ -n "${RESULT_MARKER}" ] || RESULT_MARKER="/.pod.result"
-
 [ -v CHART ] || CHART=""
 [ -n "${CHART}" ] || CHART="arkcase/pvc-tool"
-
-MARKER_LABEL="armedia.com/pvc-mounter-name"
-
-POD_POLL_WAIT="10"
-POD_REBOOT_WAIT="60"
-POD_REBOOT_TIMEOUT="$(( POD_REBOOT_WAIT * 15 ))"
 
 timestamp()
 {
@@ -91,49 +82,6 @@ execute()
 	return ${?}
 }
 
-compute_pod_state()
-{
-	local JSON="${1}"
-	local STATE=""
-
-	# If the JSON is non-empty and valid then we can compute the real state
-	STATE="missing"
-	[ -n "${JSON}" ] && jq -r <<< "${JSON}" &>/dev/null && STATE=""
-	[ -n "${STATE}" ] && echo -n "${STATE}" && return 0
-
-	# The pod exists ... is it terminating?
-	local DELETION_TS="$(jq -r ".metadata.deletionTimestamp // \"\"" <<< "${JSON}")"
-	[ -n "${DELETION_TS}" ] && STATE="terminating"
-	[ -n "${STATE}" ] && echo -n "${STATE}" && return 0
-
-	# It's not terminating ... maybe it's ready?
-	local COND=""
-
-	COND="$(jq -r '.status.conditions[]? | select(.type == "Ready") | .status' <<< "${JSON}")"
-	[ "${COND,,}" == "true" ] && STATE="ready"
-	[ -n "${STATE}" ] && echo -n "${STATE}" && return 0
-
-	COND="$(jq -r '.status.conditions[]? | select(.type == "Initialized") | .status' <<< "${JSON}")"
-	[ "${COND,,}" == "true" ] && STATE="started"
-	[ -n "${STATE}" ] && echo -n "${STATE}" && return 0
-
-	# If it's not missing, not ready, not started, and not terminating, it MUST be created
-	echo -n "created"
-	return 0
-}
-
-get_pod_state()
-{
-	local POD="${1}"
-
-	local JSON=""
-
-	# If this call fails, it's because the pod doesn't exist
-	JSON="$(kubectl get pod --namespace "${NAMESPACE}" "${POD}" -o json 2>&1)" || JSON=""
-	compute_pod_state "${JSON}"
-	return 0
-}
-
 get_deployment_status()
 {
 	local STATUS=""
@@ -177,24 +125,6 @@ is_namespace_exists()
 	return 0
 }
 
-is_pod_waitable()
-{
-	local POD="${1}"
-
-	local JSON=""
-	JSON="$(kubectl get pod --namespace "${NAMESPACE}" "${POD}" -o json)" || return 1
-
-	local TS=""
-	TS="$(jq -r ".metadata.deletionTimestamp" <<< "${JSON}")" || return 1
-
-	# If the deletion timestamp is set, the pod is going down
-	[ -n "${TS}" ] && [ "${TS}" != "null" ] && return 1
-
-	# TODO: Anything else we need to look at in the JSON?
-
-	return 0
-}
-
 deploy_chart()
 {
 	should_install || return 0
@@ -206,169 +136,15 @@ deploy_chart()
 		"${HELM_ARGS[@]}" || fail "Unable to deploy the chart"
 }
 
-track_logs()
-{
-	local POD="${1}"
-	kubectl logs \
-		--namespace "${NAMESPACE}" \
-		--tail=1000 \
-		--ignore-errors \
-		--follow "${POD}"
-	return ${?}
-}
-
-wait_for_condition()
-{
-	local POD="${1}"
-	local CONDITION="${2}"
-	local WAIT_TIMEOUT="${3:-30s}"
-	# We will wait for the pod to be initialized
-	kubectl wait pod \
-		--namespace "${NAMESPACE}" "${POD}" \
-		--for "${CONDITION}" \
-		--timeout="${WAIT_TIMEOUT}" \
-		-o json 2>&1
-}
-
-get_pod_result()
-{
-	local POD="${1}"
-
-	local OLD_STATE=""
-	local NEW_STATE=""
-	local FIRST="true"
-	local RC=0
-	local STATE_CHANGED="false"
-	local POLL_WAIT=""
-	local POLL_NEXT="true"
-	local JSON=""
-	local MISSING_PREFIX=""
-	while true; do
-		if "${POLL_NEXT}" ; then
-			[[ "${POLL_WAIT}" =~ ^(0|[1-9][0-9]*)$ ]] || POLL_WAIT="${POD_POLL_WAIT}"
-			if ! "${FIRST}" && [ ${POLL_WAIT} -gt 0 ] ; then
-				say "💤 Sleeping for ${POLL_WAIT}..."
-				sleep ${POLL_WAIT} || fail "Interrupted while sleeping"
-			fi
-
-			OLD_STATE="${NEW_STATE}"
-			NEW_STATE="$(get_pod_state "${POD}")"
-		fi
-		FIRST="false"
-
-		# We always re-set the poller
-		POLL_NEXT="true"
-		POLL_WAIT="${POD_POLL_WAIT}"
-
-		STATE_CHANGED="false"
-		[ "${OLD_STATE}" == "${NEW_STATE}" ] || STATE_CHANGED="true"
-
-		[ "${NEW_STATE}" != "missing" ] && MISSING_PREFIX="re"
-
-		CONDITION=""
-		case "${NEW_STATE}" in
-			terminating )
-				"${STATE_CHANGED}" && warn "The pod is terminating, waiting for it to disappear completely"
-				CONDITION="delete"
-				;;
-
-			missing )
-				"${STATE_CHANGED}" && warn "The pod is missing, waiting for it to ${MISSING_PREFIX}appear..."
-				kubectl get pod --namespace "${NAMESPACE}" "${POD}" &>/dev/null || continue
-				CONDITION="condition=PodScheduled"
-				;;
-
-			created )
-				"${STATE_CHANGED}" && ok "The pod seems to be scheduled, will wait for initialization to complete..."
-				CONDITION="condition=Initialized"
-				;;
-
-			started )
-				"${STATE_CHANGED}" && ok "The copy seems to be running, waiting for it to conclude..."
-				CONDITION="condition=Ready"
-				;;
-
-			ready )
-				if ! "${STATE_CHANGED}" ; then
-					# If the pod's state didn't change between last cycle and this one, then
-					# it's a terminating problem b/c the pod is ready, but didn't store its
-					# result in the expected location
-					err "The pod seems to have completed its work, but there's no result, please take a closer look at ${NAMESPACE}/${POD}."
-					return 1
-				fi
-
-				# The happy path - we just went from "whatever" into Ready, which
-				# means the copy has completed and we have a result to harvest...
-				ok "The pod ${POD} appears to have completed its work"
-				local RESULT=""
-				RC="0"
-				RESULT="$(kubectl exec --namespace "${NAMESPACE}" "${POD}" -- cat "${RESULT_MARKER}" 2>/dev/null)" || RC="${?}"
-				if [ "${RC}" -eq 0 ] ; then
-					[[ "${RESULT}" =~ ^[0-9]+$ ]] || RESULT="1"
-					return "${RESULT}"
-				fi
-
-				# If the RC isn't 0 it means there's something off and we weren't able
-				# to get the result, so we loop back up to poll again, and see what's up...
-				warn "Failed to retrieve the copy's result status marker (rc=${RC}), checking the pod state again"
-				POLL_WAIT="0"
-				continue
-				;;
-		esac
-
-		[ -n "${CONDITION}" ] || continue
-
-		POLL_WAIT=0
-		# If the wait failed, it must have timed out, so start from scratch, but no sleep
-		JSON="$(wait_for_condition "${POD}" "${CONDITION}")" || continue
-
-		# We have a possible new read on the pod, analyze it without
-		# causing a sleep
-		OLD_STATE="${NEW_STATE}"
-		NEW_STATE="$(compute_pod_state "${JSON}")"
-		POLL_NEXT="false"
-	done
-}
-
 #
-# Wait for every pod of every StatefulSet the release created, and
-# report on each one's outcome. Each StatefulSet has one pod per PVC
-# (or PVC pair) being copied.
+# Wait for the release's Jobs (one per PVC, or PVC pair, being copied) to finish
 #
 get_copy_results()
 {
-	local JSON=""
-	JSON="$(kubectl get statefulset --namespace "${NAMESPACE}" --selector "${MARKER_LABEL}=${RELEASE}" -o json)" || fail "Failed to list the release's StatefulSets"
-
-	local PODS=()
-	readarray -t PODS < <(jq -r '.items[] | .metadata.name as $n | range(0; .spec.replicas // 1) | "\($n)-\(.)"' <<< "${JSON}" | sort)
-	if [ "${#PODS[@]}" -eq 0 ] ; then
-		warn "The release ${RELEASE} has no StatefulSets: there were no PVCs to copy"
-		return 0
-	fi
-	say "👉 Waiting for ${#PODS[@]} pods to complete their work..."
-
-	local FAILED=()
-	local POD=""
-	for POD in "${PODS[@]}" ; do
-		say "👀 Waiting for ${POD}..."
-		if get_pod_result "${POD}" ; then
-			ok "The work in ${POD} succeeded"
-		else
-			err "The work in ${POD} failed (rc=${?})"
-			FAILED+=("${POD}")
-		fi
-	done
-
-	[ "${#FAILED[@]}" -eq 0 ] && return 0
-
-	err "The work failed in ${#FAILED[@]} pod(s): ${FAILED[*]}"
-	err "Review their logs, and delete them to repeat the work, like so:"
-	err ""
-	err "\t$ kubectl delete pod --namespace ${NAMESPACE@Q} ${FAILED[*]@Q}"
-	err ""
-	err "Then run this script again to resume waiting."
-	return 1
+	local CONTEXT=""
+	CONTEXT="$(kubectl config current-context)" || fail "Failed to get the current kube context"
+	"${BASEDIR}/wait-for-context-transfers" "${CONTEXT}" "${NAMESPACE}" || return ${?}
+	return 0
 }
 
 undeploy_chart()

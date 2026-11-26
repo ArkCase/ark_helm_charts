@@ -4,13 +4,13 @@ This chart works on all the PVCs in a given Namespace, in one of three modes (se
 
   * ***rsync*** (default): a single StatefulSet mounts all the PVCs, and exposes them as modules in an [rsync daemon](https://en.wikipedia.org/wiki/Rsync) (see [RSYNC PVC Access](#rsync-pvc-access)).
   * ***clone***: each PVC's data is copied into a new PVC named `${clonePrefix}-${pvcName}`, optionally with a different `storageClassName` (see [Clone and S3 Modes](#clone-and-s3-modes)).
-  * ***s3***: each PVC's data is uploaded into S3 as a `.tar.gz` file, or downloaded from there (see [Clone and S3 Modes](#clone-and-s3-modes)).
+  * ***s3***: each PVC's data is uploaded into S3 (as a `.tar.gz` file, or a tree of objects made with `s3-fs-mirror`), or downloaded from there (see [Clone and S3 Modes](#clone-and-s3-modes)).
 
 ## Clone and S3 Modes
 
-In these modes, instead of one pod mounting every PVC (which can't work when the volumes can't all be attached to the same node), each PVC (or pair of old and new PVCs) gets its own StatefulSet, so its pod can be scheduled wherever its volumes can be attached. Each pod copies its data, verifies the copy, and then becomes ***Ready*** whatever the outcome, with the exit status stored in `/.pod.result` (`0` means success). To repeat the work for a PVC, delete its pod.
+In these modes, instead of one pod mounting every PVC (which can't work when the volumes can't all be attached to the same node), each PVC (or pair of old and new PVCs) gets a Job of its own, named `${releaseName}-${pvcName}`, so its pod can be scheduled wherever its volumes can be attached. If that name is longer than 63 characters, or a Job that isn't this release's already has it, a hash of the PVC's name is used as its suffix instead. Each Job runs a single pod at a time, which mounts its PVCs by name, so nothing the chart creates can create PVCs of its own. Its annotations `armedia.com/pvc-tool-source` and `armedia.com/pvc-tool-target` hold the names of the PVCs it works on.
 
-PVCs named `${something}-0` through `${something}-N` most likely came from the same StatefulSet's `volumeClaimTemplates`. They're handled by a single StatefulSet with `N+1` replicas, whose `volumeClaimTemplates` match the existing PVCs' names, so each pod mounts only the PVCs with its own ordinal. The StatefulSet's name is chosen by splitting `${something}` at a dash, such that it collides with no other StatefulSet or pod in the namespace (e.g. `data-arkcase-search-0` through `data-arkcase-search-2` will be handled by a StatefulSet named `arkcase-search`, or `search` if `arkcase-search` already exists). If no split works, or the ordinals aren't contiguous from `0`, each PVC gets a StatefulSet of its own, named `${releaseName}-${pvcName}`. This requires Kubernetes 1.28 or later, for the `apps.kubernetes.io/pod-index` pod label.
+Each pod copies its data, verifies the copy, and exits: the Job then either ***completes***, or ***fails***. The pod attempts the work up to `maxAttempts` times, and once it gives up, the Job fails right away. A pod that's lost instead (e.g. along with its node) is replaced, up to `backoffLimit` times (evicted or preempted pods don't count). To repeat the work for a PVC, re-create its Job (see `tools/retry-context-transfers`).
 
 Each pod receives these environment variables:
 
@@ -21,10 +21,14 @@ Each pod receives these environment variables:
 |`S3_DIRECTION`|s3|The value of `s3.direction` (`upload` or `download`)|
 |`S3_BUCKET`|s3|The value of `s3.bucket`|
 |`S3_REGION`|s3|The value of `s3.region` (if given)|
-|`S3_PREFIX`|s3|`${s3.prefix}/${s3.namespace}/${pvcName}` (the object is `${S3_PREFIX}.tar.gz`)|
+|`S3_PREFIX`|s3|`${s3.prefix}/${s3.namespace}/${pvcName}`: the archive is `s3://${S3_BUCKET}/${S3_PREFIX}.tar.gz` (or the tree is at `s3://${S3_BUCKET}/${S3_PREFIX}/`)|
+|`S3_FORMAT`|s3|The value of `s3.format` (`tar` or `mirror`)|
+|`S3_VERIFY`|s3 (tar)|The value of `s3.verify`|
 |`S3_ENDPOINT`|s3|The value of `s3.endpoint` (if given)|
+|`S3_RESUME`|s3 (mirror)|The value of `s3.resume`|
+|`S3_CONCURRENCY`, `S3_BWLIMIT`|s3 (mirror)|The values of `s3.concurrency` and `s3.bwlimit` (if given)|
 
-Either way, each target PVC ends up as an exact copy of its source (`lost+found` is left alone). A clone uses `rsync`, which deletes the files that aren't in the source, and skips the ones that already match, so a restarted pod resumes where the previous one left off. A download from S3 has to re-read the whole archive on every attempt anyway, so it empties the target PVC first.
+Either way, each target ends up as an exact copy of its source (`lost+found` is left alone). `rsync` and `s3-fs-mirror` delete what isn't in the source, and skip what already matches, so a restarted pod resumes where the previous one left off. A download of a `.tar.gz` archive has to re-read the whole archive anyway, so it empties the target PVC first.
 
 ### Clone
 
@@ -41,10 +45,16 @@ helm install pvc-tool arkcase/pvc-tool \
     --set mode=s3 \
     --set s3.bucket=some-bucket \
     --set s3.region=us-east-1 \
-    --set s3.prefix=pvc-tool-prefix
+    --set s3.prefix=pvc-tool-prefix \
+    --set s3.irsaRole=arn:aws:iam::123456789012:role/pvc-tool
 ```
 
-This will upload each PVC's data into `s3://some-bucket/pvc-tool-prefix/${namespace}/${pvcName}.tar.gz`. The archives are created with GNU `tar`, preserving numeric ownership, permissions, sparse files, and (if the `tar` in the image supports them) ACLs and extended attributes.
+How each PVC's data is stored depends on `s3.format`:
+
+  * `tar` (default): as `s3://some-bucket/pvc-tool-prefix/${namespace}/${pvcName}.tar.gz`, created with GNU `tar`, preserving numeric ownership, permissions, sparse files, and (if the `tar` in the image supports them) ACLs and extended attributes. An interrupted transfer starts over. With `s3.verify` (the default), the archive is downloaded again after the transfer, and compared against the PVC with `tar --diff`. Next to the archive goes `${pvcName}.listing.gz`: the path, type, permissions, ownership and size of every entry in the PVC. After a download, the PVC must match it, or the pod fails (without retrying).
+  * `mirror`: as a tree under `s3://some-bucket/pvc-tool-prefix/${namespace}/${pvcName}/`, with `s3-fs-mirror`: one object per file, directory, symlink and so on, at the same relative path, with each entry's ownership, permissions, times and extended attributes in its object's metadata. Hardlinks, sparse files, FIFOs and devices are handled too. An interrupted copy resumes where it left off, down to the partly transferred files (see `s3.resume`). The tree's root directory object, `${S3_PREFIX}/`, says whether the upload is complete. Re-uploading into the same prefix updates the tree in place.
+
+Use a new `s3.prefix` for each backup (e.g. a date) to keep the previous one intact.
 
 To copy the data back into PVCs, deploy the application so it creates its PVCs, scale it down to 0 so the PVCs are released, and install the chart with `s3.direction=download`:
 
@@ -54,24 +64,37 @@ helm install pvc-tool arkcase/pvc-tool \
     --set s3.direction=download \
     --set s3.bucket=some-bucket \
     --set s3.region=us-east-1 \
-    --set s3.prefix=pvc-tool-prefix
+    --set s3.prefix=pvc-tool-prefix \
+    --set s3.irsaRole=arn:aws:iam::123456789012:role/pvc-tool
 ```
 
-Each PVC in the namespace is emptied (except for `lost+found`) and filled from the archive with its name. If a PVC has no archive, its pod fails right away (without retrying). To download data that was uploaded from a different namespace, set `s3.namespace` to that namespace's name.
+Each PVC in the namespace becomes an exact copy of the archive (or tree) with its name (except for `lost+found`). If there's none for a PVC, its pod fails right away (without retrying), and leaves the PVC alone. If a tree's upload wasn't complete, whatever is there is restored, but the pod fails. To download data that was uploaded from a different namespace, set `s3.namespace` to that namespace's name.
 
-  * `s3.accessKey` and `s3.secretKey`: if given, they're stored in a Secret and passed in as `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`. Otherwise, the AWS CLI's default credential chain is used (e.g. the node's instance profile, or IRSA/Pod Identity via `serviceAccountName`).
+  * `s3.irsaRole`: the ARN of an IAM role for the pods to assume via [IRSA](https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html). A ServiceAccount named `serviceAccountName` (default: the release's name) is created with the `eks.amazonaws.com/role-arn` annotation, and the pods run as it. The role's trust policy must allow `system:serviceaccount:${namespace}:${serviceAccountName}`.
+  * `s3.accessKey` and `s3.secretKey`: static credentials, instead of `s3.irsaRole`. They're stored in a Secret, and passed in as `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`. If neither these nor `s3.irsaRole` are given, the AWS SDK's default credential chain is used (e.g. the node's instance profile, or an existing ServiceAccount set with `serviceAccountName`).
+  * `s3.region`: the bucket's region. Required if it's not the cluster's own region (or, without IRSA, the one in the AWS configuration).
   * `s3.endpoint`: the endpoint URL for S3-compatible stores.
   * `s3.direction` (default `upload`): `upload` copies each PVC into S3, `download` copies from S3 into each PVC.
-  * `s3.namespace` (default: the release's namespace): the `${namespace}` part of the archives' names.
-  * `s3.verify` (default `true`): after the transfer, download the archive again and compare it against the PVC with `tar --diff` (each archived file's type, permissions, ownership, size, modification time and contents).
+  * `s3.namespace` (default: the release's namespace): the `${namespace}` part of the trees' prefixes.
+  * `s3.format` (default `tar`): `tar` or `mirror`, as above.
+  * `s3.verify` (default `true`, tar only): compare each archive against the PVC after the transfer.
+  * `s3.resume` (default `verify`, mirror only): what to do with a partly transferred file when resuming: `verify` checks what was already transferred against the local copy (on the local disk only) before continuing, `blind` continues without checking, and `restart` transfers the file again.
+  * `s3.concurrency` (default `8`, mirror only): how many files each pod transfers at the same time.
+  * `s3.bwlimit` (default: no limit, mirror only): the bandwidth limit for each pod, in bytes per second (e.g. `50M`).
+  * `s3.extraArgs` (mirror only): more arguments for `s3-fs-mirror` (e.g. `[ "--verbose" ]`).
+
+The IAM role needs these permissions on the bucket (and, for a bucket encrypted with a KMS key, `kms:GenerateDataKey` and `kms:Decrypt` on the key):
+
+  * On the bucket: `s3:ListBucket` and `s3:ListBucketMultipartUploads`.
+  * On its objects: `s3:GetObject`, `s3:PutObject`, `s3:DeleteObject`, `s3:AbortMultipartUpload` and `s3:ListMultipartUploadParts`.
 
 ### Container Image
 
-The pods in these modes need `bash`, `rsync` (clone mode), GNU `tar`, `gzip` and the `aws` CLI (s3 mode), plus GNU `coreutils`, `findutils` and `diffutils`. Set `image.registry`, `image.repository` and `image.tag` to an image that provides them.
+The pods in these modes need `bash`, `rsync` (clone mode), GNU `tar`, `gzip` and the `aws` CLI (s3 mode, tar format), `s3-fs-mirror` (s3 mode, mirror format), plus GNU `coreutils`, `findutils` and `diffutils`. Set `image.registry`, `image.repository` and `image.tag` to an image that provides them.
 
 ### Automation
 
-The `tools/convert-pvc-sc` script installs the chart in clone mode, waits for every pod to finish, and uninstalls it. Any arguments after `--` are passed to `helm install`, so it can also drive the s3 mode:
+The `tools/convert-pvc-sc` script installs the chart in clone mode, waits for every Job to finish (with `tools/wait-for-context-transfers`), and uninstalls it. Any arguments after `--` are passed to `helm install`, so it can also drive the s3 mode:
 
 ```
 tools/convert-pvc-sc my-namespace pvc-tool -- --set storageClassName=new-storage-class
@@ -79,6 +102,42 @@ tools/convert-pvc-sc my-namespace pvc-tool -- --set mode=s3 --set s3.direction=d
 ```
 
 The `tools/reassign-pvcs` script can then swap the new volumes in, under the old PVCs' names.
+
+### Moving Namespaces Between Clusters
+
+These scripts move namespaces, with their PVCs and their data, between clusters through S3, a whole kube context at a time. A layout table says where each namespace goes, one line per namespace (`#` starts a comment, and the target namespace defaults to the source's):
+
+```
+# source-context    source-namespace   target-context      [target-namespace]
+aws-fedramp-test    cust-my-demo       aws-fedramp-stage
+aws-fedramp-test    cust-other-prod    aws-fedramp-prod
+```
+
+Each namespace's data goes into the bucket under `${sourceContext}/${sourceNamespace}/`: its definitions in `_k8s/`, and each PVC's `.tar.gz` archive and `.listing.gz`. The scripts run on a workstation, with `kubectl` (and the contexts), `helm`, `jq` and the AWS CLI (with access to the bucket), and drive the chart's s3 mode (tar format). The bucket is given with `-b` (or `MIGRATION_BUCKET`), and any arguments after `--` go to `helm install` (e.g. `-f values.yaml`, with `image.*`, `s3.region` and `s3.irsaRole`; the scripts set everything else in `s3.*`).
+
+  1. Scale down the workloads of every namespace to export, and export them:
+
+     ```
+     tools/full-context-extract -b aws-mig-202611-stage aws-fedramp-test -- -f pvc-tool-aws-fedramp-test.yaml < layout-table.txt
+     ```
+
+     Every namespace the table lists for the context must exist, and none of its PVCs may be in use, or nothing is done. Then each namespace's definition and its PVCs' definitions are stored, minus what ties them to the old cluster (their volumes, nodes, owners such as StatefulSets, and Rancher projects; Helm's ownership marks are kept, so the application's chart adopts the PVCs it renders itself), and the chart is installed into the namespace to export its PVCs' data, one Job per PVC. Then it waits for them, like `tools/wait-for-context-transfers`.
+
+  2. `tools/wait-for-context-transfers aws-fedramp-test` waits for the context's transfer Jobs: it exits with `0` once they all completed, `1` as soon as any of them failed (naming them), and `2` if the cluster can't be reached. It only reads, so it can be run as often as needed (e.g. after losing connectivity). `tools/retry-context-transfers aws-fedramp-test` re-creates the failed Jobs, so they run again.
+
+  3. Tear down the old cluster once all its transfers completed, and build the new one.
+
+  4. Restore every namespace the table sends to the new context:
+
+     ```
+     tools/full-context-restore -b aws-mig-202611-stage -s gp2=gp3 aws-fedramp-stage -- -f pvc-tool-aws-fedramp-stage.yaml < layout-table.txt
+     ```
+
+     Every namespace's export must be complete (every PVC has its listing), every storage class its PVCs will use must exist (map them with `-s old=new`; `-s '*=new'` for every other class, and `-s old=` for the cluster's default), and a namespace that exists already may not have PVCs other than the exported ones, or nothing is done. Then the namespaces and their PVCs are re-created, and the chart restores their data, comparing each PVC against its archive and its source's listing, and it waits for the Jobs. With `--relocations exclude`, only namespaces from a context of the same name are restored; with `--relocations only`, only those from other contexts.
+
+  5. Deploy the applications: they find their PVCs in place. Secrets aren't exported, so any password a chart would otherwise generate (and the restored data depends on) must be given in its values.
+
+Either script leaves the namespaces whose transfers were already started (the release is installed) alone, so they can be run again, and exits with `0` right away when the table has nothing for the context. `-r` names the release (default `pvc-tool`, which is also the name of the ServiceAccount it creates for IRSA).
 
 # RSYNC PVC Access
 

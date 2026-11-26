@@ -8,13 +8,14 @@ strategyType: Recreate
 ##
 ##   rsync: one pod mounts all the PVCs in the namespace, and exposes them via an rsync daemon
 ##   clone: each PVC is copied into a new PVC named ${clonePrefix}-${pvcName} (optionally with
-##          a different storageClassName), by its own StatefulSet
-##   s3:    each PVC is uploaded as s3://${s3.bucket}/${s3.prefix}/${namespace}/${pvcName}.tar.gz
-##          (or downloaded from there, see s3.direction), by its own StatefulSet
+##          a different storageClassName), by its own Job
+##   s3:    each PVC is uploaded into s3://${s3.bucket}/${s3.prefix}/${namespace}/${pvcName}.tar.gz,
+##          or into s3://${s3.bucket}/${s3.prefix}/${namespace}/${pvcName}/ with s3-fs-mirror (see
+##          s3.format), or downloaded from there (see s3.direction), by its own Job
 ##
-## In the clone and s3 modes, PVCs named ${something}-0 .. ${something}-N (most likely created
-## by the same StatefulSet) are handled by a single StatefulSet with N+1 replicas, where each
-## pod mounts only its matching PVC (requires Kubernetes 1.28 or later).
+## In the clone and s3 modes, each PVC (or pair of old and new PVCs) gets a Job of its own,
+## named ${releaseName}-${pvcName}, whose pod mounts it by name. The Job completes once the
+## copy succeeded, or fails.
 mode: rsync
 
 ## The prefix for the new PVCs' names (clone mode only)
@@ -24,45 +25,80 @@ clonePrefix: clone
 ## cluster's default storage class will be used
 # storageClassName:
 
-## How many times to try each copy before giving up (clone and s3 modes)
+## How many times each pod tries its copy before giving up (clone and s3 modes)
 maxAttempts: 5
+
+## How many times a Job replaces a pod that was lost (e.g. along with its node) before it
+## fails (clone and s3 modes). A pod that gives up after maxAttempts fails its Job right away,
+## and evicted or preempted pods are always replaced
+backoffLimit: 3
 
 ## The S3 target (s3 mode only)
 s3:
+  # How the data is stored:
+  #   tar:    as a .tar.gz archive per PVC, made with GNU tar (needs tar, gzip and the aws CLI
+  #           in the image). An interrupted transfer starts over
+  #   mirror: as one object per file, directory, etc., with s3-fs-mirror (needs s3-fs-mirror in
+  #           the image). An interrupted transfer resumes where it left off
+  format: tar
+
   # Which way the data flows:
   #   upload:   from each PVC into S3
   #   download: from S3 into each PVC (e.g. into the PVCs created by deploying the
-  #             application, and released by scaling it down to 0). Each PVC's
-  #             existing contents (except lost+found) are removed first, so it ends
-  #             up as an exact copy of the archive
+  #             application, and released by scaling it down to 0)
+  # Either way, the target ends up as an exact copy of the source (except lost+found)
   direction: upload
 
   # The bucket to upload into (required)
   bucket: ""
 
-  # The bucket's region (optional)
+  # The bucket's region (optional, defaults to the AWS configuration's, which under
+  # IRSA is the cluster's region) - required if the bucket is in another region
   region: ""
 
-  # The prefix (optional) to prepend to ${namespace}/${pvcName}.tar.gz
+  # The prefix (optional) to prepend to ${namespace}/${pvcName}.tar.gz (or ${namespace}/${pvcName}/)
   prefix: ""
 
-  # The ${namespace} part of the archives' names (optional, defaults to the release's
+  # The ${namespace} part of the archives' (or trees') names (optional, defaults to the release's
   # namespace) - e.g. to download data that was uploaded from another namespace
   namespace: ""
 
   # The endpoint URL, for S3-compatible stores (optional)
   endpoint: ""
 
-  # The credentials (optional) - if not given, the AWS CLI's default credential
-  # chain is used (e.g. instance profiles, or IRSA via serviceAccountName)
+  # The ARN of the IAM role for the pods to assume via IRSA (optional): if given, a
+  # ServiceAccount named serviceAccountName (default: the release's name) is created,
+  # annotated with this role, and the pods run as that ServiceAccount
+  irsaRole: ""
+
+  # Static credentials (optional, not together with irsaRole) - if not given, the AWS
+  # SDK's default credential chain is used (e.g. IRSA, or the node's instance profile)
   accessKey: ""
   secretKey: ""
 
-  # Download each archive again after the transfer, and compare it against the PVC's
-  # contents (with tar --diff: types, permissions, ownership, sizes, times and contents)
+  # (tar format only) Download each archive again after the transfer, and compare it against the
+  # PVC's contents (with tar --diff: types, permissions, ownership, sizes, times and contents)
   verify: true
 
-## The service account for the clone and s3 pods (optional)
+  # (mirror format only) What to do with a partly transferred file, when the copy is resumed:
+  #   verify:  check what was transferred against the local copy, then continue
+  #   blind:   continue without checking
+  #   restart: transfer the file again from the start
+  resume: verify
+
+  # (mirror format only) How many files to transfer at the same time (optional, default: 8)
+  concurrency: ""
+
+  # (mirror format only) The bandwidth limit for each pod, in bytes per second, optionally with a K, M, G or
+  # T suffix (optional, default: no limit)
+  bwlimit: ""
+
+  # (mirror format only) Extra arguments for s3-fs-mirror (optional, e.g. [ "--verbose" ], or
+  # [ "--hardlinks", "copy" ] - see s3-fs-mirror --help)
+  extraArgs: []
+
+## The service account for the clone and s3 pods (optional): an existing one, or the
+## name of the one to create when s3.irsaRole is given
 # serviceAccountName:
 
 image:

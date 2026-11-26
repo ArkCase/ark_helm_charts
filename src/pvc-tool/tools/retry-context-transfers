@@ -1,0 +1,65 @@
+#!/bin/bash
+SCRIPT="$(readlink -f "${BASH_ARGV0:-${BASH_SOURCE:-${0}}}")"
+BASEDIR="$(dirname "${SCRIPT}")"
+
+set -euo pipefail
+
+. "${BASEDIR}/pvc-migration.functions"
+
+#
+# Re-creates the failed pvc-tool transfer Jobs in the given context (optionally, only in
+# the given namespaces), so they run again. The Jobs that completed, or are still running,
+# are left alone. Then wait for them with wait-for-context-transfers.
+#
+
+usage()
+{
+	echo -e "usage: ${BASH_SOURCE:-${0}} kube-context [namespace...]" 1>&2
+	echo -e "" 1>&2
+	echo -e "	Re-runs the context's failed pvc-tool transfer Jobs (all of them, or only those in" 1>&2
+	echo -e "	the given namespaces)." 1>&2
+	exit 1
+}
+
+[ "${#}" -ge 1 ] || usage
+CONTEXT="${1}"
+shift
+NAMESPACES=("${@}")
+for NS in "${NAMESPACES[@]}" ; do
+	is_valid_name "${NS}" || fail "Invalid namespace name [${NS}]"
+done
+NAMESPACES_JSON="$(jq -cn '$ARGS.positional' --args "${NAMESPACES[@]}")"
+
+ensure_exe jq kubectl
+ensure_context "${CONTEXT}"
+
+JSON="$(kubectl --context "${CONTEXT}" get job --all-namespaces --selector "${MARKER_LABEL}" -o json)" || fail "Failed to list the Jobs in ${CONTEXT}"
+
+# The failed Jobs, as they'd have to be created anew: Kubernetes fills in the selector,
+# the pod labels that go with it, and the status
+FAILED="$(jq -c --argjson namespaces "${NAMESPACES_JSON}" '
+	.items[]
+	| select(($namespaces | length) == 0 or (.metadata.namespace as $ns | $namespaces | index($ns)))
+	| select(any(.status.conditions[]?; (.type == "Failed" or .type == "FailureTarget") and .status == "True"))
+	| {
+		apiVersion,
+		kind,
+		metadata: { name: .metadata.name, namespace: .metadata.namespace, labels: .metadata.labels, annotations: .metadata.annotations },
+		spec: (.spec
+			| del(.selector, .manualSelector)
+			| .template.metadata.labels |= with_entries(select(.key | test("^(batch[.]kubernetes[.]io/)?(controller-uid|job-name)$") | not)))
+	  }
+' <<< "${JSON}")"
+
+if [ -z "${FAILED}" ] ; then
+	ok "No failed transfers to retry in ${CONTEXT}"
+	exit 0
+fi
+
+while read -r JOB ; do
+	NAME="$(jq -r '"\(.metadata.namespace)/\(.metadata.name)"' <<< "${JOB}")"
+	kubectl --context "${CONTEXT}" replace --force -f - <<< "${JOB}" >/dev/null || fail "Failed to re-create the Job ${NAME}"
+	ok "Re-created the Job ${NAME}"
+done <<< "${FAILED}"
+
+say "👉 Wait for them with: ${BASEDIR}/wait-for-context-transfers ${CONTEXT@Q}${NAMESPACES[*]:+ ${NAMESPACES[*]@Q}}"

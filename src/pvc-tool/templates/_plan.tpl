@@ -1,6 +1,6 @@
 {{- /*
 The label that marks every resource this release renders, so we can tell
-our own StatefulSets and Pods apart from the ones that belong to others
+our own Jobs and Pods apart from the ones that belong to others
 */ -}}
 {{- define "pvc-tool.markerLabel" -}}
 armedia.com/pvc-mounter-name
@@ -31,29 +31,17 @@ armedia.com/pvc-tool-task
 Compute the work plan for the "clone" and "s3" modes. The output is a YAML map:
 
   tasks:
-    - name: the StatefulSet's name
-      replicas: how many pods (one per source PVC)
-      family: true if the PVCs are mounted via volumeClaimTemplates
-      sourceTemplate: (family only) the volumeClaimTemplate name for the source PVCs
-      sourcePrefix: (family only) the source PVCs' name, minus the "-${ordinal}" suffix
-      sourceSpec: (family only) the spec for the source volumeClaimTemplate
-      targetSpec: (family + clone only) the spec for the target volumeClaimTemplate
-      claim: (single only) the source PVC's name
+    - name: the Job's name
+      claim: the PVC's name (the source, or the target when downloading from S3)
+      target: (clone only) the new PVC's name
   clones:
     - the new PVCs to create (clone mode only)
 
-PVCs named ${something}-${ordinal}, with ordinals 0..N-1 (N > 1), most likely
-came from a StatefulSet's volumeClaimTemplates. A StatefulSet's PVCs are named
-${template}-${statefulSet}-${ordinal}, so if we split ${something} into
-${template}-${statefulSet} at one of its dashes, a StatefulSet of our own with
-N replicas, named ${statefulSet}, with a volumeClaimTemplate named ${template},
-will mount each of those PVCs on its matching pod. The target PVCs, named
-${clonePrefix}-${something}-${ordinal}, then match the volumeClaimTemplate
-${clonePrefix}-${template} in that same StatefulSet.
-
-The split is chosen such that the StatefulSet's name (and its pods' names) don't
-collide with anything else that exists in the namespace, or that this release
-renders. If no viable split exists, each PVC is handled by its own StatefulSet.
+Each PVC (or pair of old and new PVCs) gets a Job of its own, named
+${release}-${pvcName}, which mounts it by name: nothing in it can create more
+PVCs (as a StatefulSet's volumeClaimTemplates would, when scaled). Names that
+are too long, or that collide with a Job that isn't ours, get a hash suffix
+instead.
 */ -}}
 {{- define "pvc-tool.plan" -}}
   {{- $ctx := . -}}
@@ -66,19 +54,11 @@ renders. If no viable split exists, each PVC is handled by its own StatefulSet.
   {{- $storageClassName := ($ctx.Values.storageClassName | default "" | toString) -}}
   {{- $labelRE := "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$" -}}
 
-  {{- /* Volume names our pods already use, which the volumeClaimTemplates may not reuse */ -}}
-  {{- $reservedVolumes := (list "pvc-tool-logs" "pvc-tool-scripts" "source" "target") -}}
-
-  {{- /* StatefulSets and pods that exist in the namespace, but aren't ours */ -}}
+  {{- /* Jobs that exist in the namespace, but aren't ours */ -}}
   {{- $foreign := dict -}}
-  {{- range $obj := (dig "items" list (lookup "apps/v1" "StatefulSet" $namespace "")) -}}
+  {{- range $obj := (dig "items" list (lookup "batch/v1" "Job" $namespace "")) -}}
     {{- if ne (dig "metadata" "labels" $markerLabel "" $obj) $release -}}
-      {{- $foreign = set $foreign (printf "sts/%s" $obj.metadata.name) true -}}
-    {{- end -}}
-  {{- end -}}
-  {{- range $obj := (dig "items" list (lookup "v1" "Pod" $namespace "")) -}}
-    {{- if ne (dig "metadata" "labels" $markerLabel "" $obj) $release -}}
-      {{- $foreign = set $foreign (printf "pod/%s" $obj.metadata.name) true -}}
+      {{- $foreign = set $foreign $obj.metadata.name true -}}
     {{- end -}}
   {{- end -}}
 
@@ -100,120 +80,26 @@ renders. If no viable split exists, each PVC is handled by its own StatefulSet.
     {{- $sources = set $sources $name $pvc -}}
   {{- end -}}
 
-  {{- /* Group the PVCs into families by their ordinal suffix */ -}}
-  {{- $families := dict -}}
-  {{- $singles := list -}}
-  {{- range $name := (keys $sources | sortAlpha) -}}
-    {{- if (regexMatch "^.+-(0|[1-9][0-9]*)$" $name) -}}
-      {{- $prefix := (regexReplaceAll "-[0-9]+$" $name "") -}}
-      {{- $members := (get $families $prefix | default dict) -}}
-      {{- $members = set $members (regexFind "[0-9]+$" $name) $name -}}
-      {{- $families = set $families $prefix $members -}}
-    {{- else -}}
-      {{- $singles = append $singles $name -}}
-    {{- end -}}
-  {{- end -}}
-
+  {{- /* One Job per PVC (or PVC pair), named after it */ -}}
   {{- $used := dict -}}
   {{- $tasks := list -}}
-  {{- range $prefix := (keys $families | sortAlpha) -}}
-    {{- $members := (get $families $prefix) -}}
-    {{- $replicas := (len $members) -}}
-
-    {{- /* The ordinals must be exactly 0..N-1, or the StatefulSet would create the missing PVCs */ -}}
-    {{- $contiguous := true -}}
-    {{- range $i := (until $replicas) -}}
-      {{- if not (hasKey $members (toString $i)) -}}
-        {{- $contiguous = false -}}
-      {{- end -}}
-    {{- end -}}
-
-    {{- $task := dict -}}
-    {{- if and $contiguous (gt $replicas 1) -}}
-      {{- $parts := (splitList "-" $prefix) -}}
-      {{- /* Longest StatefulSet name first: most likely to match the original */ -}}
-      {{- range $i := (untilStep 1 (len $parts) 1) -}}
-        {{- $template := (slice $parts 0 $i | join "-") -}}
-        {{- $sts := (slice $parts $i | join "-") -}}
-        {{- $targetTemplate := (printf "%s-%s" $clonePrefix $template) -}}
-
-        {{- /* StatefulSet names must leave room for the controller-revision-hash label */ -}}
-        {{- if or (not (regexMatch $labelRE $sts)) (gt (len $sts) 52) -}}
-          {{- continue -}}
-        {{- end -}}
-        {{- if or (not (regexMatch $labelRE $template)) (gt (len $template) 63) (has $template $reservedVolumes) -}}
-          {{- continue -}}
-        {{- end -}}
-        {{- if and $clone (or (gt (len $targetTemplate) 63) (has $targetTemplate $reservedVolumes)) -}}
-          {{- continue -}}
-        {{- end -}}
-        {{- if or (hasKey $used $sts) (hasKey $foreign (printf "sts/%s" $sts)) -}}
-          {{- continue -}}
-        {{- end -}}
-        {{- $podCollision := false -}}
-        {{- range $o := (until $replicas) -}}
-          {{- if (hasKey $foreign (printf "pod/%s-%d" $sts $o)) -}}
-            {{- $podCollision = true -}}
-          {{- end -}}
-        {{- end -}}
-        {{- if $podCollision -}}
-          {{- continue -}}
-        {{- end -}}
-
-        {{- $first := (get $sources (get $members "0")) -}}
-        {{- $sourceSpec := (pick $first.spec "accessModes" "resources" "storageClassName" "volumeMode") -}}
-        {{-
-          $task = dict
-            "name" $sts
-            "replicas" $replicas
-            "family" true
-            "sourceTemplate" $template
-            "sourcePrefix" $prefix
-            "sourceSpec" $sourceSpec
-        -}}
-        {{- if $clone -}}
-          {{- $targetSpec := (pick $first.spec "accessModes" "volumeMode") -}}
-          {{- $targetSpec = set $targetSpec "resources" (pick ($first.spec.resources | default dict) "requests") -}}
-          {{- if $storageClassName -}}
-            {{- $targetSpec = set $targetSpec "storageClassName" $storageClassName -}}
-          {{- end -}}
-          {{- $task = set $task "targetTemplate" $targetTemplate -}}
-          {{- $task = set $task "targetSpec" $targetSpec -}}
-        {{- end -}}
-        {{- break -}}
-      {{- end -}}
-    {{- end -}}
-
-    {{- if $task -}}
-      {{- $used = set $used $task.name true -}}
-      {{- $tasks = append $tasks $task -}}
-    {{- else -}}
-      {{- range $ordinal, $name := $members -}}
-        {{- $singles = append $singles $name -}}
-      {{- end -}}
-    {{- end -}}
-  {{- end -}}
-
-  {{- /* Everything else gets a StatefulSet of its own */ -}}
-  {{- range $name := ($singles | sortAlpha) -}}
+  {{- range $name := (keys $sources | sortAlpha) -}}
     {{- $base := (printf "%s-%s" $release $name | replace "." "-") -}}
-    {{- $sts := $base -}}
-    {{-
-      $taken := or
-        (gt (len $sts) 52)
-        (not (regexMatch $labelRE $sts))
-        (hasKey $used $sts)
-        (hasKey $foreign (printf "sts/%s" $sts))
-        (hasKey $foreign (printf "pod/%s-0" $sts))
-    -}}
+    {{- $job := $base -}}
+    {{- /* The name is also a label value, so it can't exceed 63 characters */ -}}
+    {{- $taken := or (gt (len $job) 63) (not (regexMatch $labelRE $job)) (hasKey $used $job) (hasKey $foreign $job) -}}
     {{- if $taken -}}
-      {{- $sts = (printf "%s-%s" (regexReplaceAll "-+$" ($base | trunc 43) "") (sha256sum $name | trunc 8)) -}}
-      {{- if or (hasKey $used $sts) (hasKey $foreign (printf "sts/%s" $sts)) (hasKey $foreign (printf "pod/%s-0" $sts)) -}}
-        {{- fail (printf "Unable to find a free StatefulSet name for the PVC [%s] (tried [%s] and [%s])" $name $base $sts) -}}
+      {{- $job = (printf "%s-%s" (regexReplaceAll "-+$" ($base | trunc 54) "") (sha256sum $name | trunc 8)) -}}
+      {{- if or (hasKey $used $job) (hasKey $foreign $job) -}}
+        {{- fail (printf "Unable to find a free Job name for the PVC [%s] (tried [%s] and [%s])" $name $base $job) -}}
       {{- end -}}
     {{- end -}}
-    {{- $used = set $used $sts true -}}
-    {{- $tasks = append $tasks (dict "name" $sts "replicas" 1 "family" false "claim" $name) -}}
+    {{- $used = set $used $job true -}}
+    {{- $task := (dict "name" $job "claim" $name) -}}
+    {{- if $clone -}}
+      {{- $task = set $task "target" (printf "%s-%s" $clonePrefix $name) -}}
+    {{- end -}}
+    {{- $tasks = append $tasks $task -}}
   {{- end -}}
 
   {{- /* The new PVCs (clone mode only) */ -}}

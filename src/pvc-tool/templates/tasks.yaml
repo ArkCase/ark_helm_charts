@@ -10,6 +10,10 @@
 {{- $scripts := (.Files.Glob "scripts/*") -}}
 {{- $hostNetwork := (not (empty (include "arkcase.toBoolean" .Values.hostNetwork))) -}}
 {{- $maxAttempts := (.Values.maxAttempts | default 5 | toString) -}}
+{{- $backoffLimit := (.Values.backoffLimit | default 3 | toString) -}}
+{{- if not (regexMatch "^(0|[1-9][0-9]*)$" $backoffLimit) -}}
+  {{- fail (printf "The backoffLimit value [%s] must be a non-negative integer" $backoffLimit) -}}
+{{- end -}}
 {{- if not (regexMatch "^[1-9][0-9]*$" $maxAttempts) -}}
   {{- fail (printf "The maxAttempts value [%s] must be a positive integer" $maxAttempts) -}}
 {{- end -}}
@@ -18,9 +22,18 @@
 {{- $s3Secret := "" -}}
 {{- $s3Direction := ($s3.direction | default "upload" | toString | lower) -}}
 {{- $s3Namespace := ($s3.namespace | default $namespace | toString) -}}
+{{- $s3Format := ($s3.format | default "tar" | toString | lower) -}}
+{{- $s3Resume := ($s3.resume | default "verify" | toString | lower) -}}
+{{- $s3Concurrency := ($s3.concurrency | default "" | toString) -}}
+{{- $s3BwLimit := ($s3.bwlimit | default "" | toString) -}}
+{{- $s3ExtraArgs := ($s3.extraArgs | default list) -}}
+{{- $irsaRole := "" -}}
 {{- if eq $mode "s3" -}}
   {{- if not (has $s3Direction (list "upload" "download")) -}}
     {{- fail (printf "Unsupported S3 direction [%s] - must be either upload or download" $s3Direction) -}}
+  {{- end -}}
+  {{- if not (has $s3Format (list "tar" "mirror")) -}}
+    {{- fail (printf "Unsupported S3 format [%s] - must be either tar or mirror" $s3Format) -}}
   {{- end -}}
   {{- if not (regexMatch "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$" $s3Namespace) -}}
     {{- fail (printf "The S3 namespace [%s] is not a valid namespace name" $s3Namespace) -}}
@@ -37,6 +50,31 @@
     {{- end -}}
     {{- $s3Secret = (printf "%s-s3" $release) -}}
   {{- end -}}
+  {{- with $s3.irsaRole -}}
+    {{- if $s3Secret -}}
+      {{- fail "The S3 irsaRole may not be given along with an accessKey and secretKey: choose one" -}}
+    {{- end -}}
+    {{- if not (regexMatch "^arn:aws[a-z-]*:iam::[0-9]{12}:role/.+$" (toString .)) -}}
+      {{- fail (printf "The S3 irsaRole [%s] is not a valid IAM role ARN" .) -}}
+    {{- end -}}
+    {{- $irsaRole = (toString .) -}}
+  {{- end -}}
+  {{- if not (has $s3Resume (list "verify" "blind" "restart")) -}}
+    {{- fail (printf "Unsupported S3 resume mode [%s] - must be one of: verify, blind, restart" $s3Resume) -}}
+  {{- end -}}
+  {{- if and (not (empty $s3Concurrency)) (not (regexMatch "^[1-9][0-9]*$" $s3Concurrency)) -}}
+    {{- fail (printf "The S3 concurrency value [%s] must be a positive integer" $s3Concurrency) -}}
+  {{- end -}}
+  {{- if and (not (empty $s3BwLimit)) (not (regexMatch "^[1-9][0-9]*[kKmMgGtT]?$" $s3BwLimit)) -}}
+    {{- fail (printf "The S3 bwlimit value [%s] must be a byte count, optionally with a K, M, G or T suffix" $s3BwLimit) -}}
+  {{- end -}}
+  {{- if not (kindIs "slice" $s3ExtraArgs) -}}
+    {{- fail "The S3 extraArgs value must be a list of strings" -}}
+  {{- end -}}
+{{- end -}}
+{{- $serviceAccountName := ($.Values.serviceAccountName | default "" | toString) -}}
+{{- if and $irsaRole (not $serviceAccountName) -}}
+  {{- $serviceAccountName = $release -}}
 {{- end -}}
 {{- $s3Prefix := (list ($s3.prefix | default "" | toString | trimAll "/") $s3Namespace | compact | join "/") -}}
 
@@ -67,39 +105,62 @@ stringData:
   AWS_SECRET_ACCESS_KEY: {{ $s3.secretKey | toString | quote }}
 {{- end }}
 
+{{- if $irsaRole }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    {{ $markerLabel }}: {{ $release | quote }}
+    {{- include "arkcase.labels.service" $ | nindent 4 }}
+  annotations:
+    eks.amazonaws.com/role-arn: {{ $irsaRole | quote }}
+  name: {{ $serviceAccountName | quote }}
+  namespace: {{ $namespace | quote }}
+{{- end }}
+
 {{- range $task := $plan.tasks }}
   {{- $labels := (include "arkcase.labels.service" $ | fromYaml) }}
   {{- $labels = set $labels $markerLabel $release }}
   {{- $labels = set $labels $taskLabel $task.name }}
-  {{- $matchLabels := (include "arkcase.labels.matchLabels" $ | fromYaml) }}
-  {{- $matchLabels = set $matchLabels $taskLabel $task.name }}
-  {{- $pvcVolume := ($task.family | ternary $task.sourceTemplate $pvcRole) }}
-  {{- $cloneVolume := ($task.family | ternary $task.targetTemplate "target") }}
 ---
-apiVersion: apps/v1
-kind: StatefulSet
+apiVersion: batch/v1
+kind: Job
 metadata:
   labels: {{- toYaml $labels | nindent 4 }}
+  annotations:
+    {{ printf "armedia.com/pvc-tool-%s" $pvcRole }}: {{ $task.claim | quote }}
+    {{- if $clone }}
+    armedia.com/pvc-tool-target: {{ $task.target | quote }}
+    {{- end }}
   name: {{ $task.name | quote }}
   namespace: {{ $namespace | quote }}
 spec:
-  replicas: {{ $task.replicas }}
-  selector:
-    matchLabels: {{- toYaml $matchLabels | nindent 6 }}
-  serviceName: {{ $task.name | quote }}
-  podManagementPolicy: Parallel
-  updateStrategy:
-    type: RollingUpdate
-  persistentVolumeClaimRetentionPolicy:
-    whenDeleted: Retain
-    whenScaled: Retain
+  # Only ever one pod at a time: two of them would work on the same PVC
+  parallelism: 1
+  completions: 1
+  # The pod already makes up to maxAttempts attempts, so a pod that fails is the end
+  # of it - but a pod that's lost (e.g. with its node) is replaced, up to this many times
+  backoffLimit: {{ $backoffLimit }}
+  podFailurePolicy:
+    rules:
+      - action: FailJob
+        onExitCodes:
+          containerName: {{ $mode | quote }}
+          operator: NotIn
+          values: [ 0 ]
+      - action: Ignore
+        onPodConditions:
+          - type: DisruptionTarget
+            status: "True"
   template:
     metadata:
       labels: {{- toYaml $labels | nindent 8 }}
     spec:
+      restartPolicy: Never
       {{- include "arkcase.image.pullSecrets" $ | nindent 6 }}
       hostNetwork: {{ $hostNetwork }}
-      {{- with $.Values.serviceAccountName }}
+      {{- with $serviceAccountName }}
       serviceAccountName: {{ . | quote }}
       {{- end }}
       {{- with $.Values.nodeSelector }}
@@ -115,6 +176,10 @@ spec:
         - name: {{ $mode | quote }}
           {{- include "arkcase.image" $ | nindent 10 }}
           command: [ "/usr/local/bin/migrate-pvc" ]
+          {{- if and (eq $mode "s3") (eq $s3Format "mirror") $s3ExtraArgs }}
+          # Passed on to s3-fs-mirror
+          args: {{- toYaml (toStrings $s3ExtraArgs) | nindent 12 }}
+          {{- end }}
           workingDir: &logsDir "/logs"
           resources: {{- include "arkcase.resources" (dict "ctx" $) | nindent 12 }}
           securityContext: {{- include "arkcase.securityContext" (dict "ctx" $ "container" "arkcase") | nindent 12 }}
@@ -141,20 +206,11 @@ spec:
             - name: "TARGET_DIR"
               value: "/target"
           {{- end }}
-          {{- if $task.family }}
-            - name: "POD_INDEX"
-              valueFrom:
-                fieldRef:
-                  fieldPath: "metadata.labels['apps.kubernetes.io/pod-index']"
-            - name: {{ $pvcVar | quote }}
-              value: {{ printf "%s-$(POD_INDEX)" $task.sourcePrefix | quote }}
-          {{- else }}
             - name: {{ $pvcVar | quote }}
               value: {{ $task.claim | quote }}
-          {{- end }}
           {{- if $clone }}
             - name: "TARGET_PVC"
-              value: {{ printf "%s-$(SOURCE_PVC)" $clonePrefix | quote }}
+              value: {{ $task.target | quote }}
           {{- else }}
             - name: "S3_DIRECTION"
               value: {{ $s3Direction | quote }}
@@ -170,37 +226,29 @@ spec:
             {{- end }}
             - name: "S3_PREFIX"
               value: {{ (list $s3Prefix (printf "$(%s)" $pvcVar) | compact | join "/") | quote }}
+            - name: "S3_FORMAT"
+              value: {{ $s3Format | quote }}
+            {{- if eq $s3Format "tar" }}
             - name: "S3_VERIFY"
               value: {{ (not (empty (include "arkcase.toBoolean" ((hasKey $s3 "verify") | ternary $s3.verify true)))) | toString | quote }}
+            {{- else }}
+            - name: "S3_RESUME"
+              value: {{ $s3Resume | quote }}
+            {{- with $s3Concurrency }}
+            - name: "S3_CONCURRENCY"
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with $s3BwLimit }}
+            - name: "S3_BWLIMIT"
+              value: {{ . | quote }}
+            {{- end }}
+            {{- end }}
           {{- end }}
           {{- if $s3Secret }}
           envFrom:
             - secretRef:
                 name: {{ $s3Secret | quote }}
           {{- end }}
-          # Started: the work has begun
-          startupProbe:
-            exec:
-              command: [ "/usr/bin/test", "-e", "/.pod.started" ]
-            failureThreshold: 12
-            successThreshold: 1
-            periodSeconds: 5
-            timeoutSeconds: 5
-          livenessProbe:
-            exec:
-              command: [ "/usr/bin/test", "-e", "/.pod.started" ]
-            failureThreshold: 1
-            successThreshold: 1
-            periodSeconds: 5
-            timeoutSeconds: 5
-          # Ready: the work is done, and its exit status is in /.pod.result
-          readinessProbe:
-            exec:
-              command: [ "/usr/bin/test", "-e", "/.pod.result" ]
-            failureThreshold: 1
-            successThreshold: 1
-            periodSeconds: 5
-            timeoutSeconds: 5
           volumeMounts:
             - mountPath: *logsDir
               name: "pvc-tool-logs"
@@ -212,11 +260,11 @@ spec:
               readOnly: true
           {{- end }}
             - mountPath: {{ printf "/%s" $pvcRole | quote }}
-              name: {{ $pvcVolume | quote }}
+              name: {{ $pvcRole | quote }}
               readOnly: {{ eq $pvcRole "source" }}
           {{- if $clone }}
             - mountPath: "/target"
-              name: {{ $cloneVolume | quote }}
+              name: "target"
           {{- end }}
       volumes:
         - name: "pvc-tool-scripts"
@@ -234,27 +282,13 @@ spec:
         # Logs also go to stdout - an emptyDir avoids attaching yet another volume
         - name: "pvc-tool-logs"
           emptyDir: {}
-      {{- if not $task.family }}
         - name: {{ $pvcRole | quote }}
           persistentVolumeClaim:
             claimName: {{ $task.claim | quote }}
-        {{- if $clone }}
+      {{- if $clone }}
         - name: "target"
           persistentVolumeClaim:
-            claimName: {{ printf "%s-%s" $clonePrefix $task.claim | quote }}
-        {{- end }}
+            claimName: {{ $task.target | quote }}
       {{- end }}
-  {{- if $task.family }}
-  # These match the existing PVCs by name, so no new PVCs are created from them
-  volumeClaimTemplates:
-    - metadata:
-        name: {{ $task.sourceTemplate | quote }}
-      spec: {{- toYaml $task.sourceSpec | nindent 8 }}
-    {{- if $clone }}
-    - metadata:
-        name: {{ $task.targetTemplate | quote }}
-      spec: {{- toYaml $task.targetSpec | nindent 8 }}
-    {{- end }}
-  {{- end }}
 {{- end }}
 {{- end }}

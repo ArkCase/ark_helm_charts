@@ -5,24 +5,25 @@ SCRIPT="$(/usr/bin/basename "${SCRIPT}")"
 set -euo pipefail
 
 #
-# Copies the data for one PVC, depending on ${TASK_MODE} (and ${S3_DIRECTION}):
+# Copies the data for one PVC, depending on ${TASK_MODE} (and ${S3_DIRECTION},
+# and ${S3_FORMAT}):
 #
-#   clone:          from ${SOURCE_DIR} into the new PVC at ${TARGET_DIR}, via rsync
-#   s3 (upload):    from ${SOURCE_DIR} into s3://${S3_BUCKET}/${S3_PREFIX}.tar.gz
-#   s3 (download):  from s3://${S3_BUCKET}/${S3_PREFIX}.tar.gz into ${TARGET_DIR}
+#   clone:              from ${SOURCE_DIR} into the new PVC at ${TARGET_DIR}, via rsync
+#   s3 upload (tar):    from ${SOURCE_DIR} into s3://${S3_BUCKET}/${S3_PREFIX}.tar.gz
+#   s3 download (tar):  from s3://${S3_BUCKET}/${S3_PREFIX}.tar.gz into ${TARGET_DIR}
+#   s3 upload (mirror): from ${SOURCE_DIR} into s3://${S3_BUCKET}/${S3_PREFIX}/, via s3-fs-mirror
+#   s3 download (mirror): from s3://${S3_BUCKET}/${S3_PREFIX}/ into ${TARGET_DIR}, via s3-fs-mirror
 #
-# Either way, ${TARGET_DIR} (except lost+found) ends up as an exact copy of the
-# source: rsync deletes what isn't in the source and skips what already matches
-# (so a restarted copy resumes), while a download from S3 has to re-read the
-# whole archive anyway, so the target is emptied before each attempt.
+# Either way, the target (except lost+found) ends up as an exact copy of the
+# source. rsync and s3-fs-mirror delete what isn't in the source, and skip what
+# already matches, so a restarted copy resumes where the previous one left off
+# (s3-fs-mirror even resumes partly transferred files). A download of a tar
+# archive has to re-read the whole archive anyway, so the target is emptied
+# before each attempt. Any arguments are passed on to s3-fs-mirror.
 #
-# The work is attempted up to ${MAX_ATTEMPTS} times. Then, whatever the outcome,
-# the exit status is written into ${RESULT_MARKER} (which makes the pod Ready),
-# and the script waits forever: restart the pod to repeat the work.
+# The work is attempted up to ${MAX_ATTEMPTS} times, and the script exits with
+# the outcome (we're a Job's pod: it either completes, or fails).
 #
-
-STARTED_MARKER="/.pod.started"
-RESULT_MARKER="/.pod.result"
 
 DEFAULT_MAX_ATTEMPTS="5"
 
@@ -160,6 +161,37 @@ run_clone()
 	return 0
 }
 
+run_s3_mirror()
+{
+	local DIRECTION="${1}"
+	local CMD=( "${S3FSM}" "${DIRECTION}" "${S3FSM_FLAGS[@]}" )
+	if [ "${DIRECTION}" == "upload" ] ; then
+		CMD+=( "${SOURCE_DIR}" "${S3_URL}" )
+	else
+		CMD+=( "${S3_URL}" "${TARGET_DIR}" )
+	fi
+	say "👀 Will use the command: ${CMD[@]@Q}"
+
+	local RC="0"
+	"${CMD[@]}" || RC="${?}"
+	if [ "${RC}" -ne 0 ] ; then
+		err "Failed to ${DIRECTION} the data (rc = ${RC})"
+		return "${RC}"
+	fi
+	ok "The ${DIRECTION} is complete"
+	return 0
+}
+
+run_s3_mirror_upload()
+{
+	run_s3_mirror upload
+}
+
+run_s3_mirror_download()
+{
+	run_s3_mirror download
+}
+
 #
 # Compare the archive in S3 against the given directory, with tar --diff:
 # every member's type, permissions, ownership, size, modification time and
@@ -191,7 +223,7 @@ verify_s3()
 	return 0
 }
 
-run_s3_upload()
+run_s3_tar_upload()
 {
 	# The AWS CLI needs an idea of the stream's size to pick a multipart chunk
 	# size that can handle it (the default only reaches ~78GiB)
@@ -231,14 +263,25 @@ run_s3_upload()
 	if "${S3_VERIFY}" ; then
 		verify_s3 "${SOURCE_DIR}" || return "${?}"
 	fi
+
+	# The source's listing goes next to the archive, so a download can tell
+	# whether it got everything back
+	say "👀 Storing the source's listing as [${S3_LISTING_URL}]..."
+	RC="0"
+	( cd "${SOURCE_DIR}" && list_contents ) | /usr/bin/gzip -9 | "${AWS}" "${AWS_FLAGS[@]}" s3 cp --only-show-errors - "${S3_LISTING_URL}" || RC="${?}"
+	if [ "${RC}" -ne 0 ] ; then
+		err "Failed to store the source's listing (rc = ${RC})"
+		return "${RC}"
+	fi
+	ok "Listing stored"
 	return 0
 }
 
-run_s3_download()
+run_s3_tar_download()
 {
 	# Make sure there's something to download
 	local OUT=""
-	if ! OUT="$("${AWS}" "${AWS_FLAGS[@]}" s3api head-object --bucket "${S3_BUCKET}" --key "${S3_KEY}" --query "ContentLength" --output text 2>&1)" ; then
+	if ! OUT="$("${AWS}" "${AWS_FLAGS[@]}" s3api head-object --bucket "${S3_BUCKET}" --key "${S3_TAR_KEY}" --query "ContentLength" --output text 2>&1)" ; then
 		if [[ "${OUT}" == *"Not Found"* ]] || [[ "${OUT}" == *"(404)"* ]] ; then
 			err "The archive [${S3_URL}] does not exist"
 			return "${NO_RETRY_RC}"
@@ -283,6 +326,39 @@ run_s3_download()
 	if "${S3_VERIFY}" ; then
 		verify_s3 "${TARGET_DIR}" || return "${?}"
 	fi
+
+	verify_listing || return "${?}"
+	return 0
+}
+
+#
+# Compare the target's contents against the listing the upload stored for its
+# source: every entry's path, type, permissions, ownership and size must match
+#
+verify_listing()
+{
+	local OLD_LIST="${WORK_DIR}/source.list"
+	local NEW_LIST="${WORK_DIR}/target.list"
+	local OUT=""
+	if ! OUT="$("${AWS}" "${AWS_FLAGS[@]}" s3 cp --only-show-errors "${S3_LISTING_URL}" - 2>&1 > "${OLD_LIST}.gz")" ; then
+		if [[ "${OUT}" == *"Not Found"* ]] || [[ "${OUT}" == *"(404)"* ]] || [[ "${OUT}" == *"NoSuchKey"* ]] ; then
+			warn "There's no listing of the source at [${S3_LISTING_URL}] (it was uploaded by an older version?), can't compare against it"
+			return 0
+		fi
+		err "Failed to download the source's listing from [${S3_LISTING_URL}]: ${OUT}"
+		return 1
+	fi
+	/usr/bin/gzip -dc < "${OLD_LIST}.gz" > "${OLD_LIST}" || { err "Failed to decompress the source's listing" ; return 1 ; }
+	( cd "${TARGET_DIR}" && list_contents ) > "${NEW_LIST}" || { err "Failed to list the target's contents" ; return 1 ; }
+
+	if ! /usr/bin/cmp -s "${OLD_LIST}" "${NEW_LIST}" ; then
+		err "The target's contents differ from the source's listing (showing up to 100 lines of differences):"
+		/usr/bin/diff "${OLD_LIST}" "${NEW_LIST}" | /usr/bin/head -n 100 || true
+		# The archive itself must be off, so trying again won't help
+		return "${NO_RETRY_RC}"
+	fi
+
+	ok "The target matches the source's listing ($(/usr/bin/wc -l < "${OLD_LIST}") entries)"
 	return 0
 }
 
@@ -320,9 +396,11 @@ MAIN_LOG="${LOGS_DIR}/${LOG_BASE}.${STAMP}.log"
 
 say "👀 Logging to [${MAIN_LOG}]"
 exec > >(/usr/bin/tee "${MAIN_LOG}")
+TEE_PID="${!}"
 exec 2>&1
 
-:> "${STARTED_MARKER}"
+# These go to s3-fs-mirror
+EXTRA_ARGS=("${@}")
 
 #
 # Run the work in a subshell, so any failure in it (including
@@ -338,9 +416,16 @@ exec 2>&1
 	case "${TASK_MODE}" in
 		clone ) TASK="clone" ;;
 		s3 )
+			[ -v S3_FORMAT ] || S3_FORMAT=""
+			S3_FORMAT="${S3_FORMAT,,}"
+			case "${S3_FORMAT}" in
+				"" | tar ) S3_FORMAT="tar" ;;
+				mirror ) ;;
+				* ) fail "Unsupported S3_FORMAT value [${S3_FORMAT}]" ;;
+			esac
 			case "${S3_DIRECTION}" in
-				"" | upload ) TASK="s3_upload" ;;
-				download ) TASK="s3_download" ;;
+				"" | upload ) TASK="s3_${S3_FORMAT}_upload" ;;
+				download ) TASK="s3_${S3_FORMAT}_download" ;;
 				* ) fail "Unsupported S3_DIRECTION value [${S3_DIRECTION}]" ;;
 			esac
 			;;
@@ -357,7 +442,7 @@ exec 2>&1
 	[ -v TARGET_PVC ] || TARGET_PVC=""
 
 	# The PVC this pod was deployed for: the source, except when downloading into it
-	if [ "${TASK}" == "s3_download" ] ; then
+	if [[ "${TASK}" == s3_*_download ]] ; then
 		PVC_VAR="TARGET_PVC"
 	else
 		PVC_VAR="SOURCE_PVC"
@@ -365,13 +450,6 @@ exec 2>&1
 	PVC="${!PVC_VAR}"
 	[ -n "${PVC}" ] || fail "The ${PVC_VAR} variable is not set"
 	is_valid_name "${PVC}" || fail "The ${PVC_VAR} value [${PVC}] is not a valid PVC name"
-
-	# When we're one of many pods, make sure we're working on our own PVC
-	if [ -v POD_INDEX ] ; then
-		[[ "${POD_INDEX}" =~ ^(0|[1-9][0-9]*)$ ]] || fail "The POD_INDEX value [${POD_INDEX}] is not valid (the apps.kubernetes.io/pod-index label requires Kubernetes 1.28 or later)"
-		[ "${POD_NAME##*-}" == "${POD_INDEX}" ] || fail "The POD_INDEX value [${POD_INDEX}] doesn't match the pod name [${POD_NAME}]"
-		[ "${PVC##*-}" == "${POD_INDEX}" ] || fail "The ${PVC_VAR} value [${PVC}] doesn't match the pod index [${POD_INDEX}]"
-	fi
 
 	WORK_DIR="$(/usr/bin/mktemp -d)" || fail "Failed to create a work directory"
 
@@ -393,28 +471,52 @@ exec 2>&1
 			[ -n "${S3_PREFIX}" ] || fail "The S3_PREFIX variable is not set"
 			[ -v S3_REGION ] || S3_REGION=""
 			[ -v S3_ENDPOINT ] || S3_ENDPOINT=""
-			[ -v S3_VERIFY ] || S3_VERIFY="true"
-			S3_VERIFY="$(to_boolean "${S3_VERIFY}")"
 
-			AWS="$(type -P aws)" || fail "Failed to find aws in the path"
-			TAR="$(type -P tar)" || fail "Failed to find tar in the path"
-			type -P gzip &>/dev/null || fail "Failed to find gzip in the path"
+			if [ "${S3_FORMAT}" == "tar" ] ; then
+				[ -v S3_VERIFY ] || S3_VERIFY="true"
+				S3_VERIFY="$(to_boolean "${S3_VERIFY}")"
 
-			AWS_FLAGS=()
-			[ -n "${S3_REGION}" ] && AWS_FLAGS+=(--region "${S3_REGION}")
-			[ -n "${S3_ENDPOINT}" ] && AWS_FLAGS+=(--endpoint-url "${S3_ENDPOINT}")
+				AWS="$(type -P aws)" || fail "Failed to find aws in the path"
+				TAR="$(type -P tar)" || fail "Failed to find tar in the path"
+				type -P gzip &>/dev/null || fail "Failed to find gzip in the path"
 
-			# Preserve ACLs and extended attributes, if this tar can
-			TAR_FLAGS=()
-			TAR_HELP="$("${TAR}" --help 2>&1)" || true
-			for FLAG in --acls --xattrs ; do
-				[[ "${TAR_HELP}" == *"${FLAG}"* ]] && TAR_FLAGS+=("${FLAG}")
-			done
+				AWS_FLAGS=()
+				[ -n "${S3_REGION}" ] && AWS_FLAGS+=(--region "${S3_REGION}")
+				[ -n "${S3_ENDPOINT}" ] && AWS_FLAGS+=(--endpoint-url "${S3_ENDPOINT}")
 
-			S3_KEY="${S3_PREFIX}.tar.gz"
-			S3_URL="s3://${S3_BUCKET}/${S3_KEY}"
+				# Preserve ACLs and extended attributes, if this tar can
+				TAR_FLAGS=()
+				TAR_HELP="$("${TAR}" --help 2>&1)" || true
+				for FLAG in --acls --xattrs ; do
+					[[ "${TAR_HELP}" == *"${FLAG}"* ]] && TAR_FLAGS+=("${FLAG}")
+				done
 
-			if [ "${TASK}" == "s3_upload" ] ; then
+				S3_TAR_KEY="${S3_PREFIX}.tar.gz"
+				S3_URL="s3://${S3_BUCKET}/${S3_TAR_KEY}"
+				S3_LISTING_URL="s3://${S3_BUCKET}/${S3_PREFIX}.listing.gz"
+			else
+				[ -v S3_RESUME ] || S3_RESUME=""
+				[ -n "${S3_RESUME}" ] || S3_RESUME="verify"
+				[ -v S3_CONCURRENCY ] || S3_CONCURRENCY=""
+				[ -v S3_BWLIMIT ] || S3_BWLIMIT=""
+
+				S3FSM="$(type -P s3-fs-mirror)" || fail "Failed to find s3-fs-mirror in the path"
+
+				S3FSM_FLAGS=(
+					--resume "${S3_RESUME}"
+					--delete
+					--exclude "/lost+found/"
+				)
+				[ -n "${S3_REGION}" ] && S3FSM_FLAGS+=(--region "${S3_REGION}")
+				[ -n "${S3_ENDPOINT}" ] && S3FSM_FLAGS+=(--endpoint "${S3_ENDPOINT}")
+				[ -n "${S3_CONCURRENCY}" ] && S3FSM_FLAGS+=(--concurrency "${S3_CONCURRENCY}")
+				[ -n "${S3_BWLIMIT}" ] && S3FSM_FLAGS+=(--bwlimit "${S3_BWLIMIT}")
+				S3FSM_FLAGS+=("${EXTRA_ARGS[@]}")
+
+				S3_URL="s3://${S3_BUCKET}/${S3_PREFIX}"
+			fi
+
+			if [[ "${TASK}" == s3_*_upload ]] ; then
 				ensure_dir "${SOURCE_DIR}"
 				say "👉 Uploading PVC ${SOURCE_PVC} into [${S3_URL}]"
 			else
@@ -440,15 +542,7 @@ else
 	err "The work failed (rc = ${RC})"
 fi
 
-# The creation of this file will signal the pod as ready,
-# which in turn means that the work is complete - whatever
-# the outcome...
-echo -n "${RC}" > "${RESULT_MARKER}"
-
-#
-# Since we're part of a StatefulSet, we have to wait forever...
-#
-while true ; do
-	/usr/bin/sleep 3600 &
-	wait "${!}" || true
-done
+# Let tee finish writing out the log before we go
+exec 1>&- 2>&-
+wait "${TEE_PID}" || true
+exit "${RC}"

@@ -1,0 +1,133 @@
+#!/bin/bash
+SCRIPT="$(readlink -f "${BASH_ARGV0:-${BASH_SOURCE:-${0}}}")"
+BASEDIR="$(dirname "${SCRIPT}")"
+
+set -euo pipefail
+
+. "${BASEDIR}/pvc-migration.functions"
+
+#
+# Exports every namespace the layout table (on stdin) lists for the given source context
+# into the bucket: their definitions and their PVCs' definitions right away, and their
+# PVCs' data through the pvc-tool chart's transfer Jobs, which it then waits for (see
+# wait-for-context-transfers).
+#
+# Nothing is changed unless every namespace checks out first: it exists, and none of its
+# PVCs is in use (scale the workloads down first). Namespaces whose transfers were already
+# started (the pvc-tool release is installed) are left alone, so this can be run again.
+#
+
+usage()
+{
+	echo -e "usage: ${BASH_SOURCE:-${0}} [-b bucket] [-r release] source-context [-- helm-install-args...] < layout-table.txt" 1>&2
+	echo -e "" 1>&2
+	echo -e "	Exports the namespaces the layout table lists for the source context into" 1>&2
+	echo -e "	s3://\${bucket}/\${sourceContext}/\${namespace}/, and waits for the transfers to finish." 1>&2
+	echo -e "" 1>&2
+	echo -e "	-b, --bucket    The bucket (default: \${MIGRATION_BUCKET})" 1>&2
+	echo -e "	-r, --release   The name of the pvc-tool release to install (default: ${DEFAULT_RELEASE})" 1>&2
+	echo -e "" 1>&2
+	echo -e "	Any arguments after -- are passed to 'helm install' (e.g. -f values.yaml, with the image," 1>&2
+	echo -e "	s3.region and s3.irsaRole). Set CHART to use a chart other than ${CHART}." 1>&2
+	echo -e "" 1>&2
+	echo -e "	The layout table has one line per namespace (# starts a comment):" 1>&2
+	echo -e "" 1>&2
+	echo -e "		source-context  source-namespace  target-context  [target-namespace]" 1>&2
+	exit 1
+}
+
+ARGS=()
+while [ "${#}" -gt 0 ] ; do
+	[ "${1}" == "--" ] && shift && break
+	ARGS+=("${1}")
+	shift
+done
+HELM_ARGS=("${@}")
+set -- "${ARGS[@]}"
+
+RELEASE="${DEFAULT_RELEASE}"
+POSITIONAL=()
+while [ "${#}" -gt 0 ] ; do
+	case "${1}" in
+		-b | --bucket ) [ "${#}" -ge 2 ] || usage ; MIGRATION_BUCKET="${2}" ; shift 2 ;;
+		-r | --release ) [ "${#}" -ge 2 ] || usage ; RELEASE="${2}" ; shift 2 ;;
+		-* ) usage ;;
+		* ) POSITIONAL+=("${1}") ; shift ;;
+	esac
+done
+[ "${#POSITIONAL[@]}" -eq 1 ] || usage
+SOURCE="${POSITIONAL[0]}"
+is_valid_context "${SOURCE}" || fail "Invalid context name [${SOURCE}] (it's part of the data's location in the bucket)"
+is_valid_name "${RELEASE}" || fail "Invalid release name [${RELEASE}]"
+[ -n "${MIGRATION_BUCKET}" ] || fail "No bucket given (use -b, or set MIGRATION_BUCKET)"
+is_valid_bucket "${MIGRATION_BUCKET}" || fail "Invalid bucket name [${MIGRATION_BUCKET}]"
+
+read_layout
+
+NAMESPACES=()
+for I in "${!LAYOUT_SRC_CTX[@]}" ; do
+	[ "${LAYOUT_SRC_CTX[${I}]}" == "${SOURCE}" ] && NAMESPACES+=("${LAYOUT_SRC_NS[${I}]}")
+done
+if [ "${#NAMESPACES[@]}" -eq 0 ] ; then
+	ok "No transfers needed: the layout table has no namespaces in ${SOURCE}"
+	exit 0
+fi
+
+ensure_exe aws helm jq kubectl
+ensure_context "${SOURCE}"
+
+say "👉 Exporting ${#NAMESPACES[@]} namespace(s) from ${SOURCE} into [s3://${MIGRATION_BUCKET}/${SOURCE}/]: ${NAMESPACES[*]}"
+
+# Check everything before changing anything
+TODO=()
+BAD="0"
+for NS in "${NAMESPACES[@]}" ; do
+	if ! kubectl --context "${SOURCE}" get namespace "${NS}" &>/dev/null ; then
+		err "${SOURCE}/${NS}: the namespace doesn't exist"
+		BAD="1"
+		continue
+	fi
+	if is_release_installed "${SOURCE}" "${NS}" ; then
+		say "⏩ ${SOURCE}/${NS}: its transfers were already started"
+		continue
+	fi
+	BUSY="$(find_busy_pvcs "${SOURCE}" "${NS}")" || fail "${SOURCE}/${NS}: failed to list its pods"
+	if [ -n "${BUSY}" ] ; then
+		err "${SOURCE}/${NS}: these PVCs are still in use (scale its workloads down first):"
+		while read -r LINE ; do err "\t${LINE}" ; done <<< "${BUSY}"
+		BAD="1"
+		continue
+	fi
+	TODO+=("${NS}")
+done
+[ "${BAD}" -eq 0 ] || fail "Nothing was changed: fix the above, and run this again"
+
+WORK_DIR="$(mktemp -d)"
+trap 'rm -rf "${WORK_DIR}"' EXIT
+
+for NS in "${TODO[@]}" ; do
+	mkdir -p "${WORK_DIR}/${NS}"
+	export_definitions "${SOURCE}" "${NS}" "${WORK_DIR}/${NS}" > "${WORK_DIR}/${NS}.pvcs" || fail "${SOURCE}/${NS}: failed to export its definitions"
+	PVCS=()
+	readarray -t PVCS < "${WORK_DIR}/${NS}.pvcs"
+	ok "${SOURCE}/${NS}: definitions stored in [$(k8s_url "${SOURCE}" "${NS}")/]"
+
+	if [ "${#PVCS[@]}" -eq 0 ] ; then
+		ok "${SOURCE}/${NS}: no PVCs to export"
+		continue
+	fi
+
+	helm install "${RELEASE}" "${CHART}" \
+		--kube-context "${SOURCE}" \
+		--namespace "${NS}" \
+		"${HELM_ARGS[@]}" \
+		--set mode=s3 \
+		--set s3.format=tar \
+		--set s3.direction=upload \
+		--set "s3.bucket=${MIGRATION_BUCKET}" \
+		--set "s3.prefix=${SOURCE}" \
+		--set "s3.namespace=${NS}" >/dev/null || fail "${SOURCE}/${NS}: failed to install the pvc-tool chart"
+	ok "${SOURCE}/${NS}: exporting ${#PVCS[@]} PVC(s): ${PVCS[*]}"
+done
+
+exec "${BASEDIR}/wait-for-context-transfers" "${SOURCE}" "${NAMESPACES[@]}"
