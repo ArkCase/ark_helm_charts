@@ -21,6 +21,8 @@ Network policies lock down a release's pods, and then open access to them one se
         the NetworkPolicy in sync (see __arkcase.network-policy.kube-api.policy). Otherwise, it "fails
         open" as "${fullname}-kube-api-fail-open": all ports on the private network ranges (see
         __arkcase.network-policy.kube-api).
+      - "${fullname}-egress-${target}[-${from}]": allows egress to other pods in the cluster, outside of
+        the release, per global.networkPolicy.egress (see below).
 
   * Each internal service (via arkcase.subsystem.service) renders "${service}-ingress" (named after
     its headless service, if that's the only one rendered), which allows access to the service's
@@ -47,6 +49,36 @@ an Ingress.
 The policies are rendered by default, and may be disabled via global.networkPolicy.enabled (or by
 setting global.networkPolicy to false). The name resolution peers may be set in global.networkPolicy.dns
 as a list of NetworkPolicyPeer declarations (the default is the kube-dns pods in kube-system).
+
+Pods elsewhere in the cluster (i.e. a self-hosted LLM in another namespace) may be made reachable via
+global.networkPolicy.egress, a map of target names (lowercase alphanumerics and dashes) to either:
+
+  * a Service, whose pods (via its selector) are reached on its target ports. It's looked up when
+    the chart is deployed, so it must exist by then (or the deployment fails). Offline renders
+    (i.e. helm template) can't see it, and leave its policy out:
+
+        ollama:
+          service: "ai/ollama"    # "namespace/name", or just "name" for the release's namespace
+          from: [ "core/main" ]   # Optional (see below)
+
+  * or an explicit destination, whose ports must be declared:
+
+        metrics:
+          namespace: "monitoring" # Optional: a namespace name, or a LabelSelector for namespaces
+                                  # (the default is the release's namespace)
+          pods:                   # Optional: a LabelSelector for the pods (the default is all of them)
+            matchLabels:
+              app: "x"
+          ports:                  # Ports may be numbers, names, or NetworkPolicyPort declarations
+            - 9090
+            - port: 9091
+              protocol: "UDP"
+          from: "release"         # Optional (see below)
+
+The pods allowed to reach each target are given by its "from" value: either one, or a list, of
+"external" (the default: the release's pods allowed external access, see above), "release" (all of
+the release's pods), or "${subsystem}[/${part}]" (that subsystem's workload pods, or only those of
+one of its parts). Each one renders its own policy. A target set to null or false is skipped.
 */ -}}
 
 {{- define "arkcase.network-policy.conf" -}}
@@ -83,7 +115,27 @@ as a list of NetworkPolicyPeer declarations (the default is the kube-dns pods in
   {{- end -}}
   {{- $external = dict "denyPublic" ($external.denyPublic | default list) "allowPrivate" ($external.allowPrivate | default list) -}}
 
-  {{- dict "enabled" $enabled "dns" $dns "external" $external | toYaml -}}
+  {{- $egress := dict -}}
+  {{- if and (hasKey $conf "egress") (not (kindIs "invalid" $conf.egress)) -}}
+    {{- if not (kindIs "map" $conf.egress) -}}
+      {{- fail (printf "The value global.networkPolicy.egress must be a map of target names to their declarations (it's a %s)" (kindOf $conf.egress)) -}}
+    {{- end -}}
+    {{- range $name, $target := $conf.egress -}}
+      {{- if or (kindIs "invalid" $target) (and (kindIs "bool" $target) (not $target)) -}}
+        {{- /* Disabled */ -}}
+        {{- continue -}}
+      {{- end -}}
+      {{- if not (regexMatch "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$" $name) -}}
+        {{- fail (printf "The egress target name [%s] in global.networkPolicy.egress must be lowercase alphanumerics and dashes" $name) -}}
+      {{- end -}}
+      {{- if not (kindIs "map" $target) -}}
+        {{- fail (printf "The value global.networkPolicy.egress.%s must be a map (it's a %s)" $name (kindOf $target)) -}}
+      {{- end -}}
+      {{- $egress = set $egress $name $target -}}
+    {{- end -}}
+  {{- end -}}
+
+  {{- dict "enabled" $enabled "dns" $dns "external" $external "egress" $egress | toYaml -}}
 {{- end -}}
 
 {{- /*
@@ -298,6 +350,195 @@ annotations: {{- toYaml . | nindent 2 }}
 {{- end -}}
 
 {{- /*
+Output "true" if the chart is being rendered against a cluster (i.e. helm install/upgrade), as opposed
+to offline (i.e. helm template), where lookups always come back empty. Listing a namespace's objects
+returns a list object (even if empty) when online, and nothing at all when offline.
+*/ -}}
+{{- define "__arkcase.network-policy.online" -}}
+  {{- if (lookup "v1" "Service" $.Release.Namespace "") -}}
+    {{- true -}}
+  {{- end -}}
+{{- end -}}
+
+{{- /* Validate a LabelSelector declaration for an egress target */ -}}
+{{- define "__arkcase.network-policy.egress.selector" -}}
+  {{- $value := $.value -}}
+  {{- if or (not (kindIs "map" $value)) (omit $value "matchLabels" "matchExpressions") -}}
+    {{- fail (printf "The value global.networkPolicy.egress.%s.%s must be a LabelSelector (a map with matchLabels and/or matchExpressions)" $.name $.key) -}}
+  {{- end -}}
+  {{- $value | toYaml -}}
+{{- end -}}
+
+{{- /*
+Compute the destination ("to") and ports for an egress target (see above), as a map with those keys,
+or an empty map if the target can't be resolved because the render is offline
+
+Parameter: a dict with three keys:
+             - ctx = the root context (either "." or "$")
+             - name = the target's name
+             - target = the target's declaration
+*/ -}}
+{{- define "__arkcase.network-policy.egress.destination" -}}
+  {{- $ctx := $.ctx -}}
+  {{- $name := $.name -}}
+  {{- $target := $.target -}}
+
+  {{- $unknown := (omit $target "service" "namespace" "pods" "ports" "from" | keys | sortAlpha) -}}
+  {{- if $unknown -}}
+    {{- fail (printf "The egress target global.networkPolicy.egress.%s has unknown keys: %s" $name (join ", " $unknown)) -}}
+  {{- end -}}
+
+  {{- $result := dict -}}
+  {{- if (hasKey $target "service") -}}
+    {{- $explicit := (pick $target "namespace" "pods" "ports" | keys | sortAlpha) -}}
+    {{- if $explicit -}}
+      {{- fail (printf "The egress target global.networkPolicy.egress.%s declares a service, so it can't also declare %s (they come from the Service)" $name (join ", " $explicit)) -}}
+    {{- end -}}
+    {{- $service := ($target.service | toString) -}}
+    {{- if not (regexMatch "^([a-z0-9]([a-z0-9-]*[a-z0-9])?/)?[a-z0-9]([a-z0-9-]*[a-z0-9])?$" $service) -}}
+      {{- fail (printf "The service for egress target global.networkPolicy.egress.%s must be \"namespace/name\" or \"name\" (%s)" $name $service) -}}
+    {{- end -}}
+    {{- $namespace := $ctx.Release.Namespace -}}
+    {{- if (contains "/" $service) -}}
+      {{- $namespace = (splitList "/" $service | first) -}}
+      {{- $service = (splitList "/" $service | last) -}}
+    {{- end -}}
+
+    {{- $svc := (lookup "v1" "Service" $namespace $service) -}}
+    {{- if $svc -}}
+      {{- if (eq "ExternalName" ($svc.spec.type | default "")) -}}
+        {{- fail (printf "The Service %s/%s for egress target global.networkPolicy.egress.%s is an ExternalName service, which has no pods to reach" $namespace $service $name) -}}
+      {{- end -}}
+      {{- if not $svc.spec.selector -}}
+        {{- fail (printf "The Service %s/%s for egress target global.networkPolicy.egress.%s has no selector, so its pods can't be found" $namespace $service $name) -}}
+      {{- end -}}
+      {{- $ports := list -}}
+      {{- range $p := ($svc.spec.ports | default list) -}}
+        {{- $port := ($p.targetPort | default $p.port) -}}
+        {{- if not (kindIs "string" $port) -}}
+          {{- $port = (int $port) -}}
+        {{- end -}}
+        {{- $ports = append $ports (dict "protocol" ($p.protocol | default "TCP") "port" $port) -}}
+      {{- end -}}
+      {{- if not $ports -}}
+        {{- fail (printf "The Service %s/%s for egress target global.networkPolicy.egress.%s has no ports" $namespace $service $name) -}}
+      {{- end -}}
+      {{- $to := dict "namespaceSelector" (dict "matchLabels" (dict "kubernetes.io/metadata.name" $namespace)) "podSelector" (dict "matchLabels" $svc.spec.selector) -}}
+      {{- $result = dict "comment" (printf "The pods behind Service %s/%s" $namespace $service) "to" $to "ports" ($ports | uniq) -}}
+    {{- else if (include "__arkcase.network-policy.online" $ctx) -}}
+      {{- fail (printf "The Service %s/%s for egress target global.networkPolicy.egress.%s doesn't exist" $namespace $service $name) -}}
+    {{- end -}}
+  {{- else -}}
+    {{- $to := dict -}}
+    {{- if (hasKey $target "namespace") -}}
+      {{- if (kindIs "string" $target.namespace) -}}
+        {{- if not (regexMatch "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$" $target.namespace) -}}
+          {{- fail (printf "The namespace for egress target global.networkPolicy.egress.%s isn't a valid namespace name (%s)" $name $target.namespace) -}}
+        {{- end -}}
+        {{- $to = set $to "namespaceSelector" (dict "matchLabels" (dict "kubernetes.io/metadata.name" $target.namespace)) -}}
+      {{- else -}}
+        {{- $to = set $to "namespaceSelector" (include "__arkcase.network-policy.egress.selector" (dict "name" $name "key" "namespace" "value" $target.namespace) | fromYaml) -}}
+      {{- end -}}
+    {{- end -}}
+    {{- if (hasKey $target "pods") -}}
+      {{- $to = set $to "podSelector" (include "__arkcase.network-policy.egress.selector" (dict "name" $name "key" "pods" "value" $target.pods) | fromYaml) -}}
+    {{- else if not $to -}}
+      {{- /* All the pods in the release's namespace */ -}}
+      {{- $to = set $to "podSelector" dict -}}
+    {{- end -}}
+
+    {{- if or (not (kindIs "slice" $target.ports)) (empty $target.ports) -}}
+      {{- fail (printf "The egress target global.networkPolicy.egress.%s must declare its ports as a non-empty list" $name) -}}
+    {{- end -}}
+    {{- $ports := list -}}
+    {{- range $p := $target.ports -}}
+      {{- if not (kindIs "map" $p) -}}
+        {{- $p = dict "port" $p -}}
+      {{- end -}}
+      {{- $unknown := (omit $p "port" "protocol" "endPort" | keys | sortAlpha) -}}
+      {{- if $unknown -}}
+        {{- fail (printf "The ports for egress target global.networkPolicy.egress.%s have unknown keys: %s" $name (join ", " $unknown)) -}}
+      {{- end -}}
+      {{- $port := ($p.port | toString) -}}
+      {{- $np := dict "protocol" ($p.protocol | default "TCP" | upper) -}}
+      {{- if (regexMatch "^[1-9][0-9]*$" $port) -}}
+        {{- $np = set $np "port" (atoi $port) -}}
+      {{- else if (regexMatch "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$" $port) -}}
+        {{- $np = set $np "port" $port -}}
+      {{- else -}}
+        {{- fail (printf "The ports for egress target global.networkPolicy.egress.%s must be numbers or names (%s)" $name $port) -}}
+      {{- end -}}
+      {{- if (hasKey $p "endPort") -}}
+        {{- $endPort := ($p.endPort | toString) -}}
+        {{- if or (not (kindIs "int" $np.port)) (not (regexMatch "^[1-9][0-9]*$" $endPort)) (lt (atoi $endPort) $np.port) -}}
+          {{- fail (printf "The ports for egress target global.networkPolicy.egress.%s may only declare an endPort for a numeric port, and no lower than it (%s-%s)" $name $port $endPort) -}}
+        {{- end -}}
+        {{- $np = set $np "endPort" (atoi $endPort) -}}
+      {{- end -}}
+      {{- $ports = append $ports $np -}}
+    {{- end -}}
+    {{- $result = dict "comment" "Declared explicitly" "to" $to "ports" ($ports | uniq) -}}
+  {{- end -}}
+  {{- $result | toYaml -}}
+{{- end -}}
+
+{{- /*
+Render the network policies for an egress target (see above), one per "from" value
+
+Parameter: a dict with four keys:
+             - ctx = the root context (either "." or "$")
+             - fullname = the release's full name
+             - name = the target's name
+             - target = the target's declaration
+*/ -}}
+{{- define "__arkcase.network-policy.egress" -}}
+  {{- $ctx := $.ctx -}}
+  {{- $name := $.name -}}
+  {{- $target := $.target -}}
+  {{- $destination := (include "__arkcase.network-policy.egress.destination" $ | fromYaml) -}}
+
+  {{- $from := ($target.from | default "external") -}}
+  {{- if not (kindIs "slice" $from) -}}
+    {{- $from = list $from -}}
+  {{- end -}}
+
+  {{- if $destination }}
+    {{- range $f := ($from | uniq) }}
+      {{- $f = ($f | toString) }}
+      {{- $selector := dict "app.kubernetes.io/instance" $ctx.Release.Name }}
+      {{- $suffix := "" }}
+      {{- if (eq "external" $f) }}
+        {{- $selector = merge $selector (include "__arkcase.network-policy.label.external" $ctx | fromYaml) }}
+      {{- else if (eq "release" $f) }}
+        {{- $suffix = "-release" }}
+      {{- else if (regexMatch "^[a-z0-9]([a-z0-9-]*[a-z0-9])?(/[a-z0-9]([a-z0-9-]*[a-z0-9])?)?$" $f) }}
+        {{- $parts := (splitList "/" $f) }}
+        {{- $selector = set $selector "arkcase.com/task" "work" }}
+        {{- $selector = set $selector "arkcase.com/subsystem" (first $parts) }}
+        {{- if (gt (len $parts) 1) }}
+          {{- $selector = set $selector "app.kubernetes.io/part" (last $parts) }}
+        {{- end }}
+        {{- $suffix = (printf "-%s" ($parts | join "-")) }}
+      {{- else }}
+        {{- fail (printf "The 'from' value for egress target global.networkPolicy.egress.%s must be 'external', 'release', or 'subsystem[/part]' (%s)" $name $f) }}
+      {{- end }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {{- include "__arkcase.network-policy.metadata" (dict "ctx" $ctx "name" (printf "%s-egress-%s%s" $.fullname $name $suffix)) | nindent 2 }}
+spec:
+  podSelector:
+    matchLabels: {{- $selector | toYaml | nindent 6 }}
+  policyTypes: [ "Egress" ]
+  egress:
+    # global.networkPolicy.egress.{{ $name }}: {{ $destination.comment }}
+    - to: {{- list $destination.to | toYaml | nindent 8 }}
+      ports: {{- $destination.ports | toYaml | nindent 8 }}
+    {{- end }}
+  {{- end }}
+{{- end -}}
+
+{{- /*
 Render the baseline network policies for the release, which lock down all its pods (see above)
 
 Parameter: the root context (either "." or "$")
@@ -359,6 +600,9 @@ spec:
       {{- end }}
     {{- end }}
     {{- include "__arkcase.network-policy.kube-api.policy" (dict "ctx" $ctx "fullname" $fullname) }}
+    {{- range $name, $target := $conf.egress }}
+      {{- include "__arkcase.network-policy.egress" (dict "ctx" $ctx "fullname" $fullname "name" $name "target" $target) }}
+    {{- end }}
   {{- end }}
 {{- end -}}
 
