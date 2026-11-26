@@ -1,0 +1,130 @@
+#!/bin/bash
+SCRIPT="$(readlink -f "${BASH_ARGV0:-${BASH_SOURCE:-${0}}}")"
+BASEDIR="$(dirname "${SCRIPT}")"
+
+set -euo pipefail
+
+. "${BASEDIR}/pvc-migration.functions"
+
+#
+# Exports a namespace into the bucket, under ${context}/${namespace}/: its definition and
+# its PVCs' definitions right away, and its PVCs' data through the pvc-tool chart's
+# transfer Jobs, which it then waits for (see wait-for-context-transfers).
+#
+# Nothing is changed unless the namespace exists, and none of its PVCs is in use (scale
+# its workloads down first). If its transfers were already started (the pvc-tool release
+# is installed), it only waits for them. Each Job records its export once it's complete,
+# and skips the work when it's run again and nothing changed since, so this can be run
+# again and again. With --retry-only, nothing is started: it waits for the transfers
+# that were, and re-creates the ones that fail.
+#
+
+usage()
+{
+	echo -e "usage: ${BASH_SOURCE:-${0}} [-b bucket] [-r release] [--retry-only [--max-retries n]] source-context/namespace [-- helm-install-args...]" 1>&2
+	echo -e "" 1>&2
+	echo -e "	Exports the namespace into s3://\${bucket}/\${context}/\${namespace}/, and waits for the" 1>&2
+	echo -e "	transfers to finish." 1>&2
+	echo -e "" 1>&2
+	echo -e "	-b, --bucket    The bucket (default: \${MIGRATION_BUCKET})" 1>&2
+	echo -e "	-r, --release   The name of the pvc-tool release to install (default: ${DEFAULT_RELEASE})" 1>&2
+	echo -e "	--retry-only    Start nothing: just wait for the transfers that were already started," 1>&2
+	echo -e "	                and re-create the ones that fail (up to --max-retries times," 1>&2
+	echo -e "	                default ${DEFAULT_MAX_RETRIES}), e.g. after an interrupted run" 1>&2
+	echo -e "" 1>&2
+	echo -e "	Any arguments after -- are passed to 'helm install' (e.g. -f values.yaml, with the image," 1>&2
+	echo -e "	s3.region and s3.irsaRole). Set CHART to use a chart other than ${CHART}." 1>&2
+	exit 1
+}
+
+ARGS=()
+while [ "${#}" -gt 0 ] ; do
+	[ "${1}" == "--" ] && shift && break
+	ARGS+=("${1}")
+	shift
+done
+HELM_ARGS=("${@}")
+set -- "${ARGS[@]}"
+
+RELEASE="${DEFAULT_RELEASE}"
+RETRY_ONLY="false"
+MAX_RETRIES="${DEFAULT_MAX_RETRIES}"
+POSITIONAL=()
+while [ "${#}" -gt 0 ] ; do
+	case "${1}" in
+		-b | --bucket ) [ "${#}" -ge 2 ] || usage ; MIGRATION_BUCKET="${2}" ; shift 2 ;;
+		-r | --release ) [ "${#}" -ge 2 ] || usage ; RELEASE="${2}" ; shift 2 ;;
+		--retry-only ) RETRY_ONLY="true" ; shift ;;
+		--max-retries )
+			[ "${#}" -ge 2 ] || usage
+			[[ "${2}" =~ ^(0|[1-9][0-9]*)$ ]] || fail "Invalid --max-retries value [${2}] - must be a non-negative integer"
+			MAX_RETRIES="${2}"
+			shift 2
+			;;
+		-* ) usage ;;
+		* ) POSITIONAL+=("${1}") ; shift ;;
+	esac
+done
+[ "${#POSITIONAL[@]}" -eq 1 ] || usage
+parse_location "${POSITIONAL[0]}"
+SOURCE="${CTX_PART}"
+NS="${NS_PART}"
+WHAT="${SOURCE}/${NS}"
+is_valid_name "${RELEASE}" || fail "Invalid release name [${RELEASE}]"
+
+if "${RETRY_ONLY}" ; then
+	say "👉 Waiting for (and retrying) the export of ${WHAT}"
+	RC="0"
+	retry_only "${SOURCE}" upload "${NS}" || RC="${?}"
+	exit "${RC}"
+fi
+
+[ -n "${MIGRATION_BUCKET}" ] || fail "No bucket given (use -b, or set MIGRATION_BUCKET)"
+is_valid_bucket "${MIGRATION_BUCKET}" || fail "Invalid bucket name [${MIGRATION_BUCKET}]"
+
+ensure_exe aws helm jq kubectl
+ensure_context "${SOURCE}"
+
+kubectl --context "${SOURCE}" get namespace "${NS}" &>/dev/null || fail "${WHAT}: the namespace doesn't exist"
+
+if is_release_installed "${SOURCE}" "${NS}" ; then
+	say "⏩ ${WHAT}: its transfers were already started"
+else
+	BUSY="$(find_busy_pvcs "${SOURCE}" "${NS}")" || fail "${WHAT}: failed to list its pods"
+	if [ -n "${BUSY}" ] ; then
+		err "${WHAT}: these PVCs are still in use (scale its workloads down first):"
+		while read -r LINE ; do err "\t${LINE}" ; done <<< "${BUSY}"
+		fail "Nothing was changed: fix the above, and run this again"
+	fi
+
+	WORK_DIR="$(mktemp -d)"
+	trap 'rm -rf "${WORK_DIR}"' EXIT
+
+	say "👉 Exporting ${WHAT} into [s3://${MIGRATION_BUCKET}/${SOURCE}/${NS}/]"
+	export_definitions "${SOURCE}" "${NS}" "${WORK_DIR}" > "${WORK_DIR}/pvcs.list" || fail "${WHAT}: failed to export its definitions"
+	PVCS=()
+	readarray -t PVCS < "${WORK_DIR}/pvcs.list"
+	ok "${WHAT}: definitions stored in [$(k8s_url "${SOURCE}" "${NS}")/]"
+
+	if [ "${#PVCS[@]}" -eq 0 ] ; then
+		ok "No transfers needed: ${WHAT} has no PVCs to export"
+		exit 0
+	fi
+
+	helm install "${RELEASE}" "${CHART}" \
+		--kube-context "${SOURCE}" \
+		--namespace "${NS}" \
+		"${HELM_ARGS[@]}" \
+		--set mode=s3 \
+		--set s3.format=tar \
+		--set s3.direction=upload \
+		--set "s3.bucket=${MIGRATION_BUCKET}" \
+		--set "s3.prefix=${SOURCE}" \
+		--set "s3.namespace=${NS}" >/dev/null || fail "${WHAT}: failed to install the pvc-tool chart"
+	ok "${WHAT}: exporting ${#PVCS[@]} PVC(s): ${PVCS[*]}"
+fi
+
+RC="0"
+"${BASEDIR}/wait-for-context-transfers" "${SOURCE}" "${NS}" || RC="${?}"
+[ "${RC}" -eq 1 ] && err "Or re-run this with --retry-only, to retry the failed transfers (and keep waiting)"
+exit "${RC}"

@@ -1,0 +1,182 @@
+#!/bin/bash
+SCRIPT="$(readlink -f "${BASH_ARGV0:-${BASH_SOURCE:-${0}}}")"
+BASEDIR="$(dirname "${SCRIPT}")"
+
+set -euo pipefail
+
+. "${BASEDIR}/pvc-migration.functions"
+
+#
+# Restores a namespace that extract-namespace exported, into the given target context
+# (and namespace, which defaults to the source's): it re-creates the namespace and its
+# PVCs, and restores the PVCs' data through the pvc-tool chart's transfer Jobs, which it
+# then waits for (see wait-for-context-transfers). Then deploy the application.
+#
+# Nothing is changed unless the export is complete (every PVC has its record), the PVCs'
+# storage classes exist in the target (or are mapped with -s), and if the namespace exists
+# already, it has no PVCs other than the exported ones. If its transfers were already
+# started (the pvc-tool release is installed), it only waits for them. Each Job marks its
+# PVC once it's restored, and skips the work when it's run again and nothing changed
+# since, so this can be run again and again. With --retry-only, nothing is started: it
+# waits for the transfers that were, and re-creates the ones that fail.
+#
+
+usage()
+{
+	echo -e "usage: ${BASH_SOURCE:-${0}} [-b bucket] [-r release] [-s old=new]... [--retry-only [--max-retries n]] source-context/namespace target-context[/namespace] [-- helm-install-args...]" 1>&2
+	echo -e "" 1>&2
+	echo -e "	Restores the namespace exported into s3://\${bucket}/\${sourceContext}/\${namespace}/ into" 1>&2
+	echo -e "	the target context (and namespace, by default the same), and waits for the transfers" 1>&2
+	echo -e "	to finish." 1>&2
+	echo -e "" 1>&2
+	echo -e "	-b, --bucket          The bucket (default: \${MIGRATION_BUCKET})" 1>&2
+	echo -e "	-r, --release         The name of the pvc-tool release to install (default: ${DEFAULT_RELEASE})" 1>&2
+	echo -e "	-s, --storage-class   Re-create the PVCs of storage class 'old' with the storage class 'new'" 1>&2
+	echo -e "	                      (repeatable; '*=new' applies to every other storage class, and" 1>&2
+	echo -e "	                      'old=' uses the cluster's default storage class)" 1>&2
+	echo -e "	--retry-only          Start nothing: just wait for the transfers that were already started," 1>&2
+	echo -e "	                      and re-create the ones that fail (up to --max-retries times," 1>&2
+	echo -e "	                      default ${DEFAULT_MAX_RETRIES}), e.g. after an interrupted run" 1>&2
+	echo -e "" 1>&2
+	echo -e "	Any arguments after -- are passed to 'helm install' (e.g. -f values.yaml, with the image," 1>&2
+	echo -e "	s3.region and s3.irsaRole). Set CHART to use a chart other than ${CHART}." 1>&2
+	exit 1
+}
+
+ARGS=()
+while [ "${#}" -gt 0 ] ; do
+	[ "${1}" == "--" ] && shift && break
+	ARGS+=("${1}")
+	shift
+done
+HELM_ARGS=("${@}")
+set -- "${ARGS[@]}"
+
+RELEASE="${DEFAULT_RELEASE}"
+RETRY_ONLY="false"
+MAX_RETRIES="${DEFAULT_MAX_RETRIES}"
+SC_MAP="{}"
+POSITIONAL=()
+while [ "${#}" -gt 0 ] ; do
+	case "${1}" in
+		-b | --bucket ) [ "${#}" -ge 2 ] || usage ; MIGRATION_BUCKET="${2}" ; shift 2 ;;
+		-r | --release ) [ "${#}" -ge 2 ] || usage ; RELEASE="${2}" ; shift 2 ;;
+		-s | --storage-class )
+			[ "${#}" -ge 2 ] || usage
+			[[ "${2}" =~ ^([^=]+)=(.*)$ ]] || fail "Invalid storage class mapping [${2}] - must be old=new"
+			SC_MAP="$(jq -c --arg old "${BASH_REMATCH[1]}" --arg new "${BASH_REMATCH[2]}" '. + { ($old): $new }' <<< "${SC_MAP}")"
+			shift 2
+			;;
+		--retry-only ) RETRY_ONLY="true" ; shift ;;
+		--max-retries )
+			[ "${#}" -ge 2 ] || usage
+			[[ "${2}" =~ ^(0|[1-9][0-9]*)$ ]] || fail "Invalid --max-retries value [${2}] - must be a non-negative integer"
+			MAX_RETRIES="${2}"
+			shift 2
+			;;
+		-* ) usage ;;
+		* ) POSITIONAL+=("${1}") ; shift ;;
+	esac
+done
+[ "${#POSITIONAL[@]}" -eq 2 ] || usage
+parse_location "${POSITIONAL[0]}"
+SRC_CTX="${CTX_PART}"
+SRC_NS="${NS_PART}"
+parse_location "${POSITIONAL[1]}" "${SRC_NS}"
+TARGET="${CTX_PART}"
+NS="${NS_PART}"
+WHAT="${TARGET}/${NS} (from ${SRC_CTX}/${SRC_NS})"
+is_valid_name "${RELEASE}" || fail "Invalid release name [${RELEASE}]"
+
+if "${RETRY_ONLY}" ; then
+	say "👉 Waiting for (and retrying) the restore of ${WHAT}"
+	RC="0"
+	retry_only "${TARGET}" download "${NS}" || RC="${?}"
+	exit "${RC}"
+fi
+
+[ -n "${MIGRATION_BUCKET}" ] || fail "No bucket given (use -b, or set MIGRATION_BUCKET)"
+is_valid_bucket "${MIGRATION_BUCKET}" || fail "Invalid bucket name [${MIGRATION_BUCKET}]"
+
+ensure_exe aws helm jq kubectl
+ensure_context "${TARGET}"
+
+if is_release_installed "${TARGET}" "${NS}" ; then
+	say "⏩ ${WHAT}: its transfers were already started"
+else
+	WORK_DIR="$(mktemp -d)"
+	trap 'rm -rf "${WORK_DIR}"' EXIT
+
+	# Check everything before changing anything
+	URL="$(k8s_url "${SRC_CTX}" "${SRC_NS}")"
+	if ! aws s3 cp --only-show-errors "${URL}/namespace.json" "${WORK_DIR}/namespace.json" 2>/dev/null || ! aws s3 cp --only-show-errors "${URL}/pvcs.json" "${WORK_DIR}/pvcs.json" 2>/dev/null ; then
+		fail "${WHAT}: it wasn't exported (no definitions in [${URL}/])"
+	fi
+
+	# Each PVC's record is the last thing its export stores
+	OBJECTS="$(list_exported_objects "${SRC_CTX}" "${SRC_NS}")" || fail "${WHAT}: failed to list its export"
+	MISSING=()
+	while read -r PVC ; do
+		[ -n "${PVC}" ] || continue
+		awk -F '\t' -v key="${SRC_CTX}/${SRC_NS}/${PVC}.record" '$1 == key { found = 1 } END { exit !found }' <<< "${OBJECTS}" || MISSING+=("${PVC}")
+	done < <(jq -r '.items[].metadata.name' "${WORK_DIR}/pvcs.json")
+	[ "${#MISSING[@]}" -eq 0 ] || fail "${WHAT}: the export of these PVCs isn't complete: ${MISSING[*]}"
+
+	jq --arg ns "${NS}" '.metadata.name = $ns' "${WORK_DIR}/namespace.json" > "${WORK_DIR}/namespace.new.json"
+	rewrite_pvcs "${NS}" "${SC_MAP}" < "${WORK_DIR}/pvcs.json" > "${WORK_DIR}/pvcs.new.json"
+
+	SC_MISSING=()
+	while read -r SC ; do
+		[ -n "${SC}" ] || continue
+		kubectl --context "${TARGET}" get storageclass "${SC}" &>/dev/null || SC_MISSING+=("${SC}")
+	done < <(jq -r '.items[].spec.storageClassName // empty' "${WORK_DIR}/pvcs.new.json" | sort -u)
+	[ "${#SC_MISSING[@]}" -eq 0 ] || fail "${WHAT}: these storage classes don't exist in ${TARGET}: ${SC_MISSING[*]} (map them with -s old=new, e.g. -s ${SC_MISSING[0]}=gp3)"
+
+	# The chart restores every PVC in the namespace, so they must all come from the export
+	if kubectl --context "${TARGET}" get namespace "${NS}" &>/dev/null ; then
+		EXTRA="$(kubectl --context "${TARGET}" get pvc --namespace "${NS}" -o json | jq -r --argjson want "$(jq -c '[.items[].metadata.name]' "${WORK_DIR}/pvcs.new.json")" '
+			.items[]
+			| select(.metadata.deletionTimestamp == null)
+			| select((.spec.volumeMode // "Filesystem") == "Filesystem")
+			| .metadata.name
+			| select(. as $n | $want | index($n) | not)
+		')" || fail "${WHAT}: failed to list its PVCs"
+		[ -z "${EXTRA}" ] || fail "${WHAT}: the namespace has PVCs that aren't part of the export: $(echo ${EXTRA})"
+		say "⏩ ${WHAT}: the namespace exists already"
+	else
+		kubectl --context "${TARGET}" create -f "${WORK_DIR}/namespace.new.json" >/dev/null || fail "${WHAT}: failed to create the namespace"
+		ok "${WHAT}: created the namespace"
+	fi
+
+	PVCS=()
+	readarray -t PVCS < <(jq -r '.items[].metadata.name' "${WORK_DIR}/pvcs.new.json")
+	for PVC in "${PVCS[@]}" ; do
+		if kubectl --context "${TARGET}" get pvc --namespace "${NS}" "${PVC}" &>/dev/null ; then
+			say "⏩ ${WHAT}: the PVC ${PVC} exists already"
+			continue
+		fi
+		jq --arg name "${PVC}" '.items[] | select(.metadata.name == $name)' "${WORK_DIR}/pvcs.new.json" | kubectl --context "${TARGET}" create -f - >/dev/null || fail "${WHAT}: failed to create the PVC ${PVC}"
+	done
+
+	if [ "${#PVCS[@]}" -eq 0 ] ; then
+		ok "No transfers needed: ${WHAT} has no PVCs to restore"
+		exit 0
+	fi
+
+	helm install "${RELEASE}" "${CHART}" \
+		--kube-context "${TARGET}" \
+		--namespace "${NS}" \
+		"${HELM_ARGS[@]}" \
+		--set mode=s3 \
+		--set s3.format=tar \
+		--set s3.direction=download \
+		--set "s3.bucket=${MIGRATION_BUCKET}" \
+		--set "s3.prefix=${SRC_CTX}" \
+		--set "s3.namespace=${SRC_NS}" >/dev/null || fail "${WHAT}: failed to install the pvc-tool chart"
+	ok "${WHAT}: restoring ${#PVCS[@]} PVC(s): ${PVCS[*]}"
+fi
+
+RC="0"
+"${BASEDIR}/wait-for-context-transfers" "${TARGET}" "${NS}" || RC="${?}"
+[ "${RC}" -eq 1 ] && err "Or re-run this with --retry-only, to retry the failed transfers (and keep waiting)"
+exit "${RC}"

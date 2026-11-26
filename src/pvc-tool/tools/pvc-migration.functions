@@ -1,19 +1,17 @@
 #!/bin/bash
 #
-# Shared by full-context-extract, full-context-restore, wait-for-context-transfers and
+# Shared by extract-namespace, restore-namespace, wait-for-context-transfers and
 # retry-context-transfers (it's sourced, not run).
 #
-# The layout table (read from stdin) says where each namespace goes, one per line:
-#
-#   source-context  source-namespace  target-context  [target-namespace]
-#
-# The target namespace defaults to the source's. Blank lines, and everything after a #,
-# are ignored. Each namespace's data goes into the bucket under ${sourceContext}/${sourceNamespace}/:
+# Each namespace's data goes into the bucket under ${sourceContext}/${sourceNamespace}/:
 #
 #   _k8s/namespace.json, _k8s/pvcs.json   the definitions to re-create them from
 #   _k8s/original-*.json                  the same, as they were (for reference)
-#   ${pvcName}.tar.gz                     each PVC's data (by the pvc-tool chart)
-#   ${pvcName}.listing.gz                 each PVC's listing (stored last: the PVC's export is complete)
+#   ${pvcName}.tar.gz                     each PVC's data (by the pvc-tool chart's Jobs)
+#   ${pvcName}.listing.gz                 each PVC's listing (to check restores against)
+#   ${pvcName}.record                     stored last: the PVC's export is complete, and
+#                                         what it consists of (so it's never repeated
+#                                         needlessly)
 #
 
 [ -v CHART ] || CHART=""
@@ -101,66 +99,20 @@ ensure_context()
 }
 
 #
-# Reads the layout table from stdin into the arrays LAYOUT_SRC_CTX, LAYOUT_SRC_NS,
-# LAYOUT_DST_CTX and LAYOUT_DST_NS (one entry per line), and validates it: every
-# source namespace may only go to one place, and no two may go to the same place
+# Splits a "context/namespace" argument into CTX_PART and NS_PART (the namespace is
+# optional when DEFAULT_NS is given)
 #
-read_layout()
+parse_location()
 {
-	LAYOUT_SRC_CTX=()
-	LAYOUT_SRC_NS=()
-	LAYOUT_DST_CTX=()
-	LAYOUT_DST_NS=()
-
-	[ -t 0 ] && fail "The layout table must be given on stdin (e.g. ${0##*/} ... < layout-table.txt)"
-
-	local -A SEEN_SRC=()
-	local -A SEEN_DST=()
-	local LINE=""
-	local NUM="0"
-	local BAD="0"
-	local FIELDS=()
-	while IFS="" read -r LINE || [ -n "${LINE}" ] ; do
-		NUM="$(( NUM + 1 ))"
-		LINE="${LINE%%#*}"
-		read -r -a FIELDS <<< "${LINE}"
-		[ "${#FIELDS[@]}" -eq 0 ] && continue
-		if [ "${#FIELDS[@]}" -lt 3 ] || [ "${#FIELDS[@]}" -gt 4 ] ; then
-			err "Layout line ${NUM}: expected 'source-context source-namespace target-context [target-namespace]', got [${LINE}]"
-			BAD="1"
-			continue
-		fi
-		local SRC_CTX="${FIELDS[0]}"
-		local SRC_NS="${FIELDS[1]}"
-		local DST_CTX="${FIELDS[2]}"
-		local DST_NS="${FIELDS[3]:-${SRC_NS}}"
-
-		local F=""
-		for F in "${SRC_CTX}" "${DST_CTX}" ; do
-			is_valid_context "${F}" || { err "Layout line ${NUM}: [${F}] is not a valid context name (letters, digits, '.', '_' and '-')" ; BAD="1" ; continue 2 ; }
-		done
-		for F in "${SRC_NS}" "${DST_NS}" ; do
-			is_valid_name "${F}" || { err "Layout line ${NUM}: [${F}] is not a valid namespace name" ; BAD="1" ; continue 2 ; }
-		done
-		if [ -n "${SEEN_SRC["${SRC_CTX}/${SRC_NS}"]:-}" ] ; then
-			err "Layout line ${NUM}: ${SRC_CTX}/${SRC_NS} is already on line ${SEEN_SRC["${SRC_CTX}/${SRC_NS}"]}"
-			BAD="1"
-			continue
-		fi
-		if [ -n "${SEEN_DST["${DST_CTX}/${DST_NS}"]:-}" ] ; then
-			err "Layout line ${NUM}: ${DST_CTX}/${DST_NS} is already the target on line ${SEEN_DST["${DST_CTX}/${DST_NS}"]}"
-			BAD="1"
-			continue
-		fi
-		SEEN_SRC["${SRC_CTX}/${SRC_NS}"]="${NUM}"
-		SEEN_DST["${DST_CTX}/${DST_NS}"]="${NUM}"
-
-		LAYOUT_SRC_CTX+=("${SRC_CTX}")
-		LAYOUT_SRC_NS+=("${SRC_NS}")
-		LAYOUT_DST_CTX+=("${DST_CTX}")
-		LAYOUT_DST_NS+=("${DST_NS}")
-	done
-	[ "${BAD}" -eq 0 ] || fail "The layout table has errors"
+	local ARG="${1}"
+	local DEFAULT_NS="${2:-}"
+	CTX_PART="${ARG%%/*}"
+	NS_PART=""
+	[[ "${ARG}" == */* ]] && NS_PART="${ARG#*/}"
+	[ -n "${NS_PART}" ] || NS_PART="${DEFAULT_NS}"
+	is_valid_context "${CTX_PART}" || fail "Invalid context name [${CTX_PART}] in [${ARG}] (letters, digits, '.', '_' and '-': it's part of the data's location in the bucket)"
+	[ -n "${NS_PART}" ] || fail "No namespace in [${ARG}] (must be context/namespace)"
+	is_valid_name "${NS_PART}" || fail "Invalid namespace name [${NS_PART}] in [${ARG}]"
 	return 0
 }
 

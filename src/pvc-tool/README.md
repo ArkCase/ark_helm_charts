@@ -51,7 +51,7 @@ helm install pvc-tool arkcase/pvc-tool \
 
 How each PVC's data is stored depends on `s3.format`:
 
-  * `tar` (default): as `s3://some-bucket/pvc-tool-prefix/${namespace}/${pvcName}.tar.gz`, created with GNU `tar`, preserving numeric ownership, permissions, sparse files, and (if the `tar` in the image supports them) ACLs and extended attributes. An interrupted transfer starts over. With `s3.verify` (the default), the archive is downloaded again after the transfer, and compared against the PVC with `tar --diff`. Next to the archive goes `${pvcName}.listing.gz`: the path, type, permissions, ownership and size of every entry in the PVC. After a download, the PVC must match it, or the pod fails (without retrying).
+  * `tar` (default): as `s3://some-bucket/pvc-tool-prefix/${namespace}/${pvcName}.tar.gz`, created with GNU `tar`, preserving numeric ownership, permissions, sparse files, and (if the `tar` in the image supports them) ACLs and extended attributes. An interrupted transfer starts over. With `s3.verify` (the default), the archive is downloaded again after the transfer, and compared against the PVC with `tar --diff`. Next to the archive goes `${pvcName}.listing.gz`: the path, type, permissions, ownership and size of every entry in the PVC. After a download, the PVC must match it, or the pod fails (without retrying). Last goes `${pvcName}.record`, which says the export is complete, when it started, and which archive and listing it made (their ETags, sizes, times and versions). An export that's run again, and finds its record, only does the work again if the archive or the listing aren't the recorded ones anymore, or anything in the PVC changed since the export started (by its ctime, which, unlike the modification time, nothing can set back), or the PVC doesn't match the listing. A download likewise leaves a `.pvc-tool-restore` marker at the root of the PVC (which never makes it into an archive), and when it's run again, only does the work again if the archive or the listing changed, or anything in the PVC changed after the marker, or the PVC doesn't match the listing.
   * `mirror`: as a tree under `s3://some-bucket/pvc-tool-prefix/${namespace}/${pvcName}/`, with `s3-fs-mirror`: one object per file, directory, symlink and so on, at the same relative path, with each entry's ownership, permissions, times and extended attributes in its object's metadata. Hardlinks, sparse files, FIFOs and devices are handled too. An interrupted copy resumes where it left off, down to the partly transferred files (see `s3.resume`). The tree's root directory object, `${S3_PREFIX}/`, says whether the upload is complete. Re-uploading into the same prefix updates the tree in place.
 
 Use a new `s3.prefix` for each backup (e.g. a date) to keep the previous one intact.
@@ -105,41 +105,33 @@ The `tools/reassign-pvcs` script can then swap the new volumes in, under the old
 
 ### Moving Namespaces Between Clusters
 
-These scripts move namespaces, with their PVCs and their data, between clusters through S3, a whole kube context at a time. A layout table says where each namespace goes, one line per namespace (`#` starts a comment, and the target namespace defaults to the source's):
+These scripts move a namespace, with its PVCs and their data, between clusters through S3. They take each namespace as `context/namespace`, so any number of them can run at the same time, from any number of contexts. A namespace's data goes into the bucket under `${sourceContext}/${sourceNamespace}/`: its definitions in `_k8s/`, and each PVC's `.tar.gz`, `.listing.gz` and `.record`. The scripts run on a workstation, with `kubectl` (and the contexts), `helm`, `jq` and the AWS CLI (with access to the bucket), and drive the chart's s3 mode (tar format). The bucket is given with `-b` (or `MIGRATION_BUCKET`), and any arguments after `--` go to `helm install` (e.g. `-f values.yaml`, with `image.*`, `s3.region` and `s3.irsaRole`; the scripts set everything else in `s3.*`).
 
-```
-# source-context    source-namespace   target-context      [target-namespace]
-aws-fedramp-test    cust-my-demo       aws-fedramp-stage
-aws-fedramp-test    cust-other-prod    aws-fedramp-prod
-```
-
-Each namespace's data goes into the bucket under `${sourceContext}/${sourceNamespace}/`: its definitions in `_k8s/`, and each PVC's `.tar.gz` archive and `.listing.gz`. The scripts run on a workstation, with `kubectl` (and the contexts), `helm`, `jq` and the AWS CLI (with access to the bucket), and drive the chart's s3 mode (tar format). The bucket is given with `-b` (or `MIGRATION_BUCKET`), and any arguments after `--` go to `helm install` (e.g. `-f values.yaml`, with `image.*`, `s3.region` and `s3.irsaRole`; the scripts set everything else in `s3.*`).
-
-  1. Scale down the workloads of every namespace to export, and export them:
+  1. Scale down the namespace's workloads, and export it:
 
      ```
-     tools/full-context-extract -b aws-mig-202611-stage aws-fedramp-test -- -f pvc-tool-aws-fedramp-test.yaml < layout-table.txt
+     tools/extract-namespace -b aws-mig-202611-stage aws-fedramp-test/cust-my-demo -- -f pvc-tool-aws-fedramp-test.yaml
      ```
 
-     Every namespace the table lists for the context must exist, and none of its PVCs may be in use, or nothing is done. Then each namespace's definition and its PVCs' definitions are stored, minus what ties them to the old cluster (their volumes, nodes, owners such as StatefulSets, and Rancher projects; Helm's ownership marks are kept, so the application's chart adopts the PVCs it renders itself), and the chart is installed into the namespace to export its PVCs' data, one Job per PVC. Then it waits for them, like `tools/wait-for-context-transfers`.
+     The namespace must exist, and none of its PVCs may be in use, or nothing is done. Then its definition and its PVCs' definitions are stored, minus what ties them to the old cluster (their volumes, nodes, owners such as StatefulSets, and Rancher projects; Helm's ownership marks are kept, so the application's chart adopts the PVCs it renders itself), and the chart is installed into the namespace to export its PVCs' data, one Job per PVC. Then it waits for them, like `tools/wait-for-context-transfers`.
 
-  2. `tools/wait-for-context-transfers aws-fedramp-test` waits for the context's transfer Jobs: it exits with `0` once they all completed, `1` as soon as any of them failed (naming them), and `2` if the cluster can't be reached. It only reads, so it can be run as often as needed (e.g. after losing connectivity). `tools/retry-context-transfers aws-fedramp-test` re-creates the failed Jobs, so they run again.
+  2. `tools/wait-for-context-transfers aws-fedramp-test [namespace...]` waits for the context's transfer Jobs: it exits with `0` once they all completed, `1` as soon as any of them failed (naming them), and `2` if the cluster can't be reached. It only reads, so it can be run as often as needed. `tools/retry-context-transfers aws-fedramp-test [namespace...]` re-creates the failed Jobs, so they run again.
 
-     To pick up an interrupted run, run the same command again with `--retry-only`: it starts nothing, but waits for the transfers that were already started, and re-creates the ones that fail (up to `--max-retries` times, default 3). It still exits with `1` if any of the table's namespaces were never started (and have something to transfer): run it without `--retry-only` to start them. It doesn't need the bucket.
+     To pick up an interrupted run, run the same command again with `--retry-only`: it starts nothing, but waits for the transfers that were already started, and re-creates the ones that fail (up to `--max-retries` times, default 3). It exits with `1` if the namespace's transfers were never started (and it has something to transfer): run it without `--retry-only` to start them. It doesn't need the bucket.
 
   3. Tear down the old cluster once all its transfers completed, and build the new one.
 
-  4. Restore every namespace the table sends to the new context:
+  4. Restore the namespace into the new cluster (under the same name, unless the target says otherwise, as in `aws-fedramp-stage/other-name`):
 
      ```
-     tools/full-context-restore -b aws-mig-202611-stage -s gp2=gp3 aws-fedramp-stage -- -f pvc-tool-aws-fedramp-stage.yaml < layout-table.txt
+     tools/restore-namespace -b aws-mig-202611-stage -s gp2=gp3 aws-fedramp-test/cust-my-demo aws-fedramp-stage -- -f pvc-tool-aws-fedramp-stage.yaml
      ```
 
-     Every namespace's export must be complete (every PVC has its listing), every storage class its PVCs will use must exist (map them with `-s old=new`; `-s '*=new'` for every other class, and `-s old=` for the cluster's default), and a namespace that exists already may not have PVCs other than the exported ones, or nothing is done. Then the namespaces and their PVCs are re-created, and the chart restores their data, comparing each PVC against its archive and its source's listing, and it waits for the Jobs. With `--relocations exclude`, only namespaces from a context of the same name are restored; with `--relocations only`, only those from other contexts.
+     The export must be complete (every PVC has its record), every storage class its PVCs will use must exist (map them with `-s old=new`; `-s '*=new'` for every other class, and `-s old=` for the cluster's default), and if the namespace exists already, it may not have PVCs other than the exported ones, or nothing is done. Then the namespace and its PVCs are re-created, and the chart restores their data, comparing each PVC against its archive and its source's listing, and it waits for the Jobs.
 
-  5. Deploy the applications: they find their PVCs in place. Secrets aren't exported, so any password a chart would otherwise generate (and the restored data depends on) must be given in its values.
+  5. Deploy the application: it finds its PVCs in place. Secrets aren't exported, so any password a chart would otherwise generate (and the restored data depends on) must be given in its values.
 
-Either script leaves the namespaces whose transfers were already started (the release is installed) alone, so they can be run again, and exits with `0` right away when the table has nothing for the context. `-r` names the release (default `pvc-tool`, which is also the name of the ServiceAccount it creates for IRSA).
+Either script only waits when the namespace's transfers were already started (the release is installed), and exits with `0` right away when the namespace has no PVCs. Since the Jobs skip the work when it was already done (see the records and markers above), the scripts can be run again and again, and even a re-installed release won't repeat a transfer needlessly. `-r` names the release (default `pvc-tool`, which is also the name of the ServiceAccount it creates for IRSA).
 
 # RSYNC PVC Access
 
