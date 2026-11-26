@@ -29,7 +29,7 @@
 	<org.jgroups.protocols.kubernetes.KUBE_PING
 		port_range="0"
 		namespace="${DNS_NAMESPACE}"
-		labels="jgroups.armedia.com/eclipse-cache=true"
+		labels="app.kubernetes.io/instance=${RELEASE_NAME},jgroups.armedia.com/eclipse-cache=true"
 	/>
 
 	<MERGE3
