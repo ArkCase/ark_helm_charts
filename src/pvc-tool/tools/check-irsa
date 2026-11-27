@@ -1,0 +1,151 @@
+#!/bin/bash
+SCRIPT="$(readlink -f "${BASH_ARGV0:-${BASH_SOURCE:-${0}}}")"
+BASEDIR="$(dirname "${SCRIPT}")"
+
+set -euo pipefail
+
+. "${BASEDIR}/pvc-migration.functions"
+
+#
+# Checks whether the pvc-tool pods in the given context/namespace can assume their IRSA
+# role, and if they can't, why: it mints a token for the service account (as the pods
+# get), and compares what it claims against the cluster's OIDC issuer, the IAM OIDC
+# provider registered for it (its URL, audiences and thumbprints, against the issuer's
+# current certificates), and the role's trust policy. Then it tries to assume the role
+# with that token. Changes nothing (the token is short-lived, and only exists in memory).
+#
+# Uses the AWS CLI's usual configuration (for the EKS and IAM lookups), and the kube
+# context.
+#
+
+usage()
+{
+	echo -e "usage: ${BASH_SOURCE:-${0}} [-s service-account] [-e eks-cluster-name] context/namespace role-arn" 1>&2
+	echo -e "" 1>&2
+	echo -e "	-s, --service-account   The service account the pods run as (default: ${DEFAULT_RELEASE})" 1>&2
+	echo -e "	-e, --eks-cluster       The EKS cluster's name (default: the one whose endpoint the context uses)" 1>&2
+	exit 1
+}
+
+SA="${DEFAULT_RELEASE}"
+CLUSTER=""
+POSITIONAL=()
+while [ "${#}" -gt 0 ] ; do
+	case "${1}" in
+		-s | --service-account ) [ "${#}" -ge 2 ] || usage ; SA="${2}" ; shift 2 ;;
+		-e | --eks-cluster ) [ "${#}" -ge 2 ] || usage ; CLUSTER="${2}" ; shift 2 ;;
+		-* ) usage ;;
+		* ) POSITIONAL+=("${1}") ; shift ;;
+	esac
+done
+[ "${#POSITIONAL[@]}" -eq 2 ] || usage
+parse_location "${POSITIONAL[0]}"
+CONTEXT="${CTX_PART}"
+NS="${NS_PART}"
+ROLE_ARN="${POSITIONAL[1]}"
+[[ "${ROLE_ARN}" =~ ^arn:aws[a-z-]*:iam::[0-9]{12}:role/.+$ ]] || fail "Invalid role ARN [${ROLE_ARN}]"
+
+ensure_exe aws jq kubectl openssl base64
+
+PROBLEMS=()
+problem()
+{
+	err "${@}"
+	PROBLEMS+=("${*}")
+}
+
+# base64url -> JSON
+jwt_part()
+{
+	local PART="${1}"
+	PART="$(tr '_-' '/+' <<< "${PART}")"
+	while [ "$(( ${#PART} % 4 ))" -ne 0 ] ; do PART+="=" ; done
+	base64 -d <<< "${PART}"
+}
+
+say "👉 Checking IRSA for ${CONTEXT}/${NS} (service account ${SA}, role ${ROLE_ARN})"
+
+# 1. The token, as the pods get it
+kubectl --context "${CONTEXT}" -n "${NS}" get serviceaccount "${SA}" &>/dev/null || fail "There's no service account ${SA} in ${CONTEXT}/${NS} (is the pvc-tool release installed?)"
+ANNOTATED="$(kubectl --context "${CONTEXT}" -n "${NS}" get serviceaccount "${SA}" -o jsonpath='{.metadata.annotations.eks\.amazonaws\.com/role-arn}')"
+[ "${ANNOTATED}" == "${ROLE_ARN}" ] || problem "The service account is annotated with the role [${ANNOTATED}], not [${ROLE_ARN}]"
+TOKEN="$(kubectl --context "${CONTEXT}" -n "${NS}" create token "${SA}" --audience sts.amazonaws.com --duration 10m)" || fail "Failed to mint a token for ${SA}"
+CLAIMS="$(jwt_part "$(cut -d. -f2 <<< "${TOKEN}")")" || fail "Failed to decode the token"
+HEADER="$(jwt_part "$(cut -d. -f1 <<< "${TOKEN}")")" || fail "Failed to decode the token"
+ISS="$(jq -r '.iss' <<< "${CLAIMS}")"
+SUB="$(jq -r '.sub' <<< "${CLAIMS}")"
+AUD="$(jq -r '.aud | if type == "array" then join(",") else . end' <<< "${CLAIMS}")"
+KID="$(jq -r '.kid // ""' <<< "${HEADER}")"
+say "👀 Token: iss=${ISS} aud=${AUD} sub=${SUB} kid=${KID}"
+[ "$(date +%s)" -ge "$(jq -r '.iat' <<< "${CLAIMS}")" ] || problem "The token was issued in the future: this machine's clock, or the cluster's, is off"
+
+# 2. The cluster, and its issuer
+if [ -z "${CLUSTER}" ] ; then
+	SERVER="$(kubectl config view -o json | jq -r --arg ctx "${CONTEXT}" '(.contexts[] | select(.name == $ctx) | .context.cluster) as $c | .clusters[] | select(.name == $c) | .cluster.server')"
+	for C in $(aws eks list-clusters --query 'clusters[]' --output text) ; do
+		[ "$(aws eks describe-cluster --name "${C}" --query cluster.endpoint --output text)" == "${SERVER%/}" ] && CLUSTER="${C}" && break
+	done
+	[ -n "${CLUSTER}" ] || warn "No EKS cluster in this account and region has the endpoint ${SERVER} (the context may go through a proxy, such as Rancher): give its name with -e"
+fi
+if [ -n "${CLUSTER}" ] ; then
+	EKS_ISSUER="$(aws eks describe-cluster --name "${CLUSTER}" --query cluster.identity.oidc.issuer --output text)" || fail "Failed to describe the EKS cluster ${CLUSTER}"
+	say "👀 EKS cluster ${CLUSTER}: issuer ${EKS_ISSUER}"
+	[ "${EKS_ISSUER}" == "${ISS}" ] || problem "The token's issuer isn't the EKS cluster ${CLUSTER}'s (${EKS_ISSUER}): the context points elsewhere, or the cluster's issuer isn't EKS's"
+fi
+
+# 3. The IAM OIDC provider for the token's issuer
+ISSUER_PATH="${ISS#https://}"
+ACCOUNT="$(cut -d: -f5 <<< "${ROLE_ARN}")"
+PARTITION="$(cut -d: -f2 <<< "${ROLE_ARN}")"
+PROVIDER_ARN="arn:${PARTITION}:iam::${ACCOUNT}:oidc-provider/${ISSUER_PATH}"
+if PROVIDER="$(aws iam get-open-id-connect-provider --open-id-connect-provider-arn "${PROVIDER_ARN}" --output json 2>/dev/null)" ; then
+	say "👀 IAM OIDC provider ${PROVIDER_ARN}: audiences $(jq -c '.ClientIDList' <<< "${PROVIDER}"), thumbprints $(jq -c '.ThumbprintList' <<< "${PROVIDER}")"
+	jq -e '.ClientIDList | index("sts.amazonaws.com")' <<< "${PROVIDER}" >/dev/null || problem "The IAM OIDC provider doesn't list sts.amazonaws.com as an audience"
+
+	# The thumbprints of the issuer's current certificate chain
+	HOST="${ISSUER_PATH%%/*}"
+	CHAIN_DIR="$(mktemp -d)"
+	trap 'rm -rf "${CHAIN_DIR}"' EXIT
+	openssl s_client -connect "${HOST}:443" -servername "${HOST}" -showcerts < /dev/null 2>/dev/null \
+		| awk -v dir="${CHAIN_DIR}" '/-----BEGIN CERTIFICATE-----/ { n++ } n { print > (dir "/" n ".pem") } /-----END CERTIFICATE-----/ { }' || true
+	CURRENT=()
+	for PEM in $(ls "${CHAIN_DIR}"/*.pem 2>/dev/null | sort -V) ; do
+		CURRENT+=("$(openssl x509 -in "${PEM}" -fingerprint -sha1 -noout | sed -e 's/.*=//' -e 's/://g' | tr 'A-F' 'a-f')")
+	done
+	if [ "${#CURRENT[@]}" -gt 0 ] ; then
+		say "👀 The issuer's current certificate chain (server first): ${CURRENT[*]}"
+	else
+		warn "Couldn't fetch the issuer's certificate chain from ${HOST}, so its thumbprints can't be checked"
+	fi
+	MATCH="false"
+	for T in $(jq -r '.ThumbprintList[]' <<< "${PROVIDER}") ; do
+		printf '%s\n' "${CURRENT[@]}" | grep -qix "${T}" && MATCH="true"
+	done
+	if [ "${#CURRENT[@]}" -gt 0 ] && ! "${MATCH}" ; then
+		problem "None of the IAM OIDC provider's thumbprints is in the issuer's current certificate chain: refresh it with the top one's (the last above): aws iam update-open-id-connect-provider-thumbprint --open-id-connect-provider-arn ${PROVIDER_ARN} --thumbprint-list ${CURRENT[-1]}"
+	fi
+else
+	problem "There's no IAM OIDC provider for the token's issuer in the role's account ${ACCOUNT} (${PROVIDER_ARN}): IRSA roles can only trust providers in their own account, so is the role in the cluster's account? (aws iam list-open-id-connect-providers, with the cluster's account's credentials, shows where it is)"
+fi
+
+# 4. The role's trust in it
+if TRUST="$(aws iam get-role --role-name "${ROLE_ARN##*/}" --query Role.AssumeRolePolicyDocument --output json 2>/dev/null)" ; then
+	STATEMENT="$(jq -c --arg p "${PROVIDER_ARN}" '[.Statement[] | select(.Effect == "Allow") | select((.Principal.Federated // "") == $p)] | first // empty' <<< "${TRUST}")"
+	if [ -z "${STATEMENT}" ] ; then
+		problem "The role doesn't trust ${PROVIDER_ARN} (it trusts: $(jq -c '[.Statement[].Principal.Federated // empty]' <<< "${TRUST}")): add the cluster to its irsa_roles entry and apply the pvc-migration Terraform again"
+	else
+		say "👀 The role trusts the provider, for: $(jq -c --arg k "${ISSUER_PATH}:sub" '.Condition.StringLike[$k] // .Condition.StringEquals[$k]' <<< "${STATEMENT}")"
+	fi
+else
+	problem "Can't read the role ${ROLE_ARN}"
+fi
+
+# 5. The real thing
+if OUT="$(aws sts assume-role-with-web-identity --role-arn "${ROLE_ARN}" --role-session-name "check-irsa" --web-identity-token "${TOKEN}" --duration-seconds 900 --query AssumedRoleUser.Arn --output text 2>&1)" ; then
+	ok "The pods can assume the role: ${OUT}"
+	exit 0
+fi
+problem "STS refuses: ${OUT}"
+
+err "Found ${#PROBLEMS[@]} problem(s), see above"
+exit 1
