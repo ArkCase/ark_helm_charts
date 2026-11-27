@@ -1,0 +1,132 @@
+#!/bin/bash
+SCRIPT="$(readlink -f "${BASH_ARGV0:-${BASH_SOURCE:-${0}}}")"
+BASEDIR="$(dirname "${SCRIPT}")"
+
+set -euo pipefail
+
+. "${BASEDIR}/pvc-migration.functions"
+
+#
+# Removes the pvc-tool releases that start-migrations installed for the extractions (or
+# the restores) of the namespaces in the migrations table (on stdin): their Jobs, their
+# pods, and their service accounts. Nothing else is touched: the data and records in the
+# buckets stay, and so do the PVCs and namespaces a restore created (they aren't the
+# release's), and their restore markers.
+#
+# A namespace whose transfers are still running is left alone, unless --force is given
+# (which interrupts them: a later start begins those transfers anew). A release of that
+# name that isn't pvc-tool's is never removed.
+#
+# Exits with 0 if every namespace ends up without a release, and 1 otherwise.
+#
+
+usage()
+{
+	echo -e "usage: ${BASH_SOURCE:-${0}} extract|restore [-c context]... [-r release] [-f] [-n] < migrations.txt" 1>&2
+	echo -e "" 1>&2
+	echo -e "	Removes the pvc-tool releases of the extractions (or restores) of the namespaces in the" 1>&2
+	echo -e "	migrations table (see start-migrations). The data, and the PVCs, stay." 1>&2
+	echo -e "" 1>&2
+	echo -e "	-c, --context   Only remove the releases in this context (repeatable): the source context" 1>&2
+	echo -e "	                when extracting, the target context when restoring" 1>&2
+	echo -e "	-r, --release   The name of the pvc-tool release (default: ${DEFAULT_RELEASE})" 1>&2
+	echo -e "	-f, --force     Remove them even while their transfers are running (interrupting them)" 1>&2
+	echo -e "	-n, --dry-run   Only show what would be removed" 1>&2
+	exit 1
+}
+
+[ "${#}" -ge 1 ] || usage
+DIRECTION="${1}"
+shift
+case "${DIRECTION}" in
+	extract | restore ) ;;
+	* ) usage ;;
+esac
+
+declare -A CONTEXT_FILTER=()
+RELEASE="${DEFAULT_RELEASE}"
+FORCE="false"
+DRY_RUN="false"
+while [ "${#}" -gt 0 ] ; do
+	case "${1}" in
+		-c | --context )
+			[ "${#}" -ge 2 ] || usage
+			is_valid_context "${2}" || fail "Invalid context name [${2}]"
+			CONTEXT_FILTER["${2}"]="true"
+			shift 2
+			;;
+		-r | --release ) [ "${#}" -ge 2 ] || usage ; RELEASE="${2}" ; shift 2 ;;
+		-f | --force ) FORCE="true" ; shift ;;
+		-n | --dry-run ) DRY_RUN="true" ; shift ;;
+		* ) usage ;;
+	esac
+done
+is_valid_name "${RELEASE}" || fail "Invalid release name [${RELEASE}]"
+
+read_migrations
+select_rows "${DIRECTION}"
+if [ "${#ROWS[@]}" -eq 0 ] ; then
+	ok "Nothing to remove: the migrations table has nothing to ${DIRECTION}${CONTEXT_FILTER[*]:+ in the given contexts}"
+	exit 0
+fi
+
+ensure_exe helm jq kubectl
+
+say "👉 Removing the ${DIRECTION} releases of ${#ROWS[@]} namespace(s)"
+REMOVED=()
+KEPT=()
+FAILED=()
+for I in "${ROWS[@]}" ; do
+	NAME="$(row_name "${I}")"
+	CTX="$(row_context "${DIRECTION}" "${I}")"
+	NS="$(row_namespace "${DIRECTION}" "${I}")"
+	WHERE="${CTX}/${NS}"
+
+	if ! INFO="$(helm get metadata "${RELEASE}" --kube-context "${CTX}" --namespace "${NS}" -o json 2>&1)" ; then
+		if [[ "${INFO}" == *"not found"* ]] ; then
+			say "⏩ ${NAME}: there's no release in ${WHERE}"
+			continue
+		fi
+		err "${NAME}: failed to look up the release in ${WHERE}: ${INFO}"
+		FAILED+=("${NAME}")
+		continue
+	fi
+	CHART="$(jq -r '"\(.chart)-\(.version)"' <<< "${INFO}")"
+	if [[ "${CHART}" != pvc-tool-* ]] ; then
+		err "${NAME}: the release ${RELEASE} in ${WHERE} is ${CHART}, not pvc-tool: leaving it alone"
+		FAILED+=("${NAME}")
+		continue
+	fi
+
+	if ! JOBS="$(list_transfer_jobs "${CTX}" "$(jq -cn --arg ns "${NS}" '[$ns]')")" ; then
+		err "${NAME}: failed to list its Jobs in ${WHERE}"
+		FAILED+=("${NAME}")
+		continue
+	fi
+	RUNNING="$(awk -F '\t' '$1 == "running" { print $3 }' <<< "${JOBS}" | grep . || true)"
+	STATE="$(awk -F '\t' '{ n[$1]++ } END { for (s in n) printf "%s%d %s", (sep++ ? ", " : ""), n[s], s }' <<< "${JOBS}")"
+	if [ -n "${RUNNING}" ] && ! "${FORCE}" ; then
+		warn "${NAME}: its transfers are still running in ${WHERE} (${STATE}), leaving it alone (use -f to remove it anyway)"
+		KEPT+=("${NAME}")
+		continue
+	fi
+
+	if "${DRY_RUN}" ; then
+		say "🔎 ${NAME}: would remove the release in ${WHERE} (${STATE:-no Jobs})$( [ -n "${RUNNING}" ] && echo ", interrupting its running transfers")"
+		continue
+	fi
+	if OUT="$(helm uninstall "${RELEASE}" --kube-context "${CTX}" --namespace "${NS}" --wait 2>&1)" ; then
+		ok "${NAME}: removed the release in ${WHERE} (${STATE:-no Jobs})"
+		REMOVED+=("${NAME}")
+	else
+		err "${NAME}: failed to remove the release in ${WHERE}: ${OUT}"
+		FAILED+=("${NAME}")
+	fi
+done
+
+"${DRY_RUN}" && exit 0
+
+[ "${#REMOVED[@]}" -gt 0 ] && ok "Removed ${#REMOVED[@]} release(s)"
+[ "${#KEPT[@]}" -gt 0 ] && warn "Left ${#KEPT[@]} release(s) alone, whose transfers are still running: ${KEPT[*]}"
+[ "${#FAILED[@]}" -gt 0 ] && err "Failed with ${#FAILED[@]} namespace(s) (see above): ${FAILED[*]}"
+[ "${#KEPT[@]}" -eq 0 ] && [ "${#FAILED[@]}" -eq 0 ]
