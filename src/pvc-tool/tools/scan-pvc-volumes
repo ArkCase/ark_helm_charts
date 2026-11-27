@@ -1,0 +1,226 @@
+#!/bin/bash
+SCRIPT="$(readlink -f "${BASH_ARGV0:-${BASH_SOURCE:-${0}}}")"
+BASEDIR="$(dirname "${SCRIPT}")"
+
+set -euo pipefail
+
+. "${BASEDIR}/pvc-migration.functions"
+
+#
+# Checks that the EBS volume behind every PVC in the namespaces of interest still exists.
+# Kubernetes keeps a PVC "Bound" to its PV no matter what became of the volume behind it
+# (nothing compares them until the volume has to be attached), so a volume deleted from
+# outside the cluster only shows up when a pod can't start.
+#
+# For each context, the namespaces of interest are those labeled with the selector, or
+# holding StatefulSets or Deployments labeled with it. Every PVC in them is reported, one
+# per line (TSV) on stdout:
+#
+#   status context namespace pvc pv volume volume-state zone storage-class capacity created [recovery]
+#
+# where status is OK, MISSING (the volume doesn't exist), UNBOUND (the PVC has no volume),
+# or NOT-EBS (its volume isn't an EBS volume). With -s, each missing volume's snapshots and
+# AWS Backup recovery points are listed in the last column. A summary goes to stderr.
+#
+# Only reads (kubectl get, and describe/list calls), with the kube contexts and the AWS
+# CLI's usual configuration.
+#
+# Exit status: 0 if no volume is missing, 1 if any is, 2 on errors.
+#
+
+DEFAULT_CONTEXTS=( aws-fedramp-test aws-fedramp-stage aws-fedramp-prod )
+DEFAULT_SELECTOR="app.kubernetes.io/instance=arkcase"
+
+# How many volume IDs to look up per call
+BATCH="150"
+
+usage()
+{
+	echo -e "usage: ${BASH_SOURCE:-${0}} [-l selector] [-r region] [-s] [context...]" 1>&2
+	echo -e "" 1>&2
+	echo -e "	Checks that the EBS volume behind every PVC in the namespaces of interest still exists" 1>&2
+	echo -e "	(default contexts: ${DEFAULT_CONTEXTS[*]})." 1>&2
+	echo -e "" 1>&2
+	echo -e "	-l, --selector    The label selector for the namespaces of interest, or their StatefulSets" 1>&2
+	echo -e "	                  or Deployments (default: ${DEFAULT_SELECTOR})" 1>&2
+	echo -e "	-r, --region      The AWS region of the volumes (default: the AWS CLI's)" 1>&2
+	echo -e "	-s, --snapshots   Look for snapshots and backups of the missing volumes" 1>&2
+	exit 1
+}
+
+SELECTOR="${DEFAULT_SELECTOR}"
+REGION_ARGS=()
+SNAPSHOTS="false"
+CONTEXTS=()
+while [ "${#}" -gt 0 ] ; do
+	case "${1}" in
+		-l | --selector ) [ "${#}" -ge 2 ] || usage ; SELECTOR="${2}" ; shift 2 ;;
+		-r | --region ) [ "${#}" -ge 2 ] || usage ; REGION_ARGS=( --region "${2}" ) ; shift 2 ;;
+		-s | --snapshots ) SNAPSHOTS="true" ; shift ;;
+		-* ) usage ;;
+		* ) CONTEXTS+=("${1}") ; shift ;;
+	esac
+done
+[ "${#CONTEXTS[@]}" -gt 0 ] || CONTEXTS=( "${DEFAULT_CONTEXTS[@]}" )
+
+ensure_exe aws jq kubectl
+
+WORK_DIR="$(mktemp -d)"
+trap 'rm -rf "${WORK_DIR}"' EXIT
+
+ERRORS="0"
+TOTAL_MISSING="0"
+
+# The volumes (ID<TAB>state<TAB>zone) that exist, out of the IDs given on stdin. Looking them
+# up with a filter (rather than by ID) leaves the missing ones out, instead of failing
+aws_existing_volumes()
+{
+	local IDS=()
+	readarray -t IDS
+	local I=""
+	for (( I = 0 ; I < ${#IDS[@]} ; I += BATCH )) ; do
+		local CHUNK=( "${IDS[@]:${I}:${BATCH}}" )
+		aws "${REGION_ARGS[@]}" ec2 describe-volumes --filters "Name=volume-id,Values=$(IFS=, ; echo "${CHUNK[*]}")" \
+			--query 'Volumes[].[VolumeId, State, AvailabilityZone]' --output text || return 1
+	done
+}
+
+# What a missing volume could be recovered from: its snapshots, and AWS Backup recovery points
+ACCOUNT=""
+REGION=""
+recovery_points()
+{
+	local VOL="${1}"
+	local FOUND=()
+	local ID=""
+	local WHEN=""
+	while read -r ID WHEN ; do
+		[ -n "${ID}" ] && [ "${ID}" != "None" ] && FOUND+=("snapshot ${ID} ${WHEN}")
+	done < <(aws "${REGION_ARGS[@]}" ec2 describe-snapshots --owner-ids self --filters "Name=volume-id,Values=${VOL}" \
+		--query 'Snapshots[].[SnapshotId, StartTime]' --output text 2>/dev/null | sort -k2)
+
+	if [ -z "${ACCOUNT}" ] ; then
+		ACCOUNT="$(aws "${REGION_ARGS[@]}" sts get-caller-identity --query Account --output text 2>/dev/null)" || ACCOUNT=""
+		if [ "${#REGION_ARGS[@]}" -gt 0 ] ; then
+			REGION="${REGION_ARGS[1]}"
+		else
+			REGION="$(aws configure get region 2>/dev/null)" || REGION=""
+			[ -n "${REGION}" ] || REGION="${AWS_REGION:-${AWS_DEFAULT_REGION:-}}"
+		fi
+	fi
+	if [ -n "${ACCOUNT}" ] && [ -n "${REGION}" ] ; then
+		while read -r ID WHEN ; do
+			[ -n "${ID}" ] && [ "${ID}" != "None" ] && FOUND+=("backup ${ID} ${WHEN}")
+		done < <(aws "${REGION_ARGS[@]}" backup list-recovery-points-by-resource --resource-arn "arn:aws:ec2:${REGION}:${ACCOUNT}:volume/${VOL}" \
+			--query 'RecoveryPoints[].[RecoveryPointArn, CreationDate]' --output text 2>/dev/null | sort -k2)
+	fi
+
+	if [ "${#FOUND[@]}" -eq 0 ] ; then
+		echo -n "none found"
+	else
+		local IFS=";"
+		echo -n "${FOUND[*]}"
+	fi
+}
+
+for CTX in "${CONTEXTS[@]}" ; do
+	if ! kubectl config get-contexts "${CTX}" &>/dev/null ; then
+		err "${CTX}: there's no such kube context"
+		ERRORS="$(( ERRORS + 1 ))"
+		continue
+	fi
+
+	# The namespaces of interest: labeled with the selector, or holding workloads that are
+	if ! {
+			kubectl --context "${CTX}" get namespace --selector "${SELECTOR}" -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' &&
+			kubectl --context "${CTX}" get statefulset,deployment --all-namespaces --selector "${SELECTOR}" -o jsonpath='{range .items[*]}{.metadata.namespace}{"\n"}{end}'
+		} > "${WORK_DIR}/namespaces.txt" ; then
+		err "${CTX}: failed to list its namespaces"
+		ERRORS="$(( ERRORS + 1 ))"
+		continue
+	fi
+	NAMESPACES=()
+	readarray -t NAMESPACES < <(grep . "${WORK_DIR}/namespaces.txt" | sort -u)
+	if [ "${#NAMESPACES[@]}" -eq 0 ] ; then
+		warn "${CTX}: no namespaces match ${SELECTOR}" 1>&2
+		continue
+	fi
+	say "👀 ${CTX}: ${#NAMESPACES[@]} namespace(s) of interest: ${NAMESPACES[*]}" 1>&2
+
+	# Every PVC in them, with its PV's volume (ns, pvc, phase, pv, volume, class, capacity, created)
+	if ! kubectl --context "${CTX}" get pvc --all-namespaces -o json > "${WORK_DIR}/pvcs.json" || ! kubectl --context "${CTX}" get pv -o json > "${WORK_DIR}/pvs.json" ; then
+		err "${CTX}: failed to list its PVCs or PVs"
+		ERRORS="$(( ERRORS + 1 ))"
+		continue
+	fi
+	jq -r --slurpfile pvs "${WORK_DIR}/pvs.json" --argjson namespaces "$(jq -cn '$ARGS.positional' --args "${NAMESPACES[@]}")" '
+		($pvs[0].items | map({ key: .metadata.name, value: . }) | from_entries) as $pv
+		| .items[]
+		| select(.metadata.namespace as $ns | $namespaces | index($ns))
+		| (.spec.volumeName // "") as $pvName
+		| ($pv[$pvName] // null) as $v
+		| [
+			.metadata.namespace,
+			.metadata.name,
+			(.status.phase // "?"),
+			$pvName,
+			(if $v == null then ""
+			 elif ($v.spec.csi.driver // "") == "ebs.csi.aws.com" then $v.spec.csi.volumeHandle
+			 elif $v.spec.awsElasticBlockStore then ($v.spec.awsElasticBlockStore.volumeID | sub("^.*/"; ""))
+			 else "-" end),
+			(.spec.storageClassName // ""),
+			(.status.capacity.storage // .spec.resources.requests.storage // ""),
+			.metadata.creationTimestamp
+		  ]
+		| join("\u001f")
+	' "${WORK_DIR}/pvcs.json" | sort > "${WORK_DIR}/rows.txt"
+
+	# The volumes that exist
+	if ! awk -F '\037' '$5 ~ /^vol-/ { print $5 }' "${WORK_DIR}/rows.txt" | sort -u | aws_existing_volumes > "${WORK_DIR}/existing.tsv" ; then
+		err "${CTX}: failed to look up its volumes in EC2 (are the AWS credentials and region right?)"
+		ERRORS="$(( ERRORS + 1 ))"
+		continue
+	fi
+
+	declare -A COUNTS=()
+	# (the fields are separated with \x1f: read would merge empty fields between tabs)
+	while IFS=$'\x1f' read -r NS PVC PHASE PV VOL SC CAP CREATED ; do
+		STATE="" ; ZONE="" ; EXTRA=""
+		if [ -z "${VOL}" ] ; then
+			STATUS="UNBOUND"
+		elif [ "${VOL}" == "-" ] ; then
+			STATUS="NOT-EBS"
+		elif FOUND="$(awk -F '\t' -v v="${VOL}" '$1 == v { print $2 "\t" $3 ; exit }' "${WORK_DIR}/existing.tsv")" && [ -n "${FOUND}" ] ; then
+			STATUS="OK"
+			IFS=$'\t' read -r STATE ZONE <<< "${FOUND}"
+		else
+			STATUS="MISSING"
+			"${SNAPSHOTS}" && EXTRA="$(recovery_points "${VOL}")"
+		fi
+		COUNTS["${STATUS}"]="$(( ${COUNTS["${STATUS}"]:-0} + 1 ))"
+		printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "${STATUS}" "${CTX}" "${NS}" "${PVC}" "${PV}" "${VOL}" "${STATE}" "${ZONE}" "${SC}" "${CAP}" "${CREATED}" "${EXTRA}"
+	done < "${WORK_DIR}/rows.txt"
+
+	SUMMARY=""
+	for S in OK MISSING UNBOUND NOT-EBS ; do
+		[ -n "${COUNTS["${S}"]:-}" ] && SUMMARY+="${SUMMARY:+, }${COUNTS["${S}"]} ${S}"
+	done
+	if [ -n "${COUNTS[MISSING]:-}" ] ; then
+		TOTAL_MISSING="$(( TOTAL_MISSING + COUNTS[MISSING] ))"
+		err "${CTX}: ${SUMMARY:-no PVCs}"
+	else
+		ok "${CTX}: ${SUMMARY:-no PVCs}" 1>&2
+	fi
+	unset COUNTS
+done
+
+if [ "${ERRORS}" -gt 0 ] ; then
+	err "${ERRORS} context(s) couldn't be scanned completely"
+	exit 2
+fi
+if [ "${TOTAL_MISSING}" -gt 0 ] ; then
+	err "${TOTAL_MISSING} PVC(s) have lost their volumes"
+	exit 1
+fi
+ok "Every PVC's volume exists" 1>&2
+exit 0
