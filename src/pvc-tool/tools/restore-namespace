@@ -29,7 +29,7 @@ set -euo pipefail
 
 usage()
 {
-	echo -e "usage: ${BASH_SOURCE:-${0}} [-b bucket] [-r release] [-s old=new]... [--skip-missing] [--no-wait | --retry-only [--max-retries n]] source-context/namespace target-context[/namespace] [-- helm-install-args...]" 1>&2
+	echo -e "usage: ${BASH_SOURCE:-${0}} [-b bucket] [-r release] [-s old=new]... [--skip-missing] [--terse] [--no-wait | --retry-only [--max-retries n]] source-context/namespace target-context[/namespace] [-- helm-install-args...]" 1>&2
 	echo -e "" 1>&2
 	echo -e "	Restores the namespace exported into s3://\${bucket}/\${sourceContext}/\${namespace}/ into" 1>&2
 	echo -e "	the target context (and namespace, by default the same), and waits for the transfers" 1>&2
@@ -43,6 +43,7 @@ usage()
 	echo -e "	--skip-missing        Restore what can be, even if the export of some PVCs is missing or incomplete:" 1>&2
 	echo -e "	                      those are left out (not re-created), and listed in the namespace's" 1>&2
 	echo -e "	                      ${MISSING_PVCS_ANNOTATION} annotation" 1>&2
+	echo -e "	--terse               Don't log each entry as it's extracted (for PVCs with very many files)" 1>&2
 	echo -e "	--no-wait             Start the transfers, but don't wait for them (see wait-for-context-transfers)" 1>&2
 	echo -e "	--retry-only          Start nothing: just wait for the transfers that were already started," 1>&2
 	echo -e "	                      and re-create the ones that fail (up to --max-retries times," 1>&2
@@ -66,6 +67,7 @@ RELEASE="${DEFAULT_RELEASE}"
 RETRY_ONLY="false"
 NO_WAIT="false"
 SKIP_MISSING="false"
+TERSE="false"
 MAX_RETRIES="${DEFAULT_MAX_RETRIES}"
 SC_MAP="{}"
 POSITIONAL=()
@@ -82,6 +84,7 @@ while [ "${#}" -gt 0 ] ; do
 		--retry-only ) RETRY_ONLY="true" ; shift ;;
 		--no-wait ) NO_WAIT="true" ; shift ;;
 		--skip-missing ) SKIP_MISSING="true" ; shift ;;
+		--terse ) TERSE="true" ; shift ;;
 		--max-retries )
 			[ "${#}" -ge 2 ] || usage
 			[[ "${2}" =~ ^(0|[1-9][0-9]*)$ ]] || fail "Invalid --max-retries value [${2}] - must be a non-negative integer"
@@ -214,10 +217,13 @@ else
 		exit 0
 	fi
 
+	TERSE_ARGS=()
+	"${TERSE}" && TERSE_ARGS=( --set "s3.terse=true" )
 	helm install "${RELEASE}" "${CHART}" \
 		--kube-context "${TARGET}" \
 		--namespace "${NS}" \
 		"${HELM_ARGS[@]}" \
+		"${TERSE_ARGS[@]}" \
 		--set mode=s3 \
 		--set s3.format=tar \
 		--set s3.direction=download \

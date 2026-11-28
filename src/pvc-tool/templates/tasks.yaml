@@ -238,6 +238,8 @@ spec:
             {{- if eq $s3Format "tar" }}
             - name: "S3_VERIFY"
               value: {{ (not (empty (include "arkcase.toBoolean" ((hasKey $s3 "verify") | ternary $s3.verify true)))) | toString | quote }}
+            - name: "S3_TERSE"
+              value: {{ (not (empty (include "arkcase.toBoolean" ((hasKey $s3 "terse") | ternary $s3.terse false)))) | toString | quote }}
             {{- else }}
             - name: "S3_RESUME"
               value: {{ $s3Resume | quote }}

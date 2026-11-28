@@ -80,6 +80,10 @@ s3:
   # PVC's contents (with tar --diff: types, permissions, ownership, sizes, times and contents)
   verify: true
 
+  # (tar format only) Don't list each entry in the log as a download extracts it (for PVCs with so
+  # many files that the log becomes a problem)
+  terse: false
+
   # (mirror format only) What to do with a partly transferred file, when the copy is resumed:
   #   verify:  check what was transferred against the local copy, then continue
   #   blind:   continue without checking

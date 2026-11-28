@@ -598,10 +598,10 @@ run_s3_tar_download()
 		--numeric-owner
 		--same-owner
 		--same-permissions
-		# (each entry's path goes to the log as it's extracted, to see how it's going)
-		--verbose
 		"${TAR_FLAGS[@]}"
 	)
+	# Each entry's path goes to the log as it's extracted, to see how it's going (unless told not to)
+	"${S3_TERSE}" || TAR_CMD+=( --verbose )
 	say "👀 Will use the command: ${AWS_CMD[@]@Q} | ${TAR_CMD[@]@Q}"
 
 	RC="0"
@@ -766,6 +766,8 @@ EXTRA_ARGS=("${@}")
 			if [ "${S3_FORMAT}" == "tar" ] ; then
 				[ -v S3_VERIFY ] || S3_VERIFY="true"
 				S3_VERIFY="$(to_boolean "${S3_VERIFY}")"
+				[ -v S3_TERSE ] || S3_TERSE="false"
+				S3_TERSE="$(to_boolean "${S3_TERSE}")"
 
 				AWS="$(type -P aws)" || fail "Failed to find aws in the path"
 				TAR="$(type -P tar)" || fail "Failed to find tar in the path"
