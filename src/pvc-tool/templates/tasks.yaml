@@ -143,19 +143,26 @@ spec:
   # of it - but a pod that's lost (e.g. with its node) is replaced, up to this many times
   backoffLimit: {{ $backoffLimit }}
   podFailurePolicy:
+    # (the first rule that matches wins: a pod killed because it was disrupted - its node
+    # drained, say - exits non-zero too, and must be replaced, not fail the Job)
     rules:
+      - action: Ignore
+        onPodConditions:
+          - type: DisruptionTarget
+            status: "True"
       - action: FailJob
         onExitCodes:
           containerName: {{ $mode | quote }}
           operator: NotIn
           values: [ 0 ]
-      - action: Ignore
-        onPodConditions:
-          - type: DisruptionTarget
-            status: "True"
   template:
     metadata:
       labels: {{- toYaml $labels | nindent 8 }}
+      annotations:
+        # A transfer must not be cut short to scale the cluster down (neither applies to pods
+        # that are done)
+        cluster-autoscaler.kubernetes.io/safe-to-evict: "false"
+        karpenter.sh/do-not-disrupt: "true"
     spec:
       restartPolicy: Never
       {{- include "arkcase.image.pullSecrets" $ | nindent 6 }}
