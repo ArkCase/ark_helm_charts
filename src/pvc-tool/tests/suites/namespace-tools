@@ -1,0 +1,185 @@
+#!/bin/bash
+set -uo pipefail
+export PATH="/t/bin:/t/tools:${PATH}" KUBECONFIG=/w/kubeconfig CHART=/t/chart MIGRATION_BUCKET=aws-mig-202611-stage POLL_TIMEOUT=2
+FAILS=0
+check() { local D="${1}"; shift; if "${@}" ; then echo "PASS: ${D}"; else echo "FAIL: ${D}"; FAILS=$((FAILS+1)); fi; }
+OLD=aws-fedramp-test ; NEW=aws-fedramp-stage
+/t/clusters || exit 1
+aws s3 mb "s3://${MIGRATION_BUCKET}" >/dev/null
+
+# The old cluster: two namespaces, one of them moving to stage, and one staying put (going to "prod")
+k() { kubectl --context "${@}" ; }
+k "${OLD}" apply -f - >/dev/null <<'Y'
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cust-my-demo
+  labels: { env: demo, field.cattle.io/projectId: p-1 }
+  annotations: { field.cattle.io/projectId: "c-1:p-1", owner: team-a }
+---
+apiVersion: v1
+kind: Namespace
+metadata: { name: other-env }
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata: { name: gp2 }
+provisioner: ebs.csi.aws.com
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata: { name: data-db-0, namespace: cust-my-demo, labels: { app: db }, annotations: { volume.kubernetes.io/selected-node: ip-1, keep: "1" } }
+spec: { accessModes: [ReadWriteOnce], resources: { requests: { storage: 10Gi } }, storageClassName: gp2, volumeName: pvc-123 }
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata: { name: home, namespace: cust-my-demo, labels: { app.kubernetes.io/managed-by: Helm }, annotations: { meta.helm.sh/release-name: app, meta.helm.sh/release-namespace: cust-my-demo } }
+spec: { accessModes: [ReadWriteOnce], resources: { requests: { storage: 1Gi } } }
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata: { name: files, namespace: other-env }
+spec: { accessModes: [ReadWriteOnce], resources: { requests: { storage: 1Gi } }, storageClassName: gp2 }
+---
+apiVersion: v1
+kind: Pod
+metadata: { name: db-0, namespace: cust-my-demo }
+spec:
+  containers: [ { name: db, image: busybox } ]
+  volumes: [ { name: data, persistentVolumeClaim: { claimName: data-db-0 } } ]
+Y
+k "${NEW}" apply -f - >/dev/null <<'Y'
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata: { name: gp3 }
+provisioner: ebs.csi.aws.com
+Y
+cat > /w/values.yaml <<'V'
+image: { registry: "123456789012.dkr.ecr.us-east-1.amazonaws.com", repository: "arkcase/nettest", tag: "latest" }
+s3: { region: "us-east-1", irsaRole: "arn:aws:iam::123456789012:role/aws-mig-202611-stage-fedramp-test" }
+V
+
+# Job status, as the Job controller would set it
+finish() {
+	local CTX="${1}" NS="${2}" JOB="${3}" HOW="${4}" NOW="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+	local P
+	if [ "${HOW}" == "complete" ] ; then
+		P="{\"status\":{\"startTime\":\"${NOW}\",\"completionTime\":\"${NOW}\",\"succeeded\":1,\"conditions\":[{\"type\":\"SuccessCriteriaMet\",\"status\":\"True\",\"lastTransitionTime\":\"${NOW}\"},{\"type\":\"Complete\",\"status\":\"True\",\"lastTransitionTime\":\"${NOW}\"}]}}"
+	else
+		P="{\"status\":{\"startTime\":\"${NOW}\",\"failed\":1,\"conditions\":[{\"type\":\"FailureTarget\",\"status\":\"True\",\"reason\":\"PodFailurePolicy\",\"message\":\"Container s3 for pod x failed with exit code 1\",\"lastTransitionTime\":\"${NOW}\"},{\"type\":\"Failed\",\"status\":\"True\",\"reason\":\"PodFailurePolicy\",\"message\":\"Container s3 for pod x failed with exit code 1\",\"lastTransitionTime\":\"${NOW}\"}]}}"
+	fi
+	k "${CTX}" -n "${NS}" patch job "${JOB}" --subresource=status --type=merge -p "${P}" >/dev/null
+}
+# What the export's pods would have uploaded
+fake_export() {
+	for PVC in "${@}" ; do
+		head -c 100 /dev/urandom | aws s3 cp --only-show-errors - "s3://${MIGRATION_BUCKET}/${OLD}/cust-my-demo/${PVC}.tar.gz"
+		echo x | aws s3 cp --only-show-errors - "s3://${MIGRATION_BUCKET}/${OLD}/cust-my-demo/${PVC}.listing.gz"
+		echo x | aws s3 cp --only-show-errors - "s3://${MIGRATION_BUCKET}/${OLD}/cust-my-demo/${PVC}.record"
+	done
+}
+
+
+k "${OLD}" apply -f - >/dev/null <<'Y'
+apiVersion: v1
+kind: Namespace
+metadata: { name: empty-env }
+Y
+X=extract-namespace ; R=restore-namespace
+jobs_in() { k "${1}" get job -n "${2}" -l armedia.com/pvc-mounter-name -o name 2>/dev/null | wc -l ; }
+uid() { k "${1}" -n "${2}" get job "${3}" -o jsonpath='{.metadata.uid}' 2>/dev/null ; }
+wait_new() { for I in $(seq 1 40) ; do local U="$(uid "${1}" "${2}" "${3}")" ; [ -n "${U}" ] && [ "${U}" != "${4}" ] && return 0 ; sleep 0.5 ; done ; return 1 ; }
+renew() { k "${1}" -n "${2}" get job "${3}" -o json | jq 'del(.status, .metadata.uid, .metadata.resourceVersion, .metadata.creationTimestamp, .metadata.managedFields, .spec.selector) | .spec.template.metadata.labels |= with_entries(select(.key | test("controller-uid|job-name") | not))' | k "${1}" replace --force -f - >/dev/null ; }
+bg() { local NAME="${1}" ; shift ; rm -f "/tmp/${NAME}.rc" ; ( "${@}" > "/tmp/${NAME}.log" 2>&1 ; echo "${?}" > "/tmp/${NAME}.rc" ) & }
+rc_of() { for I in $(seq 1 40) ; do [ -e "/tmp/${1}.rc" ] && break ; sleep 1 ; done ; cat "/tmp/${1}.rc" 2>/dev/null ; }
+
+echo "== arguments, and nothing to do"
+${X} "${OLD}" > /tmp/a1.log 2>&1 ; RC="${?}" ; check "extract: a context without a namespace fails" [ "${RC}" -ne 0 ] ; check "...saying so" grep -q "No namespace in" /tmp/a1.log
+${X} > /tmp/a2.log 2>&1 ; check "extract: no arguments -> usage, 1" [ "${?}" -eq 1 ] ; check "...usage" grep -q '^usage:' /tmp/a2.log
+${X} "${OLD}/no-such-ns" > /tmp/a3.log 2>&1 ; check "extract: a missing namespace fails" [ "${?}" -ne 0 ]
+${X} "${OLD}/empty-env" -- -f /w/values.yaml > /tmp/a4.log 2>&1 ; RC="${?}" ; check "extract: no PVCs -> 0" [ "${RC}" -eq 0 ] ; check "...no transfers needed" grep -q "No transfers needed" /tmp/a4.log
+check "...but its definition is stored" bash -c "aws s3 ls s3://${MIGRATION_BUCKET}/${OLD}/empty-env/_k8s/namespace.json >/dev/null"
+wait-for-context-transfers "${OLD}" > /tmp/a5.log 2>&1 ; check "waiter: no jobs -> 0" [ "${?}" -eq 0 ]
+
+echo "== extract"
+${X} "${OLD}/cust-my-demo" -- -f /w/values.yaml > /tmp/e1.log 2>&1 ; RC="${?}" ; check "extract refuses while a PVC is in use" [ "${RC}" -ne 0 ] ; check "...naming it" grep -q "data-db-0 (pod db-0)" /tmp/e1.log
+check "...and changes nothing" bash -c "! helm --kube-context ${OLD} list -A -q | grep -q . && ! aws s3 ls s3://${MIGRATION_BUCKET}/${OLD}/cust-my-demo/ >/dev/null 2>&1"
+k "${OLD}" -n cust-my-demo delete pod db-0 --grace-period=0 --force >/dev/null 2>&1
+# Two extractions at the same time
+bg e2 ${X} "${OLD}/cust-my-demo" -- -f /w/values.yaml
+bg e3 ${X} "${OLD}/other-env" -- -f /w/values.yaml
+for I in $(seq 1 60) ; do [ "$(jobs_in "${OLD}" cust-my-demo)" -eq 2 ] && [ "$(jobs_in "${OLD}" other-env)" -eq 1 ] && break ; sleep 1 ; done
+check "extract: one Job per PVC, both namespaces at once" [ "$(k "${OLD}" get job -A -l armedia.com/pvc-mounter-name -o jsonpath='{range .items[*]}{.metadata.namespace}/{.metadata.name} {end}')" == "cust-my-demo/pvc-tool-data-db-0 cust-my-demo/pvc-tool-home other-env/pvc-tool-files " ]
+check "extract: the IRSA service account" [ "$(k "${OLD}" -n cust-my-demo get sa pvc-tool -o jsonpath='{.metadata.annotations.eks\.amazonaws\.com/role-arn}')" == "arn:aws:iam::123456789012:role/aws-mig-202611-stage-fedramp-test" ]
+check "extract: the Job's settings (prefix = source context)" bash -c "kubectl --context ${OLD} -n cust-my-demo get job pvc-tool-data-db-0 -o json | jq -e '([.spec.template.spec.containers[0].env[] | {(.name): .value}] | add | .S3_DIRECTION == \"upload\" and .S3_PREFIX == \"aws-fedramp-test/cust-my-demo/\$(SOURCE_PVC)\" and .S3_BUCKET == \"aws-mig-202611-stage\") and .spec.template.spec.containers[0].image == \"123456789012.dkr.ecr.us-east-1.amazonaws.com/arkcase/nettest:latest\"' >/dev/null"
+check "extract: the namespace's Rancher marks are gone" bash -c "aws s3 cp --quiet s3://${MIGRATION_BUCKET}/${OLD}/cust-my-demo/_k8s/namespace.json - | jq -e '.metadata == {\"name\":\"cust-my-demo\",\"labels\":{\"env\":\"demo\"},\"annotations\":{\"owner\":\"team-a\"}}' >/dev/null"
+sleep 4 ; check "extract: both keep waiting while their Jobs run" [ ! -e /tmp/e2.rc ] ; check "...(the other one too)" [ ! -e /tmp/e3.rc ]
+check "waiter: each reports only its own namespace" bash -c "grep -q '0 of 2 transfer(s) complete in aws-fedramp-test (namespaces: cust-my-demo)' /tmp/e2.log && grep -q '0 of 1 transfer(s) complete in aws-fedramp-test (namespaces: other-env)' /tmp/e3.log"
+finish "${OLD}" other-env pvc-tool-files complete
+check "extract: the other namespace is done -> 0" [ "$(rc_of e3)" == "0" ]
+finish "${OLD}" cust-my-demo pvc-tool-home complete ; finish "${OLD}" cust-my-demo pvc-tool-data-db-0 failed
+check "extract: a failed Job -> 1" [ "$(rc_of e2)" == "1" ]
+check "...naming it, suggesting --retry-only" bash -c "grep -q 'cust-my-demo/pvc-tool-data-db-0 (PVC data-db-0): PodFailurePolicy' /tmp/e2.log && grep -q 're-run this with --retry-only' /tmp/e2.log"
+${X} "${OLD}/cust-my-demo" > /tmp/e4.log 2>&1 ; RC="${?}" ; check "extract re-run: doesn't start anything new, still 1" [ "${RC}" -eq 1 ] ; check "...already started" grep -q "its transfers were already started" /tmp/e4.log
+
+echo "== retry-only"
+U="$(uid "${OLD}" cust-my-demo pvc-tool-data-db-0)"
+bg r1 env MIGRATION_BUCKET="" ${X} --retry-only "${OLD}/cust-my-demo"
+check "retry-only: re-creates the failed Job (no bucket needed)" wait_new "${OLD}" cust-my-demo pvc-tool-data-db-0 "${U}"
+check "retry-only: leaves the completed one alone" [ "$(k "${OLD}" -n cust-my-demo get job pvc-tool-home -o jsonpath='{.status.succeeded}')" == "1" ]
+sleep 3 ; check "retry-only: keeps waiting" [ ! -e /tmp/r1.rc ]
+finish "${OLD}" cust-my-demo pvc-tool-data-db-0 complete
+check "retry-only: done -> 0" [ "$(rc_of r1)" == "0" ] ; check "...after retrying" grep -q "retry 1 of 3" /tmp/r1.log
+renew "${OLD}" other-env pvc-tool-files ; finish "${OLD}" other-env pvc-tool-files failed ; U="$(uid "${OLD}" other-env pvc-tool-files)"
+bg r2 ${X} --retry-only --max-retries 1 "${OLD}/other-env"
+wait_new "${OLD}" other-env pvc-tool-files "${U}" ; finish "${OLD}" other-env pvc-tool-files failed
+check "retry-only: gives up after --max-retries -> 1" [ "$(rc_of r2)" == "1" ] ; check "...saying so" grep -q "still fail after 1 retries" /tmp/r2.log
+U="$(uid "${OLD}" other-env pvc-tool-files)"
+bg r3 ${X} --retry-only "${OLD}/other-env"
+wait_new "${OLD}" other-env pvc-tool-files "${U}" ; finish "${OLD}" other-env pvc-tool-files complete
+check "retry-only: a later run picks it back up -> 0" [ "$(rc_of r3)" == "0" ]
+k "${OLD}" apply -f - >/dev/null <<'Y'
+apiVersion: v1
+kind: Namespace
+metadata: { name: late-env }
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata: { name: late, namespace: late-env }
+spec: { accessModes: [ReadWriteOnce], resources: { requests: { storage: 1Gi } } }
+Y
+${X} --retry-only "${OLD}/late-env" > /tmp/r4.log 2>&1 ; RC="${?}" ; check "retry-only: a never-started namespace -> 1" [ "${RC}" -eq 1 ] ; check "...saying so" grep -q "the transfers of late-env were never started" /tmp/r4.log
+${X} --retry-only "${OLD}/empty-env" > /tmp/r5.log 2>&1 ; check "retry-only: a namespace without PVCs -> 0" [ "${?}" -eq 0 ]
+${X} "${OLD}/cust-my-demo" > /tmp/r6.log 2>&1 ; check "extract re-run when complete -> 0" [ "${?}" -eq 0 ]
+
+echo "== restore"
+${R} "${OLD}/cust-my-demo" "${NEW}" -s gp2=gp3 > /tmp/s1.log 2>&1 ; RC="${?}" ; check "restore refuses an incomplete export" [ "${RC}" -ne 0 ] ; check "...naming the PVCs" grep -q "isn't complete: data-db-0 home" /tmp/s1.log
+fake_export data-db-0 home
+${R} "${OLD}/cust-my-demo" "${NEW}" > /tmp/s2.log 2>&1 ; RC="${?}" ; check "restore refuses unknown storage classes" [ "${RC}" -ne 0 ] ; check "...suggesting -s" grep -q "gp2 (map them with -s old=new, e.g. -s gp2=gp3)" /tmp/s2.log
+check "...and changes nothing" bash -c "! kubectl --context ${NEW} get namespace cust-my-demo >/dev/null 2>&1"
+${R} "${OLD}/cust-my-demo" "${NEW}" --retry-only > /tmp/s3.log 2>&1 ; RC="${?}" ; check "restore --retry-only before it started -> 1" [ "${RC}" -eq 1 ] ; check "...saying so" grep -q "were never started" /tmp/s3.log
+sed 's/fedramp-test"/fedramp-stage"/' /w/values.yaml > /w/values-new.yaml
+# Into a namespace of another name
+bg s4 ${R} -s gp2=gp3 "${OLD}/cust-my-demo" "${NEW}/demo-moved" -- -f /w/values-new.yaml
+for I in $(seq 1 60) ; do [ "$(jobs_in "${NEW}" demo-moved)" -eq 2 ] && break ; sleep 1 ; done
+check "restore: the namespace, renamed, as exported" [ "$(k "${NEW}" get namespace demo-moved -o jsonpath='{.metadata.labels.env} {.metadata.annotations.owner}')" == "demo team-a" ]
+check "restore: the PVCs, mapped and unbound" [ "$(k "${NEW}" -n demo-moved get pvc -o jsonpath='{range .items[*]}{.metadata.name}={.spec.storageClassName}:{.spec.volumeName}:{.metadata.annotations.keep} {end}')" == "data-db-0=gp3::1 home=:: " ]
+check "restore: Helm's release namespace follows" [ "$(k "${NEW}" -n demo-moved get pvc home -o jsonpath='{.metadata.annotations.meta\.helm\.sh/release-namespace}')" == "demo-moved" ]
+check "restore: download Jobs from the source's location" bash -c "kubectl --context ${NEW} -n demo-moved get job pvc-tool-data-db-0 -o json | jq -e '[.spec.template.spec.containers[0].env[] | {(.name): .value}] | add | .S3_DIRECTION == \"download\" and .S3_PREFIX == \"aws-fedramp-test/cust-my-demo/\$(TARGET_PVC)\" and .TARGET_PVC == \"data-db-0\"' >/dev/null"
+check "restore: the new cluster's role" [ "$(k "${NEW}" -n demo-moved get sa pvc-tool -o jsonpath='{.metadata.annotations.eks\.amazonaws\.com/role-arn}')" == "arn:aws:iam::123456789012:role/aws-mig-202611-stage-fedramp-stage" ]
+finish "${NEW}" demo-moved pvc-tool-home complete ; finish "${NEW}" demo-moved pvc-tool-data-db-0 failed
+check "restore: a failure -> 1" [ "$(rc_of s4)" == "1" ]
+U="$(uid "${NEW}" demo-moved pvc-tool-data-db-0)"
+bg s5 ${R} --retry-only "${OLD}/cust-my-demo" "${NEW}/demo-moved"
+wait_new "${NEW}" demo-moved pvc-tool-data-db-0 "${U}" ; finish "${NEW}" demo-moved pvc-tool-data-db-0 complete
+check "restore --retry-only: retried, done -> 0" [ "$(rc_of s5)" == "0" ]
+${R} -s gp2=gp3 "${OLD}/cust-my-demo" "${NEW}/demo-moved" > /tmp/s6.log 2>&1 ; RC="${?}" ; check "restore re-run -> 0" [ "${RC}" -eq 0 ] ; check "...already started" grep -q "its transfers were already started" /tmp/s6.log
+${R} "${OLD}/empty-env" "${NEW}" > /tmp/s7.log 2>&1 ; RC="${?}" ; check "restore of a namespace without PVCs -> 0" [ "${RC}" -eq 0 ] ; check "...creating it" bash -c "kubectl --context ${NEW} get namespace empty-env >/dev/null && grep -q 'No transfers needed' /tmp/s7.log"
+
+echo "== connectivity"
+kill "$(cat /w/api-aws-fedramp-stage.pid)" ; sleep 2
+wait-for-context-transfers "${NEW}" > /tmp/c1.log 2>&1 ; RC="${?}" ; check "waiter: unreachable cluster -> 2" [ "${RC}" -eq 2 ] ; check "...saying so" grep -q "Can't reach the cluster" /tmp/c1.log
+
+echo
+[ "${FAILS}" -eq 0 ] && echo "ALL PASSED" || echo "${FAILS} FAILED"
+exit "${FAILS}"

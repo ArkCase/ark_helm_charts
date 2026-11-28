@@ -1,0 +1,93 @@
+#!/bin/bash
+#
+# usage: run [suite...]
+#
+# Runs the given suites (default: all of them, from tests/suites), each in a fresh container of the test
+# image, against a fresh mock AWS (moto), and reports how each one went. Needs docker (DOCKER_HOST and the
+# rest are honored), and the binaries from fetch-binaries (fetched on the first run). Set S3FS_MIRROR to an
+# s3-fs-mirror binary to also test the mirror format. Files go into the containers with docker cp (no bind
+# mounts), so a remote docker daemon works too.
+#
+# Exit status: 0 if every suite passed, 1 otherwise.
+#
+set -uo pipefail
+
+TESTS="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
+CHART="$(dirname "${TESTS}")"
+BIN="${TESTS}/.bin"
+NETWORK="pvc-tool-tests"
+MOTO="pvc-tool-tests-moto"
+RUNNER="pvc-tool-tests-runner"
+ENDPOINT="http://${MOTO}:9000"
+
+say() { echo -e "$(date -u '+%H:%M:%S'): ${*}" ; }
+
+cleanup()
+{
+	docker rm -f "${RUNNER}" "${MOTO}" &>/dev/null
+	docker network rm "${NETWORK}" &>/dev/null
+	return 0
+}
+trap cleanup EXIT
+
+SUITES=( "${@}" )
+[ "${#SUITES[@]}" -gt 0 ] || mapfile -t SUITES < <(ls "${TESTS}/suites")
+for SUITE in "${SUITES[@]}" ; do
+	[ -x "${TESTS}/suites/${SUITE}" ] || { echo "There's no suite [${SUITE}] (see ${TESTS}/suites)" 1>&2 ; exit 1 ; }
+done
+
+"${TESTS}/fetch-binaries" "${BIN}" >/dev/null || { echo "Failed to fetch the binaries" 1>&2 ; exit 1 ; }
+say "👉 Building the images..."
+docker build -q -t pvc-tool-tests:latest -f "${TESTS}/Dockerfile" "${TESTS}" >/dev/null || exit 1
+docker build -q -t pvc-tool-tests-moto:latest -f "${TESTS}/Dockerfile.moto" "${TESTS}" >/dev/null || exit 1
+
+cleanup
+docker network create "${NETWORK}" >/dev/null || exit 1
+docker run -d --name "${MOTO}" --network "${NETWORK}" pvc-tool-tests-moto:latest >/dev/null || exit 1
+for I in $(seq 1 60) ; do
+	docker exec "${MOTO}" python3 -c "import urllib.request ; urllib.request.urlopen('http://localhost:9000/moto-api/')" &>/dev/null && break
+	sleep 1
+done
+
+declare -A RESULT=()
+FAILED="0"
+for SUITE in "${SUITES[@]}" ; do
+	say "🚀 ${SUITE}"
+	docker exec "${MOTO}" python3 -c "import urllib.request ; urllib.request.urlopen(urllib.request.Request('http://localhost:9000/moto-api/reset', method='POST'))" >/dev/null
+	docker rm -f "${RUNNER}" &>/dev/null
+	docker run -d --name "${RUNNER}" --network "${NETWORK}" pvc-tool-tests:latest sleep infinity >/dev/null || exit 1
+	# The layout the suites expect
+	docker exec "${RUNNER}" mkdir -p /t/bin /t/tools /t/chart /w
+	docker cp "${BIN}/." "${RUNNER}:/t/bin/" >/dev/null
+	docker cp "${CHART}/tools/." "${RUNNER}:/t/tools/" >/dev/null
+	for ITEM in Chart.yaml Chart.lock values.yaml templates scripts charts ; do
+		[ -e "${CHART}/${ITEM}" ] && docker cp "${CHART}/${ITEM}" "${RUNNER}:/t/chart/" >/dev/null
+	done
+	docker cp "${TESTS}/clusters" "${RUNNER}:/t/clusters" >/dev/null
+	docker cp "${CHART}/scripts/migrate-pvc" "${RUNNER}:/migrate-pvc" >/dev/null
+	docker cp "${TESTS}/suites/${SUITE}" "${RUNNER}:/t/suite" >/dev/null
+	[ -n "${S3FS_MIRROR:-}" ] && docker cp "${S3FS_MIRROR}" "${RUNNER}:/usr/local/bin/s3-fs-mirror" >/dev/null
+
+	RC="0"
+	docker exec \
+		-e AWS_ENDPOINT_URL="${ENDPOINT}" -e S3_ENDPOINT="${ENDPOINT}" \
+		-e AWS_ACCESS_KEY_ID="testing" -e AWS_SECRET_ACCESS_KEY="testing" \
+		-e AWS_DEFAULT_REGION="us-east-1" -e AWS_REGION="us-east-1" \
+		"${RUNNER}" /t/suite > "${TESTS}/.last-${SUITE}.log" 2>&1 || RC="${?}"
+	PASSED="$(grep -c '^PASS' "${TESTS}/.last-${SUITE}.log")"
+	FAILS="$(grep -c '^FAIL' "${TESTS}/.last-${SUITE}.log")"
+	if [ "${RC}" -eq 0 ] && [ "${FAILS}" -eq 0 ] ; then
+		RESULT["${SUITE}"]="✅ ${PASSED} passed"
+	else
+		RESULT["${SUITE}"]="❌ ${FAILS} failed, ${PASSED} passed (rc=${RC}): see tests/.last-${SUITE}.log"
+		FAILED="1"
+		grep '^FAIL' "${TESTS}/.last-${SUITE}.log" | sed -e 's/^/\t/'
+	fi
+	say "${RESULT["${SUITE}"]}"
+done
+
+echo
+for SUITE in "${SUITES[@]}" ; do
+	printf '%-24s %s\n' "${SUITE}" "${RESULT["${SUITE}"]}"
+done
+exit "${FAILED}"

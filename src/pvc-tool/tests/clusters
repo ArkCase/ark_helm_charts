@@ -1,0 +1,45 @@
+#!/bin/bash
+# Starts etcd + kube-apiserver for each of aws-fedramp-test, -stage and -prod; "rebuild NAME" wipes one and starts it again, empty
+set -euo pipefail
+W=/w ; mkdir -p "${W}" ; cd "${W}"
+declare -A PORT=( [aws-fedramp-test]=6443 [aws-fedramp-stage]=6444 [aws-fedramp-prod]=6445 )
+declare -A EPORT=( [aws-fedramp-test]=2379 [aws-fedramp-stage]=2381 [aws-fedramp-prod]=2383 )
+if [ ! -e ca.crt ] ; then
+	openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj /CN=ca -keyout ca.key -out ca.crt 2>/dev/null
+	openssl req -newkey rsa:2048 -nodes -subj /CN=kube-apiserver -keyout api.key -out api.csr 2>/dev/null
+	echo "subjectAltName=IP:127.0.0.1,DNS:localhost" > san.ext
+	openssl x509 -req -in api.csr -CA ca.crt -CAkey ca.key -CAcreateserial -days 1 -extfile san.ext -out api.crt 2>/dev/null
+	openssl genrsa -out sa.key 2048 2>/dev/null ; openssl rsa -in sa.key -pubout -out sa.pub 2>/dev/null
+	echo "admin-token,admin,admin,system:masters" > tokens.csv
+fi
+start() {
+	local NAME="${1}" P="${PORT[${1}]}" E="${EPORT[${1}]}"
+	local PP="$(( E + 1 ))"
+	/t/bin/etcd --data-dir "${W}/etcd-${NAME}" --listen-client-urls "http://127.0.0.1:${E}" --advertise-client-urls "http://127.0.0.1:${E}" \
+		--listen-peer-urls "http://127.0.0.1:${PP}" --initial-advertise-peer-urls "http://127.0.0.1:${PP}" --initial-cluster "default=http://127.0.0.1:${PP}" > "${W}/etcd-${NAME}.log" 2>&1 &
+	echo "${!}" > "${W}/etcd-${NAME}.pid"
+	/t/bin/kube-apiserver --etcd-servers="http://127.0.0.1:${E}" --bind-address=127.0.0.1 --advertise-address=127.0.0.1 --secure-port="${P}" \
+		--tls-cert-file=api.crt --tls-private-key-file=api.key --client-ca-file=ca.crt --token-auth-file=tokens.csv --authorization-mode=RBAC \
+		--service-account-issuer=https://kubernetes.default.svc --service-account-key-file=sa.pub --service-account-signing-key-file=sa.key \
+		--service-cluster-ip-range=10.96.0.0/24 --disable-admission-plugins=ServiceAccount --endpoint-reconciler-type=none > "${W}/api-${NAME}.log" 2>&1 &
+	echo "${!}" > "${W}/api-${NAME}.pid"
+	kubectl config set-cluster "${NAME}" --server="https://127.0.0.1:${P}" --certificate-authority="${W}/ca.crt" >/dev/null
+	kubectl config set-credentials admin --token=admin-token >/dev/null
+	kubectl config set-context "${NAME}" --cluster="${NAME}" --user=admin >/dev/null
+	for I in $(seq 1 60) ; do kubectl --context "${NAME}" get namespace default &>/dev/null && return 0 ; sleep 1 ; done
+	tail "${W}/api-${NAME}.log" ; return 1
+}
+if [ "${1:-}" == "rebuild" ] ; then
+	for PID in "$(cat "${W}/api-${2}.pid")" "$(cat "${W}/etcd-${2}.pid")" ; do
+		kill "${PID}" 2>/dev/null || true
+		for I in $(seq 1 30) ; do kill -0 "${PID}" 2>/dev/null || break ; sleep 1 ; done
+		kill -9 "${PID}" 2>/dev/null || true
+	done
+	sleep 1 ; rm -rf "${W}/etcd-${2}"
+	start "${2}"
+	echo "rebuilt ${2}"
+	exit 0
+fi
+for C in aws-fedramp-test aws-fedramp-stage aws-fedramp-prod ; do start "${C}" ; done
+kubectl config use-context aws-fedramp-test >/dev/null
+echo "clusters up"

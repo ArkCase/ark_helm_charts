@@ -1,0 +1,5 @@
+# A mock AWS (S3, IAM, STS, EC2, ...) for the suites
+FROM python:3.12-slim
+RUN pip install --no-cache-dir "moto[server]==5.2.6"
+EXPOSE 9000
+CMD [ "moto_server", "-H", "0.0.0.0", "-p", "9000" ]

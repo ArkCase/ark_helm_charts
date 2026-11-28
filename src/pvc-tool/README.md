@@ -6,11 +6,13 @@ This chart works on all the PVCs in a given Namespace, in one of three modes (se
   * ***clone***: each PVC's data is copied into a new PVC named `${clonePrefix}-${pvcName}`, optionally with a different `storageClassName` (see [Clone and S3 Modes](#clone-and-s3-modes)).
   * ***s3***: each PVC's data is uploaded into S3 (as a `.tar.gz` file, or a tree of objects made with `s3-fs-mirror`), or downloaded from there (see [Clone and S3 Modes](#clone-and-s3-modes)).
 
+The design, and the reasons behind it, are in [SPEC.md](SPEC.md). The test suites are in [tests/](tests/README.md).
+
 ## Clone and S3 Modes
 
 In these modes, instead of one pod mounting every PVC (which can't work when the volumes can't all be attached to the same node), each PVC (or pair of old and new PVCs) gets a Job of its own, named `${releaseName}-${pvcName}`, so its pod can be scheduled wherever its volumes can be attached. If that name is longer than 63 characters, or a Job that isn't this release's already has it, a hash of the PVC's name is used as its suffix instead. Each Job runs a single pod at a time, which mounts its PVCs by name, so nothing the chart creates can create PVCs of its own. Its annotations `armedia.com/pvc-tool-source` and `armedia.com/pvc-tool-target` hold the names of the PVCs it works on.
 
-Each pod copies its data, verifies the copy, and exits: the Job then either ***completes***, or ***fails***. The pod attempts the work up to `maxAttempts` times, and once it gives up, the Job fails right away. A pod that's lost instead (e.g. along with its node) is replaced, up to `backoffLimit` times (evicted or preempted pods don't count). To repeat the work for a PVC, re-create its Job (see `tools/retry-context-transfers`).
+Each pod copies its data, verifies the copy, and exits: the Job then either ***completes***, or ***fails***. The pod attempts the work up to `maxAttempts` times, and once it gives up, the Job fails right away. A pod that's lost instead (e.g. along with its node) is replaced, up to `backoffLimit` times, and a pod that's disrupted (evicted, preempted, or killed by a node drain) is replaced without counting against it. The pods ask Cluster Autoscaler and Karpenter not to disrupt them while they run (`cluster-autoscaler.kubernetes.io/safe-to-evict: "false"`, `karpenter.sh/do-not-disrupt: "true"`). To repeat the work for a PVC, re-create its Job (see `tools/retry-context-transfers`).
 
 Each pod receives these environment variables:
 
@@ -24,6 +26,7 @@ Each pod receives these environment variables:
 |`S3_PREFIX`|s3|`${s3.prefix}/${s3.namespace}/${pvcName}`: the archive is `s3://${S3_BUCKET}/${S3_PREFIX}.tar.gz` (or the tree is at `s3://${S3_BUCKET}/${S3_PREFIX}/`)|
 |`S3_FORMAT`|s3|The value of `s3.format` (`tar` or `mirror`)|
 |`S3_VERIFY`|s3 (tar)|The value of `s3.verify`|
+|`S3_TERSE`|s3 (tar)|The value of `s3.terse`|
 |`S3_ENDPOINT`|s3|The value of `s3.endpoint` (if given)|
 |`S3_RESUME`|s3 (mirror)|The value of `s3.resume`|
 |`S3_CONCURRENCY`, `S3_BWLIMIT`|s3 (mirror)|The values of `s3.concurrency` and `s3.bwlimit` (if given)|
@@ -51,7 +54,7 @@ helm install pvc-tool arkcase/pvc-tool \
 
 How each PVC's data is stored depends on `s3.format`:
 
-  * `tar` (default): as `s3://some-bucket/pvc-tool-prefix/${namespace}/${pvcName}.tar.gz`, created with GNU `tar`, preserving numeric ownership, permissions, sparse files, and (if the `tar` in the image supports them) ACLs and extended attributes. An interrupted transfer starts over. With `s3.verify` (the default), the archive is downloaded again after the transfer, and compared against the PVC with `tar --diff`. Next to the archive goes `${pvcName}.listing.gz`: the path, type, permissions, ownership and size of every entry in the PVC. After a download, the PVC must match it, or the pod fails (without retrying). Last goes `${pvcName}.record`, which says the export is complete, when it started, and which archive and listing it made (their ETags, sizes, times and versions). An export that's run again, and finds its record, only does the work again if the archive or the listing aren't the recorded ones anymore, or anything in the PVC changed since the export started (by its ctime, which, unlike the modification time, nothing can set back), or the PVC doesn't match the listing. A download likewise leaves a `.pvc-tool-restore` marker at the root of the PVC (which never makes it into an archive), and when it's run again, only does the work again if the archive or the listing changed, or anything in the PVC changed after the marker, or the PVC doesn't match the listing.
+  * `tar` (default): as `s3://some-bucket/pvc-tool-prefix/${namespace}/${pvcName}.tar.gz`, created with GNU `tar`, preserving numeric ownership, permissions, sparse files, and (if the `tar` in the image supports them) ACLs and extended attributes. An interrupted transfer starts over. The PVC is listed before it's archived (the path, type, permissions, ownership and size of every entry), and `tar` indexes what it archives: the two must agree, but for what `tar` can't archive (sockets, which the processes that made them make anew), which is reported and left out; anything else fails the export. With `s3.verify` (the default), the archive is downloaded again after the transfer, and compared against the PVC with `tar --diff`. Next to the archive goes `${pvcName}.listing.gz`: the listing of what the archive has. After a download, the PVC must match it, or the pod fails (without retrying); entries `tar` can't archive, in the listings of older exports, are only reported. Each entry's path goes to the log as it's extracted, unless `s3.terse` is set. Last goes `${pvcName}.record`, which says the export is complete, when it started, and which archive and listing it made (their ETags, sizes, times and versions). An export that's run again, and finds its record, only does the work again if the archive or the listing aren't the recorded ones anymore, or anything in the PVC changed since the export started (by its ctime, which, unlike the modification time, nothing can set back), or the PVC doesn't match the listing. A download likewise leaves a `.pvc-tool-restore` marker at the root of the PVC (which never makes it into an archive), and when it's run again, only does the work again if the archive or the listing changed, or anything in the PVC changed after the marker, or the PVC doesn't match the listing.
   * `mirror`: as a tree under `s3://some-bucket/pvc-tool-prefix/${namespace}/${pvcName}/`, with `s3-fs-mirror`: one object per file, directory, symlink and so on, at the same relative path, with each entry's ownership, permissions, times and extended attributes in its object's metadata. Hardlinks, sparse files, FIFOs and devices are handled too. An interrupted copy resumes where it left off, down to the partly transferred files (see `s3.resume`). The tree's root directory object, `${S3_PREFIX}/`, says whether the upload is complete. Re-uploading into the same prefix updates the tree in place.
 
 Use a new `s3.prefix` for each backup (e.g. a date) to keep the previous one intact.
@@ -78,6 +81,7 @@ Each PVC in the namespace becomes an exact copy of the archive (or tree) with it
   * `s3.namespace` (default: the release's namespace): the `${namespace}` part of the trees' prefixes.
   * `s3.format` (default `tar`): `tar` or `mirror`, as above.
   * `s3.verify` (default `true`, tar only): compare each archive against the PVC after the transfer.
+  * `s3.terse` (default `false`, tar only): don't list each entry in the log as a download extracts it (for PVCs with so many files that the log becomes a problem).
   * `s3.resume` (default `verify`, mirror only): what to do with a partly transferred file when resuming: `verify` checks what was already transferred against the local copy (on the local disk only) before continuing, `blind` continues without checking, and `restart` transfers the file again.
   * `s3.concurrency` (default `8`, mirror only): how many files each pod transfers at the same time.
   * `s3.bwlimit` (default: no limit, mirror only): the bandwidth limit for each pod, in bytes per second (e.g. `50M`).
@@ -90,7 +94,7 @@ The IAM role needs these permissions on the bucket (and, for a bucket encrypted 
 
 ### Container Image
 
-The pods in these modes need `bash`, `rsync` (clone mode), GNU `tar`, `gzip` and the `aws` CLI (s3 mode, tar format), `s3-fs-mirror` (s3 mode, mirror format), plus GNU `coreutils`, `findutils` and `diffutils`. Set `image.registry`, `image.repository` and `image.tag` to an image that provides them.
+The pods in these modes need `bash`, `rsync` (clone mode), GNU `tar` (for `--index-file`), `gzip` and the `aws` CLI (s3 mode, tar format), `s3-fs-mirror` (s3 mode, mirror format), plus GNU `coreutils`, `findutils` and `diffutils`. Set `image.registry`, `image.repository` and `image.tag` to an image that provides them.
 
 ### Automation
 
@@ -152,10 +156,15 @@ tools/watch-migrations extract < migrations.txt
 ```
 
   * `-c context` (both, repeatable) narrows the work down to what runs in the given contexts: the source context when extracting, and the target context when restoring (e.g. to restore into each new cluster as it comes up).
-  * `-n` (start) shows what would be started, and `-s old=new` (start) maps storage classes for restores.
+  * `-n` (start) shows what would be started, and for restores, `-s old=new` (start) maps storage classes, `--skip-missing` restores what can be when some PVCs' exports are missing (see above), and `--terse` keeps the extractions from listing every entry in the logs.
   * `start-migrations` attempts every namespace, even after one fails to start, and only ever starts each one once, so it can be run again (e.g. after fixing the ones that failed).
   * `tools/remove-migrations extract|restore < migrations.txt` removes the releases again (their Jobs, pods and service accounts), e.g. to start over, or once the work is done. The buckets' contents stay, and so do the PVCs and namespaces a restore created. It takes `-c` and `-n` too, leaves the namespaces whose transfers are still running alone unless `-f` is given (which interrupts them), and never removes a release of that name that isn't pvc-tool's. It exits with `0` if every namespace ends up without a release.
   * `watch-migrations` only reads, unless `--retry` is given (which re-creates the failed Jobs, up to `--max-retries` times each). It exits with `0` once every namespace's transfers completed, `1` as soon as any failed (or, with `--retry`, still failed after the last retry), or once the others are done if some namespaces were never started, and `2` if a context can't be reached for a while. `POLL_INTERVAL` sets the seconds between rounds (default 60).
+
+Two more tools help along the way, and only read:
+
+  * `tools/check-irsa [-s service-account] [-e eks-cluster] context/namespace role-arn` tells whether the pods can assume their IRSA role, and if not, why: it mints a token for the service account, compares its issuer with the cluster's, the IAM OIDC provider in the role's account (audiences, and thumbprints against the issuer's current certificates) and the role's trust policy, and then tries to assume the role.
+  * `tools/scan-pvc-volumes [-l selector] [-r region] [-s] [context...]` checks that the EBS volume behind every PVC in the namespaces of interest still exists (a PVC stays `Bound` to a volume that's gone), and writes one line per PVC (TSV): `OK`, `MISSING`, `UNBOUND` or `NOT-EBS`, with `-s` adding the missing volumes' snapshots and AWS Backup recovery points.
 
 `extract-namespace` and `restore-namespace` only wait when the namespace's transfers were already started (the release is installed), or not at all with `--no-wait`, and exit with `0` right away when the namespace has no PVCs. Since the Jobs skip the work when it was already done (see the records and markers above), the scripts can be run again and again, and even a re-installed release won't repeat a transfer needlessly. `-r` names the release (default `pvc-tool`, which is also the name of the ServiceAccount it creates for IRSA).
 

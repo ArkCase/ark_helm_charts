@@ -1,0 +1,85 @@
+#!/bin/bash
+set -uo pipefail
+FAILS=0
+check() { local D="${1}"; shift; if "${@}" ; then echo "PASS: ${D}"; else echo "FAIL: ${D}"; FAILS=$((FAILS+1)); fi; }
+E="${S3_ENDPOINT}"
+aws --endpoint-url "${E}" s3 mb s3://mig-bucket >/dev/null
+s3get() { aws --endpoint-url "${E}" s3 cp --quiet "s3://mig-bucket/${1}" - ; }
+export -f s3get ; export E
+s3put() { aws --endpoint-url "${E}" s3 cp --quiet - "s3://mig-bucket/${1}" ; }
+run() { local RC="0" ; timeout 120 env "${@}" /migrate-pvc > /tmp/run.log 2>&1 || RC="${?}" ; echo -n "${RC}" ; }
+listing() { ( cd "${1}" && find . -path ./lost+found -prune -o -path ./.pvc-tool-restore -prune -o ! -type s \( \( -type d -printf "%p %y %m %U:%G\n" \) -o -printf "%p %y %m %U:%G %s %l\n" \) | LC_ALL=C sort ) ; }
+sockets() { python3 -c 'import socket, sys
+for p in sys.argv[1:]:
+	socket.socket(socket.AF_UNIX).bind(p)' "${@}" ; }
+
+# A Samba-like tree: data, a FIFO, a symlink, a hard link, and sockets left by its processes
+mkdir -p /src/private/msg.sock /src/lost+found && head -c "$(( RANDOM * 31 + 1 ))" /dev/urandom > /src/private/secrets.tdb
+mkfifo /src/fifo && ln -s private/secrets.tdb /src/link && ln /src/private/secrets.tdb /src/hard && chown 1234:5678 /src/private/secrets.tdb
+( cd /src && sockets private/ldapi private/msg.sock/916 private/msg.sock/919 winbindd-pipe )
+T=(TASK_MODE=s3 S3_FORMAT=tar S3_BUCKET=mig-bucket S3_ENDPOINT="${E}" LOGS_DIR=/tmp)
+
+echo "== export a tree with sockets"
+RC="$(run "${T[@]}" S3_PREFIX=a/ns/data S3_DIRECTION=upload SOURCE_PVC=data SOURCE_DIR=/src)" ; cp /tmp/run.log /tmp/up1.log
+check "it succeeds" [ "${RC}" == "0" ] || tail -20 /tmp/up1.log
+check "...saying the 4 sockets were left out" grep -q "4 entr(ies) were left out, since tar can't archive them" /tmp/up1.log
+check "...naming them" grep -qP "^\t\./private/ldapi\ts " /tmp/up1.log
+check "the stored listing has no sockets" bash -c "! s3get a/ns/data.listing.gz | gzip -dc | grep -qP '\ts '"
+check "...but has everything else" [ "$(s3get a/ns/data.listing.gz | gzip -dc | cut -f1 | tr '\n' ' ')" == ". ./fifo ./hard ./link ./private ./private/msg.sock ./private/secrets.tdb " ]
+RC="$(run "${T[@]}" S3_PREFIX=a/ns/data S3_DIRECTION=upload SOURCE_PVC=data SOURCE_DIR=/src)" ; cp /tmp/run.log /tmp/up2.log
+check "exporting again is skipped (the sockets don't count as changes)" grep -q "Already exported, and nothing changed since" /tmp/up2.log
+
+echo "== restore it"
+mkdir -p /dst1
+RC="$(run "${T[@]}" S3_PREFIX=a/ns/data S3_DIRECTION=download TARGET_PVC=data TARGET_DIR=/dst1)" ; cp /tmp/run.log /tmp/down1.log
+check "it succeeds" [ "${RC}" == "0" ] || tail -20 /tmp/down1.log
+check "...matching the listing exactly" grep -q "The target matches the source's listing" /tmp/down1.log
+check "...with no warnings" bash -c "! grep -q 'were left out' /tmp/down1.log"
+check "the tree is the source's (but for the sockets)" diff <(listing /src) <(listing /dst1)
+check "the data is the source's" cmp -s /src/private/secrets.tdb /dst1/private/secrets.tdb
+
+echo "== restore an older export, whose listing has the sockets"
+s3get a/ns/data.tar.gz | s3put b/ns/data.tar.gz
+( cd /src && find . -path ./lost+found -prune -o \( -type d -printf "%p\t%y %m %U:%G\n" \) -o -printf "%p\t%y %m %U:%G %s\n" | LC_ALL=C sort ) | gzip | s3put b/ns/data.listing.gz
+mkdir -p /dst2
+RC="$(run "${T[@]}" S3_PREFIX=b/ns/data S3_DIRECTION=download TARGET_PVC=data TARGET_DIR=/dst2)" ; cp /tmp/run.log /tmp/down2.log
+check "it succeeds (this was the failure)" [ "${RC}" == "0" ] || tail -20 /tmp/down2.log
+check "...saying the sockets couldn't be restored" grep -q "4 entr(ies) were left out, since tar can't archive them" /tmp/down2.log
+check "...and it's marked restored" [ -f /dst2/.pvc-tool-restore ]
+
+echo "== a real difference on restore still fails"
+s3get b/ns/data.listing.gz | gzip -dc | sed -E 's|^(\./private/secrets\.tdb\tf) [0-7]+ |\1 600 |' | gzip | s3put b/ns/data.listing.gz
+mkdir -p /dst3
+RC="$(run "${T[@]}" S3_PREFIX=b/ns/data S3_DIRECTION=download TARGET_PVC=data TARGET_DIR=/dst3 MAX_ATTEMPTS=3)" ; cp /tmp/run.log /tmp/down3.log
+check "it fails" [ "${RC}" != "0" ]
+check "...showing what's missing or different" grep -qP "^- \./private/secrets\.tdb\tf 600 " /tmp/down3.log
+check "...and what's unexpected" grep -qP "^\+ \./private/secrets\.tdb\tf [0-7]+ 1234:5678 " /tmp/down3.log
+check "...without blaming the sockets" bash -c "! grep -q 'msg.sock/916' /tmp/down3.log"
+check "...and doesn't retry" [ "$(grep -c 'Starting attempt' /tmp/down3.log)" -eq 1 ]
+
+echo "== a tar that leaves out something it could have archived"
+REAL="$(type -P tar)"
+cat > /usr/local/bin/tar <<W
+#!/bin/bash
+# The real tar, but its index loses ./fifo (as if tar had skipped it)
+INDEX=""
+for A in "\${@}" ; do case "\${A}" in --index-file=* ) INDEX="\${A#--index-file=}" ;; esac ; done
+RC=0 ; "${REAL}" "\${@}" || RC="\${?}"
+[ -z "\${INDEX}" ] || sed -i '/^\.\/fifo$/d' "\${INDEX}"
+exit "\${RC}"
+W
+chmod 755 /usr/local/bin/tar ; hash -r
+echo changed >> /src/private/secrets.tdb
+RC="$(run "${T[@]}" S3_PREFIX=a/ns/data S3_DIRECTION=upload SOURCE_PVC=data SOURCE_DIR=/src MAX_ATTEMPTS=1)" ; cp /tmp/run.log /tmp/up3.log
+check "the export fails" [ "${RC}" != "0" ]
+check "...naming what was left out" grep -qP "^- \./fifo\tp " /tmp/up3.log
+check "...and not the sockets" bash -c "! grep -qP '^- .*\ts ' /tmp/up3.log"
+check "...and records nothing" bash -c "! s3get a/ns/data.record >/dev/null 2>&1"
+rm -f /usr/local/bin/tar ; hash -r
+
+echo "== (and without sockets, nothing's left out)"
+mkdir -p /plain/d && echo x > /plain/d/f
+RC="$(run "${T[@]}" S3_PREFIX=c/ns/data S3_DIRECTION=upload SOURCE_PVC=data SOURCE_DIR=/plain)" ; cp /tmp/run.log /tmp/up4.log
+check "a plain export succeeds" [ "${RC}" == "0" ] ; check "...with every entry archived" grep -q "The archive has every one of the source's 3 entries" /tmp/up4.log
+echo ; [ "${FAILS}" -eq 0 ] && echo "ALL PASSED" || echo "${FAILS} FAILED"
+exit "${FAILS}"

@@ -1,0 +1,95 @@
+#!/bin/bash
+set -uo pipefail
+# (the modes the checks expect)
+umask 022
+FAIL=0
+# The mirror format needs s3-fs-mirror (see tests/run's S3FS_MIRROR)
+FORMATS=( tar )
+command -v s3-fs-mirror >/dev/null && FORMATS+=( mirror )
+check() { local D="${1}"; shift; if "${@}" ; then echo "PASS: ${D}"; else echo "FAIL: ${D}"; FAIL=1; fi; }
+aws --endpoint-url "${S3_ENDPOINT}" s3 mb s3://mig-bucket >/dev/null
+# a source tree with random content
+mkdir -p /src/d/e /src/lost+found && head -c "$(( RANDOM * 37 + 1 ))" /dev/urandom > /src/d/f1 && head -c 3000000 /dev/urandom > /src/big
+ln -s d/f1 /src/link && ln /src/big /src/d/e/hard && chmod 0750 /src/d && chown 1234:5678 /src/d/f1
+run() {
+	# run migrate-pvc as a Job's pod would: its exit status is the result
+	local RC="0"
+	timeout 120 env "${@}" /migrate-pvc > /tmp/run.log 2>&1 || RC="${?}"
+	echo -n "${RC}"
+}
+listing() { ( cd "${1}" && find . -path ./lost+found -prune -o -path ./.pvc-tool-restore -prune -o \( -type d -printf "%p %y %m %U:%G\n" \) -o -printf "%p %y %m %U:%G %s %l\n" | grep -v '^\./lost+found' | LC_ALL=C sort ) ; }
+COMMON=(TASK_MODE=s3 S3_BUCKET=mig-bucket S3_PREFIX=run1/ns1/data-x-0 S3_ENDPOINT="${S3_ENDPOINT}" LOGS_DIR=/tmp)
+for FORMAT in "${FORMATS[@]}" ; do
+	echo "== ${FORMAT}"
+	RC="$(run "${COMMON[@]}" S3_FORMAT="${FORMAT}" S3_DIRECTION=upload SOURCE_PVC=data-x-0 SOURCE_DIR=/src)"
+	check "${FORMAT} upload succeeds" [ "${RC}" == "0" ] || tail -20 /tmp/run.log
+	rm -rf "/dst-${FORMAT}" && mkdir -p "/dst-${FORMAT}/lost+found" "/dst-${FORMAT}/junk" && echo keep > "/dst-${FORMAT}/lost+found/k"
+	RC="$(run "${COMMON[@]}" S3_FORMAT="${FORMAT}" S3_DIRECTION=download TARGET_PVC=data-x-0 TARGET_DIR="/dst-${FORMAT}")"
+	check "${FORMAT} download succeeds" [ "${RC}" == "0" ] || tail -20 /tmp/run.log
+	cp /tmp/run.log "/tmp/run.${FORMAT}.log"
+	check "${FORMAT} restored tree matches" diff <(listing /src) <(listing "/dst-${FORMAT}")
+	check "${FORMAT} contents match" cmp -s /src/big "/dst-${FORMAT}/big"
+	check "${FORMAT} hardlink kept" [ "/dst-${FORMAT}/big" -ef "/dst-${FORMAT}/d/e/hard" ]
+	check "${FORMAT} lost+found untouched" [ -f "/dst-${FORMAT}/lost+found/k" ]
+	check "${FORMAT} junk removed" [ ! -e "/dst-${FORMAT}/junk" ]
+done
+echo "== listing"
+check "tar: the upload stored the source's listing" bash -c "aws --endpoint-url '${S3_ENDPOINT}' s3 cp --quiet s3://mig-bucket/run1/ns1/data-x-0.listing.gz - | gzip -dc | grep -q '^./d/f1	f 644 1234:5678 '"
+check "tar: the download compared against it" grep -q "The target matches the source's listing" /tmp/run.tar.log
+# A listing that doesn't match what the archive restores (e.g. an archive that lost a file)
+mkdir -p /dst-x
+aws --endpoint-url "${S3_ENDPOINT}" s3 cp --quiet s3://mig-bucket/run1/ns1/data-x-0.listing.gz - | gzip -dc | sed -E 's|^(\./big\tf) [0-7]+ |\1 600 |' | gzip | aws --endpoint-url "${S3_ENDPOINT}" s3 cp --quiet - s3://mig-bucket/run1/ns1/data-x-0.listing.gz
+RC="$(run "${COMMON[@]}" S3_FORMAT=tar S3_DIRECTION=download TARGET_PVC=data-x-0 TARGET_DIR=/dst-x MAX_ATTEMPTS=3)"
+check "tar: a mismatch with the listing fails" [ "${RC}" != "0" ]
+check "tar: it shows the difference" grep -qP "^- \\./big\\tf 600 " /tmp/run.log || tail -15 /tmp/run.log
+check "tar: and doesn't retry" bash -c "[ \"\$(grep -c 'Starting attempt' /tmp/run.log)\" -eq 1 ]"
+check "the log is complete (ends with the outcome)" bash -c "tail -1 /tmp/run.log | grep -q 'The work failed (rc = 1)'"
+echo "== records and markers (tar)"
+R=(TASK_MODE=s3 S3_FORMAT=tar S3_BUCKET=mig-bucket S3_PREFIX=run2/ns1/data-r-0 S3_ENDPOINT="${S3_ENDPOINT}" LOGS_DIR=/tmp)
+s3get() { aws --endpoint-url "${S3_ENDPOINT}" s3 cp --quiet "s3://mig-bucket/run2/ns1/data-r-0.${1}" - ; }
+up() { RC="$(run "${R[@]}" S3_DIRECTION=upload SOURCE_PVC=data-r-0 SOURCE_DIR=/src)" ; cp /tmp/run.log "/tmp/up.${1}.log" ; }
+down() { RC="$(run "${R[@]}" S3_DIRECTION=download TARGET_PVC=data-r-0 TARGET_DIR=/dstR)" ; cp /tmp/run.log "/tmp/down.${1}.log" ; }
+exported() { grep -q "Upload complete" "/tmp/up.${1}.log" ; }
+skipped_up() { grep -q "Already exported, and nothing changed since" "/tmp/up.${1}.log" && ! exported "${1}" ; }
+restored() { grep -q "Download complete" "/tmp/down.${1}.log" ; }
+skipped_down() { grep -q "Already restored from this very archive" "/tmp/down.${1}.log" && ! restored "${1}" ; }
+up 1 ; check "export: succeeds" [ "${RC}" == "0" ] ; check "export: exported" exported 1
+REC="$(s3get record)"
+check "export: the record has the start time, and the archive's and listing's identities" bash -c "grep -qE '^started=[0-9]+[.][0-9]+$' <<< '${REC}' && grep -qE '^archive=.+' <<< '${REC}' && grep -qE '^listing=.+' <<< '${REC}'"
+up 2 ; check "re-export, unchanged: succeeds" [ "${RC}" == "0" ] ; check "re-export, unchanged: skipped" skipped_up 2
+echo more >> /src/d/f1 ; up 3 ; check "re-export after a content change: exported again" exported 3 ; check "...because the source changed" grep -q "The source changed since the export started" /tmp/up.3.log
+up 4 ; check "...and then it's skipped again" skipped_up 4
+chmod 0600 /src/d/f1 ; up 5 ; check "re-export after a permissions-only change: exported again" exported 5
+rm -f /src/d/e/hard ; up 6 ; check "re-export after a deletion: exported again" exported 6
+head -c 100 /dev/urandom | aws --endpoint-url "${S3_ENDPOINT}" s3 cp --quiet - s3://mig-bucket/run2/ns1/data-r-0.tar.gz
+up 7 ; check "re-export after the archive was replaced: exported again" exported 7 ; check "...because it wasn't the recorded one" grep -q "The archive isn't the one recorded" /tmp/up.7.log
+aws --endpoint-url "${S3_ENDPOINT}" s3 rm --quiet s3://mig-bucket/run2/ns1/data-r-0.record
+up 8 ; check "re-export without a record: exported again" exported 8
+echo stale > /src/.pvc-tool-restore ; up 9
+check "a restore marker in the source isn't archived" bash -c "! s3() { :; } ; ! aws --endpoint-url '${S3_ENDPOINT}' s3 cp --quiet s3://mig-bucket/run2/ns1/data-r-0.tar.gz - | tar tzf - | grep -q pvc-tool-restore"
+check "...nor listed" bash -c "! aws --endpoint-url '${S3_ENDPOINT}' s3 cp --quiet s3://mig-bucket/run2/ns1/data-r-0.listing.gz - | gzip -dc | grep -q pvc-tool-restore"
+rm -f /src/.pvc-tool-restore ; up 10 ; up 11 ; check "(settled)" skipped_up 11
+
+rm -rf /dstR && mkdir -p /dstR
+down 1 ; check "restore: succeeds" [ "${RC}" == "0" ] ; check "restore: restored" restored 1
+check "restore: leaves its marker" [ -f /dstR/.pvc-tool-restore ]
+check "restore: the root directory keeps the source's time" [ "$(stat -c %Y /src)" == "$(stat -c %Y /dstR)" ]
+down 2 ; check "re-restore, unchanged: succeeds" [ "${RC}" == "0" ] ; check "re-restore, unchanged: skipped" skipped_down 2
+echo tampered >> /dstR/big ; down 3 ; check "re-restore after a change in the target: restored again" restored 3 ; check "...because the target changed" grep -q "The target changed since it was restored" /tmp/down.3.log
+check "...and the target is right again" cmp -s /src/big /dstR/big
+down 4 ; check "...then skipped again" skipped_down 4
+rm -f /dstR/d/f1 ; down 5 ; check "re-restore after a deletion in the target: restored again" restored 5
+check "...and the file is back" cmp -s /src/d/f1 /dstR/d/f1
+echo newer >> /src/d/f1 ; up 12 ; check "(a new export)" exported 12
+down 6 ; check "re-restore after a new export: restored again" restored 6 ; check "...because the archive changed" grep -q "The archive isn't the one recorded" /tmp/down.6.log
+check "...with the new data" cmp -s /src/d/f1 /dstR/d/f1
+down 7 ; check "...then skipped again" skipped_down 7
+
+echo "== missing data fails without retries"
+for FORMAT in "${FORMATS[@]}" ; do
+	RC="$(run TASK_MODE=s3 S3_BUCKET=mig-bucket S3_PREFIX=run1/nope/data-x-0 S3_ENDPOINT="${S3_ENDPOINT}" LOGS_DIR=/tmp S3_FORMAT="${FORMAT}" S3_DIRECTION=download TARGET_PVC=data-x-0 TARGET_DIR=/dst-tar MAX_ATTEMPTS=2)"
+	check "${FORMAT}: missing data is a failure" [ "${RC}" != "0" ]
+	check "${FORMAT}: the target is left alone" [ -f /dst-tar/big ]
+done
+aws --endpoint-url "${S3_ENDPOINT}" s3 ls --recursive s3://mig-bucket/ | awk '{print $4}' | head -12
+exit "${FAIL}"

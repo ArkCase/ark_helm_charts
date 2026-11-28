@@ -1,0 +1,51 @@
+#!/bin/bash
+set -uo pipefail
+export PATH="/t/bin:/t/tools:${PATH}" KUBECONFIG=/w/kubeconfig
+FAILS=0
+check() { local D="${1}"; shift; if "${@}" ; then echo "PASS: ${D}"; else echo "FAIL: ${D}"; FAILS=$((FAILS+1)); fi; }
+/t/clusters >/dev/null || exit 1
+k() { kubectl --context "${@}" ; }
+vol() { aws ec2 create-volume --availability-zone us-east-1a --size 1 --query VolumeId --output text ; }
+V_OK="$(vol)" ; V_GONE="$(vol)" ; V_INTREE="$(vol)" ; V_GONE2="$(vol)" ; V_OTHER="$(vol)"
+SNAP="$(aws ec2 create-snapshot --volume-id "${V_GONE}" --query SnapshotId --output text)"
+aws ec2 delete-volume --volume-id "${V_GONE}" ; aws ec2 delete-volume --volume-id "${V_GONE2}"
+pv_csi() { printf 'apiVersion: v1\nkind: PersistentVolume\nmetadata: { name: %s }\nspec: { capacity: { storage: 1Gi }, accessModes: [ReadWriteOnce], storageClassName: gp3, csi: { driver: ebs.csi.aws.com, volumeHandle: %s } }\n' "${2}" "${3}" | k "${1}" apply -f - >/dev/null ; }
+pv_intree() { printf 'apiVersion: v1\nkind: PersistentVolume\nmetadata: { name: %s }\nspec: { capacity: { storage: 1Gi }, accessModes: [ReadWriteOnce], storageClassName: gp2, awsElasticBlockStore: { volumeID: "aws://us-east-1a/%s" } }\n' "${2}" "${3}" | k "${1}" apply -f - >/dev/null ; }
+pvc() { printf 'apiVersion: v1\nkind: PersistentVolumeClaim\nmetadata: { name: %s, namespace: %s }\nspec: { accessModes: [ReadWriteOnce], resources: { requests: { storage: 1Gi } }, storageClassName: %s%s }\n' "${3}" "${2}" "${5:-gp3}" "${4:+, volumeName: ${4}}" | k "${1}" apply -f - >/dev/null
+	[ -n "${4}" ] && k "${1}" -n "${2}" patch pvc "${3}" --subresource=status --type=merge -p '{"status":{"phase":"Bound","capacity":{"storage":"1Gi"}}}' >/dev/null ; }
+P=aws-fedramp-prod ; S=aws-fedramp-stage
+k "${P}" create namespace cust-a >/dev/null ; k "${P}" label namespace cust-a app.kubernetes.io/instance=arkcase >/dev/null
+k "${P}" create namespace cust-b >/dev/null      # found by its StatefulSet
+printf 'apiVersion: apps/v1\nkind: StatefulSet\nmetadata: { name: core, namespace: cust-b, labels: { app.kubernetes.io/instance: arkcase } }\nspec: { serviceName: core, selector: { matchLabels: { a: b } }, template: { metadata: { labels: { a: b } }, spec: { containers: [ { name: c, image: x } ] } } }\n' | k "${P}" apply -f - >/dev/null
+k "${P}" create namespace unrelated >/dev/null
+pv_csi "${P}" pv-ok "${V_OK}" ; pvc "${P}" cust-a data-ok pv-ok
+pv_csi "${P}" pv-gone "${V_GONE}" ; pvc "${P}" cust-a data-gone pv-gone
+pv_intree "${P}" pv-intree "${V_INTREE}" ; pvc "${P}" cust-b home-old pv-intree gp2
+pv_intree "${P}" pv-gone2 "${V_GONE2}" ; pvc "${P}" cust-b logs-old pv-gone2 gp2
+pvc "${P}" cust-b pending ""
+printf 'apiVersion: v1\nkind: PersistentVolume\nmetadata: { name: pv-nfs }\nspec: { capacity: { storage: 1Gi }, accessModes: [ReadWriteMany], nfs: { server: x, path: /x } }\n' | k "${P}" apply -f - >/dev/null ; pvc "${P}" cust-b shared pv-nfs ""
+pv_csi "${P}" pv-other "${V_GONE2}" ; pvc "${P}" unrelated not-mine pv-other
+k "${S}" create namespace cust-c >/dev/null ; k "${S}" label namespace cust-c app.kubernetes.io/instance=arkcase >/dev/null
+pv_csi "${S}" pv-c "${V_OTHER}" ; pvc "${S}" cust-c data pv-c
+
+scan-pvc-volumes > /tmp/s1.tsv 2> /tmp/s1.err ; RC="${?}"
+
+row() { awk -F '\t' -v c="${1}" -v n="${2}" -v p="${3}" '$2 == c && $3 == n && $4 == p { print $1 }' /tmp/s1.tsv ; }
+check "an unreachable or missing context -> 2 (aws-fedramp-test is up but empty, so -> 1 here)" [ "${RC}" -eq 1 ]
+check "an existing CSI volume is OK" [ "$(row ${P} cust-a data-ok)" == "OK" ]
+check "a deleted CSI volume is MISSING" [ "$(row ${P} cust-a data-gone)" == "MISSING" ]
+check "an existing in-tree volume is OK" [ "$(row ${P} cust-b home-old)" == "OK" ]
+check "a deleted in-tree volume is MISSING" [ "$(row ${P} cust-b logs-old)" == "MISSING" ]
+check "a pending PVC is UNBOUND" [ "$(row ${P} cust-b pending)" == "UNBOUND" ]
+check "an NFS volume is NOT-EBS" [ "$(row ${P} cust-b shared)" == "NOT-EBS" ]
+check "a namespace without the label is ignored" [ -z "$(row ${P} unrelated not-mine)" ]
+check "the other context is scanned too" [ "$(row ${S} cust-c data)" == "OK" ]
+check "stdout is only the inventory" bash -c "! grep -qv \$'^[A-Z-]*\t' /tmp/s1.tsv"
+check "the summary names the missing ones" grep -q "aws-fedramp-prod: 2 OK, 2 MISSING, 1 UNBOUND, 1 NOT-EBS" /tmp/s1.err
+scan-pvc-volumes -s "${P}" > /tmp/s2.tsv 2>/dev/null
+check "-s: the snapshot of a missing volume" bash -c "awk -F '\t' '\$4 == \"data-gone\" { print \$12 }' /tmp/s2.tsv | grep -q 'snapshot ${SNAP}'"
+check "-s: none found for the other" bash -c "awk -F '\t' '\$4 == \"logs-old\" { print \$12 }' /tmp/s2.tsv | grep -q 'none found'"
+scan-pvc-volumes "${S}" > /dev/null 2>&1 ; check "no missing volumes -> 0" [ "${?}" -eq 0 ]
+scan-pvc-volumes no-such-context > /dev/null 2>&1 ; check "a missing context -> 2" [ "${?}" -eq 2 ]
+scan-pvc-volumes -x > /tmp/u.log 2>&1 ; check "bad options -> usage, 1" [ "${?}" -eq 1 ]
+echo ; [ "${FAILS}" -eq 0 ] && echo "ALL PASSED" || echo "${FAILS} FAILED" ; exit "${FAILS}"

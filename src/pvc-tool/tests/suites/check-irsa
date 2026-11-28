@@ -1,0 +1,37 @@
+#!/bin/bash
+set -uo pipefail
+export PATH="/t/bin:/t/tools:${PATH}" KUBECONFIG=/w/kubeconfig
+FAILS=0
+check() { local D="${1}"; shift; if "${@}" ; then echo "PASS: ${D}"; else echo "FAIL: ${D}"; FAILS=$((FAILS+1)); fi; }
+/t/clusters >/dev/null || exit 1
+k() { kubectl --context aws-fedramp-test "${@}" ; }
+k create namespace demo >/dev/null ; k -n demo create serviceaccount pvc-tool >/dev/null
+k -n demo annotate serviceaccount pvc-tool eks.amazonaws.com/role-arn=arn:aws:iam::123456789012:role/mig-test >/dev/null
+P="$(aws iam create-open-id-connect-provider --url https://kubernetes.default.svc --client-id-list sts.amazonaws.com --thumbprint-list 9e99a48a9960b14926bb7f3b02e22da2b0ab7280 --query OpenIDConnectProviderArn --output text)"
+aws iam create-role --role-name mig-test --assume-role-policy-document "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Action\":\"sts:AssumeRoleWithWebIdentity\",\"Principal\":{\"Federated\":\"${P}\"},\"Condition\":{\"StringLike\":{\"kubernetes.default.svc:sub\":[\"system:serviceaccount:*:pvc-tool\"]}}}]}" >/dev/null
+aws iam create-role --role-name other --assume-role-policy-document '{"Version":"2012-10-17","Statement":[]}' >/dev/null
+
+echo "== the right role"
+check-irsa aws-fedramp-test/demo arn:aws:iam::123456789012:role/mig-test > /tmp/good.log 2>&1 ; check "it passes -> 0" [ "${?}" -eq 0 ]
+check "...reading the token's claims" grep -q "aud=sts.amazonaws.com sub=system:serviceaccount:demo:pvc-tool" /tmp/good.log
+check "...finding the provider" grep -q "IAM OIDC provider arn:aws:iam::123456789012:oidc-provider/kubernetes.default.svc" /tmp/good.log
+check "...and the role's trust in it" grep -q 'The role trusts the provider, for: \["system:serviceaccount:\*:pvc-tool"\]' /tmp/good.log
+check "...and assuming the role" grep -q "The pods can assume the role: arn:aws:sts::123456789012:assumed-role/mig-test/check-irsa" /tmp/good.log
+
+echo "== a role the service account isn't annotated with, which doesn't trust the provider"
+check-irsa aws-fedramp-test/demo arn:aws:iam::123456789012:role/other > /tmp/other.log 2>&1
+check "it says the annotation differs" grep -q "The service account is annotated with the role \[arn:aws:iam::123456789012:role/mig-test\], not \[arn:aws:iam::123456789012:role/other\]" /tmp/other.log
+check "...and that the role doesn't trust the provider" grep -q "The role doesn't trust arn:aws:iam::123456789012:oidc-provider/kubernetes.default.svc" /tmp/other.log
+
+echo "== no provider for the issuer"
+# (moto's STS lets anyone assume the role anyway, so only the diagnosis is checked here)
+aws iam delete-open-id-connect-provider --open-id-connect-provider-arn "${P}"
+check-irsa aws-fedramp-test/demo arn:aws:iam::123456789012:role/mig-test > /tmp/none.log 2>&1
+check "it says there's no provider in the role's account" grep -q "There's no IAM OIDC provider for the token's issuer in the role's account 123456789012" /tmp/none.log
+
+echo "== arguments"
+check-irsa aws-fedramp-test/demo not-an-arn > /tmp/bad.log 2>&1 ; check "an invalid role ARN fails -> 1" [ "${?}" -eq 1 ] ; check "...saying so" grep -q "Invalid role ARN" /tmp/bad.log
+check-irsa aws-fedramp-test/nowhere arn:aws:iam::123456789012:role/mig-test > /tmp/nosa.log 2>&1 ; check "a namespace without the service account fails" grep -q "There's no service account pvc-tool" /tmp/nosa.log
+
+echo ; [ "${FAILS}" -eq 0 ] && echo "ALL PASSED" || echo "${FAILS} FAILED"
+exit "${FAILS}"

@@ -1,0 +1,56 @@
+#!/bin/bash
+set -uo pipefail
+export PATH="/t/bin:/t/tools:${PATH}" KUBECONFIG=/w/kubeconfig CHART=/t/chart POLL_INTERVAL=2 POLL_TIMEOUT=2
+FAILS=0
+check() { local D="${1}"; shift; if "${@}" ; then echo "PASS: ${D}"; else echo "FAIL: ${D}"; FAILS=$((FAILS+1)); fi; }
+k() { kubectl --context "${@}" ; }
+STAGE=aws-fedramp-stage ; PROD=aws-fedramp-prod
+/t/clusters >/dev/null || exit 1
+aws s3 mb s3://mig-prod >/dev/null
+printf 'apiVersion: storage.k8s.io/v1\nkind: StorageClass\nmetadata: { name: gp3 }\nprovisioner: ebs.csi.aws.com\n' | k "${PROD}" apply -f - >/dev/null
+pvc() { printf '{"apiVersion":"v1","kind":"PersistentVolumeClaim","metadata":{"name":"%s","namespace":"%s"},"spec":{"accessModes":["ReadWriteOnce"],"resources":{"requests":{"storage":"1Gi"}},"storageClassName":"gp3"}}' "${2}" "${1}" ; }
+# What the extractions left: cust-a has "data" (complete) and "gone" (no record: its volume was gone), cust-b is complete
+for NS in cust-a cust-b ; do
+	printf '{"apiVersion":"v1","kind":"Namespace","metadata":{"name":"%s","labels":{"env":"%s"}}}' "${NS}" "${NS}" | aws s3 cp --only-show-errors - "s3://mig-prod/${STAGE}/${NS}/_k8s/namespace.json"
+done
+printf '{"items":[%s,%s]}' "$(pvc cust-a data)" "$(pvc cust-a gone)" | aws s3 cp --only-show-errors - "s3://mig-prod/${STAGE}/cust-a/_k8s/pvcs.json"
+printf '{"items":[%s]}' "$(pvc cust-b data)" | aws s3 cp --only-show-errors - "s3://mig-prod/${STAGE}/cust-b/_k8s/pvcs.json"
+for NS in cust-a cust-b ; do for X in tar.gz listing.gz record ; do echo x | aws s3 cp --only-show-errors - "s3://mig-prod/${STAGE}/${NS}/data.${X}" ; done ; done
+echo x | aws s3 cp --only-show-errors - "s3://mig-prod/${STAGE}/cust-a/gone.tar.gz"   # a half-done export: no record
+printf "${STAGE}/cust-a ${PROD}/cust-a\n${STAGE}/cust-b ${PROD}/cust-b\n" > /w/m.txt
+B=( -b "${PROD}=mig-prod" )
+
+echo "== without --skip-missing"
+start-migrations restore "${B[@]}" < /w/m.txt > /tmp/r1.log 2>&1 ; check "refuses cust-a -> 1" [ "${?}" -eq 1 ]
+check "...naming gone, and the flag" grep -q "export of these PVCs isn't complete: gone (to restore the others anyway, use --skip-missing)" /tmp/r1.log
+check "...without touching cust-a" bash -c "! kubectl --context ${PROD} get namespace cust-a >/dev/null 2>&1"
+check "...but cust-b is restored" bash -c "kubectl --context ${PROD} -n cust-b get job pvc-tool-data >/dev/null"
+start-migrations extract "${B[@]}" --skip-missing < /w/m.txt > /tmp/r0.log 2>&1 ; check "--skip-missing with extract fails" grep -q "only apply to restores" /tmp/r0.log
+
+echo "== with --skip-missing"
+start-migrations restore "${B[@]}" --skip-missing < /w/m.txt > /tmp/r2.log 2>&1 ; check "restore -> 0" [ "${?}" -eq 0 ] || tail /tmp/r2.log
+check "...loudly about gone" grep -q "NOT RESTORING THE PVC gone: its export is missing or incomplete (there's no s3://mig-prod/${STAGE}/cust-a/gone.record)" /tmp/r2.log
+check "only data is re-created" [ "$(k ${PROD} -n cust-a get pvc -o jsonpath='{.items[*].metadata.name}')" == "data" ]
+check "only data gets a Job" [ "$(k ${PROD} -n cust-a get job -o jsonpath='{.items[*].metadata.name}')" == "pvc-tool-data" ]
+check "the namespace is annotated" [ "$(k ${PROD} get ns cust-a -o jsonpath='{.metadata.annotations.armedia\.com/pvc-tool-missing-pvcs}')" == "gone" ]
+check "...and keeps its labels" [ "$(k ${PROD} get ns cust-a -o jsonpath='{.metadata.labels.env}')" == "cust-a" ]
+check "cust-b isn't annotated" [ -z "$(k ${PROD} get ns cust-b -o jsonpath='{.metadata.annotations.armedia\.com/pvc-tool-missing-pvcs}')" ]
+NOW="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+for NS in cust-a cust-b ; do k "${PROD}" -n "${NS}" patch job pvc-tool-data --subresource=status --type=merge -p "{\"status\":{\"startTime\":\"${NOW}\",\"completionTime\":\"${NOW}\",\"succeeded\":1,\"conditions\":[{\"type\":\"SuccessCriteriaMet\",\"status\":\"True\",\"lastTransitionTime\":\"${NOW}\"},{\"type\":\"Complete\",\"status\":\"True\",\"lastTransitionTime\":\"${NOW}\"}]}}" >/dev/null ; done
+watch-migrations restore < /w/m.txt > /tmp/w1.log 2>&1 ; check "watch -> 0" [ "${?}" -eq 0 ]
+check "...repeating what was left out" grep -q "${STAGE}/cust-a -> ${PROD}/cust-a: gone" /tmp/w1.log
+restore-namespace -b mig-prod "${STAGE}/cust-a" "${PROD}" > /tmp/r3.log 2>&1 ; check "restore-namespace again -> 0" [ "${?}" -eq 0 ] ; check "...and it repeats it too" grep -q "these PVCs were NOT restored, since their export is missing or incomplete: gone" /tmp/r3.log
+k "${PROD}" annotate namespace cust-a armedia.com/pvc-tool-missing-pvcs- >/dev/null
+watch-migrations restore < /w/m.txt > /tmp/w2.log 2>&1 ; check "once the annotation is removed, watch is quiet" bash -c "! grep -q 'NOT restored' /tmp/w2.log"
+
+echo "== a namespace that exists already"
+k "${PROD}" create namespace cust-c >/dev/null
+for X in namespace pvcs ; do aws s3 cp --only-show-errors "s3://mig-prod/${STAGE}/cust-a/_k8s/${X}.json" - | sed 's/cust-a/cust-c/g' | aws s3 cp --only-show-errors - "s3://mig-prod/${STAGE}/cust-c/_k8s/${X}.json" ; done
+for X in tar.gz listing.gz record ; do echo x | aws s3 cp --only-show-errors - "s3://mig-prod/${STAGE}/cust-c/data.${X}" ; done
+pvc cust-c gone | k "${PROD}" create -f - >/dev/null
+restore-namespace --no-wait --skip-missing -b mig-prod "${STAGE}/cust-c" "${PROD}" > /tmp/r4.log 2>&1 ; check "the missing PVC exists in the target -> 1" [ "${?}" -eq 1 ] ; check "...saying so" grep -q "the PVC gone exists already, but its export is missing" /tmp/r4.log
+k "${PROD}" -n cust-c delete pvc gone --wait=false >/dev/null ; k "${PROD}" -n cust-c patch pvc gone --type=merge -p '{"metadata":{"finalizers":null}}' >/dev/null 2>&1 ; sleep 1
+restore-namespace --no-wait --skip-missing -b mig-prod "${STAGE}/cust-c" "${PROD}" > /tmp/r5.log 2>&1 ; check "once it's gone -> 0" [ "${?}" -eq 0 ] || tail -3 /tmp/r5.log
+check "...annotating the existing namespace" [ "$(k ${PROD} get ns cust-c -o jsonpath='{.metadata.annotations.armedia\.com/pvc-tool-missing-pvcs}')" == "gone" ]
+echo ; [ "${FAILS}" -eq 0 ] && echo "ALL PASSED" || echo "${FAILS} FAILED"
+exit "${FAILS}"

@@ -1,0 +1,39 @@
+#!/bin/bash
+#
+# usage: fetch-binaries [directory]
+#
+# Downloads the etcd, kube-apiserver, kubectl and helm binaries the suites run (linux/amd64) into the
+# directory (default: tests/.bin), unless they're there already
+#
+set -euo pipefail
+
+BASEDIR="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
+DIR="${1:-${BASEDIR}/.bin}"
+
+KUBERNETES_VERSION="v1.37.2"
+ETCD_VERSION="v3.7.3"
+HELM_VERSION="v4.3.0"
+
+mkdir -p "${DIR}"
+TMP="$(mktemp -d)"
+trap 'rm -rf "${TMP}"' EXIT
+
+fetch()
+{
+	local NAME="${1}"
+	local URL="${2}"
+	[ -x "${DIR}/${NAME}" ] && return 0
+	echo "Downloading ${NAME} from ${URL}"
+	curl -fsSL --retry 3 -o "${TMP}/download" "${URL}"
+	case "${URL}" in
+		*.tar.gz ) tar -xzf "${TMP}/download" -C "${TMP}" && find "${TMP}" -type f -name "${NAME}" -exec mv -f {} "${DIR}/${NAME}" \; ;;
+		* ) mv -f "${TMP}/download" "${DIR}/${NAME}" ;;
+	esac
+	chmod 0755 "${DIR}/${NAME}"
+}
+
+fetch kube-apiserver "https://dl.k8s.io/release/${KUBERNETES_VERSION}/bin/linux/amd64/kube-apiserver"
+fetch kubectl "https://dl.k8s.io/release/${KUBERNETES_VERSION}/bin/linux/amd64/kubectl"
+fetch etcd "https://github.com/etcd-io/etcd/releases/download/${ETCD_VERSION}/etcd-${ETCD_VERSION}-linux-amd64.tar.gz"
+fetch helm "https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz"
+echo "The binaries are in ${DIR}"

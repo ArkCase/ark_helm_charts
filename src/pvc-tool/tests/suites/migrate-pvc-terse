@@ -1,0 +1,16 @@
+#!/bin/bash
+set -uo pipefail
+FAILS=0
+check() { local D="${1}"; shift; if "${@}" ; then echo "PASS: ${D}"; else echo "FAIL: ${D}"; FAILS=$((FAILS+1)); fi; }
+aws --endpoint-url "${S3_ENDPOINT}" s3 mb s3://mig-bucket >/dev/null
+mkdir -p /src/d && echo one > /src/d/file-one && echo two > /src/file-two
+T=(TASK_MODE=s3 S3_FORMAT=tar S3_BUCKET=mig-bucket S3_ENDPOINT="${S3_ENDPOINT}" LOGS_DIR=/tmp S3_PREFIX=a/ns/data)
+run() { local RC="0" ; timeout 120 env "${@}" /migrate-pvc > /tmp/run.log 2>&1 || RC="${?}" ; echo -n "${RC}" ; }
+check "export" [ "$(run "${T[@]}" S3_DIRECTION=upload SOURCE_PVC=data SOURCE_DIR=/src)" == "0" ]
+mkdir -p /dst1 /dst2
+check "restore (default)" [ "$(run "${T[@]}" S3_DIRECTION=download TARGET_PVC=data TARGET_DIR=/dst1)" == "0" ] ; cp /tmp/run.log /tmp/d1.log
+check "...lists each entry" bash -c "grep -qx './d/file-one' /tmp/d1.log && grep -qx './file-two' /tmp/d1.log && grep -q \"'--verbose'\" /tmp/d1.log"
+check "restore (terse)" [ "$(run "${T[@]}" S3_TERSE=true S3_DIRECTION=download TARGET_PVC=data TARGET_DIR=/dst2)" == "0" ] ; cp /tmp/run.log /tmp/d2.log
+check "...doesn't" bash -c "! grep -q 'file-one' /tmp/d2.log && ! grep -q \"'--verbose'\" /tmp/d2.log"
+check "...and restores the same" diff -r /dst1/d /dst2/d
+[ "${FAILS}" -eq 0 ] && echo "ALL PASSED" || echo "${FAILS} FAILED"

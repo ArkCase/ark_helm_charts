@@ -1,0 +1,91 @@
+#!/bin/bash
+set -uo pipefail
+export PATH="/t/bin:/t/tools:${PATH}" KUBECONFIG=/w/kubeconfig CHART=/t/chart POLL_INTERVAL=2
+FAILS=0
+check() { local D="${1}"; shift; if "${@}" ; then echo "PASS: ${D}"; else echo "FAIL: ${D}"; FAILS=$((FAILS+1)); fi; }
+k() { kubectl --context "${@}" ; }
+TEST=aws-fedramp-test ; STAGE=aws-fedramp-stage ; PROD=aws-fedramp-prod
+/t/clusters || exit 1
+for B in mig-prod mig-stage ; do aws s3 mb "s3://${B}" >/dev/null ; done
+
+# The old clusters: like the real table, some namespaces stay, some move up a cluster
+ns_with_pvc() {
+	local CTX="${1}" NS="${2}"
+	k "${CTX}" apply -f - >/dev/null <<Y
+apiVersion: v1
+kind: Namespace
+metadata: { name: ${NS}, labels: { env: ${NS} } }
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata: { name: data, namespace: ${NS} }
+spec: { accessModes: [ReadWriteOnce], resources: { requests: { storage: 1Gi } }, storageClassName: gp2 }
+Y
+}
+for C in "${TEST}" "${STAGE}" "${PROD}" ; do printf 'apiVersion: storage.k8s.io/v1\nkind: StorageClass\nmetadata: { name: gp2 }\nprovisioner: ebs.csi.aws.com\n' | k "${C}" apply -f - >/dev/null ; done
+ns_with_pvc "${PROD}" cust-p1 ; ns_with_pvc "${PROD}" cust-p2
+ns_with_pvc "${STAGE}" cust-moves ; ns_with_pvc "${STAGE}" cust-stays
+ns_with_pvc "${TEST}" cust-moves ; ns_with_pvc "${TEST}" cust-t2
+cat > /w/migrations.txt <<'T'
+# source                       target
+aws-fedramp-prod/cust-p1       -
+aws-fedramp-prod/cust-p2       -
+aws-fedramp-stage/cust-moves   aws-fedramp-prod/cust-moves
+aws-fedramp-stage/cust-stays   -
+aws-fedramp-test/cust-moves    aws-fedramp-stage/cust-moves
+aws-fedramp-test/cust-t2       aws-fedramp-stage            # same name
+T
+for C in test stage prod ; do
+	printf 'image: { registry: "123456789012.dkr.ecr.us-east-1.amazonaws.com", repository: "arkcase/nettest", tag: "latest" }\ns3: { region: "us-east-1", irsaRole: "arn:aws:iam::123456789012:role/aws-mig-202611-fedramp-%s" }\n' "${C}" > "/w/values-${C}.yaml"
+done
+BUCKETS=( -b "${PROD}=mig-prod" -b "${STAGE}=mig-stage" )
+VALUES=( -v "${TEST}=/w/values-test.yaml" -v "${STAGE}=/w/values-stage.yaml" -v "${PROD}=/w/values-prod.yaml" )
+finish() {
+	local CTX="${1}" NS="${2}" JOB="${3}" HOW="${4}" NOW="$(date -u +%Y-%m-%dT%H:%M:%SZ)" P
+	if [ "${HOW}" == "complete" ] ; then
+		P="{\"status\":{\"startTime\":\"${NOW}\",\"completionTime\":\"${NOW}\",\"succeeded\":1,\"conditions\":[{\"type\":\"SuccessCriteriaMet\",\"status\":\"True\",\"lastTransitionTime\":\"${NOW}\"},{\"type\":\"Complete\",\"status\":\"True\",\"lastTransitionTime\":\"${NOW}\"}]}}"
+	else
+		P="{\"status\":{\"startTime\":\"${NOW}\",\"failed\":1,\"conditions\":[{\"type\":\"FailureTarget\",\"status\":\"True\",\"reason\":\"PodFailurePolicy\",\"message\":\"exit code 1\",\"lastTransitionTime\":\"${NOW}\"},{\"type\":\"Failed\",\"status\":\"True\",\"reason\":\"PodFailurePolicy\",\"message\":\"exit code 1\",\"lastTransitionTime\":\"${NOW}\"}]}}"
+	fi
+	k "${CTX}" -n "${NS}" patch job "${JOB}" --subresource=status --type=merge -p "${P}" >/dev/null
+}
+env_of() { k "${1}" -n "${2}" get job pvc-tool-data -o json | jq -r --arg v "${3}" '.spec.template.spec.containers[0].env[] | select(.name == $v) | .value' ; }
+role_of() { k "${1}" -n "${2}" get sa pvc-tool -o jsonpath='{.metadata.annotations.eks\.amazonaws\.com/role-arn}' ; }
+bg() { local NAME="${1}" ; shift ; rm -f "/tmp/${NAME}.rc" ; ( "${@}" < /w/migrations.txt > "/tmp/${NAME}.log" 2>&1 ; echo "${?}" > "/tmp/${NAME}.rc" ) & }
+rc_of() { for I in $(seq 1 60) ; do [ -e "/tmp/${1}.rc" ] && break ; sleep 1 ; done ; cat "/tmp/${1}.rc" 2>/dev/null ; }
+uid() { k "${1}" -n "${2}" get job pvc-tool-data -o jsonpath='{.metadata.uid}' 2>/dev/null ; }
+
+
+mkdir -p /w/other/templates && printf 'apiVersion: v2\nname: other\nversion: 1.0.0\n' > /w/other/Chart.yaml && printf 'apiVersion: v1\nkind: ConfigMap\nmetadata: { name: other }\n' > /w/other/templates/cm.yaml
+start-migrations extract "${BUCKETS[@]}" "${VALUES[@]}" -c "${PROD}" -c "${STAGE}" < /w/migrations.txt > /tmp/x1.log 2>&1 ; check "(started prod and stage)" [ "${?}" -eq 0 ]
+for N in cust-p1 cust-p2 ; do finish "${PROD}" "${N}" pvc-tool-data complete ; done
+finish "${STAGE}" cust-stays pvc-tool-data failed      # cust-moves stays running
+helm install pvc-tool /w/other --kube-context "${TEST}" --namespace cust-t2 >/dev/null   # not ours
+R=remove-migrations
+
+echo "== remove"
+${R} extract -n < /w/migrations.txt > /tmp/r1.log 2>&1 ; RC="${?}" ; check "dry run -> 0" [ "${RC}" -eq 0 ]
+check "dry run: lists the removable ones" bash -c "[ \$(grep -c 'would remove the release' /tmp/r1.log) -eq 3 ]"
+check "dry run: keeps the running one" grep -q "cust-moves -> aws-fedramp-prod/cust-moves: its transfers are still running" /tmp/r1.log
+check "dry run: refuses the foreign release" grep -q "the release pvc-tool in aws-fedramp-test/cust-t2 is other-1.0.0, not pvc-tool" /tmp/r1.log
+check "dry run: removes nothing" [ "$(helm --kube-context ${PROD} list -A -q | wc -l)" -eq 2 ]
+${R} extract -c "${PROD}" -c "${STAGE}" < /w/migrations.txt > /tmp/r2.log 2>&1 ; RC="${?}" ; check "remove (prod, stage): a running one is kept -> 1" [ "${RC}" -eq 1 ]
+check "...prod's are gone" [ "$(helm --kube-context ${PROD} list -A -q | wc -l)" -eq 0 ]
+check "...and so are their Jobs and service accounts" bash -c "[ \$(kubectl --context ${PROD} get job -A -l armedia.com/pvc-mounter-name -o name | wc -l) -eq 0 ] && ! kubectl --context ${PROD} -n cust-p1 get sa pvc-tool >/dev/null 2>&1"
+check "...but not their PVCs or namespaces" bash -c "kubectl --context ${PROD} -n cust-p1 get pvc data >/dev/null && kubectl --context ${PROD} -n cust-p2 get pvc data >/dev/null"
+check "...the failed one is gone" bash -c "! helm --kube-context ${STAGE} status pvc-tool -n cust-stays >/dev/null 2>&1"
+check "...the running one isn't" helm --kube-context "${STAGE}" status pvc-tool -n cust-moves
+check "...saying so" grep -q "Left 1 release(s) alone, whose transfers are still running" /tmp/r2.log
+check "...and the buckets aren't touched" bash -c "aws s3 ls s3://mig-prod/aws-fedramp-prod/cust-p1/_k8s/pvcs.json >/dev/null"
+${R} extract -f -c "${STAGE}" < /w/migrations.txt > /tmp/r3.log 2>&1 ; RC="${?}" ; check "remove -f: interrupts the running one -> 0" [ "${RC}" -eq 0 ]
+check "...it's gone" bash -c "! helm --kube-context ${STAGE} status pvc-tool -n cust-moves >/dev/null 2>&1"
+${R} extract -c "${TEST}" < /w/migrations.txt > /tmp/r4.log 2>&1 ; RC="${?}" ; check "a foreign release -> 1" [ "${RC}" -eq 1 ]
+check "...left alone" bash -c "[ \"\$(helm --kube-context ${TEST} list -n cust-t2 -o json | jq -r '.[0].chart')\" == other-1.0.0 ]"
+check "...and a row with no release is fine" grep -q "cust-moves -> aws-fedramp-stage/cust-moves: there's no release in aws-fedramp-test/cust-moves" /tmp/r4.log
+${R} extract -c "${PROD}" -c "${STAGE}" < /w/migrations.txt > /tmp/r5.log 2>&1 ; RC="${?}" ; check "again: nothing left -> 0" [ "${RC}" -eq 0 ]
+start-migrations extract "${BUCKETS[@]}" "${VALUES[@]}" -c "${PROD}" < /w/migrations.txt > /tmp/x2.log 2>&1 ; RC="${?}" ; check "and they can be started anew -> 0" [ "${RC}" -eq 0 ]
+check "...with new Jobs" [ "$(k ${PROD} get job -A -l armedia.com/pvc-mounter-name -o name | wc -l)" -eq 2 ]
+
+echo
+[ "${FAILS}" -eq 0 ] && echo "ALL PASSED" || echo "${FAILS} FAILED"
+exit "${FAILS}"

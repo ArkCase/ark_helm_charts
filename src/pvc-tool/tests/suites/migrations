@@ -1,0 +1,126 @@
+#!/bin/bash
+set -uo pipefail
+export PATH="/t/bin:/t/tools:${PATH}" KUBECONFIG=/w/kubeconfig CHART=/t/chart POLL_INTERVAL=2
+FAILS=0
+check() { local D="${1}"; shift; if "${@}" ; then echo "PASS: ${D}"; else echo "FAIL: ${D}"; FAILS=$((FAILS+1)); fi; }
+k() { kubectl --context "${@}" ; }
+TEST=aws-fedramp-test ; STAGE=aws-fedramp-stage ; PROD=aws-fedramp-prod
+/t/clusters || exit 1
+for B in mig-prod mig-stage ; do aws s3 mb "s3://${B}" >/dev/null ; done
+
+# The old clusters: like the real table, some namespaces stay, some move up a cluster
+ns_with_pvc() {
+	local CTX="${1}" NS="${2}"
+	k "${CTX}" apply -f - >/dev/null <<Y
+apiVersion: v1
+kind: Namespace
+metadata: { name: ${NS}, labels: { env: ${NS} } }
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata: { name: data, namespace: ${NS} }
+spec: { accessModes: [ReadWriteOnce], resources: { requests: { storage: 1Gi } }, storageClassName: gp2 }
+Y
+}
+for C in "${TEST}" "${STAGE}" "${PROD}" ; do printf 'apiVersion: storage.k8s.io/v1\nkind: StorageClass\nmetadata: { name: gp2 }\nprovisioner: ebs.csi.aws.com\n' | k "${C}" apply -f - >/dev/null ; done
+ns_with_pvc "${PROD}" cust-p1 ; ns_with_pvc "${PROD}" cust-p2
+ns_with_pvc "${STAGE}" cust-moves ; ns_with_pvc "${STAGE}" cust-stays
+ns_with_pvc "${TEST}" cust-moves ; ns_with_pvc "${TEST}" cust-t2
+cat > /w/migrations.txt <<'T'
+# source                       target
+aws-fedramp-prod/cust-p1       -
+aws-fedramp-prod/cust-p2       -
+aws-fedramp-stage/cust-moves   aws-fedramp-prod/cust-moves
+aws-fedramp-stage/cust-stays   -
+aws-fedramp-test/cust-moves    aws-fedramp-stage/cust-moves
+aws-fedramp-test/cust-t2       aws-fedramp-stage            # same name
+T
+for C in test stage prod ; do
+	printf 'image: { registry: "123456789012.dkr.ecr.us-east-1.amazonaws.com", repository: "arkcase/nettest", tag: "latest" }\ns3: { region: "us-east-1", irsaRole: "arn:aws:iam::123456789012:role/aws-mig-202611-fedramp-%s" }\n' "${C}" > "/w/values-${C}.yaml"
+done
+BUCKETS=( -b "${PROD}=mig-prod" -b "${STAGE}=mig-stage" )
+VALUES=( -v "${TEST}=/w/values-test.yaml" -v "${STAGE}=/w/values-stage.yaml" -v "${PROD}=/w/values-prod.yaml" )
+finish() {
+	local CTX="${1}" NS="${2}" JOB="${3}" HOW="${4}" NOW="$(date -u +%Y-%m-%dT%H:%M:%SZ)" P
+	if [ "${HOW}" == "complete" ] ; then
+		P="{\"status\":{\"startTime\":\"${NOW}\",\"completionTime\":\"${NOW}\",\"succeeded\":1,\"conditions\":[{\"type\":\"SuccessCriteriaMet\",\"status\":\"True\",\"lastTransitionTime\":\"${NOW}\"},{\"type\":\"Complete\",\"status\":\"True\",\"lastTransitionTime\":\"${NOW}\"}]}}"
+	else
+		P="{\"status\":{\"startTime\":\"${NOW}\",\"failed\":1,\"conditions\":[{\"type\":\"FailureTarget\",\"status\":\"True\",\"reason\":\"PodFailurePolicy\",\"message\":\"exit code 1\",\"lastTransitionTime\":\"${NOW}\"},{\"type\":\"Failed\",\"status\":\"True\",\"reason\":\"PodFailurePolicy\",\"message\":\"exit code 1\",\"lastTransitionTime\":\"${NOW}\"}]}}"
+	fi
+	k "${CTX}" -n "${NS}" patch job "${JOB}" --subresource=status --type=merge -p "${P}" >/dev/null
+}
+env_of() { k "${1}" -n "${2}" get job pvc-tool-data -o json | jq -r --arg v "${3}" '.spec.template.spec.containers[0].env[] | select(.name == $v) | .value' ; }
+role_of() { k "${1}" -n "${2}" get sa pvc-tool -o jsonpath='{.metadata.annotations.eks\.amazonaws\.com/role-arn}' ; }
+bg() { local NAME="${1}" ; shift ; rm -f "/tmp/${NAME}.rc" ; ( "${@}" < /w/migrations.txt > "/tmp/${NAME}.log" 2>&1 ; echo "${?}" > "/tmp/${NAME}.rc" ) & }
+rc_of() { for I in $(seq 1 60) ; do [ -e "/tmp/${1}.rc" ] && break ; sleep 1 ; done ; cat "/tmp/${1}.rc" 2>/dev/null ; }
+uid() { k "${1}" -n "${2}" get job pvc-tool-data -o jsonpath='{.metadata.uid}' 2>/dev/null ; }
+
+echo "== table and arguments"
+printf 'a/b c d\n' | start-migrations extract "${BUCKETS[@]}" > /tmp/t1.log 2>&1 ; check "a bad line fails" [ "${?}" -ne 0 ] ; check "...naming it" grep -q "Migrations line 1" /tmp/t1.log
+printf 'x/a -\nx/a y/b\n' | start-migrations extract "${BUCKETS[@]}" > /tmp/t2.log 2>&1 ; check "a source twice fails" grep -q "x/a is already on line 1" /tmp/t2.log
+printf 'x/a y/c\nz/c y\n' | start-migrations extract -b y=bkt-y > /tmp/t3.log 2>&1 ; check "a target twice fails" grep -q "y/c is already the target on line 1" /tmp/t3.log
+start-migrations extract -b "${PROD}=mig-prod" < /w/migrations.txt > /tmp/t4.log 2>&1 ; RC="${?}" ; check "a target context without a bucket fails" [ "${RC}" -ne 0 ] ; check "...before anything starts" bash -c "grep -q 'no bucket for aws-fedramp-stage' /tmp/t4.log && ! helm --kube-context ${PROD} list -A -q | grep -q ."
+start-migrations extract -c aws-fedramp-dev "${BUCKETS[@]}" < /w/migrations.txt > /tmp/t5.log 2>&1 ; RC="${?}" ; check "nothing for the context -> 0" [ "${RC}" -eq 0 ] ; check "...no transfers needed" grep -q "No transfers needed" /tmp/t5.log
+start-migrations extract -n "${BUCKETS[@]}" "${VALUES[@]}" < /w/migrations.txt > /tmp/t6.log 2>&1 ; check "dry run -> 0" [ "${?}" -eq 0 ]
+check "dry run: the bucket follows the target" bash -c "grep -q 'aws-fedramp-test/cust-moves -> aws-fedramp-stage/cust-moves: bucket mig-stage, in aws-fedramp-test' /tmp/t6.log && grep -q 'aws-fedramp-stage/cust-moves -> aws-fedramp-prod/cust-moves: bucket mig-prod, in aws-fedramp-stage' /tmp/t6.log && grep -q 'aws-fedramp-stage/cust-stays: bucket mig-stage' /tmp/t6.log"
+check "dry run: starts nothing" bash -c "! helm --kube-context ${TEST} list -A -q | grep -q ."
+watch-migrations extract < /w/migrations.txt > /tmp/t7.log 2>&1 ; RC="${?}" ; check "watch before starting -> 1" [ "${RC}" -eq 1 ] ; check "...none started" grep -q "these 6 namespace(s) were never started" /tmp/t7.log
+
+echo "== extract, all at once"
+start-migrations extract "${BUCKETS[@]}" "${VALUES[@]}" -c "${PROD}" -c "${STAGE}" < /w/migrations.txt > /tmp/x1.log 2>&1 ; RC="${?}" ; check "start (prod and stage only) -> 0" [ "${RC}" -eq 0 ] || tail /tmp/x1.log
+check "it doesn't wait" grep -q "Watch them with" /tmp/x1.log
+check "one Job per namespace, in prod and stage" [ "$(for C in ${PROD} ${STAGE} ${TEST} ; do k ${C} get job -A -l armedia.com/pvc-mounter-name -o name | wc -l ; done | tr '\n' ' ')" == "2 2 0 " ]
+check "stage's leaving namespace goes into prod's bucket, under its source" [ "$(env_of ${STAGE} cust-moves S3_BUCKET) $(env_of ${STAGE} cust-moves S3_PREFIX)" == "mig-prod aws-fedramp-stage/cust-moves/\$(SOURCE_PVC)" ]
+check "stage's staying namespace goes into stage's bucket" [ "$(env_of ${STAGE} cust-stays S3_BUCKET)" == "mig-stage" ]
+check "each runs with its own cluster's role" [ "$(role_of ${STAGE} cust-moves) $(role_of ${PROD} cust-p1)" == "arn:aws:iam::123456789012:role/aws-mig-202611-fedramp-stage arn:aws:iam::123456789012:role/aws-mig-202611-fedramp-prod" ]
+bg w1 watch-migrations extract
+sleep 5 ; check "watch: waits while they run" [ ! -e /tmp/w1.rc ] ; check "...reporting them" grep -q "0 of 4 transfer(s) complete, 4 running, 2 namespace(s) not started" /tmp/w1.log
+start-migrations extract "${BUCKETS[@]}" "${VALUES[@]}" < /w/migrations.txt > /tmp/x2.log 2>&1 ; RC="${?}" ; check "start again (all) -> 0" [ "${RC}" -eq 0 ]
+check "...starting the rest, leaving the others alone" bash -c "[ \$(grep -c 'already started' /tmp/x2.log) -eq 4 ] && [ \$(kubectl --context ${TEST} get job -A -l armedia.com/pvc-mounter-name -o name | wc -l) -eq 2 ]"
+check "test's namespaces go into stage's bucket" [ "$(env_of ${TEST} cust-moves S3_BUCKET) $(env_of ${TEST} cust-t2 S3_BUCKET) $(env_of ${TEST} cust-moves S3_PREFIX)" == "mig-stage mig-stage aws-fedramp-test/cust-moves/\$(SOURCE_PVC)" ]
+for N in cust-p1 cust-p2 ; do finish "${PROD}" "${N}" pvc-tool-data complete ; done
+for N in cust-moves cust-stays ; do finish "${STAGE}" "${N}" pvc-tool-data complete ; done
+finish "${TEST}" cust-moves pvc-tool-data complete ; finish "${TEST}" cust-t2 pvc-tool-data failed
+check "watch: a failure -> 1" [ "$(rc_of w1)" == "1" ] ; check "...naming it" grep -q "aws-fedramp-test/cust-t2 -> aws-fedramp-stage/cust-t2: pvc-tool-data (PVC data): PodFailurePolicy" /tmp/w1.log
+U="$(uid ${TEST} cust-t2)"
+bg w2 watch-migrations extract --retry
+for I in $(seq 1 40) ; do [ -n "$(uid ${TEST} cust-t2)" ] && [ "$(uid ${TEST} cust-t2)" != "${U}" ] && break ; sleep 0.5 ; done
+check "watch --retry: re-creates the failed Job" [ "$(uid ${TEST} cust-t2)" != "${U}" ]
+sleep 3 ; finish "${TEST}" cust-t2 pvc-tool-data complete
+check "watch --retry: all complete -> 0" [ "$(rc_of w2)" == "0" ] ; check "...all 6" grep -q "All 6 transfer(s) of the 6 namespace(s) are complete" /tmp/w2.log
+watch-migrations extract -c "${PROD}" < /w/migrations.txt > /tmp/w3.log 2>&1 ; RC="${?}" ; check "watch -c: just one context -> 0" [ "${RC}" -eq 0 ] ; check "...its 2" grep -q "All 2 transfer(s) of the 2 namespace(s)" /tmp/w3.log
+
+echo "== the clusters are rebuilt"
+for C in "${TEST}" "${STAGE}" "${PROD}" ; do /t/clusters rebuild "${C}" >/dev/null || echo "rebuild failed" ; done
+for C in "${STAGE}" "${PROD}" ; do printf 'apiVersion: storage.k8s.io/v1\nkind: StorageClass\nmetadata: { name: gp3 }\nprovisioner: ebs.csi.aws.com\n' | k "${C}" apply -f - >/dev/null ; done
+# What the export Jobs would have uploaded: each into its target's bucket, under its source
+while read -r SRC DST ; do
+	SC="${SRC%%/*}" ; SN="${SRC#*/}" ; DC="${DST%%/*}" ; [ "${DST}" == "-" ] && DC="${SC}"
+	B="mig-stage" ; [ "${DC}" == "${PROD}" ] && B="mig-prod"
+	for X in tar.gz listing.gz record ; do echo x | aws s3 cp --only-show-errors - "s3://${B}/${SC}/${SN}/data.${X}" ; done
+done < <(grep -v '^#' /w/migrations.txt | sed 's/#.*//' | grep .)
+check "the definitions went into the target's bucket" bash -c "aws s3 ls s3://mig-prod/aws-fedramp-stage/cust-moves/_k8s/pvcs.json >/dev/null && aws s3 ls s3://mig-stage/aws-fedramp-test/cust-t2/_k8s/pvcs.json >/dev/null && ! aws s3 ls s3://mig-stage/aws-fedramp-stage/cust-moves/ >/dev/null 2>&1"
+
+echo "== restore"
+start-migrations restore "${BUCKETS[@]}" "${VALUES[@]}" -c "${STAGE}" < /w/migrations.txt > /tmp/s1.log 2>&1 ; RC="${?}" ; check "restore into stage, gp2 unmapped -> 1" [ "${RC}" -eq 1 ] ; check "...naming all three" bash -c "[ \$(grep -c 'storage classes don.t exist' /tmp/s1.log) -eq 3 ]"
+start-migrations restore "${BUCKETS[@]}" "${VALUES[@]}" -s gp2=gp3 -c "${STAGE}" < /w/migrations.txt > /tmp/s2.log 2>&1 ; RC="${?}" ; check "restore into stage -> 0" [ "${RC}" -eq 0 ] || tail /tmp/s2.log
+check "stage gets its own, and test's" [ "$(k ${STAGE} get job -A -l armedia.com/pvc-mounter-name -o jsonpath='{range .items[*]}{.metadata.namespace} {end}')" == "cust-moves cust-stays cust-t2 " ]
+check "test's cust-moves comes from test's prefix, in stage's bucket" [ "$(env_of ${STAGE} cust-moves S3_BUCKET) $(env_of ${STAGE} cust-moves S3_PREFIX) $(env_of ${STAGE} cust-moves S3_DIRECTION)" == "mig-stage aws-fedramp-test/cust-moves/\$(TARGET_PVC) download" ]
+check "with stage's role, and gp3" [ "$(role_of ${STAGE} cust-t2) $(k ${STAGE} -n cust-t2 get pvc data -o jsonpath='{.spec.storageClassName}')" == "arn:aws:iam::123456789012:role/aws-mig-202611-fedramp-stage gp3" ]
+check "prod isn't touched yet" bash -c "! kubectl --context ${PROD} get namespace cust-moves >/dev/null 2>&1"
+start-migrations restore "${BUCKETS[@]}" "${VALUES[@]}" -s gp2=gp3 -c "${PROD}" < /w/migrations.txt > /tmp/s3.log 2>&1 ; check "restore into prod -> 0" [ "${?}" -eq 0 ]
+check "prod gets its own, and stage's leaver (from prod's bucket)" [ "$(k ${PROD} get job -A -l armedia.com/pvc-mounter-name -o jsonpath='{range .items[*]}{.metadata.namespace} {end}') $(env_of ${PROD} cust-moves S3_BUCKET) $(env_of ${PROD} cust-moves S3_PREFIX)" == "cust-moves cust-p1 cust-p2  mig-prod aws-fedramp-stage/cust-moves/\$(TARGET_PVC)" ]
+check "nothing goes into the rebuilt test cluster" bash -c "! helm --kube-context ${TEST} list -A -q | grep -q ."
+bg w4 watch-migrations restore
+sleep 4 ; check "watch restore: waits" [ ! -e /tmp/w4.rc ]
+for N in cust-moves cust-stays cust-t2 ; do finish "${STAGE}" "${N}" pvc-tool-data complete ; done
+for N in cust-moves cust-p1 cust-p2 ; do finish "${PROD}" "${N}" pvc-tool-data complete ; done
+check "watch restore: all complete -> 0" [ "$(rc_of w4)" == "0" ] ; check "...all 6" grep -q "All 6 transfer(s) of the 6 namespace(s) are complete" /tmp/w4.log
+
+echo "== connectivity"
+kill "$(cat /w/api-aws-fedramp-prod.pid)" ; sleep 2
+watch-migrations restore < /w/migrations.txt > /tmp/c1.log 2>&1 ; RC="${?}" ; check "watch: an unreachable context -> 2" [ "${RC}" -eq 2 ] ; check "...naming it" grep -q "Can't reach aws-fedramp-prod" /tmp/c1.log
+
+echo
+[ "${FAILS}" -eq 0 ] && echo "ALL PASSED" || echo "${FAILS} FAILED"
+exit "${FAILS}"
