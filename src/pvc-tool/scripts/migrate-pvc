@@ -113,11 +113,20 @@ clean_target()
 #
 list_contents()
 {
+	# Sockets are left out: tar can't archive them (they belong to the running processes that
+	# made them, which make them anew when they start)
 	/usr/bin/find . \
 		-path "./lost+found" -prune -o \
 		-path "./${RESTORE_MARKER}" -prune -o \
+		-type s -o \
 		\( -type d -printf "%p\t%y %m %U:%G\n" \) -o \
 		-printf "%p\t%y %m %U:%G %s\n" | LC_ALL="C" /usr/bin/sort
+}
+
+# Drops the sockets from a listing on stdin: the listings of older exports have them
+without_sockets()
+{
+	/usr/bin/awk -F '\t' '$NF !~ /^s /'
 }
 
 verify_clone()
@@ -272,7 +281,7 @@ matches_listing()
 {
 	local DIR="${1}"
 	local OLD_LIST="${WORK_DIR}/recorded.list"
-	"${AWS}" "${AWS_FLAGS[@]}" s3 cp --only-show-errors "${S3_LISTING_URL}" - 2>/dev/null | /usr/bin/gzip -dc > "${OLD_LIST}" 2>/dev/null || return 1
+	"${AWS}" "${AWS_FLAGS[@]}" s3 cp --only-show-errors "${S3_LISTING_URL}" - 2>/dev/null | /usr/bin/gzip -dc 2>/dev/null | without_sockets > "${OLD_LIST}" || return 1
 	( cd "${DIR}" && list_contents ) | /usr/bin/cmp -s - "${OLD_LIST}"
 }
 
@@ -513,7 +522,7 @@ verify_listing()
 		err "Failed to download the source's listing from [${S3_LISTING_URL}]: ${OUT}"
 		return 1
 	fi
-	/usr/bin/gzip -dc < "${OLD_LIST}.gz" > "${OLD_LIST}" || { err "Failed to decompress the source's listing" ; return 1 ; }
+	/usr/bin/gzip -dc < "${OLD_LIST}.gz" | without_sockets > "${OLD_LIST}" || { err "Failed to decompress the source's listing" ; return 1 ; }
 	( cd "${TARGET_DIR}" && list_contents ) > "${NEW_LIST}" || { err "Failed to list the target's contents" ; return 1 ; }
 
 	if ! /usr/bin/cmp -s "${OLD_LIST}" "${NEW_LIST}" ; then
