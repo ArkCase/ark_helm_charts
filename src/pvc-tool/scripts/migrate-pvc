@@ -113,20 +113,78 @@ clean_target()
 #
 list_contents()
 {
-	# Sockets are left out: tar can't archive them (they belong to the running processes that
-	# made them, which make them anew when they start)
 	/usr/bin/find . \
 		-path "./lost+found" -prune -o \
 		-path "./${RESTORE_MARKER}" -prune -o \
-		-type s -o \
 		\( -type d -printf "%p\t%y %m %U:%G\n" \) -o \
 		-printf "%p\t%y %m %U:%G %s\n" | LC_ALL="C" /usr/bin/sort
 }
 
-# Drops the sockets from a listing on stdin: the listings of older exports have them
-without_sockets()
+# The listing entries whose type (find's %y) is one that tar can't archive: sockets and doors,
+# which belong to the processes that made them (and make them anew when they start)
+UNARCHIVABLE_RE='^[sD] '
+
+# Drops the entries tar can't archive from a listing on stdin
+archivable_only()
 {
-	/usr/bin/awk -F '\t' '$NF !~ /^s /'
+	/usr/bin/awk -F '\t' -v re="${UNARCHIVABLE_RE}" '$NF !~ re'
+}
+
+# The paths of the entries in a listing on stdin (their details follow the last tab), sorted
+listing_paths()
+{
+	/usr/bin/awk '{ sub(/\t[^\t]*$/, "") ; print }' | LC_ALL="C" /usr/bin/sort
+}
+
+#
+# usage: listing_entries PATHS LISTING [-v]
+#
+# The entries of LISTING whose paths are in the file PATHS (or, with -v, those whose aren't)
+#
+listing_entries()
+{
+	local NOT="0"
+	[ "${3:-}" == "-v" ] && NOT="1"
+	/usr/bin/awk -v not="${NOT}" 'NR == FNR { want[$0] = 1 ; next } { p = $0 ; sub(/\t[^\t]*$/, "", p) } ((p in want) != not)' "${1}" "${2}"
+}
+
+# Reports (up to 10 of) the entries of a listing on stdin that tar can't archive, which were left out
+report_unarchivable()
+{
+	local LIST="${WORK_DIR}/unarchivable.list"
+	/usr/bin/cat > "${LIST}"
+	warn "$(/usr/bin/wc -l < "${LIST}") entr(ies) were left out, since tar can't archive them (sockets, which their processes make anew when they start) - showing up to 10:"
+	/usr/bin/head -n 10 "${LIST}" | /usr/bin/sed -e 's/^/\t/' || true
+}
+
+#
+# usage: compare_listings EXPECTED ACTUAL DESCRIPTION
+#
+# Compares a listing of what should be there against one of what is (both from list_contents).
+# The expected entries that are missing because tar can't archive them are only reported, but
+# any other difference fails: returns 0 if they match (but for those), 1 otherwise
+#
+compare_listings()
+{
+	local EXPECTED="${1}"
+	local ACTUAL="${2}"
+	local WHAT="${3}"
+	/usr/bin/cmp -s "${EXPECTED}" "${ACTUAL}" && return 0
+
+	local MISSING="${WORK_DIR}/missing.list"
+	local OTHER="${WORK_DIR}/other.diff"
+	LC_ALL="C" /usr/bin/comm -23 "${EXPECTED}" "${ACTUAL}" > "${MISSING}"
+	{
+		archivable_only < "${MISSING}" | /usr/bin/sed -e 's/^/- /'
+		LC_ALL="C" /usr/bin/comm -13 "${EXPECTED}" "${ACTUAL}" | /usr/bin/sed -e 's/^/+ /'
+	} > "${OTHER}"
+	if [ -s "${OTHER}" ] ; then
+		err "${WHAT} (showing up to 100 lines: '-' is missing or different, '+' is unexpected):"
+		/usr/bin/head -n 100 "${OTHER}" || true
+		return 1
+	fi
+	report_unarchivable < "${MISSING}"
+	return 0
 }
 
 verify_clone()
@@ -281,8 +339,8 @@ matches_listing()
 {
 	local DIR="${1}"
 	local OLD_LIST="${WORK_DIR}/recorded.list"
-	"${AWS}" "${AWS_FLAGS[@]}" s3 cp --only-show-errors "${S3_LISTING_URL}" - 2>/dev/null | /usr/bin/gzip -dc 2>/dev/null | without_sockets > "${OLD_LIST}" || return 1
-	( cd "${DIR}" && list_contents ) | /usr/bin/cmp -s - "${OLD_LIST}"
+	"${AWS}" "${AWS_FLAGS[@]}" s3 cp --only-show-errors "${S3_LISTING_URL}" - 2>/dev/null | /usr/bin/gzip -dc 2>/dev/null | archivable_only > "${OLD_LIST}" || return 1
+	( cd "${DIR}" && list_contents ) | archivable_only | /usr/bin/cmp -s - "${OLD_LIST}"
 }
 
 #
@@ -360,6 +418,52 @@ mark_restored()
 	return 0
 }
 
+#
+# usage: check_archived SOURCE_LIST TAR_INDEX ARCHIVED_LIST
+#
+# Compares what tar archived (its index: one path per entry) against the source's listing. What
+# it left out because it can't archive it is only reported; anything else it left out (or that
+# it archived, but the source didn't have) fails. The source's listing, without what was left
+# out, goes into ARCHIVED_LIST: what the archive has
+#
+check_archived()
+{
+	local SOURCE_LIST="${1}"
+	local TAR_INDEX="${2}"
+	local ARCHIVED_LIST="${3}"
+	local WANT="${WORK_DIR}/want.paths"
+	local GOT="${WORK_DIR}/got.paths"
+	listing_paths < "${SOURCE_LIST}" > "${WANT}"
+	# tar's paths for directories end in a slash (the top one is ./)
+	/usr/bin/sed -e 's|/$||' "${TAR_INDEX}" | LC_ALL="C" /usr/bin/sort > "${GOT}"
+
+	if /usr/bin/cmp -s "${WANT}" "${GOT}" ; then
+		/usr/bin/cp -f "${SOURCE_LIST}" "${ARCHIVED_LIST}"
+		ok "The archive has every one of the source's $(/usr/bin/wc -l < "${WANT}") entries"
+		return 0
+	fi
+
+	local LEFT_OUT="${WORK_DIR}/left-out.paths"
+	local LEFT_OUT_LIST="${WORK_DIR}/left-out.list"
+	local OTHER="${WORK_DIR}/archive.diff"
+	LC_ALL="C" /usr/bin/comm -23 "${WANT}" "${GOT}" > "${LEFT_OUT}"
+	listing_entries "${LEFT_OUT}" "${SOURCE_LIST}" > "${LEFT_OUT_LIST}"
+	{
+		archivable_only < "${LEFT_OUT_LIST}" | /usr/bin/sed -e 's/^/- /'
+		LC_ALL="C" /usr/bin/comm -13 "${WANT}" "${GOT}" | /usr/bin/sed -e 's/^/+ /'
+	} > "${OTHER}"
+	if [ -s "${OTHER}" ] ; then
+		err "The archive doesn't have what the source has (showing up to 100 lines: '-' is in the source but not in the archive, '+' is in the archive but not in the source):"
+		/usr/bin/head -n 100 "${OTHER}" || true
+		return 1
+	fi
+
+	report_unarchivable < "${LEFT_OUT_LIST}"
+	listing_entries "${LEFT_OUT}" "${SOURCE_LIST}" -v > "${ARCHIVED_LIST}"
+	ok "The archive has the source's other $(/usr/bin/wc -l < "${ARCHIVED_LIST}") entries"
+	return 0
+}
+
 run_s3_tar_upload()
 {
 	local RC="0"
@@ -383,6 +487,12 @@ run_s3_tar_upload()
 	SIZE="$(/usr/bin/du -sb "${SOURCE_DIR}" | /usr/bin/awk '{ print $1 }')" || { err "Failed to compute the source's size" ; return 1 ; }
 	say "👀 The source data is ${SIZE} bytes (uncompressed)"
 
+	# What the archive should have: everything in the source (and as tar archives it, it lists
+	# what it did archive, to compare against this)
+	local SOURCE_LIST="${WORK_DIR}/source.list"
+	local TAR_INDEX="${WORK_DIR}/tar.index"
+	( cd "${SOURCE_DIR}" && list_contents ) > "${SOURCE_LIST}" || { err "Failed to list the source's contents" ; return 1 ; }
+
 	local TAR_CMD=(
 		"${TAR}"
 		--create
@@ -391,6 +501,9 @@ run_s3_tar_upload()
 		--directory="${SOURCE_DIR}"
 		--numeric-owner
 		--sparse
+		--verbose
+		--index-file="${TAR_INDEX}"
+		--quoting-style=literal
 		"${TAR_FLAGS[@]}"
 		--exclude="./lost+found"
 		--exclude="./${RESTORE_MARKER}"
@@ -413,15 +526,18 @@ run_s3_tar_upload()
 	fi
 	ok "Upload complete"
 
+	local ARCHIVED_LIST="${WORK_DIR}/archived.list"
+	check_archived "${SOURCE_LIST}" "${TAR_INDEX}" "${ARCHIVED_LIST}" || return "${?}"
+
 	if "${S3_VERIFY}" ; then
 		verify_s3 "${SOURCE_DIR}" || return "${?}"
 	fi
 
-	# The source's listing goes next to the archive, so a download can tell
+	# The listing of what was archived goes next to the archive, so a download can tell
 	# whether it got everything back
-	say "👀 Storing the source's listing as [${S3_LISTING_URL}]..."
+	say "👀 Storing the archive's listing as [${S3_LISTING_URL}]..."
 	RC="0"
-	( cd "${SOURCE_DIR}" && list_contents ) | /usr/bin/gzip -9 | "${AWS}" "${AWS_FLAGS[@]}" s3 cp --only-show-errors - "${S3_LISTING_URL}" || RC="${?}"
+	/usr/bin/gzip -9 < "${ARCHIVED_LIST}" | "${AWS}" "${AWS_FLAGS[@]}" s3 cp --only-show-errors - "${S3_LISTING_URL}" || RC="${?}"
 	if [ "${RC}" -ne 0 ] ; then
 		err "Failed to store the source's listing (rc = ${RC})"
 		return "${RC}"
@@ -522,12 +638,11 @@ verify_listing()
 		err "Failed to download the source's listing from [${S3_LISTING_URL}]: ${OUT}"
 		return 1
 	fi
-	/usr/bin/gzip -dc < "${OLD_LIST}.gz" | without_sockets > "${OLD_LIST}" || { err "Failed to decompress the source's listing" ; return 1 ; }
+	/usr/bin/gzip -dc < "${OLD_LIST}.gz" > "${OLD_LIST}" || { err "Failed to decompress the source's listing" ; return 1 ; }
 	( cd "${TARGET_DIR}" && list_contents ) > "${NEW_LIST}" || { err "Failed to list the target's contents" ; return 1 ; }
 
-	if ! /usr/bin/cmp -s "${OLD_LIST}" "${NEW_LIST}" ; then
-		err "The target's contents differ from the source's listing (showing up to 100 lines of differences):"
-		/usr/bin/diff "${OLD_LIST}" "${NEW_LIST}" | /usr/bin/head -n 100 || true
+	# (the listings of older exports have what tar can't archive, which can't be restored)
+	if ! compare_listings "${OLD_LIST}" "${NEW_LIST}" "The target's contents differ from the source's listing" ; then
 		# The archive itself must be off, so trying again won't help
 		return "${NO_RETRY_RC}"
 	fi
