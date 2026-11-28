@@ -20,10 +20,16 @@ set -euo pipefail
 # since, so this can be run again and again. With --retry-only, nothing is started: it
 # waits for the transfers that were, and re-creates the ones that fail.
 #
+# With --skip-missing, an incomplete export doesn't stop the restore: the PVCs whose export
+# is missing or incomplete (they have no record: their volume was gone, say) are left out,
+# loudly, and the rest are restored. Those PVCs aren't re-created, and the namespace's
+# armedia.com/pvc-tool-missing-pvcs annotation lists them, for the admin to deal with (this,
+# and watch-migrations, keep reporting them until the annotation is removed).
+#
 
 usage()
 {
-	echo -e "usage: ${BASH_SOURCE:-${0}} [-b bucket] [-r release] [-s old=new]... [--no-wait | --retry-only [--max-retries n]] source-context/namespace target-context[/namespace] [-- helm-install-args...]" 1>&2
+	echo -e "usage: ${BASH_SOURCE:-${0}} [-b bucket] [-r release] [-s old=new]... [--skip-missing] [--no-wait | --retry-only [--max-retries n]] source-context/namespace target-context[/namespace] [-- helm-install-args...]" 1>&2
 	echo -e "" 1>&2
 	echo -e "	Restores the namespace exported into s3://\${bucket}/\${sourceContext}/\${namespace}/ into" 1>&2
 	echo -e "	the target context (and namespace, by default the same), and waits for the transfers" 1>&2
@@ -34,6 +40,9 @@ usage()
 	echo -e "	-s, --storage-class   Re-create the PVCs of storage class 'old' with the storage class 'new'" 1>&2
 	echo -e "	                      (repeatable; '*=new' applies to every other storage class, and" 1>&2
 	echo -e "	                      'old=' uses the cluster's default storage class)" 1>&2
+	echo -e "	--skip-missing        Restore what can be, even if the export of some PVCs is missing or incomplete:" 1>&2
+	echo -e "	                      those are left out (not re-created), and listed in the namespace's" 1>&2
+	echo -e "	                      ${MISSING_PVCS_ANNOTATION} annotation" 1>&2
 	echo -e "	--no-wait             Start the transfers, but don't wait for them (see wait-for-context-transfers)" 1>&2
 	echo -e "	--retry-only          Start nothing: just wait for the transfers that were already started," 1>&2
 	echo -e "	                      and re-create the ones that fail (up to --max-retries times," 1>&2
@@ -56,6 +65,7 @@ set -- "${ARGS[@]}"
 RELEASE="${DEFAULT_RELEASE}"
 RETRY_ONLY="false"
 NO_WAIT="false"
+SKIP_MISSING="false"
 MAX_RETRIES="${DEFAULT_MAX_RETRIES}"
 SC_MAP="{}"
 POSITIONAL=()
@@ -71,6 +81,7 @@ while [ "${#}" -gt 0 ] ; do
 			;;
 		--retry-only ) RETRY_ONLY="true" ; shift ;;
 		--no-wait ) NO_WAIT="true" ; shift ;;
+		--skip-missing ) SKIP_MISSING="true" ; shift ;;
 		--max-retries )
 			[ "${#}" -ge 2 ] || usage
 			[[ "${2}" =~ ^(0|[1-9][0-9]*)$ ]] || fail "Invalid --max-retries value [${2}] - must be a non-negative integer"
@@ -93,10 +104,21 @@ is_valid_name "${RELEASE}" || fail "Invalid release name [${RELEASE}]"
 
 "${RETRY_ONLY}" && "${NO_WAIT}" && fail "--retry-only and --no-wait don't go together"
 
+# The PVCs that weren't restored (now, or by an earlier run), which bear repeating until someone deals with them
+report_missing()
+{
+	local LIST=""
+	LIST="$(missing_pvcs "${TARGET}" "${NS}")" || true
+	[ -n "${LIST}" ] || return 0
+	err "${WHAT}: 🚨 these PVCs were NOT restored, since their export is missing or incomplete: ${LIST//,/ }"
+	err "${WHAT}: 🚨 they weren't re-created: deal with them by hand, then remove the namespace's ${MISSING_PVCS_ANNOTATION} annotation"
+}
+
 if "${RETRY_ONLY}" ; then
 	say "👉 Waiting for (and retrying) the restore of ${WHAT}"
 	RC="0"
 	retry_only "${TARGET}" download "${NS}" || RC="${?}"
+	report_missing
 	exit "${RC}"
 fi
 
@@ -125,9 +147,22 @@ else
 		[ -n "${PVC}" ] || continue
 		awk -F '\t' -v key="${SRC_CTX}/${SRC_NS}/${PVC}.record" '$1 == key { found = 1 } END { exit !found }' <<< "${OBJECTS}" || MISSING+=("${PVC}")
 	done < <(jq -r '.items[].metadata.name' "${WORK_DIR}/pvcs.json")
-	[ "${#MISSING[@]}" -eq 0 ] || fail "${WHAT}: the export of these PVCs isn't complete: ${MISSING[*]}"
+	if [ "${#MISSING[@]}" -gt 0 ] ; then
+		"${SKIP_MISSING}" || fail "${WHAT}: the export of these PVCs isn't complete: ${MISSING[*]} (to restore the others anyway, use --skip-missing)"
+		for PVC in "${MISSING[@]}" ; do
+			err "${WHAT}: 🚨 NOT RESTORING THE PVC ${PVC}: its export is missing or incomplete (there's no ${URL%/_k8s}/${PVC}.record), so it won't be re-created either"
+		done
+		# The chart restores every PVC in the namespace, so they're left out altogether
+		jq --argjson skip "$(printf '%s\n' "${MISSING[@]}" | jq -Rnc '[inputs]')" '.items |= map(select(.metadata.name as $n | $skip | index($n) | not))' \
+			"${WORK_DIR}/pvcs.json" > "${WORK_DIR}/pvcs.kept.json"
+		mv -f "${WORK_DIR}/pvcs.kept.json" "${WORK_DIR}/pvcs.json"
+	fi
+	MISSING_LIST="$(IFS="," ; echo "${MISSING[*]}")"
 
-	jq --arg ns "${NS}" '.metadata.name = $ns' "${WORK_DIR}/namespace.json" > "${WORK_DIR}/namespace.new.json"
+	jq --arg ns "${NS}" --arg a "${MISSING_PVCS_ANNOTATION}" --arg missing "${MISSING_LIST}" '
+		.metadata.name = $ns
+		| if $missing != "" then .metadata.annotations[$a] = $missing else del(.metadata.annotations[$a]) end
+	' "${WORK_DIR}/namespace.json" > "${WORK_DIR}/namespace.new.json"
 	rewrite_pvcs "${NS}" "${SC_MAP}" < "${WORK_DIR}/pvcs.json" > "${WORK_DIR}/pvcs.new.json"
 
 	SC_MISSING=()
@@ -139,6 +174,11 @@ else
 
 	# The chart restores every PVC in the namespace, so they must all come from the export
 	if kubectl --context "${TARGET}" get namespace "${NS}" &>/dev/null ; then
+		for PVC in "${MISSING[@]}" ; do
+			if kubectl --context "${TARGET}" get pvc --namespace "${NS}" "${PVC}" &>/dev/null ; then
+				fail "${WHAT}: the PVC ${PVC} exists already, but its export is missing: the chart would try to restore it (delete it first, or deal with it by other means and restore without it)"
+			fi
+		done
 		EXTRA="$(kubectl --context "${TARGET}" get pvc --namespace "${NS}" -o json | jq -r --argjson want "$(jq -c '[.items[].metadata.name]' "${WORK_DIR}/pvcs.new.json")" '
 			.items[]
 			| select(.metadata.deletionTimestamp == null)
@@ -147,6 +187,11 @@ else
 			| select(. as $n | $want | index($n) | not)
 		')" || fail "${WHAT}: failed to list its PVCs"
 		[ -z "${EXTRA}" ] || fail "${WHAT}: the namespace has PVCs that aren't part of the export: $(echo ${EXTRA})"
+		if [ -n "${MISSING_LIST}" ] ; then
+			kubectl --context "${TARGET}" annotate --overwrite namespace "${NS}" "${MISSING_PVCS_ANNOTATION}=${MISSING_LIST}" >/dev/null || fail "${WHAT}: failed to annotate the namespace"
+		else
+			kubectl --context "${TARGET}" annotate namespace "${NS}" "${MISSING_PVCS_ANNOTATION}-" >/dev/null 2>&1 || true
+		fi
 		say "⏩ ${WHAT}: the namespace exists already"
 	else
 		kubectl --context "${TARGET}" create -f "${WORK_DIR}/namespace.new.json" >/dev/null || fail "${WHAT}: failed to create the namespace"
@@ -165,6 +210,7 @@ else
 
 	if [ "${#PVCS[@]}" -eq 0 ] ; then
 		ok "No transfers needed: ${WHAT} has no PVCs to restore"
+		report_missing
 		exit 0
 	fi
 
@@ -183,10 +229,12 @@ fi
 
 if "${NO_WAIT}" ; then
 	ok "${WHAT}: transfers started (not waiting for them)"
+	report_missing
 	exit 0
 fi
 
 RC="0"
 "${BASEDIR}/wait-for-context-transfers" "${TARGET}" "${NS}" || RC="${?}"
 [ "${RC}" -eq 1 ] && err "Or re-run this with --retry-only, to retry the failed transfers (and keep waiting)"
+report_missing
 exit "${RC}"

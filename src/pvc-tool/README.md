@@ -129,6 +129,8 @@ These scripts move a namespace, with its PVCs and their data, between clusters t
 
      The export must be complete (every PVC has its record), every storage class its PVCs will use must exist (map them with `-s old=new`; `-s '*=new'` for every other class, and `-s old=` for the cluster's default), and if the namespace exists already, it may not have PVCs other than the exported ones, or nothing is done. Then the namespace and its PVCs are re-created, and the chart restores their data, comparing each PVC against its archive and its source's listing, and it waits for the Jobs.
 
+     With `--skip-missing`, an incomplete export doesn't stop the restore: the PVCs without a record (their volume was gone, say, or their export failed) are reported loudly and left out (they aren't re-created), and the rest are restored. The namespace's `armedia.com/pvc-tool-missing-pvcs` annotation lists the ones left out, and `restore-namespace` and `watch-migrations restore` keep reporting them until it's removed: deal with them by hand, then `kubectl annotate namespace <ns> armedia.com/pvc-tool-missing-pvcs-`.
+
   5. Deploy the application: it finds its PVCs in place. Secrets aren't exported, so any password a chart would otherwise generate (and the restored data depends on) must be given in its values.
 
 #### Many namespaces at once

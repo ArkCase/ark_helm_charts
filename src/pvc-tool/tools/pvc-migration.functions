@@ -123,6 +123,18 @@ k8s_url()
 	echo -n "s3://${MIGRATION_BUCKET}/${SRC_CTX}/${SRC_NS}/_k8s"
 }
 
+# The annotation on a restored namespace that lists (comma-separated) the PVCs its restore left out,
+# since their export was missing or incomplete (restore-namespace --skip-missing)
+MISSING_PVCS_ANNOTATION="armedia.com/pvc-tool-missing-pvcs"
+
+# The PVCs a restore of the given namespace left out (comma-separated), if any
+missing_pvcs()
+{
+	local CONTEXT="${1}"
+	local NAMESPACE="${2}"
+	kubectl --context "${CONTEXT}" get namespace "${NAMESPACE}" -o json 2>/dev/null | jq -r --arg a "${MISSING_PVCS_ANNOTATION}" '.metadata.annotations[$a] // empty'
+}
+
 # Whether the pvc-tool release is installed in the given namespace (i.e. its work was started)
 is_release_installed()
 {

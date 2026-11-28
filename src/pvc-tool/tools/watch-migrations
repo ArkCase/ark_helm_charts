@@ -16,6 +16,9 @@ set -euo pipefail
 # once all the others are done if some namespaces were never started, and 2 if a context
 # can't be reached for a while.
 #
+# When restoring, its last word lists the PVCs that restores left out since their export
+# was missing or incomplete (restore-namespace --skip-missing), which weren't re-created.
+#
 
 # How long to wait between rounds
 [ -v POLL_INTERVAL ] || POLL_INTERVAL=""
@@ -100,6 +103,22 @@ done
 
 say "👉 Watching the ${DIRECTION} of ${#ROWS[@]} namespace(s) in ${#CONTEXTS[@]} context(s): ${CONTEXTS[*]}"
 
+# The PVCs that restores left out (restore-namespace --skip-missing), loudly
+report_missing()
+{
+	[ "${DIRECTION}" == "restore" ] || return 0
+	local I=""
+	local COUNT="0"
+	for I in "${ROWS[@]}" ; do
+		local LIST=""
+		LIST="$(missing_pvcs "$(row_context "${DIRECTION}" "${I}")" "$(row_namespace "${DIRECTION}" "${I}")")" || true
+		[ -n "${LIST}" ] || continue
+		[ "${COUNT}" -gt 0 ] || err "🚨 These PVCs were NOT restored, since their export is missing or incomplete (they weren't re-created: deal with them by hand, then remove the namespace's ${MISSING_PVCS_ANNOTATION} annotation):"
+		err "\t🚨 $(row_name "${I}"): ${LIST//,/ }"
+		COUNT="$(( COUNT + 1 ))"
+	done
+}
+
 declare -A ERRORS=()
 declare -A RETRIES=()
 LAST_REPORT=""
@@ -169,6 +188,7 @@ while true ; do
 				err "\t\tkubectl --context ${CTX@Q} --namespace ${NS@Q} logs job/${JOB}"
 			done
 			err "Look into them, then run this again$("${RETRY}" || echo " with --retry to retry them")"
+			report_missing
 			exit 1
 		fi
 	fi
@@ -178,9 +198,11 @@ while true ; do
 			err "Not done: these ${#UNSTARTED[@]} namespace(s) were never started (run start-migrations ${DIRECTION} for them):"
 			for NAME in "${UNSTARTED[@]}" ; do err "\t${NAME}" ; done
 			[ "${TOTAL}" -gt 0 ] && ok "All ${TOTAL} transfer(s) of the others are complete"
+			report_missing
 			exit 1
 		fi
 		ok "All ${TOTAL} transfer(s) of the ${#ROWS[@]} namespace(s) are complete"
+		report_missing
 		exit 0
 	fi
 

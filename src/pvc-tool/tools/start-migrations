@@ -23,7 +23,7 @@ set -euo pipefail
 
 usage()
 {
-	echo -e "usage: ${BASH_SOURCE:-${0}} extract|restore -b context=bucket... [-v context=values.yaml]... [-c context]... [-s old=new]... [-r release] [-n] [-- helm-install-args...] < migrations.txt" 1>&2
+	echo -e "usage: ${BASH_SOURCE:-${0}} extract|restore -b context=bucket... [-v context=values.yaml]... [-c context]... [-s old=new]... [--skip-missing] [-r release] [-n] [-- helm-install-args...] < migrations.txt" 1>&2
 	echo -e "" 1>&2
 	echo -e "	Starts the extractions (or restores) of the namespaces in the migrations table, one line" 1>&2
 	echo -e "	per namespace (# starts a comment):" 1>&2
@@ -38,6 +38,8 @@ usage()
 	echo -e "	                      context when extracting, the target context when restoring" 1>&2
 	echo -e "	-s, --storage-class   For restores: re-create the PVCs of storage class 'old' with 'new'" 1>&2
 	echo -e "	                      (see restore-namespace)" 1>&2
+	echo -e "	--skip-missing        For restores: restore what can be, leaving out (loudly) the PVCs whose" 1>&2
+	echo -e "	                      export is missing or incomplete (see restore-namespace)" 1>&2
 	echo -e "	-r, --release         The name of the pvc-tool release to install (default: ${DEFAULT_RELEASE})" 1>&2
 	echo -e "	-n, --dry-run         Only show what would be started" 1>&2
 	echo -e "" 1>&2
@@ -67,6 +69,7 @@ declare -A VALUES=()
 declare -A CONTEXT_FILTER=()
 RELEASE="${DEFAULT_RELEASE}"
 SC_ARGS=()
+SKIP_ARGS=()
 DRY_RUN="false"
 while [ "${#}" -gt 0 ] ; do
 	case "${1}" in
@@ -97,6 +100,7 @@ while [ "${#}" -gt 0 ] ; do
 			shift 2
 			;;
 		-s | --storage-class ) [ "${#}" -ge 2 ] || usage ; SC_ARGS+=("-s" "${2}") ; shift 2 ;;
+		--skip-missing ) SKIP_ARGS=( --skip-missing ) ; shift ;;
 		-r | --release ) [ "${#}" -ge 2 ] || usage ; RELEASE="${2}" ; shift 2 ;;
 		-n | --dry-run ) DRY_RUN="true" ; shift ;;
 		* ) usage ;;
@@ -104,6 +108,7 @@ while [ "${#}" -gt 0 ] ; do
 done
 is_valid_name "${RELEASE}" || fail "Invalid release name [${RELEASE}]"
 [ "${DIRECTION}" == "extract" ] && [ "${#SC_ARGS[@]}" -gt 0 ] && fail "-s only applies to restores"
+[ "${DIRECTION}" == "extract" ] && [ "${#SKIP_ARGS[@]}" -gt 0 ] && fail "--skip-missing only applies to restores"
 
 read_migrations
 select_rows "${DIRECTION}"
@@ -139,7 +144,7 @@ for I in "${ROWS[@]}" ; do
 	if [ "${DIRECTION}" == "extract" ] ; then
 		CMD+=( "${MIG_SRC_CTX[${I}]}/${MIG_SRC_NS[${I}]}" )
 	else
-		CMD+=( "${SC_ARGS[@]}" "${MIG_SRC_CTX[${I}]}/${MIG_SRC_NS[${I}]}" "${MIG_DST_CTX[${I}]}/${MIG_DST_NS[${I}]}" )
+		CMD+=( "${SC_ARGS[@]}" "${SKIP_ARGS[@]}" "${MIG_SRC_CTX[${I}]}/${MIG_SRC_NS[${I}]}" "${MIG_DST_CTX[${I}]}/${MIG_DST_NS[${I}]}" )
 	fi
 	CMD+=( -- )
 	[ -n "${VALUES["${CTX}"]:-}" ] && CMD+=( -f "${VALUES["${CTX}"]}" )
