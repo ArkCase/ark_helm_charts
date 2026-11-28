@@ -598,6 +598,8 @@ run_s3_tar_download()
 		--numeric-owner
 		--same-owner
 		--same-permissions
+		# (each entry's path goes to the log as it's extracted, to see how it's going)
+		--verbose
 		"${TAR_FLAGS[@]}"
 	)
 	say "👀 Will use the command: ${AWS_CMD[@]@Q} | ${TAR_CMD[@]@Q}"
